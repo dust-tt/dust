@@ -147,7 +147,7 @@ const MAX_MOVES: usize = 10;
 #[derive(Parser)]
 #[command(about = "Suggest Qdrant shard moves; never execute them")]
 struct Args {
-    /// Estimate replica RAM from its share of source-peer points; suggest one move.
+    /// Fit shared shard RAM to node totals and placement; suggest one move.
     #[arg(long)]
     estimate_memory: bool,
 }
@@ -185,8 +185,8 @@ async fn main() -> Result<()> {
             started_at.elapsed() <= Duration::from_secs(300),
             "Snapshot took over five minutes; refresh before estimating memory moves"
         );
-        println!("ESTIMATE: replica RAM = source allocator resident bytes * replica points / source points.");
-        println!("This apportions shared process overhead and assumes equal bytes per point within each peer.");
+        println!("ESTIMATE: shared shard RAM fitted to node totals, including process overhead and temporary allocations.");
+        println!("This assumes replicas of the same shard have equal RAM; point counts guide ambiguous estimates.");
         println!("Physical capacity and transfer headroom are not checked. Recheck live capacity before moving a shard.");
     }
 
@@ -515,6 +515,79 @@ fn analyze_cluster_distribution(
     (total_points, peer_count, ideal_points_per_peer)
 }
 
+fn estimate_shard_memory<'a>(
+    peers: &[PeerLoad],
+    shards: &'a [ShardInfo],
+    measured_loads: &BTreeMap<u64, f64>,
+) -> HashMap<(&'a str, u32), f64> {
+    // Fit sum(hosted shard RAM) to each node's measured RAM. A weak penalty toward
+    // proportional estimates stabilizes shards that placement cannot distinguish.
+    const REGULARIZATION: f64 = 0.01;
+    const MAX_SWEEPS: usize = 10_000;
+    let points_by_peer: HashMap<_, _> = peers.iter().map(|p| (p.peer_id, p.point_count)).collect();
+    let mut ordered_shards: Vec<_> = shards.iter().collect();
+    ordered_shards.sort_by_key(|s| (s.collection.as_str(), s.shard_id, s.peer_id));
+    let mut estimates: BTreeMap<_, (f64, Vec<u64>)> = BTreeMap::new();
+    for shard in ordered_shards {
+        let estimate = measured_loads[&shard.peer_id] * shard.point_count as f64
+            / points_by_peer[&shard.peer_id] as f64;
+        let entry = estimates
+            .entry((shard.collection.as_str(), shard.shard_id))
+            .or_default();
+        entry.0 += estimate;
+        entry.1.push(shard.peer_id);
+    }
+    for (prior, hosts) in estimates.values_mut() {
+        *prior /= hosts.len() as f64;
+    }
+    let mut weights: HashMap<_, _> = estimates
+        .iter()
+        .map(|(&key, (prior, _))| (key, *prior))
+        .collect();
+    let mut residuals = measured_loads.clone();
+    for (prior, hosts) in estimates.values() {
+        for peer in hosts {
+            residuals.entry(*peer).and_modify(|r| *r -= prior);
+        }
+    }
+    let rms = |residuals: &BTreeMap<u64, f64>| {
+        (residuals.values().map(|r| r * r).sum::<f64>() / residuals.len().max(1) as f64).sqrt()
+    };
+    let initial_error = rms(&residuals);
+    let tolerance = measured_loads.values().copied().fold(1.0, f64::max) * 1e-8;
+    // Coordinate descent touches only a shard's hosts, about 140 replicas per sweep.
+    for sweep in 0..MAX_SWEEPS {
+        let mut max_change: f64 = 0.0;
+        for (key, (prior, hosts)) in &estimates {
+            let weight = weights[key];
+            let correction = (hosts.iter().map(|peer| residuals[peer]).sum::<f64>()
+                - REGULARIZATION * (weight - prior))
+                / (hosts.len() as f64 + REGULARIZATION);
+            let updated = (weight + correction).max(0.0);
+            let change = updated - weight;
+            weights.insert(*key, updated);
+            for peer in hosts {
+                residuals.entry(*peer).and_modify(|r| *r -= change);
+            }
+            max_change = max_change.max(change.abs());
+        }
+        if max_change <= tolerance {
+            break;
+        }
+        if sweep + 1 == MAX_SWEEPS {
+            eprintln!(
+                "Warning: shard RAM fit reached its iteration limit; using the current estimates."
+            );
+        }
+    }
+    println!(
+        "Shard RAM fit: node RMS error {:.3} -> {:.3} GB.",
+        initial_error / 1e9,
+        rms(&residuals) / 1e9
+    );
+    weights
+}
+
 fn calculate_suggested_moves(
     mut peers: Vec<PeerLoad>,
     all_shards: &[ShardInfo],
@@ -542,6 +615,26 @@ fn calculate_suggested_moves(
         };
         loads.insert(peer.peer_id, load);
     }
+    let measured_loads = loads.clone();
+    let mut shard_weights = HashMap::new();
+    if memory.is_some() {
+        shard_weights = estimate_shard_memory(&peers, all_shards, &measured_loads);
+        loads.values_mut().for_each(|load| *load = 0.0);
+        for shard in all_shards {
+            let weight = shard_weights[&(shard.collection.as_str(), shard.shard_id)];
+            loads
+                .entry(shard.peer_id)
+                .and_modify(|load| *load += weight);
+        }
+        println!("Modeled loads can differ from measured RAM; memory on peers without replicas is not modeled.");
+    }
+    let initial_loads = loads.clone();
+    // Fitted weights can make equal-load swaps appear improving through roundoff.
+    let load_tolerance = if memory.is_some() {
+        loads.values().copied().fold(1.0, f64::max) * 1e-9
+    } else {
+        0.0
+    };
     let mut shards = all_shards.to_vec();
     let mut moves = Vec::new();
     let limit = if memory.is_some() { 1 } else { MAX_MOVES };
@@ -559,14 +652,7 @@ fn calculate_suggested_moves(
         for (index, shard) in shards.iter().enumerate() {
             let source_load = loads[&shard.peer_id];
             let weight = match memory {
-                Some(_) => {
-                    let source_points = peers
-                        .iter()
-                        .find(|p| p.peer_id == shard.peer_id)
-                        .ok_or_else(|| anyhow!("Unknown source peer {}", shard.peer_id))?
-                        .point_count;
-                    source_load * (shard.point_count as f64 / source_points as f64)
-                }
+                Some(_) => shard_weights[&(shard.collection.as_str(), shard.shard_id)],
                 None => shard.point_count as f64,
             };
             for (&destination, &destination_load) in &loads {
@@ -575,7 +661,7 @@ fn calculate_suggested_moves(
                 }
                 // The squared-load sum decreases by 2*s*(A-B-s), requiring 0 < s < A-B.
                 let difference = source_load - destination_load;
-                if weight <= 0.0 || weight >= difference {
+                if weight <= load_tolerance || difference - weight <= load_tolerance {
                     continue;
                 }
                 let score = (
@@ -629,6 +715,17 @@ fn calculate_suggested_moves(
             "Stopped: suggestion limit reached ({}). Refresh state before planning more moves.",
             limit
         );
+    }
+    if memory.is_some() {
+        for peer in &peers {
+            println!(
+                "Peer {}: measured {:.3} GB, modeled {:.3} -> {:.3} GB.",
+                peer.peer_id,
+                measured_loads[&peer.peer_id] / 1e9,
+                initial_loads[&peer.peer_id] / 1e9,
+                loads[&peer.peer_id] / 1e9
+            );
+        }
     }
     Ok((moves, peers))
 }
