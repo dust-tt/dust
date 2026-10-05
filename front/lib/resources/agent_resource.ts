@@ -1753,19 +1753,12 @@ export class AgentResource
     const users = await UserResource.fetchByModelIds(userModelIds, {
       transaction,
     });
-    const { memberships } = await MembershipResource.getActiveMemberships({
+    const activeUsers = await MembershipResource.filterActiveMembers({
       users,
       workspace: auth.getNonNullableWorkspace(),
       transaction,
     });
-    const activeUserModelIds = new Set(
-      memberships.map((membership) => membership.userId)
-    );
-    const userByModelId = new Map(
-      users
-        .filter((user) => activeUserModelIds.has(user.id))
-        .map((user) => [user.id, user])
-    );
+    const userByModelId = new Map(activeUsers.map((user) => [user.id, user]));
 
     for (const agent of customAgents) {
       const group = groupByAgentModelId.get(agent.id);

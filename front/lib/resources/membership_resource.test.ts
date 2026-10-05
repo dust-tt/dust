@@ -168,6 +168,37 @@ describe("MembershipResource", () => {
     });
   });
 
+  describe("filterActiveMembers", () => {
+    it("keeps only active members of the workspace, in input order", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const otherWorkspace = await WorkspaceFactory.basic();
+      const [first, revoked, outsider, second] = await Promise.all([
+        UserFactory.basic(),
+        UserFactory.basic(),
+        UserFactory.basic(),
+        UserFactory.basic(),
+      ]);
+      await MembershipFactory.associate(workspace, first, { role: "user" });
+      await MembershipFactory.associate(workspace, revoked, { role: "user" });
+      await MembershipFactory.associate(otherWorkspace, outsider, {
+        role: "user",
+      });
+      await MembershipFactory.associate(workspace, second, { role: "user" });
+      const revokeResult = await MembershipResource.revokeMembership({
+        user: revoked,
+        workspace,
+      });
+      expect(revokeResult.isOk()).toBe(true);
+
+      const activeMembers = await MembershipResource.filterActiveMembers({
+        users: [second, revoked, outsider, first],
+        workspace,
+      });
+
+      expect(activeMembers.map((u) => u.id)).toEqual([second.id, first.id]);
+    });
+  });
+
   describe("caching behavior", () => {
     let authenticator: Authenticator;
     let workspace: LightWorkspaceType;

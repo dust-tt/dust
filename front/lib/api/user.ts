@@ -44,13 +44,10 @@ export async function getActiveUserFromAuthOrEmail(
     return null;
   }
 
-  const workspace = auth.getNonNullableWorkspace();
-  const { memberships } = await MembershipResource.getActiveMemberships({
+  const [firstActive] = await MembershipResource.filterActiveMembers({
     users,
-    workspace,
+    workspace: auth.getNonNullableWorkspace(),
   });
-  const activeUserIds = new Set(memberships.map((m) => m.userId));
-  const firstActive = users.find((u) => activeUserIds.has(u.id));
   return firstActive ? firstActive.toJSON() : null;
 }
 
