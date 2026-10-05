@@ -417,6 +417,47 @@ describe("useMarkdownFileEditor", () => {
     );
   });
 
+  it("saves a plain draft against the revision it was loaded from, not a later fetch", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.setDraft("# Notes\n\nMine");
+    });
+
+    // Someone else wrote revision 2 while the draft was dirty.
+    rerender({ ...revised, revision: "2" });
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "# Notes\n\nMine", revision: "1" })
+    );
+  });
+
+  it("adopts the stored revision even when the saved text did not change", async () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    await act(async () => {
+      await result.current.richEditor?.onSave("# Notes\n");
+    });
+    // The fetch echo brings the same text with the new revision.
+    rerender({ ...params, revision: "2" });
+    await act(async () => {
+      await result.current.richEditor?.onSave("# Notes, more\n");
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "# Notes, more\n", revision: "2" })
+    );
+  });
+
   it("refuses to save when the server reports a newer revision", async () => {
     flags.add("co_edition");
     vi.mocked(putFileContentByPath).mockResolvedValueOnce(

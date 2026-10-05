@@ -69,6 +69,9 @@ export function useMarkdownFileEditor({
     useState<MarkdownFilePreviewViewMode>("preview");
   const [draft, setDraft] = useState("");
   const [savedContent, setSavedContent] = useState("");
+  // The revision `savedContent` was loaded from or saved as; a later fetch must not move it
+  // under a dirty draft, or the draft would write over the version that fetch brought.
+  const [savedRevision, setSavedRevision] = useState<string | null>(null);
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
@@ -91,6 +94,7 @@ export function useMarkdownFileEditor({
     setSourcePath(null);
     setDraft("");
     setSavedContent("");
+    setSavedRevision(null);
     initKeyRef.current = null;
   }
 
@@ -124,6 +128,7 @@ export function useMarkdownFileEditor({
     setSourcePath(entryPath);
     setDraft(processedContent.text);
     setSavedContent(processedContent.text);
+    setSavedRevision(revision);
     initKeyRef.current = initKey;
   }, [
     canEdit,
@@ -132,6 +137,7 @@ export function useMarkdownFileEditor({
     isContentLoading,
     isPlainDirty,
     processedContent,
+    revision,
   ]);
 
   /** Writes the file, only if its stored revision is still `expectedRevision` when given. */
@@ -170,6 +176,7 @@ export function useMarkdownFileEditor({
       }
     );
     setSavedContent(content);
+    setSavedRevision(storedRevision);
     initKeyRef.current = `${entryPath}:${content}`;
   };
 
@@ -187,7 +194,7 @@ export function useMarkdownFileEditor({
     }
     setIsSaving(true);
     try {
-      const result = await writeFile(draft, revision);
+      const result = await writeFile(draft, savedRevision);
       if (result.isOk()) {
         await adoptWritten(draft, result.value.revision);
         sendNotification({ type: "success", title: "File saved" });

@@ -186,6 +186,12 @@ export function useRichMarkdownEditor({
       content,
       revision: result.value.revision,
     };
+    // Taken here and not from the fetch echo: when the saved text equals what the editor
+    // already held, the echo looks like no change, yet the stored revision moved.
+    setOpened(
+      (current) =>
+        current && { ...current, content, revision: result.value.revision }
+    );
     await adoptWritten(content, result.value.revision);
     return new Ok(undefined);
   };
