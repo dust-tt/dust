@@ -7,7 +7,7 @@ export function WithDustMoonshotAiKimiK3Config<
   abstract class DustMoonshotAiKimiK3 extends Base {
     static readonly displayName = "Kimi K3";
     static readonly description =
-      "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support (served via Fireworks).";
+      "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support.";
     // Dust caps usable context at 256k; the model itself supports 1040k.
     static readonly contextSize = 256_000;
     // Dust caps output at 64k; Fireworks defaults to a 131k completion budget.

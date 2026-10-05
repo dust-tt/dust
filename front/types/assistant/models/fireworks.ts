@@ -353,7 +353,7 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support (served via Fireworks).",
+    "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support.",
   shortDescription: "Kimi K3 with 256k context and vision support.",
   isLegacy: false,
   isLatest: true,
