@@ -1178,3 +1178,23 @@ describe("GET /api/w/:wId/assistant/agent_configurations - instructionsHtml", ()
     );
   });
 });
+
+describe("POST /api/w/:wId/assistant/agent_configurations - name length", () => {
+  it("rejects an agent name longer than 512 characters", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "A".repeat(513),
+        editors: [{ sId: user.sId }],
+      },
+    });
+
+    expect(response.status).toBe(400);
+  });
+});

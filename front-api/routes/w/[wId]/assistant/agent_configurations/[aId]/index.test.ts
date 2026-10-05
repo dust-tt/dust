@@ -836,3 +836,39 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - global agents", 
     expect(Array.isArray(agentConfiguration.actions)).toBe(true);
   });
 });
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - name length", () => {
+  it("rejects an agent name longer than 512 characters", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: "A".repeat(513),
+        description: agent.description,
+        instructions: "Test instructions",
+        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+        status: "active",
+        scope: "hidden",
+        model: {
+          providerId: "anthropic",
+          modelId: "claude-sonnet-5",
+          temperature: 0.5,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(400);
+  });
+});

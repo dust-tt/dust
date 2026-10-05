@@ -172,4 +172,17 @@ describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
     });
     expect(globalResponse.status).toBe(400);
   });
+
+  it("rejects renaming a space to a name longer than 256 characters", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    const response = await patchSpace(workspace, regularSpace.sId, {
+      name: "p".repeat(257),
+    });
+
+    expect(response.status).toBe(400);
+  });
 });
