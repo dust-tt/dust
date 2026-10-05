@@ -312,6 +312,41 @@
     },
     {
       "includes": [
+        "sparkle/src/**/*.{ts,tsx}",
+        "!sparkle/src/lib/i18n/**",
+        "!sparkle/src/stories/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/react/macro": {
+                    "importNames": [
+                      "Trans",
+                      "Plural",
+                      "Select",
+                      "SelectOrdinal"
+                    ],
+                    "message": "Sparkle compiles macros after TypeScript has removed JSX: write JSX text as {t`...`} (see sparkle/src/CONTRACTS)."
+                  },
+                  "@lingui/core/macro": {
+                    "importNames": ["t"],
+                    "message": "The global t binds to an i18n instance consumers never activate: use t from useLingui() (see sparkle/src/CONTRACTS)."
+                  },
+                  "@lingui/react": "Use useLingui from @lingui/react/macro (see sparkle/src/CONTRACTS).",
+                  "@lingui/core": "Use the macros of @lingui/core/macro (see sparkle/src/CONTRACTS)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
         "sparkle/**/*.stories.tsx",
         "sparkle/.storybook/**",
         "sparkle/playground/**",
