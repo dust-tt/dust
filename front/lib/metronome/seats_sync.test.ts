@@ -14,7 +14,6 @@ const {
   mockGetScheduledFutureMemberships,
   mockFetchSeatLimits,
   mockListPerUserCreditUserIds,
-  mockListPerUserCreditBalances,
   mockAddPerUserCredit,
   mockRevokePerUserCustomerCredit,
   mockListSeatBalances,
@@ -27,7 +26,6 @@ const {
   mockGetScheduledFutureMemberships: vi.fn(),
   mockFetchSeatLimits: vi.fn(),
   mockListPerUserCreditUserIds: vi.fn(),
-  mockListPerUserCreditBalances: vi.fn(),
   mockAddPerUserCredit: vi.fn(),
   mockRevokePerUserCustomerCredit: vi.fn(),
   mockListSeatBalances: vi.fn(),
@@ -39,7 +37,6 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
   listCustomerPerUserCreditUserIds: mockListPerUserCreditUserIds,
-  listCustomerPerUserCreditBalances: mockListPerUserCreditBalances,
   addPerUserCreditToCustomer: mockAddPerUserCredit,
   revokePerUserCustomerCredit: mockRevokePerUserCustomerCredit,
   // Seat-credit transfer path (no-op in these tests: empty balances ⇒ no
@@ -117,7 +114,6 @@ describe("syncSeatCount min clamping", () => {
     // Free-seat credit grant/revoke runs on every syncSeatCount; default to
     // "no existing credits" so the clamping tests (no free seats) are no-ops.
     mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
-    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
     mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
     // No seat balances / assignments ⇒ the credit-transfer reconciliation
@@ -513,7 +509,6 @@ describe("syncSeatCount subscription end boundary", () => {
         )
     );
     mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
-    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
     mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
     mockListSeatBalances.mockResolvedValue(new Ok([]));
