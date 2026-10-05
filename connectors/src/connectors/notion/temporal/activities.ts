@@ -2287,10 +2287,9 @@ export async function renderAndUpsertPageFromCache({
     NotionConnectorBlockCacheEntryModel[]
   > = {};
   for (const blockCacheEntry of blockCacheEntries) {
-    blocksByParentId[blockCacheEntry.parentBlockId || "root"] = [
-      ...(blocksByParentId[blockCacheEntry.parentBlockId || "root"] ?? []),
-      blockCacheEntry,
-    ];
+    (blocksByParentId[blockCacheEntry.parentBlockId || "root"] ??= []).push(
+      blockCacheEntry
+    );
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
@@ -2864,27 +2863,18 @@ async function renderPageSection({
     };
     for (const block of blocks) {
       if (block.blockType === "heading_1") {
-        adaptedBlocksByParentId[parentId] = [
-          ...(adaptedBlocksByParentId[parentId] ?? []),
-          block,
-        ];
+        (adaptedBlocksByParentId[parentId] ??= []).push(block);
         currentHeadings.h1 = block.notionBlockId;
         currentHeadings.h2 = null;
         currentHeadings.h3 = null;
       } else if (block.blockType === "heading_2") {
         const h2ParentId = currentHeadings.h1 ?? parentId;
-        adaptedBlocksByParentId[h2ParentId] = [
-          ...(adaptedBlocksByParentId[h2ParentId] ?? []),
-          block,
-        ];
+        (adaptedBlocksByParentId[h2ParentId] ??= []).push(block);
         currentHeadings.h2 = block.notionBlockId;
         currentHeadings.h3 = null;
       } else if (block.blockType === "heading_3") {
         const h3ParentId = currentHeadings.h2 ?? currentHeadings.h1 ?? parentId;
-        adaptedBlocksByParentId[h3ParentId] = [
-          ...(adaptedBlocksByParentId[h3ParentId] ?? []),
-          block,
-        ];
+        (adaptedBlocksByParentId[h3ParentId] ??= []).push(block);
         currentHeadings.h3 = block.notionBlockId;
       } else {
         const currentParentId =
@@ -2892,10 +2882,7 @@ async function renderPageSection({
           currentHeadings.h2 ??
           currentHeadings.h1 ??
           parentId;
-        adaptedBlocksByParentId[currentParentId] = [
-          ...(adaptedBlocksByParentId[currentParentId] ?? []),
-          block,
-        ];
+        (adaptedBlocksByParentId[currentParentId] ??= []).push(block);
       }
     }
   }
