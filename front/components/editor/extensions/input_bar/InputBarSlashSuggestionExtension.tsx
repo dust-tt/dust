@@ -1,8 +1,5 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
-import type {
-  InputBarSlashCommand,
-  InputBarSlashMenuMode,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashMenuRefs } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import {
@@ -14,14 +11,8 @@ import {
   SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
   SLASH_MENU_TRIGGER_CLASS_NAME,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
-import {
-  getSlashTriggerText,
-  isAllowedSlashQuery,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
-import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { WorkspaceType } from "@app/types/user";
-import type { ChainedCommands } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { RefObject } from "react";
 
@@ -29,38 +20,17 @@ export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"
 );
 
-declare module "@tiptap/core" {
-  interface Commands<ReturnType> {
-    inputBarSlashSuggestion: {
-      openInputBarSlashCommand: () => ReturnType;
-    };
-  }
-}
-
 interface InputBarSlashSuggestionStorage {
   dismissedTriggerStart: number | null;
   hasBeenFocused: boolean;
   menuStack: ReturnType<typeof createSlashMenuNavigationStorage>["menuStack"];
 }
 
-interface InputBarSlashSuggestionExtensionOptions {
-  conversationIdRef?: RefObject<string | null>;
+type InputBarSlashSuggestionExtensionOptions = InputBarSlashMenuRefs & {
   enabledRef: RefObject<boolean>;
-  includeAttachKnowledgeRef: RefObject<boolean>;
-  includePickModelRef: RefObject<boolean>;
-  includeSelectSpacesRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
-  onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
-  onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
-  onNodeSelectRef: RefObject<
-    ((node: DataSourceViewContentNode) => void) | undefined
-  >;
-  onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
   owner?: WorkspaceType;
-  slashCommandsRef: RefObject<InputBarSlashCommand[]>;
-  slashMenuModeRef: RefObject<InputBarSlashMenuMode | null>;
-  spaceIdRef: RefObject<string | null | undefined>;
-}
+};
 
 export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   InputBarSlashSuggestionExtensionOptions,
@@ -103,20 +73,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     (getActiveSlashSubMenuFrame(storage) !== null ||
       options.slashMenuModeRef.current === "attach-only" ||
       isAllowedSlashQuery(state, range)),
-  // Inserts a "/" at the cursor to open the dropdown, even if the editor was
-  // never focused or the dropdown was dismissed at this position.
-  addCommands: ({ storage, editor }) => ({
-    openInputBarSlashCommand:
-      () =>
-      ({ chain }: { chain: () => ChainedCommands }) => {
-        storage.hasBeenFocused = true;
-        storage.dismissedTriggerStart = null;
-        return chain()
-          .focus()
-          .insertContent(getSlashTriggerText(editor.state))
-          .run();
-      },
-  }),
   shouldShow: ({ transaction }) =>
     !transaction.getMeta("paste") && transaction.getMeta("uiEvent") !== "paste",
   items: () => [],

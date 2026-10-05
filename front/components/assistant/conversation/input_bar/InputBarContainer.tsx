@@ -981,6 +981,30 @@ const InputBarContainer = ({
     },
     [setOverlayOpen]
   );
+  const handlePlusMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("plus-menu", open);
+    },
+    [setOverlayOpen]
+  );
+  // Every member is a stable ref, so the object is built once and `InputBarButtons` stays memoized.
+  const plusMenuSlashMenu = useMemo(
+    () => ({
+      conversationIdRef,
+      editorRef,
+      includeAttachKnowledgeRef,
+      includePickModelRef,
+      includeSelectSpacesRef,
+      onDetailsRef,
+      onModelSelectRef,
+      onNodeSelectRef,
+      onSelectRef,
+      slashCommandsRef,
+      slashMenuModeRef,
+      spaceIdRef,
+    }),
+    []
+  );
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
@@ -1809,6 +1833,8 @@ const InputBarContainer = ({
                       onCapabilitiesPickerOpenChange={
                         handleCapabilitiesPickerOpenChange
                       }
+                      onPlusMenuOpenChange={handlePlusMenuOpenChange}
+                      slashMenu={plusMenuSlashMenu}
                     />
                   </div>
                 )}

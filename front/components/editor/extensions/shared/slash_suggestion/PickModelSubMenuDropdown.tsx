@@ -17,11 +17,9 @@ import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
 interface PickModelSubMenuDropdownProps
-  extends Pick<
-    SuggestionProps<SlashCommand>,
-    "clientRect" | "editor" | "query" | "range"
-  > {
+  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "query"> {
   activeFrame: SlashMenuStackFrame;
+  dropdownHeaders?: React.ReactNode;
   onBack: () => void;
   onClose: () => void;
   onSelect: (selection: Selection) => void;
@@ -37,7 +35,16 @@ export const PickModelSubMenuDropdown = forwardRef<
   PickModelSubMenuDropdownProps
 >(
   (
-    { activeFrame, clientRect, onBack, onClose, onSelect, owner, query },
+    {
+      activeFrame,
+      clientRect,
+      dropdownHeaders,
+      onBack,
+      onClose,
+      onSelect,
+      owner,
+      query,
+    },
     ref
   ) => {
     const dropdownRef = useRef<{
@@ -104,6 +111,7 @@ export const PickModelSubMenuDropdown = forwardRef<
         clientRect={clientRect}
         command={handleSelect}
         defaultSelectedItemId={defaultSelectedItemId}
+        dropdownHeaders={dropdownHeaders}
         emptyMessage="No models found"
         isLoading={isModelsLoading}
         items={items}
