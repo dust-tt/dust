@@ -270,9 +270,8 @@ export async function createConversation(
  */
 /**
  * @cc [owner:avervaet,label:security] participants-only
- * A caller who is not a participant of the conversation MUST get `conversation_access_restricted`
- * and MUST NOT change its participants or visibility, whatever its participant count (including
- * zero).
+ * A caller who is not a participant of the conversation MUST get an error and MUST NOT change its
+ * participants or visibility, whatever its participant count (including zero).
  */
 export async function deleteOrLeaveConversation(
   auth: Authenticator,
