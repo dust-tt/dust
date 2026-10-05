@@ -10,6 +10,10 @@ import type {
 } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
+import {
+  getAgentFeedbackToolResult,
+  getAgentInsightsToolResult,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/handlers";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -17,15 +21,12 @@ import { markDuplicateSuggestionsAsOutdated } from "@app/lib/api/assistant/agent
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
-import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
-import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import {
   formatAvailableModels,
   formatAvailableSkills,
   formatAvailableTools,
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
-import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { fetchSuggestableSkills } from "@app/lib/api/assistant/suggestable_skills";
 import {
   checkSubAgentAddition,
@@ -49,7 +50,6 @@ import {
   DESCRIBE_MCP_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
 } from "@app/lib/reinforcement/types";
-import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -524,10 +524,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_feedback: async (
-    { limit, filter, latestVersionOnly },
-    { auth, runContext }
-  ) => {
+  get_agent_feedback: async (input, { auth, runContext }) => {
     const agentConfigurationId = getAgentConfigurationIdFromContext({
       runContext,
     });
@@ -541,92 +538,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const latestVersionOnlyWithDefault = latestVersionOnly ?? true;
-
-    // Fetch the agent configuration to get the current version.
-    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-
-    if (!agent) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const currentVersion = agent.currentVersion;
-
-    const feedbacksRes = await getAgentFeedbacks({
-      auth,
+    return getAgentFeedbackToolResult(auth, {
+      ...input,
       agentConfigurationId,
-      withMetadata: true,
-      paginationParams: {
-        limit: limit ?? 50,
-        orderColumn: "id",
-        orderDirection: "desc",
-      },
-      filter: filter ?? "active",
-      ...(latestVersionOnlyWithDefault ? { version: currentVersion } : {}),
     });
-
-    if (feedbacksRes.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to fetch feedback: ${feedbacksRes.error.message}`,
-          {
-            tracked: false,
-          }
-        )
-      );
-    }
-
-    const feedbacks = feedbacksRes.value.filter(
-      (f): f is AgentMessageFeedbackWithMetadataType => true
-    );
-
-    const mapFeedback = (f: AgentMessageFeedbackWithMetadataType) => ({
-      sId: f.sId,
-      thumbDirection: f.thumbDirection,
-      content: f.content,
-      createdAt: f.createdAt,
-      agentConfigurationVersion: f.agentConfigurationVersion,
-      userName: f.userName,
-      conversationId: f.conversationId,
-    });
-
-    const currentVersionFeedbackList = feedbacks
-      .filter((f) => f.agentConfigurationVersion === currentVersion)
-      .map(mapFeedback);
-    const previousVersionsFeedbackList = feedbacks
-      .filter((f) => f.agentConfigurationVersion !== currentVersion)
-      .map(mapFeedback);
-
-    const summary = {
-      total: feedbacks.length,
-      positive: feedbacks.filter((f) => f.thumbDirection === "up").length,
-      negative: feedbacks.filter((f) => f.thumbDirection === "down").length,
-    };
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            agentConfigurationId,
-            summary,
-            current_version_feedback: currentVersionFeedbackList,
-            ...(latestVersionOnlyWithDefault
-              ? {}
-              : { previous_versions_feedback: previousVersionsFeedbackList }),
-          },
-          null,
-          2
-        ),
-      },
-    ]);
   },
 
-  get_agent_insights: async ({ days }, { auth, runContext }) => {
+  get_agent_insights: async (input, { auth, runContext }) => {
     const agentConfigurationId = getAgentConfigurationIdFromContext({
       runContext,
     });
@@ -640,66 +558,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Verify agent configuration exists and is accessible.
-    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-
-    if (!agent) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const numberOfDays = days ?? 30;
-
-    const [feedbackCounts, overviewResult] = await Promise.all([
-      AgentMessageFeedbackResource.getFeedbackCountForAssistant(
-        auth,
-        agentConfigurationId,
-        numberOfDays
-      ),
-      fetchAgentOverview(auth, {
-        agentId: agentConfigurationId,
-        days: numberOfDays,
-      }),
-    ]);
-
-    if (overviewResult.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to fetch agent insights: ${overviewResult.error.message}`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const overview = overviewResult.value;
-
-    const insights = {
+    return getAgentInsightsToolResult(auth, {
+      ...input,
       agentConfigurationId,
-      agentName: agent.name,
-      period: {
-        days: numberOfDays,
-      },
-      overview: {
-        activeUsers: overview.activeUsers,
-        conversationCount: overview.conversationCount,
-        messageCount: overview.messageCount,
-        feedback: {
-          positive: feedbackCounts.positive,
-          negative: feedbackCounts.negative,
-          total: feedbackCounts.positive + feedbackCounts.negative,
-        },
-      },
-    };
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: JSON.stringify(insights, null, 2),
-      },
-    ]);
+    });
   },
 
   // Suggestion handlers
