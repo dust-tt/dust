@@ -897,6 +897,12 @@ export const SnowflakeCredentialsSchema = z.union([
 
 export type SnowflakeCredentials = z.infer<typeof SnowflakeCredentialsSchema>;
 
+/** Google canonical OAuth token endpoints accepted on BigQuery service accounts. */
+export const GoogleOAuthTokenUriSchema = z.enum([
+  "https://oauth2.googleapis.com/token",
+  "https://www.googleapis.com/oauth2/v4/token",
+]);
+
 export const CheckBigQueryCredentialsSchema = z.object({
   type: z.string(),
   project_id: z.string(),
@@ -905,7 +911,7 @@ export const CheckBigQueryCredentialsSchema = z.object({
   client_email: z.string(),
   client_id: z.string(),
   auth_uri: z.string(),
-  token_uri: z.string(),
+  token_uri: GoogleOAuthTokenUriSchema,
   auth_provider_x509_cert_url: z.string(),
   client_x509_cert_url: z.string(),
   universe_domain: z.string(),
@@ -923,7 +929,7 @@ export const BigQueryCredentialsWithLocationSchema = z.object({
   client_email: z.string(),
   client_id: z.string(),
   auth_uri: z.string(),
-  token_uri: z.string(),
+  token_uri: GoogleOAuthTokenUriSchema,
   auth_provider_x509_cert_url: z.string(),
   client_x509_cert_url: z.string(),
   universe_domain: z.string(),

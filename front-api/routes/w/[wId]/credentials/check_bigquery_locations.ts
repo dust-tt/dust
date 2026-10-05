@@ -1,4 +1,7 @@
-import { withBigQueryStaticIpProxy } from "@app/lib/egress/bigquery";
+import {
+  pinGoogleOAuthTokenUri,
+  withBigQueryStaticIpProxy,
+} from "@app/lib/egress/bigquery";
 import {
   concurrentExecutor,
   setTimeoutAsync,
@@ -38,6 +41,10 @@ app.post(
     const { credentials } = ctx.req.valid("json");
 
     try {
+      // Schema already constrains token_uri; pin again at the call boundary so
+      // token exchange cannot be redirected if validation is bypassed.
+      pinGoogleOAuthTokenUri(credentials.token_uri);
+
       const bigquery = new BigQuery(
         withBigQueryStaticIpProxy({
           credentials,

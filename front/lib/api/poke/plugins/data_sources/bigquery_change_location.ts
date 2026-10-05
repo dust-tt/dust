@@ -1,6 +1,9 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { withBigQueryStaticIpProxy } from "@app/lib/egress/bigquery";
+import {
+  pinGoogleOAuthTokenUri,
+  withBigQueryStaticIpProxy,
+} from "@app/lib/egress/bigquery";
 import logger, { auditLog } from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { BigQueryCredentialsWithLocation } from "@app/types/oauth/lib";
@@ -77,6 +80,8 @@ export const bigqueryChangeLocationPlugin = createPlugin({
 
     const content = credRes.value.credential
       .content as BigQueryCredentialsWithLocation;
+
+    pinGoogleOAuthTokenUri(content.token_uri);
 
     // Build a BigQuery client and collect dataset locations
     const bq = new BigQuery(
