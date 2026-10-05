@@ -2966,7 +2966,14 @@ describe("AgentResource", () => {
     it("serves a custom agent's default reasoning effort when none is stored", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Default effort agent" }
+        {
+          name: "Default effort agent",
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            reasoningEffort: null,
+          },
+        }
       );
       const resource = await AgentResource.fetchById(
         testContext.authenticator,
