@@ -112,7 +112,8 @@ function flushAccumulated(
 
 export async function* rawOutputToEvents(
   stream: AsyncGenerator<ChatCompletionChunk>,
-  metadata: EndpointMetadata
+  metadata: EndpointMetadata,
+  providerName = "Fireworks"
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   const acc: Accumulator = { textParts: "", reasoningParts: "" };
@@ -126,7 +127,7 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      yield openaiStreamErrorToErrorEvent(metadata, err, "Fireworks");
+      yield openaiStreamErrorToErrorEvent(metadata, err, providerName);
       return;
     }
     if (result.done) {
