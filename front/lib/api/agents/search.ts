@@ -144,10 +144,7 @@ export async function searchAgents(
     options.filters.scope[0] === "global";
   const globalAgents = await listSearchableGlobalAgents(auth, isGlobalOnly);
   const globalAgentsById = new Map(
-    globalAgents.map((agent) => [
-      agent.sId,
-      { status: agent.status, model: agent.toSearchModelJSON() },
-    ])
+    globalAgents.map((agent) => [agent.sId, agent.toSearchModelJSON()])
   );
   const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
