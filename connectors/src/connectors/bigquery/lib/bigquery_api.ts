@@ -11,9 +11,11 @@ import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
 import type { Result } from "@dust-tt/client";
 import { Err, normalizeError, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
-import { ProjectsClient } from "@google-cloud/resource-manager";
-
-import { withBigQueryStaticIpProxy } from "./bigquery_proxy";
+import { listAccessibleProjects } from "./bigquery_projects";
+import {
+  pinGoogleOAuthTokenUri,
+  withBigQueryStaticIpProxy,
+} from "./bigquery_proxy";
 
 const MAX_TABLES_PER_SCHEMA = 1500;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
@@ -64,8 +66,14 @@ export function connectToBigQuery(
   credentials: BigQueryCredentialsWithLocation,
   projectId: string
 ): BigQuery {
-  // Use the static IP proxy when configured so BigQuery traffic shares the same
-  // allowlisted egress IP as Snowflake (customers IP-restrict warehouse access).
+  // Reject non-Google token endpoints before any outbound auth/API traffic.
+  // Node gtoken hardcodes Google's token URL, but pinning still blocks crafted
+  // credentials at the boundary (and matches core's proxied exchange guards).
+  pinGoogleOAuthTokenUri(credentials.token_uri);
+
+  // Use the static IP proxy when configured so BigQuery REST + token minting
+  // share the same allowlisted egress IP as Snowflake (customers IP-restrict
+  // warehouse access).
   return new BigQuery(
     withBigQueryStaticIpProxy({
       credentials,
@@ -78,26 +86,6 @@ export function connectToBigQuery(
       projectId,
     })
   );
-}
-
-async function listAccessibleProjects(
-  credentials: BigQueryCredentialsWithLocation
-) {
-  const client = new ProjectsClient({
-    credentials: {
-      client_email: credentials.client_email,
-      private_key: credentials.private_key,
-    },
-  });
-
-  const projects = [];
-  const iterable = client.searchProjectsAsync({ query: "state:ACTIVE" });
-
-  for await (const project of iterable) {
-    projects.push(project);
-  }
-
-  return projects;
 }
 
 export const fetchDatabases = async ({
