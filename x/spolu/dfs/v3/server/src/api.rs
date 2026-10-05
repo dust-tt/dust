@@ -3,6 +3,7 @@ use crate::{
     keys::Keys,
     model::{self, Record, TenantRecord},
     mutation::{Change, Edit},
+    profile::{Guard, Phase},
     read::View,
     storage::{encode, failed},
 };
@@ -340,6 +341,7 @@ impl Dfs for Api {
         .await
     }
     async fn stat(&self, r: Request<ObjectRequest>) -> Result<Response<Object>> {
+        let _profile = Guard::new(Phase::Stat);
         self.read_call(
             r,
             |r| (&r.object_id, None),
@@ -348,6 +350,7 @@ impl Dfs for Api {
         .await
     }
     async fn lookup(&self, r: Request<LookupRequest>) -> Result<Response<Object>> {
+        let _profile = Guard::new(Phase::Lookup);
         self.read_call(
             r,
             |r| (&r.parent_id, Some(&r.name)),
@@ -356,6 +359,7 @@ impl Dfs for Api {
         .await
     }
     async fn list(&self, r: Request<ListRequest>) -> Result<Response<Page>> {
+        let _profile = Guard::new(Phase::List);
         self.read_call(
             r,
             |r| (&r.directory_id, None),
@@ -364,6 +368,7 @@ impl Dfs for Api {
         .await
     }
     async fn read(&self, r: Request<ReadRequest>) -> Result<Response<ReadResponse>> {
+        let _profile = Guard::new(Phase::Read);
         self.read_call(
             r,
             |r| (&r.object_id, None),
@@ -375,26 +380,38 @@ impl Dfs for Api {
     /// Fsync MUST confirm current complete RAM visibility and report known errors without forcing
     /// or awaiting publication. Client write RPCs preceding the barrier must already be complete.
     async fn fsync(&self, r: Request<ObjectRequest>) -> Result<Response<Object>> {
+        let _profile = Guard::new(Phase::Fsync);
         let session = self.0.sessions.get(&r).await?;
         let key = Keys::new(&session.info.tenant_id)?.object(&r.get_ref().object_id)?;
         self.0.cache.error(&session, &key)?;
-        let response = self.stat(r).await?;
+        let response = self
+            .read_call(
+                r,
+                |r| (&r.object_id, None),
+                |v, r| async move { v.session_stat(&r.object_id).await },
+            )
+            .await?;
         self.0.cache.error(&session, &key)?;
         Ok(response)
     }
     async fn create(&self, r: Request<CreateRequest>) -> Result<Response<Mutation>> {
+        let _profile = Guard::new(Phase::Create);
         self.change(r, Change::Create).await
     }
     async fn update(&self, r: Request<UpdateRequest>) -> Result<Response<Mutation>> {
+        let _profile = Guard::new(Phase::Update);
         self.change(r, Change::Update).await
     }
     async fn rename(&self, r: Request<RenameRequest>) -> Result<Response<Mutation>> {
+        let _profile = Guard::new(Phase::Rename);
         self.change(r, Change::Rename).await
     }
     async fn remove(&self, r: Request<RemoveRequest>) -> Result<Response<Mutation>> {
+        let _profile = Guard::new(Phase::Remove);
         self.change(r, Change::Remove).await
     }
     async fn write(&self, r: Request<WriteRequest>) -> Result<Response<Mutation>> {
+        let _profile = Guard::new(Phase::Write);
         self.change(r, Change::Write).await
     }
 }

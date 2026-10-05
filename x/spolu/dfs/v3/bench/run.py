@@ -27,6 +27,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path)
     parser.add_argument('--files', type=int, choices=[10000, 100000], default=10000)
+    parser.add_argument('--untar-only', action='store_true', help='Stop after population and drain.')
     args = parser.parse_args()
     work = args.work or Path(tempfile.mkdtemp(prefix='dfs-v3-benchmark-'))
     work.mkdir(exist_ok=True, parents=True)
@@ -39,6 +40,7 @@ def main():
     corpus.generate(data, args.files)
     prefix, key, key_path = support.identity(work)
     report = {'files': args.files, 'prefix': prefix, 'warm_runs': 1,
+        'untar_only': args.untar_only, 'profile': os.environ.get('DFS_PROFILE') == '1',
         'revision': os.environ.get('DFS_BENCH_REVISION', 'uncommitted'),
         'date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
         'platform': platform.platform(), 'cpus': os.cpu_count(),
@@ -76,10 +78,12 @@ def main():
             mount_path.rmdir()
     def stop():
         nonlocal server
+        usage = support.process_usage(server)
         support.stop(server)
         server = None
         summary = support.persistence(work / f'{phase}-server.log')
-        report['server_lifetimes'].append({'phase': phase, **summary})
+        report['server_lifetimes'].append({'phase': phase, **summary, 'process_cpu': usage,
+            'profile': support.profile(work / f'{phase}-server.log')})
         if summary['failures']:
             raise RuntimeError(f'Publication failures: {summary}')
         save()
@@ -118,6 +122,10 @@ def main():
         stop()
         report['untar_remaining_drain_ms'] = report['server_lifetimes'][-1]['drain_ms']
         print(f"Untar: {report['untar_seconds']:.3f}s; remaining drain: {report['untar_remaining_drain_ms']}ms", flush=True)
+        if args.untar_only:
+            report['complete'] = True
+            save()
+            return
         reset()
         sys.path.insert(0, '/benchmark')
         import benchmark as jd

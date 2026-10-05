@@ -38,6 +38,9 @@ v3/local/run stop
 Benchmarks retain isolated FDB prefixes and reports under `/tmp/dfs-v3-benchmark-*`, outside Git.
 Each cold case restarts the server/session/mount; FDB and OS caches remain. Untar runs 13 directory
 levels down, through `/shared`, with inherited grants. Remaining FDB publication is timed separately.
+Set `DFS_PROFILE=1` on the benchmark command for aggregate server RPC, cache, and FDB timings;
+`--untar-only` stops after population and drain. Reports also sample server/client CPU before shutdown.
+Nested and concurrent phase timings overlap and must not be summed as elapsed wall time.
 
 Defaults: FDB 7.3.69 with native tuning; `MAX_EVENTUAL_CONSISTENCY_DELAY_MS=1000`, split equally
 between publication and read-cache age; 25 ms coalescing; `DFS_CACHE_MIB=1024`, `DFS_DIRTY_MIB=256`,

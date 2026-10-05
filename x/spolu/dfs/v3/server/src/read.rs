@@ -3,6 +3,7 @@ use crate::{
     cache::{Scan, Snapshot},
     keys::{Keys, prefix_end},
     model::{Record, TenantRecord},
+    profile::{Guard, Phase},
     storage::{decode, failed, measured},
 };
 use bytes::Bytes;
@@ -62,6 +63,7 @@ impl View {
         ancestry: Arc<Ancestry>,
     ) -> Result<Self> {
         let keys = Keys::new(tenant)?;
+        let _profile = Guard::new(Phase::Prefetch);
         let primary = validate::id(object_id).ok();
         let warm = async {
             let mut keys_to_warm = Vec::new();

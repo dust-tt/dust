@@ -42,6 +42,13 @@ def session(endpoint, tenant, grants):
                {'tenant_id': tenant['tenant_id'], 'grants': grants})
 
 
+def process_usage(process):
+    """CPU since process start; sample before shutdown, excluding the remaining drain."""
+    fields = Path(f'/proc/{process.pid}/stat').read_text().rsplit(')', 1)[1].split()
+    ticks = os.sysconf('SC_CLK_TCK')
+    return {'user_seconds': int(fields[11]) / ticks,
+            'system_seconds': int(fields[12]) / ticks}
+
 
 @contextlib.contextmanager
 def mounted(endpoint, key, directory, threads=8, metrics_path=None):
@@ -59,6 +66,7 @@ def mounted(endpoint, key, directory, threads=8, metrics_path=None):
             time.sleep(.05)
         yield directory
     finally:
+        usage = process_usage(process) if process.poll() is None else None
         if process.poll() is None:
             process.send_signal(signal.SIGTERM)
             try:
@@ -73,6 +81,7 @@ def mounted(endpoint, key, directory, threads=8, metrics_path=None):
                 if line.startswith('{'):
                     record = json.loads(line)
                     if 'dfs_client_metrics' in record:
+                        record['process_cpu'] = usage
                         metrics_path.write_text(json.dumps(record, indent=2) + '\n')
         if process.returncode != 0:
             raise RuntimeError(f'mount failed: {log_path.read_text()}')
@@ -124,3 +133,14 @@ def persistence(path):
         if fields.get('message') == 'cache drained':
             return fields
     raise RuntimeError(f'missing persistence report: {path}')
+
+
+def profile(path):
+    for line in reversed(path.read_text().splitlines()):
+        try:
+            fields = json.loads(line).get('fields', {})
+        except json.JSONDecodeError:
+            continue
+        if fields.get('message') == 'server profile':
+            return json.loads(fields['profile'])
+    return None

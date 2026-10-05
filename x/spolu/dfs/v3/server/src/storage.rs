@@ -1,3 +1,4 @@
+use crate::profile::{Guard, Phase};
 use anyhow::{Result, ensure};
 use bytes::Bytes;
 use clap::Args;
@@ -89,7 +90,10 @@ impl Storage {
                 transaction.set_read_version(v);
                 v
             }
-            None => transaction.get_read_version().await.map_err(failed)?,
+            None => {
+                let _profile = Guard::new(Phase::FdbVersion);
+                transaction.get_read_version().await.map_err(failed)?
+            }
         };
         Ok(Arc::new(Snapshot {
             transaction,
@@ -157,6 +161,7 @@ impl Snapshot {
         [self.prefix.as_ref(), suffix].concat()
     }
     pub async fn get(&self, key: impl AsRef<[u8]>) -> Result<Option<Bytes>, Status> {
+        let _profile = Guard::new(Phase::FdbGet);
         self.transaction
             .get(&self.key(key.as_ref()), false)
             .await
@@ -169,6 +174,7 @@ impl Snapshot {
         end: &[u8],
         limit: usize,
     ) -> Result<(Rows, bool), Status> {
+        let _profile = Guard::new(Phase::FdbRange);
         let (start, end) = (self.key(start), self.key(end));
         let mut options = RangeOption::from((start.as_slice(), end.as_slice()));
         options.limit = Some(limit);
@@ -199,6 +205,7 @@ impl Snapshot {
 /// All read dependencies MUST be registered before applying mutations to this transaction.
 pub(crate) async fn commit(snapshot: Arc<Snapshot>) -> Result<i64, FdbError> {
     let snapshot = Arc::try_unwrap(snapshot).map_err(|_| FdbError::from_code(2000))?;
+    let _profile = Guard::new(Phase::FdbCommit);
     let committed = snapshot.transaction.commit().await.map_err(|e| *e)?;
     committed.committed_version()
 }
@@ -308,6 +315,15 @@ pub(crate) fn decode<T: DeserializeOwned>(value: &[u8]) -> Result<T, Status> {
     }
     Ok(value)
 }
-pub(crate) async fn measured<T>(_phase: &'static str, operation: impl Future<Output = T>) -> T {
+pub(crate) async fn measured<T>(phase: &'static str, operation: impl Future<Output = T>) -> T {
+    let phase = match phase {
+        "object" => Phase::Object,
+        "authorize" => Phase::Authorize,
+        "child" => Phase::Child,
+        "collision" => Phase::Collision,
+        "block_read" => Phase::Block,
+        _ => return operation.await,
+    };
+    let _profile = Guard::new(phase);
     operation.await
 }

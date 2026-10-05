@@ -9,6 +9,7 @@ mod keys;
 mod model;
 mod mutation;
 pub mod network;
+mod profile;
 mod read;
 pub mod storage;
 pub mod transport;

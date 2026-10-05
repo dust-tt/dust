@@ -1,6 +1,7 @@
 use crate::{
     auth::SessionState,
     model::{Parent, Record},
+    profile::{self, Guard, Phase},
     storage::{self, Storage, WriteBatch, after},
 };
 use anyhow::ensure;
@@ -298,6 +299,7 @@ impl Cache {
         }
     }
     pub(crate) async fn snapshot(self: &Arc<Self>) -> Result<Arc<Snapshot>> {
+        let _profile = Guard::new(Phase::Snapshot);
         let mut slot = self.base.lock().await;
         let base = match slot.as_ref().filter(|b| b.valid()) {
             Some(base) if base.invalidated.lock().is_empty() => base.clone(),
@@ -320,8 +322,10 @@ impl Cache {
             }
         };
         drop(slot);
+        let mut profile = Guard::new(Phase::SnapshotRam);
         let mut inner = self.inner.lock();
         self.reap(&mut inner);
+        profile.items(inner.journal.len());
         let overlay = inner
             .journal
             .iter()
@@ -341,6 +345,8 @@ impl Cache {
         }))
     }
     fn reap(&self, inner: &mut Inner) {
+        let mut profile = Guard::new(Phase::Reap);
+        profile.items(inner.journal.len());
         let now = Instant::now();
         inner.journal.retain(|e| {
             e.outcome.load(Ordering::Acquire) == PENDING
@@ -373,6 +379,7 @@ impl Cache {
         created: Option<Vec<u8>>,
         session: &Arc<SessionState>,
     ) -> Result<()> {
+        let _profile = Guard::new(Phase::Accept);
         snapshot.valid()?;
         if batch.0.is_empty() {
             return Ok(());
@@ -505,6 +512,7 @@ impl Cache {
     /// Initial child writes MAY join an unfrozen create. Other namespace edits MUST remain distinct.
     /// A frozen prefix MUST precede later overlapping publications without blocking RAM acceptance.
     fn select(&self, limit: usize) -> Vec<Vec<Arc<Entry>>> {
+        let _profile = Guard::new(Phase::Select);
         {
             let mut inner = self.inner.lock();
             self.reap(&mut inner);
@@ -588,6 +596,7 @@ impl Cache {
     /// Reuse an old read version only with all original conflict ranges. At a new read version,
     /// compare every cached precondition before writing. Unknown/timeout outcomes MUST NOT replay.
     async fn publish(&self, group: Vec<Arc<Entry>>) {
+        let _profile = Guard::new(Phase::Publish);
         let mut batch = WriteBatch::new();
         let mut reads = BTreeMap::new();
         let mut dependencies = false;
@@ -759,6 +768,7 @@ impl Cache {
             }
             tokio::time::sleep(Duration::from_millis(2)).await;
         }
+        profile::report();
         tracing::info!(
             drain_ms = started.elapsed().as_millis() as u64,
             accepted = self.metrics.accepted.load(Ordering::Relaxed),
@@ -848,7 +858,9 @@ impl Snapshot {
     async fn load(&self, key: &[u8], consume: bool) -> Result<Option<Bytes>> {
         self.valid()?;
         self.base.check(key, &after(key))?;
-        for e in self.overlay.iter().rev() {
+        let mut profile = Guard::new(Phase::Overlay);
+        for (index, e) in self.overlay.iter().rev().enumerate() {
+            profile.items(index + 1);
             if let Some(value) = e.batch.value(key) {
                 if consume {
                     self.use_entry(e)?;
@@ -856,6 +868,7 @@ impl Snapshot {
                 return Ok(value);
             }
         }
+        drop(profile);
         let cell = {
             let mut points = self.base.points.lock();
             if points.len() >= MAX_READS {
