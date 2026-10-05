@@ -1,6 +1,6 @@
 import type { DocumentSaveResult } from "@app/components/editor/document";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
-import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/previewText";
+import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/previewLimits";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
