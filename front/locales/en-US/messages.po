@@ -1139,3 +1139,31 @@ msgstr "You can manage your notification preferences from <0>your workspace</0>.
 #: front/lib/notifications/email-templates/default.tsx
 msgid "Hi {name},"
 msgstr "Hi {name},"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
+msgstr "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
+msgstr "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{count, plural, one {# member reached their credit limit and was automatically upgraded to a higher seat so they can keep working:} other {# members reached their credit limit and were automatically upgraded to higher seats so they can keep working:}}"
+msgstr "{count, plural, one {# member reached their credit limit and was automatically upgraded to a higher seat so they can keep working:} other {# members reached their credit limit and were automatically upgraded to higher seats so they can keep working:}}"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
+msgstr "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
+msgstr "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "there"
+msgstr "there"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "Go to workspace usage"
+msgstr "Go to workspace usage"
