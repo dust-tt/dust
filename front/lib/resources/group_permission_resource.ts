@@ -570,8 +570,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // removed users were the final members, the grant and its backing group are deleted.
   /**
    * @cc [owner:achilleburah,label:security;backend] revoke-departed-users
-   * Revoking MUST end the grant membership of a user who left the workspace, exactly as it does for
-   * an active member, so they no longer hold the grant if they rejoin the workspace.
+   * Revoking a user who left the workspace MUST succeed and end their grant membership, exactly as
+   * it does for an active member. It MUST NOT fail because the user has no active workspace
+   * membership.
    */
   static async revokeFromUsers(
     auth: Authenticator,
