@@ -10,6 +10,7 @@ import { isString } from "@app/types/shared/utils/general";
 import type { JSONContent } from "@tiptap/core";
 import { Node } from "@tiptap/core";
 import type { Schema } from "@tiptap/pm/model";
+import isEqual from "lodash/isEqual";
 
 export const COMMENT_ANCHOR_NODE_NAME = "commentAnchor";
 
@@ -19,9 +20,9 @@ const isAnchorKind = (value: unknown): value is AnchorKind =>
   value === "start" || value === "end";
 
 /**
- * One end of a DFM comment anchor pair, as the Markdown parser reads it and the serializer
- * writes it. It only exists between Markdown and the editor: `anchorsToMarks` turns pairs into
- * comment marks after parsing, `marksToAnchors` turns marks back into pairs before serializing.
+ * One end of a DFM comment anchor pair, as the Markdown parser reads it. It only exists between
+ * Markdown and the editor: `anchorsToMarks` turns pairs into comment marks after parsing, and
+ * `marksToAnchors` writes marks back as anchors before serializing.
  */
 export const DocumentCommentAnchor = Node.create({
   name: COMMENT_ANCHOR_NODE_NAME,
@@ -59,11 +60,6 @@ export const DocumentCommentAnchor = Node.create({
     isAnchorKind(node.attrs?.kind) && isString(node.attrs?.id)
       ? anchorDirective(node.attrs.kind, node.attrs.id)
       : "",
-});
-
-const anchorNode = (kind: AnchorKind, id: string): JSONContent => ({
-  type: COMMENT_ANCHOR_NODE_NAME,
-  attrs: { kind, id },
 });
 
 const commentMarkIds = (node: JSONContent): string[] =>
@@ -173,13 +169,42 @@ export const anchorsToMarks = (
   return error === null ? new Ok(converted) : new Err(error);
 };
 
+/** Private-use characters, which the Markdown serializer neither escapes nor encodes. */
+const PLACEHOLDER_OPEN = "\uE000";
+const PLACEHOLDER_CLOSE = "\uE001";
+
+export interface AnchoredDocument {
+  /** The document with each anchor as a placeholder text run. */
+  document: JSONContent;
+  /** The anchor directive standing for each placeholder, to substitute after serializing. */
+  directives: Map<string, string>;
+}
+
+const nonCommentMarks = (text: JSONContent | undefined) =>
+  text?.type === "text"
+    ? (text.marks ?? []).filter((mark) => mark.type !== COMMENT_MARK_NAME)
+    : [];
+
+/** The marks two neighbours both carry: an anchor between them sits inside these. */
+const sharedMarks = (
+  before: JSONContent | undefined,
+  after: JSONContent | undefined
+) => {
+  const next = nonCommentMarks(after);
+  return nonCommentMarks(before).filter((mark) =>
+    next.some((other) => isEqual(other, mark))
+  );
+};
+
 /**
  * @cc [owner:tdraier,label:product] document-marks-to-anchors
  * Each comment id carried by marks MUST become exactly one anchor pair: the start right before
  * the first text node carrying it and the end right after the last, in document order, with
- * comment marks removed from the text. Anchor nodes MUST carry no other mark.
+ * comment marks removed from the text. Each anchor MUST carry exactly the marks shared by the
+ * text on both sides of it, so formatting that crosses a comment's edge is written as one run
+ * and reads back the same.
  */
-export const marksToAnchors = (document: JSONContent): JSONContent => {
+export const marksToAnchors = (document: JSONContent): AnchoredDocument => {
   const firstText = new Map<string, number>();
   const lastText = new Map<string, number>();
   let index = 0;
@@ -203,32 +228,48 @@ export const marksToAnchors = (document: JSONContent): JSONContent => {
   const startsAt = byText(firstText);
   const endsAt = byText(lastText);
 
+  const directives = new Map<string, string>();
+  // The serializer closes every mark around a non-text node, which would split `*foo bar*`
+  // around an anchor into `*foo *` and `*bar*`. A text run carrying the shared marks does not.
+  const anchor = (
+    kind: AnchorKind,
+    id: string,
+    marks: JSONContent["marks"]
+  ): JSONContent => {
+    const placeholder = `${PLACEHOLDER_OPEN}${directives.size}${PLACEHOLDER_CLOSE}`;
+    directives.set(placeholder, anchorDirective(kind, id));
+    return marks && marks.length > 0
+      ? { type: "text", text: placeholder, marks }
+      : { type: "text", text: placeholder };
+  };
+
   let position = 0;
   const rebuild = (node: JSONContent): JSONContent => {
     if (!node.content) {
       return node;
     }
+    const siblings = node.content;
     const content: JSONContent[] = [];
-    for (const child of node.content) {
+    for (const [i, child] of siblings.entries()) {
       if (child.type !== "text") {
         content.push(rebuild(child));
         continue;
       }
       const at = position++;
+      const before = sharedMarks(siblings[i - 1], child);
+      const after = sharedMarks(child, siblings[i + 1]);
       content.push(
-        ...(startsAt.get(at) ?? []).map((id) => anchorNode("start", id))
+        ...(startsAt.get(at) ?? []).map((id) => anchor("start", id, before))
       );
-      const { marks, ...text } = child;
-      const kept = (marks ?? []).filter(
-        (mark) => mark.type !== COMMENT_MARK_NAME
-      );
+      const { marks: _marks, ...text } = child;
+      const kept = nonCommentMarks(child);
       content.push(kept.length > 0 ? { ...text, marks: kept } : text);
       content.push(
-        ...(endsAt.get(at) ?? []).map((id) => anchorNode("end", id))
+        ...(endsAt.get(at) ?? []).map((id) => anchor("end", id, after))
       );
     }
     return { ...node, content };
   };
 
-  return rebuild(document);
+  return { document: rebuild(document), directives };
 };

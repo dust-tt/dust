@@ -1,6 +1,5 @@
 import {
   anchorsToMarks,
-  COMMENT_ANCHOR_NODE_NAME,
   marksToAnchors,
 } from "@app/components/editor/document/DocumentCommentAnchor";
 import { documentExtensions } from "@app/components/editor/document/extensions";
@@ -85,22 +84,42 @@ const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
   return { ...document, content: content.slice(0, end) };
 };
 
+/** Markdown for an editor document, comment marks written as anchor directives. */
+const serializeWithAnchors = (
+  document: JSONContent
+): Result<string, string> => {
+  const { document: anchored, directives } = marksToAnchors(document);
+  let markdown = documentMarkdown.serialize(anchored);
+  for (const [placeholder, directive] of directives) {
+    const parts = markdown.split(placeholder);
+    // Text already holding the placeholder characters would make the substitution ambiguous.
+    if (parts.length !== 2) {
+      return new Err("The document could not be written as Markdown.");
+    }
+    markdown = parts.join(directive);
+  }
+  return new Ok(markdown);
+};
+
+/** Compares in the editor's form, comment marks included, as the user would reopen it. */
 const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
-  const reopened = documentMarkdown.parse(markdown);
-  return normalizeTextNodes(
-    documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
-  ).eq(
+  const reopened = anchorsToMarks(
+    documentMarkdown.parse(markdown),
+    documentSchema
+  );
+  return (
+    reopened.isOk() &&
     normalizeTextNodes(
-      documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened))
+      documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
+    ).eq(
+      normalizeTextNodes(
+        documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened.value))
+      )
     )
   );
 };
 
 export const normalizeTextNodes = (node: Node): Node => {
-  // The serializer writes anchors outside every mark, so a mark around one is not content.
-  if (node.type.name === COMMENT_ANCHOR_NODE_NAME) {
-    return node.mark([]);
-  }
   const children: Node[] = [];
   node.forEach((child) => children.push(normalizeTextNodes(child)));
   return node.copy(Fragment.fromArray(children));
@@ -119,20 +138,32 @@ export const parseDocumentContent = (
   }
 
   let parsed: JSONContent;
-  let serialized: string;
-
   try {
     parsed = documentMarkdown.parse(content);
-    serialized = documentMarkdown.serialize(parsed);
   } catch {
     return new Err("The Markdown could not be parsed.");
   }
 
-  if (!canRoundTripMarkdown(parsed, serialized)) {
+  const document = anchorsToMarks(parsed, documentSchema);
+  if (document.isErr()) {
+    return document;
+  }
+
+  // Opening is only safe when saving the untouched document would write the same content.
+  let serialized: Result<string, string>;
+  try {
+    serialized = serializeWithAnchors(document.value);
+  } catch {
+    return new Err("The Markdown could not be parsed.");
+  }
+  if (
+    serialized.isErr() ||
+    !canRoundTripMarkdown(document.value, serialized.value)
+  ) {
     return new Err("The Markdown would not read back the same after editing.");
   }
 
-  return anchorsToMarks(parsed, documentSchema);
+  return document;
 };
 
 /**
@@ -143,14 +174,17 @@ export const parseDocumentContent = (
 export const serializeDocumentMarkdown = (
   document: JSONContent
 ): Result<string, string> => {
-  const content = withoutTrailingParagraphs(marksToAnchors(document));
+  const content = withoutTrailingParagraphs(document);
 
   // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    const markdown = documentMarkdown.serialize(content);
-    return hasSupportedMarkdown(markdown) &&
-      canRoundTripMarkdown(content, markdown)
-      ? new Ok(markdown)
+    const markdown = serializeWithAnchors(content);
+    if (markdown.isErr()) {
+      return markdown;
+    }
+    return hasSupportedMarkdown(markdown.value) &&
+      canRoundTripMarkdown(content, markdown.value)
+      ? markdown
       : new Err("The document would not read back the same as Markdown.");
   } catch {
     return new Err("The document could not be written as Markdown.");

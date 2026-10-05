@@ -46,7 +46,8 @@ Comments are the DFM threads of the file. On load, the Markdown parser reads eac
 directive as a `commentAnchor` node, and `anchorsToMarks` turns every pair into a `comment` mark
 on the text between them; the threads go in the document's `comments` attribute, so dirty
 tracking and autosave cover them. On save, `marksToAnchors` writes one pair per comment around
-its first and last marked text, outside any other mark. A comment the editor cannot highlight,
+its first and last marked text, inside the formatting the text on both sides shares, so a bold
+or italic run crossing a comment's edge stays one run. A comment the editor cannot highlight,
 such as one inside a link destination or covering only code, keeps the file read-only.
 
 Comments are browsable through their highlights, the gutter markers and the panel; writing

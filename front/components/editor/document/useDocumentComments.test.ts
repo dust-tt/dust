@@ -64,4 +64,24 @@ describe("useDocumentComments", () => {
     );
     expect(result.current.comments.quotes.get("c1")).toBe("there");
   });
+
+  it("saves formatting applied across a comment's edge", async () => {
+    const { result, onSave } = await renderCommentedEditor(
+      `Hi :comment-start{id=c1}there:comment-end{id=c1} friend\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
+    );
+
+    act(() => {
+      result.current.document.editor
+        ?.chain()
+        .setTextSelection({ from: 1, to: 16 })
+        .toggleItalic()
+        .run();
+    });
+    await act(() => result.current.document.save());
+
+    expect(result.current.document.error).toBeNull();
+    expect(onSave.mock.calls[0][0]).toContain(
+      "*Hi :comment-start{id=c1}there:comment-end{id=c1} friend*"
+    );
+  });
 });

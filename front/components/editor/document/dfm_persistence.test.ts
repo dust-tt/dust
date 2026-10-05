@@ -151,16 +151,70 @@ describe("saveDfm", () => {
     expect(roundTrip(FIXTURE)).toBe(FIXTURE);
   });
 
-  it("writes anchors around formatting without breaking it", () => {
+  it("writes anchors inside formatting without splitting it", () => {
     const source = `Some **bo:comment-start{id=c1}ld** and *it:comment-end{id=c1}alic* text.\n\n${OPEN_THREAD}`;
-    const saved = roundTrip(source);
 
-    expect(saved).toBe(
-      `Some **bo**:comment-start{id=c1}**ld** and *it*:comment-end{id=c1}*alic* text.\n\n${OPEN_THREAD}`
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  const commented = { type: "comment", attrs: { id: "c1" } };
+  it.each([
+    [
+      "italic running into the comment",
+      [
+        { type: "text", text: "foo ", marks: [{ type: "italic" }] },
+        { type: "text", text: "bar", marks: [{ type: "italic" }, commented] },
+        { type: "text", text: " baz" },
+      ],
+      "*foo :comment-start{id=c1}bar*:comment-end{id=c1} baz",
+    ],
+    [
+      "bold running out of the comment",
+      [
+        { type: "text", text: "foo " },
+        { type: "text", text: "bar", marks: [{ type: "bold" }, commented] },
+        { type: "text", text: " baz", marks: [{ type: "bold" }] },
+      ],
+      "foo :comment-start{id=c1}**bar:comment-end{id=c1} baz**",
+    ],
+    [
+      "a link across both edges",
+      [
+        {
+          type: "text",
+          text: "see the docs",
+          marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+        },
+        {
+          type: "text",
+          text: " here",
+          marks: [
+            { type: "link", attrs: { href: "https://example.com" } },
+            commented,
+          ],
+        },
+        {
+          type: "text",
+          text: " now",
+          marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+        },
+      ],
+      "[see the docs:comment-start{id=c1} here:comment-end{id=c1} now](https://example.com)",
+    ],
+  ])("saves %s and reopens it the same", (_, content, body) => {
+    const document = withDocumentJSONComments(
+      { type: "doc", content: [{ type: "paragraph", content }] },
+      [COMMENT]
     );
-    expect(markedTexts(load(saved).content)).toEqual(
-      markedTexts(load(source).content)
-    );
+
+    const saved = saveDfm({ frontMatter: null }, document);
+
+    expect(saved.isOk() && saved.value).toBe(`${body}\n\n${OPEN_THREAD}`);
+    if (saved.isOk()) {
+      expect(markedTexts(load(saved.value).content)).toEqual(
+        markedTexts(document)
+      );
+    }
   });
 
   it("keeps front matter when the body is empty", () => {
