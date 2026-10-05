@@ -1,6 +1,10 @@
 {
   "babelrc": false,
   "plugins": [
-    ["@lingui/babel-plugin-lingui-macro", { "descriptorFields": "message" }]
+    ["@lingui/babel-plugin-lingui-macro", { "descriptorFields": "message" }],
+    [
+      "@babel/plugin-transform-react-jsx",
+      { "runtime": "classic", "useSpread": true }
+    ]
   ]
 }

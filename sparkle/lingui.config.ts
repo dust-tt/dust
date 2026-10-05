@@ -22,10 +22,11 @@ export default defineConfig({
       ],
     },
   ],
-  // Macros resolve to sparkle's own hook, which falls back to English when the consumer has no
-  // `I18nProvider` (marketing, viz).
+  // Macros resolve to sparkle's own hook and component, which fall back to English when the
+  // consumer has no `I18nProvider` (marketing, viz).
   runtimeConfigModule: {
     useLingui: ["@sparkle/lib/i18n/useLingui", "useLingui"],
+    Trans: ["@sparkle/lib/i18n/Trans", "Trans"],
   },
   compileNamespace: "ts",
   orderBy: "messageId",

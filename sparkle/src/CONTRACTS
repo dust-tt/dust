@@ -7,12 +7,17 @@ by the consumer through props is the consumer's to translate. Brand names, keybo
 user content MUST NOT be wrapped. Catalog freshness and completeness are enforced by
 `npm run i18n:check`.
 
-@cc [owner:ykmsd,label:coding] sparkle-macros-call-expressions-only
-Sparkle sources MUST only use Lingui call-expression macros: `useLingui` from `@lingui/react/macro`,
-and `msg`/`plural`/`select` from `@lingui/core/macro`. They MUST NOT use JSX macros (`<Trans>`,
-`<Plural>`, ...), the global `t` from `@lingui/core/macro`, or import `@lingui/react` or
-`@lingui/core` outside `lib/i18n/`. Enforced by the `noRestrictedImports` Biome rule on
-`sparkle/src`.
+@cc [owner:ykmsd,label:coding] sparkle-lingui-macros-only
+Sparkle sources MUST only use Lingui through its macros: `useLingui` and the JSX macros (`<Trans>`,
+`<Plural>`, `<Select>`, `<SelectOrdinal>`) from `@lingui/react/macro`, and `msg`/`plural`/`select`
+from `@lingui/core/macro`. They MUST NOT use the global `t` from `@lingui/core/macro`, or import
+`@lingui/react` or `@lingui/core` outside `lib/i18n/`. Enforced by the `noRestrictedImports` Biome
+rule on `sparkle/src`.
+
+@cc [owner:ykmsd,label:architecture] macros-compiled-before-jsx
+`npm run build:esm` MUST compile Lingui macros, JSX macros included, before compiling JSX.
+`scripts/check-esm-macros.mjs` fails the build when a module using a JSX macro had its JSX compiled
+first.
 
 @cc [owner:ykmsd,label:architecture] single-lingui-react-copy
 `@lingui/react` in sparkle's `dependencies` MUST be the exact version front depends on, so that the
