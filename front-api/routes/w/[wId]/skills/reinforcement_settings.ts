@@ -4,6 +4,7 @@ import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import pick from "lodash/pick";
 
 /**
  * @cc [owner:aubin-tchoi,label:api] reinforcement-settings-visibility
@@ -38,23 +39,27 @@ app.get(
     );
 
     return ctx.json({
-      skills: visibleSkills.map((skill) => ({
-        sId: skill.sId,
-        name: skill.name,
-        icon: skill.icon,
-        isDustProvided: skill.editedBy === null,
-        reinforcement: skill.reinforcement,
-        selfImprovementLock: skill.selfImprovementLock,
-        selfImprovementCostsCapMicroUsd: skill.selfImprovementCostsCapMicroUsd,
-        selfImprovementCostsCapAwuCredits:
-          skill.selfImprovementCostsCapAwuCredits,
-        editors:
-          editorsBySkillId.get(skill.sId)?.map((editor) => ({
-            sId: editor.sId,
-            fullName: editor.fullName(),
-            image: editor.imageUrl,
-          })) ?? null,
-      })),
+      skills: visibleSkills.map((skill) => {
+        const serializedSkill = skill.toJSON(auth);
+        return {
+          ...pick(serializedSkill, [
+            "sId",
+            "name",
+            "icon",
+            "reinforcement",
+            "selfImprovementLock",
+            "selfImprovementCostsCapMicroUsd",
+            "selfImprovementCostsCapAwuCredits",
+          ]),
+          isDustProvided: serializedSkill.editedBy === null,
+          editors:
+            editorsBySkillId
+              .get(skill.sId)
+              ?.map((editor) =>
+                pick(editor.toJSON(), ["sId", "fullName", "image"])
+              ) ?? null,
+        };
+      }),
     });
   }
 );
