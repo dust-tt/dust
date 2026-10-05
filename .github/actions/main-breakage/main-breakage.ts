@@ -359,7 +359,10 @@ async function isSuperseded(
  * GitHub sometimes serves a stale run listing, even weeks old, which hides the newest runs and
  * passes an old conclusion off as the previous state. A listing is fresh only when it contains
  * the current run; a stale one MUST be refetched, and if no fresh listing comes back after the
- * retries the transition MUST be dropped silently, never computed from a stale listing.
+ * retries the transition MUST be dropped silently, never computed from a stale listing. A listing
+ * fetched only to re-check for a newer run, after the transition was computed from a fresh one,
+ * is not under this rule: staying stale there can at most miss a newer run, and MUST keep the
+ * notification.
  */
 async function listCompletedRuns({
   github,
@@ -615,7 +618,8 @@ export async function buildBreakageNotification({
     if (unconfirmed) {
       retry = "unconfirmed";
     }
-    // A failed refresh falls back to reporting the original failure rather than dropping it.
+    // A failed or stale refresh falls back to reporting the original failure rather than dropping
+    // it: the transition is already known from fresh history, only a newer run could be missed.
     try {
       const completed = await listCompletedRuns({
         github,
@@ -623,12 +627,10 @@ export async function buildBreakageNotification({
         retryDelayMs,
       });
       if (completed === null) {
-        core.info(
-          `No notification: no fresh ${run.name} run listing after the retry.`
+        core.warning(
+          `No fresh ${run.name} run listing after the retry: reporting the original failure.`
         );
-        return null;
-      }
-      if (await isSuperseded({ github, context }, completed)) {
+      } else if (await isSuperseded({ github, context }, completed)) {
         core.info(
           `No notification: a newer ${run.name} run completed during the retry.`
         );

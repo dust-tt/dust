@@ -105,6 +105,7 @@ function fakeGithub({
   retryError = false,
   pollErrors = 0,
   historyErrorAfterRetry = false,
+  staleAfterRetry = false,
   jobsByRunNumber = {},
   attempts = {},
   attemptJobs = {},
@@ -126,6 +127,8 @@ function fakeGithub({
   retryError?: boolean;
   pollErrors?: number;
   historyErrorAfterRetry?: boolean;
+  // Every listing served after the retry request is stale.
+  staleAfterRetry?: boolean;
   jobsByRunNumber?: Record<
     number,
     Array<{ name: string; conclusion: string | null }>
@@ -157,7 +160,10 @@ function fakeGithub({
             id: 1000 + candidate.run_number,
             ...candidate,
           }));
-          if (listings++ >= staleListings) {
+          if (
+            listings++ >= staleListings &&
+            !(calls.reruns > 0 && staleAfterRetry)
+          ) {
             workflow_runs.push({
               id: run.id,
               run_number: run.run_number,
@@ -561,6 +567,7 @@ async function notifyWith(
     core,
     authors: "",
     slackToken: "token",
+    retryDelayMs: 0,
     sleep: async (ms) => {
       fakeNowMs += ms;
     },
@@ -717,6 +724,20 @@ describe("infra retry", () => {
     const text = (await notifyWith(github)) ?? "";
     assert.match(text, /main is broken/);
     assert.doesNotMatch(text, /automatic retry/);
+  });
+
+  it("reports the breakage when the history refresh after the retry stays stale", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "failure",
+      staleAfterRetry: true,
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.match(text, /Failed again after an automatic retry/);
   });
 
   it("leaves a retry that outlived the poll cap to the attempt itself", async () => {
