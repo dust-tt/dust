@@ -23,6 +23,17 @@ Publication delay P and read/authority cache age C MUST satisfy P + C <= D, init
 RPC delivery is outside D. Hits and later writes MUST NOT extend expiry or publication deadlines.
 Expired views MUST refresh or fail. Dirty state and cache memory MUST be bounded.
 
+@cc [owner:spolu,label:performance;concurrency] v3-retained-blocks
+Retained blocks and holes MUST be keyed by tenant, object, private revision, and block number.
+Serving them MUST require the matching object revision and authorization in the current coherent
+view. Retention MUST NOT extend freshness deadlines. Clean blocks MUST remain evictable within
+the shared cache budget; eviction MUST NOT discard acknowledged pending writes.
+
+@cc [owner:spolu,label:concurrency;backend] v3-private-revisions
+If an object remains live, each edit of its metadata, blocks, parent, or grants MUST atomically
+write a new random private revision. Revisions MUST NOT be derived by incrementing cached state.
+A matching revision MUST identify identical block contents, including sparse holes.
+
 @cc [owner:spolu,label:architecture] v3-uncached-client
 The FUSE client MUST use direct I/O, zero metadata/name TTLs, and no kernel writeback or retained
 userspace data, xattr, or directory-page cache. Clients MUST NOT send expected object versions.

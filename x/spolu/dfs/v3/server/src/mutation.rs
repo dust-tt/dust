@@ -170,7 +170,7 @@ impl View {
             return Err(status(ErrorCode::InvalidInput));
         }
         let record = self.stat(&request.object_id).await?;
-        let object = record.object;
+        let object = &record.object;
         if object.directory {
             return Err(status(ErrorCode::IsDirectory));
         }
@@ -179,14 +179,15 @@ impl View {
         let mut data = vec![0; length];
         if length > 0 {
             let end = request.offset + length as u64;
-            let id = &object.id;
-            let blocks: Vec<_> = stream::iter(
-                request.offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64),
-            )
-            .map(|index| async move { Ok::<_, Status>((index, self.block(id, index).await?)) })
-            .buffered(16)
-            .try_collect()
-            .await?;
+            let record = &record;
+            let blocks: Vec<_> =
+                stream::iter(request.offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64))
+                    .map(|index| async move {
+                        Ok::<_, Status>((index, self.block(record, index).await?))
+                    })
+                    .buffered(16)
+                    .try_collect()
+                    .await?;
             for (index, block) in blocks {
                 let start = index * BLOCK_SIZE as u64;
                 let from = request.offset.max(start);
@@ -202,8 +203,18 @@ impl View {
             size: object.size,
         })
     }
-    async fn block(&self, id: &str, index: u64) -> Result<Vec<u8>> {
-        let value = measured("block_read", self.get(&self.keys.block(id, index)?)).await?;
+    /// @cc [owner:spolu,label:concurrency;security] authorized-block-record
+    /// The record MUST come from stat in this view, before any mutation of its size or revision.
+    async fn block(&self, record: &Record, index: u64) -> Result<Vec<u8>> {
+        let value = measured(
+            "block_read",
+            self.snapshot.block(
+                self.keys.object(&record.object.id)?,
+                record.revision,
+                self.keys.block(&record.object.id, index)?,
+            ),
+        )
+        .await?;
         if value.as_ref().is_some_and(|v| v.len() > BLOCK_SIZE) {
             return Err(status(ErrorCode::Unavailable));
         }
@@ -238,7 +249,7 @@ impl View {
         }
         let patches: Vec<_> =
             stream::iter(offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64))
-                .map(|index| self.patch(&record.object, index, offset, &request.data))
+                .map(|index| self.patch(&record, index, offset, &request.data))
                 .buffered(16)
                 .try_collect()
                 .await?;
@@ -263,11 +274,12 @@ impl View {
     /// so concurrent writes/truncation cannot invalidate that proof before commit.
     async fn patch(
         &self,
-        object: &Object,
+        record: &Record,
         index: u64,
         offset: u64,
         data: &[u8],
     ) -> Result<(u64, Vec<u8>)> {
+        let object = &record.object;
         let start = index * BLOCK_SIZE as u64;
         let from = offset.max(start);
         let to = (offset + data.len() as u64).min(start + BLOCK_SIZE as u64);
@@ -275,7 +287,7 @@ impl View {
         let mut block = if start >= object.size || (from == start && to >= existing_end) {
             Vec::new()
         } else {
-            self.block(&object.id, index).await?
+            self.block(record, index).await?
         };
         block.resize(block.len().max((to - start) as usize), 0);
         block[(from - start) as usize..(to - start) as usize]
@@ -305,7 +317,7 @@ impl View {
                 let tail = size % BLOCK_SIZE as u64;
                 if tail > 0 {
                     let index = size / BLOCK_SIZE as u64;
-                    let mut block = self.block(&record.object.id, index).await?;
+                    let mut block = self.block(&record, index).await?;
                     if block.len() > tail as usize {
                         block.truncate(tail as usize);
                         edit.put(self.keys.block(&record.object.id, index)?, block)?;

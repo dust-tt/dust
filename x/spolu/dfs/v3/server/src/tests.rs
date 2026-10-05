@@ -180,6 +180,15 @@ fn local_filesystem_contracts() -> Result<()> {
         expired_fdb_read_refreshes_before_cache_ttl()
             .await
             .context("early FDB expiry")?;
+        retained_blocks_revalidate_revisions_and_holes()
+            .await
+            .context("retained block revisions")?;
+        retained_partial_write_still_validates_publication()
+            .await
+            .context("retained write conflict")?;
+        retained_blocks_evict_and_reload()
+            .await
+            .context("retained block eviction")?;
         indexed_views_preserve_cuts_and_truncation()
             .await
             .context("indexed snapshot cuts")?;
@@ -645,6 +654,7 @@ async fn remote_namespace_and_grants_expire() -> Result<()> {
     let f = Fixture::new().await?;
     let directory = f.create(&f.tenant.root_id, "visible", true).await?;
     let file = f.create(&directory.id, "file", false).await?;
+    f.write(&file.id, 0, b"private".to_vec()).await?;
     f.api
         .update_grants(request(
             &f.tenant.tenant_key,
@@ -670,13 +680,23 @@ async fn remote_namespace_and_grants_expire() -> Result<()> {
         )?)
         .await?
         .into_inner();
-    peer.stat(request(
-        &reader.session_key,
-        ObjectRequest {
-            object_id: file.id.clone(),
-        },
-    )?)
-    .await?;
+    let content = peer
+        .read(request(
+            &reader.session_key,
+            ReadRequest {
+                object_id: file.id.clone(),
+                offset: 0,
+                length: 100,
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(content.data, b"private");
+    assert_eq!(
+        peer.0.cache.block_metrics().1,
+        1,
+        "Warm content before revocation."
+    );
     assert!(
         peer.lookup(request(
             &owner.session_key,
@@ -730,9 +750,13 @@ async fn remote_namespace_and_grants_expire() -> Result<()> {
     assert_eq!(
         code(
             &peer
-                .stat(request(
+                .read(request(
                     &reader.session_key,
-                    ObjectRequest { object_id: file.id }
+                    ReadRequest {
+                        object_id: file.id,
+                        offset: 0,
+                        length: 100
+                    }
                 )?)
                 .await
                 .err()
@@ -753,6 +777,159 @@ async fn remote_namespace_and_grants_expire() -> Result<()> {
         .into_inner()
         .entries
         .is_empty()
+    );
+    f.clean().await
+}
+
+async fn retained_blocks_revalidate_revisions_and_holes() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "retained", false).await?;
+    f.write(&file.id, (2 * BLOCK_SIZE - 4) as u64, b"tail".to_vec())
+        .await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let initial = f.read(&file.id).await?;
+    assert!(initial.data[..2 * BLOCK_SIZE - 4].iter().all(|v| *v == 0));
+    assert_eq!(&initial.data[2 * BLOCK_SIZE - 4..], b"tail");
+    let before = f.api.0.cache.block_metrics();
+    assert_eq!(
+        before.1, 2,
+        "A real block and a proven hole enter the cache."
+    );
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    assert_eq!(f.read(&file.id).await?.data, initial.data);
+    let reused = f.api.0.cache.block_metrics();
+    assert_eq!(reused.0, before.0 + 2);
+    assert_eq!(
+        reused.1, before.1,
+        "Refresh must not reload unchanged block bytes."
+    );
+
+    let (peer, session) = f.peer().await?;
+    peer.write(request(
+        &session.session_key,
+        WriteRequest {
+            object_id: file.id.clone(),
+            offset: 0,
+            data: b"head".to_vec(),
+            append: false,
+        },
+    )?)
+    .await?;
+    peer.0.cache.drain().await?;
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    let changed = f.read(&file.id).await?;
+    assert_eq!(&changed.data[..4], b"head");
+    assert_eq!(&changed.data[2 * BLOCK_SIZE - 4..], b"tail");
+    assert_eq!(
+        f.api.0.cache.block_metrics().1,
+        reused.1 + 2,
+        "A changed revision must not reuse a cached block or hole."
+    );
+
+    for size in [5, (2 * BLOCK_SIZE) as u64] {
+        peer.update(request(
+            &session.session_key,
+            UpdateRequest {
+                object_id: file.id.clone(),
+                size: Some(size),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    }
+    peer.0.cache.drain().await?;
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    let extended = f.read(&file.id).await?;
+    assert_eq!(extended.size, (2 * BLOCK_SIZE) as u64);
+    assert_eq!(&extended.data[..4], b"head");
+    assert!(
+        extended.data[4..].iter().all(|v| *v == 0),
+        "Old retained tails must not return."
+    );
+    f.clean().await
+}
+
+async fn retained_partial_write_still_validates_publication() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "conflict", false).await?;
+    f.write(&file.id, 0, b"original".to_vec()).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    assert_eq!(f.read(&file.id).await?.data, b"original");
+    let before = f.api.0.cache.block_metrics().0;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.write(&file.id, 1, b"X".to_vec()).await?;
+    assert_eq!(f.api.0.cache.block_metrics().0, before + 1);
+    assert_eq!(f.read(&file.id).await?.data, b"oXiginal");
+    let (peer, session) = f.peer().await?;
+    peer.write(request(
+        &session.session_key,
+        WriteRequest {
+            object_id: file.id.clone(),
+            offset: 0,
+            data: b"winning!".to_vec(),
+            append: false,
+        },
+    )?)
+    .await?;
+    peer.0.cache.drain().await?;
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    assert!(f.api.0.cache.drain().await.is_err());
+    assert!(f.sync(&file.id).await.is_err());
+    assert_eq!(f.read(&file.id).await?.data, b"winning!");
+    f.clean().await
+}
+
+async fn retained_blocks_evict_and_reload() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        cache_mib: 16,
+        dirty_mib: 8,
+        ..Default::default()
+    })
+    .await?;
+    let mut files = Vec::new();
+    for index in 0..5u8 {
+        let file = f
+            .create(&f.tenant.root_id, &format!("large-{index}"), false)
+            .await?;
+        for offset in (0..4 * dfs_protocol::MAX_IO).step_by(dfs_protocol::MAX_IO) {
+            f.write(&file.id, offset as u64, vec![index; dfs_protocol::MAX_IO])
+                .await?;
+        }
+        f.api.0.cache.drain().await?;
+        // Allow acknowledged journal charges to retire before testing clean-cache pressure.
+        tokio::time::sleep(Duration::from_millis(1010)).await;
+        files.push(file);
+    }
+    for (index, file) in files.iter().enumerate() {
+        f.api.0.cache.invalidate_base().await;
+        for offset in (0..4 * dfs_protocol::MAX_IO).step_by(dfs_protocol::MAX_IO) {
+            let data = f
+                .api
+                .read(request(
+                    &f.owner.session_key,
+                    ReadRequest {
+                        object_id: file.id.clone(),
+                        offset: offset as u64,
+                        length: dfs_protocol::MAX_IO as u32,
+                    },
+                )?)
+                .await?
+                .into_inner();
+            assert_eq!(data.data, vec![index as u8; dfs_protocol::MAX_IO]);
+        }
+    }
+    let before = f.api.0.cache.block_metrics();
+    assert!(
+        before.2 > 0,
+        "Clean blocks must be evicted under the shared byte budget."
+    );
+    f.api.0.cache.invalidate_base().await;
+    assert!(f.read(&files[0].id).await?.data.iter().all(|v| *v == 0));
+    assert!(
+        f.api.0.cache.block_metrics().1 > before.1,
+        "Evicted blocks reload from FDB."
     );
     f.clean().await
 }

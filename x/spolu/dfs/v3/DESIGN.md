@@ -433,8 +433,17 @@ precondition rejects the tentative branch
 and records failure; general semantic rebasing is not implemented yet. Ambiguous outcomes are never
 replayed. Invalidating a rejected batch does not cancel unrelated object publications.
 
-The finer cache optimizations above—retaining blocks across snapshot refresh after a revision check,
-reusing derived authority proofs, and independently refreshing object bases—remain follow-up work.
-The current cache drops expired snapshot data; it does not keep serving it beyond the bound.
-The initial benchmark is local and uses `D = 1000 ms`; 100k, `D = 8000 ms`, broader fault injection,
-and networked evaluation remain separate steps.
+The server retains FDB-backed blocks and proven holes across snapshot refresh, keyed by the
+tenant/object/block key and private object revision. Each use first validates the object and its
+authorization in the current coherent view. A changed revision misses the cache; an unchanged
+revision never renews ancestor permissions. Objects changed by the RAM overlay use the journal
+instead, preserving pending-operation dependencies. Cache hits used to prepare writes still record
+publication conflict dependencies. No client or API change is involved.
+
+Retained blocks share the existing RAM budget and a 65,536-entry cap. FIFO eviction discards only
+clean retained facts; pending writes remain charged to the journal. Retention failure does not fail
+an otherwise successful read. Restart discards all retained blocks.
+
+Derived authority proofs and independently refreshed object bases remain follow-up work. Local
+10k baselines at both bounds are recorded in [bench/RESULTS.md](bench/RESULTS.md). The 100k corpus,
+broader fault injection, and networked evaluation remain separate steps.

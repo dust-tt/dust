@@ -11,7 +11,9 @@ use dfs_protocol::{error::status, rpc::ErrorCode};
 use futures::{StreamExt, TryStreamExt, stream};
 use parking_lot::{Mutex, RwLock};
 
+mod blocks;
 mod index;
+use blocks::Blocks;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     ops::{Bound, RangeBounds},
@@ -71,6 +73,9 @@ struct Metrics {
     accepted: AtomicU64,
     commits: AtomicU64,
     failures: AtomicU64,
+    block_hits: AtomicU64,
+    block_misses: AtomicU64,
+    block_evictions: AtomicU64,
 }
 struct Budget {
     used: AtomicUsize,
@@ -222,6 +227,7 @@ pub struct Cache {
     config: CacheConfig,
     budget: Arc<Budget>,
     dirty: Arc<Budget>,
+    blocks: Mutex<Blocks>,
     base: tokio::sync::Mutex<Option<Arc<Base>>>,
     inner: RwLock<Inner>,
     wake: Notify,
@@ -260,6 +266,7 @@ impl Cache {
                 limit: config.dirty_mib * 1024 * 1024,
             }),
             config,
+            blocks: Default::default(),
             base: Default::default(),
             inner: Default::default(),
             wake: Notify::new(),
@@ -453,7 +460,7 @@ impl Cache {
             + deps.len() * 64
             + scope.iter().map(|k| 2 * k.len() + 256).sum::<usize>()
             + 512;
-        let charge = self.budget.reserve(bytes)?;
+        let charge = self.reserve(bytes)?;
         let dirty = self.dirty.reserve(bytes)?;
         session.active()?;
         inner.seq += 1;
@@ -783,6 +790,14 @@ impl Cache {
     pub(crate) fn commits(&self) -> u64 {
         self.metrics.commits.load(Ordering::Relaxed)
     }
+    #[cfg(test)]
+    pub(crate) fn block_metrics(&self) -> (u64, u64, u64) {
+        (
+            self.metrics.block_hits.load(Ordering::Relaxed),
+            self.metrics.block_misses.load(Ordering::Relaxed),
+            self.metrics.block_evictions.load(Ordering::Relaxed),
+        )
+    }
     pub async fn drain(&self) -> Result<()> {
         let started = Instant::now();
         while !self.inner.read().pending.is_empty() {
@@ -799,6 +814,9 @@ impl Cache {
             failures = self.metrics.failures.load(Ordering::Relaxed),
             cache_hits = self.metrics.hits.load(Ordering::Relaxed),
             cache_misses = self.metrics.misses.load(Ordering::Relaxed),
+            block_hits = self.metrics.block_hits.load(Ordering::Relaxed),
+            block_misses = self.metrics.block_misses.load(Ordering::Relaxed),
+            block_evictions = self.metrics.block_evictions.load(Ordering::Relaxed),
             "cache drained"
         );
         if !self.inner.read().receipts.is_empty() {
@@ -947,7 +965,6 @@ impl Snapshot {
                 let value = self.base.raw.get(key).await?;
                 let charge = self
                     .cache
-                    .budget
                     .reserve(key.len() + value.as_ref().map_or(0, Bytes::len) + 256)?;
                 Ok::<_, Status>(Arc::new(Value {
                     value,
@@ -976,7 +993,7 @@ impl Snapshot {
                     + 256;
                 let loaded = Arc::new(Value {
                     value,
-                    _charge: self.cache.budget.reserve(size)?,
+                    _charge: self.cache.reserve(size)?,
                 });
                 let mut ranges = self.base.ranges.lock();
                 if ranges.len() >= MAX_ENTRIES {
