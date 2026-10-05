@@ -37,9 +37,13 @@ ship behind `co_edition` until M7. The order is the dependency order, not a spri
 
 ### M0. Foundations (stream 1: the document). Done, one follow-up
 
-- Codec merged. Follow-up from the security review, before any server-side caller: bound
-  input size and nesting before the parser, bound the arguments of `anchorComment`, and one
-  README sentence saying the codec does not authenticate authors.
+- Codec merged. Follow-up from the security review in #34042, before any server-side caller:
+  input bounds (length, leading container run per line, inline delimiter count, list item
+  count) checked before every parser call, non-overlapping occurrence search in
+  `anchorComment`, and a README sentence saying the codec does not authenticate authors.
+  Server callers still own their latency and should isolate the codec once untrusted input
+  reaches it. Measured on the way: micromark is quadratic in the number of items of a list
+  (50k flat items: 12 s) and in `]` characters (256k: 4 min), not only in nesting and emphasis.
 - Outcome: an adversarial file fails fast with a clear error instead of tying up a process.
 
 ### M1. A human edits a `.md` in the rich editor (stream 2, single human)
@@ -147,7 +151,6 @@ directives stripped, notifications on replies and mentions.
 ## Decisions pending someone
 
 - Authorship enforcement mechanism (daph, to settle with the team).
-- Whether anchors inside link destinations should be refused (depends on editor behavior).
 - Whether to ungate the editor before comments or ship both together (daph; current call: keep
   behind the flag).
 
@@ -160,5 +163,10 @@ directives stripped, notifications on replies and mentions.
 - The hoisted `mdast-util-directive@2` ships its own nested `mdast-util-from-markdown@1`;
   importing it from front against our `@2` crashes. The editor must use `mdast-util-directive@3`
   if it wires directives through the parser.
+- An input bound is only as good as its match with what the parser receives. Three review
+  rounds on #34042 found text transformed between the check and the parse: a leading byte
+  order mark, a bare `\r` read as a line ending, anchors stripped from a body, a built body
+  parsed without a check, a body sliced after front matter with a mark of its own. Check the exact string handed to the parser, and test it with a spy
+  on the parser.
 - Snyk runs real tests only when a manifest changes and its report needs a Snyk login; the
   GitHub status carries no detail.

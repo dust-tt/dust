@@ -119,7 +119,8 @@ network, the database or React: the module runs on the server and in the browser
 
 Tests live in `tests/` and mirror the split, one file per module, with shared fixtures and
 helpers in `tests/dfm.test_utils.ts`. Each "refuses to serialize" table names the file whose
-checks it covers.
+checks it covers. `tests/bounds.test.ts` checks the input bounds across the public API against
+a spied parser.
 
 ## Adding a directive
 
@@ -141,7 +142,8 @@ Suggestions are the next one. The steps are the same for any directive:
 - A file starting with a `---` rule and containing another `---` line is read as front matter.
 - Code positions and block structure come from `mdast-util-from-markdown`, so anchors inside
   fenced, indented and quoted code blocks and code spans are text, and `anchorComment` refuses
-  an insertion that would change the parse tree. HTML blocks are not treated as code: a
+  an insertion that would change the parse tree, a node's properties included: a quote inside
+  a link destination, an image's alt text or raw HTML is refused. HTML blocks are not treated as code: a
   directive inside raw HTML is interpreted. GFM extensions such as tables and autolink
   literals are not parsed, so a directive inside them is interpreted too.
 - A backslash before an anchor escapes it, as CommonMark does for any punctuation:
@@ -149,3 +151,13 @@ Suggestions are the next one. The steps are the same for any directive:
   raw HTML and autolinks where CommonMark would not. An escaped anchor whose pair is live is
   an error.
 - A leading UTF-8 byte order mark is dropped on parse and never written back.
+- Input is bounded before parsing (`INPUT_LIMITS` in `parser.ts`): 256k characters, 256
+  characters of quote markers, list markers and indentation opening a line, 15k emphasis, link
+  and code delimiters, 15k list items. The Markdown parser is quadratic on the shapes these
+  bound; within them a parse takes about a second at worst. Delimiters are counted inside code
+  blocks too, so a very large, code-heavy or heavily formatted document can reach a count and
+  is then refused with the reason. A server calling the codec on untrusted input still needs
+  its own isolation, since a second of blocked event loop per call is not free.
+- The codec does not authenticate authors. `author=user:<id>` is data; any file writer can put
+  any id there. Whoever stores a file decides what to trust; see the design notes in
+  `x/daph/co-edition/README.md`.

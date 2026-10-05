@@ -4,7 +4,11 @@ import {
   requiredString,
 } from "@app/lib/markdown/dfm/grammar";
 import type { Range } from "@app/lib/markdown/dfm/parser";
-import { codeRanges, isEscaped } from "@app/lib/markdown/dfm/parser";
+import {
+  checkInputBounds,
+  codeRanges,
+  isEscaped,
+} from "@app/lib/markdown/dfm/parser";
 import type { DfmAnchor, DfmError } from "@app/lib/markdown/dfm/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -190,6 +194,10 @@ export function scanAnchors(
 export function extractAnchors(
   body: string
 ): Result<{ text: string; anchors: DfmAnchor[] }, DfmError> {
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return new Err(bounds);
+  }
   const scanned = scanAnchors(body, 0);
   if (scanned.isErr()) {
     return scanned;
