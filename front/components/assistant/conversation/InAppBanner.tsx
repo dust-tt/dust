@@ -1,4 +1,5 @@
 import { useAppRouter } from "@app/lib/platform";
+import { CONVERSATIONAL_BUILDING_SKILL_ID } from "@app/lib/skills/conversational_building";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -11,9 +12,6 @@ const CONVERSATIONAL_BUILDING_IMAGE_PATH =
   "/static/Conversational_Building_Banner.svg";
 const CONVERSATIONAL_BUILDING_BANNER_LOCAL_STORAGE_KEY =
   "conversational-building-banner-dismissed";
-
-// sId of the code-defined `conversationalBuildingSkill` (server-side, not importable here).
-const CONVERSATIONAL_BUILDING_SKILL_ID = "conversational-building";
 
 interface ConversationalBuildingBannerProps {
   owner: { sId: string };
