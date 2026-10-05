@@ -52,10 +52,6 @@ export function isSandboxChildActionInfo(
   return SandboxChildActionInfoSchema.safeParse(value).success;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:api] omitted-option-description-is-null
- * Omitted option descriptions MUST parse as null for compatibility with existing clients.
- */
 const UserQuestionOptionSchema = z.object({
   label: z
     .string()
