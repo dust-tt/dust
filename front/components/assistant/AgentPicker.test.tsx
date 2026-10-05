@@ -158,7 +158,9 @@ describe("AgentPicker", () => {
     await user.click(screen.getByRole("menuitem", { name: "Zulu" }));
     expect(onDeselect).toHaveBeenCalledOnce();
     expect(onItemClick).not.toHaveBeenCalled();
-    expect(screen.getByPlaceholderText("Search for agents")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search for agents")
+    ).toBeInTheDocument();
   });
 
   it("does not select stale results while a typed query is loading", async () => {
