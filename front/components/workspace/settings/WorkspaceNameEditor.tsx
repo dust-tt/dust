@@ -88,7 +88,9 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.governance.workspaceName}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <Page.H variant="h5">{WORKSPACE_NAME_LABEL}</Page.H>
+          <Page.H variant="h5">
+            <Trans>Workspace Name</Trans>
+          </Page.H>
           <Page.P variant="secondary">{owner.name}</Page.P>
         </div>
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>

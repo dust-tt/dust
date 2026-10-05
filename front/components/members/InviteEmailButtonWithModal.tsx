@@ -91,13 +91,12 @@ function isSeatAtCapacity(
   return info.maxSeats !== null && info.assignedCount >= info.maxSeats;
 }
 
-function SeatBadge({
-  seatType,
-  info,
-}: {
+interface SeatBadgeProps {
   seatType: MembershipSeatType;
   info: SeatTypeInfo;
-}) {
+}
+
+function SeatBadge({ seatType, info }: SeatBadgeProps) {
   const { t } = useLingui();
   const openCount = includedSeatsOpen(info);
   if (toBaseSeatType(seatType) !== "workspace" && openCount > 0) {

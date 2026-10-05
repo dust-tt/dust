@@ -2,18 +2,6 @@ import type { ActiveRoleType, RoleType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 
-function displayRole(role: RoleType): string {
-  if (role === "user") {
-    return "member";
-  }
-  return role;
-}
-
-export function displayRoleCapitalized(role: RoleType): string {
-  const label = displayRole(role);
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
 export const ROLE_LABELS: Record<RoleType, MessageDescriptor> = {
   admin: msg({ message: "Admin", context: "workspace role" }),
   manager: msg({ message: "Manager", context: "workspace role" }),

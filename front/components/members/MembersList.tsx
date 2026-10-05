@@ -4,7 +4,7 @@ import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { RoleType, UserType } from "@app/types/user";
 import {
   Chip,
@@ -47,13 +47,12 @@ function RoleCell({ role }: { role: RoleType }) {
   );
 }
 
-function StatusCell({
-  status,
-  origin,
-}: {
+interface StatusCellProps {
   status: RowData["status"];
   origin: MembershipOriginType | undefined;
-}) {
+}
+
+function StatusCell({ status, origin }: StatusCellProps) {
   const { t } = useLingui();
   const isActive = status === "Active";
   let label: string;
@@ -75,7 +74,8 @@ function StatusCell({
         : t`Unregistered (Auto-joined)`;
       break;
     default:
-      assertNever(origin);
+      assertNeverAndIgnore(origin);
+      label = isActive ? t`Active` : t`Unregistered`;
   }
   return <DataTable.CellContent>{label}</DataTable.CellContent>;
 }

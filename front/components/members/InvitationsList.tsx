@@ -28,7 +28,11 @@ type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
 
-function InitialRoleCell({ role }: { role: ActiveRoleType }) {
+interface InitialRoleCellProps {
+  role: ActiveRoleType;
+}
+
+function InitialRoleCell({ role }: InitialRoleCellProps) {
   const { t } = useLingui();
   return (
     <DataTable.CellContent>

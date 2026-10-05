@@ -53,6 +53,7 @@ import {
   Clock,
   ContentMessage,
   Cube01,
+  Hoverable,
   InfoCircle,
   PuzzlePiece01,
   Robot,
@@ -200,11 +201,12 @@ export const GovernancePage = () => {
   return (
     <GovernancePageLayout>
       {isAdmin && <WorkspaceNameEditor owner={owner} />}
-      <LinkedSectionNotice
-        description="Groups assigned here are managed in"
-        linkLabel="Members → Groups"
-        onLinkClick={handleNavigateToGroups}
-      />
+      <LinkedSectionNotice>
+        Groups assigned here are managed in{" "}
+        <Hoverable variant="primary" onClick={handleNavigateToGroups}>
+          Members → Groups
+        </Hoverable>
+      </LinkedSectionNotice>
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as GovernanceTab)}

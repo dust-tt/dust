@@ -1,7 +1,6 @@
 import {
   capUnitLabel,
   normalizeCapInput,
-  SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits } from "@app/lib/client/credits";
 import { compareStrings } from "@app/lib/i18n/format";
@@ -481,7 +480,7 @@ export function SelfImprovingSkillsListSection({
 
   return (
     <Page.Vertical align="stretch" gap="md">
-      <Page.SectionHeader title={SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL} />
+      <Page.SectionHeader title={t`Skills`} />
       <SearchInput
         name="skill-search"
         placeholder={t`Search skills...`}

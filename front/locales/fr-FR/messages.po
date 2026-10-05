@@ -536,6 +536,7 @@ msgid "Members"
 msgstr "Membres"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Skills"
 msgstr "Compétences"
 
@@ -700,7 +701,7 @@ msgstr "{fullName} n’est pas membre de {groupName} mais peut le gérer."
 
 #: front/components/groups/GroupManagersField.tsx
 msgid "They can grant themselves access to the group's permissions and data."
-msgstr "Ils peuvent s’accorder l’accès aux autorisations et aux données du groupe."
+msgstr "Cette personne peut s’accorder l’accès aux autorisations et aux données du groupe."
 
 #: front/components/groups/GroupManagersField.tsx
 msgid "Not group member"
@@ -1893,15 +1894,19 @@ msgstr "Aucune compétence active."
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Workspace name must only contain letters, numbers, and the characters `._-`"
-msgstr "Le nom de l’espace de travail ne peut contenir que des lettres, des chiffres et les caractères `._-`"
+msgstr "Le nom du workspace ne peut contenir que des lettres, des chiffres et les caractères `._-`"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Failed to update workspace."
-msgstr "Impossible de mettre à jour l’espace de travail."
+msgstr "Impossible de mettre à jour le workspace."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace Name"
+msgstr "Nom du workspace"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Edit Workspace Name"
-msgstr "Modifier le nom de l’espace de travail"
+msgstr "Modifier le nom du workspace"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Think GitHub repository names, short and memorable."
@@ -1909,7 +1914,7 @@ msgstr "Pensez aux noms de dépôts GitHub : courts et faciles à retenir."
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Workspace name"
-msgstr "Nom de l’espace de travail"
+msgstr "Nom du workspace"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Saving..."

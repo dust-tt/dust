@@ -536,6 +536,7 @@ msgid "Members"
 msgstr "Members"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Skills"
 msgstr "Skills"
 
@@ -1898,6 +1899,10 @@ msgstr "Workspace name must only contain letters, numbers, and the characters `.
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Failed to update workspace."
 msgstr "Failed to update workspace."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace Name"
+msgstr "Workspace Name"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Edit Workspace Name"
