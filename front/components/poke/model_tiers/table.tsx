@@ -32,22 +32,27 @@ type MemberModelTierDisplayType = {
   groups: PokeMemberModelTier["groups"];
   groupNames: string;
   source: ModelTierResolutionSource;
-  sourceGroupIds: string[];
+  sourceGroups: PokeMemberModelTier["groups"];
 };
 
 function prepareForDisplay(
   members: PokeMemberModelTier[]
 ): MemberModelTierDisplayType[] {
-  return members.map((m) => ({
-    sId: m.member.sId,
-    name: m.member.fullName,
-    email: m.member.email,
-    tier: m.maxTierName ?? NO_TIER,
-    groups: m.groups,
-    groupNames: m.groups.map(({ group }) => group.name).join(", "),
-    source: m.source,
-    sourceGroupIds: m.sourceGroupIds,
-  }));
+  return members.map((m) => {
+    const sourceGroupIds = new Set(m.sourceGroupIds);
+    return {
+      sId: m.member.sId,
+      name: m.member.fullName,
+      email: m.member.email,
+      tier: m.maxTierName ?? NO_TIER,
+      groups: m.groups,
+      groupNames: m.groups.map(({ group }) => group.name).join(", "),
+      source: m.source,
+      sourceGroups: m.groups.filter(({ group }) =>
+        sourceGroupIds.has(group.sId)
+      ),
+    };
+  });
 }
 
 function formatTier(tier: DisplayTier): string {
@@ -124,13 +129,10 @@ function makeColumns(
       ),
       filterFn: (row, id, value) => value.includes(row.getValue(id)),
       cell: ({ row }) => {
-        const { source, groups, sourceGroupIds } = row.original;
+        const { source, sourceGroups } = row.original;
         if (source !== "groups") {
           return SOURCE_LABELS[source];
         }
-        const sourceGroups = groups.filter(({ group }) =>
-          sourceGroupIds.includes(group.sId)
-        );
         return (
           <div className="flex flex-wrap gap-x-1">
             <span>{SOURCE_LABELS[source]}:</span>
