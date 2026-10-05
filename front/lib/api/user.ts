@@ -17,8 +17,14 @@ import { findWorkOSOrganizationsForUserId } from "./workos/organization_membersh
 
 /**
  * Returns the acting user for an authenticated request. Falls back to looking up the user by
- * email when auth is an API key (used by the Slack integration to attribute actions to the
+ * email when auth is a system key (used by the Slack integration to attribute actions to the
  * Slack user via the user-email header).
+ */
+/**
+ * @cc [owner:avervaet,label:security] email-fallback-system-key-only
+ * When `auth` carries no user, `fallbackEmail` MUST only resolve to a user if `auth` is a system
+ * key. For any other caller, including a regular API key, the result MUST be `null` whatever
+ * `fallbackEmail` names.
  */
 export async function getActiveUserFromAuthOrEmail(
   auth: Authenticator,
@@ -29,7 +35,7 @@ export async function getActiveUserFromAuthOrEmail(
     return authUser.toJSON();
   }
 
-  if (!auth.isKey() || !fallbackEmail) {
+  if (!auth.isSystemKey() || !fallbackEmail) {
     return null;
   }
 

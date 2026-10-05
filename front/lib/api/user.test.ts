@@ -1,8 +1,13 @@
-import { getUserForWorkspace } from "@app/lib/api/user";
+import {
+  getActiveUserFromAuthOrEmail,
+  getUserForWorkspace,
+} from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -283,5 +288,33 @@ describe("getUserForWorkspace", () => {
 
     const result = await getUserForWorkspace(auth, { userId: user1.sId });
     expect(result?.sId).toBe(user1.sId);
+  });
+});
+
+describe("getActiveUserFromAuthOrEmail", () => {
+  it("resolves the email to the active member for a system key", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { globalGroup } = await GroupFactory.defaults(workspace);
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const systemKey = await KeyFactory.system(globalGroup);
+    const auth = await Authenticator.fromKey(systemKey, workspace.sId);
+
+    const result = await getActiveUserFromAuthOrEmail(auth, member.email);
+
+    expect(result?.sId).toBe(member.sId);
+  });
+
+  it("ignores the email for a regular key", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { globalGroup } = await GroupFactory.defaults(workspace);
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const regularKey = await KeyFactory.regular(globalGroup);
+    const auth = await Authenticator.fromKey(regularKey, workspace.sId);
+
+    const result = await getActiveUserFromAuthOrEmail(auth, member.email);
+
+    expect(result).toBeNull();
   });
 });
