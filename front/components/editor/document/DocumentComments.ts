@@ -485,12 +485,12 @@ const canCarryCommentMark = (node: Node, parent: Node | null) => {
  * Text inserted at a comment's edges MUST NOT take it.
  */
 const inheritEnclosingComments = (
-  state: EditorState,
+  tr: Transaction,
   inserted: CommentRange[]
-): Transaction | null => {
-  const markType = state.schema.marks[COMMENT_MARK_NAME];
-  const tr = state.tr;
-  for (const [id, comment] of getCommentRanges(state.doc)) {
+) => {
+  const { doc } = tr;
+  const markType = doc.type.schema.marks[COMMENT_MARK_NAME];
+  for (const [id, comment] of getCommentRanges(doc)) {
     const mark = markType.create({ id });
     for (const range of inserted) {
       const from = Math.max(range.from, comment.from);
@@ -498,7 +498,7 @@ const inheritEnclosingComments = (
       if (from >= to) {
         continue;
       }
-      state.doc.nodesBetween(from, to, (node, pos, parent) => {
+      doc.nodesBetween(from, to, (node, pos, parent) => {
         if (canCarryCommentMark(node, parent) && !mark.isInSet(node.marks)) {
           tr.addMark(
             Math.max(pos, from),
@@ -509,14 +509,42 @@ const inheritEnclosingComments = (
       });
     }
   }
-  return tr.docChanged ? tr : null;
+};
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-orphan-marks-dropped
+ * When a transaction puts the mark of a comment without a thread on text, such as an undo
+ * restoring text after its comment was deleted, that mark MUST be removed from the whole
+ * document, since saving fails on an anchor without a thread.
+ */
+const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
+  const threads = new Set(
+    getDocumentComments(tr.doc).map((comment) => comment.id)
+  );
+  const orphans = new Set<string>();
+  for (const { from, to } of changed) {
+    tr.doc.nodesBetween(from, to, (node) => {
+      for (const mark of node.marks) {
+        if (
+          mark.type.name === COMMENT_MARK_NAME &&
+          !threads.has(mark.attrs.id)
+        ) {
+          orphans.add(mark.attrs.id);
+        }
+      }
+    });
+  }
+  const markType = tr.doc.type.schema.marks[COMMENT_MARK_NAME];
+  for (const id of orphans) {
+    tr.removeMark(0, tr.doc.content.size, markType.create({ id }));
+  }
 };
 
 /**
  * @cc [owner:tdraier,label:product] document-comment-edges-kept
- * A transaction MUST be refused when it takes the comment mark off a comment's first or last
- * character without deleting that character or the comment's thread, such as inline code or a
- * code block over a comment's edge, since saving would then shrink or drop the comment.
+ * A transaction MUST be refused when it takes the comment mark off the first or last character
+ * of a comment that has a thread after it, without deleting that character, such as inline code
+ * or a code block over a comment's edge, since saving would then shrink or drop the comment.
  */
 const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
   if (
@@ -532,11 +560,8 @@ const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
   const threadsAfter = new Set(
     getDocumentComments(transaction.doc).map((comment) => comment.id)
   );
-  const threadsBefore = new Set(
-    getDocumentComments(before.doc).map((comment) => comment.id)
-  );
   for (const [id, { from, to }] of getCommentRanges(before.doc)) {
-    if (threadsBefore.has(id) && !threadsAfter.has(id)) {
+    if (!threadsAfter.has(id)) {
       continue;
     }
     const range = after.get(id);
@@ -599,13 +624,16 @@ export const DocumentCommentMark = Mark.create({
         filterTransaction: (transaction, state) =>
           !takesCommentEdge(transaction, state),
         appendTransaction: (transactions, _oldState, newState) => {
-          if (getDocumentComments(newState.doc).length === 0) {
+          const changed = changedRanges(transactions);
+          if (changed.length === 0) {
             return null;
           }
-          const inserted = changedRanges(transactions);
-          return inserted.length > 0
-            ? inheritEnclosingComments(newState, inserted)
-            : null;
+          const tr = newState.tr;
+          dropOrphanCommentMarks(tr, changed);
+          if (getDocumentComments(tr.doc).length > 0) {
+            inheritEnclosingComments(tr, changed);
+          }
+          return tr.docChanged ? tr : null;
         },
       }),
     ];

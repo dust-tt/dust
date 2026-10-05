@@ -175,6 +175,43 @@ describe("useDocumentComments", () => {
     expect(onSave.mock.calls[1][0]).toBe("Hi there\n");
   });
 
+  it("saves text an undo restores after its comment was deleted, without the comment", async () => {
+    const { result, onSave } = await renderCommentedEditor(SOURCE);
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      editor
+        .chain()
+        .setTextSelection({ from: 4, to: 9 })
+        .deleteSelection()
+        .run();
+    });
+    act(() => {
+      result.current.comments.remove("c1", null);
+    });
+    act(() => {
+      editor.commands.undo();
+    });
+    await act(() => result.current.document.save());
+
+    expect(result.current.document.error).toBeNull();
+    expect(onSave.mock.calls[0][0]).toBe("Hi there\n");
+
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(editor.state.doc.textContent).toBe("Hi ");
+
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.state.doc.textContent).toBe("Hi there");
+    expect(editor.getHTML()).not.toContain("data-comment-id");
+  });
+
   it("refuses a reply the codec cannot write, leaving the document unchanged", async () => {
     const { result } = await renderCommentedEditor(SOURCE);
 
