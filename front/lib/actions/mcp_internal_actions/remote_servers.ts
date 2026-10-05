@@ -4560,6 +4560,115 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10042,
+    name: "Clay",
+    description:
+      "Clay tools for searching companies and contacts, enriching them with data points, and running Clay subroutines.",
+    url: "https://api.clay.com/v3/mcp",
+    icon: "ClayLogo",
+    documentationUrl: "https://university.clay.com/fr/docs/connect-to-clay-mcp",
+    connectionInstructions:
+      "Clay uses OAuth with dynamic client registration. Connect your Clay workspace to use its tools. Tools consume your workspace credits at the same rate as in Clay.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Read-only
+      get_credits_available: "never_ask",
+      get_current_workspace: "never_ask",
+      get_task: "never_ask",
+      get_task_context: "never_ask",
+      list_subroutines: "never_ask",
+      get_subroutine_input_options: "never_ask",
+      query_objects: "never_ask",
+      ask_question_about_accounts: "never_ask",
+      search_companies: "never_ask",
+      search_contacts: "never_ask",
+      load_more_search_results: "never_ask",
+      track_event: "never_ask",
+      // Enrich contacts by name
+      search_contacts_by_name: "low",
+      // Consume credits / run workflows
+      add_company_data_points: "high",
+      add_contact_data_points: "high",
+      run_subroutine: "high",
+      run_subroutine_direct: "high",
+      run_subroutine_no_mapping: "high",
+    },
+    toolDisplayLabels: {
+      add_company_data_points: {
+        running: "Enriching companies on Clay",
+        done: "Enriched companies on Clay",
+      },
+      add_contact_data_points: {
+        running: "Enriching contacts on Clay",
+        done: "Enriched contacts on Clay",
+      },
+      ask_question_about_accounts: {
+        running: "Asking a question about accounts on Clay",
+        done: "Asked a question about accounts on Clay",
+      },
+      get_credits_available: {
+        running: "Checking available credits on Clay",
+        done: "Checked available credits on Clay",
+      },
+      get_current_workspace: {
+        running: "Loading the current workspace from Clay",
+        done: "Loaded the current workspace from Clay",
+      },
+      get_subroutine_input_options: {
+        running: "Loading subroutine input options from Clay",
+        done: "Loaded subroutine input options from Clay",
+      },
+      get_task: {
+        running: "Fetching a task from Clay",
+        done: "Fetched a task from Clay",
+      },
+      get_task_context: {
+        running: "Fetching task details from Clay",
+        done: "Fetched task details from Clay",
+      },
+      list_subroutines: {
+        running: "Listing subroutines on Clay",
+        done: "Listed subroutines on Clay",
+      },
+      load_more_search_results: {
+        running: "Loading more search results from Clay",
+        done: "Loaded more search results from Clay",
+      },
+      query_objects: {
+        running: "Searching accounts, contacts and deals on Clay",
+        done: "Searched accounts, contacts and deals on Clay",
+      },
+      run_subroutine: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      run_subroutine_direct: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      run_subroutine_no_mapping: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      search_companies: {
+        running: "Searching companies on Clay",
+        done: "Searched companies on Clay",
+      },
+      search_contacts: {
+        running: "Searching contacts on Clay",
+        done: "Searched contacts on Clay",
+      },
+      search_contacts_by_name: {
+        running: "Searching contacts by name on Clay",
+        done: "Searched contacts by name on Clay",
+      },
+      track_event: {
+        running: "Tracking an event on Clay",
+        done: "Tracked an event on Clay",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

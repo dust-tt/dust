@@ -12,6 +12,7 @@ export { default as CanvaLogo } from "./Canva";
 export { default as ChromeLogo } from "./Chrome";
 export { default as ClariLogo } from "./Clari";
 export { default as ClaudeLogo } from "./Claude";
+export { default as ClayLogo } from "./Clay";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
 export { default as ContentsquareLogo } from "./Contentsquare";

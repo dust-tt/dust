@@ -6109,6 +6109,99 @@ export const tailoredEnrichments: Record<
     ],
     relatedIntegrations: ["spendesk", "netsuite", "stripe"],
   },
+  // Clay: 19 real tools.
+  clay: {
+    seoTitle: "Enrich companies and contacts with Clay from Dust",
+    seoSubtitle:
+      "Search companies and contacts, enrich them with Clay data points, and run your Clay subroutines from a conversation.",
+    tagline:
+      "Find and enrich prospects with Clay, right from your Dust conversation.",
+    chatStoryline: {
+      userPrompt:
+        "Find fintech companies in France with 50 to 200 employees, then enrich them with their latest funding round.",
+      toolCalls: [
+        "get_credits_available",
+        "search_companies",
+        "add_company_data_points",
+      ],
+      completedInSeconds: 14,
+      responseIntro:
+        "I searched Clay for French fintech companies with 50 to 200 employees and added their latest funding round. This used 12 credits.",
+      responseSections: [
+        {
+          heading: "Companies enriched (3)",
+          bullets: [
+            {
+              title: "Lumio Pay",
+              body: "87 employees. Series A, €12M, March 2026.",
+            },
+            {
+              title: "Finbridge",
+              body: "142 employees. Series B, €30M, January 2026.",
+            },
+            {
+              title: "Alto Capital",
+              body: "64 employees. Seed, €4M, November 2025.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to find the heads of finance at these companies?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "Search companies and contacts",
+        description:
+          "Describe your target in plain language. Dust searches Clay for matching companies and contacts and loads more results when you need them.",
+        toolMatches: [
+          "search_companies",
+          "search_contacts",
+          "load_more_search_results",
+        ],
+      },
+      {
+        icon: "ActionTableIcon",
+        color: "green",
+        title: "Enrich with data points",
+        description:
+          "Add Clay data points to companies and contacts, such as funding, headcount, or work email. Dust asks for your approval before using credits.",
+        toolMatches: ["add_company_data_points", "add_contact_data_points"],
+      },
+      {
+        icon: "ActionRocketIcon",
+        color: "golden",
+        title: "Run your Clay subroutines",
+        description:
+          "List the subroutines in your workspace and run them on a company or contact, with your approval. Check your remaining credits first.",
+        toolMatches: [
+          "list_subroutines",
+          "run_subroutine",
+          "get_credits_available",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Clay?",
+        answer:
+          "Search companies and contacts, query accounts, contacts, and deals, enrich them with data points, run subroutines, and check your available credits. Actions that use credits ask for your approval first.",
+      },
+      {
+        question: "Does using Clay from Dust consume credits?",
+        answer:
+          "Yes. Tools consume your Clay workspace credits at the same rate as in Clay. Dust asks for your confirmation before enrichments and subroutine runs.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Clay uses OAuth with dynamic client registration. You sign in to your Clay workspace and approve access from Dust.",
+      },
+    ],
+    relatedIntegrations: ["hubspot", "salesforce", "lemlist"],
+  },
 };
 
 // Regional variants run the same MCP server in another region, with the same

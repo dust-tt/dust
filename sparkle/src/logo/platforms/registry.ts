@@ -14,6 +14,7 @@ import CanvaLogo from "./Canva";
 import ChromeLogo from "./Chrome";
 import ClariLogo from "./Clari";
 import ClaudeLogo from "./Claude";
+import ClayLogo from "./Clay";
 import CohereLogo from "./Cohere";
 import ConfluenceLogo from "./Confluence";
 import ContentsquareLogo from "./Contentsquare";
@@ -134,6 +135,7 @@ export const PLATFORM_LOGOS = {
   ChromeLogo,
   ClariLogo,
   ClaudeLogo,
+  ClayLogo,
   CohereLogo,
   ConfluenceLogo,
   ContentsquareLogo,
