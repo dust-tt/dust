@@ -114,6 +114,20 @@ const hocuspocus = new Hocuspocus<LiveFile>({
 const app = createHono();
 app.route("/api/healthz", healthzApp);
 
+// crossws types the upgraded socket as a partial WebSocket; on Node it is a full `ws` socket.
+function isWebSocketLike(socket: unknown): socket is WebSocketLike {
+  return (
+    typeof socket === "object" &&
+    socket !== null &&
+    "send" in socket &&
+    typeof socket.send === "function" &&
+    "close" in socket &&
+    typeof socket.close === "function" &&
+    "readyState" in socket &&
+    typeof socket.readyState === "number"
+  );
+}
+
 // crossws turns HTTP upgrades into WebSockets and hands them to Hocuspocus, as Hocuspocus's own
 // server does, so Hono and Hocuspocus share one HTTP server and one port.
 type ClientConnection = ReturnType<typeof hocuspocus.handleConnection>;
@@ -122,15 +136,16 @@ const connections = new WeakMap<Peer, ClientConnection>();
 const ws = crossws({
   hooks: {
     open(peer) {
-      // crossws types the upgraded socket as a partial WebSocket; Hocuspocus's own server
-      // passes the same object.
-      connections.set(
-        peer,
-        hocuspocus.handleConnection(
-          peer.websocket as WebSocketLike,
-          peer.request
-        )
-      );
+      const socket = peer.websocket;
+      if (!isWebSocketLike(socket)) {
+        logger.error(
+          { peerId: peer.id },
+          "Collab peer has no usable WebSocket"
+        );
+        peer.close(1011, "Unsupported connection");
+        return;
+      }
+      connections.set(peer, hocuspocus.handleConnection(socket, peer.request));
     },
     message(peer, message) {
       connections.get(peer)?.handleMessage(message.uint8Array());
