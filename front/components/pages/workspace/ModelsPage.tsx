@@ -16,11 +16,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 const MODELS_TABS = ["providers", "tiers", "apps"] as const;
 type ModelsTab = (typeof MODELS_TABS)[number];
 
 export function ModelsPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { hasFeature } = useFeatureFlags();
   const showApps = hasFeature("legacy_dust_apps");
@@ -45,15 +47,17 @@ export function ModelsPage() {
   return (
     <AdminPageContainer>
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title="Models" />
+        <Page.Header title={t`Models`} />
         <Tabs
           value={activeTab}
           onValueChange={(value) => setTab(value as ModelsTab)}
         >
           <TabsList className="mb-6">
-            <TabsTrigger value="providers" label="Providers" />
-            <TabsTrigger value="tiers" label="Access tiers" />
-            {showApps && <TabsTrigger value="apps" label="App Credentials" />}
+            <TabsTrigger value="providers" label={t`Providers`} />
+            <TabsTrigger value="tiers" label={t`Access tiers`} />
+            {showApps && (
+              <TabsTrigger value="apps" label={t`App Credentials`} />
+            )}
           </TabsList>
           <TabsContent value="providers" className="flex flex-col gap-4">
             <AdminSectionAnchor

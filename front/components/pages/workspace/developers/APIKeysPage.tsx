@@ -1,6 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
-import { API_KEYS_PAGE_TITLE } from "@app/components/pages/workspace/developers/apiKeysAdminSearchEntries";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
@@ -24,9 +23,10 @@ import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -51,6 +51,7 @@ function APIKeysOverview({
   period,
   isKeysLoading,
 }: APIKeysOverviewProps) {
+  const { t } = useLingui();
   const apiKeyNames = useMemo(
     () => [...new Set(keys.map((key) => key.name))].sort(),
     [keys]
@@ -89,28 +90,42 @@ function APIKeysOverview({
     (key) => key.status === "active" && key.isSpendCapped
   ).length;
   const revokedKeyCount = keys.length - activeKeyCount;
+  const consumingKeyCountLabel = formatNumber(consumingKeyCount);
+  const activeKeyCountLabel = formatNumber(activeKeyCount);
+  const keyCountLabel = formatNumber(keys.length);
+  const cappedKeyCountLabel = formatNumber(cappedKeyCount);
+  const revokedKeyCountLabel = formatNumber(revokedKeyCount);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <SummaryCard
-        label="Credits"
+        label={t`Credits`}
         value={consumptionError ? "—" : formatCredits(totalCredits)}
         hint={
           consumptionError
-            ? "Credit consumption is temporarily unavailable"
+            ? t`Credit consumption is temporarily unavailable`
             : consumingKeyCount > 0
-              ? `${formatNumber(consumingKeyCount)} API key${pluralize(consumingKeyCount)} used this period`
-              : "No API key consumption this period"
+              ? t`${plural(consumingKeyCount, {
+                  one: `${consumingKeyCountLabel} API key used this period`,
+                  other: `${consumingKeyCountLabel} API keys used this period`,
+                })}`
+              : t`No API key consumption this period`
         }
       />
       <SummaryCard
-        label="Keys active"
-        value={`${formatNumber(activeKeyCount)} / ${formatNumber(keys.length)}`}
+        label={t`Keys active`}
+        value={`${activeKeyCountLabel} / ${keyCountLabel}`}
         hint={
           cappedKeyCount > 0
-            ? `${formatNumber(cappedKeyCount)} at the monthly cap`
+            ? t`${plural(cappedKeyCount, {
+                one: `${cappedKeyCountLabel} at the monthly cap`,
+                other: `${cappedKeyCountLabel} at the monthly cap`,
+              })}`
             : revokedKeyCount > 0
-              ? `${formatNumber(revokedKeyCount)} revoked`
+              ? t`${plural(revokedKeyCount, {
+                  one: `${revokedKeyCountLabel} revoked`,
+                  other: `${revokedKeyCountLabel} revoked`,
+                })}`
               : null
         }
       />
@@ -119,6 +134,7 @@ function APIKeysOverview({
 }
 
 export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
+  const { t } = useLingui();
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
@@ -165,17 +181,16 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
         if (response.status >= 200 && response.status < 300) {
           setIsNewApiKeyCreatedOpen(true);
           sendNotification({
-            title: "API Key Created",
-            description:
-              "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API.",
+            title: t`API Key Created`,
+            description: t`Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API.`,
             type: "success",
           });
           return;
         }
         const errorResponse = await response.json();
         sendNotification({
-          title: "Error creating API key",
-          description: get(errorResponse, "error.message", "Unknown error"),
+          title: t`Error creating API key`,
+          description: get(errorResponse, "error.message", t`Unknown error`),
           type: "error",
         });
       }
@@ -211,15 +226,15 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       await mutate(`/api/w/${owner.sId}/keys`);
       if (response.ok) {
         sendNotification({
-          title: "Monthly cap updated",
+          title: t`Monthly cap updated`,
           type: "success",
         });
         setEditCapKey(null);
       } else {
         const errorResponse = await response.json();
         sendNotification({
-          title: "Error updating monthly cap",
-          description: get(errorResponse, "error.message", "Unknown error"),
+          title: t`Error updating monthly cap`,
+          description: get(errorResponse, "error.message", t`Unknown error`),
           type: "error",
         });
       }
@@ -245,15 +260,15 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       await mutate(`/api/w/${owner.sId}/keys`);
       if (response.ok) {
         sendNotification({
-          title: "Credit cap updated",
+          title: t`Credit cap updated`,
           type: "success",
         });
         setEditCapKey(null);
       } else {
         const errorResponse = await response.json();
         sendNotification({
-          title: "Error updating credit cap",
-          description: get(errorResponse, "error.message", "Unknown error"),
+          title: t`Error updating credit cap`,
+          description: get(errorResponse, "error.message", t`Unknown error`),
           type: "error",
         });
       }
@@ -274,7 +289,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       <Page.Vertical align="stretch" gap="xl">
         <Page.Horizontal align="right">
           <Button
-            label="API Reference"
+            label={t`API Reference`}
             size="sm"
             variant="outline"
             icon={BookOpen01}
@@ -351,10 +366,14 @@ export function APIKeysPage() {
           title={
             <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div className="flex max-w-2xl flex-col gap-1">
-                <Page.H variant="h3">{API_KEYS_PAGE_TITLE}</Page.H>
+                <Page.H variant="h3">
+                  <Trans>Dust API Keys</Trans>
+                </Page.H>
                 <Page.P variant="secondary">
-                  Create and manage keys to access the Dust API, track their
-                  usage, and control their monthly spend.
+                  <Trans>
+                    Create and manage keys to access the Dust API, track their
+                    usage, and control their monthly spend.
+                  </Trans>
                 </Page.P>
               </div>
               <ConsumptionPeriodSelector

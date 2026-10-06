@@ -2,11 +2,15 @@ import { getGovernancePermissionMetadata } from "@app/components/pages/workspace
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
 import type {
+  CapabilityKey,
   GovernancePermission,
   GovernancePermissionConfiguration,
   PermissionConfigurationScope,
 } from "@app/types/group_permissions";
-import { isValidPermissionConfigurationScope } from "@app/types/group_permissions";
+import {
+  capabilityKey,
+  isValidPermissionConfigurationScope,
+} from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
@@ -18,6 +22,54 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState } from "react";
+
+const GOVERNANCE_SETTING_TEXTS: Partial<
+  Record<
+    CapabilityKey,
+    { label: MessageDescriptor; description: MessageDescriptor }
+  >
+> = {
+  "create:agent": {
+    label: msg`Create agents`,
+    description: msg`Who can create agents in the Agent Builder`,
+  },
+  "publish:agent": {
+    label: msg`Publish agents`,
+    description: msg`Who can publish agents to the whole workspace`,
+  },
+  "create:skill": {
+    label: msg`Create skills`,
+    description: msg`Who can create custom skills`,
+  },
+  "publish:skill": {
+    label: msg`Manage skill availability`,
+    description: msg`Who can make skills available across the workspace`,
+  },
+  "make_discoverable:skill": {
+    label: msg`Make skills discoverable to agents`,
+    description: msg`Who can make skills discoverable to @Dust and agents with Discover Skills`,
+  },
+  "invite:frame": {
+    label: msg`Invite people by email`,
+    description: msg`Who can share frames by email with people outside your organization`,
+  },
+  "publish:frame": {
+    label: msg`Share by public link`,
+    description: msg`Who can create public links to frames`,
+  },
+  "admin:billing": {
+    label: msg`Access billing features`,
+    description: msg`Who can manage billing settings, invoices, and payment methods`,
+  },
+  "admin:security": {
+    label: msg`Access security features`,
+    description: msg`Who can manage user access, identities, and provisioning`,
+  },
+  "use_workspace_pool:trigger": {
+    label: msg`Charge automations to the workspace`,
+    description: msg`Who can run a trigger on the workspace credit pool instead of their own`,
+  },
+};
 
 const PERMISSION_SCOPE_OPTIONS: {
   value: PermissionConfigurationScope;
@@ -80,6 +132,7 @@ export const GovernanceSettingRow = ({
   );
 
   const metadata = getGovernancePermissionMetadata(governancePermission);
+  const texts = GOVERNANCE_SETTING_TEXTS[capabilityKey(governancePermission)];
 
   const { selectedGroups, selectableGroups, hasMissingGroups } =
     getGroupSelection(configuration, groups);
@@ -147,8 +200,8 @@ export const GovernanceSettingRow = ({
 
   return (
     <GovernanceSettingRowLayout
-      label={metadata.label}
-      description={metadata.description}
+      label={texts ? t(texts.label) : metadata.label}
+      description={texts ? t(texts.description) : metadata.description}
       action={
         !metadata.isGroupsOnly ? (
           <ButtonsSwitchList

@@ -37,6 +37,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import type { BillingPeriod } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   Chip,
@@ -52,6 +53,8 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React, { useEffect, useState } from "react";
 import type { z } from "zod";
 
@@ -68,6 +71,8 @@ function CancelSubscriptionDialog({
   onValidate,
   isSaving,
 }: CancelSubscriptionDialogProps) {
+  const { t } = useLingui();
+
   return (
     <Dialog
       open={show}
@@ -79,10 +84,14 @@ function CancelSubscriptionDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Cancel subscription</DialogTitle>
+          <DialogTitle>
+            <Trans>Cancel subscription</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Your subscription will end at the end of your current billing
-            period.
+            <Trans>
+              Your subscription will end at the end of your current billing
+              period.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -91,16 +100,18 @@ function CancelSubscriptionDialog({
               <Spinner variant="dark" size="md" />
             </div>
           ) : (
-            <div>Are you sure you want to proceed?</div>
+            <div>
+              <Trans>Are you sure you want to proceed?</Trans>
+            </div>
           )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Keep subscription",
+            label: t`Keep subscription`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Yes, cancel subscription",
+            label: t`Yes, cancel subscription`,
             variant: "warning",
             onClick: onValidate,
           }}
@@ -110,7 +121,40 @@ function CancelSubscriptionDialog({
   );
 }
 
+interface EstimatedBillingMessageProps {
+  billingPeriod: BillingPeriod;
+  estimatedBilling: string | null;
+}
+
+function EstimatedBillingMessage({
+  billingPeriod,
+  estimatedBilling,
+}: EstimatedBillingMessageProps) {
+  switch (billingPeriod) {
+    case "yearly":
+      return (
+        <Trans>
+          Estimated yearly billing:{" "}
+          <span className="font-bold">{estimatedBilling}</span> (excluding
+          taxes).
+        </Trans>
+      );
+    case "monthly":
+      return (
+        <Trans>
+          Estimated monthly billing:{" "}
+          <span className="font-bold">{estimatedBilling}</span> (excluding
+          taxes).
+        </Trans>
+      );
+    default:
+      assertNeverAndIgnore(billingPeriod);
+      return null;
+  }
+}
+
 export function SubscriptionPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription, user: authUser } = useAuth();
   const isMetronomeCheckout = useIsMetronomeCheckout();
@@ -143,10 +187,11 @@ export function SubscriptionPage() {
   useEffect(() => {
     if (type === "succeeded") {
       if (subscription.plan.code === planCode) {
+        const planName = subscription.plan.name;
         sendNotification({
           type: "success",
-          title: `Subscription to ${subscription.plan.name}`,
-          description: `Your subscription to ${subscription.plan.name} is now active. Thank you for your trust.`,
+          title: t`Subscription to ${planName}`,
+          description: t`Your subscription to ${planName} is now active. Thank you for your trust.`,
         });
         // Then we remove the query params to avoid going through this logic again.
         void router.push(
@@ -159,9 +204,10 @@ export function SubscriptionPage() {
       } else {
         // If the Stripe webhook is not yet received, we try waiting for it and reload the page every 5 seconds until it's done.
         setIsWebhookProcessing(true);
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           void router.reload();
         }, 5000);
+        return () => clearTimeout(timeoutId);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,15 +257,14 @@ export function SubscriptionPage() {
     if (!res.ok) {
       sendNotification({
         type: "error",
-        title: "Upgrade failed",
-        description: "Failed to upgrade to Enterprise seat-based plan.",
+        title: t`Upgrade failed`,
+        description: t`Failed to upgrade to Enterprise seat-based plan.`,
       });
     } else {
       sendNotification({
         type: "success",
-        title: "Upgrade successful",
-        description:
-          "Your workspace has been upgraded to Enterprise seat-based plan.",
+        title: t`Upgrade successful`,
+        description: t`Your workspace has been upgraded to Enterprise seat-based plan.`,
       });
       router.reload();
     }
@@ -296,6 +341,19 @@ export function SubscriptionPage() {
       )
     : null;
 
+  const estimatedBilling = perSeatPricing
+    ? getPriceAsString({
+        currency: perSeatPricing.seatCurrency,
+        priceInCents: perSeatPricing.seatPrice * workspaceSeats,
+      })
+    : null;
+  const seatPrice = perSeatPricing
+    ? getPriceAsString({
+        currency: perSeatPricing.seatCurrency,
+        priceInCents: perSeatPricing.seatPrice,
+      })
+    : null;
+
   if (isLoading) {
     return (
       <AdminPageContainer>
@@ -324,23 +382,28 @@ export function SubscriptionPage() {
         )}
 
         <Page.Vertical gap="xl" align="stretch">
-          <Page.Header title="Subscription" description="Manage your plan." />
+          <Page.Header
+            title={t`Subscription`}
+            description={t`Manage your plan.`}
+          />
           <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.subscription.plan}>
             <Page.Vertical align="stretch" gap="md">
-              <Page.H variant="h5">Your plan </Page.H>
+              <Page.H variant="h5">
+                <Trans>Your plan</Trans>
+              </Page.H>
 
               {isCancelled && endDate && (
                 <ContentMessage
-                  title={`Your subscription ends on ${endDate}.`}
+                  title={t`Your subscription ends on ${endDate}.`}
                   variant="warning"
                 >
                   {isEnterprisePlanPrefix(plan.code) ? (
-                    <>
+                    <Trans>
                       Please reach out to your account manager to ensure
                       continuity.
-                    </>
+                    </Trans>
                   ) : (
-                    <>
+                    <Trans>
                       Connections will be deleted and members will be revoked.
                       Details{" "}
                       <LinkWrapper
@@ -351,7 +414,7 @@ export function SubscriptionPage() {
                         here
                       </LinkWrapper>
                       .
-                    </>
+                    </Trans>
                   )}
                 </ContentMessage>
               )}
@@ -365,7 +428,7 @@ export function SubscriptionPage() {
                         <Chip size="sm" color={chipColor} label={planLabel} />
                         {canCancelSubscription && (
                           <Button
-                            label="Cancel subscription"
+                            label={t`Cancel subscription`}
                             variant="outline"
                             disabled={isCancellingSubscription}
                             onClick={() => {
@@ -375,7 +438,7 @@ export function SubscriptionPage() {
                         )}
                         {canResumeSubscription && (
                           <Button
-                            label="Resume subscription"
+                            label={t`Resume subscription`}
                             variant="primary"
                             disabled={isResumingSubscription}
                             onClick={() => {
@@ -389,47 +452,29 @@ export function SubscriptionPage() {
                 </div>
                 {subscription.stripeSubscriptionId && (
                   <Page.Vertical gap="sm">
-                    <Page.H variant="h5">Billing</Page.H>
+                    <Page.H variant="h5">
+                      <Trans>Billing</Trans>
+                    </Page.H>
                     {perSeatPricing !== null && (
                       <>
                         <Page.P>
-                          Estimated {perSeatPricing.billingPeriod} billing:{" "}
-                          <span className="font-bold">
-                            {getPriceAsString({
-                              currency: perSeatPricing.seatCurrency,
-                              priceInCents:
-                                perSeatPricing.seatPrice * workspaceSeats,
-                            })}
-                          </span>{" "}
-                          (excluding taxes).
+                          <EstimatedBillingMessage
+                            billingPeriod={perSeatPricing.billingPeriod}
+                            estimatedBilling={estimatedBilling}
+                          />
                         </Page.P>
                         <Page.P>
-                          {workspaceSeats === 1 ? (
-                            <>
-                              {workspaceSeats} member,{" "}
-                              {getPriceAsString({
-                                currency: perSeatPricing.seatCurrency,
-                                priceInCents: perSeatPricing.seatPrice,
-                              })}{" "}
-                              per member.
-                            </>
-                          ) : (
-                            <>
-                              {workspaceSeats} members,{" "}
-                              {getPriceAsString({
-                                currency: perSeatPricing.seatCurrency,
-                                priceInCents: perSeatPricing.seatPrice,
-                              })}{" "}
-                              per member.
-                            </>
-                          )}
+                          {t`${plural(workspaceSeats, {
+                            one: `# member, ${seatPrice} per member.`,
+                            other: `# members, ${seatPrice} per member.`,
+                          })}`}
                         </Page.P>
                       </>
                     )}
                     <div className="my-5">
                       <Button
                         icon={CreditCard01}
-                        label="Your billing dashboard on Stripe"
+                        label={t`Your billing dashboard on Stripe`}
                         variant="ghost"
                         onClick={withTracking(
                           TRACKING_AREAS.AUTH,
@@ -444,14 +489,18 @@ export function SubscriptionPage() {
                 )}
                 {canUpsellToBusinessPlan && (
                   <Page.Vertical gap="sm">
-                    <Page.H variant="h5">Upgrade your plan</Page.H>
+                    <Page.H variant="h5">
+                      <Trans>Upgrade your plan</Trans>
+                    </Page.H>
                     <Page.P>
-                      You are eligible to upgrade to the Enteprise seat-based
-                      plan with additional features.
+                      <Trans>
+                        You are eligible to upgrade to the Enterprise seat-based
+                        plan with additional features.
+                      </Trans>
                     </Page.P>
                     <div>
                       <Button
-                        label="Upgrade to Enterprise seat-based plan"
+                        label={t`Upgrade to Enterprise seat-based plan`}
                         variant="primary"
                         disabled={isProcessing}
                         onClick={withTracking(
@@ -470,7 +519,9 @@ export function SubscriptionPage() {
                     {isMetronomeCheckout ? (
                       <>
                         <div className="flex items-start justify-between gap-4">
-                          <Page.H variant="h5">Choose a plan</Page.H>
+                          <Page.H variant="h5">
+                            <Trans>Choose a plan</Trans>
+                          </Page.H>
                           <BillingPeriodSwitch
                             defaultValue={billingPeriod}
                             onValueChange={setBillingPeriod}
@@ -489,9 +540,13 @@ export function SubscriptionPage() {
                       <>
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <Page.H variant="h5">Choose a plan</Page.H>
+                            <Page.H variant="h5">
+                              <Trans>Choose a plan</Trans>
+                            </Page.H>
                             <Page.P>
-                              Pick a plan that best suits your team.
+                              <Trans>
+                                Pick a plan that best suits your team.
+                              </Trans>
                             </Page.P>
                           </div>
                           {!isWorkspaceWhitelistedBusinessPlan && (
