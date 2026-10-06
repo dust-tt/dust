@@ -13,16 +13,22 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 
 ## 2. Client cache and writeback
 
-- [ ] Accounted 1 GiB cache, 256 MiB dirty cap, bounded queues and backpressure.
-- [ ] One-second metadata/name/authorization validity; version-validated retained blocks.
-- [ ] Object-scoped async coalescing, namespace dependencies, create plus initial-write bundling.
-- [ ] Object-only fsync, deferred failures, coherent local reads, orderly shutdown drain.
-- [ ] Bounded directory attribute prefetch; direct I/O and zero kernel cache TTLs.
+- [x] Accounted 1 GiB cache including FUSE identities/cursors, 256 MiB dirty cap, bounded queues and backpressure.
+- [x] One-second metadata/name/authorization validity; version-validated retained blocks.
+- [x] Object-scoped async coalescing, namespace dependencies, create plus initial-write bundling.
+- [x] Object-only fsync, deferred failures, coherent local reads, orderly shutdown drain.
+- [x] Bounded directory attribute prefetch; direct I/O and zero kernel cache TTLs.
 
 ## 3. Validation and measurements
 
-- [ ] Cache expiry, concurrent writers, failed prerequisites, and memory-pressure tests.
-- [ ] Mounted filesystem tests including two clients, grants, rename, unlink, sparse files, and fsync.
+- [x] Real-network tests for cache expiry/revocation, stalled unrelated RPCs, failed prerequisites, and memory pressure.
+- [x] Real FDB concurrent-writer tests and mounted rename, unlink, sparse files, xattrs, fsync, and external-server edits.
 - [ ] Release build, full local deep-subtree 10k untar and existing filesystem benchmark.
 - [ ] `bench/RESULTS.md` with the full table, untar, client drain, configuration, and limitations.
 - [ ] Local run instructions and final design/code-contract consistency review.
+
+## Follow-up evaluation
+
+- [ ] 100k-file and multi-server contention benchmarks, then the separately authorized GCP evaluation.
+- [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
+- [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.

@@ -31,7 +31,8 @@ impl Api {
             .0
             .admission
             .clone()
-            .try_acquire_owned()
+            .acquire_owned()
+            .await
             .map_err(|_| status(ErrorCode::Capacity))?;
         let state = self.0.clone();
         let value = tokio::spawn(async move {
@@ -100,7 +101,15 @@ async fn apply_group(
     session: Arc<auth::SessionState>,
     changes: Vec<Change>,
 ) -> Result<Mutation> {
+    #[cfg(test)]
+    crate::tests::pause(&state, &changes).await;
     let _profile = Guard::new(Phase::Batch);
+    let first = changes
+        .first()
+        .ok_or_else(|| status(ErrorCode::InvalidInput))?;
+    validate::id_ref(first.primary_id())?;
+    let scheduling = state.schedule(&session.info.tenant_id, first.primary_id());
+    let _scheduled = scheduling.lock().await;
     let _gate = session.gate.read().await;
     state
         .storage

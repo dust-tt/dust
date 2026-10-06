@@ -360,6 +360,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tonic",
+ "uuid",
 ]
 
 [[package]]
@@ -374,6 +375,7 @@ dependencies = [
  "libc",
  "nix 0.30.1",
  "parking_lot",
+ "serde_json",
  "signal-hook",
  "tonic",
 ]

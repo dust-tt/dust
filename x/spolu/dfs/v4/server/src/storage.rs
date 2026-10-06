@@ -89,14 +89,26 @@ impl Storage {
         F: FnMut(Arc<Snapshot>) -> Fut,
         Fut: Future<Output = Result<(WriteBatch, T), Status>>,
     {
-        for attempt in 0..8 {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        for attempt in 0..1024 {
             let snapshot = self.snapshot().await?;
             let (batch, result) = operation(snapshot.clone()).await?;
             batch.apply(&snapshot)?;
             match commit(snapshot).await {
                 Ok(_) => return Ok(result),
-                Err(e) if e.is_retryable_not_committed() && attempt < 7 => (),
-                Err(e) => return Err(failed(e)),
+                Err(e)
+                    if e.is_retryable_not_committed()
+                        && attempt < 1023
+                        && std::time::Instant::now() < deadline =>
+                {
+                    // Concurrent creates share a parent. Jitter avoids retrying their conflicts in lockstep.
+                    let jitter = 1 + (uuid::Uuid::new_v4().as_u128() % 8) as u64;
+                    tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;
+                }
+                Err(e) => {
+                    tracing::warn!(fdb_code = e.code(), attempt, "FDB commit failed");
+                    return Err(failed(e));
+                }
             }
         }
         Err(status(ErrorCode::Unavailable))
@@ -297,8 +309,16 @@ impl WriteBatch {
                 Mutation::Clear(a, b) => view.transaction.clear_range(&view.key(a), &view.key(b)),
             }
         }
-        // Subsequent edits in this atomic group must observe the transaction's own writes.
-        view.cells.lock().clear();
+        // Retain unchanged transaction-local reads, but never reuse a value changed by this group.
+        let mut cells = view.cells.lock();
+        for mutation in &self.0 {
+            match mutation {
+                Mutation::Put(key, _) | Mutation::Delete(key) => {
+                    cells.remove(key);
+                }
+                Mutation::Clear(start, end) => cells.retain(|key, _| key < start || key >= end),
+            }
+        }
         Ok(())
     }
 }

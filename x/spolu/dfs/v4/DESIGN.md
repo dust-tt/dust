@@ -1,6 +1,6 @@
 # dfs:// v4
 
-**Proposal.** Rust/Linux FUSE with a large userspace cache → batched gRPC → independently writable
+Rust/Linux FUSE with a large userspace cache → batched gRPC → independently writable
 Rust servers → shared FoundationDB. Move write coalescing and read caching from the v3 server to
 the client. Ordinary mutations acknowledge client RAM; the server acknowledges FDB commits.
 No application WAL, server writeback, search, or subscriptions initially.
@@ -68,6 +68,11 @@ pages, blocks, dirty edits, queued/in-flight payloads, and bookkeeping. Initiall
 **256 MiB within that budget**. Also bound entry counts and concurrent requests. Evict clean entries
 with LRU; never silently evict acknowledged dirty data. No disk recovery initially.
 
+FUSE inode identities, handles and directory cursors share that budget through lifetime reservations;
+keep 96 MiB aside for bounded transient I/O and scheduler overhead. Bound retained primary edit groups
+to 64 per object, applying backpressure before further acceptance. Parent membership edits use a
+separate index, so completing one child does not replay every sibling's payload.
+
 Cache state belongs to the authenticated tenant/session; aliases and handles share object state by
 stable ID. Cached authorization must not cross session/grant sets. Keep:
 
@@ -133,6 +138,12 @@ Coalesce adjacent/overlapping writes and metadata changes on the same object, pr
 append, and namespace ordering. Append chooses the final EOF in the server transaction. Stream large
 files through bounded groups; neither side needs to materialize an entire file.
 
+Background dispatch prefers disjoint object sets to avoid this client's own FDB conflicts. Fsync
+and the oldest edit's buffering deadline bypass that preference; it creates no dependency between
+sibling files. Independent clients still contend in FDB. Bound the queue to 4,096 groups, with four
+in-flight envelopes of at most 32 groups / 1 MiB. Server admission queues requests at its concurrency
+bound; only known noncommits retry, with bounded jitter, never uncertain outcomes.
+
 Clients allocate stable IDs for tentative creates; servers validate that those IDs are unused. A
 create may absorb its initial content and attributes before dispatch while its group stays within
 limits. Independent sibling creates remain independent groups even when sent in one RPC.
@@ -164,6 +175,11 @@ parallel. Validate the actual parent chain and matching session grant in the cur
 stale hints fall back to ordinary resolution and can never authorize or deny access by themselves.
 There is no authoritative server read cache or write buffer. Ordinary FDB retries apply
 only to known noncommits, respect the independent RPC deadline, and recompute against current state.
+
+Each process also schedules same-primary-object transactions fairly (the parent for creates, the
+target for file edits). This avoids self-contention when a batch contains sibling creates. These
+short-lived gates are only a scheduling optimization: different servers still coordinate solely
+through FDB, and every transaction reads current state after acquiring its gate. No tenant gate.
 
 | Operation | Objects changed atomically |
 | --- | --- |

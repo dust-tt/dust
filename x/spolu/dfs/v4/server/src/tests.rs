@@ -8,6 +8,24 @@ use dfs_protocol::{
 use futures::TryStreamExt;
 use tonic::Request;
 
+// Deterministic network stalls; storage and authorization still use the real FDB fixture.
+pub(super) type Pauses = parking_lot::Mutex<std::collections::HashMap<String, Arc<Pause>>>;
+pub(super) struct Pause {
+    entered: tokio::sync::Notify,
+    release: Semaphore,
+}
+pub(super) async fn pause(state: &State, changes: &[mutation::Change]) {
+    let paused = changes
+        .first()
+        .and_then(|c| state.pauses.lock().get(c.primary_id()).cloned());
+    if let Some(paused) = paused {
+        paused.entered.notify_one();
+        if let Ok(permit) = paused.release.acquire().await {
+            permit.forget();
+        }
+    }
+}
+
 fn request<T>(key: &str, body: T) -> Result<Request<T>> {
     let mut request = Request::new(body);
     request
@@ -487,6 +505,402 @@ fn real_fdb_contracts() -> Result<()> {
             .err()
             .context("stale authorization must conflict")?;
         assert!(conflict.is_retryable_not_committed());
+        client_cache_contracts().await?;
         Ok(())
     })
+}
+
+async fn client_cache_contracts() -> Result<()> {
+    let fixture = Fixture::new().await?;
+    let directory = fixture
+        .create(&fixture.tenant.root_id, "cached", true)
+        .await?;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let endpoint = format!("http://{}", listener.local_addr()?);
+    let (stop, stopped) = tokio::sync::oneshot::channel();
+    let api = fixture.api.clone();
+    let task = tokio::spawn(
+        tonic::transport::Server::builder()
+            .add_service(dfs_server::DfsServer::new(api))
+            .serve_with_incoming_shutdown(transport::incoming(listener), async {
+                let _ = stopped.await;
+            }),
+    );
+    let key = fixture.owner.session_key.clone();
+    let tenant = fixture.tenant.clone();
+    let state = fixture.api.0.clone();
+    let result = tokio::task::spawn_blocking(move || -> Result<()> {
+        let client = ::dfs_client::CachedClient::connect(
+            &endpoint,
+            &key,
+            ::dfs_client::CacheConfig {
+                write_delay_ms: 1000,
+                ..Default::default()
+            },
+        )?;
+        let observer = ::dfs_client::BlockingClient::connect(&endpoint, &key)?;
+        let a = client
+            .create(CreateRequest {
+                parent_id: directory.id.clone(),
+                name: "a".into(),
+                mode: 0o644,
+                ..Default::default()
+            })?
+            .object
+            .context("a")?;
+        let b = client
+            .create(CreateRequest {
+                parent_id: directory.id.clone(),
+                name: "b".into(),
+                mode: 0o644,
+                ..Default::default()
+            })?
+            .object
+            .context("b")?;
+        client.write(WriteRequest {
+            object_id: a.id.clone(),
+            data: b"local".to_vec(),
+            ..Default::default()
+        })?;
+        client.write(WriteRequest {
+            object_id: b.id.clone(),
+            data: b"other".to_vec(),
+            ..Default::default()
+        })?;
+        let read = |id: &str| ReadRequest {
+            object_id: id.into(),
+            length: 64,
+            ..Default::default()
+        };
+        assert_eq!(client.read(read(&a.id))?.data, b"local");
+        assert_eq!(
+            code(
+                &observer
+                    .stat(ObjectRequest {
+                        object_id: a.id.clone()
+                    })
+                    .err()
+                    .context("RAM create")?
+            ),
+            ErrorCode::NotFound
+        );
+        client.fsync(ObjectRequest {
+            object_id: a.id.clone(),
+        })?;
+        assert_eq!(observer.read(read(&a.id))?.data, b"local");
+        assert_eq!(
+            code(
+                &observer
+                    .stat(ObjectRequest {
+                        object_id: b.id.clone()
+                    })
+                    .err()
+                    .context("object fsync must not flush sibling")?
+            ),
+            ErrorCode::NotFound
+        );
+        client.fsync(ObjectRequest {
+            object_id: b.id.clone(),
+        })?;
+        assert_eq!(observer.read(read(&b.id))?.data, b"other");
+
+        // An unrelated RPC stays stalled beyond C while fsync of A completes independently.
+        let stalled = Arc::new(Pause {
+            entered: Default::default(),
+            release: Semaphore::new(0),
+        });
+        state.pauses.lock().insert(b.id.clone(), stalled.clone());
+        client.write(WriteRequest {
+            object_id: b.id.clone(),
+            data: b"wait".to_vec(),
+            ..Default::default()
+        })?;
+        let waiting = client.clone();
+        let b_id = b.id.clone();
+        let blocked = std::thread::spawn(move || waiting.fsync(ObjectRequest { object_id: b_id }));
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        runtime.block_on(async {
+            tokio::time::timeout(
+                std::time::Duration::from_secs(3),
+                stalled.entered.notified(),
+            )
+            .await
+        })?;
+        client.write(WriteRequest {
+            object_id: a.id.clone(),
+            data: b"local".to_vec(),
+            ..Default::default()
+        })?;
+        let started = std::time::Instant::now();
+        let synced = client.fsync(ObjectRequest {
+            object_id: a.id.clone(),
+        });
+        stalled.release.add_permits(1);
+        state.pauses.lock().remove(&b.id);
+        blocked
+            .join()
+            .map_err(|_| anyhow::anyhow!("blocked fsync panicked"))??;
+        synced?;
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+
+        // Dirty admission must keep making progress at a small budget while preserving every byte.
+        let small = ::dfs_client::CachedClient::connect(
+            &endpoint,
+            &key,
+            ::dfs_client::CacheConfig {
+                cache_mib: 128,
+                dirty_mib: 4,
+                write_delay_ms: 10,
+                ..Default::default()
+            },
+        )?;
+        let large = small
+            .create(CreateRequest {
+                parent_id: directory.id.clone(),
+                name: "pressure".into(),
+                mode: 0o644,
+                ..Default::default()
+            })?
+            .object
+            .context("pressure file")?;
+        for block in 0..16u64 {
+            small.write(WriteRequest {
+                object_id: large.id.clone(),
+                offset: block * 262144,
+                data: vec![block as u8; 262144],
+                append: false,
+            })?;
+        }
+        small.fsync(ObjectRequest {
+            object_id: large.id.clone(),
+        })?;
+        for block in 0..16u64 {
+            assert_eq!(
+                observer
+                    .read(ReadRequest {
+                        object_id: large.id.clone(),
+                        offset: block * 262144,
+                        length: 262144,
+                        revision: vec![]
+                    })?
+                    .data,
+                vec![block as u8; 262144]
+            );
+        }
+        small.drain()?;
+
+        // A losing create fails its dependent file, but an orderly drain still publishes other work.
+        let losing = ::dfs_client::CachedClient::connect(
+            &endpoint,
+            &key,
+            ::dfs_client::CacheConfig {
+                write_delay_ms: 1000,
+                ..Default::default()
+            },
+        )?;
+        let create_dir = CreateRequest {
+            parent_id: directory.id.clone(),
+            name: "collision".into(),
+            directory: true,
+            mode: 0o755,
+            ..Default::default()
+        };
+        let folder = losing
+            .create(create_dir.clone())?
+            .object
+            .context("tentative folder")?;
+        let child = losing
+            .create(CreateRequest {
+                parent_id: folder.id.clone(),
+                name: "child".into(),
+                mode: 0o644,
+                ..Default::default()
+            })?
+            .object
+            .context("dependent child")?;
+        observer.create(create_dir)?;
+        assert_eq!(
+            code(
+                &losing
+                    .fsync(ObjectRequest {
+                        object_id: child.id.clone()
+                    })
+                    .err()
+                    .context("failed prerequisite")?
+            ),
+            ErrorCode::AlreadyExists
+        );
+        assert_eq!(
+            code(
+                &observer
+                    .stat(ObjectRequest {
+                        object_id: child.id
+                    })
+                    .err()
+                    .context("child absent")?
+            ),
+            ErrorCode::NotFound
+        );
+        assert_eq!(
+            code(
+                &losing
+                    .fsync(ObjectRequest {
+                        object_id: directory.id.clone()
+                    })
+                    .err()
+                    .context("directory deferred failure")?
+            ),
+            ErrorCode::AlreadyExists
+        );
+        let survivor = losing
+            .create(CreateRequest {
+                parent_id: directory.id.clone(),
+                name: "survivor".into(),
+                mode: 0o644,
+                ..Default::default()
+            })?
+            .object
+            .context("survivor")?;
+        assert!(losing.drain().is_err());
+        assert_eq!(
+            observer
+                .stat(ObjectRequest {
+                    object_id: survivor.id.clone()
+                })?
+                .id,
+            survivor.id
+        );
+
+        // Revocation is enforced after the client TTL, even when content blocks remain resident.
+        let admin = ::dfs_client::BlockingClient::connect(&endpoint, &tenant.tenant_key)?;
+        let grant = |attached| UpdateGrantsRequest {
+            tenant_id: tenant.tenant_id.clone(),
+            object_id: directory.id.clone(),
+            changes: vec![GrantChange {
+                grant: "reader".into(),
+                attached,
+            }],
+        };
+        admin.update_grants(grant(true))?;
+        let session = admin.create_session(CreateSessionRequest {
+            tenant_id: tenant.tenant_id.clone(),
+            grants: vec!["reader".into()],
+        })?;
+        let reader = ::dfs_client::CachedClient::connect(
+            &endpoint,
+            &session.session_key,
+            ::dfs_client::CacheConfig {
+                cache_ttl_ms: 50,
+                ..Default::default()
+            },
+        )?;
+        assert_eq!(reader.read(read(&a.id))?.data, b"local");
+        admin.update_grants(grant(false))?;
+        std::thread::sleep(std::time::Duration::from_millis(75));
+        assert_eq!(
+            code(
+                &reader
+                    .read(read(&a.id))
+                    .err()
+                    .context("revoked cached access")?
+            ),
+            ErrorCode::NotFound
+        );
+
+        // Revalidating an unchanged revision must retain its content blocks.
+        assert_eq!(client.read(read(&a.id))?.data, b"local");
+        let reads = client.metrics()["dfs_client_metrics"]["rpc.read"]["calls"]
+            .as_u64()
+            .context("read metric")?;
+        std::thread::sleep(std::time::Duration::from_millis(1050));
+        assert_eq!(client.read(read(&a.id))?.data, b"local");
+        assert_eq!(
+            client.metrics()["dfs_client_metrics"]["rpc.read"]["calls"].as_u64(),
+            Some(reads)
+        );
+        observer.write(WriteRequest {
+            object_id: a.id.clone(),
+            data: b"fresh".to_vec(),
+            ..Default::default()
+        })?;
+        std::thread::sleep(std::time::Duration::from_millis(1050));
+        assert_eq!(client.read(read(&a.id))?.data, b"fresh");
+        assert!(
+            client.metrics()["dfs_client_metrics"]["rpc.read"]["calls"]
+                .as_u64()
+                .context("read metric")?
+                > reads
+        );
+
+        // Local truncate/re-extension and sparse writes must remain coherent before publication.
+        client.update(UpdateRequest {
+            object_id: a.id.clone(),
+            size: Some(2),
+            ..Default::default()
+        })?;
+        client.update(UpdateRequest {
+            object_id: a.id.clone(),
+            size: Some(8),
+            ..Default::default()
+        })?;
+        client.write(WriteRequest {
+            object_id: a.id.clone(),
+            offset: 7,
+            data: vec![b'z'],
+            append: false,
+        })?;
+        assert_eq!(client.read(read(&a.id))?.data, b"fr\0\0\0\0\0z");
+        client.fsync(ObjectRequest {
+            object_id: a.id.clone(),
+        })?;
+        assert_eq!(observer.read(read(&a.id))?.data, b"fr\0\0\0\0\0z");
+
+        // An external unlink causes a deferred write failure; no stale handle recreates the file.
+        observer.remove(RemoveRequest {
+            object_id: a.id.clone(),
+            directory: false,
+        })?;
+        client.write(WriteRequest {
+            object_id: a.id.clone(),
+            data: b"lost".to_vec(),
+            ..Default::default()
+        })?;
+        assert_eq!(
+            code(
+                &client
+                    .fsync(ObjectRequest {
+                        object_id: a.id.clone()
+                    })
+                    .err()
+                    .context("unlink failure")?
+            ),
+            ErrorCode::NotFound
+        );
+        assert!(
+            client
+                .write(WriteRequest {
+                    object_id: a.id.clone(),
+                    data: vec![1],
+                    ..Default::default()
+                })
+                .is_err()
+        );
+        assert_eq!(
+            code(
+                &observer
+                    .stat(ObjectRequest { object_id: a.id })
+                    .err()
+                    .context("no resurrection")?
+            ),
+            ErrorCode::NotFound
+        );
+        assert!(client.drain().is_err());
+        Ok(())
+    })
+    .await?;
+    let _ = stop.send(());
+    task.await??;
+    result
 }

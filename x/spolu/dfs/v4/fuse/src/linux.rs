@@ -1,5 +1,5 @@
 use crate::inodes::Inodes;
-use ::dfs_client::BlockingClient;
+use ::dfs_client::{CacheReservation, CachedClient};
 use dfs_protocol::{MAX_IO, error::code, rpc::*};
 use fuser::*;
 use parking_lot::Mutex;
@@ -27,6 +27,7 @@ const NO_XATTR: Errno = Errno::ENODATA;
 #[cfg(target_os = "macos")]
 const NO_XATTR: Errno = Errno::ENOATTR;
 struct File {
+    _memory: CacheReservation,
     ino: u64,
     read: bool,
     write: bool,
@@ -34,19 +35,18 @@ struct File {
     closed: bool,
     failure: Option<Errno>,
 }
-#[derive(Default)]
 struct Directory {
+    _memory: CacheReservation,
     ino: u64,
     cookies: BTreeMap<u64, String>,
 }
 
-/// @cc [owner:spolu,label:architecture;concurrency] uncached-mount
-/// Only identity, open flags, directory positions, and errors may survive a callback. File handles
-/// MUST use direct I/O and all reply TTLs MUST be zero. No version or metadata cache may authorize
-/// an operation or clip its requested read length. Mutations MUST NOT be replayed after RPC failure.
+/// @cc [owner:spolu,label:architecture;concurrency] userspace-cached-mount
+/// File handles MUST use direct I/O and all reply TTLs MUST be zero. The client cache owns metadata,
+/// block validation, writeback, and object fsync. Mutations MUST NOT be replayed after RPC failure.
 pub struct Filesystem {
-    client: BlockingClient,
-    inodes: Mutex<Inodes<()>>,
+    client: CachedClient,
+    inodes: Mutex<Inodes<CacheReservation>>,
     files: Mutex<HashMap<u64, Arc<Mutex<File>>>>,
     directories: Mutex<HashMap<u64, Arc<Mutex<Directory>>>>,
     next_handle: AtomicU64,
@@ -57,16 +57,17 @@ pub struct Filesystem {
 }
 impl Filesystem {
     pub fn new(
-        client: BlockingClient,
+        client: CachedClient,
         read_only: bool,
         stopped: Arc<AtomicBool>,
     ) -> anyhow::Result<Self> {
         client.stat(ObjectRequest {
             object_id: "root".into(),
         })?;
+        let root_memory = client.reserve_bookkeeping(1024)?;
         Ok(Self {
             client,
-            inodes: Mutex::new(Inodes::new(())),
+            inodes: Mutex::new(Inodes::new(root_memory)),
             files: Default::default(),
             directories: Default::default(),
             next_handle: AtomicU64::new(1),
@@ -118,11 +119,21 @@ impl Filesystem {
             .map_err(|e| self.rpc_error(e))
     }
     fn entry(&self, parent: INodeNo, object: Object) -> Result<FileAttr> {
-        let ino = self
-            .inodes
-            .lock()
-            .lookup(parent.0, &object.id, !object.directory, ())
+        let mut inodes = self.inodes.lock();
+        let memory = match inodes
+            .existing(parent.0, &object.id, !object.directory)
+            .and_then(|ino| inodes.node(ino))
+        {
+            Some(node) => node.value,
+            None => self
+                .client
+                .reserve_bookkeeping(1024)
+                .map_err(|e| self.rpc_error(e))?,
+        };
+        let ino = inodes
+            .lookup(parent.0, &object.id, !object.directory, memory)
             .ok_or(Errno::ENOSPC)?;
+        drop(inodes);
         self.attr(INodeNo(ino), &object)
     }
     fn handle_number(&self) -> Result<u64> {
@@ -139,7 +150,7 @@ impl Filesystem {
     }
     /// @cc [owner:spolu,label:concurrency;security] create-response-handle
     /// Supplied metadata MUST be the successful create response from this callback for this inode.
-    /// It MUST NOT survive the callback or authorize later operations. Ordinary opens MUST stat.
+    /// Ordinary opens MUST resolve metadata through the client's bounded authorization cache.
     fn open_file(&self, ino: INodeNo, flags: i32, created: Option<&Object>) -> Result<FileHandle> {
         let write = flags & libc::O_ACCMODE != libc::O_RDONLY;
         let read = flags & libc::O_ACCMODE != libc::O_WRONLY;
@@ -167,10 +178,15 @@ impl Filesystem {
             if files.len() >= MAX_HANDLES {
                 return Err(Errno::EMFILE);
             }
+            let memory = self
+                .client
+                .reserve_bookkeeping(1024)
+                .map_err(|e| self.rpc_error(e))?;
             self.inodes.lock().pin(ino.0).ok_or(Errno::ESTALE)?;
             files.insert(
                 fh,
                 Arc::new(Mutex::new(File {
+                    _memory: memory,
                     ino: ino.0,
                     read,
                     write,
@@ -214,6 +230,9 @@ impl Filesystem {
         if let Some(e) = file.failure {
             return Err(e);
         }
+        self.client
+            .check_error(&self.object(ino)?)
+            .map_err(|e| self.rpc_error(e))?;
         if explicit {
             self.client
                 .fsync(ObjectRequest {
@@ -245,10 +264,14 @@ impl Filesystem {
     fn remove(&self, parent: INodeNo, name: &OsStr, directory: bool) -> Result<()> {
         let object = self.lookup_id(&self.parent(parent)?, name_str(name)?)?;
         self.client
-            .remove(RemoveRequest {
-                object_id: object.id,
-                directory,
-            })
+            .remove_at(
+                self.parent(parent)?,
+                name_str(name)?.into(),
+                RemoveRequest {
+                    object_id: object.id,
+                    directory,
+                },
+            )
             .map_err(|e| self.rpc_error(e))?;
         Ok(())
     }
@@ -434,12 +457,16 @@ impl fuser::Filesystem for Filesystem {
             }
             let object = self.lookup_id(&self.parent(parent)?, name_str(name)?)?;
             self.client
-                .rename(RenameRequest {
-                    object_id: object.id.clone(),
-                    parent_id: self.parent(newparent)?,
-                    name: name_str(newname)?.into(),
-                    replace: flags.is_empty(),
-                })
+                .rename_from(
+                    self.parent(parent)?,
+                    name_str(name)?.into(),
+                    RenameRequest {
+                        object_id: object.id.clone(),
+                        parent_id: self.parent(newparent)?,
+                        name: name_str(newname)?.into(),
+                        replace: flags.is_empty(),
+                    },
+                )
                 .map_err(|e| self.rpc_error(e))?;
             let mut inodes = self.inodes.lock();
             if let Some(ino) = inodes.existing(parent.0, &object.id, !object.directory) {
@@ -617,12 +644,18 @@ impl fuser::Filesystem for Filesystem {
             if directories.len() >= MAX_HANDLES {
                 return Err(Errno::EMFILE);
             }
+            // Up to 1024 bounded-name cookies plus container overhead for this open directory.
+            let memory = self
+                .client
+                .reserve_bookkeeping(1024 * 1024)
+                .map_err(|e| self.rpc_error(e))?;
             self.inodes.lock().pin(ino.0).ok_or(Errno::ESTALE)?;
             directories.insert(
                 fh,
                 Arc::new(Mutex::new(Directory {
                     ino: ino.0,
-                    ..Directory::default()
+                    cookies: Default::default(),
+                    _memory: memory,
                 })),
             );
             Ok(fh)

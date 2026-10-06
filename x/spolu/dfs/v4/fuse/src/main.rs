@@ -25,6 +25,8 @@ struct Config {
     /// Number of blocking kernel/gRPC workers; bounds concurrent request buffers.
     #[arg(long, default_value = "8", value_parser = clap::value_parser!(u16).range(1..=32))]
     threads: u16,
+    #[command(flatten)]
+    cache: dfs_client::CacheConfig,
 }
 
 fn main() -> Result<()> {
@@ -53,7 +55,7 @@ fn run(config: Config) -> Result<()> {
 
     let key = dfs_protocol::credentials::read_key(&config.session_key_file)
         .context("read session key")?;
-    let client = dfs_client::BlockingClient::connect(&config.endpoint, &key)?;
+    let client = dfs_client::CachedClient::connect(&config.endpoint, &key, config.cache)?;
     ensure!(
         config.mountpoint.is_dir(),
         "mountpoint must be an existing directory"
@@ -93,7 +95,14 @@ fn run(config: Config) -> Result<()> {
     } else {
         session.umount_and_join()
     };
-    eprintln!("{}", client.metrics());
     result?;
+    let started = std::time::Instant::now();
+    let drain = client.drain();
+    eprintln!(
+        "{}",
+        serde_json::json!({"client_drain_ms":started.elapsed().as_millis(),"failed":drain.is_err()})
+    );
+    eprintln!("{}", client.metrics());
+    drain?;
     Ok(())
 }

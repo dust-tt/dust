@@ -1,4 +1,6 @@
 use anyhow::{Result, ensure};
+pub mod cache;
+pub use cache::{CacheConfig, CacheReservation, CachedClient};
 use dfs_protocol::{
     MAX_MESSAGE,
     rpc::{dfs_client::DfsClient, *},
