@@ -252,6 +252,22 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     );
     const connectorProvider =
       dataSourceView?.dataSource?.connectorProvider ?? null;
+
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        connectorProviders: [
+          ...new Set(
+            [...dataSourceViewsMap.values()].map(
+              (dsv) => dsv.dataSource.connectorProvider
+            )
+          ),
+        ],
+        tableCount: tableConfigurations.length,
+      },
+      "Executing table query"
+    );
+
     return executeQuery(auth, {
       tables: tableConfigurations.map((t) => {
         const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
