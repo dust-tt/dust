@@ -3,11 +3,11 @@
 Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
 in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
 Later focused runs measure untar only, most recently
-[transaction throughput](#transaction-throughput-investigation).
+[512 MiB client budget](#512-mib-client-budget).
 The full baseline table remains below.
 
-All FUSE measurements below used a 1 GiB total budget. The current default is **512 MiB**; that budget has
-not yet been benchmarked.
+Historical FUSE measurements used a 1 GiB total budget. The latest focused untar below uses the
+current **512 MiB** default.
 
 ## Configuration and method
 
@@ -347,6 +347,35 @@ Reproduce the final default untar with the matching source and release binaries:
 v4/local/run exec cargo build --workspace --release
 v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=1024 DFS_BENCH_REVISION=4acecff7f4 python3 /dfs/v4/bench/run.py --untar-only
 ```
+
+## 512 MiB client budget
+
+2026-10-06, source `17d5aa08c6`. Same deep 10k-file / 177.5 MB untar, new server/session/mount and
+FDB prefix, with FDB/OS caches retained. One shared **512 MiB** budget, including the 96 MiB transient
+reserve; 128 in-flight groups, 25ms coalescing and one server transaction per primary. The server
+binary, manifest and all other benchmark settings match the preceding default run.
+
+| Measurement (s) | 1 GiB `4acecff7f4` | 512 MiB `17d5aa08c6` |
+| --- | ---: | ---: |
+| Untar | 5.751 | **6.140** |
+| Remaining client drain | 5.333 | **4.710** |
+| Untar + remaining drain | 11.084 | **10.850** |
+| Shared-memory admission wait | 0.0043 | **0.0044** |
+| Pending-group admission wait | 0.0005 | **0.0005** |
+
+Total completion is similar in these individual trials. Memory admission remained negligible, so
+this run does not establish that the smaller budget caused extra foreground backpressure. Untar and
+client drain completed without errors; only population/drain were rerun, without the read suite or
+another full-content verification pass. Unmount including drain took 4.843s. FUSE CPU before drain was
+4.810s; server CPU including drain was 6.870s. FDB peaked at eight transaction attempts with 92 retries.
+
+```sh
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=512 DFS_BENCH_REVISION=17d5aa08c6 python3 /dfs/v4/bench/run.py --untar-only
+```
+
+Report: `/tmp/dfs-v4-17d5aa08c6-512mib/run.json` inside `dfs-v4-dev-1`.
+FUSE SHA-256: `29d0e915946e9f669aed12b77d70568202ea05706ef3c1c6ac3c312067aef6e1`.
+Raw reports and logs remain outside Git.
 
 ## Comparison with v3
 

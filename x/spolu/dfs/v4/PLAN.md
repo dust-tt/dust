@@ -23,6 +23,7 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 - [x] Validate refresh races, transactional failures and postcommit response reuse; repeat the 10k untar.
 - [x] Share one budget across clean/dirty state; remove the dirty cap and validate memory pressure.
 - [x] Reduce the default shared budget from 1 GiB to 512 MiB, including the 96 MiB transient reserve.
+- [x] Repeat the 10k untar at 512 MiB: 6.140s foreground + 4.710s drain; negligible memory admission wait.
 - [x] Repeat the 10k untar with shared memory; report foreground time, remaining drain and admission waits.
 
 ## 3. Validation and measurements
