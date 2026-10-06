@@ -4785,6 +4785,37 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: 10046,
+    name: "Paddle",
+    description:
+      "Manage Paddle pricing, billing, subscriptions, and integrations through Paddle's hosted MCP server.",
+    url: "https://mcp.paddle.com/mcp",
+    icon: "PaddleLogo",
+    documentationUrl: "https://developer.paddle.com/sdks/ai/paddle-mcp/",
+    connectionInstructions:
+      "Connect to your Paddle live account with OAuth. Access starts with the read permissions allowed by your Paddle role; adjust permissions in Paddle > Connectors > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      execute: "high",
+      report_missing_tool: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching Paddle",
+        done: "Searched Paddle",
+      },
+      execute: {
+        running: "Running a Paddle operation",
+        done: "Ran a Paddle operation",
+      },
+      report_missing_tool: {
+        running: "Reporting a missing Paddle capability",
+        done: "Reported a missing Paddle capability",
+      },
+    },
+  },
+  {
     id: 10042,
     name: "Clay",
     description:

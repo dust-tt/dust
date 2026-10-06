@@ -3698,6 +3698,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "NetSuiteLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "PaddleLogo"
   | "PowerBiLogo"
   | "PraizLogo"
   | "ProductboardLogo"
