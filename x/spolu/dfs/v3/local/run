@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Manage the isolated local dfs v3 development services."""
+import pathlib
+import subprocess
+import sys
+
+COMPOSE = ['docker', 'compose', '-f', str(pathlib.Path(__file__).with_name('compose.yaml'))]
+
+
+def run(*args, **kwargs):
+    return subprocess.run([*COMPOSE, *args], check=True, **kwargs)
+
+
+def main():
+    command = sys.argv[1:]
+    if command == ['up']:
+        run('up', '-d', 'fdb')
+        # The new flag refuses to reconfigure an existing database, including after restart.
+        result = subprocess.run([*COMPOSE, 'exec', '-T', 'fdb', 'fdbcli', '--exec',
+                                 'configure new single ssd', '--timeout', '30'],
+                                capture_output=True, text=True)
+        if result.returncode and 'Database already exists!' not in (result.stdout + result.stderr):
+            raise RuntimeError(result.stdout + result.stderr)
+        run('up', '-d', '--build', '--wait', 'dev')
+    elif command == ['stop']:
+        run('stop')
+    elif command and command[0] == 'logs':
+        run('logs', '--tail', '80', *command[1:])
+    elif command and command[0] == 'exec':
+        run('exec', '-T', 'dev', *command[1:])
+    else:
+        raise SystemExit('Usage: local/run up | stop | logs [service] | exec COMMAND ...')
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,51 @@
+@cc [owner:spolu,label:security] v4-tenant-isolation
+Storage keys and authorization MUST be tenant-scoped. Filesystem RPCs MUST derive tenant and at most
+512 grants from an active session. Cached access MUST be session-scoped and expire with that session.
+
+@cc [owner:spolu,label:concurrency;backend] v4-minimal-atomic-groups
+File edits MUST use one file transaction. Create/remove MUST atomically change parent and target;
+rename MUST atomically change source/destination parents, target, and replacement when present.
+Independent groups MUST NOT share a transaction. Metadata, blocks, and indexes MUST stay coherent.
+
+@cc [owner:spolu,label:backend;concurrency] v4-durable-server
+Servers MUST acknowledge mutations only after FDB commits and MUST retain no authoritative read cache
+or writeback overlay between requests. FDB conflicts MUST enforce correctness across server processes.
+Mutations with unknown commit outcomes MUST NOT be automatically replayed.
+
+@cc [owner:spolu,label:security;performance] v4-server-authority-hints
+Bounded tenant-scoped parent/grant hints MAY persist without TTL or proactive invalidation. They
+MUST only guide parallel reads; authority MUST follow fresh, conflict-tracked FDB parent links and
+grant membership. Stale/missing hints MUST fall back to resolution without changing access decisions.
+
+@cc [owner:spolu,label:concurrency] v4-object-fsync
+Ordinary client mutations MAY acknowledge bounded RAM acceptance. Fsync MUST dispatch and await only
+a finite prefix of the target object's edits and required namespace prerequisites, across handles.
+It MUST NOT drain unrelated objects or a parent queue. Known deferred errors MUST reach fsync.
+
+@cc [owner:spolu,label:performance;security] v4-client-freshness
+Client-controlled write buffering W and read/authorization cache validity C MUST satisfy W+C<=2000ms,
+initially W=C=1000ms. Server/network waits are excluded. Cache validity starts at response receipt;
+tentative new objects instead start their own C at local acceptance, without inheriting parent expiry.
+Hits, edits and block fills MUST NOT renew validity. More writes MUST NOT postpone the oldest dispatch
+window. RAM acceptance MAY rely on a valid child after its parent expires; FDB MUST recheck authority.
+
+@cc [owner:spolu,label:concurrency] v4-revision-coherence
+Each committed object modification MUST change its revision. Retained blocks MUST be used only with
+matching freshly authorized metadata. Reads MUST NOT mix revisions or expose tails after truncation.
+Client generations MUST prevent late replies from overwriting newer edits or resurrecting removals.
+
+@cc [owner:spolu,label:security;concurrency] v4-directory-membership-reuse
+An expired directory page or listed name MAY retain membership only with a matching snapshot revision
+and fresh authorization of that real directory. Child attributes MUST refresh independently; child
+writes/attribute edits MUST NOT change parent revisions. Root/shared projections MUST NOT use this
+proof. Local namespace overlays and generations MUST fence reuse and late responses.
+
+@cc [owner:spolu,label:performance] v4-bounded-client-memory
+Client metadata, blocks, pages, queued/in-flight writes and bookkeeping MUST share one configured
+memory budget, including reserved transient space, without a separate dirty-data cap. Admission MUST
+evict clean state before waiting for memory; acknowledged dirty data MUST NOT be evicted silently.
+Directory prefetch MUST be bounded by pages and bytes.
+
+@cc [owner:spolu,label:architecture] v4-userspace-cache
+FUSE MUST use direct I/O, zero metadata/name TTLs, and no kernel writeback or directory caching.
+Userspace owns caching and expiry. Shared writable mmap is unsupported.
