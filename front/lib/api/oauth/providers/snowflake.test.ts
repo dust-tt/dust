@@ -41,4 +41,17 @@ describe("SnowflakeOAuthProvider.isExtraConfigValid", () => {
       }
     }
   });
+
+  it("validates admin credentials even when mcp_server_id is present", () => {
+    const provider = new SnowflakeOAuthProvider();
+    const config = { ...VALID_CONFIG, mcp_server_id: "ims_123" };
+
+    expect(provider.isExtraConfigValid(config, "platform_actions")).toBe(true);
+    expect(
+      provider.isExtraConfigValid(
+        { ...config, snowflake_account: "evil.example/x?" },
+        "platform_actions"
+      )
+    ).toBe(false);
+  });
 });

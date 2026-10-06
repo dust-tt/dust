@@ -145,18 +145,18 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
   /**
    * @cc [owner:fontanierh,label:security] validate-account-identifier
-   * When the caller supplies the Snowflake credentials (no `mcp_server_id`), `snowflake_account`
+   * When `snowflake_account` comes from the caller rather than from the workspace connection, it
    * MUST satisfy `isValidSnowflakeAccount`, otherwise the config is invalid. The account is
    * interpolated into the authorize and token URL hosts, so values such as `evil.example/x?` MUST
    * be rejected server-side, not only by the setup UI.
    */
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // If we have an mcp_server_id it means the admin already setup the connection.
-      if (extraConfig.mcp_server_id) {
+      // For personal actions, an mcp_server_id means the admin already setup the connection.
+      if (useCase === "personal_actions" && extraConfig.mcp_server_id) {
         return true;
       }
-      // Initial admin setup - requires full credentials including default role and warehouse
+      // Admin setup - requires full credentials including default role and warehouse
       return !!(
         extraConfig.client_id &&
         extraConfig.client_secret &&
@@ -168,6 +168,12 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     return Object.keys(extraConfig).length === 0;
   }
 
+  /**
+   * @cc [owner:philipperolet,label:product] admin-setup-without-workspace-connection
+   * For `platform_actions`, an `mcp_server_id` in `extraConfig` MUST NOT make setup fail when the
+   * MCP server has no workspace connection: the credential is then built from the caller-supplied
+   * `extraConfig` fields.
+   */
   async getRelatedCredential(
     auth: Authenticator,
     {
@@ -182,10 +188,10 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<Result<RelatedCredential, OAuthError>> {
-    if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // For personal/platform actions we reuse the existing connection credential id from the
-      // existing workspace connection (setup by admin) if we have it, otherwise we fallback to
-      // assuming we have client_secret (initial admin setup).
+    if (useCase === "personal_actions") {
+      // For personal actions we reuse the existing connection credential id from the existing
+      // workspace connection (setup by admin). Admin setup (platform_actions) carries the full
+      // credentials, even though the connect dialog also sends mcp_server_id.
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
