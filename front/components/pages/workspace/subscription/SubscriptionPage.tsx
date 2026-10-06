@@ -204,9 +204,10 @@ export function SubscriptionPage() {
       } else {
         // If the Stripe webhook is not yet received, we try waiting for it and reload the page every 5 seconds until it's done.
         setIsWebhookProcessing(true);
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           void router.reload();
         }, 5000);
+        return () => clearTimeout(timeoutId);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
