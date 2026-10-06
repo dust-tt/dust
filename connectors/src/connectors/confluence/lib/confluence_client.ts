@@ -858,9 +858,10 @@ export class ConfluenceClient {
   }
 
   /**
-   * @cc [owner:philipperolet,label:error-handling] throws-504-on-timeout
-   * When Confluence does not answer in time, `getPageById` MUST throw a `ConfluenceClientError`
-   * with `status` 504. Callers MAY catch it, as an exception to `no-catching-own-errors`.
+   * @cc [owner:philipperolet,label:error-handling] throws-504-when-unavailable
+   * When Confluence does not answer in time, is unreachable, or answers with a 504, `getPageById`
+   * MUST throw a `ConfluenceClientError` with `status` 504. Callers MAY catch it, as an exception
+   * to `no-catching-own-errors`.
    */
   async getPageById(pageId: string) {
     const params = new URLSearchParams({

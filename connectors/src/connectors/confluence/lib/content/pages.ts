@@ -199,9 +199,9 @@ export async function upsertConfluencePageInDb(
 /**
  * @cc [owner:philipperolet,label:backend] skip-page-after-repeated-timeouts
  * When `getPageById` throws a `ConfluenceClientError` with `status` 504 on an activity attempt
- * above `MAX_PAGE_TIMEOUT_ATTEMPTS`, the function MUST mark the page as visited, leave its stored
- * version unchanged, and return `true`. The sync then goes on without deleting the page or its
- * children, and the next sync fetches the page again.
+ * above `MAX_PAGE_TIMEOUT_ATTEMPTS`, the function MUST mark the stored page, if any, as visited,
+ * leave its stored version unchanged, and return `true`. The sync then goes on without deleting
+ * the page or its children, and the next sync fetches the page again.
  */
 export async function confluenceCheckAndUpsertSinglePage({
   connector,
@@ -300,8 +300,8 @@ export async function confluenceCheckAndUpsertSinglePage({
     }
 
     localLogger.warn(
-      { attempt },
-      "Confluence page keeps timing out, skipping it until the next sync."
+      { attempt, error: err },
+      "Fetching the Confluence page keeps failing with a 504, skipping it until the next sync."
     );
     await markPageHasVisited({ connectorId, pageId, spaceId, visitedAtMs });
     return true;
