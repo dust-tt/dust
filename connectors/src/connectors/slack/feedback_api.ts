@@ -1,16 +1,16 @@
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackClient,
   getSlackUserInfoMemoized,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
-import { DEFAULT_LOCALE } from "@connectors/types/locale";
 
 export async function submitFeedbackToAPI({
   conversationId,
@@ -61,15 +61,14 @@ export async function submitFeedbackToAPI({
 
     const connectorWId = connector.workspaceId;
 
-    let userEmail: string | undefined = undefined;
+    let slackUserInfo: SlackUserInfo | null = null;
     try {
       const slackClient = await getSlackClient(connector.id);
-      const slackUserInfo = await getSlackUserInfoMemoized(
+      slackUserInfo = await getSlackUserInfoMemoized(
         connector.id,
         slackClient,
         slackUserId
       );
-      userEmail = slackUserInfo.email || undefined;
     } catch (error) {
       logger.warn(
         {
@@ -88,7 +87,7 @@ export async function submitFeedbackToAPI({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${connector.workspaceAPIKey}`,
-          ...getHeaderFromUserEmail(userEmail),
+          ...getHeaderFromUserEmail(slackUserInfo?.email || undefined),
         },
         body: JSON.stringify({
           thumbDirection,
@@ -129,7 +128,11 @@ export async function submitFeedbackToAPI({
     // Update the Slack message to show feedback has been submitted
     // Using response_url works for both regular and ephemeral messages
     try {
-      const i18n = await getSlackI18n(DEFAULT_LOCALE);
+      const i18n = await getSlackI18nForUser(
+        connector,
+        slackUserId,
+        slackUserInfo
+      );
       await fetch(responseUrl, {
         method: "POST",
         headers: {

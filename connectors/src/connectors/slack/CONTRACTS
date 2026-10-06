@@ -15,3 +15,10 @@ tool names, front API error messages, Slack data) MUST be interpolated untransla
 placeholders. The `message` of other `Error`s is diagnostic: it MAY stay English and MUST only reach
 users through the placeholder of a translated sentence. Text sent to the Dust API or to models
 (message content, content fragments) MUST NOT be translated.
+
+@cc [owner:Nils-Fedrigo,label:product] slack-text-in-recipient-locale
+Slack text MUST be rendered with the `I18n` that `lib/user_locale.ts` returns for the Slack user it
+is written to: `getSlackI18nForUser`, `getSlackI18nForUserId` or `getSlackI18nForTeamUser`. Text
+with no single human recipient (channel announcements, replies to Slack workflows) MUST use the
+workspace locale, from `getSlackI18nForUser` without user. Production code MUST NOT pick a locale
+with `getSlackI18n` directly.

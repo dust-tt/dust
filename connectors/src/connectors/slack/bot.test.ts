@@ -25,6 +25,19 @@ vi.mock(
   })
 );
 
+// The locale lookup goes through Redis, unavailable in these tests.
+vi.mock(
+  "@connectors/connectors/slack/lib/user_locale",
+  async (importOriginal) => {
+    const { getSlackI18n } =
+      await import("@connectors/connectors/slack/lib/i18n");
+    return {
+      ...(await importOriginal()),
+      getSlackI18nForUserId: vi.fn(async () => getSlackI18n("en-US")),
+    };
+  }
+);
+
 const { notifyIfSlackUserIsNotAllowed } = vi.hoisted(() => ({
   notifyIfSlackUserIsNotAllowed: vi.fn(),
 }));

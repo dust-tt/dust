@@ -17,11 +17,10 @@ import {
   getSlackClientForTeam,
   openFeedbackModal,
 } from "@connectors/connectors/slack/feedback_modal";
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
+import { getSlackI18nForTeamUser } from "@connectors/connectors/slack/lib/user_locale";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -466,7 +465,10 @@ const _webhookSlackBotInteractionsAPIHandler = async (
           try {
             // Open the feedback modal
             await openFeedbackModal({
-              i18n: await getSlackI18n(DEFAULT_LOCALE),
+              i18n: await getSlackI18nForTeamUser(
+                payload.team.id,
+                payload.user.id
+              ),
               slackClient: await getSlackClientForTeam(payload.team.id),
               triggerId: payload.trigger_id,
               conversationId,
