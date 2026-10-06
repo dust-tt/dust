@@ -291,6 +291,7 @@ impl Pending {
             output.push(entry);
         }
         Page {
+            directory_revision: Vec::new(),
             next_after: if more {
                 output.last().map(|e| e.name.clone())
             } else {
@@ -566,7 +567,15 @@ impl Inner {
                 .cache
                 .lock()
                 .fresh(&Key::Name(r.parent_id.clone(), r.name.clone()))
-                .is_some_and(|e| matches!(&e.value, Value::Name(Some(_))))
+                .is_some_and(|e| {
+                    matches!(
+                        &e.value,
+                        Value::Name(Name {
+                            object_id: Some(_),
+                            ..
+                        })
+                    )
+                })
         {
             return Err(status(ErrorCode::AlreadyExists));
         }
@@ -1298,7 +1307,7 @@ impl Inner {
             if result.is_ok() && pending.binding(parent, name).is_none() {
                 self.cache.lock().insert(
                     Key::Name(parent.clone(), name.clone()),
-                    Value::Name(value.clone()),
+                    Value::Name(value.clone().into()),
                     received,
                     self.deadline(received),
                 );

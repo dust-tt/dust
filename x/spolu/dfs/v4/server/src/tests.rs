@@ -7,6 +7,7 @@ use dfs_protocol::{
 };
 use futures::TryStreamExt;
 use tonic::Request;
+mod client_directory;
 mod client_refresh;
 mod directory;
 
@@ -762,6 +763,7 @@ async fn client_cache_contracts() -> Result<()> {
         let observer = ::dfs_client::BlockingClient::connect(&endpoint, &key)?;
         directory_absence_contracts(&endpoint, &key, &tenant.root_id)?;
         client_refresh::contracts(&endpoint, &key, &tenant, &state)?;
+        client_directory::contracts(&endpoint, &key, &tenant)?;
         let a = client
             .create(CreateRequest {
                 parent_id: directory.id.clone(),

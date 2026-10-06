@@ -36,7 +36,7 @@ macro_rules! phases {
     };
 }
 phases! {
-    Stat => "rpc.stat", Lookup => "rpc.lookup", List => "rpc.list", Read => "rpc.read",
+    Stat => "rpc.stat", StatMany => "rpc.stat_many", Lookup => "rpc.lookup", List => "rpc.list", Read => "rpc.read",
     Create => "rpc.create", Update => "rpc.update",
     Rename => "rpc.rename", Remove => "rpc.remove", Write => "rpc.write",
     Batch => "rpc.mutate_group",

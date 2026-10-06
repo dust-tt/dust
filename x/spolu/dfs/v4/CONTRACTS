@@ -34,6 +34,12 @@ Each committed object modification MUST change its revision. Retained blocks MUS
 matching freshly authorized metadata. Reads MUST NOT mix revisions or expose tails after truncation.
 Client generations MUST prevent late replies from overwriting newer edits or resurrecting removals.
 
+@cc [owner:spolu,label:security;concurrency] v4-directory-membership-reuse
+An expired directory page or listed name MAY retain membership only with a matching snapshot revision
+and fresh authorization of that real directory. Child attributes MUST refresh independently; child
+writes/attribute edits MUST NOT change parent revisions. Root/shared projections MUST NOT use this
+proof. Local namespace overlays and generations MUST fence reuse and late responses.
+
 @cc [owner:spolu,label:performance] v4-bounded-client-memory
 Client metadata, blocks, pages, queued/in-flight writes and bookkeeping MUST share one configured
 memory budget, including reserved transient space, without a separate dirty-data cap. Admission MUST

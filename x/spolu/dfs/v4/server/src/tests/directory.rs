@@ -125,7 +125,12 @@ async fn independent_membership() -> Result<()> {
     assert_ne!(a.related[0].revision, b.related[0].revision);
     assert!(after.mtime.is_some() && after.ctime.is_some());
     assert_eq!(old.object(&parent.id).await?.object, before);
-    assert!(old.list(&parent.id, None, 64).await?.entries.is_empty());
+    let old_page = old.list(&parent.id, None, 64).await?;
+    assert!(old_page.entries.is_empty());
+    assert_eq!(
+        old_page.directory_revision, before.revision,
+        "page revision must come from its own snapshot, not a later stat"
+    );
     let a = a.object.context("a")?;
     let b = b.object.context("b")?;
     // A sibling membership update must not invalidate the file writer's ancestry proof.

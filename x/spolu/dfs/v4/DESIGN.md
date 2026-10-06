@@ -131,18 +131,31 @@ Fetch directory pages containing names, IDs, revisions, and **full attributes**:
 timestamps, MIME type, and xattrs. This first prefetch is metadata-only; file content remains demand
 loaded. Keep both an entry limit and an encoded-byte limit, initially **64 entries / 1 MiB per page**.
 
-On traversal, fetch the needed page and optionally one next page at low priority. A lookup/open may
-seed one bounded sibling page. Bound total prefetch concurrency and charge it to the same cache;
+On traversal, fetch the needed page and one next page at low priority. Listed names retain their
+source page cursor: using a name from page N can prefetch N+1. Completion never chains more requests.
+A cold lookup may seed the first sibling page. Recheck names/pages after waiting for the directory
+gate to share completed fetches. Limit prefetch to two concurrent requests within the shared budget;
 never eagerly load an entire directory or recurse into descendants.
 
-Use opaque keyset cursors, not offsets. Each page is one authorized snapshot; pagination does not
-promise a snapshot across all pages during concurrent mutation. Cache entries expire `C` after receipt
-of their validating response. An unchanged directory revision cannot renew child attributes or grants:
-children can change without changing directory membership. A fresh listing proves name absence only
+Use opaque keyset cursors, not offsets. Each server page contains a directory revision and entries
+from one authorized FDB snapshot; pagination does not promise a snapshot across pages. Virtual root
+and `/shared` return an empty revision and always refresh expired pages by listing.
+
+Retain real-directory membership after expiry when fresh authorized directory metadata has the same
+revision. This validates only names/IDs and covered absence, until that directory proof expires.
+Child content, attributes and grants do not update the parent revision. Refresh expired child
+attributes independently using `StatMany` in batches of at most 16, fitting maximum-sized metadata
+in the existing response bound. A reused page expires at the earliest membership/attribute deadline;
+it need not represent a single new snapshot, but every object retains coherent metadata/revision.
+Missing children or changed membership fall back to List; oversized attributes re-list to repaginate.
+Hits, local edits and reused membership never extend child metadata or authorization deadlines.
+
+A fresh or revision-validated listing proves name absence only
 within its covered range: after its input cursor through its continuation, or EOF when complete.
 Keep one compact absence range per directory, excluding listed names and local namespace edits.
-New UUID directories seed a whole-directory absence record. Hits, edits and publication never renew
-its original deadline; expiration or eviction falls back to Lookup. `/shared` uses ID cursors, so its
+New UUID directories seed a whole-directory absence record without a reusable revision. Hits, edits
+and publication never renew its original deadline. Unvalidated expiry or eviction falls back to Lookup.
+`/shared` uses ID cursors, so its
 pages cannot prove name-range absence. FDB still checks collisions at commit.
 
 Overlay local namespace edits atomically, invalidate affected attribute pages while preserving the

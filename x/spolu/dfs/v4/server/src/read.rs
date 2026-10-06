@@ -373,6 +373,8 @@ impl View {
     /// @cc [owner:spolu,label:performance;concurrency;security] ordered-listing-reads
     /// Child reads MUST have bounded concurrency within this view. Child results and errors MUST be
     /// consumed in index order; pagination MUST return only authorized entries and cursors.
+    /// Real-directory pages MUST include their membership revision from this same snapshot.
+    /// Virtual root/shared projections MUST return no revision, since visibility can change separately.
     pub async fn list(&self, directory: &str, after: Option<&str>, limit: u32) -> Result<Page> {
         if !(1..=64).contains(&limit) {
             return Err(status(ErrorCode::InvalidInput));
@@ -388,6 +390,11 @@ impl View {
             self.object(&self.root).await?
         } else {
             self.directory(directory).await?
+        };
+        let directory_revision = if is_root {
+            Vec::new()
+        } else {
+            parent.revision.to_vec()
         };
         let inherited = !is_root || self.authorized(&parent).await?;
         let prefix = self.keys.children(&parent.object.id)?;
@@ -422,6 +429,7 @@ impl View {
                 if entries.len() > limit as usize || bytes > MAX_IO {
                     entries.pop();
                     return Ok(Page {
+                        directory_revision: directory_revision.clone(),
                         next_after: entries.last().map(|e| e.name.clone()),
                         entries,
                     });
@@ -442,6 +450,7 @@ impl View {
             if entries.len() > limit as usize || bytes > MAX_IO {
                 entries.pop();
                 return Ok(Page {
+                    directory_revision: directory_revision.clone(),
                     next_after: entries.last().map(|e| e.name.clone()),
                     entries,
                 });
@@ -456,11 +465,13 @@ impl View {
         if entries.len() > limit as usize {
             entries.truncate(limit as usize);
             return Ok(Page {
+                directory_revision: directory_revision.clone(),
                 next_after: entries.last().map(|e| e.name.clone()),
                 entries,
             });
         }
         Ok(Page {
+            directory_revision: directory_revision.clone(),
             entries,
             next_after: None,
         })
@@ -537,6 +548,7 @@ impl View {
                 let size = entry_size(&entry);
                 if bytes + size > MAX_IO {
                     return Ok(Page {
+                        directory_revision: Vec::new(),
                         entries,
                         next_after: last,
                     });
@@ -548,12 +560,14 @@ impl View {
             examined += 1;
             if entries.len() == limit || examined >= limit.max(64) {
                 return Ok(Page {
+                    directory_revision: Vec::new(),
                     entries,
                     next_after: last,
                 });
             }
         }
         Ok(Page {
+            directory_revision: Vec::new(),
             entries,
             next_after: None,
         })

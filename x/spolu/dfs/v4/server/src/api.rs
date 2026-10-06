@@ -458,6 +458,7 @@ impl Dfs for Api {
         self.stat(r).await
     }
     async fn stat_many(&self, r: Request<StatManyRequest>) -> Result<Response<StatManyResponse>> {
+        let _profile = Guard::new(Phase::StatMany);
         self.read_call(
             r,
             |_| ("root", None),

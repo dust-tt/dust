@@ -1,3 +1,4 @@
+mod directory;
 mod memory;
 mod writeback;
 
@@ -9,7 +10,7 @@ use dfs_protocol::{
     error::{code, status},
     rpc::*,
 };
-use memory::{Cache, Key, Value};
+use memory::{Cache, Key, Name, PageSource, Value};
 use parking_lot::Mutex;
 use std::{
     collections::HashMap,
@@ -75,9 +76,10 @@ struct Inner {
 
 #[derive(Clone)]
 /// @cc [owner:spolu,label:security;performance] mount-cache-validity
-/// Every cache instance MUST belong to one session. Metadata, names, pages and authority MUST expire
-/// from their validating response, except tentative objects get C from local creation. Hits/edits
-/// MUST NOT renew validity. Retained blocks alone MUST NOT grant access.
+/// Every cache instance MUST belong to one session. Object metadata and authority MUST expire from
+/// their validating response, except tentative objects get C from local creation. Listed membership
+/// MAY outlive its original TTL only with fresh matching directory authority. Hits/edits MUST NOT
+/// renew validity, and neither retained blocks nor membership MAY authorize stale child attributes.
 pub struct CachedClient {
     raw: BlockingClient,
     inner: Arc<Inner>,
@@ -277,176 +279,6 @@ impl Inner {
             return result;
         }
         Err(status(ErrorCode::Unavailable))
-    }
-    fn remember_entry(
-        &self,
-        parent: &str,
-        name: &str,
-        object: &Object,
-        started: Instant,
-        received: Instant,
-    ) {
-        self.remember_object(object, started, received);
-        let mut cache = self.cache.lock();
-        cache.insert(
-            Key::Name(parent.into(), name.into()),
-            Value::Name(Some(object.id.clone())),
-            received,
-            self.deadline(received),
-        );
-    }
-    async fn lookup(self: &Arc<Self>, r: LookupRequest) -> Result<Object> {
-        self.active()?;
-        dfs_protocol::validate::name(&r.name)?;
-        let key = Key::Name(r.parent_id.clone(), r.name.clone());
-        let cached = {
-            // Publication updates bindings and coverage while holding this same lock.
-            let pending = self.pending.lock();
-            pending.binding(&r.parent_id, &r.name).or_else(|| {
-                let mut cache = self.cache.lock();
-                if let Some(entry) = cache.fresh(&key)
-                    && let Value::Name(id) = &entry.value
-                {
-                    return Some(id.clone());
-                }
-                if cache.absent(&r.parent_id, &r.name) {
-                    self.rpc
-                        .record("cache.lookup_absent", Duration::ZERO, false);
-                    return Some(None);
-                }
-                None
-            })
-        };
-        if let Some(id) = cached {
-            return match id {
-                Some(id) => self.stat(&id).await,
-                None => Err(status(ErrorCode::NotFound)),
-            };
-        }
-        let gate = self.gate(&r.parent_id)?;
-        let gate_wait = self.rpc.measure("wait.object_gate");
-        let guard = gate.mutex.lock().await;
-        drop(gate_wait);
-        let name_gate = self.gate(&name_generation(&r.parent_id, &r.name))?;
-        for _ in 0..4 {
-            let generation = name_gate.generation.load(Ordering::Acquire);
-            let started = Instant::now();
-            let result = self.rpc.lookup(r.clone()).await;
-            let received = Instant::now();
-            self.active()?;
-            if name_gate.generation.load(Ordering::Acquire) != generation {
-                continue;
-            }
-            match &result {
-                Ok(object) => self.remember_entry(&r.parent_id, &r.name, object, started, received),
-                Err(e) if code(e) == ErrorCode::NotFound => self.cache.lock().insert(
-                    key,
-                    Value::Name(None),
-                    received,
-                    self.deadline(received),
-                ),
-                _ => (),
-            }
-            drop(guard);
-            if result.is_ok() {
-                self.prefetch(ListRequest {
-                    directory_id: r.parent_id,
-                    after: None,
-                    limit: 64,
-                });
-            }
-            return result;
-        }
-        Err(status(ErrorCode::Unavailable))
-    }
-    async fn list(self: &Arc<Self>, r: ListRequest) -> Result<Page> {
-        let page = self.page(r.clone()).await?;
-        let page = self.pending.lock().overlay_page(&r, page);
-        if let Some(after) = page.next_after.clone() {
-            self.prefetch(ListRequest {
-                after: Some(after),
-                ..r
-            });
-        }
-        Ok(page)
-    }
-    async fn page(&self, r: ListRequest) -> Result<Page> {
-        self.active()?;
-        if !(1..=64).contains(&r.limit) {
-            return Err(status(ErrorCode::InvalidInput));
-        }
-        if self.pending.lock().local_directory(&r.directory_id) {
-            self.stat(&r.directory_id).await?;
-            if self.pending.lock().local_directory(&r.directory_id) {
-                return Ok(Page::default());
-            }
-        }
-        let key = Key::Page(r.directory_id.clone(), r.after.clone());
-        // Cache pages at the full network limit only; smaller callers keep their requested limit.
-        if r.limit == 64
-            && let Some(entry) = self.cache.lock().fresh(&key)
-            && let Value::Page(page) = &entry.value
-        {
-            return Ok(page.clone());
-        }
-        let gate = self.gate(&r.directory_id)?;
-        let gate_wait = self.rpc.measure("wait.object_gate");
-        let _guard = gate.mutex.lock().await;
-        drop(gate_wait);
-        for _ in 0..4 {
-            let generation = gate.generation.load(Ordering::Acquire);
-            let started = Instant::now();
-            let page = self.rpc.list(r.clone()).await?;
-            let received = Instant::now();
-            self.active()?;
-            let pending = self.pending.lock();
-            if gate.generation.load(Ordering::Acquire) != generation {
-                continue;
-            }
-            for entry in &page.entries {
-                if let Some(object) = &entry.object {
-                    self.remember_entry(&r.directory_id, &entry.name, object, started, received);
-                }
-            }
-            if r.limit == 64 {
-                self.cache.lock().insert(
-                    key,
-                    Value::Page(page.clone()),
-                    received,
-                    self.deadline(received),
-                );
-            }
-            self.cache.lock().remember_coverage(
-                &r,
-                &page,
-                pending.names(&r.directory_id),
-                received,
-                self.deadline(received),
-            );
-            return Ok(page);
-        }
-        Err(status(ErrorCode::Unavailable))
-    }
-    fn prefetch(self: &Arc<Self>, request: ListRequest) {
-        if self
-            .cache
-            .lock()
-            .fresh(&Key::Page(
-                request.directory_id.clone(),
-                request.after.clone(),
-            ))
-            .is_some()
-        {
-            return;
-        }
-        let Ok(permit) = self.prefetch.clone().try_acquire_owned() else {
-            return;
-        };
-        let inner = self.clone();
-        tokio::spawn(async move {
-            let _permit = permit;
-            let _ = inner.page(request).await;
-        });
     }
     /// @cc [owner:spolu,label:concurrency;security] revision-validated-cached-read
     /// A response MUST use a single authorized metadata revision and matching blocks. A stale-view

@@ -40,7 +40,13 @@ message Object {
 }
 message Mutation { Object object = 1; repeated Object related = 2; }
 message Entry { string name = 1; Object object = 2; }
-message Page { repeated Entry entries = 1; optional string next_after = 2; }
+// A nonempty revision validates only directory membership, from the same snapshot as the entries.
+// Child attributes have independent revisions. Virtual root/shared projections return no revision.
+message Page {
+  repeated Entry entries = 1;
+  optional string next_after = 2;
+  bytes directory_revision = 3;
+}
 message CreateTenantRequest { string tenant_id = 1; repeated string root_grants = 2; }
 message Tenant { string tenant_id = 1; string root_id = 2; string tenant_key = 3; }
 message CreateSessionRequest { string tenant_id = 1; repeated string grants = 2; }

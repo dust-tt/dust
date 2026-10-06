@@ -17,15 +17,34 @@ pub(super) enum Key {
 pub(super) enum Value {
     Object(Object),
     Absent,
-    Name(Option<String>),
+    Name(Name),
     Page(Page),
     Coverage(Coverage),
     Block(Vec<u8>),
+}
+#[derive(Clone)]
+pub(super) struct PageSource {
+    pub after: Option<String>,
+    pub revision: Vec<u8>,
+}
+#[derive(Clone)]
+pub(super) struct Name {
+    pub object_id: Option<String>,
+    pub page: Option<PageSource>,
+}
+impl From<Option<String>> for Name {
+    fn from(object_id: Option<String>) -> Self {
+        Self {
+            object_id,
+            page: None,
+        }
+    }
 }
 pub(super) struct Coverage {
     after: Option<String>,
     end: Option<String>,
     excluded: BTreeSet<String>,
+    revision: Vec<u8>,
     _edits: Vec<OwnedSemaphorePermit>,
 }
 impl Coverage {
@@ -45,14 +64,23 @@ impl Value {
         (match self {
             Self::Object(v) => object_weight(v),
             Self::Absent => 0,
-            Self::Name(v) => v.as_ref().map_or(0, String::len),
-            Self::Page(v) => v
-                .entries
-                .iter()
-                .map(|e| e.name.len() + e.object.as_ref().map_or(0, object_weight) + 128)
-                .sum(),
+            Self::Name(v) => {
+                v.object_id.as_ref().map_or(0, String::len)
+                    + v.page.as_ref().map_or(0, |p| {
+                        p.after.as_ref().map_or(0, String::len) + p.revision.len()
+                    })
+            }
+            Self::Page(v) => {
+                v.entries
+                    .iter()
+                    .map(|e| e.name.len() + e.object.as_ref().map_or(0, object_weight) + 128)
+                    .sum::<usize>()
+                    + v.next_after.as_ref().map_or(0, String::len)
+                    + v.directory_revision.len()
+            }
             Self::Coverage(v) => {
-                v.after.as_ref().map_or(0, String::len)
+                v.revision.len()
+                    + v.after.as_ref().map_or(0, String::len)
                     + v.end.as_ref().map_or(0, String::len)
                     + v.excluded
                         .iter()
@@ -107,13 +135,46 @@ impl Cache {
     pub fn fresh(&mut self, key: &Key) -> Option<Arc<Entry>> {
         self.get(key).filter(|entry| Instant::now() < entry.expires)
     }
+    /// @cc [owner:spolu,label:security;concurrency] validated-membership-only
+    /// Retained membership MUST require a matching nonempty revision and unexpired canonical
+    /// directory metadata authorized for this session. This MUST NOT renew any child attributes,
+    /// mutate the original deadlines, or validate root/shared projections.
+    pub fn membership_deadline(&mut self, parent: &str, revision: &[u8]) -> Option<Instant> {
+        if matches!(parent, "root" | "shared") || revision.len() != 16 {
+            return None;
+        }
+        let entry = self.fresh(&Key::Object(parent.into()))?;
+        match &entry.value {
+            Value::Object(object) if object.directory && object.revision == revision => {
+                Some(entry.expires)
+            }
+            _ => None,
+        }
+    }
+    pub fn binding(&mut self, parent: &str, name: &str) -> Option<Name> {
+        let entry = self.get(&Key::Name(parent.into(), name.into()))?;
+        let Value::Name(binding) = &entry.value else {
+            return None;
+        };
+        if Instant::now() < entry.expires
+            || binding
+                .page
+                .as_ref()
+                .is_some_and(|page| self.membership_deadline(parent, &page.revision).is_some())
+        {
+            return Some(binding.clone());
+        }
+        None
+    }
     /// @cc [owner:spolu,label:concurrency;security] directory-absence-proof
-    /// Absence MUST use an unexpired name-ordered range, excluding listed and locally changed names.
+    /// Absence MUST use a fresh or revision-validated name range, excluding listed/local names.
     /// Hits and local edits MUST NOT extend its original expiry. Shared ID cursors MUST NOT be used
     /// as name bounds. Replacing or evicting a proof MUST only cause a fallback to the server.
     pub fn absent(&mut self, parent: &str, name: &str) -> bool {
-        self.fresh(&Key::Coverage(parent.into())).is_some_and(|entry| {
-            matches!(&entry.value, Value::Coverage(v) if v.covers(name) && !v.excluded.contains(name))
+        self.get(&Key::Coverage(parent.into())).is_some_and(|entry| {
+            matches!(&entry.value, Value::Coverage(v) if v.covers(name) && !v.excluded.contains(name)
+                && (Instant::now() < entry.expires
+                    || self.membership_deadline(parent, &v.revision).is_some()))
         })
     }
     pub fn remember_coverage<'a>(
@@ -129,6 +190,7 @@ impl Cache {
             return;
         }
         let coverage = Coverage {
+            revision: page.directory_revision.clone(),
             after: request.after.clone(),
             end: page.next_after.clone(),
             excluded: page
@@ -269,6 +331,83 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    fn retained_membership_never_renews_child_attributes_or_its_original_deadline()
+    -> anyhow::Result<()> {
+        use anyhow::Context;
+        let mut cache = Cache::new(Arc::new(Semaphore::new(65536)));
+        let now = Instant::now();
+        let expired = now - Duration::from_secs(1);
+        let revision = vec![1; 16];
+        let parent = Object {
+            id: "dir".into(),
+            directory: true,
+            revision: revision.clone(),
+            ..Default::default()
+        };
+        cache.insert(
+            Key::Object("dir".into()),
+            Value::Object(parent.clone()),
+            now,
+            now + Duration::from_secs(1),
+        );
+        let key = Key::Name("dir".into(), "file".into());
+        cache.insert(
+            key.clone(),
+            Value::Name(Name {
+                object_id: Some("file".into()),
+                page: Some(PageSource {
+                    after: None,
+                    revision: revision.clone(),
+                }),
+            }),
+            expired,
+            expired,
+        );
+        cache.insert(
+            Key::Object("file".into()),
+            Value::Object(Object::default()),
+            expired,
+            expired,
+        );
+        let request = ListRequest {
+            directory_id: "dir".into(),
+            limit: 64,
+            after: None,
+        };
+        cache.remember_coverage(
+            &request,
+            &Page {
+                directory_revision: revision.clone(),
+                ..Default::default()
+            },
+            ["file"].into_iter(),
+            expired,
+            expired,
+        );
+        assert_eq!(
+            cache.binding("dir", "file").and_then(|v| v.object_id),
+            Some("file".into())
+        );
+        assert!(cache.absent("dir", "missing"));
+        assert!(cache.fresh(&Key::Object("file".into())).is_none());
+        assert_eq!(cache.get(&key).context("retained name")?.expires, expired);
+        assert!(cache.membership_deadline("root", &revision).is_none());
+        assert!(cache.membership_deadline("shared", &revision).is_none());
+        cache.insert(
+            Key::Object("dir".into()),
+            Value::Object(Object {
+                revision: vec![2; 16],
+                ..parent
+            }),
+            now,
+            now + Duration::from_secs(1),
+        );
+        assert!(cache.binding("dir", "file").is_none());
+        assert!(!cache.absent("dir", "missing"));
+        Ok(())
+    }
+
+    #[test]
     fn listing_absence_respects_range_boundaries_and_shared_cursors() {
         let mut cache = Cache::new(Arc::new(Semaphore::new(65536)));
         let now = Instant::now();
@@ -278,6 +417,7 @@ mod tests {
             limit: 64,
         };
         let page = Page {
+            directory_revision: Vec::new(),
             entries: ["d", "h"]
                 .map(|name| dfs_protocol::rpc::Entry {
                     name: name.into(),
@@ -347,7 +487,7 @@ mod tests {
         assert!(budget.available_permits() < before);
         cache.insert(
             Key::Name("dir".into(), "new".into()),
-            Value::Name(Some("id".into())),
+            Value::Name(Some("id".into()).into()),
             now,
             expires,
         );
@@ -417,7 +557,7 @@ mod tests {
         assert_eq!(budget.available_permits(), available);
         drop(entry);
         assert_eq!(budget.available_permits(), 4096);
-        cache.insert(key.clone(), Value::Name(None), before, before);
+        cache.insert(key.clone(), Value::Name(None.into()), before, before);
         assert!(cache.fresh(&key).is_none());
         Ok(())
     }
