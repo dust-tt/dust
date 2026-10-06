@@ -19,6 +19,7 @@ import {
 } from "@connectors/connectors/slack/feedback_modal";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -271,6 +272,17 @@ const _webhookSlackBotInteractionsAPIHandler = async (
   }
 
   const payload = bodyValidation.right;
+
+  // See the same check in the Slack bot events webhook.
+  if (
+    await SlackConfigurationResource.isActiveBotTokenRevoked(payload.team.id)
+  ) {
+    logger.info(
+      { slackTeamId: payload.team.id },
+      "Ignoring Slack interaction: the bot's Slack token is revoked"
+    );
+    return;
+  }
 
   // Handle view submissions (modal submits)
   if (payload.type === "view_submission") {

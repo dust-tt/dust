@@ -93,6 +93,13 @@ const _webhookSlackBotAPIHandler = async (
       });
     }
 
+    // With a revoked token, nothing can be read from or posted to Slack. This happens e.g. after a
+    // workspace relocation: the router sends Slack events to all regions, including the old one.
+    if (await SlackConfigurationResource.isActiveBotTokenRevoked(teamId)) {
+      logger.info("Ignoring Slack bot event: the bot's Slack token is revoked");
+      return res.status(200).send();
+    }
+
     const { event } = reqBody;
     logger.info(
       {
