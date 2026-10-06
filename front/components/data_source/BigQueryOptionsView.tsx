@@ -11,6 +11,7 @@ import {
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 const BYTES_PER_GB = 1024 ** 3;
@@ -37,6 +38,7 @@ export function BigQueryOptionsView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [dbmlLoading, setDbmlLoading] = useState(false);
   const [bytesLoading, setBytesLoading] = useState(false);
@@ -85,7 +87,7 @@ export function BigQueryOptionsView({
       const err = (await res.json()) as { error: APIError };
       sendNotification({
         type: "error",
-        title: "Failed to enable BigQuery use metadata for DBML",
+        title: t`Failed to enable BigQuery use metadata for DBML`,
         description: err.error.message,
       });
     }
@@ -98,9 +100,8 @@ export function BigQueryOptionsView({
       if (!Number.isFinite(gb) || gb < 0) {
         sendNotification({
           type: "info",
-          title: "Invalid maximum bytes billed",
-          description:
-            "Enter a non-negative number of GB, or leave empty for no limit.",
+          title: t`Invalid maximum bytes billed`,
+          description: t`Enter a non-negative number of GB, or leave empty for no limit.`,
         });
         return;
       }
@@ -127,18 +128,18 @@ export function BigQueryOptionsView({
       setBytesLoading(false);
       sendNotification({
         type: "success",
-        title: "Maximum bytes billed updated",
+        title: t`Maximum bytes billed updated`,
         description:
           bytesValue === ""
-            ? "No limit will be applied to BigQuery queries."
-            : `Queries will be limited to ${trimmed} GB billed.`,
+            ? t`No limit will be applied to BigQuery queries.`
+            : t`Queries will be limited to ${trimmed} GB billed.`,
       });
     } else {
       setBytesLoading(false);
       const err = (await res.json()) as { error: APIError };
       sendNotification({
         type: "error",
-        title: "Failed to update maximum bytes billed",
+        title: t`Failed to update maximum bytes billed`,
         description: err.error.message,
       });
     }
@@ -150,7 +151,7 @@ export function BigQueryOptionsView({
   return (
     <ContextItem.List>
       <ContextItem
-        title="Use descriptions"
+        title={t`Use descriptions`}
         visual={<ContextItem.Visual visual={BigQueryLogo} />}
         action={
           <div className="relative">
@@ -166,21 +167,25 @@ export function BigQueryOptionsView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground">
-            Your tables and columns description set in BigQuery will be used to
-            describe the schemas to Agents.
+            <Trans>
+              Your tables and columns description set in BigQuery will be used
+              to describe the schemas to Agents.
+            </Trans>
           </div>
         </ContextItem.Description>
       </ContextItem>
 
       <ContextItem
-        title="Maximum bytes billed"
+        title={t`Maximum bytes billed`}
         visual={<ContextItem.Visual visual={BigQueryLogo} />}
       >
         <ContextItem.Description>
           <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground">
             <div className="text-sm text-muted-foreground">
-              Cap how many bytes a Dust-run BigQuery query may bill. Leave empty
-              or 0 for no limit.
+              <Trans>
+                Cap how many bytes a Dust-run BigQuery query may bill. Leave
+                empty or 0 for no limit.
+              </Trans>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -188,17 +193,19 @@ export function BigQueryOptionsView({
                 type="number"
                 onChange={(e) => setGbInput(e.target.value)}
                 disabled={readOnly || !isAdmin || bytesLoading}
-                placeholder="No limit"
+                placeholder={t`No limit`}
                 className="w-24"
               />
-              <span className="text-sm text-muted-foreground">GB</span>
+              <span className="text-sm text-muted-foreground">
+                <Trans context="gigabytes unit">GB</Trans>
+              </span>
               <Button
                 size="sm"
                 onClick={handleSaveMaximumBytesBilled}
                 disabled={
                   readOnly || !isAdmin || bytesLoading || isBytesUnchanged
                 }
-                label="Save"
+                label={t`Save`}
               />
             </div>
           </div>

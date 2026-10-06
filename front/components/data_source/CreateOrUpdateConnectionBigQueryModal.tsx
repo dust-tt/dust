@@ -38,6 +38,7 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 import { fromError } from "zod-validation-error";
 
@@ -66,6 +67,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
   onSuccess: _onSuccess,
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionBigQueryModalProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +94,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
           credentials: credentialsObject,
           valid: allFieldsHaveValue,
           errorMessage: !allFieldsHaveValue
-            ? "All fields must have a value"
+            ? t`All fields must have a value`
             : null,
         };
       } else {
@@ -106,10 +108,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
       return {
         credentials: null,
         valid: false,
-        errorMessage: "Invalid JSON",
+        errorMessage: t`Invalid JSON`,
       };
     }
-  }, [credentials]);
+  }, [credentials, t]);
 
   // Region picking
   const [selectedLocation, setSelectedLocation] = useState<string>();
@@ -136,10 +138,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
       Object.keys(locations ?? {}).length === 0
     ) {
       setError(
-        "No locations found - make sure you follow the instructions in the guide."
+        t`No locations found - make sure you follow the instructions in the guide.`
       );
     }
-  }, [locations, locationsError]);
+  }, [locations, locationsError, t]);
 
   useEffect(() => {
     const errorMessage =
@@ -156,6 +158,8 @@ export function CreateOrUpdateConnectionBigQueryModal({
     CONNECTOR_UI_CONFIGURATIONS[
       connectorProviderConfiguration.connectorProvider
     ];
+
+  const providerName = connectorProviderConfiguration.name;
 
   function onSuccess(ds: DataSourceType) {
     setCredentials("");
@@ -190,7 +194,9 @@ export function CreateOrUpdateConnectionBigQueryModal({
     );
 
     if (!createCredentialsRes.ok) {
-      setError("Failed to create connection: cannot verify those credentials.");
+      setError(
+        t`Failed to create connection: cannot verify those credentials.`
+      );
       setIsLoading(false);
       return false;
     }
@@ -211,11 +217,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
         isConnectorsAPIError(maybeConnectorsError) &&
         maybeConnectorsError.type === "invalid_request_error"
       ) {
-        setError(
-          `Failed to create BigQuery connection: ${maybeConnectorsError.message}`
-        );
+        const errorMessage = maybeConnectorsError.message;
+        setError(t`Failed to create BigQuery connection: ${errorMessage}`);
       } else {
-        setError(`Failed to create BigQuery connection: ${err.error.message}`);
+        const errorMessage = err.error.message;
+        setError(t`Failed to create BigQuery connection: ${errorMessage}`);
       }
 
       setIsLoading(false);
@@ -264,7 +270,9 @@ export function CreateOrUpdateConnectionBigQueryModal({
     );
 
     if (!credentialsRes.ok) {
-      setError("Failed to update connection: cannot verify those credentials.");
+      setError(
+        t`Failed to update connection: cannot verify those credentials.`
+      );
       setIsLoading(false);
       return false;
     }
@@ -294,11 +302,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
         isConnectorsAPIError(maybeConnectorsError) &&
         maybeConnectorsError.type === "invalid_request_error"
       ) {
-        setError(
-          `Failed to update BigQuery connection: ${maybeConnectorsError.message}`
-        );
+        const errorMessage = maybeConnectorsError.message;
+        setError(t`Failed to update BigQuery connection: ${errorMessage}`);
       } else {
-        setError(`Failed to update BigQuery connection: ${err.error.message}`);
+        const errorMessage = err.error.message;
+        setError(t`Failed to update BigQuery connection: ${errorMessage}`);
       }
 
       return false;
@@ -318,14 +326,14 @@ export function CreateOrUpdateConnectionBigQueryModal({
                 visual={connectorUIConfiguration.getLogoComponent(isDark)}
               />
             </span>
-            Connecting {connectorProviderConfiguration.name}
+            <Trans>Connecting {providerName}</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
               <Button
-                label="Read our guide"
+                label={t`Read our guide`}
                 size="sm"
                 href={connectorUIConfiguration.guideLink ?? ""}
                 variant="outline"
@@ -337,7 +345,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
               {connectorUIConfiguration.limitations && (
                 <ContentMessage
                   variant="primary"
-                  title="Limitations"
+                  title={t`Limitations`}
                   className="border-none"
                 >
                   {connectorUIConfiguration.limitations}
@@ -346,56 +354,68 @@ export function CreateOrUpdateConnectionBigQueryModal({
             </div>
 
             {error && (
-              <ContentMessage variant="warning" title="Connection Error">
+              <ContentMessage variant="warning" title={t`Connection error`}>
                 {error}
               </ContentMessage>
             )}
 
-            <Page.SectionHeader title="BigQuery Credentials" />
+            <Page.SectionHeader title={t`BigQuery credentials`} />
             <TextArea
               className="min-h-[300px] font-mono text-[13px]"
               name="service_account_json"
               value={credentials}
-              placeholder="Paste service account JSON here"
+              placeholder={t`Paste service account JSON here`}
               onChange={(e) => setCredentials(e.target.value)}
             />
 
             {needToSelectLocation && (
               <div className="flex flex-col gap-4">
-                <Page.SectionHeader title="Select Location" />
+                <Page.SectionHeader title={t`Select location`} />
                 <RadioGroup
                   value={selectedLocation}
                   onValueChange={setSelectedLocation}
                 >
-                  {Object.entries(locations ?? {}).map(([location, tables]) => (
-                    <RadioGroupCustomItem
-                      key={location}
-                      id={location}
-                      value={location}
-                      customItem={
-                        <Tooltip
-                          label={
-                            <>
-                              This location contains connectable tables, for
-                              example:{" "}
-                              <span className="text-xs text-muted-foreground">
-                                {tables.join(", ")}
-                              </span>
-                            </>
-                          }
-                          trigger={
-                            <Label
-                              htmlFor={location}
-                              className="flex cursor-pointer items-center gap-1"
-                            >
-                              <span className="font-semibold">{location}</span>{" "}
-                              - {tables.length} tables <InfoCircle />
-                            </Label>
-                          }
-                        />
-                      }
-                    />
-                  ))}
+                  {Object.entries(locations ?? {}).map(([location, tables]) => {
+                    const tableExamples = tables.join(", ");
+                    const tableCount = tables.length;
+                    return (
+                      <RadioGroupCustomItem
+                        key={location}
+                        id={location}
+                        value={location}
+                        customItem={
+                          <Tooltip
+                            label={
+                              <Trans>
+                                This location contains connectable tables, for
+                                example:{" "}
+                                <span className="text-xs text-muted-foreground">
+                                  {tableExamples}
+                                </span>
+                              </Trans>
+                            }
+                            trigger={
+                              <Label
+                                htmlFor={location}
+                                className="flex cursor-pointer items-center gap-1"
+                              >
+                                <span className="font-semibold">
+                                  {location}
+                                </span>{" "}
+                                -{" "}
+                                <Plural
+                                  value={tableCount}
+                                  one="# table"
+                                  other="# tables"
+                                />{" "}
+                                <InfoCircle />
+                              </Label>
+                            }
+                          />
+                        }
+                      />
+                    );
+                  })}
                 </RadioGroup>
               </div>
             )}
@@ -403,11 +423,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading ? "Saving..." : "Save",
+            label: isLoading ? t`Saving...` : t`Save`,
             onClick: async (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();

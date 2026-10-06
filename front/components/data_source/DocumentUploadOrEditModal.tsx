@@ -36,6 +36,7 @@ import {
   TextArea,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -79,6 +80,7 @@ export const DocumentUploadOrEditModal = ({
   plan,
   initialId,
 }: DocumentUploadOrEditModalProps) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
@@ -137,9 +139,8 @@ export const DocumentUploadOrEditModal = ({
         if (!content || content.trim().length === 0) {
           sendNotification({
             type: "error",
-            title: "Empty document content",
-            description:
-              "The uploaded file is empty. Please upload a file with content.",
+            title: t`Empty document content`,
+            description: t`The uploaded file is empty. Please upload a file with content.`,
           });
           fileUploaderService.resetUpload();
           return;
@@ -153,7 +154,7 @@ export const DocumentUploadOrEditModal = ({
         fileUploaderService.resetUpload();
         sendNotification({
           type: "error",
-          title: "Error fetching document content",
+          title: t`Error fetching document content`,
           description: normalizeError(error).message,
         });
       },
@@ -241,8 +242,8 @@ export const DocumentUploadOrEditModal = ({
       if (documentState.title.trim() === "") {
         sendNotification({
           type: "error",
-          title: "Missing document title",
-          description: "You must provide a title for the document.",
+          title: t`Missing document title`,
+          description: t`You must provide a title for the document.`,
         });
         return;
       }
@@ -250,9 +251,8 @@ export const DocumentUploadOrEditModal = ({
       if (documentState.text.trim() === "") {
         sendNotification({
           type: "error",
-          title: "Missing document content",
-          description:
-            "You must provide content for the document. Either upload a file or specify the content.",
+          title: t`Missing document content`,
+          description: t`You must provide content for the document. Either upload a file or specify the content.`,
         });
         return;
       }
@@ -260,14 +260,14 @@ export const DocumentUploadOrEditModal = ({
       // Fallback
       sendNotification({
         type: "error",
-        title: "Invalid document",
-        description: "Please fill in all required fields.",
+        title: t`Invalid document`,
+        description: t`Please fill in all required fields.`,
       });
       return;
     }
 
     await handleUpload();
-  }, [isValidDocument, handleUpload, documentState, sendNotification]);
+  }, [isValidDocument, handleUpload, documentState, sendNotification, t]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,8 +276,8 @@ export const DocumentUploadOrEditModal = ({
       if (files && files.length > 1) {
         sendNotification({
           type: "error",
-          title: "Multiple files",
-          description: "Please upload only one file at a time.",
+          title: t`Multiple files`,
+          description: t`Please upload only one file at a time.`,
         });
         return;
       }
@@ -315,12 +315,12 @@ export const DocumentUploadOrEditModal = ({
       } catch (error) {
         sendNotification({
           type: "error",
-          title: "Error uploading file",
+          title: t`Error uploading file`,
           description: error instanceof Error ? error.message : String(error),
         });
       }
     },
-    [fileUploaderService, sendNotification, setDocumentState]
+    [fileUploaderService, sendNotification, setDocumentState, t]
   );
 
   // Effect: Set the document state when the document is loaded
@@ -352,6 +352,13 @@ export const DocumentUploadOrEditModal = ({
     setIsValidDocument(isTitleValid && isContentValid);
   }, [documentState]);
 
+  const supportedFileExtensions =
+    getSupportedNonImageFileExtensions().join(", ");
+  const maxDocumentSizeMb =
+    plan.limits.dataSources.documents.sizeMb === -1
+      ? 2
+      : plan.limits.dataSources.documents.sizeMb;
+
   return (
     <Sheet
       open={isOpen}
@@ -365,7 +372,9 @@ export const DocumentUploadOrEditModal = ({
     >
       <SheetContent size="xl">
         <SheetHeader>
-          <SheetTitle>{`${initialId ? "Edit" : "Add"} document`}</SheetTitle>
+          <SheetTitle>
+            {initialId ? t`Edit document` : t`Add document`}
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           {isDocumentLoading ? (
@@ -375,13 +384,15 @@ export const DocumentUploadOrEditModal = ({
           ) : (
             <Page.Vertical align="stretch">
               {isDocumentError ? (
-                <div className="space-y-4 p-4">Content cannot be loaded.</div>
+                <div className="space-y-4 p-4">
+                  <Trans>Content cannot be loaded.</Trans>
+                </div>
               ) : (
                 <div className="space-y-4 p-4">
                   <div>
-                    <Page.SectionHeader title="Document title" />
+                    <Page.SectionHeader title={t`Document title`} />
                     <Input
-                      placeholder="Document title"
+                      placeholder={t`Document title`}
                       name="title"
                       maxLength={MAX_NAME_CHARS}
                       value={documentState.title}
@@ -396,7 +407,7 @@ export const DocumentUploadOrEditModal = ({
                       }}
                       message={
                         !documentState.title && editionStatus.title
-                          ? "You must provide a title."
+                          ? t`You must provide a title.`
                           : null
                       }
                       messageStatus="error"
@@ -406,8 +417,8 @@ export const DocumentUploadOrEditModal = ({
                   <div className="flex flex-col gap-2">
                     <div>
                       <Page.SectionHeader
-                        title="Associated URL"
-                        description="The URL of the associated document (if any). Will be used to link users to the original document in agents citations."
+                        title={t`Associated URL`}
+                        description={t`The URL of the associated document (if any). Will be used to link users to the original document in agents citations.`}
                       />
                     </div>
                     <div>
@@ -428,18 +439,14 @@ export const DocumentUploadOrEditModal = ({
 
                   <div className="flex flex-col gap-4">
                     <Page.SectionHeader
-                      title="Text content"
-                      description={`Copy paste content or upload a file (${getSupportedNonImageFileExtensions().join(", ")}). \n Up to ${
-                        plan.limits.dataSources.documents.sizeMb === -1
-                          ? "2"
-                          : plan.limits.dataSources.documents.sizeMb
-                      } MB of raw text.`}
+                      title={t`Text content`}
+                      description={t`Copy paste content or upload a file (${supportedFileExtensions}). \n Up to ${maxDocumentSizeMb} MB of raw text.`}
                       action={{
                         label:
                           fileUploaderService.isProcessingFiles ||
                           isContentLoading
-                            ? "Uploading..."
-                            : "Upload file",
+                            ? t`Uploading...`
+                            : t`Upload file`,
                         variant: "primary",
                         icon: FilePlus03,
                         onClick: () => fileInputRef.current?.click(),
@@ -461,7 +468,7 @@ export const DocumentUploadOrEditModal = ({
                         isContentLoading ||
                         fileUploaderService.isProcessingFiles
                       }
-                      placeholder="Your document content..."
+                      placeholder={t`Your document content...`}
                       value={documentState.text}
                       onChange={(e) => {
                         setEditionStatus((prev) => ({
@@ -476,7 +483,7 @@ export const DocumentUploadOrEditModal = ({
                       }}
                       error={
                         editionStatus.content && !documentState.text
-                          ? "You must upload a file or specify the content of the document."
+                          ? t`You must upload a file or specify the content of the document.`
                           : null
                       }
                       showErrorLabel
@@ -485,9 +492,9 @@ export const DocumentUploadOrEditModal = ({
 
                   <div>
                     <Page.SectionHeader
-                      title="Labels"
+                      title={t`Labels`}
                       action={{
-                        label: labelsVisible ? "Hide" : "Show",
+                        label: labelsVisible ? t`Hide` : t`Show`,
                         variant: "ghost",
                         icon: labelsVisible ? EyeOff : Eye,
                         onClick: () => setLabelsVisible(!labelsVisible),
@@ -497,9 +504,9 @@ export const DocumentUploadOrEditModal = ({
                       <div className="pt-4">
                         <Page.SectionHeader
                           title=""
-                          description="Labels can be set to filter Data Source retrieval."
+                          description={t`Labels can be set to filter data source retrieval.`}
                           action={{
-                            label: "Add label",
+                            label: t`Add label`,
                             variant: "ghost",
                             icon: Plus,
                             onClick: () =>
@@ -519,7 +526,10 @@ export const DocumentUploadOrEditModal = ({
                                 <div className="flex flex-1 flex-col">
                                   <Input
                                     className="w-full"
-                                    placeholder="Label"
+                                    placeholder={t({
+                                      message: "Label",
+                                      context: "noun, document label",
+                                    })}
                                     name="label"
                                     value={tag}
                                     onChange={(e) => {
@@ -535,7 +545,7 @@ export const DocumentUploadOrEditModal = ({
                                 </div>
                                 <div className="flex">
                                   <Button
-                                    tooltip="Remove"
+                                    tooltip={t`Remove`}
                                     icon={Trash01}
                                     variant="warning"
                                     onClick={() => {
@@ -563,11 +573,11 @@ export const DocumentUploadOrEditModal = ({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isUpsertingDocument ? "Saving..." : "Save",
+            label: isUpsertingDocument ? t`Saving...` : t`Save`,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();

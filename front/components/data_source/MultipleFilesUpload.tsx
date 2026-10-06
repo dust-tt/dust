@@ -28,6 +28,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -58,6 +59,7 @@ export const MultipleFilesUpload = ({
   plan,
   useCaseForDocument = "folders_document",
 }: MultipleFilesUploadProps) => {
+  const { t } = useLingui();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
   const [wasOpened, setWasOpened] = useState(isOpen);
@@ -303,6 +305,12 @@ export const MultipleFilesUpload = ({
     setWasOpened(isOpen);
   }, [handleFileInputBlur, isOpen, wasOpened]);
 
+  const duplicateFileName = duplicateFiles[0];
+  const duplicateFileCount = duplicateFiles.length;
+  const hiddenDuplicateFileCount = duplicateFiles.length - 5;
+  const completedFileCount = isBulkFilesUploading?.completed;
+  const totalFileCount = isBulkFilesUploading?.total;
+
   return (
     <>
       <DocumentLimitPopup
@@ -314,37 +322,45 @@ export const MultipleFilesUpload = ({
       <Dialog open={duplicateFiles.length > 0}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Replace existing files?</DialogTitle>
+            <DialogTitle>
+              <Trans>Replace existing files?</Trans>
+            </DialogTitle>
             <DialogDescription>
               {duplicateFiles.length === 1 ? (
-                <>
-                  A file named <strong>{duplicateFiles[0]}</strong> already
+                <Trans>
+                  A file named <strong>{duplicateFileName}</strong> already
                   exists in this folder. Do you want to replace it?
-                </>
+                </Trans>
               ) : (
                 <>
-                  {duplicateFiles.length} files already exist in this folder:
+                  <Plural
+                    value={duplicateFileCount}
+                    one="# file already exists in this folder:"
+                    other="# files already exist in this folder:"
+                  />
                   <ul className="ml-4 mt-2 list-disc">
                     {duplicateFiles.slice(0, 5).map((name) => (
                       <li key={name}>{name}</li>
                     ))}
                     {duplicateFiles.length > 5 && (
-                      <li>and {duplicateFiles.length - 5} more...</li>
+                      <li>
+                        <Trans>and {hiddenDuplicateFileCount} more...</Trans>
+                      </li>
                     )}
                   </ul>
-                  Do you want to replace them?
+                  <Trans>Do you want to replace them?</Trans>
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
-              label="Cancel"
+              label={t`Cancel`}
               onClick={() => handleDuplicateConfirmation(false)}
             />
             <Button
               variant="primary"
-              label="Replace"
+              label={t`Replace`}
               onClick={() => handleDuplicateConfirmation(true)}
             />
           </DialogFooter>
@@ -357,13 +373,14 @@ export const MultipleFilesUpload = ({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader hideButton>
-            <DialogTitle>Uploading files</DialogTitle>
+            <DialogTitle>
+              <Trans>Uploading files</Trans>
+            </DialogTitle>
             <DialogDescription>
               {isBulkFilesUploading && (
-                <>
-                  Processing files {isBulkFilesUploading.completed} /{" "}
-                  {isBulkFilesUploading.total}
-                </>
+                <Trans>
+                  Processing files {completedFileCount} / {totalFileCount}
+                </Trans>
               )}
             </DialogDescription>
           </DialogHeader>

@@ -1,5 +1,6 @@
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { cn, Input, SliderToggle, TextArea } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 export function MicrosoftOAuthExtraConfig({
@@ -7,6 +8,7 @@ export function MicrosoftOAuthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
+  const { t } = useLingui();
   // Store the initial extraConfig values when they're first loaded
   const initialExtraConfigRef = useRef<Record<string, string>>({});
   const prevUseServicePrincipalRef = useRef<boolean>(!!extraConfig.client_id);
@@ -69,7 +71,9 @@ export function MicrosoftOAuthExtraConfig({
   return (
     <>
       <div className="flex justify-between">
-        <div>Use a Service Principal</div>
+        <div>
+          <Trans>Use a service principal</Trans>
+        </div>
         <SliderToggle
           selected={useServicePrincipal}
           onClick={() => setUseServicePrincipal(!useServicePrincipal)}
@@ -83,7 +87,7 @@ export function MicrosoftOAuthExtraConfig({
           )}
         >
           <Input
-            label="Tenant ID"
+            label={t`Tenant ID`}
             disabled={!useServicePrincipal}
             name="tenant_id"
             value={extraConfig.tenant_id ?? ""}
@@ -95,7 +99,7 @@ export function MicrosoftOAuthExtraConfig({
             }}
           />
           <Input
-            label="Client ID"
+            label={t`Client ID`}
             disabled={!useServicePrincipal}
             name="client_id"
             value={extraConfig.client_id ?? ""}
@@ -107,8 +111,8 @@ export function MicrosoftOAuthExtraConfig({
             }}
           />
           <Input
-            label="Service Account secret"
-            placeholder="Save this secret - you'll need to re-enter it each time you configure this connector"
+            label={t`Service account secret`}
+            placeholder={t`Save this secret - you'll need to re-enter it each time you configure this connector`}
             disabled={!useServicePrincipal}
             name="client_secret"
             type="password"
@@ -122,7 +126,10 @@ export function MicrosoftOAuthExtraConfig({
           />
           <div className="flex flex-col gap-1">
             <div className="text-sm font-medium text-slate-700">
-              Selected SharePoint sites Dust will have access to (one per line).
+              <Trans>
+                Selected SharePoint sites Dust will have access to (one per
+                line).
+              </Trans>
             </div>
             <TextArea
               placeholder={
@@ -148,9 +155,11 @@ export function MicrosoftOAuthExtraConfig({
               minRows={4}
             />
             <div className="text-xs text-slate-500">
-              Provide the SharePoint site identifiers assigned to the service
-              principal. Enter one identifier per line. This is not required if
-              your Service Principal has access to all sites.
+              <Trans>
+                Provide the SharePoint site identifiers assigned to the service
+                principal. Enter one identifier per line. This is not required
+                if your service principal has access to all sites.
+              </Trans>
             </div>
           </div>
         </div>

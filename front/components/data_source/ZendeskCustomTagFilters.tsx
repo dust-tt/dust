@@ -13,6 +13,7 @@ import {
   Tooltip,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 
 interface CustomField {
@@ -31,6 +32,7 @@ export function ZendeskCustomFieldFilters({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [inputValue, setInputValue] = useState("");
 
@@ -62,8 +64,8 @@ export function ZendeskCustomFieldFilters({
       if (!trimmedFieldId) {
         sendNotification({
           type: "info",
-          title: "Invalid field ID",
-          description: "Field ID cannot be empty.",
+          title: t`Invalid field ID`,
+          description: t`Field ID cannot be empty.`,
         });
         return;
       }
@@ -72,8 +74,8 @@ export function ZendeskCustomFieldFilters({
       if (isNaN(numericFieldId) || numericFieldId <= 0) {
         sendNotification({
           type: "info",
-          title: "Invalid field ID",
-          description: "Field ID must be a positive number.",
+          title: t`Invalid field ID`,
+          description: t`Field ID must be a positive number.`,
         });
         return;
       }
@@ -81,8 +83,8 @@ export function ZendeskCustomFieldFilters({
       if (customFields.some((field) => field.id === numericFieldId)) {
         sendNotification({
           type: "info",
-          title: "Field already added",
-          description: "This custom field is already configured.",
+          title: t`Field already added`,
+          description: t`This custom field is already configured.`,
         });
         return;
       }
@@ -106,17 +108,18 @@ export function ZendeskCustomFieldFilters({
         await mutateCustomFieldsConfig();
         sendNotification({
           type: "success",
-          title: "Custom field added",
-          description: `Added custom field with ID ${numericFieldId}.`,
+          title: t`Custom field added`,
+          description: t`Added custom field with ID ${numericFieldId}.`,
         });
       } else {
         const err = await res.json();
         sendNotification({
           type: "error",
-          title: "Failed to add custom field",
+          title: t`Failed to add custom field`,
           description:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            err.error?.connectors_error?.message || "An unknown error occurred",
+            err.error?.connectors_error?.message ||
+            t`An unknown error occurred`,
         });
       }
     },
@@ -126,6 +129,7 @@ export function ZendeskCustomFieldFilters({
       customFields,
       mutateCustomFieldsConfig,
       sendNotification,
+      t,
     ]
   );
 
@@ -135,8 +139,8 @@ export function ZendeskCustomFieldFilters({
       if (!fieldToRemove) {
         sendNotification({
           type: "info",
-          title: "Field not found",
-          description: "The field is not configured.",
+          title: t`Field not found`,
+          description: t`The field is not configured.`,
         });
         return;
       }
@@ -156,19 +160,21 @@ export function ZendeskCustomFieldFilters({
 
       if (res.ok) {
         await mutateCustomFieldsConfig();
+        const fieldName = fieldToRemove.name;
         sendNotification({
           type: "success",
-          title: "Custom field removed",
-          description: `Removed custom field "${fieldToRemove.name}".`,
+          title: t`Custom field removed`,
+          description: t`Removed custom field "${fieldName}".`,
         });
       } else {
         const err = await res.json();
         sendNotification({
           type: "error",
-          title: "Failed to remove custom field",
+          title: t`Failed to remove custom field`,
           description:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            err.error?.connectors_error?.message || "An unknown error occurred",
+            err.error?.connectors_error?.message ||
+            t`An unknown error occurred`,
         });
       }
     },
@@ -178,6 +184,7 @@ export function ZendeskCustomFieldFilters({
       customFields,
       mutateCustomFieldsConfig,
       sendNotification,
+      t,
     ]
   );
 
@@ -203,15 +210,17 @@ export function ZendeskCustomFieldFilters({
 
   return (
     <ContextItem
-      title="Custom Field Tags"
+      title={t`Custom field tags`}
       visual={<ContextItem.Visual visual={ZendeskLogo} />}
     >
       <div className="space-y-4">
         <div className="text-muted-foreground">
           <p className="text-sm">
-            Configure custom ticket field that should be included as tags when
-            syncing tickets. Custom field values will be added as tags in the
-            format "fieldName:value".
+            <Trans>
+              Configure custom ticket field that should be included as tags when
+              syncing tickets. Custom field values will be added as tags in the
+              format "fieldName:value".
+            </Trans>
           </p>
         </div>
 
@@ -223,19 +232,21 @@ export function ZendeskCustomFieldFilters({
                 type="number"
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter custom field ID"
+                placeholder={t`Enter custom field ID`}
                 disabled={loading}
               />
               <Button
                 size="sm"
                 onClick={handleSave}
                 disabled={loading || !inputValue.trim()}
-                label="Add Field"
+                label={t`Add field`}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Enter the numeric ID of the custom field from Zendesk. You can
-              find this in your Zendesk admin settings under Fields.
+              <Trans>
+                Enter the numeric ID of the custom field from Zendesk. You can
+                find this in your Zendesk admin settings under Fields.
+              </Trans>
             </p>
           </div>
         )}
@@ -243,28 +254,31 @@ export function ZendeskCustomFieldFilters({
         <div>
           {customFields.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {customFields.map((field: CustomField) => (
-                <Tooltip
-                  key={field.id}
-                  label={`Field ID: ${field.id}`}
-                  trigger={
-                    <Chip
-                      label={field.name}
-                      color="highlight"
-                      size="sm"
-                      onRemove={
-                        !readOnly && isAdmin
-                          ? () => handleRemoveField(field.id)
-                          : undefined
-                      }
-                    />
-                  }
-                />
-              ))}
+              {customFields.map((field: CustomField) => {
+                const fieldId = field.id;
+                return (
+                  <Tooltip
+                    key={fieldId}
+                    label={t`Field ID: ${fieldId}`}
+                    trigger={
+                      <Chip
+                        label={field.name}
+                        color="highlight"
+                        size="sm"
+                        onRemove={
+                          !readOnly && isAdmin
+                            ? () => handleRemoveField(fieldId)
+                            : undefined
+                        }
+                      />
+                    }
+                  />
+                );
+              })}
             </div>
           ) : (
             <p className="mb-4 text-sm text-muted-foreground">
-              No tag filters configured.
+              <Trans>No tag filters configured.</Trans>
             </p>
           )}
         </div>

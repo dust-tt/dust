@@ -392,6 +392,7 @@ export function EditSpaceManagedDataSourcesViews({
           const syncConfirmed = await confirmPrivateNodesSync({
             selectedNodes,
             confirm,
+            t,
           });
 
           if (!syncConfirmed) {
