@@ -37,8 +37,6 @@ import { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
-export const CREATE_API_KEY_LABEL = "Create API Key";
-
 function useFormSchema() {
   const { t } = useLingui();
   const monthlyCapDollarsSchema = useMonthlyCapDollarsSchema();

@@ -30,9 +30,6 @@ import React from "react";
 
 import { WorkspaceSection } from "../WorkspaceSection";
 
-export const SSO_HEADING_LABEL = "Single Sign-On (SSO)";
-export const ENFORCE_SSO_LABEL = "Enforce SSO login";
-
 interface WorkOSSSOConnectionProps {
   domains: Organization["domains"];
   owner: WorkspaceType;

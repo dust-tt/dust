@@ -114,8 +114,6 @@ function DomainAutoJoinModal({
   );
 }
 
-export const AUTO_JOIN_WORKSPACE_LABEL = "Auto-join Workspace";
-
 type AutoJoinToggleProps = {
   domains: Organization["domains"];
   workspaceVerifiedDomains: WorkspaceDomain[];

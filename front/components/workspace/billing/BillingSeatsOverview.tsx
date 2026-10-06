@@ -12,13 +12,12 @@ import { Avatar, Chip, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 
-function AwuCreditsLabel({
-  credits,
-  period,
-}: {
+interface AwuCreditsLabelProps {
   credits: number;
   period: SeatTypeInfo["awuCreditsPeriod"];
-}): string {
+}
+
+function AwuCreditsLabel({ credits, period }: AwuCreditsLabelProps): string {
   const { t } = useLingui();
 
   switch (period) {

@@ -233,13 +233,12 @@ function ConsumptionCell({
   return <>{children}</>;
 }
 
-function SpacesCell({
-  spaces,
-  hasPrivateSpace,
-}: {
+interface SpacesCellProps {
   spaces: string[];
   hasPrivateSpace: boolean;
-}) {
+}
+
+function SpacesCell({ spaces, hasPrivateSpace }: SpacesCellProps) {
   const { t } = useLingui();
   const spaceLabels = spaces.length > 0 ? spaces : [t`No spaces`];
   const spaceList = spaceLabels.join(", ");
@@ -270,13 +269,12 @@ function SpacesCell({
   );
 }
 
-function CreditsCellContent({
-  credits,
-  monthlyCap,
-}: {
+interface CreditsCellContentProps {
   credits: number | null;
   monthlyCap: string | null;
-}) {
+}
+
+function CreditsCellContent({ credits, monthlyCap }: CreditsCellContentProps) {
   const { t } = useLingui();
   const creditsLabel = credits === null ? "—" : formatCredits(credits);
 
@@ -292,7 +290,11 @@ function CreditsCellContent({
   );
 }
 
-function MonthlyCapCell({ monthlyCap }: { monthlyCap: string | null }) {
+interface MonthlyCapCellProps {
+  monthlyCap: string | null;
+}
+
+function MonthlyCapCell({ monthlyCap }: MonthlyCapCellProps) {
   const { t } = useLingui();
 
   return (
@@ -303,7 +305,11 @@ function MonthlyCapCell({ monthlyCap }: { monthlyCap: string | null }) {
   );
 }
 
-function LastUsedCell({ lastUsedAt }: { lastUsedAt: number | null }) {
+interface LastUsedCellProps {
+  lastUsedAt: number | null;
+}
+
+function LastUsedCell({ lastUsedAt }: LastUsedCellProps) {
   const { t } = useLingui();
 
   return (
@@ -320,7 +326,11 @@ function LastUsedCell({ lastUsedAt }: { lastUsedAt: number | null }) {
   );
 }
 
-function StatusCell({ status }: { status: APIKeyStatus }) {
+interface StatusCellProps {
+  status: APIKeyStatus;
+}
+
+function StatusCell({ status }: StatusCellProps) {
   const { t } = useLingui();
 
   return (

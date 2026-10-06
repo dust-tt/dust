@@ -32,11 +32,13 @@ function formatAddress(address: BillingAddress | null): string | null {
   return [street, cityLine, address.country].filter(Boolean).join(", ") || null;
 }
 
+interface PaymentMethodLabelProps {
+  paymentMethod: BillingPaymentMethod | null;
+}
+
 function PaymentMethodLabel({
   paymentMethod,
-}: {
-  paymentMethod: BillingPaymentMethod | null;
-}): string {
+}: PaymentMethodLabelProps): string {
   const { t } = useLingui();
 
   if (!paymentMethod) {

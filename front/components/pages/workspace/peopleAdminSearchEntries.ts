@@ -1,6 +1,5 @@
 import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
 import { DIRECTORY_SYNC_LABEL } from "@app/components/workspace/DirectorySync";
-import { AUTO_JOIN_WORKSPACE_LABEL } from "@app/components/workspace/sso/AutoJoinToggle";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -50,7 +49,7 @@ export const PEOPLE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     P.joining,
-    [[AUTO_JOIN_WORKSPACE_LABEL, "verified domain auto join enrollment"]],
+    [["Auto-join Workspace", "verified domain auto join enrollment"]],
     "members"
   ),
   ...adminSearchEntries(
