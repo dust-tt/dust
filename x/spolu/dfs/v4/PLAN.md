@@ -71,7 +71,10 @@ regressions. Validate concurrent clients, same-name collisions, moves, revocatio
 
 ## Follow-up evaluation
 
-- [ ] Existing dust-dev nodes: latest 10k untar and full filesystem benchmark, with durable drain.
+- [x] Existing dust-dev nodes: latest 10k untar and full filesystem benchmark, with durable drain.
+  12.869s untar + 0.479s drain; all 24 timed checks passed, final cleanup failed with `EIO`.
+  Full table and profiling: [gcp/RESULTS.md](gcp/RESULTS.md).
+- [ ] Fix recursive scratch-directory cleanup `EIO`, reproduced in both local and GCP full suites.
 - [ ] 100k-file and multi-server contention benchmarks.
 - [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
 - [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.

@@ -5,6 +5,7 @@ current **512 MiB** client budget. All 24 timed checks passed, including both fu
 passes, but final scratch-directory cleanup failed with `EIO`; this is **not a clean suite pass**.
 The [latest table](#latest-full-table--directory-record-split) includes every measured workload.
 The original 1 GiB baseline and intermediate measurements remain below.
+The same implementation's replicated-backend measurements are in [GCP results](../gcp/RESULTS.md).
 
 ## Configuration and method
 

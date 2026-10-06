@@ -2,7 +2,8 @@
 
 Reuse the manually provisioned [v2 nodes](../../v2/gcp/README.md), without changing FDB or cloud
 resources. FUSE and dfs-server run together on the workload VM; durable FDB transactions cross the
-VPC to the replicated three-zone cluster. Elasticsearch is unused.
+VPC to the replicated three-zone cluster. Elasticsearch is unused. Measurements and validation
+limitations are in [RESULTS.md](RESULTS.md).
 
 Use `v2/gcp/run ssh workload ...` for allowlisted, explicitly scoped SSH. Before host mutations,
 source `/opt/dfs/v2/gcp/verify-host.sh` as root to verify GCE identity. Copy only v4 sources to
