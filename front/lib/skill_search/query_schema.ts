@@ -95,6 +95,7 @@ export const SearchSkillsQuerySchema = BaseSearchSkillsSchema.extend({
   // "none" leaves favorites unfiltered; it does not exclude them.
   favoritesMode: z.enum(SKILL_SEARCH_FAVORITES_MODES).optional(),
   // @deprecated Older clients request blank-query favorites through this boolean.
+  // TODO: Remove once older clients stop sending defaultToFavorites.
   defaultToFavorites: z.boolean().optional(),
   // Only excluded from the default favorites list; ordinary search behavior is unchanged.
   excludeSkillId: z.string().min(1).optional(),
