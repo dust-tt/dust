@@ -12,6 +12,11 @@ import React from "react";
 import { Toaster, toast } from "sonner";
 
 import { Button } from "./Button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./Collapsible";
 import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
@@ -24,6 +29,12 @@ export type NotificationType = {
   };
   title?: string;
   description?: string;
+  /**
+   * Optional raw details (e.g. an error code and the untranslated server message) shown as
+   * preformatted text under a collapsed "Details" toggle. Expanding it keeps the toast open until
+   * it is dismissed.
+   */
+  details?: string;
   /** Outcome variant driving the icon and its color. */
   type: "success" | "error" | "info" | "warning" | "hello";
 };
@@ -85,7 +96,7 @@ function resolveForeground(type: NotificationType["type"]): string {
 
 /**
  * The presentational card of a toast notification: icon, title, description,
- * optional action button, and optional dismiss control. Use it directly for
+ * optional collapsible details, optional action button, and optional dismiss control. Use it directly for
  * inline previews; in product code dispatch toasts with useSendNotification
  * instead.
  * @summary Presentational notification card.
@@ -94,9 +105,15 @@ export function NotificationContent({
   type,
   title,
   description,
+  details,
   action,
   onDismiss,
-}: NotificationType & { onDismiss?: () => void }) {
+  onExpandDetails,
+}: NotificationType & {
+  onDismiss?: () => void;
+  /** Called each time the details are expanded. */
+  onExpandDetails?: () => void;
+}) {
   const icon = resolveIcon(type);
   const foreground = resolveForeground(type);
 
@@ -145,6 +162,30 @@ export function NotificationContent({
           </button>
         )}
       </div>
+      {details && (
+        <Collapsible
+          className="pl-6"
+          onOpenChange={(open) => {
+            if (open) {
+              onExpandDetails?.();
+            }
+          }}
+        >
+          <CollapsibleTrigger>
+            <span className={cn("copy-xs", foreground)}>Details</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <pre
+              className={cn(
+                "copy-xs mt-1 max-h-40 select-text overflow-auto whitespace-pre-wrap break-words font-mono opacity-80",
+                foreground
+              )}
+            >
+              {details}
+            </pre>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       {action && (
         <div className="pl-6">
           <Button
@@ -174,20 +215,22 @@ export const Notification = {
   Area: ({ children }: { children: React.ReactNode }) => {
     const sendNotification = React.useCallback(
       (notification: NotificationType) => {
-        toast.custom(
-          (t) => (
-            <NotificationContent
-              type={notification.type}
-              title={notification.title}
-              description={notification.description}
-              action={notification.action}
-              onDismiss={() => toast.dismiss(t)}
-            />
-          ),
-          {
-            duration: NOTIFICATION_DELAY_MS,
-          }
+        const render = (id: string | number) => (
+          <NotificationContent
+            type={notification.type}
+            title={notification.title}
+            description={notification.description}
+            details={notification.details}
+            action={notification.action}
+            onDismiss={() => toast.dismiss(id)}
+            // Someone reading the details must not lose the toast: update it in place without a
+            // dismiss timer.
+            onExpandDetails={() =>
+              toast.custom(render, { id, duration: Infinity })
+            }
+          />
         );
+        toast.custom(render, { duration: NOTIFICATION_DELAY_MS });
       },
       []
     );
