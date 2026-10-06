@@ -1,5 +1,5 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
 import { LinkWrapper } from "@app/lib/platform";
 import { useSendOtpVerification, useVerifyOtpCode } from "@app/lib/swr/share";
@@ -66,7 +66,7 @@ interface EmailStepFormProps {
 
 function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
   const doSendOtp = useSendOtpVerification({ shareToken });
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
   const posthog = usePostHog();
 
   const {
@@ -88,7 +88,7 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
       });
       onCodeSent(data.email);
     } else {
-      setError("email", { message: formatError(result.error) });
+      setError("email", { message: formatErrorDescription(result.error) });
     }
   };
 
@@ -133,7 +133,7 @@ interface CodeStepFormProps {
 function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
   const doSendOtp = useSendOtpVerification({ shareToken });
   const doVerifyCode = useVerifyOtpCode({ shareToken });
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
   const posthog = usePostHog();
   const [isResending, setIsResending] = useState(false);
   const [resent, setResent] = useState(false);
@@ -157,7 +157,7 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
       posthog.capture("frame_email_verified", { email });
       onVerified();
     } else {
-      setError("code", { message: formatError(result.error) });
+      setError("code", { message: formatErrorDescription(result.error) });
     }
   };
 
@@ -172,9 +172,9 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
     if (result.success) {
       setResent(true);
     } else {
-      setError("code", { message: formatError(result.error) });
+      setError("code", { message: formatErrorDescription(result.error) });
     }
-  }, [doSendOtp, email, reset, setError, formatError]);
+  }, [doSendOtp, email, reset, setError, formatErrorDescription]);
 
   return (
     <VerificationLayout

@@ -1,6 +1,6 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounce, useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -839,7 +839,7 @@ export function useDetectSkillsFromRepo({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
   const { fetcher } = useFetcher();
 
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
@@ -886,14 +886,16 @@ export function useDetectSkillsFromRepo({
             err.error.type === "skill_github_repository_not_found";
           setRepositoryNotFound(repositoryNotFound);
           // Detect errors are errors we want to expose to consumers: repository not found is singled out above.
-          setDetectError(repositoryNotFound ? null : formatError(err));
+          setDetectError(
+            repositoryNotFound ? null : formatErrorDescription(err)
+          );
         } finally {
           if (!signal.aborted) {
             setIsDetecting(false);
           }
         }
       },
-      [owner.sId, fetcher, formatError]
+      [owner.sId, fetcher, formatErrorDescription]
     ),
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
@@ -1014,7 +1016,7 @@ export function useDetectSkillsFromFiles({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
   const { fetcher } = useFetcher();
 
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
@@ -1044,12 +1046,12 @@ export function useDetectSkillsFromFiles({
         );
         setDetectedSkills(data.skills);
       } catch (err) {
-        setDetectError(formatError(err));
+        setDetectError(formatErrorDescription(err));
       } finally {
         setIsUploading(false);
       }
     },
-    [owner.sId, fetcher, formatError]
+    [owner.sId, fetcher, formatErrorDescription]
   );
 
   return {

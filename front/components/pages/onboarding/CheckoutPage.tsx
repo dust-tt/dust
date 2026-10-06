@@ -1,6 +1,6 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -152,7 +152,7 @@ export function CheckoutPage() {
     workspaceId: owner.sId,
   });
   const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
 
   const {
     preparePayment: livePreparePayment,
@@ -377,7 +377,9 @@ export function CheckoutPage() {
   const handleApplyCoupon = handleCouponSubmit(async ({ couponCode }) => {
     const result = await validateCoupon(couponCode.trim(), "subscription");
     if (!result.ok) {
-      setCouponError("couponCode", { message: formatError(result.error) });
+      setCouponError("couponCode", {
+        message: formatErrorDescription(result.error),
+      });
       return;
     }
     setAppliedCoupon(result.coupon);

@@ -1,6 +1,6 @@
 import Custom404 from "@app/components/pages/Custom404";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
 import {
@@ -19,7 +19,7 @@ export function JoinPage() {
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
 
   const {
     joinData,
@@ -43,7 +43,7 @@ export function JoinPage() {
   // Show 404 for unknown workspaces or missing auto-join domains.
   if (!isJoinDataLoading && !joinData) {
     if (joinDataError) {
-      const errorMessage = formatError(joinDataError);
+      const errorMessage = formatErrorDescription(joinDataError);
 
       return (
         <div className="flex h-dvh items-center justify-center">

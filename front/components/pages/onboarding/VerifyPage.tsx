@@ -1,6 +1,6 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
@@ -34,7 +34,7 @@ type Step = "captcha" | "phone" | "code" | "start-trial" | "done";
 export function VerifyPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
   });
@@ -195,7 +195,7 @@ export function VerifyPage() {
 
     if (!trialResponse.ok) {
       const data = await trialResponse.json();
-      setPhoneError(formatError(data));
+      setPhoneError(formatErrorDescription(data));
       return;
     }
 
@@ -215,7 +215,7 @@ export function VerifyPage() {
     mutateAuthContext,
     isMetronomeCheckout,
     goToWorkspace,
-    formatError,
+    formatErrorDescription,
   ]);
 
   const verifyCode = useCallback(

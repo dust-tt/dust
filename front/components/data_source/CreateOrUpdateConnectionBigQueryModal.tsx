@@ -1,7 +1,7 @@
 // Okay to use public API types because it's front/connectors communication.
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
@@ -71,7 +71,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
 }: CreateOrUpdateConnectionBigQueryModalProps) {
   const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [credentials, setCredentials] = useState<string>("");
@@ -140,7 +140,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
   // Checks re-run as the credentials are typed, so they stay inline instead of being toasted.
   let credentialsError: string | null = credentialsState.errorMessage;
   if (!credentialsError && locationsError) {
-    credentialsError = formatError(locationsError);
+    credentialsError = formatErrorDescription(locationsError);
   }
   if (!credentialsError && locations && Object.keys(locations).length === 0) {
     credentialsError = t`No locations found - make sure you follow the instructions in the guide.`;

@@ -3,12 +3,12 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCallback } from "react";
 
 /**
- * @cc [owner:Nils-Fedrigo,label:error-handling;react] format-error-hook
+ * @cc [owner:Nils-Fedrigo,label:error-handling;react] format-error-description-hook
  * The returned function MUST return the `description` of `formatError(error, { hasLocalisation })`,
  * with `hasLocalisation` the `localisation` feature flag of the current workspace. Outside an
  * `AuthContext` (no workspace) feature flags are empty, so `hasLocalisation` is false.
  */
-export const useFormatError = () => {
+export const useFormatErrorDescription = () => {
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
 

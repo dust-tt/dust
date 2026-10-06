@@ -1,7 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
-import { useFormatError } from "@app/hooks/useFormatError";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
@@ -60,7 +60,7 @@ export function SecretSection({
 
   const { secrets, isSecretsLoading, isSecretsError } =
     useDustAppSecrets(owner);
-  const formatError = useFormatError();
+  const formatErrorDescription = useFormatErrorDescription();
 
   const availableSecrets = useMemo(() => sortBy(secrets, "name"), [secrets]);
 
@@ -116,7 +116,7 @@ export function SecretSection({
           variant="warning"
           size="sm"
         >
-          {formatError(isSecretsError)}
+          {formatErrorDescription(isSecretsError)}
         </ContentMessage>
       </ConfigurationSectionContainer>
     );
