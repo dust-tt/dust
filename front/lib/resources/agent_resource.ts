@@ -3578,12 +3578,24 @@ export class AgentResource
     };
   }
 
-  toDiscoveryJSON(): DiscoveryAgentType {
+  toDiscoveryJSON({
+    lastAuthors,
+    userFavorite,
+    activeUsersCount,
+  }: {
+    lastAuthors: readonly string[];
+    userFavorite: boolean;
+    activeUsersCount: number | null;
+  }): DiscoveryAgentType {
     return {
       sId: this.sId,
       name: this.name,
       description: this.description,
       pictureUrl: this.pictureUrl,
+      scope: this.scope,
+      lastAuthors,
+      userFavorite,
+      activeUsersCount,
     };
   }
 

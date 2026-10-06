@@ -144,7 +144,7 @@ async function resolveViewerVisibleItems(
   auth: Authenticator,
   candidates: { resourceType: SearchUsageDimension; resourceId: string }[]
 ): Promise<DiscoveryRankedItemType[]> {
-  const { agentsById, skillsById, skillEditorsById } =
+  const { agentsById, skillsById, skillEditorsById, agentMetadataById } =
     await DiscoveryItemResource.loadTargets(
       auth,
       candidates.map(({ resourceType, resourceId }) => ({
@@ -161,7 +161,16 @@ async function resolveViewerVisibleItems(
           case "agent": {
             const agent = agentsById.get(resourceId);
             return agent && auth.can("read", agent)
-              ? { type: "agent", target: agent.toDiscoveryJSON() }
+              ? {
+                  type: "agent",
+                  target: agent.toDiscoveryJSON(
+                    agentMetadataById.get(agent.sId) ?? {
+                      lastAuthors: [],
+                      userFavorite: false,
+                      activeUsersCount: null,
+                    }
+                  ),
+                }
               : null;
           }
           case "skill": {

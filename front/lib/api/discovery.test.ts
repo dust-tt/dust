@@ -1,15 +1,29 @@
+import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   listDiscoveryForYouItems,
   listDiscoveryTrendingItems,
 } from "@app/lib/api/discovery";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import {
+  GLOBAL_AGENTS_SID,
+  getGlobalAgentAuthorName,
+} from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(
+  import("@app/lib/api/assistant/agent_usage"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    getAgentsUsage: vi.fn(),
+  })
+);
 
 vi.mock(import("@app/lib/search_usage/trending"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -37,6 +51,7 @@ function forYouCandidate(resourceType: "agent" | "skill", resourceId: string) {
 
 describe("discovery ranked sections", () => {
   beforeEach(() => {
+    vi.mocked(getAgentsUsage).mockResolvedValue([]);
     mockedFetchTrending.mockReset();
     mockedFetchForYou.mockReset();
   });
@@ -51,6 +66,15 @@ describe("discovery ranked sections", () => {
       addCurrentUserAsEditor: true,
     });
 
+    vi.mocked(getAgentsUsage).mockResolvedValue([
+      {
+        agentId: visibleAgent.sId,
+        userCount: 8,
+        messageCount: 20,
+        conversationCount: 10,
+        timePeriodSec: 30 * 24 * 60 * 60,
+      },
+    ]);
     mockedFetchTrending.mockResolvedValue(
       new Ok({
         agents: [
@@ -101,6 +125,10 @@ describe("discovery ranked sections", () => {
           name: visibleAgent.name,
           description: visibleAgent.description,
           pictureUrl: visibleAgent.pictureUrl,
+          scope: visibleAgent.scope,
+          lastAuthors: ["Me"],
+          userFavorite: false,
+          activeUsersCount: 8,
         },
       },
       {
@@ -122,6 +150,11 @@ describe("discovery ranked sections", () => {
     const visibleAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Visible for-you agent",
     });
+    const resource = await AgentResource.fetchById(auth, visibleAgent.sId);
+    if (!resource) {
+      throw new Error("Agent not found");
+    }
+    await resource.setUserFavorite(auth, true);
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible for-you skill",
       addCurrentUserAsEditor: true,
@@ -160,7 +193,36 @@ describe("discovery ranked sections", () => {
           name: visibleAgent.name,
           description: visibleAgent.description,
           pictureUrl: visibleAgent.pictureUrl,
+          scope: visibleAgent.scope,
+          lastAuthors: ["Me"],
+          userFavorite: true,
+          activeUsersCount: null,
         },
+      },
+    ]);
+  });
+
+  it("returns global agent attribution and scope", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("agent", GLOBAL_AGENTS_SID.HELPER)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "agent",
+        target: expect.objectContaining({
+          sId: GLOBAL_AGENTS_SID.HELPER,
+          scope: "global",
+          lastAuthors: [getGlobalAgentAuthorName(GLOBAL_AGENTS_SID.HELPER)],
+          userFavorite: false,
+          activeUsersCount: null,
+        }),
       },
     ]);
   });

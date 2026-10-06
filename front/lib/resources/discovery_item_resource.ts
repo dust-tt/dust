@@ -1,6 +1,11 @@
+import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  enrichWithFavorites,
+  enrichWithRecentAuthors,
+} from "@app/lib/resources/agent_resource_serialization";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { grantTypesForVerb } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -86,9 +91,12 @@ function hasReadableDiscoveryTarget(
 
 function resolvedDiscoveryItem(
   pin: DiscoveryItemResource,
-  agentsById: Map<string, AgentResource>,
-  skillsById: Map<string, SkillResource>,
-  skillEditorsById: Map<string, UserResource[]>
+  {
+    agentsById,
+    skillsById,
+    skillEditorsById,
+    agentMetadataById,
+  }: Awaited<ReturnType<typeof DiscoveryItemResource.loadTargets>>
 ): ResolvedDiscoveryItem | null {
   switch (pin.type) {
     case "agent": {
@@ -103,7 +111,13 @@ function resolvedDiscoveryItem(
         toJSON: () => ({
           type: "agent",
           pin: discoveryPinJSON(pin),
-          target: target.toDiscoveryJSON(),
+          target: target.toDiscoveryJSON(
+            agentMetadataById.get(target.sId) ?? {
+              lastAuthors: [],
+              userFavorite: false,
+              activeUsersCount: null,
+            }
+          ),
         }),
       };
     }
@@ -184,6 +198,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * satisfy editor visibility. Return the loaded editor resources for synchronous
    * serialization, without fetching editors during serialization.
    */
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] discovery-agent-metadata
+   * Recent authors and viewer favorites MUST be loaded only for readable discovery agents.
+   * Serialization MUST use fetched metadata and cached active user counts without extra fetches.
+   */
   static async loadTargets(
     auth: Authenticator,
     items: Array<{ type: GroupPinnedItemType; itemId: string }>,
@@ -192,6 +211,14 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     agentsById: Map<string, AgentResource>;
     skillsById: Map<string, SkillResource>;
     skillEditorsById: Map<string, UserResource[]>;
+    agentMetadataById: Map<
+      string,
+      {
+        lastAuthors: readonly string[];
+        userFavorite: boolean;
+        activeUsersCount: number | null;
+      }
+    >;
   }> {
     if (bypassEditorVisibility && !auth.isAdmin()) {
       throw new Error("Only admins can bypass editor visibility.");
@@ -215,6 +242,14 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       }),
     ]);
 
+    const discoveryAgents = agents.filter(
+      (agent) =>
+        isDiscoverableAgent(agent) &&
+        (auth.isAdmin() || auth.can("read", agent))
+    );
+    const readableAgents = discoveryAgents.filter((agent) =>
+      auth.can("read", agent)
+    );
     const visibleSkills = skills.filter(
       (skill) =>
         auth.can("read", skill) &&
@@ -223,21 +258,31 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           viewerCanWrite: auth.can("write", skill),
         })
     );
-    const editorsBySkillId = await SkillResource.batchListEditors(
-      auth,
-      visibleSkills
-    );
+    const [recentAuthors, favorites, editorsBySkillId, usage] =
+      await Promise.all([
+        enrichWithRecentAuthors(auth, readableAgents),
+        enrichWithFavorites(auth, readableAgents),
+        SkillResource.batchListEditors(auth, visibleSkills),
+        readableAgents.length > 0
+          ? getAgentsUsage({ workspaceId: auth.getNonNullableWorkspace().sId })
+          : Promise.resolve([]),
+      ]);
     const discoverySkills = bypassEditorVisibility ? skills : visibleSkills;
+    const userCountsById = new Map(
+      usage.map(({ agentId, userCount }) => [agentId, userCount])
+    );
 
     return {
-      agentsById: new Map(
-        agents
-          .filter(
-            (agent) =>
-              isDiscoverableAgent(agent) &&
-              (auth.isAdmin() || auth.can("read", agent))
-          )
-          .map((agent) => [agent.sId, agent])
+      agentsById: new Map(discoveryAgents.map((agent) => [agent.sId, agent])),
+      agentMetadataById: new Map(
+        readableAgents.map((agent) => [
+          agent.sId,
+          {
+            lastAuthors: recentAuthors.get(agent.sId)?.lastAuthors ?? [],
+            userFavorite: favorites.get(agent.sId)?.userFavorite ?? false,
+            activeUsersCount: userCountsById.get(agent.sId) ?? null,
+          },
+        ])
       ),
       skillsById: new Map(discoverySkills.map((skill) => [skill.sId, skill])),
       skillEditorsById: new Map(
@@ -254,16 +299,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     items: DiscoveryItemResource[],
     { bypassEditorVisibility }: { bypassEditorVisibility: boolean }
   ): Promise<ResolvedDiscoveryItem[]> {
-    const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
-      auth,
-      items,
-      { bypassEditorVisibility }
-    );
-    return removeNulls(
-      items.map((pin) =>
-        resolvedDiscoveryItem(pin, agentsById, skillsById, skillEditorsById)
-      )
-    );
+    const targets = await this.loadTargets(auth, items, {
+      bypassEditorVisibility,
+    });
+    return removeNulls(items.map((pin) => resolvedDiscoveryItem(pin, targets)));
   }
 
   static toJSON(item: ResolvedDiscoveryItem): DiscoveryItemType {
@@ -428,11 +467,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
-      auth,
-      [item],
-      { bypassEditorVisibility: auth.isAdmin() }
-    );
+    const targets = await this.loadTargets(auth, [item], {
+      bypassEditorVisibility: auth.isAdmin(),
+    });
+    const { agentsById, skillsById } = targets;
     const target =
       item.type === "agent"
         ? agentsById.get(item.itemId)
@@ -512,9 +550,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       );
       const resolved = resolvedDiscoveryItem(
         new this(this.model, row.get()),
-        agentsById,
-        skillsById,
-        skillEditorsById
+        targets
       );
       if (!resolved) {
         return new Err(
