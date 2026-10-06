@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { COMPACTION_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import type { SupportedModel } from "@app/types/assistant/models/types";
@@ -13,6 +16,7 @@ export function useCompactConversation({
   conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isCompacting, setIsCompacting] = useState(false);
 
   // Listen for the compaction_message_done SSE event (dispatched as a DOM custom event).
@@ -43,10 +47,9 @@ export function useCompactConversation({
         );
         if (!res.ok) {
           const body = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to compact conversation",
-            description: body?.error?.message ?? "Unknown error.",
+            error: body,
           });
           setIsCompacting(false);
         }
@@ -59,7 +62,7 @@ export function useCompactConversation({
         setIsCompacting(false);
       }
     },
-    [owner.sId, conversationId, sendNotification]
+    [owner.sId, conversationId, sendApiErrorNotification, sendNotification]
   );
 
   return { compact, isCompacting };

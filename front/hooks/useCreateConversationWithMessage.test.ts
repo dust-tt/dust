@@ -26,7 +26,7 @@ vi.mock(
 );
 
 vi.mock("@app/hooks/useNotification", () => ({
-  useSendNotification: () => vi.fn(),
+  useSendApiErrorNotification: () => vi.fn(),
 }));
 
 vi.mock("@app/lib/egress/client", () => ({

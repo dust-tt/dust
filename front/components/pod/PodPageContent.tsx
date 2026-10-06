@@ -9,7 +9,7 @@ import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { usePodConversations } from "@app/hooks/conversations/usePodConversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import type { PodTab } from "@app/hooks/useSpaceProjectTabs";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -52,7 +52,7 @@ export function PodPageContent({
   const owner = useWorkspace();
   const { user } = useAuth();
   const router = useAppRouter();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -149,17 +149,16 @@ export function PodPageContent({
         if (conversationRes.error.type === "plan_limit_reached_error") {
           setPlanLimitReached(true);
         } else {
-          sendNotification({
+          sendApiErrorNotification({
             title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
+            error: conversationRes.error.error,
           });
         }
 
         return new Err({
           code: "internal_error",
           name: conversationRes.error.title,
-          message: conversationRes.error.message,
+          message: conversationRes.error.title,
         });
       }
 
@@ -177,7 +176,7 @@ export function PodPageContent({
       isSubmitting,
       owner,
       podInfo.sId,
-      sendNotification,
+      sendApiErrorNotification,
       router,
       mutateConversations,
       createConversationWithMessage,
