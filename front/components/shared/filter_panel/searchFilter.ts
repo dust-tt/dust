@@ -16,6 +16,7 @@ import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -252,6 +253,49 @@ export function getSearchFilterOptions(
     case "usage":
       return [];
   }
+}
+
+export interface SearchFilterPreset<Category extends SearchFilterCategory> {
+  key: string;
+  category: Category;
+  categoryLabel: string;
+  options: SearchFilterOption[];
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] empty-category-presets
+ * A preset MUST be offered only for a listed category with no selection, so clearing that
+ * category offers it again. The "Editor is Me" preset MUST select the current user's editor
+ * option, named as `getSearchFilterOptions` names it.
+ */
+export function getSearchFilterPresets<Category extends SearchFilterCategory>({
+  filter,
+  categories,
+  currentUser,
+  t,
+}: {
+  filter: SearchFilter<Category>;
+  categories: readonly Category[];
+  currentUser: Pick<UserType, "sId" | "fullName" | "image">;
+  t: Translate;
+}): SearchFilterPreset<Category>[] {
+  return removeNulls(
+    categories.map((category) =>
+      category === "editor" && !filter[category]?.length
+        ? {
+            key: "editor-is-me",
+            category,
+            categoryLabel: getSearchFilterCategorySingularLabels(t).editor,
+            options: getSearchFilterOptions(
+              "editor",
+              { editors: [currentUser] },
+              currentUser.sId,
+              t
+            ),
+          }
+        : null
+    )
+  );
 }
 
 export function getSearchFilterIds<Category extends SearchFilterCategory>(

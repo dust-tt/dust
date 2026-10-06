@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
+import { Button, Chip, cn, LoadingBlock } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   AnimatePresence,
@@ -40,24 +40,42 @@ interface FilterExtraChip {
   onRemove: () => void;
 }
 
-interface FilterSummaryChipsProps<Category extends string> {
+interface FilterPreset<
+  Category extends string,
+> extends FilterSummary<Category> {
+  key: string;
+}
+
+interface FilterSummaryChipsProps<
+  Category extends string,
+  Preset extends FilterPreset<Category>,
+> {
   summaries: FilterSummary<Category>[];
   // Chips for settings outside the filter categories, shown after the category chips.
   extraChips?: FilterExtraChip[];
+  // Greyed-out filters, labelled as the chip they become, applied on click. Shown after the active
+  // chips.
+  presets?: Preset[];
+  onApplyPreset?: (preset: Preset) => void;
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
   isLoading?: boolean;
   className?: string;
 }
 
-export function FilterSummaryChips<Category extends string>({
+export function FilterSummaryChips<
+  Category extends string,
+  Preset extends FilterPreset<Category>,
+>({
   summaries,
   extraChips = [],
+  presets = [],
+  onApplyPreset,
   onClearCategory,
   onClearAll,
   isLoading = false,
   className,
-}: FilterSummaryChipsProps<Category>) {
+}: FilterSummaryChipsProps<Category, Preset>) {
   const { t } = useLingui();
   const chips: FilterExtraChip[] = [
     ...summaries.map((summary) => ({
@@ -80,7 +98,7 @@ export function FilterSummaryChips<Category extends string>({
   return (
     <LazyMotion features={domMax}>
       <AnimatePresence initial={false}>
-        {chips.length > 0 && (
+        {chips.length + presets.length > 0 && (
           <m.div
             key="filter-summary-chips"
             initial={shouldReduceMotion ? false : { opacity: 0 }}
@@ -117,20 +135,50 @@ export function FilterSummaryChips<Category extends string>({
                   </m.div>
                 ))}
               </AnimatePresence>
+              {presets.map((preset) => (
+                <m.div
+                  key={`preset:${preset.key}`}
+                  layout={!shouldReduceMotion}
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={shouldReduceMotion ? undefined : { opacity: 0 }}
+                  transition={transition}
+                  className="max-w-full"
+                >
+                  <Chip
+                    size="xs"
+                    color="primary"
+                    className={cn(
+                      "max-w-full border border-dashed border-border",
+                      "text-muted-foreground hover:text-foreground",
+                      "dark:border-border-night dark:text-muted-foreground-night",
+                      "dark:hover:text-foreground-night"
+                    )}
+                    onClick={() => onApplyPreset?.(preset)}
+                  >
+                    <SummaryLabel
+                      categoryLabel={preset.categoryLabel}
+                      options={preset.options}
+                    />
+                  </Chip>
+                </m.div>
+              ))}
               {isLoading && (
                 <>
                   <LoadingBlock className="h-6 w-24 rounded-[9px]" />
                   <LoadingBlock className="h-6 w-32 rounded-[9px]" />
                 </>
               )}
-              <m.div layout={!shouldReduceMotion} transition={transition}>
-                <Button
-                  label={t`Clear all`}
-                  size="xs"
-                  variant="ghost-secondary"
-                  onClick={onClearAll}
-                />
-              </m.div>
+              {chips.length > 0 && (
+                <m.div layout={!shouldReduceMotion} transition={transition}>
+                  <Button
+                    label={t`Clear all`}
+                    size="xs"
+                    variant="ghost-secondary"
+                    onClick={onClearAll}
+                  />
+                </m.div>
+              )}
             </div>
           </m.div>
         )}
