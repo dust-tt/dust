@@ -3,13 +3,12 @@ import type {
   ImportType,
 } from "@app/components/skills/import/formSchema";
 import {
-  importFormSchema,
   isImportType,
+  useImportFormSchema,
 } from "@app/components/skills/import/formSchema";
 import { ImportFromFilesTab } from "@app/components/skills/import/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
 import { useImportSkills } from "@app/lib/swr/skill_configurations";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -27,6 +26,9 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 
@@ -35,15 +37,17 @@ interface ImportSkillsDialogProps {
   owner: LightWorkspaceType;
 }
 
-const TAB_DESCRIPTION: Record<ImportType, string> = {
-  repository: "Enter a GitHub repository URL to detect skills.",
-  files: "Upload a .zip or .skill file with your skills.",
+const TAB_DESCRIPTION: Record<ImportType, MessageDescriptor> = {
+  repository: msg`Enter a GitHub repository URL to detect skills.`,
+  files: msg`Upload a .zip or .skill file with your skills.`,
 };
 
 export function ImportSkillsDialog({
   onClose,
   owner,
 }: ImportSkillsDialogProps) {
+  const { t } = useLingui();
+  const importFormSchema = useImportFormSchema();
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedCount, setDetectedCount] = useState(0);
 
@@ -91,10 +95,13 @@ export function ImportSkillsDialog({
   const selectedCount = selectedSkillNamesField.value.length;
 
   const description = isDetecting
-    ? "Detecting skills..."
+    ? t`Detecting skills...`
     : detectedCount > 0
-      ? `${detectedCount} skill${pluralize(detectedCount)} detected. Select the ones to import.`
-      : TAB_DESCRIPTION[importTypeField.value];
+      ? t`${plural(detectedCount, {
+          one: "# skill detected. Select the ones to import.",
+          other: "# skills detected. Select the ones to import.",
+        })}`
+      : t(TAB_DESCRIPTION[importTypeField.value]);
 
   return (
     <Dialog
@@ -107,7 +114,9 @@ export function ImportSkillsDialog({
     >
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Import skills</DialogTitle>
+          <DialogTitle>
+            <Trans>Import skills</Trans>
+          </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -124,8 +133,8 @@ export function ImportSkillsDialog({
               }}
             >
               <TabsList>
-                <TabsTrigger value="repository" label="Repository" />
-                <TabsTrigger value="files" label="Files" />
+                <TabsTrigger value="repository" label={t`Repository`} />
+                <TabsTrigger value="files" label={t`Files`} />
               </TabsList>
               <TabsContent value="repository">
                 <ImportFromRepositoryTab
@@ -151,17 +160,21 @@ export function ImportSkillsDialog({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             disabled: isImporting,
           }}
         >
           <Button
             className="w-20"
-            label={isImporting ? undefined : "Import"}
+            label={
+              isImporting
+                ? undefined
+                : t({ message: "Import", context: "verb, button label" })
+            }
             icon={isImporting ? <PuzzleSpinner /> : undefined}
             disabled={isImporting || isDetecting || selectedCount === 0}
-            aria-label={isImporting ? "Importing skills" : undefined}
+            aria-label={isImporting ? t`Importing skills` : undefined}
             onClick={form.handleSubmit(onSubmit)}
           />
         </DialogFooter>

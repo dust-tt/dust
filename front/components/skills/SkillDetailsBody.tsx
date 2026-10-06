@@ -1,6 +1,7 @@
 import { EditedDot } from "@app/components/assistant/details/DetailsSectionHeading";
 import { useEditedSkillSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/skillAvailabilityDisplay";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
@@ -10,7 +11,6 @@ import {
   hasRelations,
   isDustProvidedSkill,
 } from "@app/lib/skill";
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type {
   SkillRelations,
@@ -30,6 +30,9 @@ import {
   TabsTrigger,
   Users01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 // Skill details rendering shared by the surfaces that display a skill: the
@@ -40,21 +43,21 @@ export type SkillLoadErrorReason = "not_found" | "editors_only" | "unavailable";
 
 const SKILL_LOAD_ERRORS: Record<
   SkillLoadErrorReason,
-  { title: string; body: string; canRetry: boolean }
+  { title: MessageDescriptor; body: MessageDescriptor; canRetry: boolean }
 > = {
   not_found: {
-    title: "Skill not found",
-    body: "This skill may have been deleted, or the link may be incorrect.",
+    title: msg`Skill not found`,
+    body: msg`This skill may have been deleted, or the link may be incorrect.`,
     canRetry: false,
   },
   editors_only: {
-    title: "Skill not available",
-    body: "This skill is currently visible only to its editors. An editor can publish it or share it with you.",
+    title: msg`Skill not available`,
+    body: msg`This skill is currently visible only to its editors. An editor can publish it or share it with you.`,
     canRetry: false,
   },
   unavailable: {
-    title: "Unable to load skill",
-    body: "The skill could not be loaded. Please try again.",
+    title: msg`Unable to load skill`,
+    body: msg`The skill could not be loaded. Please try again.`,
     canRetry: true,
   },
 };
@@ -68,11 +71,12 @@ export function SkillLoadError({
   reason = "unavailable",
   onRetry,
 }: SkillLoadErrorProps) {
+  const { t } = useLingui();
   const { title, body, canRetry } = SKILL_LOAD_ERRORS[reason];
   return (
     <div className="flex h-full w-full items-center justify-center p-4">
       <ContentMessage
-        title={title}
+        title={t(title)}
         variant="warning"
         icon={InfoCircle}
         size="lg"
@@ -80,14 +84,14 @@ export function SkillLoadError({
           onRetry && canRetry ? (
             <ContentMessageAction
               icon={RefreshCw02}
-              label="Retry"
+              label={t`Retry`}
               variant="warning"
               onClick={onRetry}
             />
           ) : undefined
         }
       >
-        {body}
+        {t(body)}
       </ContentMessage>
     </div>
   );
@@ -104,6 +108,7 @@ export function SkillDetailsContent({
   owner,
   user,
 }: SkillDetailsContentProps) {
+  const { t } = useLingui();
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
   const editedSections = useEditedSkillSections();
 
@@ -119,13 +124,13 @@ export function SkillDetailsContent({
         <TabsList border={false}>
           <TabsTrigger
             value="info"
-            label="Info"
+            label={t`Info`}
             icon={InfoCircle}
             onClick={() => setSelectedTab("info")}
           />
           <TabsTrigger
             value="editors"
-            label="Editors"
+            label={t`Editors`}
             icon={Users01}
             iconRight={
               editedSections.has("editors") ? <EditedDot /> : undefined
@@ -168,6 +173,7 @@ export function SkillDetailsHeader({
   replaceOnEdit,
   onFavoriteChange,
 }: SkillDetailsHeaderProps) {
+  const { t } = useLingui();
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const editedSections = useEditedSkillSections();
   const { editedByUser } = skill.relations;
@@ -181,19 +187,20 @@ export function SkillDetailsHeader({
 
   const SkillAvatar = getSkillAvatarIcon(skill);
   const availabilityDisplay = SKILL_AVAILABILITY_DISPLAY[skill.availability];
+  const editorName = editedByUser?.fullName;
 
   return (
     <div className="flex flex-col items-center gap-4 pt-4">
       <div className="relative flex items-center justify-center">
         <div className="relative flex flex-col items-center gap-2">
           {/* eslint-disable-next-line react-hooks/static-components */}
-          <SkillAvatar name="Skill avatar" size="xl" />
+          <SkillAvatar name={t`Skill avatar`} size="xl" />
           {skill.status === "active" && (
             <div className="absolute -bottom-3 flex items-center gap-1">
               <Chip
                 size="mini"
                 color={availabilityDisplay.color}
-                label={availabilityDisplay.label}
+                label={t(availabilityDisplay.label)}
                 className="shadow-sm"
               />
               {editedSections.has("availability") && <EditedDot />}
@@ -213,8 +220,13 @@ export function SkillDetailsHeader({
 
         {editedDate && (
           <p className="text-sm text-muted-foreground">
-            Last edited: {editedDate}
-            {editedByUser && ` by ${editedByUser.fullName}`}
+            {editorName ? (
+              <Trans>
+                Last edited: {editedDate} by {editorName}
+              </Trans>
+            ) : (
+              <Trans>Last edited: {editedDate}</Trans>
+            )}
           </p>
         )}
       </div>
@@ -232,17 +244,17 @@ export function SkillDetailsHeader({
       {skill.status === "archived" && (
         <>
           <ContentMessage
-            title="This skill has been archived."
+            title={t`This skill has been archived.`}
             variant="warning"
             icon={InfoCircle}
             size="sm"
           >
-            It is no longer active and cannot be used.
+            <Trans>It is no longer active and cannot be used.</Trans>
             {skill.canAdministrate && (
               <div className="mt-2">
                 <Button
                   variant="outline"
-                  label="Restore"
+                  label={t`Restore`}
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}

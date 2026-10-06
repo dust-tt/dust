@@ -6,7 +6,6 @@ import type {
   SkillAvailability,
   SkillListItemType,
 } from "@app/types/assistant/skill_configuration";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -21,46 +20,59 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 export type BatchAvailabilityAction = {
-  label: string;
-  description?: string;
+  label: MessageDescriptor;
+  description?: MessageDescriptor;
   availability: SkillAvailability;
-  getDialogTitle: (count: number) => string;
-  dialogDescription: (count: number) => string;
+  getDialogTitle: (count: number) => MessageDescriptor;
+  dialogDescription: (count: number) => MessageDescriptor;
 };
 
 const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   {
-    label: "Editors only",
+    label: msg`Editors only`,
     availability: "editors",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} editors only`,
-    dialogDescription: (count) => {
-      const pronoun = count === 1 ? "it" : "them";
-      const subject = count === 1 ? "The skill remains" : "The skills remain";
-      return `Only editors can find ${pronoun} via the composer and agent builder. ${subject} available through agents and skills that use ${pronoun}.`;
-    },
+      msg`${plural(count, {
+        one: "Make # skill editors only",
+        other: "Make # skills editors only",
+      })}`,
+    dialogDescription: (count) =>
+      msg`${plural(count, {
+        one: "Only editors can find it via the composer and agent builder. The skill remains available through agents and skills that use it.",
+        other:
+          "Only editors can find them via the composer and agent builder. The skills remain available through agents and skills that use them.",
+      })}`,
   },
   {
-    label: "Members",
+    label: msg`Members`,
     availability: "workspace_users",
     getDialogTitle: (count) =>
-      `Make ${count} skill${pluralize(count)} available to all members`,
-    dialogDescription: (count) => {
-      const pronoun = count === 1 ? "it" : "them";
-      return `All members can find ${pronoun} via the composer and agent builder.`;
-    },
+      msg`${plural(count, {
+        one: "Make # skill available to all members",
+        other: "Make # skills available to all members",
+      })}`,
+    dialogDescription: (count) =>
+      msg`${plural(count, {
+        one: "All members can find it via the composer and agent builder.",
+        other: "All members can find them via the composer and agent builder.",
+      })}`,
   },
   {
-    label: "Members and agents",
-    description: "Available to all members and agents with Discover Skills",
+    label: msg`Members and agents`,
+    description: msg`Available to all members and agents with Discover Skills`,
     availability: "users_and_agents",
-    getDialogTitle: () => `This affects your entire workspace`,
-    dialogDescription: (count) => {
-      const pronoun = count === 1 ? "it" : "them";
-      return `All members can find ${pronoun} via the composer and agent builder. Agents with Discover Skills, including Dust, can use ${pronoun} automatically.`;
-    },
+    getDialogTitle: () => msg`This affects your entire workspace`,
+    dialogDescription: (count) =>
+      msg`${plural(count, {
+        one: "All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.",
+        other:
+          "All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.",
+      })}`,
   },
 ];
 
@@ -90,6 +102,7 @@ export function SkillsBatchEditBar({
   onSelectAll,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
+  const { t } = useLingui();
   const selectedCount = selectedSkills.length;
   const canArchiveSelection = selectedSkills.every(
     (skill) => skill.canAdministrate
@@ -117,7 +130,7 @@ export function SkillsBatchEditBar({
             <Button
               variant="primary"
               size="sm"
-              label="Set availability"
+              label={t`Set availability`}
               isSelect
               disabled={isUpdating}
             />
@@ -130,11 +143,11 @@ export function SkillsBatchEditBar({
               return (
                 <DropdownMenuItem
                   key={action.availability}
-                  label={action.label}
+                  label={t(action.label)}
                   description={
                     isActionDisabled
-                      ? "You don’t have permission to make skills auto-discoverable"
-                      : action.description
+                      ? t`You don’t have permission to make skills auto-discoverable`
+                      : action.description && t(action.description)
                   }
                   disabled={isActionDisabled}
                   onClick={() => onSelectAction(action)}
@@ -169,6 +182,8 @@ export function BatchAvailabilityDialog({
   onConfirm,
   onCancel,
 }: BatchAvailabilityDialogProps) {
+  const { t } = useLingui();
+
   return (
     <Dialog
       open
@@ -180,19 +195,19 @@ export function BatchAvailabilityDialog({
     >
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
-          <DialogTitle>{action.getDialogTitle(selectedCount)}</DialogTitle>
+          <DialogTitle>{t(action.getDialogTitle(selectedCount))}</DialogTitle>
         </DialogHeader>
         <DialogContainer className="text-sm">
-          {action.dialogDescription(selectedCount)}
+          {t(action.dialogDescription(selectedCount))}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             disabled: isUpdating,
           }}
           rightButtonProps={{
-            label: "Update",
+            label: t`Update`,
             disabled: isUpdating,
             isLoading: isUpdating,
             onClick: async (e: React.MouseEvent) => {

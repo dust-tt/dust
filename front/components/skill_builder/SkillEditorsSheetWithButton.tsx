@@ -3,6 +3,8 @@ import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { Button, Users01 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -17,6 +19,7 @@ export function SkillEditorsSheetWithButton({
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
 }: SkillEditorsSheetWithButtonProps) {
+  const { t } = useLingui();
   const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -36,8 +39,11 @@ export function SkillEditorsSheetWithButton({
     );
   }
 
+  const editorsCount = editors.length;
   const buttonLabel =
-    editors.length <= 1 ? "Add editors" : `${editors.length} editors`;
+    editorsCount <= 1
+      ? t`Add editors`
+      : t`${plural(editorsCount, { one: "# editor", other: "# editors" })}`;
 
   return (
     <>

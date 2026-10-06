@@ -28,6 +28,7 @@ import {
   Trash01,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface SkillDetailsButtonBarProps {
@@ -48,6 +49,7 @@ export function SkillDetailsButtonBar({
   replaceOnEdit,
   onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
+  const { t } = useLingui();
   const tracking = useManageTracking();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
@@ -83,7 +85,7 @@ export function SkillDetailsButtonBar({
         {!isRedactedForAdmin && (
           <Button
             size="sm"
-            tooltip="Try skill"
+            tooltip={t`Try skill`}
             onClick={() => trackManageItemAction(tracking, "try", skill.sId)}
             href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
             variant="outline"
@@ -93,7 +95,7 @@ export function SkillDetailsButtonBar({
         {skill.canAdministrate && !isRedactedForAdmin && (
           <Button
             size="sm"
-            tooltip="Edit skill"
+            tooltip={t`Edit skill`}
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
             onClick={() => {
               trackManageItemAction(tracking, "edit", skill.sId);
@@ -112,7 +114,7 @@ export function SkillDetailsButtonBar({
         )}
         <Button
           size="sm"
-          tooltip={isSkillLinkCopied ? "Copied!" : "Copy link"}
+          tooltip={isSkillLinkCopied ? t`Copied!` : t`Copy link`}
           variant="outline"
           icon={isSkillLinkCopied ? ClipboardCheck : Clipboard}
           onClick={(e) => {
@@ -129,12 +131,12 @@ export function SkillDetailsButtonBar({
                 icon={DotsHorizontal}
                 size="sm"
                 variant="ghost"
-                tooltip="Skill options"
+                tooltip={t`Skill options`}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem
-                label="Archive"
+                label={t`Archive`}
                 icon={Trash01}
                 variant="warning"
                 onClick={(e) => {

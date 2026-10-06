@@ -6,7 +6,7 @@ import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
-import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
@@ -60,6 +60,7 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -69,6 +70,7 @@ interface SkillBuilderProps {
 }
 
 export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
+  const { t } = useLingui();
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -119,9 +121,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     });
   }, [skill, user]);
 
+  const formSchema = useSkillBuilderFormSchema();
+
   const form = useForm<SkillBuilderFormData>({
     disabled: isEditorLocked,
-    resolver: zodResolver(skillBuilderFormSchema),
+    resolver: zodResolver(formSchema),
     defaultValues,
     resetOptions: {
       keepDirtyValues: true,
@@ -198,7 +202,9 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
     if (result.isErr()) {
       sendNotification({
-        title: isCreatingNew ? "Error creating skill" : "Error updating skill",
+        title: isCreatingNew
+          ? t`Error creating skill`
+          : t`Error updating skill`,
         description: result.error.message,
         type: "error",
       });
@@ -225,18 +231,18 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
       // The skill itself was saved, so we keep going: only the editors list is out of date.
       sendNotification({
         title: isCreatingNew
-          ? "Skill created, but its editors were not saved"
-          : "Skill updated, but its editors were not saved",
+          ? t`Skill created, but its editors were not saved`
+          : t`Skill updated, but its editors were not saved`,
         description: editorsError.message,
         type: "error",
       });
       await mutateEditors();
     } else {
       sendNotification({
-        title: isCreatingNew ? "Skill created" : "Skill updated",
+        title: isCreatingNew ? t`Skill created` : t`Skill updated`,
         description: isCreatingNew
-          ? "Your skill has been successfully created."
-          : "Your skill has been successfully updated.",
+          ? t`Your skill has been successfully created.`
+          : t`Your skill has been successfully updated.`,
         type: "success",
       });
       await mutateEditors({ editors: data.editors }, { revalidate: false });
@@ -266,8 +272,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     if (isEditorLocked) {
       if (isEditorsError) {
         sendNotification({
-          title: "Unable to verify editor access",
-          description: "Retry loading editors before saving changes.",
+          title: t`Unable to verify editor access`,
+          description: t`Retry loading editors before saving changes.`,
           type: "error",
         });
         return;
@@ -275,16 +281,16 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
       if (isEditorsLoading) {
         sendNotification({
-          title: "Verifying editor access",
-          description: "Wait until skill editors finish loading before saving.",
+          title: t`Verifying editor access`,
+          description: t`Wait until skill editors finish loading before saving.`,
           type: "error",
         });
         return;
       }
 
       sendNotification({
-        title: "Cannot save skill",
-        description: "Only skill editors can save changes.",
+        title: t`Cannot save skill`,
+        description: t`Only skill editors can save changes.`,
         type: "error",
       });
       return;
@@ -292,6 +298,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
     void form.handleSubmit(handleSubmit)();
   };
+
+  const skillName = skill?.name;
 
   const showSuggestionsPanel =
     skill && areSuggestionsEnabled && hasPendingSuggestions;
@@ -301,7 +309,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
       <BarHeader
         variant="default"
         className="mx-4"
-        title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
+        title={skill ? t`Edit skill ${skillName}` : t`Create new skill`}
         centerActions={
           skill && skillHistory && !hasPendingSuggestions ? (
             <SkillVersionHistoryPicker
@@ -337,14 +345,16 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           ) : null}
           {skill?.status === "suggested" && (
             <ContentMessage
-              title="This is a generated skill suggestion"
+              title={t`This is a generated skill suggestion`}
               variant="primary"
               icon={InfoCircle}
               size="lg"
             >
-              This skill was automatically generated based on your workspace's
-              configuration. We recommend reviewing and editing it to match your
-              specific needs before saving.
+              <Trans>
+                This skill was automatically generated based on your workspace's
+                configuration. We recommend reviewing and editing it to match
+                your specific needs before saving.
+              </Trans>
             </ContentMessage>
           )}
           <SkillBuilderAgentFacingDescriptionSection />
@@ -441,13 +451,14 @@ function SkillBuilderFooter({
   onCancel,
   onSave,
 }: SkillBuilderFooterProps) {
+  const { t } = useLingui();
   const { editorsWithoutSpaceAccess } = useSkillSpaceRestrictionsContext();
 
   const hasEditorsWithoutSpaceAccess = editorsWithoutSpaceAccess.length > 0;
   // The warning in the editors section names who and offers the fixes; the tooltip only has to say
   // why the button is off.
   const saveTooltip = hasEditorsWithoutSpaceAccess
-    ? "Some skill editors cannot access some of the restricted spaces"
+    ? t`Some skill editors cannot access some of the restricted spaces`
     : undefined;
 
   return (
@@ -457,7 +468,7 @@ function SkillBuilderFooter({
       leftActions={
         <Button
           variant="outline"
-          label="Cancel"
+          label={t`Cancel`}
           onClick={onCancel}
           type="button"
         />
@@ -465,7 +476,7 @@ function SkillBuilderFooter({
       rightActions={
         <Button
           variant="highlight"
-          label={isSaving ? "Saving..." : "Save"}
+          label={isSaving ? t`Saving...` : t`Save`}
           onClick={onSave}
           disabled={isSaving || isEditorLocked || hasEditorsWithoutSpaceAccess}
           tooltip={saveTooltip}

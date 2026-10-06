@@ -17,10 +17,12 @@ import {
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState } from "react-hook-form";
 
 export function SkillBuilderFilesSection() {
+  const { t } = useLingui();
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags();
@@ -137,10 +139,11 @@ export function SkillBuilderFilesSection() {
       const duplicates = allFiles.filter((f) => existingFileNames.has(f.name));
 
       if (duplicates.length > 0) {
+        const duplicateFileNames = duplicates.map((f) => f.name).join(", ");
         sendNotification({
           type: "error",
-          title: "Duplicate files skipped.",
-          description: `Already attached: ${duplicates.map((f) => f.name).join(", ")}`,
+          title: t`Duplicate files skipped.`,
+          description: t`Already attached: ${duplicateFileNames}`,
         });
       }
 
@@ -164,6 +167,7 @@ export function SkillBuilderFilesSection() {
       append,
       existingFileNames,
       sendNotification,
+      t,
     ]
   );
 
@@ -171,7 +175,7 @@ export function SkillBuilderFilesSection() {
     <Button
       type="button"
       onClick={onUploadClick}
-      label="Upload files"
+      label={t`Upload files`}
       icon={isProcessingFiles ? Spinner : Plus}
       variant="outline"
       disabled={disableUpload || isProcessingFiles}
@@ -182,10 +186,14 @@ export function SkillBuilderFilesSection() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="heading-lg font-semibold text-foreground">Files</h3>
+          <h3 className="heading-lg font-semibold text-foreground">
+            <Trans>Files</Trans>
+          </h3>
           <p className="text-sm text-muted-foreground">
-            Add files that will be available to the skill at runtime. Templates,
-            schemas, scripts, or reference materials.
+            <Trans>
+              Add files that will be available to the skill at runtime.
+              Templates, schemas, scripts, or reference materials.
+            </Trans>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -195,7 +203,7 @@ export function SkillBuilderFilesSection() {
               size="sm"
               icon={ReverseLeft}
               onClick={restoreFiles}
-              label="Restore files"
+              label={t`Restore files`}
               disabled={disableUpload}
             />
           )}
@@ -224,7 +232,7 @@ export function SkillBuilderFilesSection() {
               <Button
                 type="button"
                 onClick={onUploadClick}
-                label="Upload files"
+                label={t`Upload files`}
                 icon={Plus}
                 variant="outline"
                 disabled={disableUpload || isProcessingFiles}

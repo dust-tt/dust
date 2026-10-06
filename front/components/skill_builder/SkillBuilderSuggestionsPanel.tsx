@@ -8,6 +8,7 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Lightbulb04, ScrollArea, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -151,11 +152,13 @@ export function SkillBuilderSuggestionsPanel({
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
         <h2 className="heading-lg font-semibold text-foreground">
-          Suggestions
+          <Trans>Suggestions</Trans>
         </h2>
         <p className="text-sm text-muted-foreground">
-          Dust continuously analyses conversations using this skill to suggest
-          improvements.
+          <Trans>
+            Dust continuously analyses conversations using this skill to suggest
+            improvements.
+          </Trans>
         </p>
       </div>
 
@@ -169,7 +172,7 @@ export function SkillBuilderSuggestionsPanel({
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Lightbulb04 className="text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No pending suggestions.
+                <Trans>No pending suggestions.</Trans>
               </p>
             </div>
           ) : (

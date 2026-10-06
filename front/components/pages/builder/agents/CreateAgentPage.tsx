@@ -21,10 +21,12 @@ import {
   TEMPLATES_TAGS_CONFIG,
 } from "@app/types/assistant/templates";
 import { Button, Page, SearchInput } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 export function CreateAgentPage() {
+  const { t } = useLingui();
   const router = useAppRouter();
   const owner = useWorkspace();
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
@@ -79,7 +81,7 @@ export function CreateAgentPage() {
   const title: ReactNode = useMemo(
     () => (
       <AppLayoutSimpleCloseTitle
-        title="Create an Agent"
+        title={t`Create an agent`}
         onClose={() => {
           if (window.history.state?.idx > 0) {
             router.back();
@@ -89,7 +91,7 @@ export function CreateAgentPage() {
         }}
       />
     ),
-    [owner.sId, router]
+    [owner.sId, router, t]
   );
 
   useSetContentWidth("centered");
@@ -105,13 +107,13 @@ export function CreateAgentPage() {
       <Page variant="modal">
         <div className="flex flex-col gap-6">
           <Page.Header
-            title="Start with a template"
-            description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
+            title={t`Start with a template`}
+            description={t`Explore different ways to use Dust. Find a setup that works for you and make it your own.`}
           />
 
           <div className="flex flex-col gap-6">
             <SearchInput
-              placeholder="Search templates"
+              placeholder={t`Search templates`}
               name="input"
               value={searchTerm}
               onChange={setSearchTerm}

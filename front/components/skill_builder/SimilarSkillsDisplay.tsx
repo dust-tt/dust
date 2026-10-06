@@ -3,6 +3,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Icon, LinkExternal01, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface SimilarSkillsDisplayProps {
   owner: LightWorkspaceType;
@@ -16,9 +17,14 @@ export function SimilarSkillsDisplay({
   owner,
   similarSkills,
   isLoading,
-  loadingLabel = "Checking for similar skills...",
-  title = "Similar skills found",
+  loadingLabel,
+  title,
 }: SimilarSkillsDisplayProps) {
+  const { t } = useLingui();
+  const displayedLoadingLabel =
+    loadingLabel ?? t`Checking for similar skills...`;
+  const displayedTitle = title ?? t`Similar skills found`;
+
   if (similarSkills.length === 0 && !isLoading) {
     return null;
   }
@@ -27,7 +33,7 @@ export function SimilarSkillsDisplay({
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Spinner size="xs" />
-        <span>{loadingLabel}</span>
+        <span>{displayedLoadingLabel}</span>
       </div>
     );
   }
@@ -35,7 +41,7 @@ export function SimilarSkillsDisplay({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="heading-sm text-foreground">{title}</span>
+        <span className="heading-sm text-foreground">{displayedTitle}</span>
         {isLoading && <Spinner size="xs" />}
       </div>
       <div className="space-y-3">

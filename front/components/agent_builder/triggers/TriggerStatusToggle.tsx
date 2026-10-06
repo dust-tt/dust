@@ -27,7 +27,7 @@ export function TriggerStatusToggle({
   // Non-managers cannot flip a manager lock; nobody edits system-owned statuses.
   const isStatusLocked =
     statusOwner === "system" || (statusOwner === "admin" && !isManager);
-  const statusLabel = TRIGGER_STATUS_LABELS[status];
+  const statusLabel = t(TRIGGER_STATUS_LABELS[status]);
 
   const toggle = (
     <SliderToggle

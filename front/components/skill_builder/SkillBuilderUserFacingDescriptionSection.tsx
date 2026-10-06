@@ -10,6 +10,7 @@ import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -17,6 +18,7 @@ const USER_FACING_DESCRIPTION_FIELD_NAME = "userFacingDescription";
 const MIN_INSTRUCTIONS_LENGTH = 20;
 
 export function SkillBuilderUserFacingDescriptionSection() {
+  const { t } = useLingui();
   const { owner } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -62,7 +64,10 @@ export function SkillBuilderUserFacingDescriptionSection() {
       owner,
       instructions,
       agentFacingDescription,
-      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      tools: tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+      })),
     });
 
     setIsGenerating(false);
@@ -70,7 +75,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
     if (result.isErr()) {
       sendNotification({
         type: "error",
-        title: "Failed to generate description",
+        title: t`Failed to generate description`,
         description: result.error.message,
       });
       return false;
@@ -95,21 +100,21 @@ export function SkillBuilderUserFacingDescriptionSection() {
 
   const getTooltip = () => {
     if (isGenerating) {
-      return "Generating description...";
+      return t`Generating description...`;
     }
     if (!instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH) {
-      return `Add at least ${MIN_INSTRUCTIONS_LENGTH} characters to instructions`;
+      return t`Add at least ${MIN_INSTRUCTIONS_LENGTH} characters to instructions`;
     }
     if (!agentFacingDescription || agentFacingDescription.length === 0) {
-      return "Add a description of when to use the skill";
+      return t`Add a description of when to use the skill`;
     }
-    return "Generate description";
+    return t`Generate description`;
   };
 
   return (
     <BaseFormFieldSection
       className="space-y-2"
-      title="Description"
+      title={t`Description`}
       fieldName={USER_FACING_DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={false}
     >
@@ -118,7 +123,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
           <div className="relative">
             <Input
               ref={registerRef}
-              placeholder="Enter skill description"
+              placeholder={t`Enter skill description`}
               onChange={(e) => {
                 markAsUserEdited();
                 onChange(e);

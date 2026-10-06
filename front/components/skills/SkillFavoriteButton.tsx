@@ -1,5 +1,6 @@
 import type { ButtonVariantType } from "@dust-tt/sparkle";
 import { Button, Star01, StarFilled } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { MouseEvent } from "react";
 import { useState } from "react";
 
@@ -16,6 +17,7 @@ export function SkillFavoriteButton({
   size = "icon",
   variant = "ghost-secondary",
 }: SkillFavoriteButtonProps) {
+  const { t } = useLingui();
   const [isUpdating, setIsUpdating] = useState(false);
   const nextIsFavorite = !isFavorite;
 
@@ -36,7 +38,7 @@ export function SkillFavoriteButton({
       icon={isFavorite ? StarFilled : Star01}
       isLoading={isUpdating}
       aria-pressed={isFavorite}
-      tooltip={nextIsFavorite ? "Add to favorites" : "Remove from favorites"}
+      tooltip={nextIsFavorite ? t`Add to favorites` : t`Remove from favorites`}
       onClick={handleClick}
     />
   );

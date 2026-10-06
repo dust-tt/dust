@@ -2,6 +2,7 @@ import { SkillEditorsAccessWarning } from "@app/components/skill_builder/SkillEd
 import { SkillEditorsSheetWithButton } from "@app/components/skill_builder/SkillEditorsSheetWithButton";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import type { WorkspaceType } from "@app/types/user";
+import { Trans } from "@lingui/react/macro";
 
 interface SkillBuilderEditorsSectionProps {
   isEditorGateVisible: boolean;
@@ -20,7 +21,9 @@ export function SkillBuilderEditorsSection({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-base font-semibold text-foreground">Editors</h3>
+      <h3 className="text-base font-semibold text-foreground">
+        <Trans>Editors</Trans>
+      </h3>
       <div className="flex w-full flex-row flex-wrap items-center gap-2">
         <SkillEditorsSheetWithButton
           isEditorGateVisible={isEditorGateVisible}

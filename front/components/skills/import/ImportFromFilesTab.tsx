@@ -13,11 +13,11 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 const ACCEPTED_EXTENSIONS = [".zip", ".skill"];
-const ACCEPTED_EXTENSIONS_LABEL = ".zip or .skill";
 
 interface ImportFromFilesTabProps {
   owner: LightWorkspaceType;
@@ -36,6 +36,7 @@ export function ImportFromFilesTab({
   onFilesChange,
   isImporting,
 }: ImportFromFilesTabProps) {
+  const { t } = useLingui();
   const { setValue } = useFormContext<FilesImportFormValues>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,9 +76,7 @@ export function ImportFromFilesTab({
           !ACCEPTED_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext))
       );
       if (rejected.length > 0) {
-        setFileTypeError(
-          `Only ${ACCEPTED_EXTENSIONS_LABEL} files are accepted.`
-        );
+        setFileTypeError(t`Only .zip or .skill files are accepted.`);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -87,7 +86,7 @@ export function ImportFromFilesTab({
       onFilesChange(files);
       void triggerDetect(files);
     },
-    [triggerDetect, onFilesChange]
+    [triggerDetect, onFilesChange, t]
   );
 
   const handleDrop = useCallback(
@@ -134,6 +133,7 @@ function SkillFileDropzone({
   disabled,
   isLoading,
 }: SkillFileDropzoneProps) {
+  const { t } = useLingui();
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
@@ -160,18 +160,20 @@ function SkillFileDropzone({
     >
       <DropzoneOverlay
         isDragActive={isDragOver}
-        title="Drop files here"
-        description={`Upload ${ACCEPTED_EXTENSIONS_LABEL} files`}
+        title={t`Drop files here`}
+        description={t`Upload .zip or .skill files`}
       />
       {isLoading ? (
         <>
           <Spinner size="md" />
-          <p className="text-sm text-muted-foreground">Uploading files...</p>
+          <p className="text-sm text-muted-foreground">
+            <Trans>Uploading files...</Trans>
+          </p>
         </>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Drag and drop or click to upload
+            <Trans>Drag and drop or click to upload</Trans>
           </p>
           <input
             className="hidden"
@@ -182,7 +184,7 @@ function SkillFileDropzone({
             onChange={onFileInputChange}
           />
           <Button
-            label="Upload files"
+            label={t`Upload files`}
             icon={Plus}
             variant="primary"
             size="sm"
@@ -196,32 +198,39 @@ function SkillFileDropzone({
 }
 
 function FileRequirements() {
+  const { t } = useLingui();
+
   return (
     <ContentMessage
-      title="File requirements"
+      title={t`File requirements`}
       icon={InfoCircle}
       variant="outline"
       size="lg"
     >
       <ul className="list-disc pl-4 text-sm">
         <li>
-          The imported {ACCEPTED_EXTENSIONS_LABEL} archive must include a
-          SKILL.md file
+          <Trans>
+            The imported .zip or .skill archive must include a SKILL.md file
+          </Trans>
         </li>
         <li>
-          This file must contain the skill name and description formatted in
-          YAML
+          <Trans>
+            This file must contain the skill name and description formatted in
+            YAML
+          </Trans>
         </li>
       </ul>
-      Read more about importing skills&nbsp;
-      <Hoverable
-        variant="highlight"
-        href="https://agentskills.io/specification"
-        target="_blank"
-      >
-        here
-      </Hoverable>
-      .
+      <Trans>
+        Read more about importing skills{" "}
+        <Hoverable
+          variant="highlight"
+          href="https://agentskills.io/specification"
+          target="_blank"
+        >
+          here
+        </Hoverable>
+        .
+      </Trans>
     </ContentMessage>
   );
 }

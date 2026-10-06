@@ -3,6 +3,7 @@ import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFie
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SkillUserFacingDescriptionSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { LoadingBlock } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface SuggestedSkillUserFacingDescriptionProps {
   suggestion: SkillUserFacingDescriptionSuggestionType;
@@ -17,6 +18,7 @@ export function SuggestedSkillUserFacingDescription({
   workspaceId,
   layout = "boxed",
 }: SuggestedSkillUserFacingDescriptionProps) {
+  const { t } = useLingui();
   const { skill, isSkillLoading } = useSkill({ workspaceId, skillId });
 
   if (isSkillLoading) {
@@ -25,7 +27,7 @@ export function SuggestedSkillUserFacingDescription({
 
   return (
     <SuggestionFieldEditSection
-      label="Description"
+      label={t`Description`}
       currentValue={skill?.userFacingDescription ?? ""}
       newValue={suggestion.userFacingDescription}
       layout={layout}

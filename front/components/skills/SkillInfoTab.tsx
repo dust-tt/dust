@@ -21,7 +21,6 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import type {
   SkillRelations,
   SkillType,
@@ -30,6 +29,7 @@ import type { EnrichedSpaceType } from "@app/types/space";
 import { isFilesSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AttachmentChip, File02, Separator, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
@@ -46,6 +46,7 @@ export function SkillInfoTab({
   spaces,
   showDescription = true,
 }: SkillInfoTabProps) {
+  const { t } = useLingui();
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const editedSections = useEditedSkillSections();
   const previewSuggestions = useSkillSuggestionPreview();
@@ -111,7 +112,7 @@ export function SkillInfoTab({
         <div className="relative flex flex-col gap-4">
           {editedSections.has("when_to_use") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">
-            {SKILL_INVOCATION_LABEL}
+            <Trans>When to use this skill</Trans>
           </div>
           <SkillDescriptionReadOnlyEditor
             content={skill.agentFacingDescription}
@@ -122,7 +123,7 @@ export function SkillInfoTab({
       {hasInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <DetailsSectionHeading
-            label="Guidelines"
+            label={t`Guidelines`}
             isEdited={editedSections.has("guidelines")}
           />
           {/* Remounts the instructions editor on preview change, since it only reads its content once. */}
@@ -138,7 +139,9 @@ export function SkillInfoTab({
       )}
       {knowledgeItems.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Knowledge</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Knowledge</Trans>
+          </div>
           <div className="flex flex-wrap gap-2">
             {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
               <KnowledgeChip
@@ -154,7 +157,9 @@ export function SkillInfoTab({
       {hasFiles && (
         <div className="relative flex flex-col gap-4">
           {editedSections.has("files") && <EditedSectionBar />}
-          <div className="heading-lg text-foreground">Files</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Files</Trans>
+          </div>
           <div className="flex flex-wrap gap-2">
             {skill.fileAttachments.map((file) => (
               <AttachmentChip
@@ -179,7 +184,9 @@ export function SkillInfoTab({
       )}
       {showChildSkills && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Skills</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Skills</Trans>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {childSkills.map((childSkill) => {
               const SkillAvatar = getSkillAvatarIcon(childSkill);
@@ -203,7 +210,9 @@ export function SkillInfoTab({
       )}
       {sortedMCPServerViews.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Tools</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Tools</Trans>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {sortedMCPServerViews.map((view) => (
               <Tooltip

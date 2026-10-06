@@ -19,6 +19,7 @@ import type {
 } from "@app/types/api/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Checkbox, InfoCircle, Label, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 // The skill search endpoint accepts at most 100 MCP server view IDs.
@@ -53,6 +54,7 @@ export function SkillFilterPanel({
   onFilterChange,
   hiddenSkills,
 }: SkillFilterPanelProps) {
+  const { t } = useLingui();
   const panel = useFilterPanel<SkillFilterCategory, SearchFilterOption>(
     filter,
     SKILL_FILTER_CATEGORIES
@@ -101,7 +103,7 @@ export function SkillFilterPanel({
       isLoading={isSkillsLoading}
       isError={isSkillsError}
       idPrefix="skill-filter"
-      warning={hasTooManyTools ? "Too many tools selected." : undefined}
+      warning={hasTooManyTools ? t`Too many tools selected.` : undefined}
       applyDisabled={hasTooManyTools}
       categoryNavFooter={
         hiddenSkills && (
@@ -117,10 +119,10 @@ export function SkillFilterPanel({
               htmlFor="skill-filter-hidden-skills"
               className="cursor-pointer text-sm leading-none"
             >
-              Hidden skills
+              <Trans>Hidden skills</Trans>
             </Label>
             <Tooltip
-              label="Shows skills you can access as an admin, even if you’re not an editor"
+              label={t`Shows skills you can access as an admin, even if you’re not an editor`}
               trigger={<InfoCircle className="h-4 w-4 text-muted-foreground" />}
             />
           </div>

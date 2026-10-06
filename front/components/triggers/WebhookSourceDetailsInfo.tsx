@@ -29,6 +29,7 @@ import {
   TextArea,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -37,31 +38,11 @@ type WebhookSourceDetailsInfoProps = {
   owner: LightWorkspaceType;
 };
 
-const getEditedLabel = (webhookSourceView: WebhookSourceViewForAdminType) => {
-  if (
-    webhookSourceView.editedByUser === null ||
-    (webhookSourceView.editedByUser.editedAt === null &&
-      webhookSourceView.editedByUser.fullName === null)
-  ) {
-    return null;
-  }
-  if (webhookSourceView.editedByUser.editedAt === null) {
-    return `Edited by ${webhookSourceView.editedByUser.fullName}`;
-  }
-  const editedAtDateString = formatDate(
-    webhookSourceView.editedByUser.editedAt
-  );
-  if (webhookSourceView.editedByUser.fullName === null) {
-    return `Edited on ${editedAtDateString}`;
-  }
-
-  return `Edited by ${webhookSourceView.editedByUser.fullName}, ${editedAtDateString}`;
-};
-
 export function WebhookSourceDetailsInfo({
   webhookSourceView,
   owner,
 }: WebhookSourceDetailsInfoProps) {
+  const { t } = useLingui();
   const [isSecretVisible, setIsSecretVisible] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const sendNotification = useSendNotification();
@@ -77,10 +58,25 @@ export function WebhookSourceDetailsInfo({
     name: "description",
   });
 
-  const editedLabel = useMemo(
-    () => getEditedLabel(webhookSourceView),
-    [webhookSourceView]
-  );
+  const editedLabel = useMemo(() => {
+    const { editedByUser } = webhookSourceView;
+    if (
+      editedByUser === null ||
+      (editedByUser.editedAt === null && editedByUser.fullName === null)
+    ) {
+      return null;
+    }
+    const editorName = editedByUser.fullName;
+    if (editedByUser.editedAt === null) {
+      return t`Edited by ${editorName}`;
+    }
+    const editedAtDateString = formatDate(editedByUser.editedAt);
+    if (editorName === null) {
+      return t`Edited on ${editedAtDateString}`;
+    }
+
+    return t`Edited by ${editorName}, ${editedAtDateString}`;
+  }, [webhookSourceView, t]);
 
   const [, copy] = useCopyToClipboard();
 
@@ -95,12 +91,12 @@ export function WebhookSourceDetailsInfo({
     });
   }, [owner.sId, webhookSourceView.webhookSource]);
 
-  const handleCopy = async (text: string, label: string) => {
+  const handleCopy = async (text: string, successTitle: string) => {
     const ok = await copy(text);
     if (ok) {
       sendNotification({
         type: "success",
-        title: `${label} copied to clipboard`,
+        title: successTitle,
       });
     }
   };
@@ -118,7 +114,7 @@ export function WebhookSourceDetailsInfo({
       <div className="space-y-5 text-foreground">
         <div className="space-y-2">
           <Label htmlFor="trigger-name-icon">
-            {provider ? "Name" : "Name & Icon"}
+            {provider ? t`Name` : t`Name & icon`}
           </Label>
           <div className="flex items-end space-x-2">
             <div className="flex-grow">
@@ -161,29 +157,37 @@ export function WebhookSourceDetailsInfo({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="trigger-description">Description</Label>
+          <Label htmlFor="trigger-description">
+            <Trans>Description</Trans>
+          </Label>
           <TextArea
             {...descriptionField}
             id="trigger-description"
             rows={3}
-            placeholder="Help your team understand when to use this trigger."
+            placeholder={t`Help your team understand when to use this trigger.`}
           />
         </div>
       </div>
 
       <Separator className="mb-4 mt-4" />
-      <Page.H variant="h4">Webhook Source Details</Page.H>
+      <Page.H variant="h4">
+        <Trans>Webhook source details</Trans>
+      </Page.H>
 
       <div className="space-y-6">
         <div>
-          <Page.H variant="h6">Webhook URL</Page.H>
+          <Page.H variant="h6">
+            <Trans>Webhook URL</Trans>
+          </Page.H>
           <div className="flex items-center space-x-2">
             <p className="dd-privacy-mask min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
               {webhookUrl}
             </p>
             <IconButton
               icon={Clipboard}
-              onClick={() => handleCopy(webhookUrl, "Webhook URL")}
+              onClick={() =>
+                handleCopy(webhookUrl, t`Webhook URL copied to clipboard`)
+              }
               size="xs"
             />
           </div>
@@ -201,7 +205,9 @@ export function WebhookSourceDetailsInfo({
           })()}
         {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
           <div className="space-y-3">
-            <Page.H variant="h6">Subscribed events</Page.H>
+            <Page.H variant="h6">
+              <Trans>Subscribed events</Trans>
+            </Page.H>
             <div>
               {webhookSourceView.webhookSource.subscribedEvents
                 .map((eventValue) => {
@@ -227,7 +233,9 @@ export function WebhookSourceDetailsInfo({
         )}
         {webhookSourceView.webhookSource.secret && (
           <div>
-            <Page.H variant="h6">Secret</Page.H>
+            <Page.H variant="h6">
+              <Trans>Secret</Trans>
+            </Page.H>
             <div className="flex items-center space-x-2">
               <p
                 className={cn(
@@ -250,7 +258,7 @@ export function WebhookSourceDetailsInfo({
                   onClick={() =>
                     handleCopy(
                       webhookSourceView.webhookSource.secret ?? "",
-                      "Secret"
+                      t`Secret copied to clipboard`
                     )
                   }
                   size="xs"
@@ -262,12 +270,16 @@ export function WebhookSourceDetailsInfo({
         {webhookSourceView.webhookSource.signatureHeader && (
           <>
             <div>
-              <Page.H variant="h6">Signature Header</Page.H>
+              <Page.H variant="h6">
+                <Trans>Signature header</Trans>
+              </Page.H>
               <Page.P>{webhookSourceView.webhookSource.signatureHeader}</Page.P>
             </div>
 
             <div>
-              <Page.H variant="h6">Signature Algorithm</Page.H>
+              <Page.H variant="h6">
+                <Trans>Signature algorithm</Trans>
+              </Page.H>
               <Page.P>
                 {webhookSourceView.webhookSource.signatureAlgorithm}
               </Page.P>

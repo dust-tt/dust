@@ -8,6 +8,7 @@ import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { ContentMessage, cn, InfoCircle, Input } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -26,6 +27,7 @@ export function ImportFromRepositoryTab({
   onDetectedCountChange,
   isImporting,
 }: ImportFromRepositoryTabProps) {
+  const { t } = useLingui();
   const { control, setValue } = useFormContext<RepositoryImportFormValues>();
   const { field: repoUrlField } = useController({ name: "repoUrl", control });
 
@@ -98,13 +100,21 @@ export function ImportFromRepositoryTab({
               variant="warning"
               size="lg"
               icon={InfoCircle}
-              title="GitHub connection can't access this repository"
+              title={t`GitHub connection can't access this repository`}
             >
-              The currently connected GitHub account can't access this
-              repository.&nbsp;
-              {isAdmin(owner)
-                ? "Check the URL or reconnect with an account that has access."
-                : "Check the URL or ask an admin to reconnect with an account that has access."}
+              {isAdmin(owner) ? (
+                <Trans>
+                  The currently connected GitHub account can't access this
+                  repository. Check the URL or reconnect with an account that
+                  has access.
+                </Trans>
+              ) : (
+                <Trans>
+                  The currently connected GitHub account can't access this
+                  repository. Check the URL or ask an admin to reconnect with an
+                  account that has access.
+                </Trans>
+              )}
             </ContentMessage>
           ) : isAdmin(owner) ? (
             <ConnectWorkspaceGitHubMessage
@@ -119,10 +129,12 @@ export function ImportFromRepositoryTab({
               variant="warning"
               size="lg"
               icon={InfoCircle}
-              title="Repository not found"
+              title={t`Repository not found`}
             >
-              Check the URL. For private repos, ask an admin to connect a GitHub
-              account with access.
+              <Trans>
+                Check the URL. For private repos, ask an admin to connect a
+                GitHub account with access.
+              </Trans>
             </ContentMessage>
           ))}
         <DetectedSkillsList

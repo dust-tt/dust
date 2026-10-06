@@ -3,6 +3,7 @@ import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFie
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SkillNameSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { LoadingBlock } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface SuggestedSkillNameProps {
   suggestion: SkillNameSuggestionType;
@@ -17,6 +18,7 @@ export function SuggestedSkillName({
   workspaceId,
   layout = "boxed",
 }: SuggestedSkillNameProps) {
+  const { t } = useLingui();
   const { skill, isSkillLoading } = useSkill({ workspaceId, skillId });
 
   if (isSkillLoading) {
@@ -25,7 +27,7 @@ export function SuggestedSkillName({
 
   return (
     <SuggestionFieldEditSection
-      label="Name"
+      label={t`Name`}
       currentValue={skill?.name ?? ""}
       newValue={suggestion.name}
       layout={layout}

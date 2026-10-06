@@ -21,6 +21,7 @@ import {
   TextCellSkeleton,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
   PaginationState,
@@ -62,8 +63,8 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
 // an open menu closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
- * `columns` MUST only be rebuilt when `onSelect`, `onRefresh`, `owner` or `readOnly` change, never
- * on data the table loads itself. Callers MUST keep `onSelect` and `onRefresh` referentially stable while the
+ * `columns` MUST only be rebuilt when `onSelect`, `onRefresh`, `owner`, `readOnly` or the active
+ * locale change, never on data the table loads itself. Callers MUST keep `onSelect` and `onRefresh` referentially stable while the
  * search inputs are unchanged.
  */
 /**
@@ -95,6 +96,7 @@ export function SkillSearchTable({
   setSelectedSkillIds,
   canSelect,
 }: SkillSearchTableProps) {
+  const { t } = useLingui();
   const columns = useMemo(
     () =>
       [
@@ -121,8 +123,8 @@ export function SkillSearchTable({
                   }
                   tooltip={
                     areAllPageRowsSelected
-                      ? "Clear selection"
-                      : "Select all on page"
+                      ? t`Clear selection`
+                      : t`Select all on page`
                   }
                   onClick={(event) => event.stopPropagation()}
                   onCheckedChange={(checked) => {
@@ -142,6 +144,7 @@ export function SkillSearchTable({
               return null;
             }
             const checkboxId = `select-skill-${row.id}`;
+            const skillName = row.original.name;
             return (
               // Keep the click from reaching the row, which opens the skill details.
               <Label
@@ -154,8 +157,8 @@ export function SkillSearchTable({
                   id={checkboxId}
                   aria-label={
                     row.getIsSelected()
-                      ? `Deselect ${row.original.name}`
-                      : `Select ${row.original.name}`
+                      ? t`Deselect ${skillName}`
+                      : t`Select ${skillName}`
                   }
                   checked={row.getIsSelected()}
                   onCheckedChange={(checked) => row.toggleSelected(!!checked)}
@@ -168,7 +171,7 @@ export function SkillSearchTable({
         {
           id: "name" as const,
           accessorKey: "name",
-          header: "Name",
+          header: t`Name`,
           sortDescFirst: false,
           enableMultiSort: false,
           cell: ({ row: { original: skill } }) => {
@@ -208,7 +211,7 @@ export function SkillSearchTable({
         },
         {
           id: "availability" as const,
-          header: "Availability",
+          header: t`Availability`,
           cell: ({ row: { original: skill } }) => (
             <SkillAvailabilityCell availability={skill.availability} />
           ),
@@ -220,7 +223,7 @@ export function SkillSearchTable({
         {
           id: "usage" as const,
           accessorKey: "activeUsersCount",
-          header: "Usage",
+          header: t`Usage`,
           sortDescFirst: true,
           enableMultiSort: false,
           cell: ({ row: { original: skill } }) => (
@@ -232,8 +235,8 @@ export function SkillSearchTable({
               }
               tooltip={
                 skill.activeUsersCount === null
-                  ? "Usage is not available for this skill."
-                  : "Number of active users in the last 30 days."
+                  ? t`Usage is not available for this skill.`
+                  : t`Number of active users in the last 30 days.`
               }
             />
           ),
@@ -245,7 +248,7 @@ export function SkillSearchTable({
         },
         {
           id: "editors" as const,
-          header: "Editors",
+          header: t`Editors`,
           cell: ({ row: { original: skill } }) => (
             <SkillEditorsCell
               editors={isDustProvidedSkill(skill) ? null : skill.editors}
@@ -256,7 +259,7 @@ export function SkillSearchTable({
         {
           id: "updatedAt" as const,
           accessorKey: "updatedAt",
-          header: "Last edited",
+          header: t`Last edited`,
           sortDescFirst: true,
           enableMultiSort: false,
           cell: ({ row: { original: skill } }) => (
@@ -282,7 +285,7 @@ export function SkillSearchTable({
           meta: { className: "w-14" },
         },
       ] satisfies ColumnDef<SkillSearchRow>[],
-    [onRefresh, onSelect, owner, readOnly]
+    [onRefresh, onSelect, owner, readOnly, t]
   );
 
   const hasSelectableRows = !readOnly && skills.some(canSelect);
@@ -301,7 +304,11 @@ export function SkillSearchTable({
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && skills.length === 0) {
     return (
-      <div role="status" aria-label="Loading skills" className={tableClassName}>
+      <div
+        role="status"
+        aria-label={t`Loading skills`}
+        className={tableClassName}
+      >
         <DataTableSkeleton
           columns={visibleColumns}
           rowCount={12}

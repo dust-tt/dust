@@ -49,6 +49,7 @@ import {
   Page,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -85,6 +86,7 @@ function AgentsList({
   permissionFiltering,
   onSelect,
 }: AgentsListProps) {
+  const { t } = useLingui();
   const tracking = useManageTracking();
   const handleSelect = useCallback(
     (agentId: string) => {
@@ -192,9 +194,11 @@ function AgentsList({
           role="alert"
           className="flex items-center justify-between gap-4 py-4"
         >
-          <span>Could not load agents. Please try again.</span>
+          <span>
+            <Trans>Could not load agents. Please try again.</Trans>
+          </span>
           <Button
-            label="Retry"
+            label={t`Retry`}
             variant="outline"
             isLoading={isAgentsValidating}
             disabled={isAgentsValidating}
@@ -253,8 +257,8 @@ function AgentsList({
         <EmptyCTA
           message={
             searchTerm.trim()
-              ? "No agents match your search."
-              : "No agents to show."
+              ? t`No agents match your search.`
+              : t`No agents to show.`
           }
           action={null}
         />
@@ -308,6 +312,7 @@ export function ManageAgentsPage({
   onSelect,
   renderActions,
 }: ManageAgentsPageProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -355,7 +360,7 @@ export function ManageAgentsPage({
     isAdmin &&
     selectedTab === "all";
   useSetContentWidth("wide");
-  useSetPageTitle("Dust - Manage Agents");
+  useSetPageTitle(t`Dust - Manage agents`);
 
   // Only admins may list the agents they neither edit nor share a space with. Archived agents
   // are listed unrestricted for admins, as in the legacy page.
@@ -390,12 +395,12 @@ export function ManageAgentsPage({
   const searchInput = (
     <div className="w-full md:w-1/2">
       <label htmlFor="agent-search" className="sr-only">
-        Search agents
+        <Trans>Search agents</Trans>
       </label>
       <SearchInput
         id="agent-search"
         name="agent-search"
-        placeholder="Search for agents"
+        placeholder={t`Search for agents`}
         value={searchTerm}
         onChange={setSearchTerm}
         className="w-full"
@@ -416,7 +421,9 @@ export function ManageAgentsPage({
           <Page.Header
             title={
               <div className="flex w-full flex-wrap items-center justify-between gap-4">
-                <Page.H>Manage Agents</Page.H>
+                <Page.H>
+                  <Trans>Manage agents</Trans>
+                </Page.H>
                 {!readOnly && hasPermission("create", "agent") && (
                   <CreateAgentDropdown
                     owner={owner}
@@ -425,7 +432,7 @@ export function ManageAgentsPage({
                 )}
               </div>
             }
-            description="Build and manage agents that work with your team's knowledge and tools."
+            description={t`Build and manage agents that work with your team's knowledge and tools.`}
             noTopPadding
           />
         )}
@@ -490,7 +497,7 @@ export function ManageAgentsPage({
                       key: "hidden-agents",
                       label: (
                         <span className="min-w-0 truncate text-xs font-bold">
-                          Hidden agents
+                          <Trans>Hidden agents</Trans>
                         </span>
                       ),
                       onRemove: () => setShowHiddenAgents(false),

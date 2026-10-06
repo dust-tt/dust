@@ -1,3 +1,5 @@
+import { useLingui } from "@lingui/react/macro";
+import { useMemo } from "react";
 import { z } from "zod";
 
 export const IMPORT_TYPES = ["repository", "files"] as const;
@@ -8,28 +10,36 @@ export function isImportType(value: string): value is ImportType {
   return IMPORT_TYPES.includes(value as ImportType);
 }
 
-const selectedSkillNames = z
-  .array(z.string())
-  .min(1, "Select at least one skill to import");
+export function useImportFormSchema() {
+  const { t } = useLingui();
 
-const repositoryImportSchema = z.object({
-  importType: z.literal("repository"),
-  repoUrl: z.string().min(1, "A repository URL is required"),
-  selectedSkillNames,
-});
+  return useMemo(() => {
+    const selectedSkillNames = z
+      .array(z.string())
+      .min(1, t`Select at least one skill to import`);
 
-const filesImportSchema = z.object({
-  importType: z.literal("files"),
-  selectedSkillNames,
-});
+    return z.discriminatedUnion("importType", [
+      z.object({
+        importType: z.literal("repository"),
+        repoUrl: z.string().min(1, t`A repository URL is required`),
+        selectedSkillNames,
+      }),
+      z.object({
+        importType: z.literal("files"),
+        selectedSkillNames,
+      }),
+    ]);
+  }, [t]);
+}
 
-export const importFormSchema = z.discriminatedUnion("importType", [
-  repositoryImportSchema,
-  filesImportSchema,
-]);
+export type ImportFormValues = z.infer<ReturnType<typeof useImportFormSchema>>;
 
-export type ImportFormValues = z.infer<typeof importFormSchema>;
+export type RepositoryImportFormValues = Extract<
+  ImportFormValues,
+  { importType: "repository" }
+>;
 
-export type RepositoryImportFormValues = z.infer<typeof repositoryImportSchema>;
-
-export type FilesImportFormValues = z.infer<typeof filesImportSchema>;
+export type FilesImportFormValues = Extract<
+  ImportFormValues,
+  { importType: "files" }
+>;
