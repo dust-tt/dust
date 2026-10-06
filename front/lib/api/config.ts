@@ -322,14 +322,7 @@ const config = {
     return port;
   },
   getCollabServerPort: (): number => {
-    const value = EnvironmentConfig.getEnvVariable("COLLAB_PORT");
-    const port = Number.parseInt(value, 10);
-
-    if (Number.isNaN(port) || port <= 0) {
-      throw new Error("COLLAB_PORT must be a positive integer");
-    }
-
-    return port;
+    return Number.parseInt(EnvironmentConfig.getEnvVariable("COLLAB_PORT"), 10);
   },
   getCollabServerHostname: (): string => {
     return EnvironmentConfig.getEnvVariable("COLLAB_HOSTNAME");
