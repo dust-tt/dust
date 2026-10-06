@@ -313,7 +313,7 @@ async function resolveCreditPurchaseInvoiceCtx(
 /**
  * Single entry point for resolving any invoice (subscription or credit
  * purchase, Stripe-billed or Metronome-pushed) to a uniform context.
- * Returns null for a relocated workspace, see below.
+ * Returns null if the workspace was relocated to another region.
  */
 async function resolveInvoiceCtx(
   invoice: Stripe.Invoice
@@ -739,8 +739,8 @@ async function handleStripeCheckoutCompleted({
 /**
  * @cc [owner:philipperolet,label:product] skip-relocated-workspace-invoices
  * For invoice events (`invoice.*`, `charge.dispute.created`) whose workspace row in this region is
- * marked `relocation-done`, the handler MUST NOT write anything (database, Stripe, Metronome,
- * Temporal workflows, emails): the destination region handles them.
+ * marked `relocation-done`, the handler MUST have no side effect other than logging (no database,
+ * Stripe, Metronome, Temporal or email writes): the destination region handles them.
  */
 export async function processStripeWebhookEvent({
   event,
