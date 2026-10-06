@@ -58,8 +58,19 @@ browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Al
 opens the panel on a new comment card at the text's place among the open threads. Posting,
 replying, resolving and deleting stay out of text undo history. A message the codec cannot
 write, such as one with a line starting with `::`, is refused before it reaches the document.
-Message bodies show as plain text for now. The host renders authors' avatars through
+The host renders message bodies through `renderCommentBody`, and authors' avatars through
 `renderCommentAuthorAvatar`, which the panel calls only once it has been opened.
+
+## Mentions
+
+Message bodies are Markdown, and the file preview's `renderCommentBody` shows agent and user
+mention directives in them as mention chips. When a save brings a new
+message that mentions agents or users, the file API hands it to a Temporal job
+(`front/lib/api/files/dfm_comment_mentions.ts`, `mentions_queue`), keyed by the document and
+the message so it is posted once. The job posts it as a user message in the document's
+conversation, waiting while an agent runs there: the file's own conversation, or for a pod file
+a conversation created in the pod on first use and found again by path. Mentioned agents then
+answer there and mentioned users are notified, as for any conversation message.
 
 ## Signatures
 

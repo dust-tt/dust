@@ -548,6 +548,7 @@ const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
+  dfmDocumentPath?: string;
   useFileSystem?: boolean;
   /** Selects the database-backed filesystem for a fresh standalone conversation. */
   useDatabaseFileSystem?: boolean;

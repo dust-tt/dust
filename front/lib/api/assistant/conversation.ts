@@ -206,6 +206,12 @@ const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
  * Conversation Creation, update and deletion
  */
 
+/**
+ * @cc [owner:tdraier,label:product] pod-conversation-notification
+ * Creating a pod conversation MUST trigger the pod's new-conversation notification, which keeps
+ * its own exclusions (such as task and activation-pod conversations), unless `notifyPodMembers`
+ * is false, in which case the caller owns that notification.
+ */
 export async function createConversation(
   auth: Authenticator,
   {
@@ -215,6 +221,7 @@ export async function createConversation(
     triggerId,
     spaceId,
     metadata,
+    notifyPodMembers = true,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
@@ -222,6 +229,7 @@ export async function createConversation(
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
     metadata?: ConversationMetadata;
+    notifyPodMembers?: boolean;
   }
 ): Promise<ConversationResource> {
   let space: SpaceResource | null = null;
@@ -253,7 +261,7 @@ export async function createConversation(
 
   const conversationAsJson = conversation.toJSON();
 
-  if (isPodConversation(conversationAsJson)) {
+  if (notifyPodMembers && isPodConversation(conversationAsJson)) {
     notifyNewProjectConversation(auth, {
       conversation: conversationAsJson,
     });
@@ -518,6 +526,15 @@ export function isUserMessageContextValid(
   }
 }
 
+const conversationBusyError = () =>
+  new Err({
+    status_code: 409 as const,
+    api_error: {
+      type: "invalid_request_error" as const,
+      message: "An agent or a compaction is running in this conversation.",
+    },
+  });
+
 /**
  * @cc [owner:davidebbo,label:security;product] steering-requires-authenticated-author
  * Pending (steering) messages are later run with their author's authority, or with the running
@@ -526,6 +543,13 @@ export function isUserMessageContextValid(
  * message's author is that user or nobody. Otherwise (`auth` is not a system key and either has no
  * user or the author is only attributed from `context.email`), the message MUST be posted as
  * `visible` and answered with `auth`'s own authority.
+ */
+/**
+ * @cc [owner:tdraier,label:product;concurrency] post-only-when-idle
+ * With `onlyWhenIdle`, the message MUST be posted only if no agent message and no compaction runs
+ * in the conversation, checked again inside the conversation's rank lock before any row is
+ * written, and MUST otherwise fail with a 409 without writing anything; it is then never posted as
+ * `pending`. Without it, posting is unchanged.
  */
 export async function postUserMessage(
   auth: Authenticator,
@@ -539,6 +563,7 @@ export async function postUserMessage(
     skipDustAutoMention,
     doNotAssociateUser,
     modelSelection,
+    onlyWhenIdle = false,
   }: {
     conversationResource: ConversationResource;
     content: string;
@@ -549,6 +574,7 @@ export async function postUserMessage(
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
     modelSelection?: ModelSelectionType;
+    onlyWhenIdle?: boolean;
   }
 ): Promise<
   Result<
@@ -682,6 +708,10 @@ export async function postUserMessage(
   );
   if (canInteractRes.isErr()) {
     return canInteractRes;
+  }
+
+  if (onlyWhenIdle && runningAgentContext) {
+    return conversationBusyError();
   }
 
   let runningAgentMessage: RunningAgentMessageContext | undefined =
@@ -864,11 +894,23 @@ export async function postUserMessage(
     : null;
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
-  const { userMessage, agentMessages } = await withTransaction(async (t) => {
+  const created = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
+
+    if (
+      onlyWhenIdle &&
+      ((await conversationResource.getRunningAgentMessage(auth, {
+        transaction: t,
+      })) ||
+        (await conversationResource.getRunningCompactionMessage(auth, {
+          transaction: t,
+        })))
+    ) {
+      return null;
+    }
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -1001,6 +1043,10 @@ export async function postUserMessage(
       };
     }
   });
+  if (created === null) {
+    return conversationBusyError();
+  }
+  const { userMessage, agentMessages } = created;
 
   // If a user is mentioned, we want to make sure the conversation has a title.
   // This ensures that mentioned users receive a notification with a conversation title.

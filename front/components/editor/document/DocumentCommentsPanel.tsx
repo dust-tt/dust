@@ -23,7 +23,7 @@ import {
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 interface PanelIconButtonProps {
@@ -247,6 +247,7 @@ interface CommentThreadProps {
   onSetResolved: (resolved: boolean) => void;
   onDelete: () => void;
   onElement: (element: HTMLElement | null) => void;
+  renderBody: (body: string) => ReactNode;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -263,6 +264,7 @@ const CommentThread = ({
   onSetResolved,
   onDelete,
   onElement,
+  renderBody,
   mountPortalContainer,
   renderAuthorAvatar,
 }: CommentThreadProps) => {
@@ -340,9 +342,7 @@ const CommentThread = ({
           <span className="sr-only">Commented text: </span>
           {quote || "The commented text was removed."}
         </button>
-        <p className="text-sm whitespace-pre-wrap wrap-anywhere">
-          {first.body}
-        </p>
+        {renderBody(first.body)}
         {replies.length > 0 && (
           <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
             {replies.map((reply, index) => (
@@ -357,9 +357,7 @@ const CommentThread = ({
                   verified={isVerified(index + 1)}
                   mountPortalContainer={mountPortalContainer}
                 />
-                <p className="text-sm whitespace-pre-wrap wrap-anywhere">
-                  {reply.body}
-                </p>
+                {renderBody(reply.body)}
               </li>
             ))}
           </ul>
@@ -380,6 +378,7 @@ const CommentThread = ({
 interface DocumentCommentsPanelProps {
   id: string;
   comments: DocumentCommentsController;
+  renderCommentBody: (body: string) => ReactNode;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -416,6 +415,7 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
 export const DocumentCommentsPanel = ({
   id,
   comments,
+  renderCommentBody,
   mountPortalContainer,
   renderAuthorAvatar,
 }: DocumentCommentsPanelProps) => {
@@ -500,6 +500,7 @@ export const DocumentCommentsPanel = ({
           }
         }}
         renderAuthorAvatar={renderVisibleAvatar}
+        renderBody={renderCommentBody}
         mountPortalContainer={mountPortalContainer}
       />
     );

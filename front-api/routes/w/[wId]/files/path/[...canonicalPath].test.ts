@@ -4,6 +4,7 @@ import assert from "node:assert";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
+import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { messageSignaturePayload } from "@app/lib/markdown/dfm";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -25,6 +26,10 @@ import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import { PassThrough } from "stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/files/dfm_comment_mentions", () => ({
+  dispatchCommentMentions: vi.fn(),
+}));
 
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: vi.fn(async (_lockName: string, fn: () => unknown) => fn()),
@@ -1218,6 +1223,144 @@ describe("comment signatures on Markdown saves", () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("");
     expect(fileStorageMock.getObject(mountPath)).toBe(content);
+  });
+
+  describe("a stored file that cannot be read", () => {
+    const failStoredRead = () =>
+      fileStorageMock.setFileMetadata(() => ({
+        contentType: "text/markdown",
+        size: "7",
+        generation: "999",
+      }));
+
+    it("refuses the save while the file still exists", async () => {
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+      });
+      failStoredRead();
+      const author = `user:${user.sId}`;
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: file(author, signatureFor(workspace.sId, path, author)),
+      });
+
+      expect(response.status).toBe(500);
+    });
+
+    it("saves as a new file when the file was deleted before its read", async () => {
+      const { workspace, user, path, mountPath } = await setupMarkdown({
+        coEdition: true,
+      });
+      failStoredRead();
+      fileStorageMock.setFileExists(
+        () => fileStorageMock.readStreamCalls.length === 0
+      );
+      const author = `user:${user.sId}`;
+      const content = file(author, signatureFor(workspace.sId, path, author));
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: content,
+      });
+
+      expect(response.status).toBeLessThan(300);
+      expect(fileStorageMock.getObject(mountPath)).toBe(content);
+    });
+  });
+
+  describe("mention dispatch", () => {
+    beforeEach(() => {
+      vi.mocked(dispatchCommentMentions).mockClear();
+    });
+
+    it("hands the new comments of a save to mention dispatch", async () => {
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+      });
+      const author = `user:${user.sId}`;
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: file(author, signatureFor(workspace.sId, path, author)),
+      });
+
+      expect(response.status).toBe(200);
+      expect(dispatchCommentMentions).toHaveBeenCalledWith(expect.anything(), {
+        scopedPath: path,
+        newMessages: [
+          expect.objectContaining({ commentId: "c1", quote: "there" }),
+        ],
+      });
+    });
+
+    it("hands no messages for a save that leaves the comments unchanged", async () => {
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+      });
+      const author = `user:${user.sId}`;
+      const content = file(author, signatureFor(workspace.sId, path, author));
+      await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: content,
+      });
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: content,
+      });
+
+      expect(response.status).toBe(200);
+      expect(dispatchCommentMentions).toHaveBeenLastCalledWith(
+        expect.anything(),
+        { scopedPath: path, newMessages: [] }
+      );
+    });
+
+    it("dispatches nothing for a file that is not Markdown", async () => {
+      fileStorageMock.setFileMetadata(() => ({
+        contentType: "text/plain",
+        size: "7",
+      }));
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+        fileName: "notes.txt",
+      });
+      const author = `user:${user.sId}`;
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain" },
+        body: file(author, signatureFor(workspace.sId, path, author)),
+      });
+
+      expect(response.status).toBe(200);
+      expect(dispatchCommentMentions).not.toHaveBeenCalled();
+    });
+
+    it("dispatches nothing when the write fails", async () => {
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+      });
+      const author = `user:${user.sId}`;
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "text/markdown",
+          [DUST_IF_REVISION_MATCH_HEADER]: "999999",
+        },
+        body: file(author, signatureFor(workspace.sId, path, author)),
+      });
+
+      expect(response.status).toBe(412);
+      expect(dispatchCommentMentions).not.toHaveBeenCalled();
+    });
   });
 
   it.each([

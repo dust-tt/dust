@@ -1,6 +1,7 @@
 import { Document } from "@app/components/editor/document";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
+import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -338,6 +339,9 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       }
       signCommentMessage={signCommentMessage}
       verifyCommentMessage={verifyCommentMessage ?? undefined}
+      renderCommentBody={(body) => (
+        <CommentBodyMarkdown owner={owner} body={body} />
+      )}
       badge={<CoEditionBadge />}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
