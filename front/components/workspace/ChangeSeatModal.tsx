@@ -1,4 +1,5 @@
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import {
   formatPriceCents,
   getAvailableFrequencies,
@@ -425,6 +426,12 @@ export function ChangeSeatModal({
     (selectedAwuCredits < currentAwuCredits || isMonthlyToYearlySwitch);
 
   const scheduledSeatType = displayedMember?.scheduledSeatType;
+  const scheduledSeatName =
+    scheduledSeatType === "none"
+      ? t`No seat`
+      : scheduledSeatType
+        ? seatTypeDisplayName(scheduledSeatType)
+        : null;
 
   const displayedFirstName =
     displayedMember?.name?.trim().split(/\s+/)[0] ?? null;
@@ -557,9 +564,7 @@ export function ChangeSeatModal({
               {isCancellingScheduledChange && (
                 <p className="mt-1 text-xs text-info-600">
                   <Trans>
-                    Scheduled change to{" "}
-                    <span className="capitalize">{scheduledSeatType}</span> will
-                    be cancelled.
+                    Scheduled change to {scheduledSeatName} will be cancelled.
                   </Trans>
                 </p>
               )}

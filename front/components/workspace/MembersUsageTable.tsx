@@ -142,6 +142,10 @@ type Info = CellContext<RowData, string>;
 
 type Translate = (descriptor: MessageDescriptor) => string;
 
+function getSeatName(seatType: MembershipSeatType, t: Translate): string {
+  return seatType === "none" ? t(msg`No seat`) : seatTypeDisplayName(seatType);
+}
+
 function MemberUsageSkeletonCell({
   columnId,
   rowIndex,
@@ -239,7 +243,7 @@ function getScheduledSeatChangeLabel(
 
   const currentRank = currentSeatType ? SEAT_TYPE_ORDER[currentSeatType] : 0;
   const scheduledRank = SEAT_TYPE_ORDER[scheduledSeatType];
-  const targetLabel = seatTypeDisplayName(scheduledSeatType);
+  const targetLabel = getSeatName(scheduledSeatType, t);
   if (scheduledRank > currentRank) {
     return changeDate
       ? t(
@@ -685,7 +689,7 @@ function buildSeatsIconColumn(t: Translate): ColumnDef<RowData, string> {
           </DataTable.CellContent>
         );
       }
-      const seatName = seatTypeDisplayName(seatType);
+      const seatName = getSeatName(seatType, t);
       const tooltipLabel = scheduledSeatType
         ? getScheduledSeatChangeLabel(
             seatType,
@@ -693,7 +697,9 @@ function buildSeatsIconColumn(t: Translate): ColumnDef<RowData, string> {
             scheduledSeatChangeAt,
             t
           )
-        : t(msg`${seatName} seat`);
+        : seatType === "none"
+          ? seatName
+          : t(msg`${seatName} seat`);
       return (
         <DataTable.CellContent className="justify-center">
           <span className="flex items-center gap-1">
@@ -704,7 +710,7 @@ function buildSeatsIconColumn(t: Translate): ColumnDef<RowData, string> {
                 <Chip
                   size="mini"
                   color={seatTypeChipColor(seatType)}
-                  label={seatTypeDisplayName(seatType)}
+                  label={seatName}
                   className="cursor-default"
                 />
               }

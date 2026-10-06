@@ -714,6 +714,7 @@ msgstr "Membres du groupe ({selectedMemberCount})"
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/me/UserAutomationsTable.tsx
 #: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
@@ -728,10 +729,14 @@ msgstr "Membres du groupe ({selectedMemberCount})"
 #: front/components/workspace/DirectorySync.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
+#: front/components/workspace/GroupSeatPickerDropdown.tsx
 #: front/components/workspace/UpgradePlanDialog.tsx
+#: front/components/workspace/UpgradeRequests.tsx
+#: front/components/workspace/WorkspaceAccessPanel.tsx
 #: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
 #: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 #: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
@@ -1852,7 +1857,9 @@ msgstr "Ajouter des crédits"
 
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
 #: front/components/workspace/GroupSeatPickerDropdown.tsx
+#: front/components/workspace/MembersUsageTable.tsx
 msgid "No seat"
 msgstr "Aucun siège"
 
@@ -3358,8 +3365,8 @@ msgid "The change will take effect at the next credit refresh."
 msgstr "Le changement prendra effet au prochain renouvellement des crédits."
 
 #: front/components/workspace/ChangeSeatModal.tsx
-msgid "Scheduled change to <0>{scheduledSeatType}</0> will be cancelled."
-msgstr "Le changement prévu vers <0>{scheduledSeatType}</0> sera annulé."
+msgid "Scheduled change to {scheduledSeatName} will be cancelled."
+msgstr "Le changement prévu vers {scheduledSeatName} sera annulé."
 
 #: front/components/workspace/ChangeSeatModal.tsx
 msgid "Estimating invoice impact…"

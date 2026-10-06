@@ -3,7 +3,7 @@ import {
   useCapUnitLabel,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits } from "@app/lib/client/credits";
-import { compareStrings } from "@app/lib/i18n/format";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillReinforcement } from "@app/lib/swr/skill_configurations";
@@ -208,7 +208,9 @@ function formatDollars(value: number): string {
 }
 
 function formatSpend(value: number, unit: ReinforcementBillingUnit): string {
-  return unit === "awu_credits" ? formatCredits(value) : formatDollars(value);
+  return unit === "awu_credits"
+    ? formatCredits(value)
+    : formatNumber(value, { maximumFractionDigits: 2 });
 }
 
 // Plain (unformatted) value for cap inputs: thousands separators would not

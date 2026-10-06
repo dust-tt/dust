@@ -7,11 +7,10 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
-import { formatNumber } from "@app/lib/i18n/format";
+import { formatCurrency, formatNumber } from "@app/lib/i18n/format";
 import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
-import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
@@ -106,11 +105,11 @@ export function formatSeatAmountCents(
   cents: number,
   currency: SupportedCurrency
 ): string {
-  const symbol = CURRENCY_SYMBOLS[currency];
-  const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
-  // EUR is the only currency we render with a trailing symbol (e.g. "30€");
-  // USD and GBP are prefix currencies ("$30", "£30").
-  return currency === "eur" ? `${amount}${symbol}` : `${symbol}${amount}`;
+  const fractionDigits = Math.round(cents) % 100 === 0 ? 0 : 2;
+  return formatCurrency(cents / 100, currency, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
 }
 
 export function formatPriceCents(
