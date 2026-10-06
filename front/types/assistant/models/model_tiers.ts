@@ -386,6 +386,10 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "mistral-large-latest": {
     none: "balanced",
   },
+  "mistral-large-4": {
+    none: "balanced",
+    high: "premium",
+  },
   "mistral-medium": {
     none: "balanced",
   },

@@ -753,6 +753,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
           "Same as dust but running Mistral Medium 3.5 with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_NONE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_NONE,
+        name: "dust-mistral-large-none",
+        description:
+          "Same as dust but running Mistral Large 4 (Preview) with no reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_HIGH,
+        name: "dust-mistral-large-high",
+        description:
+          "Same as dust but running Mistral Large 4 (Preview) with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,

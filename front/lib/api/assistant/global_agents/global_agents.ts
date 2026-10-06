@@ -52,6 +52,8 @@ import {
   _getDustMinimaxGlobalAgent,
   _getDustMinimaxHighGlobalAgent,
   _getDustMinimaxMediumGlobalAgent,
+  _getDustMistralLargeHighGlobalAgent,
+  _getDustMistralLargeNoneGlobalAgent,
   _getDustMistralMediumHighGlobalAgent,
   _getDustMistralMediumNoneGlobalAgent,
   _getDustOaiGlobalAgent,
@@ -646,6 +648,24 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_NONE:
+      agentConfiguration = _getDustMistralLargeNoneGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_HIGH:
+      agentConfiguration = _getDustMistralLargeHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
       agentConfiguration = _getDustQuickGlobalAgent(auth, {
         settings,
@@ -1101,6 +1121,8 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
     GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE,
     GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH,
+    GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_NONE,
+    GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_HIGH,
     GLOBAL_AGENTS_SID.DUST_QUICK,
     GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI,
