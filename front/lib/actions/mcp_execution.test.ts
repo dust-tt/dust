@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type {
   InternalServerSideMCPToolConfigurationType,
+  LightClientSideMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
@@ -19,6 +20,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -34,6 +36,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { frameV2ContentType } from "@app/types/files";
@@ -154,6 +157,61 @@ async function setupTest({
   };
 
   return { auth, conversation, action, toolContext };
+}
+
+async function setupClientSideToolTest() {
+  const { auth, toolContext } = await setupTest();
+  assert(toolContext.runContext.contextType === "agent_loop");
+  const workspace = auth.getNonNullableWorkspace();
+
+  const clientSideToolConfiguration: LightClientSideMCPToolConfigurationType = {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: "attach_file",
+    clientSideMcpServerId: generateRandomModelSId(),
+    permission: "never_ask",
+    toolServerId: generateRandomModelSId(),
+    originalName: "attach_file",
+    mcpServerName: "client_server",
+  };
+  const clientSideToolContext: ToolContext = {
+    runContext: {
+      ...toolContext.runContext,
+      toolConfiguration: clientSideToolConfiguration,
+    },
+  };
+
+  const otherUser = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+  const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    otherUser.sId,
+    workspace.sId
+  );
+
+  return {
+    auth,
+    conversation: toolContext.runContext.conversation,
+    clientSideToolContext,
+    otherAuth,
+    otherUser,
+  };
+}
+
+function makeToolGeneratedFileBlock(
+  fileId: string
+): CallToolResult["content"][number] {
+  const generatedFile: ToolGeneratedFileType = {
+    contentType: "text/plain",
+    fileId,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+    snippet: null,
+    text: "Attached file.",
+    title: "notes.txt",
+    uri: `file://${fileId}`,
+  };
+
+  return { type: "resource", resource: generatedFile };
 }
 
 async function setupAuth() {
@@ -314,6 +372,142 @@ describe("processToolResults", () => {
 
     expect(generatedFiles).toHaveLength(1);
     expect(generatedFiles[0]?.title).toBe("Hello Frame");
+  });
+
+  it("links the caller's unattached upload returned by a client-side tool and binds it", async () => {
+    const { auth, conversation, clientSideToolContext } =
+      await setupClientSideToolTest();
+    const upload = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "notes.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: null,
+    });
+
+    const { generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext: clientSideToolContext,
+      toolCallResultContent: [makeToolGeneratedFileBlock(upload.sId)],
+    });
+
+    expect(generatedFiles.map((f) => f.fileId)).toEqual([upload.sId]);
+    const boundUpload = await FileResource.fetchById(auth, upload.sId);
+    expect(boundUpload?.useCaseMetadata?.conversationId).toBe(conversation.sId);
+  });
+
+  it("ignores another user's unattached upload returned by a client-side tool and leaves it unattached", async () => {
+    const { auth, clientSideToolContext, otherAuth, otherUser } =
+      await setupClientSideToolTest();
+    const otherUpload = await FileFactory.create(otherAuth, otherUser, {
+      contentType: "text/plain",
+      fileName: "notes.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: null,
+    });
+
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext: clientSideToolContext,
+      toolCallResultContent: [makeToolGeneratedFileBlock(otherUpload.sId)],
+    });
+
+    expect(generatedFiles).toHaveLength(0);
+    expect(outputItems[0]?.fileId).toBeNull();
+    const untouchedUpload = await FileResource.fetchById(
+      otherAuth,
+      otherUpload.sId
+    );
+    expect(untouchedUpload?.useCaseMetadata?.conversationId).toBeUndefined();
+  });
+
+  it("links a file returned by a client-side tool from the current conversation", async () => {
+    const { auth, conversation, clientSideToolContext } =
+      await setupClientSideToolTest();
+    const conversationFile = await FileFactory.create(
+      auth,
+      auth.getNonNullableUser(),
+      {
+        contentType: "text/plain",
+        fileName: "notes.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      }
+    );
+
+    const { generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext: clientSideToolContext,
+      toolCallResultContent: [makeToolGeneratedFileBlock(conversationFile.sId)],
+    });
+
+    expect(generatedFiles.map((f) => f.fileId)).toEqual([conversationFile.sId]);
+  });
+
+  it("ignores a project_context file returned by a client-side tool", async () => {
+    const { auth, clientSideToolContext } = await setupClientSideToolTest();
+    const space = await SpaceFactory.regular(auth.getNonNullableWorkspace());
+    const podFile = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "notes.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+
+    const { generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext: clientSideToolContext,
+      toolCallResultContent: [makeToolGeneratedFileBlock(podFile.sId)],
+    });
+
+    expect(generatedFiles).toHaveLength(0);
+  });
+
+  it("ignores a file returned by a client-side tool from a conversation the caller cannot access", async () => {
+    const { auth, clientSideToolContext, otherUser } =
+      await setupClientSideToolTest();
+    const workspace = auth.getNonNullableWorkspace();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembersRes = await restrictedSpace.addMembers(auth, {
+      userIds: [otherUser.sId],
+    });
+    assert(addMembersRes.isOk(), "Failed to add the other user to the space");
+    const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const otherConversation = await ConversationFactory.create(
+      spaceMemberAuth,
+      {
+        agentConfigurationId: "test-agent",
+        messagesCreatedAt: [],
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+    const otherFile = await FileFactory.create(spaceMemberAuth, otherUser, {
+      contentType: "text/plain",
+      fileName: "notes.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: otherConversation.sId },
+    });
+
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext: clientSideToolContext,
+      toolCallResultContent: [makeToolGeneratedFileBlock(otherFile.sId)],
+    });
+
+    expect(generatedFiles).toHaveLength(0);
+    expect(outputItems[0]?.fileId).toBeNull();
   });
 
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
