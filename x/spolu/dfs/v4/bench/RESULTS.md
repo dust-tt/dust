@@ -1,13 +1,10 @@
 # Benchmark results — dfs v4 localhost
 
-Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
-in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
-Later focused runs measure untar only, most recently
-[directory-record split](#directory-record-split), with the 512 MiB client budget.
-The full baseline table remains below.
-
-Historical FUSE measurements used a 1 GiB total budget. The latest focused untar below uses the
-current **512 MiB** default.
+Latest full-suite measurements: 2026-10-06, source `26dbc5e862`, directory-record split and the
+current **512 MiB** client budget. All 24 timed checks passed, including both full-content hash
+passes, but final scratch-directory cleanup failed with `EIO`; this is **not a clean suite pass**.
+The [latest table](#latest-full-table--directory-record-split) includes every measured workload.
+The original 1 GiB baseline and intermediate measurements remain below.
 
 ## Configuration and method
 
@@ -30,7 +27,61 @@ current **512 MiB** default.
 The existing `page cache` and `search` labels name benchmark categories; search here is filesystem
 `rg`, not a search service. Kernel caching remains disabled.
 
-## Full table
+## Latest full table — directory-record split
+
+Source `26dbc5e862` (implementation `9e8c6ea3c7`). Same 10k corpus and local setup described above;
+512 MiB shared clean/dirty/bookkeeping budget, including a 96 MiB transient reserve, with no separate
+dirty cap. 128 in-flight groups, 16 RPC envelopes, 25ms coalescing, eight FUSE workers and 64 active
+server transactions maximum. Creates schedule by their new object ID. Each first read starts a new
+server/session/mount; the run used a new FDB prefix and retained existing FDB data and OS caches.
+
+Untar: **6.629s**, remaining client drain: **0.531s**, total: **7.160s**.
+Unmount including drain took 0.681s. All 24 timed workload checks passed, and all 10,000 file sizes
+and SHA-256 hashes matched in both first and warm full-read passes. Final recursive cleanup of the
+scratch directory failed with `EIO` after the timed unlink row; the harness exited unsuccessfully.
+The rows below retain their individual validation results, not an overall success claim.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| population   | untar (10,000 files, 177.5 MB)                 | once  |  6,628.56 | OK     |
+| writeback    | remaining client drain after untar             | once  |    531.00 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 10,874.94 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 11,258.43 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |    373.37 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |     29.45 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 23,183.74 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 22,961.64 | OK     |
+| metadata     | stat missing (256 paths)                       | first |  1,267.85 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |  1,272.81 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first |  4,575.14 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |  2,146.77 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |  4,387.89 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |  2,037.68 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |  1,655.91 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |  1,710.65 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |    410.60 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |    380.28 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 64,601.13 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 25,322.49 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |  2,406.25 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |  1,832.79 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |     25.43 | OK     |
+| file sync    | fsync (32 files)                               | once  |    141.08 | OK     |
+| write        | close (32 files)                               | once  |      0.85 | OK     |
+| write        | unlink (32 files)                              | once  |     24.02 | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+```sh
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=512 DFS_BENCH_REVISION=26dbc5e862 python3 /dfs/v4/bench/run.py --files 10000
+```
+
+Report: `/tmp/dfs-v4-26dbc5e862-full/run.json` inside `dfs-v4-dev-1`. Server, FUSE and manifest
+hashes match the [directory-split measurement](#directory-record-split). Raw reports remain outside Git.
+
+## Original full table
 
 Untar: **39.053s**, followed by **1.801s** inside the explicit client drain.
 Unmount from signal to process exit, including that drain, took **1.955s**.
