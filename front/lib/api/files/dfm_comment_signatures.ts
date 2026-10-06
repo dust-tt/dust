@@ -473,14 +473,20 @@ const isMarkdownContentType = (contentType: string | undefined) =>
 // GCS matches generation 0 only while the object does not exist.
 const ABSENT_FILE_REVISION = "0";
 
+export interface MarkdownCommentsCheck {
+  revision: string | undefined;
+  newMessages: NewCommentMessage[] | null;
+}
+
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-validation-scope
  * Validation MUST run on every content write through the file API's PUT of a file whose name,
  * request content type or stored content type is `text/markdown`, in a workspace with
  * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere else
- * until the codec bounds its input before parsing. It MUST return the revision it validated
- * against, when storage has one, so the write can be conditional on it, and the accepted new
- * messages. A write it does not validate MUST be bound to the stored state it was classified
+ * until the codec bounds its input before parsing. For a write it validates, it MUST return the
+ * revision it validated against, when storage has one, so the write can be conditional on it, and
+ * the accepted new messages. For a write it does not validate, `newMessages` MUST be null, and
+ * in a workspace with `co_edition` the write MUST be bound to the stored state it was classified
  * against: it MUST return the stored file's revision, or for an absent file the revision that
  * only matches an absent file, and MUST validate the write instead when storage has no revision.
  * A stored file that still exists but cannot be read MUST refuse the write with
@@ -496,15 +502,10 @@ export async function validateMarkdownCommentsForWrite(
   scopedPath: string,
   content: Uint8Array,
   requestContentType: string | undefined
-): Promise<
-  Result<
-    { revision: string | undefined; newMessages: NewCommentMessage[] },
-    DfmCommentSignatureError
-  >
-> {
+): Promise<Result<MarkdownCommentsCheck, DfmCommentSignatureError>> {
   const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
   if (resolvedPath.isErr() || !(await hasFeatureFlag(auth, "co_edition"))) {
-    return new Ok({ revision: undefined, newMessages: [] });
+    return new Ok({ revision: undefined, newMessages: null });
   }
 
   const read = await readCanonicalFileContent(dustFs, scopedPath);
@@ -530,7 +531,7 @@ export async function validateMarkdownCommentsForWrite(
         // The content of a write that is not validated is never read, nor the errors of its stream.
         stored.stream.on("error", () => undefined).destroy();
       }
-      return new Ok({ revision: classifiedRevision, newMessages: [] });
+      return new Ok({ revision: classifiedRevision, newMessages: null });
     }
   }
 

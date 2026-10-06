@@ -1322,6 +1322,27 @@ describe("comment signatures on Markdown saves", () => {
       );
     });
 
+    it("dispatches nothing for a file that is not Markdown", async () => {
+      fileStorageMock.setFileMetadata(() => ({
+        contentType: "text/plain",
+        size: "7",
+      }));
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+        fileName: "notes.txt",
+      });
+      const author = `user:${user.sId}`;
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain" },
+        body: file(author, signatureFor(workspace.sId, path, author)),
+      });
+
+      expect(response.status).toBe(200);
+      expect(dispatchCommentMentions).not.toHaveBeenCalled();
+    });
+
     it("dispatches nothing when the write fails", async () => {
       const { workspace, user, path } = await setupMarkdown({
         coEdition: true,

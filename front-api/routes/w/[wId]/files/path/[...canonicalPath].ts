@@ -677,33 +677,37 @@ app.put(
     }
 
     const content = new Uint8Array(contentBuffer);
-    const comments = await validateMarkdownCommentsForWrite(
+    // Only Markdown in a co_edition workspace has its comments checked and new messages; any
+    // other write gets null `newMessages`, and possibly a revision binding it to what was checked.
+    const markdownCheck = await validateMarkdownCommentsForWrite(
       auth,
       dustFs,
       canonicalPath,
       content,
       ctx.req.header("content-type") ?? undefined
     );
-    if (comments.isErr()) {
+    if (markdownCheck.isErr()) {
+      const { code, message } = markdownCheck.error;
       return apiError(
         ctx,
-        comments.error.code === "unreadable_file"
+        code === "unreadable_file"
           ? {
               status_code: 500,
               api_error: {
                 type: "internal_server_error",
-                message: comments.error.message,
+                message,
               },
             }
           : {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: comments.error.message,
+                message,
               },
             }
       );
     }
+    const { revision: checkedRevision, newMessages } = markdownCheck.value;
 
     // A Markdown write is conditional on the revision its comments were validated against.
     const writeResult = await writeCanonicalFileContent(
@@ -713,7 +717,7 @@ app.put(
       content,
       ctx.req.header("content-type") ?? undefined,
       ctx.req.valid("header")["x-dust-if-revision-match"] ??
-        comments.value.revision
+        checkedRevision
     );
 
     if (writeResult.isErr()) {
@@ -753,10 +757,12 @@ app.put(
       return apiError(ctx, mapDustFsError(error));
     }
 
-    await dispatchCommentMentions(auth, {
-      scopedPath: canonicalPath,
-      newMessages: comments.value.newMessages,
-    });
+    if (newMessages) {
+      await dispatchCommentMentions(auth, {
+        scopedPath: canonicalPath,
+        newMessages,
+      });
+    }
 
     return new Response(null, {
       status: writeResult.value.created ? 201 : 200,
