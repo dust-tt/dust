@@ -11,6 +11,7 @@
     "dev": "vite",
     "prebuild": "npm --prefix .. run i18n:compile",
     "build": "vite build",
+    "prebuild:check": "npm --prefix .. run i18n:compile",
     "build:check": "tsc && vite build",
     "preview": "vite preview",
     "postinstall": "node scripts/copy-allotment-css.mjs"

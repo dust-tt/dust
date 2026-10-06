@@ -75,7 +75,9 @@
     "@babel/preset-typescript": "^7.28.5",
     "@lingui/babel-plugin-lingui-macro": "6.4.0",
     "@lingui/cli": "6.4.0",
+    "@lingui/core": "6.4.0",
     "@lingui/format-po": "6.4.0",
+    "@lingui/react": "6.4.0",
     "@lingui/vite-plugin": "6.4.0",
     "@radix-ui/react-focus-scope": "^1.0.3",
     "@rolldown/plugin-babel": "^0.2.4",
@@ -116,6 +118,8 @@
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
+    "@lingui/core": "6.4.0",
+    "@lingui/react": "6.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -134,8 +138,6 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",
-    "@lingui/core": "6.4.0",
-    "@lingui/react": "6.4.0",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-collapsible": "^1.1.3",
