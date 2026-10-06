@@ -8,6 +8,7 @@ import {
   substituteAnchorDirectives,
 } from "@app/components/editor/document/DocumentCommentAnchor";
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
+import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -112,12 +113,29 @@ const serializeWithAnchors = (
   );
 };
 
+// TipTap's paragraph parser returns an image alone in its paragraph without the paragraph, as
+// for its block image; this editor's image is inline, so it goes back in one.
+const imagesInParagraphs = (node: JSONContent): JSONContent => {
+  if (!node.content) {
+    return node;
+  }
+  const holdsInline = documentSchema.nodes[node.type ?? ""]?.inlineContent;
+  return {
+    ...node,
+    content: node.content.map((child) =>
+      child.type === DOCUMENT_IMAGE_NODE_NAME && !holdsInline
+        ? { type: "paragraph", content: [child] }
+        : imagesInParagraphs(child)
+    ),
+  };
+};
+
+const parseMarkdown = (markdown: string): JSONContent =>
+  imagesInParagraphs(documentMarkdown.parse(markdown));
+
 /** Compares in the editor's form, comment marks included, as the user would reopen it. */
 const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
-  const reopened = anchorsToMarks(
-    documentMarkdown.parse(markdown),
-    documentSchema
-  );
+  const reopened = anchorsToMarks(parseMarkdown(markdown), documentSchema);
   return (
     reopened.isOk() &&
     normalizeTextNodes(
@@ -158,10 +176,31 @@ export const normalizeTextNodes = (node: Node): Node => {
   return node.copy(Fragment.fromArray(children));
 };
 
+const isValidDocument = (document: JSONContent) => {
+  try {
+    // TipTap opens an empty body as one empty paragraph.
+    documentSchema
+      .nodeFromJSON(
+        document.content?.length
+          ? document
+          : { ...document, content: [{ type: "paragraph" }] }
+      )
+      .check();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * @cc [owner:flvndvd,label:product] document-source-preservation
  * Markdown containing unsupported tokens or formatting that cannot survive serialization
  * MUST be rejected before editing. Callers MUST retain the original source for display.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-schema-valid
+ * Parsed Markdown that does not satisfy the editor schema MUST be rejected, never handed to the
+ * editor, so a file the editor misreads still shows as source.
  */
 export const parseDocumentContent = (
   content: string
@@ -172,7 +211,7 @@ export const parseDocumentContent = (
 
   let parsed: JSONContent;
   try {
-    parsed = documentMarkdown.parse(content);
+    parsed = parseMarkdown(content);
   } catch {
     return new Err("The Markdown could not be parsed.");
   }
@@ -180,6 +219,11 @@ export const parseDocumentContent = (
   const marked = anchorsToMarks(parsed, documentSchema);
   if (marked.isErr()) {
     return marked;
+  }
+  if (!isValidDocument(marked.value.document)) {
+    return new Err(
+      "The Markdown does not fit the editor's document structure."
+    );
   }
 
   // Opening is only safe when saving the untouched document goes through.
@@ -259,7 +303,7 @@ export const parseInlineMarkdown = (
   }
   let parsed: JSONContent;
   try {
-    parsed = documentMarkdown.parse(markdown);
+    parsed = parseMarkdown(markdown);
   } catch {
     return new Err("The suggestion could not be read.");
   }

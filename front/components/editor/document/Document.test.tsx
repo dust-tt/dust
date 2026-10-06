@@ -612,7 +612,7 @@ describe("Document images", () => {
     const { container } = render(
       <Document
         initialContent={
-          "![Chart](pod-abc/chart.png) and ![Logo](https://example.com/logo.png)\n"
+          "![Chart](pod-abc/chart.png)\n\n![Logo](https://example.com/logo.png) and text\n"
         }
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
