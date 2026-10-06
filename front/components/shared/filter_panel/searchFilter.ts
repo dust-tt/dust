@@ -230,7 +230,6 @@ export interface SearchFilterPreset<Category extends SearchFilterCategory> {
   key: string;
   category: Category;
   categoryLabel: string;
-  presetLabel: string;
   options: SearchFilterOption[];
 }
 
@@ -263,7 +262,6 @@ export function getSearchFilterPresets<Category extends SearchFilterCategory>({
         key: "editor-is-me",
         category,
         categoryLabel: SEARCH_FILTER_CATEGORY_SINGULAR_LABEL.editor,
-        presetLabel: "Me",
         options: [option],
       },
     ];

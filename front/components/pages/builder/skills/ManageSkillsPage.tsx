@@ -481,7 +481,7 @@ export function ManageSkillsPage({
             }).map((preset) => ({
               key: preset.key,
               categoryLabel: preset.categoryLabel,
-              optionLabel: preset.presetLabel,
+              options: preset.options,
               onApply: () =>
                 setFilter(
                   selectAllFilterOptions(

@@ -37,7 +37,7 @@ interface FilterExtraChip {
 interface FilterPresetChip {
   key: string;
   categoryLabel: string;
-  optionLabel: string;
+  options: FilterSummary<string>["options"];
   onApply: () => void;
 }
 
@@ -45,7 +45,7 @@ interface FilterSummaryChipsProps<Category extends string> {
   summaries: FilterSummary<Category>[];
   // Chips for settings outside the filter categories, shown after the category chips.
   extraChips?: FilterExtraChip[];
-  // Greyed-out suggestions, shown after the active chips, that apply a filter when clicked.
+  // Greyed-out suggestions, labelled as the chip they become, shown after the active chips, that apply a filter when clicked.
   presetChips?: FilterPresetChip[];
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
@@ -143,7 +143,7 @@ export function FilterSummaryChips<Category extends string>({
                   >
                     <SummaryLabel
                       categoryLabel={chip.categoryLabel}
-                      options={[{ id: chip.key, name: chip.optionLabel }]}
+                      options={chip.options}
                     />
                   </Chip>
                 </m.div>

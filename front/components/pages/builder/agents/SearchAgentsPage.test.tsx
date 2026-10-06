@@ -498,26 +498,32 @@ describe("search-backed Manage Agents", () => {
       screen.queryByRole("button", { name: "Clear all" })
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Editor is Me" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: `Editor is ${editor.fullName} (You)` })
+    );
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         editorIds: [editor.sId],
       })
     );
-    expect(screen.getByText(`${editor.fullName} (You)`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.queryByRole("button", { name: "Editor is Me" })
+        screen.queryByRole("button", {
+          name: `Editor is ${editor.fullName} (You)`,
+        })
       ).not.toBeInTheDocument()
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(
-      await screen.findByRole("button", { name: "Editor is Me" })
+      await screen.findByRole("button", {
+        name: `Editor is ${editor.fullName} (You)`,
+      })
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.queryByText(`${editor.fullName} (You)`)
+        screen.queryByRole("button", { name: "Remove" })
       ).not.toBeInTheDocument()
     );
   });

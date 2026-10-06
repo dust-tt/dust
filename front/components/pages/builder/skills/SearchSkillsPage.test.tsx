@@ -564,12 +564,14 @@ describe("search-backed Manage Skills", () => {
     );
     await waitFor(() =>
       expect(
-        screen.queryByText(`${context.user.fullName} (You)`)
+        screen.queryByRole("button", { name: "Remove" })
       ).not.toBeInTheDocument()
     );
     // Clearing the editor filter offers its preset again.
     expect(
-      screen.getByRole("button", { name: "Editor is Me" })
+      screen.getByRole("button", {
+        name: `Editor is ${context.user.fullName} (You)`,
+      })
     ).toBeInTheDocument();
   });
 

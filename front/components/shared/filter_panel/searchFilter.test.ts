@@ -156,7 +156,6 @@ describe("getSearchFilterPresets", () => {
         key: "editor-is-me",
         category: "editor",
         categoryLabel: "Editor",
-        presetLabel: "Me",
         options: [
           {
             category: "editor",

@@ -494,7 +494,7 @@ export function ManageAgentsPage({
             }).map((preset) => ({
               key: preset.key,
               categoryLabel: preset.categoryLabel,
-              optionLabel: preset.presetLabel,
+              options: preset.options,
               onApply: () =>
                 setFilter(
                   selectAllFilterOptions(
