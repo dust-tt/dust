@@ -132,14 +132,16 @@ export const DOCUMENTS_TOOLS_METADATA = [
       "`:::annotations` block, whose threads are changed with the comment tools. Keep every " +
       "`:comment-start{…}` / `:comment-end{…}` anchor pair intact and never write new ones. " +
       "Fails if `old_string` is not found or if the number of occurrences does not match " +
-      "`expected_replacements` (default 1); make `old_string` unique by including surrounding text.",
+      "`expected_replacements` (default 1); make `old_string` unique by including surrounding text. " +
+      "To add text, include the neighboring text in `old_string` and repeat it in `new_string`. " +
+      "To write a document whose body is empty, pass an empty `old_string`.",
     schema: {
       path: PATH_SCHEMA,
       old_string: z
         .string()
-        .min(1)
         .describe(
-          "Exact text to replace, matching the document body character for character."
+          "Exact text to replace, matching the document body character for character. Empty " +
+            "only to write the body of a document whose body is empty."
         ),
       new_string: z.string().describe("Text to replace `old_string` with."),
       expected_replacements: z

@@ -166,6 +166,32 @@ describe("editAgentDocument", () => {
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["an empty file", "", "# Plan\n\nFirst draft.\n"],
+    [
+      "a file with only front matter",
+      "---\ntitle: Plan\n---\n",
+      "---\ntitle: Plan\n---\n\n# Plan\n\nFirst draft.\n",
+    ],
+  ])("writes the body of %s with an empty old_string", async (_, source, expected) => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(source, "7"));
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await edit("", "# Plan\r\n\r\nFirst draft.\n\n");
+    expect(result.isOk() && result.value.replacements).toBe(1);
+    expect(written(0).content).toBe(expected);
+  });
+
+  it("refuses an empty old_string when the body has content", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+
+    const result = await edit("", "Replaced.");
+    expect(result.isErr() && result.error.code).toBe("string_not_found");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+
   it("refuses when the number of occurrences differs from the expected one", async () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
