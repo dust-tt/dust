@@ -29,6 +29,13 @@ function getInputBarRunCommandSlashCommandItem(
   };
 }
 
+function matchesInputBarSlashCommandLabel(
+  item: SlashCommand,
+  normalizedQuery: string
+): boolean {
+  return item.label.toLowerCase().includes(normalizedQuery);
+}
+
 function matchesInputBarSlashCommandItem(
   item: SlashCommand,
   normalizedQuery: string
@@ -37,9 +44,12 @@ function matchesInputBarSlashCommandItem(
     return true;
   }
 
-  return [item.label, item.description, item.tooltip?.description]
-    .filter((value): value is string => value !== undefined)
-    .some((value) => value.toLowerCase().includes(normalizedQuery));
+  return (
+    matchesInputBarSlashCommandLabel(item, normalizedQuery) ||
+    [item.description, item.tooltip?.description]
+      .filter((value): value is string => value !== undefined)
+      .some((value) => value.toLowerCase().includes(normalizedQuery))
+  );
 }
 
 function getInputBarSlashCommandById({
@@ -99,13 +109,30 @@ export function getInputBarSlashCommandItems({
   });
 }
 
+/**
+ * @cc [owner:ulysse-lev,label:product] label-matches-rank-first
+ * With a non-empty `query`, items whose label matches MUST come before items matching only on
+ * their description or tooltip, each group keeping the order of `items`.
+ */
 export function filterInputBarSlashCommandItems(
   items: SlashCommand[],
   query: string
 ): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  return items.filter((item) =>
+  const matchingItems = items.filter((item) =>
     matchesInputBarSlashCommandItem(item, normalizedQuery)
   );
+  if (normalizedQuery.length === 0) {
+    return matchingItems;
+  }
+
+  return [
+    ...matchingItems.filter((item) =>
+      matchesInputBarSlashCommandLabel(item, normalizedQuery)
+    ),
+    ...matchingItems.filter(
+      (item) => !matchesInputBarSlashCommandLabel(item, normalizedQuery)
+    ),
+  ];
 }

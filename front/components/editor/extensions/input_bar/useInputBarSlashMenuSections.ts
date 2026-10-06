@@ -25,6 +25,12 @@ export interface InputBarSlashMenuRootSection {
 // matching `query`, grouped into the root list's sections. `query` is the root list's query; pass
 // "" while a sub-menu is open so capabilities are not refetched for the sub-menu's search.
 /**
+ * @cc [owner:ulysse-lev,label:product] commands-filtered-with-live-query
+ * The "Commands" section of `sections` MUST be `allCommandItems` filtered with `query` as passed,
+ * never with the capabilities' debounced or resolved search term, so the highlighted row reflects
+ * the text typed so far at the moment Enter is pressed.
+ */
+/**
  * @cc [owner:ykmsd,label:product] attach-only-root-section
  * When `isAttachOnly`, `attachOnlyRootSection` MUST hold exactly the composer's `upload-file`
  * command item under the "Files" label, and MUST be `undefined` when the composer has no such
@@ -71,23 +77,22 @@ export function useInputBarSlashMenuSections({
     ]
   );
 
-  const { capabilityItems, isLoading, resolvedQuery } =
-    useInputBarSlashCommandCapabilities({
-      disabled: isAttachOnly,
-      owner,
-      query,
-    });
+  const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
+    disabled: isAttachOnly,
+    owner,
+    query,
+  });
+
+  // Static commands follow each keystroke: `capabilityItems` lag behind `query` by the skills
+  // search debounce and request, and the row highlighted on Enter must not be the stale one.
+  const commandItems = useMemo(
+    () => filterInputBarSlashCommandItems(allCommandItems, query),
+    [allCommandItems, query]
+  );
 
   const sections = useMemo(
-    () =>
-      buildSlashCommandSections({
-        commandItems: filterInputBarSlashCommandItems(
-          allCommandItems,
-          resolvedQuery
-        ),
-        capabilityItems,
-      }),
-    [allCommandItems, capabilityItems, resolvedQuery]
+    () => buildSlashCommandSections({ commandItems, capabilityItems }),
+    [capabilityItems, commandItems]
   );
 
   // The browser is the whole menu, so the file upload command rides along at its root.

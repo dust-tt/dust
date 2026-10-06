@@ -215,6 +215,22 @@ describe("buildInputBarSlashCommandItems", () => {
       })
     ).toEqual([]);
   });
+
+  it("ranks label matches before description matches", () => {
+    // "Attach" is listed first and its description mentions files, but "Upload file" matches on
+    // its label.
+    for (const query of ["fi", "fil", "file"]) {
+      expect(
+        buildInputBarSlashCommandItems({
+          commands: ALL_COMMANDS,
+          includeAttachKnowledge: true,
+          includePickModel: true,
+          includeSelectSpaces: false,
+          query,
+        }).map(getInputBarSlashCommandItemId)
+      ).toEqual(["upload-file", "attach-knowledge"]);
+    }
+  });
 });
 
 describe("resolveSlashSubMenuFromQuery", () => {
