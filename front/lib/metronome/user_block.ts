@@ -18,15 +18,12 @@
 //     programmatic (API) cap state.
 //
 // `isUserBlockedByMetronome` is the unified read: a user is blocked iff the pool
-// is depleted or the caller-supplied per-user cap verdict is set. It returns the
-// reason
-// ("credits_exhausted" / "user_cap_reached") so callers can surface a tailored
-// message. When both conditions hold, "user_cap_reached" wins: the per-user cap
-// is the user's actionable blocker, whereas refilling the pool would not unblock
-// them. The DB columns remain the source of truth; cache writes are gated on
-// DB transaction commit via `invalidateCacheAfterCommit`, and cache misses fall
-// back to DB and repopulate the relevant keys.
-//
+// is depleted or one of the caller-supplied verdicts (per-user cap, group limit)
+// is set. It returns the reason ("credits_exhausted" / "user_cap_reached" /
+// "group_limit_reached") so callers can surface a tailored message; see
+// `deriveBlockedReason` for the order. The DB columns remain the source of truth;
+// cache writes are gated on DB transaction commit via `invalidateCacheAfterCommit`,
+// and cache misses fall back to DB and repopulate the relevant keys.
 import {
   makeFairUseAwuCreditsRateLimitKeyForUser,
   makeFairUseFixedWindowBounds,
@@ -61,6 +58,7 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 export type UserBlockedReason =
   | "credits_exhausted"
   | "user_cap_reached"
+  | "group_limit_reached"
   | "no_seat";
 
 export type ProgrammaticCreditStatus = "active" | "depleted";
@@ -362,19 +360,26 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
 
 // Unified read
 
+/**
+ * @cc [owner:rfrenoy,label:product] blocked-reason-priority
+ * Reasons MUST be reported in this order: `user_cap_reached` > `group_limit_reached` >
+ * `credits_exhausted` (the member's most specific actionable blocker first). Each verdict is computed
+ * independently, so raising a member's personal limit MUST NOT clear a group limit block.
+ */
 function deriveBlockedReason({
   userCapBlocked,
+  groupLimitBlocked,
   workspacePoolDepleted,
 }: {
   userCapBlocked: boolean;
+  groupLimitBlocked: boolean;
   workspacePoolDepleted: boolean;
 }): UserBlockedReason | null {
-  // The per-user cap takes precedence over pool depletion: when a user has hit
-  // their own cap, that is their actionable blocker. Refilling the workspace
-  // pool would not unblock them, so surfacing "workspace out of credits" would
-  // be misleading. The pool reason is only relevant when the user is not capped.
   if (userCapBlocked) {
     return "user_cap_reached";
+  }
+  if (groupLimitBlocked) {
+    return "group_limit_reached";
   }
   if (workspacePoolDepleted) {
     return "credits_exhausted";
@@ -385,12 +390,15 @@ function deriveBlockedReason({
 export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
   user: UserResource,
-  // Whether the user has hit their per-user spend cap, resolved from the Redis
-  // rate-limiter counter by the wrapper in
+  // Whether the user has hit their per-user spend cap, and whether their limit
+  // group has used its limit, resolved from the Redis counters by the wrapper in
   // `lib/api/credits/access_control.ts`. The pool/seat logic (no_seat, pool
-  // depletion, personal-seat carve-out) stays defined here so it lives in one
-  // place.
-  { userCapBlocked }: { userCapBlocked: boolean }
+  // depletion, personal-seat and free-seat carve-outs) stays defined here so it
+  // lives in one place.
+  {
+    userCapBlocked,
+    groupLimitBlocked,
+  }: { userCapBlocked: boolean; groupLimitBlocked: boolean }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;
@@ -448,6 +456,9 @@ export async function isUserBlockedByMetronome(
 
   return deriveBlockedReason({
     userCapBlocked,
+    // A free seat never draws from the pool, so its usage is not recorded to a
+    // group and a group limit must not block it.
+    groupLimitBlocked: groupLimitBlocked && membership?.seatType !== "free",
     workspacePoolDepleted,
   });
 }
