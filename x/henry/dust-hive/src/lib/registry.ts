@@ -201,7 +201,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     // The co-edition live session server, reached through the proxy's /collab route. Started on
     // demand: only co-edition work needs it.
     buildCommand: (env) =>
-      `HOSTNAME=localhost PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,
+      `COLLAB_HOSTNAME=localhost COLLAB_PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.collab}/api/healthz`,
