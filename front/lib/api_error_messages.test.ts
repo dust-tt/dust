@@ -96,10 +96,23 @@ describe("formatError without the localisation flag", () => {
     ).toEqual({ description: "Max size is 5MB." });
   });
 
-  it("uses the fallback description for any other value", () => {
+  it("describes any other value by its raw message", () => {
     expect(
       formatError(new TypeError("Failed to fetch"), WITHOUT_LOCALISATION)
-    ).toEqual({
+    ).toEqual({ description: "Failed to fetch" });
+    expect(
+      formatError(
+        { error: { type: "connector_error", message: "Connector failed." } },
+        WITHOUT_LOCALISATION
+      )
+    ).toEqual({ description: "Connector failed." });
+  });
+
+  it("uses the fallback description for a value without a message", () => {
+    expect(formatError(undefined, WITHOUT_LOCALISATION)).toEqual({
+      description: "An unexpected error occurred.",
+    });
+    expect(formatError(new Error(""), WITHOUT_LOCALISATION)).toEqual({
       description: "An unexpected error occurred.",
     });
   });

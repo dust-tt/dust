@@ -189,11 +189,31 @@ function getRawDetails(error: unknown): string | undefined {
   return lines.length > 0 ? lines.join("\n") : undefined;
 }
 
+// The untranslated message of a value, or of the error it wraps (`{ error: { message } }`).
+function getRawMessage(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null) {
+    return undefined;
+  }
+  if (
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message
+  ) {
+    return error.message;
+  }
+  if ("error" in error) {
+    return getRawMessage(error.error);
+  }
+  return undefined;
+}
+
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling;product] error-translation-behind-localisation-flag
- * When `hasLocalisation` is false, `formatError` MUST return an API error's `message` as its
- * `description`, and no `details`. Callers MUST pass the `localisation` feature flag of the current
- * workspace.
+ * When `hasLocalisation` is false, `formatError` MUST return no `details`, and as `description` the
+ * raw `message` of the value (an API error, an `APIErrorResponse`, an `Error`, or any value
+ * wrapping one as `{ error: { message } }`), falling back to `UNEXPECTED_ERROR_MESSAGE` only when
+ * there is none, so workspaces without the flag keep seeing the messages they saw before. Callers
+ * MUST pass the `localisation` feature flag of the current workspace.
  */
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling;react] format-error-api-errors
@@ -204,9 +224,9 @@ function getRawDetails(error: unknown): string | undefined {
  */
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling;react] format-error-other-values
- * For any other value (network `TypeError`, non-API `Error`, connectors error, unknown `type`,
- * `undefined`, ...), `description` MUST be the translated `UNEXPECTED_ERROR_MESSAGE`. When
- * `hasLocalisation` is true, `details` holds the value's `type` and `message` when it has them.
+ * When `hasLocalisation` is true, for any other value (network `TypeError`, non-API `Error`,
+ * connectors error, unknown `type`, `undefined`, ...), `description` MUST be the translated
+ * `UNEXPECTED_ERROR_MESSAGE`, and `details` holds the value's `type` and `message` when it has them.
  * `formatError` MUST NOT throw.
  */
 export function formatError(
@@ -220,7 +240,12 @@ export function formatError(
       : null;
 
   if (!hasLocalisation) {
-    return { description: apiError?.message ?? t(UNEXPECTED_ERROR_MESSAGE) };
+    return {
+      description:
+        apiError?.message ??
+        getRawMessage(error) ??
+        t(UNEXPECTED_ERROR_MESSAGE),
+    };
   }
 
   return {
