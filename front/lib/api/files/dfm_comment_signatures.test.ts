@@ -265,7 +265,7 @@ describe("validateCommentSignatures", () => {
 
   it("returns the new messages with the text their comment quotes", () => {
     const stored = file(TOM);
-    const reply = signedMessage("c1", TOM, {
+    const reply = signedMessage("c1", [TOM], {
       author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
       createdAt: "2026-10-05T12:05:00.000Z",
       body: "Ping :mention[dust]{sId=dust}",
