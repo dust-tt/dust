@@ -419,9 +419,11 @@ async function readStoredText(
  * request content type is `text/markdown`, in a workspace with `co_edition`, against the file as
  * stored right before the write, and MUST NOT run anywhere else until the codec bounds its input
  * before parsing. It MUST return the revision it validated against, when storage has one, so
- * the write can be conditional on it. Other writes, such as archive extraction, sandbox and agent writes, are not
- * validated: what they bring can only read as unverified, since signatures bind the file and the
- * thread order.
+ * the write can be conditional on it. Other writes, such as archive extraction and sandbox or
+ * plain agent file writes, are not validated: what they bring can only read as unverified, since
+ * signatures bind the file and the thread order. The one exception is `documents.add_comment`,
+ * which adds a message the server itself signs for the running agent
+ * (`dfm-comment-signing-by-agent`).
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,

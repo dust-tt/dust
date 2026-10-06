@@ -1,7 +1,7 @@
 import { generateKeyPairSync, verify } from "node:crypto";
 import { Readable } from "node:stream";
 import config from "@app/lib/api/config";
-import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { addAgentComment } from "@app/lib/api/files/dfm_agent_comments";
 import {
   readCanonicalFileContent,
@@ -29,7 +29,6 @@ vi.mock(
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 const AGENT = { sId: "agent_reviewer", name: "reviewer" };
-const DUST_FS = {} as DustFileSystem;
 const PATH = "pod-p1/spec.md";
 
 const SOURCE =
@@ -56,8 +55,12 @@ const conflict = () =>
     new WriteCanonicalFileContentError("revision_conflict", "File changed.")
   );
 
-const comment = (auth: Authenticator, quote = "Ship it") =>
-  addAgentComment(auth, DUST_FS, {
+const comment = (
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  quote = "Ship it"
+) =>
+  addAgentComment(auth, dustFs, {
     agent: AGENT,
     scopedPath: PATH,
     quote,
@@ -67,14 +70,34 @@ const comment = (auth: Authenticator, quote = "Ship it") =>
 
 describe("addAgentComment", () => {
   let auth: Authenticator;
+  let dustFs: DustFileSystem;
 
   beforeEach(async () => {
     vi.resetAllMocks();
     auth = (await createResourceTest({})).authenticator;
+    const fileSystem = await DustFileSystem.forConversations(auth, []);
+    if (fileSystem.isErr()) {
+      throw fileSystem.error;
+    }
+    dustFs = fileSystem.value;
     await FeatureFlagFactory.basic(auth, "co_edition");
     vi.spyOn(config, "getDfmCommentSigningKey").mockReturnValue(
       privateKey.export({ format: "der", type: "pkcs8" }).toString("base64")
     );
+  });
+
+  it("refuses a file whose storage returns no revision", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(
+      new Ok({
+        stream: Readable.from([Buffer.from(SOURCE, "utf8")]),
+        contentType: "text/markdown",
+      })
+    );
+
+    const result = await comment(auth, dustFs);
+
+    expect(result.isErr() && result.error.code).toBe("refused");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
   it("adds one open thread signed for the agent and keeps the rest of the file", async () => {
@@ -83,7 +106,7 @@ describe("addAgentComment", () => {
       new Ok({ created: false, revision: "8" })
     );
 
-    const result = await comment(auth);
+    const result = await comment(auth, dustFs);
     expect(result.isOk()).toBe(true);
     const commentId = result.isOk() ? result.value.commentId : "";
 
@@ -136,7 +159,7 @@ describe("addAgentComment", () => {
       .mockResolvedValueOnce(conflict())
       .mockResolvedValueOnce(new Ok({ created: false, revision: "10" }));
 
-    expect((await comment(auth)).isOk()).toBe(true);
+    expect((await comment(auth, dustFs)).isOk()).toBe(true);
 
     const { content, revision } = written(1);
     expect(revision).toBe("9");
@@ -149,7 +172,7 @@ describe("addAgentComment", () => {
     );
     vi.mocked(writeCanonicalFileContent).mockResolvedValue(conflict());
 
-    const result = await comment(auth);
+    const result = await comment(auth, dustFs);
     expect(result.isErr() && result.error.code).toBe("conflict");
     expect(writeCanonicalFileContent).toHaveBeenCalledTimes(3);
   });
@@ -157,13 +180,13 @@ describe("addAgentComment", () => {
   it("refuses a quote missing from the document without writing", async () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
-    const result = await comment(auth, "Ship it on Monday");
+    const result = await comment(auth, dustFs, "Ship it on Monday");
     expect(result.isErr() && result.error.code).toBe("invalid_quote");
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
   it("refuses files that are not Markdown", async () => {
-    const result = await addAgentComment(auth, DUST_FS, {
+    const result = await addAgentComment(auth, dustFs, {
       agent: AGENT,
       scopedPath: "pod-p1/notes.txt",
       quote: "Ship it",

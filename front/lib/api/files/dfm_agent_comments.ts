@@ -47,12 +47,13 @@ function fileSystemError(error: {
 
 /**
  * @cc [owner:tdraier,label:product;concurrency] dfm-agent-comment
- * Adding a comment MUST add exactly one open thread whose only message is signed for `agent`,
- * with anchors around the nth occurrence of `quote`, and MUST NOT change the front matter, the
- * body text or the other threads. When storage returns a revision, the write MUST be
- * conditional on it; on a conflict it MUST start over from a fresh read, and give up with
- * `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write. Only `.md` files
- * are commented.
+ * Adding a comment MUST add exactly one open thread whose only message is the one
+ * `signDfmAgentCommentMessage` writes for `agent` (signed when a signing key is configured), with
+ * anchors around the nth occurrence of `quote`, and MUST NOT change the front matter, the body
+ * text or the other threads. The write MUST be conditional on the revision read, and a file
+ * whose storage returns no revision MUST be refused; on a conflict it MUST start over from a
+ * fresh read, and give up with `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a
+ * concurrent write. Only `.md` files are commented.
  */
 export async function addAgentComment(
   auth: Authenticator,
@@ -113,6 +114,15 @@ export async function addAgentComment(
     if (read.value === null) {
       return new Err(
         new DfmAgentCommentError("not_found", `File not found: ${scopedPath}`)
+      );
+    }
+    // Without a revision the write cannot be conditional, and could replace a concurrent edit.
+    if (read.value.revision === undefined) {
+      return new Err(
+        new DfmAgentCommentError(
+          "refused",
+          "Comments cannot be added to this document's storage yet."
+        )
       );
     }
     const buffer = await streamToBuffer(read.value.stream);
