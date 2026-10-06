@@ -2,8 +2,8 @@
 
 Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
 in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
-The later [directory absence cache](#directory-absence-cache) run measures untar only; the full
-baseline table remains below.
+Later focused runs measure untar only, most recently [overlay-aware refresh](#overlay-aware-refresh).
+The full baseline table remains below.
 
 ## Configuration and method
 
@@ -134,11 +134,57 @@ user CPU + 1.158s system CPU, with 229,685 voluntary context switches. Timers ar
 so these figures are not an additive wall-time decomposition. The 1,446 asynchronous mutation RPCs
 carried 10,142 groups; buffering does not prevent a later foreground refresh from awaiting them.
 
-Next target: refresh authorization and committed state while preserving a coherent pending overlay,
-instead of requiring publication merely to refresh metadata. Keep the same freshness bound.
+This identified the implicit publication barrier addressed in the next measurement.
 
 Report: `/tmp/dfs-v4-5379856c36-waits/run.json` inside `dfs-v4-dev-1`.
 FUSE binary SHA-256: `96afa63a1f8ef8f6a534d37be177d235342bb7390c498ad3381946b250ef9d45`.
+
+## Overlay-aware refresh
+
+2026-10-06, source `85fc70805f`, same 10k corpus/configuration and **25ms coalescing**. New objects now
+have their own 1s TTL from acceptance; parent expiry does not shorten it. Expired dirty views refresh
+their base without forcing queued publication. Commit replies renew returned objects, including
+parents, and confirmed name bindings. No server/API or cache-size change.
+
+| Measurement (s) | Absence cache `427d20bce0` | Instrumented repeat `5379856c36` | Overlay refresh `85fc70805f` |
+| --- | ---: | ---: | ---: |
+| Untar | 24.625 | 26.146 | **21.278** |
+| Remaining client drain | 3.540 | 1.453 | **8.598** |
+| Untar + remaining drain | 28.165 | 27.599 | **29.876** |
+
+Tar returns 14% sooner than the absence-cache run, but more work remains afterward: completion through
+drain is 6% slower in these single samples. This removes a foreground barrier, not FDB's independent
+durable transactions. Unmount including drain took 8.738s. Zero application fsync/fsyncdir calls and
+zero writeback failures. All 10,000 persisted file sizes/hashes and the manifest were verified after
+starting a new server/session/mount; Rust/FDB and mounted filesystem tests also passed.
+
+### Where the latest untar time is spent
+
+| Client phase | Calls | Cumulative elapsed (s) |
+| --- | ---: | ---: |
+| Forced publication for metadata expiry | 0 | **0.000** |
+| Wait for ambiguous in-flight refresh results | 0 | 0.000 |
+| Refresh published bases, preserving edits | 17 | 0.026 |
+| Refresh tentative objects through an existing ancestor | 72 | 0.123 |
+| Dirty-memory admission | 47,628 | **15.085** |
+| Total-memory reservation | 47,628 | 0.005 |
+| Pending-group admission | 47,628 | 0.003 |
+| Object gate acquisition | 47,803 | 0.008 |
+| Read/metadata RPCs, including prefetch/session | 176 | 0.321 |
+
+The foreground bottleneck is now the **256 MiB accounted dirty budget**: admission waits for durable
+responses to release reservations. It includes payload copies and metadata, not just file bytes.
+The old 19.589s refresh-flush wait disappears; reducing the 25ms coalescing window is not the primary
+remaining opportunity. Pending-group admission is negligible, so its 4,096-group cap is not binding.
+
+There were **798 RPCs**: 622 mutation batches carrying 10,116 independent groups, 110 Stat, 37 Lookup,
+28 List and one session RPC. The 239,670 FUSE callbacks totaled 17.712s, including 11.649s in write
+and 2.193s in setattr. FUSE CPU was 4.570s; DFS CPU including drain was 9.930s. Tar used 0.087s user
+and 1.260s system CPU. Timers are nested/concurrent and are not additive wall-time components.
+
+Report: `/tmp/dfs-v4-85fc70805f-refresh/run.json` inside `dfs-v4-dev-1`; raw reports remain outside Git.
+FUSE binary SHA-256: `35f4e7b28db047edbbb0d5dbfa71e76abfe9bdb0205caf0de0946db822c8326f`.
+This is an untar-only comparison, not a rerun of the full filesystem table.
 
 ## Comparison with v3
 
@@ -187,9 +233,9 @@ v4/local/run exec cargo build --workspace --release
 v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=c1784434e9 python3 /dfs/v4/bench/run.py
 ```
 
-Validated report: `/tmp/dfs-v4-c1784434e9/run.json` inside `dfs-v4-dev-1`.
-Raw JSON, logs, credentials and earlier failed/pilot runs remain outside Git. Only this final
-committed version is tabulated. The 100k, multi-server throughput and GCP evaluations remain future work.
+Baseline report: `/tmp/dfs-v4-c1784434e9/run.json` inside `dfs-v4-dev-1`; focused-run reports are listed
+above. Raw JSON, logs, credentials and earlier failed/pilot runs remain outside Git. The 100k,
+multi-server throughput and GCP evaluations remain future work.
 
 - Corpus manifest SHA-256: `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
 - Server binary SHA-256: `4d614f831be3d13124f6d4f50a10bdf7367051508034bd7f4e25169232070116`.

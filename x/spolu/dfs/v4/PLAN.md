@@ -20,7 +20,7 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 - [x] Bounded directory attribute prefetch; direct I/O and zero kernel cache TTLs.
 - [x] Fresh listing ranges and new-directory absence checks, preserving TTLs across local edits.
 - [x] Independent TTLs for tentative objects; overlay-aware expiry without forcing queued publication.
-- [ ] Validate refresh races, transactional failures and postcommit response reuse; repeat the 10k untar.
+- [x] Validate refresh races, transactional failures and postcommit response reuse; repeat the 10k untar.
 
 ## 3. Validation and measurements
 
