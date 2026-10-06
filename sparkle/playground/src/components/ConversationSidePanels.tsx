@@ -16,14 +16,16 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { getManagedAgentById, getManagedSkillById } from "../data/build";
 import type {
   Conversation,
   DataSource,
   DataSourceFileType,
 } from "../data/types";
-import type { PanelSizingType } from "./PanelLayout";
+import { AgentDetailsPanel, SkillDetailsPanel } from "./BuildDetails";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { FilesBrowser } from "./FilesBrowser";
+import type { PanelSizingType } from "./PanelLayout";
 
 // Fake "Files" and "Credit usage" conversation side panels mirroring front's
 // conversation side panel, plus the shared model (view kinds, sizing rules,
@@ -100,12 +102,15 @@ export function ConversationCreditPanel() {
 }
 
 // ── Side-panel model ─────────────────────────────────────────────────────────
-// Side panels that open next to a conversation, shared by the Inbox, Pods and
-// People_Agent playgrounds so the three stay consistent.
+// The panels that open beside whatever a story holds in the slot above —
+// a conversation, a Build table, the file system — shared by the Inbox, Pods
+// and People_Agent playgrounds so they all stay consistent.
 //
 //   kind      sizing                        content
 //   citation  shared (frame icon → focus)   placeholder preview (see note below)
 //   file      shared (frame type → focus)   FilePreviewPanel, fullscreen enabled
+//   agent     shared                        AgentDetailsPanel
+//   skill     shared                        SkillDetailsPanel
 //   files     secondary                     FilesBrowser over conversation files
 //   credits   secondary                     fake credit usage panel
 
@@ -114,6 +119,8 @@ export type SelectedCitation = { title: string; icon?: string };
 export type SidePanelView =
   | { kind: "citation"; citation: SelectedCitation }
   | { kind: "file"; dataSource: DataSource }
+  | { kind: "agent"; agentId: string }
+  | { kind: "skill"; skillId: string }
   | { kind: "files" }
   | { kind: "credits" };
 
@@ -123,6 +130,23 @@ export type SidePanelView =
  */
 export function isFileView(view: { kind: string } | null | undefined): boolean {
   return view?.kind === "file" || view?.kind === "citation";
+}
+
+/**
+ * The panel a file opens in. An agent and a skill are files like any other in
+ * the file system, but what there is to read about one is what Build shows,
+ * not a document preview.
+ */
+export function fileSidePanelView(dataSource: DataSource): SidePanelView {
+  if (dataSource.refId) {
+    if (dataSource.fileType === "agent") {
+      return { kind: "agent", agentId: dataSource.refId };
+    }
+    if (dataSource.fileType === "skill") {
+      return { kind: "skill", skillId: dataSource.refId };
+    }
+  }
+  return { kind: "file", dataSource };
 }
 
 // Map a message-citation icon onto the DataSource file-type vocabulary so the
@@ -192,6 +216,10 @@ export function sidePanelLabel(view: SidePanelView): string {
       return view.citation.title;
     case "file":
       return view.dataSource.fileName;
+    case "agent":
+      return getManagedAgentById(view.agentId)?.name ?? "Agent";
+    case "skill":
+      return getManagedSkillById(view.skillId)?.name ?? "Skill";
     case "files":
       return "Files";
     case "credits":
@@ -200,7 +228,8 @@ export function sidePanelLabel(view: SidePanelView): string {
 }
 
 // Sizing: file previews share the space with the focus panel — unless the
-// file is a frame, which takes focus itself; files/credits lists stay
+// file is a frame, which takes focus itself; agent and skill details share it
+// too, being read alongside the list they came from; files/credits lists stay
 // secondary.
 export function sidePanelSizing(view: SidePanelView): PanelSizingType {
   const previewSizing = (isFrame: boolean): PanelSizingType =>
@@ -210,6 +239,9 @@ export function sidePanelSizing(view: SidePanelView): PanelSizingType {
       return previewSizing(view.citation.icon === "frame");
     case "file":
       return previewSizing(view.dataSource.fileType === "frame");
+    case "agent":
+    case "skill":
+      return "shared";
     case "files":
     case "credits":
       return "secondary";
@@ -255,6 +287,10 @@ export function sidePanelContent({
       return (
         <FilePreviewPanel dataSource={view.dataSource} variant="document" />
       );
+    case "agent":
+      return <AgentDetailsPanel agentId={view.agentId} />;
+    case "skill":
+      return <SkillDetailsPanel skillId={view.skillId} />;
     case "files":
       return (
         <ConversationFilesPanel
@@ -263,7 +299,7 @@ export function sidePanelContent({
             conversationPool,
             filesByConversationId
           )}
-          onFileOpen={(dataSource) => setView({ kind: "file", dataSource })}
+          onFileOpen={(dataSource) => setView(fileSidePanelView(dataSource))}
         />
       );
     case "credits":

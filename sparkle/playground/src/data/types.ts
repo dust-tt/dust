@@ -198,11 +198,24 @@ export type DataSourceFileType =
 export type DataSourceSource = "pod" | "company";
 
 /**
- * What a folder stands for in the workspace file system: a Company Space, a
- * Pod, a conversation, or a Dust-owned folder such as `Agents` / `Skills`.
- * Plain folders leave it unset.
+ * What a folder stands for in the workspace file system: one of the two drives
+ * the tree is split into, a Company Space, a Pod, a conversation, or a
+ * Dust-owned folder such as `Conversations`. Plain folders leave it unset.
  */
-export type DataSourceFolderType = "space" | "pod" | "conversation" | "system";
+export type DataSourceFolderType =
+  | "drive"
+  | "space"
+  | "pod"
+  | "conversation"
+  | "system";
+
+/** An agent's or a skill's own avatar, as the `Avatar` component takes it. */
+export interface DataSourceAvatar {
+  emoji?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  backgroundColor?: string;
+  iconColor?: string;
+}
 
 export interface DataSource {
   id: string;
@@ -215,6 +228,8 @@ export interface DataSource {
   createdAt: Date;
   updatedAt: Date;
   icon?: React.ComponentType<{ className?: string }>; // Icon component
+  /** Shown instead of `icon`, for the items that carry an avatar of their own. */
+  avatar?: DataSourceAvatar;
   folderType?: DataSourceFolderType;
   /** The Pod, conversation, agent or skill this item stands for. */
   refId?: string;

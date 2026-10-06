@@ -79,9 +79,9 @@ import { getCompanySpaceById, mockCompanySpaces } from "../data/companySpaces";
 import { getUserById } from "../data/users";
 import { BulkSelectionBar } from "./BulkSelectionBar";
 
-// The sheets behind the three Build tables. Each one opens on a row and reads
-// the item back: nothing here saves, so every button is an affordance and the
-// footers only close.
+// What the three Build tables open on a row: a panel for an agent or a skill,
+// a sheet for a tool, which is a form. Each one reads the item back: nothing
+// here saves, so every button is an affordance and the footers only close.
 
 // ── Shared building blocks ───────────────────────────────────────────────────
 
@@ -217,7 +217,7 @@ function SpacesList({ spaceIds }: { spaceIds: string[] }) {
   );
 }
 
-/** The header every one of these sheets opens with, centred over the tabs. */
+/** The header every one of these views opens with, centred over the tabs. */
 function DetailHeader({
   avatar,
   chip,
@@ -255,119 +255,81 @@ function DetailHeader({
 
 // ── Agent details ────────────────────────────────────────────────────────────
 
-type AgentDetailsSheetProps = {
-  agentId: string | null;
-  onClose: () => void;
-};
-
 /** What the Agents table opens: everything about an agent but the builder. */
-export function AgentDetailsSheet({
-  agentId,
-  onClose,
-}: AgentDetailsSheetProps) {
-  const agent = agentId ? getManagedAgentById(agentId) : undefined;
+export function AgentDetailsPanel({ agentId }: { agentId: string }) {
+  const agent = getManagedAgentById(agentId);
   const [tab, setTab] = useState("info");
 
-  // A fresh agent opens on Info, wherever the last one was left.
-  useEffect(() => {
-    setTab("info");
-  }, [agentId]);
+  if (!agent) {
+    return null;
+  }
 
   return (
-    <Sheet open={agent != null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent size="xl">
-        <SheetHeader>
-          <SheetTitle className="sr-only">
-            {agent?.name ?? "Agent"} details
-          </SheetTitle>
-          <SheetDescription className="sr-only">
-            Instructions, skills, usage and editors for this agent.
-          </SheetDescription>
-          {agent && (
-            <DetailHeader
-              avatar={
-                <Avatar
-                  size="lg"
-                  emoji={agent.emoji}
-                  backgroundColor={agent.backgroundColor}
-                />
-              }
-              chip={
-                <Chip
-                  size="mini"
-                  color={AGENT_SCOPE_INFO[agent.scope].color}
-                  label={AGENT_SCOPE_INFO[agent.scope].label}
-                />
-              }
-              name={agent.name}
-              updatedAt={agent.updatedAt}
-              editorIds={agent.editorIds}
-              actions={
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={Heart}
-                    tooltip="Favorite"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={MessageCircle01}
-                    label="New conversation"
-                  />
-                  {agent.canEdit && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={Edit04}
-                      label="Edit"
-                    />
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={ClipboardCheck}
-                    tooltip="Copy agent ID"
-                  />
-                  {agent.canEdit && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={Trash01}
-                      tooltip="Archive"
-                    />
-                  )}
-                </div>
-              }
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-8">
+      <DetailHeader
+        avatar={
+          <Avatar
+            size="lg"
+            emoji={agent.emoji}
+            backgroundColor={agent.backgroundColor}
+          />
+        }
+        chip={
+          <Chip
+            size="mini"
+            color={AGENT_SCOPE_INFO[agent.scope].color}
+            label={AGENT_SCOPE_INFO[agent.scope].label}
+          />
+        }
+        name={agent.name}
+        updatedAt={agent.updatedAt}
+        editorIds={agent.editorIds}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" icon={Heart} tooltip="Favorite" />
+            <Button
+              size="sm"
+              variant="outline"
+              icon={MessageCircle01}
+              label="New conversation"
             />
-          )}
-        </SheetHeader>
-        {agent && (
-          <SheetContainer>
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                <TabsTrigger value="info" label="Info" />
-                <TabsTrigger value="insights" label="Insights" />
-                <TabsTrigger value="editors" label="Editors" />
-              </TabsList>
-              <TabsContent value="info" className="flex flex-col gap-5 pt-4">
-                <AgentInfoTab agent={agent} />
-              </TabsContent>
-              <TabsContent
-                value="insights"
-                className="flex flex-col gap-5 pt-4"
-              >
-                <AgentInsightsTab agent={agent} />
-              </TabsContent>
-              <TabsContent value="editors" className="flex flex-col gap-5 pt-4">
-                <EditorsList userIds={agent.editorIds} />
-              </TabsContent>
-            </Tabs>
-          </SheetContainer>
-        )}
-      </SheetContent>
-    </Sheet>
+            {agent.canEdit && (
+              <Button size="sm" variant="outline" icon={Edit04} label="Edit" />
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={ClipboardCheck}
+              tooltip="Copy agent ID"
+            />
+            {agent.canEdit && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={Trash01}
+                tooltip="Archive"
+              />
+            )}
+          </div>
+        }
+      />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="info" label="Info" />
+          <TabsTrigger value="insights" label="Insights" />
+          <TabsTrigger value="editors" label="Editors" />
+        </TabsList>
+        <TabsContent value="info" className="flex flex-col gap-5 pt-4">
+          <AgentInfoTab agent={agent} />
+        </TabsContent>
+        <TabsContent value="insights" className="flex flex-col gap-5 pt-4">
+          <AgentInsightsTab agent={agent} />
+        </TabsContent>
+        <TabsContent value="editors" className="flex flex-col gap-5 pt-4">
+          <EditorsList userIds={agent.editorIds} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
@@ -464,99 +426,65 @@ function AgentInsightsTab({ agent }: { agent: ManagedAgent }) {
 
 // ── Skill details ────────────────────────────────────────────────────────────
 
-type SkillDetailsSheetProps = {
-  skillId: string | null;
-  onClose: () => void;
-};
-
 /** What the Skills table opens: the guidelines, the tools, the knowledge. */
-export function SkillDetailsSheet({
-  skillId,
-  onClose,
-}: SkillDetailsSheetProps) {
-  const skill = skillId ? getManagedSkillById(skillId) : undefined;
+export function SkillDetailsPanel({ skillId }: { skillId: string }) {
+  const skill = getManagedSkillById(skillId);
   const [tab, setTab] = useState("info");
 
-  useEffect(() => {
-    setTab("info");
-  }, [skillId]);
+  if (!skill) {
+    return null;
+  }
 
   return (
-    <Sheet open={skill != null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent size="lg">
-        <SheetHeader>
-          <SheetTitle className="sr-only">
-            {skill?.name ?? "Skill"} details
-          </SheetTitle>
-          <SheetDescription className="sr-only">
-            Guidelines, tools, knowledge and editors for this skill.
-          </SheetDescription>
-          {skill && (
-            <DetailHeader
-              avatar={<SkillAvatar icon={skill.icon} size="lg" />}
-              chip={
-                <Chip
-                  size="mini"
-                  color={SKILL_AVAILABILITY_DISPLAY[skill.availability].color}
-                  label={SKILL_AVAILABILITY_DISPLAY[skill.availability].label}
-                />
-              }
-              name={skill.name}
-              updatedAt={skill.updatedAt}
-              editorIds={skill.editorIds}
-              actions={
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={Heart}
-                    tooltip="Favorite"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={MessageCircle01}
-                    label="Try it"
-                  />
-                  {!skill.isDustProvided && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={Edit04}
-                      label="Edit"
-                    />
-                  )}
-                  {!skill.isDustProvided && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={Trash01}
-                      tooltip="Archive"
-                    />
-                  )}
-                </div>
-              }
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-8">
+      <DetailHeader
+        avatar={<SkillAvatar icon={skill.icon} size="lg" />}
+        chip={
+          <Chip
+            size="mini"
+            color={SKILL_AVAILABILITY_DISPLAY[skill.availability].color}
+            label={SKILL_AVAILABILITY_DISPLAY[skill.availability].label}
+          />
+        }
+        name={skill.name}
+        updatedAt={skill.updatedAt}
+        editorIds={skill.editorIds}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" icon={Heart} tooltip="Favorite" />
+            <Button
+              size="sm"
+              variant="outline"
+              icon={MessageCircle01}
+              label="Try it"
             />
-          )}
-        </SheetHeader>
-        {skill && (
-          <SheetContainer>
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                <TabsTrigger value="info" label="Info" />
-                <TabsTrigger value="editors" label="Editors" />
-              </TabsList>
-              <TabsContent value="info" className="flex flex-col gap-5 pt-4">
-                <SkillInfoTab skill={skill} />
-              </TabsContent>
-              <TabsContent value="editors" className="flex flex-col gap-5 pt-4">
-                <EditorsList userIds={skill.editorIds} />
-              </TabsContent>
-            </Tabs>
-          </SheetContainer>
-        )}
-      </SheetContent>
-    </Sheet>
+            {!skill.isDustProvided && (
+              <Button size="sm" variant="outline" icon={Edit04} label="Edit" />
+            )}
+            {!skill.isDustProvided && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={Trash01}
+                tooltip="Archive"
+              />
+            )}
+          </div>
+        }
+      />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="info" label="Info" />
+          <TabsTrigger value="editors" label="Editors" />
+        </TabsList>
+        <TabsContent value="info" className="flex flex-col gap-5 pt-4">
+          <SkillInfoTab skill={skill} />
+        </TabsContent>
+        <TabsContent value="editors" className="flex flex-col gap-5 pt-4">
+          <EditorsList userIds={skill.editorIds} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 

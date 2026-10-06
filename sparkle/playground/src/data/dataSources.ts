@@ -4,6 +4,7 @@ import {
   File06,
   Folder,
   GooglePdfLogo,
+  HardDrive,
   Image01,
   MessageChatSquare,
   MicrosoftExcelLogo,
@@ -321,6 +322,8 @@ export function getIconForFolderType(
   folderType: DataSourceFolderType
 ): React.ComponentType<{ className?: string }> {
   switch (folderType) {
+    case "drive":
+      return HardDrive;
     case "pod":
       return Cube01;
     case "conversation":
@@ -538,6 +541,62 @@ export function getFolderPath(
   return path;
 }
 
+/** Where an agent or a skill is filed, as the Build tables report it. */
+export interface ItemLocation {
+  /** The folder holding it, or `null` when it sits at the top level. */
+  folder: DataSource | null;
+  /** The folder's name, or `ROOT_FOLDER_LABEL` at the top level. */
+  label: string;
+  /** The whole trail down to the folder, for a tooltip. */
+  path: string;
+}
+
+/** What the top of the workspace file system is called in the product. */
+export const ROOT_FOLDER_LABEL = "Files";
+
+/**
+ * Every agent's and skill's location, keyed by the `refId` of its file — the
+ * agent or skill id the Build tables hold. Indexed once rather than walking
+ * the list per item, since a mature workspace holds thousands of files.
+ */
+export function getItemLocations(
+  items: DataSource[]
+): Map<string, ItemLocation> {
+  const itemsById = new Map(items.map((item) => [item.id, item]));
+  const locations = new Map<string, ItemLocation>();
+
+  for (const item of items) {
+    if (
+      !item.refId ||
+      (item.fileType !== "agent" && item.fileType !== "skill")
+    ) {
+      continue;
+    }
+
+    const trail: string[] = [];
+    let folder: DataSource | null = null;
+    let currentId = item.parentId;
+
+    while (currentId) {
+      const parent = itemsById.get(currentId);
+      if (!parent || parent.kind !== "folder") {
+        break;
+      }
+      folder = folder ?? parent;
+      trail.unshift(parent.fileName);
+      currentId = parent.parentId;
+    }
+
+    locations.set(item.refId, {
+      folder,
+      label: folder?.fileName ?? ROOT_FOLDER_LABEL,
+      path: [ROOT_FOLDER_LABEL, ...trail].join(" / "),
+    });
+  }
+
+  return locations;
+}
+
 export function getDataSourceIcon(
   item: DataSource
 ): React.ComponentType<{ className?: string }> | undefined {
@@ -566,6 +625,7 @@ export function getFileTypeLabel(fileType: DataSourceFileType): string {
 }
 
 const FOLDER_TYPE_LABELS: Record<DataSourceFolderType, string> = {
+  drive: "Drive",
   space: "Space",
   pod: "Pod",
   conversation: "Conversation",

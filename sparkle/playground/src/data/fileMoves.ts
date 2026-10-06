@@ -29,19 +29,19 @@ export function isPodFolder(item: DataSource): boolean {
 }
 
 /**
- * Plain files, plain folders and Pods can be picked up. Company Spaces,
- * conversations and the Dust-owned `Agents` / `Skills` / `Conversations`
- * folders are structural, and an `.agent.md` only exists where its agent
- * lives, so none of them move.
+ * Every file can be picked up, agents and skills included: where an agent is
+ * filed is a choice, not a given. Of the folders, only plain ones and Pods
+ * move — the two drives, Company Spaces, conversations and the Dust-owned
+ * `Conversations` folder are structural.
  */
 export function isDraggableItem(item: DataSource): boolean {
   if (item.kind === "folder") {
     return item.folderType === undefined || item.folderType === "pod";
   }
-  return item.fileType !== "agent" && item.fileType !== "skill";
+  return true;
 }
 
-/** The workspace root and any folder that is not a conversation or system one. */
+/** Any folder that is not a conversation or system one. */
 export function isDropTargetFolder(item: DataSource): boolean {
   return (
     item.kind === "folder" &&
@@ -106,8 +106,14 @@ export function canDropInto(
     return false;
   }
 
-  const target = targetFolderId ? byId.get(targetFolderId) : null;
-  if (targetFolderId && (!target || !isDropTargetFolder(target))) {
+  // The root holds the two drives and nothing else, so everything lands in
+  // one of them rather than beside them.
+  if (!targetFolderId) {
+    return false;
+  }
+
+  const target = byId.get(targetFolderId);
+  if (!target || !isDropTargetFolder(target)) {
     return false;
   }
 
@@ -129,8 +135,8 @@ export function canDropInto(
  * list is what makes a move in the Files view show up in the Pod that owns it.
  *
  * Keyed by `refId`, the Pod or conversation the folder stands for. Pass
- * `skipSystemFolders` to leave out the Dust-owned `Conversations`, `Agents`
- * and `Skills` branches, which a Pod's Files tab does not list.
+ * `skipSystemFolders` to leave out the Dust-owned `Conversations` branch,
+ * which a Pod's Files tab does not list.
  */
 export function deriveFolderFiles(
   byParentId: Map<string | null, DataSource[]>,

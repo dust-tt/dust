@@ -27,6 +27,7 @@ import {
   Edit04,
   Eye,
   File02,
+  Folder,
   Heart,
   Icon,
   Inbox01,
@@ -84,6 +85,7 @@ import {
 import {
   ConversationActions,
   conversationFilesFor,
+  fileSidePanelView,
   isFileView,
   type SelectedCitation,
   type SidePanelView,
@@ -148,7 +150,11 @@ import {
   type WorkspaceModel,
   type WorkspaceProfile,
 } from "../data";
-import { getDataSourceIcon, getFolderPath } from "../data/dataSources";
+import {
+  getDataSourceIcon,
+  getFolderPath,
+  getItemLocations,
+} from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
@@ -292,6 +298,9 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // another folder rewrites this list, and every view that reads files reads it
   // through the indexes derived below.
   const [files, setFiles] = useState<DataSource[]>(model.files);
+  // Owned here because the Files screen's search input sits in the panel's top
+  // bar, next to the screen title, rather than inside the browser.
+  const [filesSearchText, setFilesSearchText] = useState("");
   const [requests, setRequests] = useState<AdminRequest[]>(model.requests);
   // Requests handled since the list was last refreshed. They stay in Pending,
   // showing their outcome, instead of vanishing under the cursor.
@@ -408,6 +417,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       ),
     [files, filesByParentId]
   );
+
+  // Where each agent and skill is filed, so Build reports the move a drag in
+  // the file system just made.
+  const itemLocations = useMemo(() => getItemLocations(files), [files]);
 
   // A Pod's files come from the workspace, so its Files tab and the file
   // system's tree are looking at the very same items.
@@ -1234,11 +1247,27 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     if (p2View.kind === "build") {
       if (p2View.section === "agents")
         return (
-          <ManageAgentsView currentUserId={user.id} agents={model.agents} />
+          <ManageAgentsView
+            currentUserId={user.id}
+            agents={model.agents}
+            locations={itemLocations}
+            onOpenAgent={(agentId) => {
+              setP3View({ kind: "agent", agentId });
+              setP4View(null);
+            }}
+          />
         );
       if (p2View.section === "skills")
         return (
-          <ManageSkillsView currentUserId={user.id} skills={model.skills} />
+          <ManageSkillsView
+            currentUserId={user.id}
+            skills={model.skills}
+            locations={itemLocations}
+            onOpenSkill={(skillId) => {
+              setP3View({ kind: "skill", skillId });
+              setP4View(null);
+            }}
+          />
         );
       return <ManageToolsView />;
     }
@@ -1282,10 +1311,12 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           files={files}
           filesByParentId={filesByParentId}
           filesById={filesById}
+          searchText={filesSearchText}
+          onSearchTextChange={setFilesSearchText}
           onMoveFile={handleMoveFile}
           onCreatePod={handleCreatePodIn}
           onFileOpen={(dataSource) => {
-            setP3View({ kind: "file", dataSource });
+            setP3View(fileSidePanelView(dataSource));
             setP4View(null);
           }}
         />
@@ -1441,7 +1472,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           initialDataSources={podFilesFor(podContext.spaceId)}
           // Pod files open in a panel (frames take focus, others share).
           onFileOpen={(dataSource) => {
-            setP3View({ kind: "file", dataSource });
+            setP3View(fileSidePanelView(dataSource));
             setP4View(null);
           }}
           onFileDragChange={handlePodFileDragChange}
@@ -1767,11 +1798,21 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       );
     if (p2View.kind === "files")
       return (
-        <Breadcrumbs
-          items={[{ label: "Files", icon: File02 }]}
-          size="sm"
-          hasLighterFont
-        />
+        <>
+          <Breadcrumbs
+            items={[{ label: "Files", icon: Folder }]}
+            size="sm"
+            hasLighterFont
+            className="shrink-0"
+          />
+          <SearchInput
+            name="files-search"
+            value={filesSearchText}
+            onChange={setFilesSearchText}
+            placeholder="Search files..."
+            className="ml-1 w-full min-w-0 max-w-80"
+          />
+        </>
       );
     if (p2View.kind === "requests")
       return (
@@ -1937,7 +1978,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
               />
               <NavigationListItem
                 label="Files"
-                icon={File02}
+                icon={Folder}
                 selected={p2View.kind === "files"}
                 onClick={() => {
                   setP2View({ kind: "files" });

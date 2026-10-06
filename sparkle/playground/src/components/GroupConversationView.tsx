@@ -6,6 +6,7 @@ import {
   ButtonsSwitchList,
   Check,
   CheckDouble,
+  Cube01,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -3866,6 +3867,7 @@ export function GroupConversationView({
         <GroupConversationTabContent value="knowledge" contentClassName="gap-3">
           <FilesBrowser
             dataSources={dataSources}
+            root={{ label: space.name, icon: Cube01 }}
             searchText={knowledgeSearchText}
             onSearchTextChange={setKnowledgeSearchText}
             currentFolderId={currentFolderId}

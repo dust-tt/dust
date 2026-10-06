@@ -55,6 +55,9 @@ interface WorkspaceFileSystemProps {
   onMoveFile: (draggedId: string, targetFolderId: string | null) => void;
   /** Opens the Pod creation dialog on the given folder. */
   onCreatePod: (parentId: string | null) => void;
+  /** Controlled: the search input lives in the screen's header, not here. */
+  searchText: string;
+  onSearchTextChange: (text: string) => void;
 }
 
 export function WorkspaceFileSystem({
@@ -64,6 +67,8 @@ export function WorkspaceFileSystem({
   onFileOpen,
   onMoveFile,
   onCreatePod,
+  searchText,
+  onSearchTextChange,
 }: WorkspaceFileSystemProps) {
   const [currentFolderId, setCurrentFolderIdState] = useState<string | null>(
     null
@@ -297,6 +302,9 @@ export function WorkspaceFileSystem({
         )}
         <FilesBrowser
           dataSources={files}
+          searchText={searchText}
+          onSearchTextChange={onSearchTextChange}
+          hasSearchInput={false}
           currentFolderId={currentFolderId}
           onCurrentFolderIdChange={setCurrentFolderId}
           onFileOpen={onFileOpen}

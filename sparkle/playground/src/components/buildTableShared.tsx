@@ -15,9 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Folder,
+  Icon,
   Label,
   PuzzlePiece01,
   Robot,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
@@ -25,10 +28,12 @@ import type {
   HeaderContext,
 } from "@tanstack/react-table"; // prettier-ignore
 
+import { getDataSourceIcon, type ItemLocation } from "../data/dataSources";
+
 // The pieces the Build tables share: the checkbox column that feeds the bulk
-// bar, the filter menus above the table, the dialog a destructive batch action
-// goes through, and the "Used by" cell. Tools only borrows the last one — it
-// has no selection in the product either.
+// bar, the Location column, the filter menus above the table, the dialog a
+// destructive batch action goes through, and the "Used by" cell. Tools only
+// borrows the last one — it has no selection in the product either.
 
 /** The minimum a row needs for the checkbox to label itself. */
 type SelectableRow = { id: string; name: string };
@@ -92,6 +97,50 @@ export function buildSelectionColumn<TData extends SelectableRow>(
       );
     },
     meta: { className: "w-10 p-0" },
+  };
+}
+
+/**
+ * Where the row's agent or skill is filed, named by its folder with the whole
+ * trail in a tooltip. Omit the column by leaving `locations` out: a story that
+ * has no file system behind it has nothing to report.
+ */
+export function buildLocationColumn<TData extends SelectableRow>(
+  locations: Map<string, ItemLocation>
+): ColumnDef<TData, string> {
+  return {
+    id: "location",
+    accessorFn: (row: TData) => locations.get(row.id)?.label ?? "",
+    header: "Location",
+    cell: (info: CellContext<TData, string>) => {
+      const location = locations.get(info.row.original.id);
+      if (!location) {
+        return <DataTable.BasicCellContent label="-" />;
+      }
+
+      return (
+        <DataTable.CellContent>
+          <Tooltip
+            label={location.path}
+            trigger={
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Icon
+                  visual={
+                    location.folder
+                      ? (getDataSourceIcon(location.folder) ?? Folder)
+                      : Folder
+                  }
+                  size="xs"
+                  className="shrink-0 text-muted-foreground"
+                />
+                <span className="truncate text-sm">{location.label}</span>
+              </span>
+            }
+          />
+        </DataTable.CellContent>
+      );
+    },
+    meta: { className: "hidden @md:w-40 @md:table-cell" },
   };
 }
 

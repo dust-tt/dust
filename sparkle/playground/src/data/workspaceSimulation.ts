@@ -1,4 +1,4 @@
-import { MessageChatSquare, PuzzlePiece01, Robot } from "@dust-tt/sparkle";
+import { MessageChatSquare } from "@dust-tt/sparkle";
 
 import { registerAgents } from "./agents";
 import {
@@ -159,6 +159,8 @@ const COMPANY_SPACE_TREES: Record<string, FolderSpec[]> = {
     {
       name: "People",
       children: [
+        { name: "Agents" },
+        { name: "Skills" },
         { name: "Onboarding", files: [4, 9] },
         { name: "Performance Reviews", files: [3, 7] },
         { name: "Compensation Bands", files: [2, 4] },
@@ -167,6 +169,8 @@ const COMPANY_SPACE_TREES: Record<string, FolderSpec[]> = {
     {
       name: "Finance",
       children: [
+        { name: "Agents" },
+        { name: "Skills" },
         {
           name: "Budgets",
           files: [4, 8],
@@ -177,6 +181,8 @@ const COMPANY_SPACE_TREES: Record<string, FolderSpec[]> = {
     },
   ],
   "company-space-2": [
+    { name: "Agents" },
+    { name: "Skills" },
     {
       name: "Architecture",
       files: [2, 4],
@@ -296,8 +302,8 @@ const POD_EXTRA_FOLDERS: FolderSpec[] = [
 
 /**
  * The file system has no Spaces: what a Company Space held is filed in a plain
- * department folder instead. Company Data has none — its folders, and the
- * workspace-wide agents and skills, sit at the top level.
+ * department folder instead. Company Data has none — its folders sit at the
+ * top level.
  */
 const DEPARTMENT_FOLDER_NAMES: Record<string, string> = {
   "company-space-2": "Engineering",
@@ -308,12 +314,34 @@ const DEPARTMENT_FOLDER_NAMES: Record<string, string> = {
   "company-space-7": "Leadership",
 };
 
-/** Plain root folders kept for Pods that belong to no department. */
+/** The two drives the file system splits into: what is shared, and what is not. */
+const COMPANY_DRIVE_NAME = "Company";
+const PERSONAL_DRIVE_NAME = "Personal";
+
+/** Plain folders kept on the Company drive for Pods that belong to no department. */
 const POD_GROUP_FOLDERS = ["Projects", "Customers"];
 /** How often a Pod is filed inside the tree rather than left at the top. */
 const POD_FILED_ODDS = 0.9;
 /** Of the filed Pods, how many go one level deeper than a top-level folder. */
 const POD_NESTED_ODDS = 0.35;
+/**
+ * How often an agent or skill is filed in a folder rather than left where its
+ * owner starts — the top level for the workspace's own, the Pod folder for a
+ * Pod's. Drawn rather than spread evenly over the folders: a workspace holds
+ * dozens of them, so an even spread would leave the top level empty.
+ */
+const OWNED_ITEM_FILED_ODDS = 0.65;
+/**
+ * The folders some teams keep for their agents and skills. Nothing special
+ * about them — a plain folder a team named that way — but an item whose team
+ * has one mostly ends up there.
+ */
+const AGENT_FOLDER_NAME = "Agents";
+const SKILL_FOLDER_NAME = "Skills";
+/** How much of a team's agents or skills it files there, leaving the rest loose. */
+const OWNED_ITEM_SORTED_ODDS = 0.6;
+/** How often a Pod is one of those teams, for its agents and for its skills. */
+const POD_OWNED_ITEM_FOLDER_ODDS = 0.4;
 
 const ONBOARDING_DOCS = [
   "Welcome to Dust.md",
@@ -425,6 +453,30 @@ function addPodFolder(
   return id;
 }
 
+/**
+ * One of the two drives the file system is split into. Structural, like a
+ * Company Space: it cannot be moved, and everything else hangs off one of them.
+ */
+function addDriveFolder(
+  builder: Builder,
+  name: string,
+  source: DataSource["source"]
+): string {
+  const id = `fs-drive-${name.toLowerCase()}`;
+  builder.push({
+    id,
+    kind: "folder",
+    fileName: name,
+    parentId: null,
+    source,
+    folderType: "drive",
+    createdBy: mockUsers[0].id,
+    createdAt: seededDate(id, 1, 700),
+    updatedAt: seededDate(id, 4, 30),
+  });
+  return id;
+}
+
 /** A plain folder with an id of its own, for the ones others are filed under. */
 function addNamedFolder(
   builder: Builder,
@@ -446,7 +498,7 @@ function addNamedFolder(
   return id;
 }
 
-/** A Dust-owned folder such as `Agents`, `Skills` or `Conversations`. */
+/** A Dust-owned folder such as `Conversations`. */
 function addSystemFolder(
   builder: Builder,
   name: string,
@@ -491,12 +543,17 @@ function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
   const builder = createBuilder();
   const companyData = mockCompanySpaces[0];
 
+  // The two drives exist from the first day, even with nothing filed in the
+  // personal one yet.
+  const companyDriveId = addDriveFolder(builder, COMPANY_DRIVE_NAME, "company");
+  addDriveFolder(builder, PERSONAL_DRIVE_NAME, "pod");
+
   ONBOARDING_DOCS.forEach((fileName, index) => {
     builder.push({
       id: `fs-onboarding-${index}`,
       kind: "file",
       fileName,
-      parentId: null,
+      parentId: companyDriveId,
       source: "company",
       fileType: "md",
       createdBy: currentUserId,
@@ -580,21 +637,20 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   const podFilesBySpaceId = new Map<string, DataSource[]>();
   const conversationFilesByConversationId = new Map<string, DataSource[]>();
 
-  // Company Data's folders and the workspace's own agents and skills are the
-  // top level of the tree; every other Space becomes a department folder.
+  // The tree splits in two at the top: everything the workspace shares, and
+  // the user's own. Nothing else sits at the root.
+  const companyDriveId = addDriveFolder(builder, COMPANY_DRIVE_NAME, "company");
+  const personalDriveId = addDriveFolder(builder, PERSONAL_DRIVE_NAME, "pod");
+
+  // Company Data's folders are the top of the Company drive; every other Space
+  // becomes a department folder.
   addFolderTree(
     builder,
     COMPANY_SPACE_TREES[companyDataId] ?? [],
-    null,
+    companyDriveId,
     "company",
     `space/${companyDataId}`
   );
-  addOwnedItems(builder, {
-    parentId: null,
-    source: "company",
-    agents: agentsByOwner.get(companyDataId) ?? [],
-    skills: skillsByOwner.get(companyDataId) ?? [],
-  });
 
   const departmentIds = companySpaces
     .filter((space) => space.id !== companyDataId)
@@ -603,7 +659,8 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
         builder,
         `fs-dept-${space.id}`,
         DEPARTMENT_FOLDER_NAMES[space.id] ?? space.name,
-        "company"
+        "company",
+        companyDriveId
       );
       addFolderTree(
         builder,
@@ -615,8 +672,25 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
       return id;
     });
 
+  // The workspace's own agents and skills sit at the top of the Company drive
+  // or anywhere in its folders. Read before the Pod folders exist, so none of
+  // them is filed inside a Pod it does not belong to.
+  addOwnedItems(builder, {
+    homeId: companyDriveId,
+    folders: plainFolders(builder.files),
+    source: "company",
+    agents: agentsByOwner.get(companyDataId) ?? [],
+    skills: skillsByOwner.get(companyDataId) ?? [],
+  });
+
   const podGroupIds = POD_GROUP_FOLDERS.map((name) =>
-    addNamedFolder(builder, `fs-pod-group-${name.toLowerCase()}`, name, "pod")
+    addNamedFolder(
+      builder,
+      `fs-pod-group-${name.toLowerCase()}`,
+      name,
+      "pod",
+      companyDriveId
+    )
   );
 
   // Where a Pod can be filed: straight in a department or group folder, or one
@@ -630,11 +704,14 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   // there to hold Pods ends up empty.
   let topTurn = 0;
   let nestedTurn = 0;
-  const podParentFor = (pod: Space): string | null => {
-    // My Pod is the user's own, so it stays at the top level, with the odd
-    // Pod nobody has filed yet.
-    if (pod.id === MY_POD_SPACE.id || rand(pod.id, 95) >= POD_FILED_ODDS) {
-      return null;
+  const podParentFor = (pod: Space): string => {
+    // My Pod is the user's own, so it is the one thing on the Personal drive.
+    if (pod.id === MY_POD_SPACE.id) {
+      return personalDriveId;
+    }
+    // The odd Pod nobody has filed yet sits at the top of the Company drive.
+    if (rand(pod.id, 95) >= POD_FILED_ODDS) {
+      return companyDriveId;
     }
     if (rand(pod.id, 97) < POD_NESTED_ODDS) {
       return departmentTeamsIds[nestedTurn++ % departmentTeamsIds.length];
@@ -647,10 +724,24 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
     const rootId = addPodFolder(builder, pod, podParentFor(pod));
     const isEmpty =
       pod.id !== MY_POD_SPACE.id && rand(pod.id, 90) < EMPTY_POD_ODDS;
+    const podAgents = agentsByOwner.get(pod.id) ?? [];
+    const podSkills = skillsByOwner.get(pod.id) ?? [];
+    // The folders this Pod's own agents and skills may be filed in, on top of
+    // the Pod itself.
+    const ownedItemFolders: DataSource[] = [];
 
     if (!isEmpty && pod.id !== MY_POD_SPACE.id) {
       const extras = createBuilder(builder.nextFolderId);
-      addFolderTree(extras, POD_EXTRA_FOLDERS, null, "pod", `pod/${pod.id}`);
+      addFolderTree(
+        extras,
+        [
+          ...POD_EXTRA_FOLDERS,
+          ...podOwnedItemFolders(pod, podAgents, podSkills),
+        ],
+        null,
+        "pod",
+        `pod/${pod.id}`
+      );
       const podFiles = [
         ...generateDataSourcesForSpace(pod.id, randInt(pod.id, 91, 8, 60)),
         ...extras.files,
@@ -661,6 +752,7 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
       podFiles.forEach((file) =>
         builder.push({ ...file, parentId: file.parentId ?? rootId })
       );
+      ownedItemFolders.push(...plainFolders(podFiles));
     }
 
     const podConversationList =
@@ -717,10 +809,11 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
 
     if (!isEmpty) {
       addOwnedItems(builder, {
-        parentId: rootId,
+        homeId: rootId,
+        folders: ownedItemFolders,
         source: "pod",
-        agents: agentsByOwner.get(pod.id) ?? [],
-        skills: skillsByOwner.get(pod.id) ?? [],
+        agents: podAgents,
+        skills: podSkills,
       });
     }
   });
@@ -742,70 +835,147 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   });
 }
 
-/** Agents and skills, as files in the `Agents` / `Skills` folders of a space. */
+/**
+ * Agents and skills, filed among the ordinary files of a space rather than
+ * gathered in a folder of their own: an agent lives where the work it serves
+ * lives. Each one goes to its team's `Agents` or `Skills` folder when the team
+ * keeps one, else to any other folder, else stays at `homeId`. Every draw is
+ * seeded from the item's id so a given agent stays put across renders.
+ */
 function addOwnedItems(
   builder: Builder,
   {
-    parentId,
+    homeId,
+    folders,
     source,
     agents,
     skills,
   }: {
-    parentId: string | null;
+    /** Where the item sits unless it is filed deeper: a Pod, or `null` for the top level. */
+    homeId: string | null;
+    folders: DataSource[];
     source: DataSource["source"];
     agents: ManagedAgent[];
     skills: ManagedSkill[];
   }
 ): void {
-  if (agents.length > 0) {
-    const folderId = addSystemFolder(
-      builder,
-      "Agents",
-      parentId,
+  const idsNamed = (name: string) =>
+    folders.filter((folder) => folder.fileName === name).map(({ id }) => id);
+  // The `Agents` and `Skills` folders are left out of the loose scatter, so a
+  // skill never strays into a folder a team keeps for its agents.
+  const looseFolderIds = folders
+    .filter(
+      (folder) =>
+        folder.fileName !== AGENT_FOLDER_NAME &&
+        folder.fileName !== SKILL_FOLDER_NAME
+    )
+    .map(({ id }) => id);
+  const sorted = new Map([
+    ...dealToFolders(agents, idsNamed(AGENT_FOLDER_NAME), 12),
+    ...dealToFolders(skills, idsNamed(SKILL_FOLDER_NAME), 16),
+  ]);
+
+  const parentFor = (id: string, index: number): string | null => {
+    const folderId = sorted.get(id);
+    if (folderId) {
+      return folderId;
+    }
+    if (looseFolderIds.length > 0 && rand(id, index) < OWNED_ITEM_FILED_ODDS) {
+      return pickOne(looseFolderIds, id, index + 1);
+    }
+    return homeId;
+  };
+
+  agents.forEach((agent) =>
+    builder.push({
+      id: `fs-agent-${agent.id}`,
+      kind: "file",
+      fileName: `${agent.name}.agent`,
+      parentId: parentFor(agent.id, 13),
       source,
-      Robot
-    );
-    agents.forEach((agent) =>
-      builder.push({
-        id: `fs-agent-${agent.id}`,
-        kind: "file",
-        fileName: `${agent.name}.agent.md`,
-        parentId: folderId,
-        source,
-        fileType: "agent",
-        refId: agent.id,
-        createdBy: agent.editorIds[0] ?? mockUsers[0].id,
-        createdAt: seededDate(agent.id, 1, 300),
-        updatedAt: agent.updatedAt,
-        icon: getIconForFileType("agent"),
-      })
-    );
+      fileType: "agent",
+      refId: agent.id,
+      createdBy: agent.editorIds[0] ?? mockUsers[0].id,
+      createdAt: seededDate(agent.id, 1, 300),
+      updatedAt: agent.updatedAt,
+      icon: getIconForFileType("agent"),
+      avatar: { emoji: agent.emoji, backgroundColor: agent.backgroundColor },
+    })
+  );
+
+  skills.forEach((skill) =>
+    builder.push({
+      id: `fs-skill-${skill.id}`,
+      kind: "file",
+      fileName: `${skill.name}.skill`,
+      parentId: parentFor(skill.id, 17),
+      source,
+      fileType: "skill",
+      refId: skill.id,
+      createdBy: skill.editorIds[0] ?? mockUsers[0].id,
+      createdAt: seededDate(skill.id, 1, 300),
+      updatedAt: skill.updatedAt,
+      icon: getIconForFileType("skill"),
+      avatar: {
+        icon: skill.icon,
+        backgroundColor: "bg-highlight-50",
+        iconColor: "text-highlight-700",
+      },
+    })
+  );
+}
+
+/**
+ * The `Agents` and `Skills` folders a Pod keeps, the way a department does.
+ * Only for the kinds it actually owns, so neither folder is made for nothing.
+ */
+function podOwnedItemFolders(
+  pod: Space,
+  agents: ManagedAgent[],
+  skills: ManagedSkill[]
+): FolderSpec[] {
+  return [
+    ...(agents.length > 0 && rand(pod.id, 92) < POD_OWNED_ITEM_FOLDER_ODDS
+      ? [{ name: AGENT_FOLDER_NAME }]
+      : []),
+    ...(skills.length > 0 && rand(pod.id, 93) < POD_OWNED_ITEM_FOLDER_ODDS
+      ? [{ name: SKILL_FOLDER_NAME }]
+      : []),
+  ];
+}
+
+/**
+ * The items a team files in its own `Agents` or `Skills` folder, mapped to the
+ * folder they go to. Dealt round-robin rather than drawn per item, so no team
+ * is left with the folder it made and nothing in it.
+ */
+function dealToFolders(
+  items: { id: string }[],
+  folderIds: string[],
+  index: number
+): Map<string, string> {
+  if (folderIds.length === 0) {
+    return new Map();
   }
 
-  if (skills.length > 0) {
-    const folderId = addSystemFolder(
-      builder,
-      "Skills",
-      parentId,
-      source,
-      PuzzlePiece01
-    );
-    skills.forEach((skill) =>
-      builder.push({
-        id: `fs-skill-${skill.id}`,
-        kind: "file",
-        fileName: `${skill.name}.skill.md`,
-        parentId: folderId,
-        source,
-        fileType: "skill",
-        refId: skill.id,
-        createdBy: skill.editorIds[0] ?? mockUsers[0].id,
-        createdAt: seededDate(skill.id, 1, 300),
-        updatedAt: skill.updatedAt,
-        icon: getIconForFileType("skill"),
-      })
-    );
-  }
+  // Enough to reach every folder even when the workspace holds few items of
+  // the kind — only a handful of skills are workspace-wide.
+  const count = Math.max(
+    Math.round(items.length * OWNED_ITEM_SORTED_ODDS),
+    Math.min(items.length, folderIds.length)
+  );
+  return new Map(
+    seededShuffle(items, `sorted-${index}`)
+      .slice(0, count)
+      .map((item, rank) => [item.id, folderIds[rank % folderIds.length]])
+  );
+}
+
+/** The plain folders of a file list: the ones an item may be filed in. */
+function plainFolders(files: DataSource[]): DataSource[] {
+  return files.filter(
+    (file) => file.kind === "folder" && file.folderType === undefined
+  );
 }
 
 // ── Ownership ────────────────────────────────────────────────────────────────

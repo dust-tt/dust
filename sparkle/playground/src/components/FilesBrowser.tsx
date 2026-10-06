@@ -32,7 +32,13 @@ import {
   UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { type DragEvent, useEffect, useMemo, useState } from "react";
+import {
+  type ComponentType,
+  type DragEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type { DataSource } from "../data/types";
 import {
@@ -48,10 +54,12 @@ import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { DataTable } from "./DataTableDnd";
 
-// Shared files browser: one toolbar row (search stretches, view selection,
-// Create on the right) above the responsive files table. Used by the pod
-// Files tab (folders, drag & drop, reveal) and by the conversation "Files"
-// panel (flat list of the conversation's files).
+// Shared files browser: one toolbar row (search or the folder trail on the
+// left, view selection and Create on the right) above the responsive files
+// table. Used by the pod Files tab (folders, drag & drop, reveal), by the
+// conversation "Files" panel (flat list of the conversation's files), and by
+// the workspace Files screen, which carries the search input in its own
+// header instead.
 
 /** Drag & drop integration; omit it for a static, flat browser. */
 export interface FilesBrowserDnd {
@@ -89,6 +97,13 @@ interface FilesBrowserProps {
   /** Controlled search/folder (pod: steered by universal search + reveal). */
   searchText?: string;
   onSearchTextChange?: (text: string) => void;
+  /** Off when the parent renders the search input itself; the folder trail
+   *  then takes its place on the toolbar row instead of sitting below it. */
+  hasSearchInput?: boolean;
+  /** What the top of this browser is: the workspace, or the Pod that owns it.
+   *  Naming it shows the trail at the top level too, since the root is a
+   *  place of its own rather than "all files". */
+  root?: { label: string; icon: ComponentType<{ className?: string }> };
   currentFolderId?: string | null;
   onCurrentFolderIdChange?: (folderId: string | null) => void;
   /** Row to highlight (pod "reveal in files" flow). */
@@ -143,6 +158,8 @@ export function FilesBrowser({
   dnd,
   searchText: controlledSearchText,
   onSearchTextChange,
+  hasSearchInput = true,
+  root,
   currentFolderId: controlledFolderId,
   onCurrentFolderIdChange,
   revealedFileId = null,
@@ -205,12 +222,14 @@ export function FilesBrowser({
           }
         : {};
 
+    const rootLabel = root?.label ?? "Files";
+    const rootIcon = root?.icon ?? Folder;
     const items: BreadcrumbsItem[] = [
       currentFolderId === null
-        ? { label: "Files", icon: Folder }
+        ? { label: rootLabel, icon: rootIcon }
         : {
-            label: "Files",
-            icon: Folder,
+            label: rootLabel,
+            icon: rootIcon,
             onClick: () => {
               setCurrentFolderId(null);
               setSearchText("");
@@ -245,6 +264,7 @@ export function FilesBrowser({
     dataSources,
     dnd,
     onClearRevealedFile,
+    root,
     setCurrentFolderId,
     setSearchText,
   ]);
@@ -363,11 +383,16 @@ export function FilesBrowser({
           className: "w-full",
         },
         cell: (info) => {
-          const icon = getDataSourceIcon(info.row.original);
+          const item = info.row.original;
+          const icon = getDataSourceIcon(item);
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
-                {icon && <Icon visual={icon} size="sm" />}
+                {item.avatar ? (
+                  <Avatar size="xxs" {...item.avatar} />
+                ) : (
+                  icon && <Icon visual={icon} size="sm" />
+                )}
                 <span>{info.getValue() as string}</span>
               </div>
             </DataTable.CellContent>
@@ -500,17 +525,42 @@ export function FilesBrowser({
     );
   }
 
+  const folderTrail = foldersEnabled &&
+    !isSearchActive &&
+    (currentFolderId !== null || root !== undefined) && (
+      <div className="flex w-full min-w-0 items-center gap-2">
+        {dnd && dnd.draggingFileId !== null && (
+          <AnimatedText variant="muted" className="shrink-0 text-sm italic">
+            Move to
+          </AnimatedText>
+        )}
+        {/* The trail folds its root-most folders away to fit, so it has to be
+            handed the free space rather than size itself to its content. */}
+        <Breadcrumbs
+          items={folderBreadcrumbItems}
+          size="sm"
+          hasLighterFont
+          className="min-w-0 flex-1"
+        />
+      </div>
+    );
+
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      {/* Toolbar: search on the left, view selection and Create on the right. */}
+      {/* Toolbar: search or the folder trail on the left, view selection and
+          Create on the right. */}
       <div className="flex items-center gap-2">
-        <SearchInput
-          name="files-search"
-          value={searchText}
-          onChange={setSearchText}
-          placeholder="Search files..."
-          className="w-full min-w-0 max-w-80"
-        />
+        {hasSearchInput ? (
+          <SearchInput
+            name="files-search"
+            value={searchText}
+            onChange={setSearchText}
+            placeholder="Search files..."
+            className="w-full min-w-0 max-w-80"
+          />
+        ) : (
+          folderTrail
+        )}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -542,16 +592,7 @@ export function FilesBrowser({
         </div>
       </div>
 
-      {foldersEnabled && !isSearchActive && currentFolderId !== null && (
-        <div className="flex items-center gap-2">
-          {dnd && dnd.draggingFileId !== null && (
-            <AnimatedText variant="muted" className="text-sm italic">
-              Move to
-            </AnimatedText>
-          )}
-          <Breadcrumbs items={folderBreadcrumbItems} size="sm" hasLighterFont />
-        </div>
-      )}
+      {hasSearchInput && folderTrail}
 
       {foldersEnabled && isSearchActive && currentFolderId !== null && (
         <ButtonsSwitchList
