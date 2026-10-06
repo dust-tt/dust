@@ -901,26 +901,27 @@ function NodeRow({
     >
       <Icon visual={visual} size="sm" className="text-muted-foreground" />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium text-foreground">
-          {node.name}
-        </span>
+        {/* Badges sit with the name so they never push the columns. */}
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-foreground">
+            {node.name}
+          </span>
+          {isCited && <Chip size="mini" color="highlight" label="Cited" />}
+          {badges}
+        </div>
         {meta && (
           <span className="truncate text-xs text-muted-foreground">{meta}</span>
         )}
       </div>
-      {isCited && <Chip size="mini" color="highlight" label="Cited" />}
-      {badges}
-      {/* Fixed-width columns keep counts, avatars and dates aligned across
-          sections, whether or not a row has an action. */}
+      {/* Fixed-width columns keep counts and updates aligned across sections,
+          whether or not a row has an action. */}
       <span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
         {node.kind !== "file" && pluralize(countFiles(index, node.id), "file")}
       </span>
-      <span className="flex w-6 shrink-0 justify-center">
+      <span className="flex w-28 shrink-0 items-center gap-2 text-xs text-muted-foreground">
         {author && (
           <Avatar size="xs" name={author.fullName} visual={author.portrait} />
         )}
-      </span>
-      <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
         {formatAgo(node.updatedAt)}
       </span>
       <span className="flex w-6 shrink-0 justify-center">{action}</span>
@@ -1048,10 +1049,10 @@ function PodContext({
           title="From other folders"
           action={
             <Button
-              size="sm"
+              size="xs"
               variant="outline"
-              icon={Link01}
-              label="Add from workspace"
+              icon={Plus}
+              label="Add"
               onClick={onAttach}
             />
           }
