@@ -3,7 +3,7 @@
 Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
 in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
 Later focused runs measure untar only, most recently
-[512 MiB client budget](#512-mib-client-budget).
+[directory-record split](#directory-record-split), with the 512 MiB client budget.
 The full baseline table remains below.
 
 Historical FUSE measurements used a 1 GiB total budget. The latest focused untar below uses the
@@ -312,10 +312,11 @@ final default. Each create still has its own durable transaction and rechecks cu
 | 2 | 8.393 | 853 | 0.463 | 205 |
 | 4 | 7.617 | 2,409 | 0.522 | 291 |
 
-Keep **one per primary**: higher concurrency buys some hot-directory latency with substantial retry
-amplification and worsens the independent-parent workload. `DFS_PRIMARY_CONCURRENCY=2|4` remains an
-explicit experiment. The [directory layout proposal](../DESIGN-DIRECTORY.md) addresses the underlying
-shared parent record; implementing it and proving its races are follow-up work.
+These pre-split results retained **one per primary**: higher concurrency bought some hot-directory
+latency with substantial retry amplification and worsened the independent-parent workload.
+`DFS_PRIMARY_CONCURRENCY=2|4` remains an
+explicit experiment. The [directory-record split](../DESIGN-DIRECTORY.md), measured below, subsequently
+removed both the shared parent-record conflict and the local parent gate for sibling creates.
 
 The measured configuration at `4acecff7f4` uses one shared **1 GiB** budget, 128 in-flight client groups,
 16 bounded envelopes, 25ms coalescing and unchanged TTL/FDB durability. Relative to the instrumented control, total
@@ -376,6 +377,71 @@ v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=512 DFS_BENCH_REVISION=
 Report: `/tmp/dfs-v4-17d5aa08c6-512mib/run.json` inside `dfs-v4-dev-1`.
 FUSE SHA-256: `29d0e915946e9f669aed12b77d70568202ea05706ef3c1c6ac3c312067aef6e1`.
 Raw reports and logs remain outside Git.
+
+## Directory-record split
+
+2026-10-06, source `9e8c6ea3c7`, paired with the saved pre-split server from `f4211c48b0`.
+Same **512 MiB client binary**, deep 10k corpus, 25ms coalescing, 128 in-flight groups and 64 active
+server transactions maximum. Only the server/storage format changed. As authorized, the dedicated
+local v4 FDB user keyspace was cleared before each variant; FDB itself and OS caches were not restarted.
+Other local versions and GCP were untouched. These are single trials, not confidence intervals.
+
+| Measurement | Before split | Directory split |
+| --- | ---: | ---: |
+| Untar (s) | 6.116 | **6.814** |
+| Remaining client drain (s) | 3.998 | **0.414** |
+| Untar + remaining drain (s) | 10.114 | **7.228** |
+| Unmount including drain (s) | 4.131 | 0.477 |
+| Peak concurrent FDB attempts | 8 | 64 |
+| Retry attempts | 99 | 31 |
+| FUSE CPU before drain (s) | 4.850 | 6.300 |
+| DFS CPU including drain (s) | 6.710 | 6.790 |
+
+Completion through drain improved **29%**, and the remaining drain fell **90%**. Foreground untar
+took 0.698s longer; this change improves durable publication throughput, not every foreground metric.
+Both runs had zero writeback failures and no fsync/fsyncdir calls. Memory admission stayed negligible
+(0.0053s / 0.0060s), so the difference is not dirty-memory backpressure.
+
+### Where the directory-split untar time is spent
+
+The former shared-parent scheduling wait fell from **894.388s cumulative to 0.0008s** of target-object
+waiting. FDB now reaches the configured 64 active attempts; admission waiting totals 13.353s and
+transaction attempts total 60.111s, versus 0.001s and 34.227s previously. These timers overlap:
+more concurrent transaction time can accompany shorter wall time. The 31 remaining retries can
+still arise from genuine metadata/namespace conflicts; the split does not weaken those checks.
+
+Client envelope-capacity blocking fell from **6.384s to 0.182s**. Faster outcomes also changed batch
+packing: 10,123 groups / 1,588 RPC envelopes before, versus 10,132 / 7,707 after. The increase in
+small RPCs accompanies higher client CPU and slightly slower foreground untar. Both runs made the
+same 22 Lookup, 14 List, seven Stat and one session RPC. Client batching was not changed in this work.
+
+The direct-gRPC diagnostic isolates sibling-create throughput: **2,048 independent create+16 KiB
+write transactions**, four concurrent 32-group envelopes, same deep inherited-grant path.
+
+| Parent directories | Before split (s) | Directory split (s) | Peak FDB attempts, before / after | Retries, before / after |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 8.643 | **0.353** | 1 / 64 | 0 / 0 |
+| 64 | 0.325 | **0.338** | 64 / 64 | 0 / 0 |
+
+The hot-directory diagnostic improved **24.5×** while the many-parent case stayed similar. This is
+not an untar timing; every diagnostic file was verified outside timing. Rust tests against real FDB,
+Clippy and mounted filesystem checks passed, including two-server namespace/grant conflict cases.
+A fresh server/session/mount verified all **10,000 persisted file sizes and SHA-256 hashes**, plus
+the manifest, after the split run. This untimed check took 70.679s; the full read suite was not rerun.
+
+```sh
+v4/local/run exec cargo build --workspace --release
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=512 DFS_BENCH_REVISION=9e8c6ea3c7 python3 /dfs/v4/bench/run.py --untar-only
+```
+
+Reports inside `dfs-v4-dev-1`: `/tmp/dfs-v4-directory-split-control/run.json` and
+`/tmp/dfs-v4-9e8c6ea3c7-directory-split/run.json`. Diagnostic reports use the same directory names
+with `-groups` appended. Raw reports/logs remain outside Git.
+
+- New server SHA-256: `581600f3ba44117f7c2f599bdccbdf88c7153406a319e5027e073275a9b8cd2c`.
+- Control server SHA-256: `6f644e4f44d64d9ba32e9fa048a107a32cef24e74e43206b6beb160c3e206d62`.
+- Unchanged FUSE SHA-256: `29d0e915946e9f669aed12b77d70568202ea05706ef3c1c6ac3c312067aef6e1`.
+- Manifest SHA-256: `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
 
 ## Comparison with v3
 

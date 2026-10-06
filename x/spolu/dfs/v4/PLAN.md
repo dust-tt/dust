@@ -65,7 +65,8 @@ regressions. Validate concurrent clients, same-name collisions, moves, revocatio
 - [x] Blindly replace parent state without rewriting authority cores.
 - [x] Schedule creates by new target ID; retain all transaction and admission bounds.
 - [x] Test independent and conflicting namespace/grant transactions across two server states.
-- [ ] Reset local v4 FDB, run mounted checks and compare the deep 10k untar at 512 MiB.
+- [x] Reset local v4 FDB, run mounted checks and compare the deep 10k untar at 512 MiB:
+  6.814s + 0.414s drain, versus 6.116s + 3.998s before. All persisted file hashes verified.
 
 ## Follow-up evaluation
 
