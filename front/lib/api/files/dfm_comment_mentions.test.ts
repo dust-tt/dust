@@ -117,6 +117,52 @@ describe("dispatchCommentMentions", () => {
     }
   });
 
+  it("uses one pod conversation for a document whatever way its path is written", async () => {
+    const pod = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      auth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    await dispatchCommentMentions(memberAuth, {
+      scopedPath: `pod-${pod.sId}/notes.md`,
+      newMessages: [MENTIONING],
+    });
+    await dispatchCommentMentions(memberAuth, {
+      scopedPath: `pod-${pod.sId}//notes.md`,
+      newMessages: [MENTIONING],
+    });
+
+    const [first, second] = posted.mock.calls.map(
+      ([, { conversationResource }]) => conversationResource.sId
+    );
+    expect(first).toBe(second);
+  });
+
+  it("posts each mention once and runs only the first agent", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [],
+    });
+    const dust = `:mention[dust]{sId=${GLOBAL_AGENTS_SID.DUST}}`;
+    const claude = `:mention[claude]{sId=${GLOBAL_AGENTS_SID.CLAUDE_5_SONNET}}`;
+    const yuka = ":mention_user[Yuka]{sId=usr_yuka}";
+
+    await dispatchCommentMentions(auth, {
+      scopedPath: `conversation-${conversation.sId}/plan.md`,
+      newMessages: [comment(`${dust} ${yuka} ${claude} ${dust} ${yuka}`)],
+    });
+
+    expect(posted).toHaveBeenCalledTimes(1);
+    expect(posted.mock.calls[0][1].mentions).toEqual([
+      { configurationId: GLOBAL_AGENTS_SID.DUST },
+      { type: "user", userId: "usr_yuka" },
+    ]);
+  });
+
   it("posts nothing for comments without mentions", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,

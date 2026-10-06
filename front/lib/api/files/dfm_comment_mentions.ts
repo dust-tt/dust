@@ -2,12 +2,16 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { extractFromString } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type { MentionType } from "@app/types/assistant/mentions";
+import { isAgentMention } from "@app/types/assistant/mentions";
 import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
@@ -31,8 +35,9 @@ function scopeId(scopedPath: string, prefix: string): string | null {
 /**
  * @cc [owner:tdraier,label:product] document-conversation
  * A file in a conversation's files MUST use that conversation. A file in a pod MUST use the
- * pod's conversation linked to its path, created in the pod on first use. Any other file has
- * no conversation.
+ * pod's conversation linked to its normalized path, created in the pod on first use; finding
+ * and creating it MUST be atomic per document, so concurrent saves share one conversation. Any
+ * other file has no conversation.
  */
 async function getDocumentConversation(
   auth: Authenticator,
@@ -51,20 +56,54 @@ async function getDocumentConversation(
   if (!pod) {
     return null;
   }
-  const existing = await ConversationResource.fetchLatestForDocument(auth, {
-    space: pod,
-    documentPath: scopedPath,
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  return executeWithLock(
+    `dfm_document_conversation_${workspaceId}_${scopedPath}`,
+    async () => {
+      const existing = await ConversationResource.fetchLatestForDocument(auth, {
+        space: pod,
+        documentPath: scopedPath,
+      });
+      if (existing) {
+        return existing;
+      }
+      const fileName = scopedPath.split("/").pop() ?? scopedPath;
+      return createConversation(auth, {
+        title: `Comments · ${fileName}`,
+        visibility: "unlisted",
+        spaceId: pod.id,
+        metadata: { dfmDocumentPath: scopedPath },
+      });
+    }
+  );
+}
+
+/**
+ * A comment's mentions, each once. A conversation message runs at most one agent, so only the
+ * first agent mentioned is kept.
+ */
+function commentMentions(body: string): {
+  mentions: MentionType[];
+  skippedAgents: number;
+} {
+  const seen = new Set<string>();
+  const unique = extractFromString(body).filter((mention) => {
+    const key = isAgentMention(mention)
+      ? `agent:${mention.configurationId}`
+      : `user:${mention.userId}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
   });
-  if (existing) {
-    return existing;
-  }
-  const fileName = scopedPath.split("/").pop() ?? scopedPath;
-  return createConversation(auth, {
-    title: `Comments · ${fileName}`,
-    visibility: "unlisted",
-    spaceId: pod.id,
-    metadata: { dfmDocumentPath: scopedPath },
-  });
+  const agents = unique.filter(isAgentMention);
+  return {
+    mentions: unique.filter(
+      (mention) => !isAgentMention(mention) || mention === agents[0]
+    ),
+    skippedAgents: Math.max(agents.length - 1, 0),
+  };
 }
 
 /** The user message for a comment: where it was left, on what, then its text with mentions. */
@@ -82,9 +121,11 @@ function commentMessageContent(
 /**
  * @cc [owner:tdraier,label:product] document-comment-mentions
  * Each new message of a save that mentions agents or users MUST be posted once, as the saving
- * user, as a user message in the document's conversation carrying those mentions, so mentioned
- * agents run and mentioned users are notified as in a conversation. Messages without mentions
- * MUST NOT be posted. A failure MUST be logged and MUST NOT undo or fail the save.
+ * user, as a user message in the document's conversation carrying each mention once, so the
+ * mentioned agent runs and mentioned users are notified as in a conversation. As in a
+ * conversation, a message runs at most one agent: only the first agent mentioned is kept, and
+ * the others are logged. Messages without mentions MUST NOT be posted. A failure MUST be logged
+ * and MUST NOT undo or fail the save.
  */
 export async function dispatchCommentMentions(
   auth: Authenticator,
@@ -118,27 +159,40 @@ async function postCommentMentions(
   const mentioning = newMessages
     .map((newMessage) => ({
       newMessage,
-      mentions: extractFromString(newMessage.message.body),
+      ...commentMentions(newMessage.message.body),
     }))
     .filter(({ mentions }) => mentions.length > 0);
-  if (!user || mentioning.length === 0) {
+  const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
+  if (!user || mentioning.length === 0 || resolvedPath.isErr()) {
     return;
   }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const conversation = await getDocumentConversation(auth, scopedPath);
+  const documentPath = resolvedPath.value;
+  const conversation = await getDocumentConversation(auth, documentPath);
   if (!conversation) {
     logger.warn(
-      { workspaceId, scopedPath },
+      { workspaceId, scopedPath: documentPath },
       "No conversation for a document comment with mentions."
     );
     return;
   }
 
-  for (const { newMessage, mentions } of mentioning) {
+  for (const { newMessage, mentions, skippedAgents } of mentioning) {
+    if (skippedAgents > 0) {
+      logger.warn(
+        {
+          workspaceId,
+          scopedPath: documentPath,
+          commentId: newMessage.commentId,
+          skippedAgents,
+        },
+        "Document comment mentions more than one agent; only the first runs."
+      );
+    }
     const posted = await postUserMessage(auth, {
       conversationResource: conversation,
-      content: commentMessageContent(scopedPath, newMessage),
+      content: commentMessageContent(documentPath, newMessage),
       mentions,
       context: {
         timezone: "UTC",
@@ -154,7 +208,7 @@ async function postCommentMentions(
       logger.error(
         {
           workspaceId,
-          scopedPath,
+          scopedPath: documentPath,
           conversationId: conversation.sId,
           commentId: newMessage.commentId,
           error: posted.error.api_error.message,

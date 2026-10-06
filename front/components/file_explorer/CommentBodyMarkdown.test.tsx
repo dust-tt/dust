@@ -6,9 +6,13 @@ import { render, screen } from "@testing-library/react";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
+interface LinkWrapperProps {
+  children: React.ReactNode;
+}
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({ push: vi.fn() }),
-  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
+  LinkWrapper: ({ children }: LinkWrapperProps) => children,
 }));
 
 vi.mock("@app/hooks/useURLSheet", () => ({

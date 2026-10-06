@@ -14,6 +14,16 @@ const COMMENT_MARKDOWN_PLUGINS: PluggableList = [
   userMentionDirective,
 ];
 
+interface AgentMentionProps {
+  agentName: string;
+  agentId: string;
+}
+
+interface UserMentionProps {
+  userName: string;
+  userId: string;
+}
+
 interface CommentBodyMarkdownProps {
   owner: LightWorkspaceType;
   body: string;
@@ -29,13 +39,7 @@ export function CommentBodyMarkdown({ owner, body }: CommentBodyMarkdownProps) {
   // Only directive tags, which react-markdown's Components does not name.
   const components: Components & Record<string, unknown> = useMemo(
     () => ({
-      mention: ({
-        agentName,
-        agentId,
-      }: {
-        agentName: string;
-        agentId: string;
-      }) => (
+      mention: ({ agentName, agentId }: AgentMentionProps) => (
         <MentionDisplay
           mention={{
             id: agentId,
@@ -49,13 +53,7 @@ export function CommentBodyMarkdown({ owner, body }: CommentBodyMarkdownProps) {
           showTooltip={false}
         />
       ),
-      mention_user: ({
-        userName,
-        userId,
-      }: {
-        userName: string;
-        userId: string;
-      }) => (
+      mention_user: ({ userName, userId }: UserMentionProps) => (
         <MentionDisplay
           mention={{
             id: userId,
