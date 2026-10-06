@@ -1,6 +1,7 @@
 # v4 implementation
 
-Local only. Preserve v1–v3; commit and push each verified milestone.
+Local implementation, followed by evaluation on the existing dust-dev nodes.
+Preserve v1–v3; commit and push each verified milestone.
 
 ## 1. Direct FDB server
 
@@ -70,6 +71,7 @@ regressions. Validate concurrent clients, same-name collisions, moves, revocatio
 
 ## Follow-up evaluation
 
-- [ ] 100k-file and multi-server contention benchmarks, then the separately authorized GCP evaluation.
+- [ ] Existing dust-dev nodes: latest 10k untar and full filesystem benchmark, with durable drain.
+- [ ] 100k-file and multi-server contention benchmarks.
 - [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
 - [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.

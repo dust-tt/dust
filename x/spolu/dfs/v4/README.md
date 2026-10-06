@@ -1,7 +1,8 @@
 # dfs:// v4
 
 [Design](DESIGN.md) and [implementation progress](PLAN.md).
-Local Rust/Linux FUSE and FoundationDB; no Elasticsearch or GCP resources.
+Rust/Linux FUSE and FoundationDB; no Elasticsearch. Start with the local fixture below;
+the [GCP fixture](gcp/README.md) reuses the existing dust-dev nodes.
 
 ```sh
 v4/local/run up
