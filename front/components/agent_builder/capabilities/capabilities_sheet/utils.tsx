@@ -117,9 +117,9 @@ export function useCapabilitiesPageAndFooter({
   const formSchema = useMemo(
     () =>
       isConfigurationState(sheetState)
-        ? getMCPConfigurationFormSchema(sheetState.mcpServerView)
+        ? getMCPConfigurationFormSchema(sheetState.mcpServerView, t)
         : null,
-    [sheetState]
+    [sheetState, t]
   );
 
   const form = useForm<MCPFormData>({
@@ -242,8 +242,8 @@ export function useCapabilitiesPageAndFooter({
 
         return {
           page: {
-            title: getInfoPageTitle(mcpServerView),
-            description: getInfoPageDescription(mcpServerView),
+            title: getInfoPageTitle(mcpServerView, t),
+            description: getInfoPageDescription(mcpServerView, t),
             icon: getInfoPageIcon(mcpServerView),
             id: sheetState.state,
             content: mcpServerView ? (

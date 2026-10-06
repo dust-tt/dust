@@ -49,6 +49,7 @@ import {
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLingui } from "@lingui/react/macro";
 import uniqueId from "lodash/uniqueId";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
@@ -76,6 +77,7 @@ export function KnowledgeConfigurationSheet({
   action,
   ...props
 }: KnowledgeConfigurationSheetProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const open = action !== null;
   const [isDirty, setIsDirty] = useState(false);
@@ -98,10 +100,9 @@ export function KnowledgeConfigurationSheet({
   const handlePageChange = async () => {
     if (isDirty) {
       const confirmed = await confirm({
-        title: "Unsaved changes",
-        message:
-          "You have unsaved changes. Are you sure you want to close without saving?",
-        validateLabel: "Discard changes",
+        title: t`Unsaved changes`,
+        message: t`You have unsaved changes. Are you sure you want to close without saving?`,
+        validateLabel: t`Discard changes`,
         validateVariant: "warning",
       });
 
@@ -252,6 +253,7 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
   initialRequestedSpaceIds,
 }: KnowledgeConfigurationSheetContentProps) {
+  const { t } = useLingui();
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
@@ -285,10 +287,10 @@ function KnowledgeConfigurationSheetContent({
   // Focus NameSection input when navigating to CONFIGURATION page
   useEffect(() => {
     if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
-      const t = setTimeout(() => {
+      const timeout = setTimeout(() => {
         setFocus(NAME_FIELD_NAME);
       }, 250);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timeout);
     }
   }, [currentPageId, setFocus]);
 
@@ -349,7 +351,7 @@ function KnowledgeConfigurationSheetContent({
 
     return {
       leftButton: {
-        label: "Cancel",
+        label: t`Cancel`,
         variant: "outline",
         onClick: async () => {
           if (isManageSelectionMode && isEditing) {
@@ -360,7 +362,9 @@ function KnowledgeConfigurationSheetContent({
         },
       },
       rightButton: {
-        label: isDataSourcePage ? "Next" : "Save",
+        label: isDataSourcePage
+          ? t({ message: "Next", context: "button, go to the next step" })
+          : t`Save`,
         variant: "primary",
         disabled: isDataSourcePage ? !hasSourceSelection : false,
         onClick: () => {
@@ -379,17 +383,24 @@ function KnowledgeConfigurationSheetContent({
     onCancel,
     onSave,
     setSheetPageId,
+    t,
   ]);
+
+  const configPageDescription = !config
+    ? t`Select knowledge type and configure settings`
+    : config.configPageDescription
+      ? t(config.configPageDescription)
+      : "";
 
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
       title: requirements.requiresTableConfiguration
-        ? "Select Tables"
-        : "Select Data Sources",
+        ? t`Select tables`
+        : t`Select data sources`,
       description: requirements.requiresTableConfiguration
-        ? "Choose the tables to query for your processing method"
-        : "Choose the data sources to include in your knowledge base",
+        ? t`Choose the tables to query for your processing method`
+        : t`Choose the data sources to include in your knowledge base`,
       icon: undefined,
       noScroll: true,
       content: (
@@ -402,10 +413,8 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
-      title: config?.configPageTitle ?? "Configure Knowledge",
-      description:
-        config?.configPageDescription ??
-        "Select knowledge type and configure settings",
+      title: config ? t(config.configPageTitle) : t`Configure knowledge`,
+      description: configPageDescription,
       icon: config
         ? () => <Avatar icon={config.icon} size="md" className="mr-2" />
         : undefined,
@@ -414,8 +423,8 @@ function KnowledgeConfigurationSheetContent({
           <ProcessingMethodSection />
 
           <NameSection
-            title="Name"
-            placeholder="Name ..."
+            title={t`Name`}
+            placeholder={t`Name ...`}
             triggerValidationOnChange={true}
           />
 
@@ -429,7 +438,10 @@ function KnowledgeConfigurationSheetContent({
 
           {config && (
             <DescriptionSection
-              {...config?.descriptionConfig}
+              title={t(config.descriptionConfig.title)}
+              description={t(config.descriptionConfig.description)}
+              placeholder={t(config.descriptionConfig.placeholder)}
+              maxLength={config.descriptionConfig.maxLength}
               triggerValidationOnChange={true}
             />
           )}

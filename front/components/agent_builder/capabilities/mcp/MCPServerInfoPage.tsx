@@ -1,8 +1,9 @@
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Chip, ContentMessage } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 
 interface MCPServerInfoPageProps {
   infoMCPServerView: MCPServerViewType;
@@ -11,6 +12,7 @@ interface MCPServerInfoPageProps {
 export function MCPServerInfoPage({
   infoMCPServerView,
 }: MCPServerInfoPageProps) {
+  const { t } = useLingui();
   const { owner } = useBuilderContext();
   const nbTools = (infoMCPServerView.server.tools ?? []).length;
 
@@ -20,21 +22,23 @@ export function MCPServerInfoPage({
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-foreground">
-              Available Tools
+              <Trans>Available tools</Trans>
             </h3>
             <Chip
               size="xs"
               color="info"
-              label={`${nbTools} tool${pluralize(nbTools)}`}
+              label={t`${plural(nbTools, { one: "# tool", other: "# tools" })}`}
             />
           </div>
 
           {nbTools > 0 ? (
             <div className="flex flex-col gap-4">
               <span className="text-md text-muted-foreground">
-                {nbTools > 1 ? "These tools" : "This tool"}&nbsp;will be
-                available to your agent during conversations and can be
-                configured with different permission levels:
+                <Plural
+                  value={nbTools}
+                  one="This tool will be available to your agent during conversations and can be configured with different permission levels:"
+                  other="These tools will be available to your agent during conversations and can be configured with different permission levels:"
+                />
               </span>
               <ToolsList
                 owner={owner}
@@ -44,7 +48,7 @@ export function MCPServerInfoPage({
             </div>
           ) : (
             <ContentMessage variant="primary" size="sm">
-              No tools are currently available for this server.
+              <Trans>No tools are currently available for this server.</Trans>
             </ContentMessage>
           )}
         </div>

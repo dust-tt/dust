@@ -220,7 +220,8 @@ export function AgentBuilderCapabilitiesBlock({
         if (tool.configuredAction) {
           const validation = validateMCPActionConfiguration(
             tool.configuredAction,
-            tool.view
+            tool.view,
+            t
           );
 
           if (!validation.isValid) {

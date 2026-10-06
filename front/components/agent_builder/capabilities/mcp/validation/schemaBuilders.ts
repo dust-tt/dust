@@ -11,23 +11,25 @@ import {
   secretNameSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 /**
  * Creates base form validation schema with consistent error messages
  * Contains common fields that are present in all MCP forms
  */
-function createBaseFormSchema() {
+function createBaseFormSchema(t: (descriptor: MessageDescriptor) => string) {
   return {
     name: z
       .string()
-      .min(1, VALIDATION_MESSAGES.name.empty)
-      .regex(/^[a-z0-9_]+$/, VALIDATION_MESSAGES.name.format)
+      .min(1, t(VALIDATION_MESSAGES.name.empty))
+      .regex(/^[a-z0-9_]+$/, t(VALIDATION_MESSAGES.name.format))
       .default(""),
     description: z
       .string()
-      .min(1, VALIDATION_MESSAGES.description.required)
-      .max(800, VALIDATION_MESSAGES.description.tooLong),
+      .min(1, t(VALIDATION_MESSAGES.description.required))
+      .max(800, t(VALIDATION_MESSAGES.description.tooLong)),
   };
 }
 
@@ -50,31 +52,37 @@ function createBaseConfigurationFields() {
  * Creates dynamic configuration fields based on MCP server requirements
  * Uses direct conditional logic for clarity
  */
-function createDynamicConfigurationFields(requirements: MCPServerRequirements) {
+function createDynamicConfigurationFields(
+  requirements: MCPServerRequirements,
+  t: (descriptor: MessageDescriptor) => string
+) {
   return {
     childAgentId: requirements.requiresChildAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.childAgent.required,
+          message: t(VALIDATION_MESSAGES.childAgent.required),
         })
       : z.null(),
     dustAppConfiguration: requirements.requiresDustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.dustApp.required,
+          message: t(VALIDATION_MESSAGES.dustApp.required),
         })
       : z.null(),
     dustProject: requirements.requiresDustProjectConfiguration
       ? dustProjectSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.dustProject.required,
+          message: t(VALIDATION_MESSAGES.dustProject.required),
         })
       : dustProjectSchema,
     secretName: requirements.developerSecretSelection
       ? requirements.developerSecretSelection === "required"
         ? secretNameSchema.refine((val) => val !== null, {
-            message: VALIDATION_MESSAGES.secret.required,
+            message: t(VALIDATION_MESSAGES.secret.required),
           })
         : secretNameSchema
       : z.null(),
-    additionalConfiguration: createAdditionalConfigurationSchema(requirements),
+    additionalConfiguration: createAdditionalConfigurationSchema(
+      requirements,
+      t
+    ),
   };
 }
 
@@ -83,7 +91,8 @@ function createDynamicConfigurationFields(requirements: MCPServerRequirements) {
  * Handles dynamic field validation based on requirements
  */
 function createAdditionalConfigurationSchema(
-  requirements: MCPServerRequirements
+  requirements: MCPServerRequirements,
+  t: (descriptor: MessageDescriptor) => string
 ) {
   const hasRequiredFields =
     requirements.requiredStrings.length > 0 ||
@@ -147,7 +156,7 @@ function createAdditionalConfigurationSchema(
       } else if (requirements.requiredLists[rootKey]) {
         nestedStructure[rootKey] = z
           .array(z.string())
-          .min(1, `You must select at least one value for "${rootKey}"`);
+          .min(1, t(msg`You must select at least one value for "${rootKey}"`));
       }
     });
 
@@ -182,7 +191,10 @@ function createDefaultConfigurationSchema() {
  * @param requirements - MCP server requirements or null for default schema
  * @returns Configuration validation schema
  */
-function createConfigurationSchema(requirements: MCPServerRequirements | null) {
+function createConfigurationSchema(
+  requirements: MCPServerRequirements | null,
+  t: (descriptor: MessageDescriptor) => string
+) {
   const baseFields = createBaseConfigurationFields();
 
   if (!requirements) {
@@ -190,7 +202,7 @@ function createConfigurationSchema(requirements: MCPServerRequirements | null) {
   }
 
   // Build dynamic fields using validation factories
-  const dynamicFields = createDynamicConfigurationFields(requirements);
+  const dynamicFields = createDynamicConfigurationFields(requirements, t);
 
   return z.object({
     ...baseFields,
@@ -204,10 +216,11 @@ function createConfigurationSchema(requirements: MCPServerRequirements | null) {
  * @returns Complete form validation schema
  */
 export function createMCPFormSchema(
-  requirements: MCPServerRequirements | null
+  requirements: MCPServerRequirements | null,
+  t: (descriptor: MessageDescriptor) => string
 ) {
-  const baseFormSchema = createBaseFormSchema();
-  const configurationSchema = createConfigurationSchema(requirements);
+  const baseFormSchema = createBaseFormSchema(t);
+  const configurationSchema = createConfigurationSchema(requirements, t);
 
   return z.object({
     ...baseFormSchema,

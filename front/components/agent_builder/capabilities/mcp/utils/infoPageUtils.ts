@@ -5,25 +5,29 @@ import {
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { ActionIcons } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export function getInfoPageTitle(
-  infoMCPServerView: MCPServerViewType | null
+  infoMCPServerView: MCPServerViewType | null,
+  t: (descriptor: MessageDescriptor) => string
 ): string {
   if (infoMCPServerView) {
     return getMcpServerViewDisplayName(infoMCPServerView);
   }
 
-  return "Tool information";
+  return t(msg`Tool information`);
 }
 
 export function getInfoPageDescription(
-  infoMCPServerView: MCPServerViewType | null
+  infoMCPServerView: MCPServerViewType | null,
+  t: (descriptor: MessageDescriptor) => string
 ): string {
   if (infoMCPServerView?.server.description) {
     return infoMCPServerView.server.description;
   }
 
-  return "No description available";
+  return t(msg`No description available`);
 }
 
 export function getInfoPageIcon(infoMCPServerView: MCPServerViewType | null) {
