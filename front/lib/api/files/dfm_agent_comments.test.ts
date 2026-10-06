@@ -200,7 +200,7 @@ describe("addAgentComment", () => {
   it("refuses to comment without co_edition", async () => {
     const other = (await createResourceTest({})).authenticator;
 
-    const result = await comment(other);
+    const result = await comment(other, dustFs);
     expect(result.isErr() && result.error.code).toBe("not_available");
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
