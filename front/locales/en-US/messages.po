@@ -3975,44 +3975,6 @@ msgstr "Reusable packages of instructions and tools that agents can share."
 msgid "Hidden skills"
 msgstr "Hidden skills"
 
-#: front/components/pages/builder/skills/utils.ts
-msgctxt "tab listing all skills"
-msgid "All"
-msgstr "All"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "All active skills"
-msgstr "All active skills"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Editable by me"
-msgstr "Editable by me"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Skills you can edit"
-msgstr "Skills you can edit"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Favorites"
-msgstr "Favorites"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Skills you favorited"
-msgstr "Skills you favorited"
-
-#: front/components/pages/builder/skills/utils.ts
-#: front/components/skills/skillFilter.ts
-msgid "Archived"
-msgstr "Archived"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Archived skills"
-msgstr "Archived skills"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "All availabilities"
-msgstr "All availabilities"
-
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 #: front/components/pages/spaces/apps/DatasetsPage.tsx
 #: front/components/pages/spaces/apps/RunPage.tsx
@@ -6081,6 +6043,10 @@ msgstr "A repository URL is required"
 msgctxt "tab of the skills provided by Dust"
 msgid "Dust"
 msgstr "Dust"
+
+#: front/components/skills/skillFilter.ts
+msgid "Archived"
+msgstr "Archived"
 
 #: front/components/spaces/AddConnectionMenu.tsx
 msgid "Failed to enable connection ({provider})"
