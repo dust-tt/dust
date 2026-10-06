@@ -57,6 +57,11 @@ export interface DocumentProps {
    * when it mounts, so keep the list stable.
    */
   commentInputExtensions?: Extensions;
+  /**
+   * The URL to display an image at, from its Markdown source, or null to show its alt text.
+   * Captured at mount. Without it, every image shows as its alt text.
+   */
+  resolveImageSource?: (src: string) => string | null;
 }
 
 /** Where and as whom a Document joins its live session. */

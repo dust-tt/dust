@@ -27,8 +27,8 @@ to the saved content clears the error without a request.
 
 `loadDfm` in `dfm_persistence.ts` decides. Hosts mount the editor for every Markdown file
 they hand it; a file opens for editing when it is valid DFM, its body is Markdown the editor
-reproduces, and every comment anchor the codec reads is one the editor can highlight. Tables, images, task lists, HTML, reference
-links and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
+reproduces, and every comment anchor the codec reads is one the editor can highlight. Tables, task lists, HTML, reference links
+and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
 them. A refused file is shown as read-only source with the reason. Line endings are not
 preserved: a CRLF file opens and is written back with LF.
 
@@ -103,6 +103,17 @@ replaces the commented text, which keeps the comment, and resolves the thread; t
 is undoable, the resolution stays out of history. A suggestion applies only to a comment within one paragraph, heading or list item, and
 only when it is one paragraph of text: anything else is refused with the reason.
 
+## Images
+
+An image is ordinary Markdown, `![alt](destination "title")`, read as an inline `image` node that
+keeps its alt text, destination and title as written. The editor loads nothing by itself: the
+host's `resolveImageSource` turns a destination into the URL to display, and an image it does not
+resolve, or every image without it, shows as its alt text. The file preview resolves a file path in
+a conversation or a pod, such as `![Revenue](pod-<id>/charts/revenue.png)`, the path agents read
+from `files.list`, to the file API, which checks the reader's access; it resolves nothing else, so
+an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
+write them.
+
 ## Layout
 
 | File | Owns |
@@ -113,6 +124,7 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `dfm_persistence.ts` | `loadDfm` and `saveDfm`, between DFM source and the editor's document. |
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
+| `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |

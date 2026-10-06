@@ -437,6 +437,18 @@ describe("saveDfm", () => {
     expect(roundTrip("# Title\r\n\r\nText\r\n")).toBe("# Title\n\nText\n");
   });
 
+  it("round-trips images with their Markdown source", () => {
+    for (const source of [
+      "![Revenue chart](pod-abc/charts/revenue.png)\n",
+      '![A \\[draft\\] chart](<conversation-c1/my chart.png> "Q3 \\"draft\\"")\n',
+      "Before ![x](pod-abc/x%20y.png) after.\n",
+      ":comment-start{id=c1}See ![x](pod-abc/x.png) here.:comment-end{id=c1}\n\n" +
+        OPEN_THREAD,
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+    }
+  });
+
   it("refuses content the editor cannot write as Markdown", () => {
     const saved = saveDfm(
       { frontMatter: null, anchorOrder: [] },

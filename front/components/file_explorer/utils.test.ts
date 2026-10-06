@@ -14,8 +14,11 @@ import {
   getFileExplorerSearchResultTitle,
   getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
+  resolveDocumentImageSource,
   withVirtualExplorerPath,
 } from "@app/components/file_explorer/utils";
+import { getFilePathViewUrl } from "@app/lib/swr/files";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   getFilePreviewConfig,
@@ -453,5 +456,34 @@ describe("getVirtualScopeRootNodes", () => {
     ]);
     expect(roots[0]?.children).toEqual([]);
     expect(roots[1]?.children).toHaveLength(1);
+  });
+});
+
+describe("resolveDocumentImageSource", () => {
+  const owner = LightWorkspaceFactory.build({ sId: "w1" });
+
+  it("resolves a conversation or pod file to the file API, percent-decoded", () => {
+    expect(
+      resolveDocumentImageSource(owner, "pod-p1/charts/my%20chart.png")
+    ).toBe(getFilePathViewUrl(owner, "pod-p1/charts/my chart.png"));
+    expect(resolveDocumentImageSource(owner, "conversation-c1/chart.png")).toBe(
+      getFilePathViewUrl(owner, "conversation-c1/chart.png")
+    );
+  });
+
+  it("resolves no other source", () => {
+    for (const src of [
+      "https://example.com/logo.png",
+      "/api/w/w1/members",
+      "chart.png",
+      "conversation/chart.png",
+      "pod-p1",
+      "pod-p1/",
+      "pod-p1/../../members",
+      "pod-p1/%2E%2E/x.png",
+      "pod-p1/%E0%A4%A.png",
+    ]) {
+      expect(resolveDocumentImageSource(owner, src)).toBeNull();
+    }
   });
 });

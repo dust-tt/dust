@@ -4,6 +4,8 @@ import {
   DocumentCommentMark,
   DocumentComments,
 } from "@app/components/editor/document/DocumentComments";
+import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
+import { DocumentImage } from "@app/components/editor/document/DocumentImage";
 import { cn } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -73,13 +75,22 @@ const starterKitOptions: Partial<StarterKitOptions> = {
 };
 
 /** The schema; a live document protects comment marks without a thread and drops StarterKit's undo. */
-const buildSchemaExtensions = ({ live }: { live: boolean }): AnyExtension[] => [
+const buildSchemaExtensions = ({
+  live,
+  resolveImageSource,
+}: {
+  live: boolean;
+  resolveImageSource?: DocumentImageOptions["resolveSource"];
+}): AnyExtension[] => [
   DocumentAnchors,
   DocumentComments,
   live
     ? DocumentCommentMark.configure({ holdsThreads: false })
     : DocumentCommentMark,
   DocumentCommentAnchor,
+  resolveImageSource
+    ? DocumentImage.configure({ resolveSource: resolveImageSource })
+    : DocumentImage,
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),
@@ -94,9 +105,15 @@ export const documentExtensions = buildSchemaExtensions({ live: false });
  */
 export const buildDocumentEditorExtensions = (
   t: Translate,
-  { live = false }: { live?: boolean } = {}
+  {
+    live = false,
+    resolveImageSource,
+  }: {
+    live?: boolean;
+    resolveImageSource?: DocumentImageOptions["resolveSource"];
+  } = {}
 ): AnyExtension[] => [
-  ...buildSchemaExtensions({ live }),
+  ...buildSchemaExtensions({ live, resolveImageSource }),
   Placeholder.configure({
     placeholder: ({ node, pos, editor }) =>
       node.type.name === "heading"

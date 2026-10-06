@@ -604,3 +604,47 @@ describe("Document for a file the editor cannot open", () => {
     expect(container.querySelector(".tiptap")).toBeNull();
   });
 });
+
+describe("Document images", () => {
+  const renderImages = async (
+    resolveImageSource?: DocumentProps["resolveImageSource"]
+  ) => {
+    const { container } = render(
+      <Document
+        initialContent={
+          "![Chart](pod-abc/chart.png) and ![Logo](https://example.com/logo.png)\n"
+        }
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={resolveImageSource}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows an image from the URL the host resolves, and alt text otherwise", async () => {
+    const dom = await renderImages((src) =>
+      src.startsWith("pod-") ? `https://files.test/${src}` : null
+    );
+
+    const image = within(dom).getByRole("img", { name: "Chart" });
+    expect(image.getAttribute("src")).toBe(
+      "https://files.test/pod-abc/chart.png"
+    );
+    expect(within(dom).queryByRole("img", { name: "Logo" })).toBeNull();
+    expect(within(dom).getByText("Logo")).toBeDefined();
+  });
+
+  it("shows every image as its alt text without a resolver", async () => {
+    const dom = await renderImages();
+
+    expect(within(dom).queryAllByRole("img")).toHaveLength(0);
+    expect(within(dom).getByText("Chart")).toBeDefined();
+  });
+});
