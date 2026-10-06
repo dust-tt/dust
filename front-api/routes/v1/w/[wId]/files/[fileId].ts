@@ -259,16 +259,16 @@ async function checkFileAccess(
   auth: Authenticator,
   file: FileResource
 ): Promise<Response | null> {
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    // For conversation files, check if the user has access to the conversation
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
+  if (isConversationFileUseCase(file.useCase)) {
+    // For conversation files, check if the user has access to the conversation. Files not
+    // attached to a conversation yet are only accessible to their uploader.
+    const hasAccess = file.useCaseMetadata?.conversationId
+      ? !!(await ConversationResource.fetchById(
+          auth,
+          file.useCaseMetadata.conversationId
+        ))
+      : file.canAccessUnattachedConversationFile(auth);
+    if (!hasAccess) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
