@@ -206,7 +206,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   /**
-   * @cc [owner:philipperolet,label:product] revoked-only
+   * @cc [owner:philipperolet,label:product] paused-bot-is-not-revoked
    * Returns true only when the team's bot-enabled Slack configuration has a connector marked
    * `oauth_token_revoked`. A paused connector without that error MUST NOT count as revoked: its
    * bot still answers. Returns false when there is no bot-enabled configuration.
