@@ -13,7 +13,11 @@ import {
   SKILL_FILTER_CATEGORIES,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
+import { i18n } from "@app/lib/i18n/i18n";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 const CATEGORIES = [
   ...new Set([...AGENT_FILTER_CATEGORIES, ...SKILL_FILTER_CATEGORIES]),
@@ -39,6 +43,7 @@ describe("resolveSearchFilterSelection", () => {
         mcpServerViews: [...SLACK_VIEWS],
       },
       currentUserId: "me",
+      t: translate,
     });
 
     expect(unresolvedCategories).toEqual([]);
@@ -77,6 +82,7 @@ describe("resolveSearchFilterSelection", () => {
         knownOptions: new Map([["editor:user1", known]]),
         facets: undefined,
         currentUserId: "me",
+        t: translate,
       });
 
     expect(filter.editor?.map(({ name }) => name)).toEqual(["Alice", "Bob"]);
@@ -112,19 +118,26 @@ describe("usage filter", () => {
       knownOptions: new Map(),
       facets: undefined,
       currentUserId: "me",
+      t: translate,
     });
 
     expect(unresolvedCategories).toEqual([]);
-    expect(filter.usage).toEqual([toUsageFilterOption({ min: 5, max: 40 })]);
+    expect(filter.usage).toEqual([
+      toUsageFilterOption({ min: 5, max: 40 }, translate),
+    ]);
     expect(filter.usage?.[0]?.name).toBe("5–40 active users");
-    expect(toUsageFilterOption({ min: 1, max: 1 }).name).toBe("1 active user");
+    expect(toUsageFilterOption({ min: 1, max: 1 }, translate).name).toBe(
+      "1 active user"
+    );
     expect(toSearchFilterSelection(filter, CATEGORIES)).toEqual({
       usage: { "5-40": "5–40 active users" },
     });
   });
 
   it("filters on the active users count, except for default agents", () => {
-    const filter = { usage: [toUsageFilterOption({ min: 5, max: 40 })] };
+    const filter = {
+      usage: [toUsageFilterOption({ min: 5, max: 40 }, translate)],
+    };
     const [allTab, defaultTab] = AGENT_SEARCH_TABS;
 
     expect(toAgentSearchFilters(filter, allTab.filters)).toEqual({

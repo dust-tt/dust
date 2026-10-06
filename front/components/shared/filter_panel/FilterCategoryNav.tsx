@@ -5,6 +5,7 @@ import {
   NavigationListItem,
   NavigationListLabel,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 interface FilterCategoryNavProps<Category extends string> {
@@ -26,10 +27,12 @@ export function FilterCategoryNav<Category extends string>({
   footer,
   className,
 }: FilterCategoryNavProps<Category>) {
+  const { t } = useLingui();
+
   return (
     <div className={cn("flex h-full w-44 flex-col p-2", className)}>
       <NavigationListLabel
-        label="Filter"
+        label={t({ message: "Filter", context: "noun, filter panel heading" })}
         className="bg-transparent pt-1.5 font-medium"
       />
       <NavigationList role="tablist" className="min-h-0 flex-1">

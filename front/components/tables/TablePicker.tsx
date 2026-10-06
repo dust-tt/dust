@@ -23,6 +23,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface TablePickerProps {
@@ -49,6 +50,7 @@ export default function TablePicker({
   onTableUpdate,
   excludeTables,
 }: TablePickerProps) {
+  const { t } = useLingui();
   void dataSource;
   const [open, setOpen] = useState(false);
   const [allTablesMap, setallTablesMap] = useState<
@@ -139,7 +141,7 @@ export default function TablePicker({
               {currentTable.title}
             </div>
           ) : (
-            "No Table"
+            <Trans>No table</Trans>
           )
         ) : (
           <PopoverRoot open={open} onOpenChange={setOpen}>
@@ -160,7 +162,7 @@ export default function TablePicker({
               ) : allTablesMap.size > 0 ? (
                 <Button
                   variant="outline"
-                  label="Select Table"
+                  label={t`Select table`}
                   isSelect
                   size="xs"
                 />
@@ -171,7 +173,7 @@ export default function TablePicker({
                     readOnly ? "text-primary-400" : "text-muted-foreground"
                   )}
                 >
-                  No Tables
+                  <Trans>No tables</Trans>
                 </span>
               )}
             </PopoverTrigger>
@@ -179,7 +181,7 @@ export default function TablePicker({
             <PopoverContent className="mr-2">
               <SearchInput
                 name="search"
-                placeholder="Search for tables"
+                placeholder={t`Search for tables`}
                 value={searchFilter}
                 onChange={setSearchFilter}
               />
@@ -215,7 +217,7 @@ export default function TablePicker({
                     allTablesMap.size === 0 &&
                     !showTableLoaders && (
                       <span className="copy-sm mt-2 block px-2 text-muted-foreground">
-                        No tables found
+                        <Trans>No tables found</Trans>
                       </span>
                     )}
                 </div>
@@ -228,7 +230,9 @@ export default function TablePicker({
                   loader={
                     <div className="copy-sm mt-2 flex items-center gap-2 px-2 text-center text-muted-foreground">
                       <Spinner size="xs" />
-                      <span>Loading more data...</span>
+                      <span>
+                        <Trans>Loading more data...</Trans>
+                      </span>
                     </div>
                   }
                 />

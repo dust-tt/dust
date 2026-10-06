@@ -52,6 +52,7 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
@@ -548,8 +549,7 @@ export function AutomationsTriggersTable({
       {canBulkSetPool && (
         <BulkSelectionBar
           selectedCount={selection.selectedCount}
-          totalCount={totalCount}
-          itemLabel="automation"
+          selectAllLabel={t`Select all ${plural(totalCount, { one: "# automation", other: "# automations" })}`}
           canSelectAll={selection.hasMorePagesToSelect}
           onSelectAll={selection.selectAllAcrossPages}
           onClear={selection.clearSelection}

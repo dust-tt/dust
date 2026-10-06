@@ -1,5 +1,6 @@
 import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { useLingui } from "@lingui/react/macro";
 
 const DEFAULT_FLAG_SIZE = 16;
 
@@ -12,12 +13,14 @@ export function RegionalFlag({
   region,
   size = DEFAULT_FLAG_SIZE,
 }: RegionalFlagProps) {
+  const { t } = useLingui();
+
   switch (region) {
     case "europe-west1":
       return (
         <img
           src="/static/EuropeanFlag.svg"
-          alt="EU"
+          alt={t({ message: "EU", context: "European Union" })}
           width={size}
           height={size}
         />

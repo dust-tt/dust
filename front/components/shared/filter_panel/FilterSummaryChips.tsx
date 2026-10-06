@@ -1,5 +1,6 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
 import { Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   AnimatePresence,
   domMax,
@@ -8,22 +9,27 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import type { ReactNode } from "react";
-import { Fragment } from "react";
 
 function SummaryLabel({
   categoryLabel,
   options,
 }: Pick<FilterSummary<string>, "categoryLabel" | "options">) {
+  const optionNames = options.reduce<ReactNode>((previousNames, option) => {
+    const optionName = <span className="font-bold">{option.name}</span>;
+    return previousNames === null ? (
+      optionName
+    ) : (
+      <Trans>
+        {previousNames} or {optionName}
+      </Trans>
+    );
+  }, null);
+
   return (
     <span className="min-w-0 truncate text-xs font-medium">
-      <span className="font-bold">{categoryLabel}</span>
-      <span> is </span>
-      {options.map((option, index) => (
-        <Fragment key={option.id}>
-          {index > 0 && <span> or </span>}
-          <span className="font-bold">{option.name}</span>
-        </Fragment>
-      ))}
+      <Trans>
+        <span className="font-bold">{categoryLabel}</span> is {optionNames}
+      </Trans>
     </span>
   );
 }
@@ -52,6 +58,7 @@ export function FilterSummaryChips<Category extends string>({
   isLoading = false,
   className,
 }: FilterSummaryChipsProps<Category>) {
+  const { t } = useLingui();
   const chips: FilterExtraChip[] = [
     ...summaries.map((summary) => ({
       key: `category:${summary.category}`,
@@ -118,7 +125,7 @@ export function FilterSummaryChips<Category extends string>({
               )}
               <m.div layout={!shouldReduceMotion} transition={transition}>
                 <Button
-                  label="Clear all"
+                  label={t`Clear all`}
                   size="xs"
                   variant="ghost-secondary"
                   onClick={onClearAll}

@@ -12,6 +12,7 @@ import {
   ThumbsUp,
   ValueCard,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 const FeedbackDistributionChart = safeLazy(
   () =>
@@ -38,6 +39,7 @@ export function AgentFeedback({
   agentConfigurationId,
   allowReactions,
 }: AgentFeedbackProps) {
+  const { t } = useLingui();
   const { period, mode, selectedVersion } = useObservabilityContext();
 
   const versionFilter =
@@ -52,9 +54,9 @@ export function AgentFeedback({
 
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <TabContentChildSectionLayout title="Overview">
+      <TabContentChildSectionLayout title={t`Overview`}>
         <ValueCard
-          title="Reactions"
+          title={t`Reactions`}
           className="h-24"
           content={
             <div className="flex flex-row gap-4 text-2xl">
@@ -77,7 +79,7 @@ export function AgentFeedback({
         />
       </TabContentChildSectionLayout>
 
-      <TabContentChildSectionLayout title="Charts">
+      <TabContentChildSectionLayout title={t`Charts`}>
         <SafeSuspense fallback={<ChartFallback />}>
           <FeedbackDistributionChart
             workspaceId={owner.sId}

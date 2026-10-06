@@ -10,6 +10,7 @@ import {
   NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -64,6 +65,7 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   status = "idle",
   scrollContainer = null,
 }: FilterOptionCheckboxListProps<Option>) {
+  const { t } = useLingui();
   const isLoading = status === "loading";
   const isUpdating = status === "updating";
   const isLoadingMore = status === "loading-more";
@@ -77,12 +79,14 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   return (
     <>
       <NavigationListLabel
-        label={`All ${categoryLabel}`}
+        label={t`All ${categoryLabel}`}
         className="shrink-0 py-0 px-2 bg-transparent font-medium"
         action={
           <div className="flex items-center gap-2">
             {isUpdating && (
-              <span className="text-xs text-muted-foreground">Updating…</span>
+              <span className="text-xs text-muted-foreground">
+                <Trans>Updating…</Trans>
+              </span>
             )}
             {onSelectAll && (
               <Button
@@ -166,7 +170,7 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
           </>
         ) : (
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-            No results
+            <Trans>No results</Trans>
           </div>
         )}
       </div>

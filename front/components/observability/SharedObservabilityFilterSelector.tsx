@@ -14,9 +14,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
-function getVersionValue(versionMarker: AgentVersionMarker) {
+function getVersionValue(
+  versionMarker: AgentVersionMarker,
+  t: (descriptor: MessageDescriptor) => string
+) {
   const date = new Date(versionMarker.timestamp);
   const formattedTimeDisplay = formatDateTime(date, {
     month: "short",
@@ -26,7 +32,8 @@ function getVersionValue(versionMarker: AgentVersionMarker) {
     minute: "2-digit",
   });
 
-  return `v${versionMarker.version}: ${formattedTimeDisplay}`;
+  const { version } = versionMarker;
+  return t(msg`v${version}: ${formattedTimeDisplay}`);
 }
 
 interface ObservabilityModeSelectorProps {
@@ -40,6 +47,7 @@ export function ObservabilityModeSelector({
   agentConfigurationId,
   isCustomAgent,
 }: ObservabilityModeSelectorProps) {
+  const { t } = useLingui();
   const { mode, setMode, period, selectedVersion, setSelectedVersion } =
     useObservabilityContext();
 
@@ -69,12 +77,12 @@ export function ObservabilityModeSelector({
     <ButtonsSwitchList defaultValue={mode} size="xs">
       <ButtonsSwitch
         value="timeRange"
-        label="By Timerange"
+        label={t`By time range`}
         onClick={() => setMode("timeRange")}
       />
       <ButtonsSwitch
         value="version"
-        label="By version"
+        label={t`By version`}
         onClick={() => setMode("version")}
       />
     </ButtonsSwitchList>
@@ -94,6 +102,7 @@ export function ObservabilityPeriodSelector({
   isCustomAgent,
   size = "xs",
 }: ObservabilityPeriodSelectorProps) {
+  const { t } = useLingui();
   const { mode, period, setPeriod, selectedVersion, setSelectedVersion } =
     useObservabilityContext();
 
@@ -111,10 +120,10 @@ export function ObservabilityPeriodSelector({
           <Button
             label={
               selectedVersion
-                ? getVersionValue(selectedVersion)
+                ? getVersionValue(selectedVersion, t)
                 : isVersionMarkersLoading
-                  ? "Loading"
-                  : "Not available"
+                  ? t`Loading`
+                  : t`Not available`
             }
             size={size}
             variant="outline"
@@ -123,11 +132,11 @@ export function ObservabilityPeriodSelector({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel label="Last 30 days" />
+          <DropdownMenuLabel label={t`Last 30 days`} />
           {(versionMarkers ?? []).map((marker) => (
             <DropdownMenuItem
               key={marker.version}
-              label={getVersionValue(marker)}
+              label={getVersionValue(marker, t)}
               onClick={() => setSelectedVersion(marker)}
             />
           ))}
@@ -140,7 +149,7 @@ export function ObservabilityPeriodSelector({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          label={`Last ${period} days`}
+          label={t`Last ${plural(period, { one: "# day", other: "# days" })}`}
           size={size}
           variant="outline"
           isSelect
@@ -150,7 +159,7 @@ export function ObservabilityPeriodSelector({
         {OBSERVABILITY_TIME_RANGE.map((p) => (
           <DropdownMenuItem
             key={p}
-            label={`Last ${p} days`}
+            label={t`Last ${plural(p, { one: "# day", other: "# days" })}`}
             onClick={() => setPeriod(p)}
           />
         ))}

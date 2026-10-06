@@ -15,6 +15,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { ResponsiveContainer } from "recharts";
@@ -52,6 +53,7 @@ export function ChartContainer({
   isAllowFullScreen,
   showHeaderDivider,
 }: ChartContainerProps) {
+  const { t } = useLingui();
   const message = isLoading ? null : (errorMessage ?? emptyMessage);
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
@@ -77,7 +79,7 @@ export function ChartContainer({
                 variant="ghost"
                 size="xs"
                 onClick={() => setIsFullscreen(true)}
-                tooltip="View fullscreen"
+                tooltip={t`View fullscreen`}
               />
             )}
           </div>

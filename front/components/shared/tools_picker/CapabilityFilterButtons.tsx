@@ -1,5 +1,6 @@
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { Button } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface CapabilityFilterButtonsProps {
   filter: CapabilityFilterType;
@@ -12,22 +13,24 @@ export function CapabilityFilterButtons({
   setFilter,
   size = "sm",
 }: CapabilityFilterButtonsProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex gap-2">
       <Button
-        label="All"
+        label={t({ message: "All", context: "capability filter" })}
         variant={filter === "all" ? "primary" : "outline"}
         size={size}
         onClick={() => setFilter("all")}
       />
       <Button
-        label="Skills"
+        label={t`Skills`}
         variant={filter === "skills" ? "primary" : "outline"}
         size={size}
         onClick={() => setFilter("skills")}
       />
       <Button
-        label="Tools"
+        label={t`Tools`}
         variant={filter === "tools" ? "primary" : "outline"}
         size={size}
         onClick={() => setFilter("tools")}

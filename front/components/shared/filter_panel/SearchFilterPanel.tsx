@@ -12,8 +12,8 @@ import type {
 } from "@app/components/shared/filter_panel/searchFilter";
 import {
   getSearchFilterActiveUsersCount,
+  getSearchFilterCategoryLabels,
   getSearchFilterOptions,
-  SEARCH_FILTER_CATEGORY_LABEL,
   toUsageFilterOption,
 } from "@app/components/shared/filter_panel/searchFilter";
 import { UsageRangeFilter } from "@app/components/shared/filter_panel/UsageRangeFilter";
@@ -21,7 +21,9 @@ import type { FilterPanelState } from "@app/components/shared/filter_panel/useFi
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getSkillIcon } from "@app/lib/skill";
 import { Avatar, Icon } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 function renderOptionIcon(option: SearchFilterOption) {
   switch (option.category) {
@@ -70,19 +72,22 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
   onOpen,
   onClearAll,
 }: SearchFilterPanelProps<Category>) {
+  const { t } = useLingui();
   const { user } = useAuth();
+  const categoryLabels = useMemo(() => getSearchFilterCategoryLabels(t), [t]);
 
   return (
     <FilterPanel
       panel={panel}
       categories={categories}
-      categoryLabels={SEARCH_FILTER_CATEGORY_LABEL}
+      categoryLabels={categoryLabels}
       filter={filter}
       onFilterChange={onFilterChange}
       activeCategoryOptions={getSearchFilterOptions(
         panel.activeCategory,
         facets,
-        user.sId
+        user.sId,
+        t
       )}
       status={isLoading ? "loading" : "idle"}
       isError={isError}
@@ -99,7 +104,7 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
                 const cleared = clearFilterCategory(draft, category);
                 return range
                   ? selectAllFilterOptions(cleared, category, [
-                      toUsageFilterOption(range),
+                      toUsageFilterOption(range, t),
                     ])
                   : cleared;
               })

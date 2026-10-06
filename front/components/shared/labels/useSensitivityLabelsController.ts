@@ -5,6 +5,7 @@ import {
   useDataClassificationLabels,
 } from "@app/lib/swr/data_classification_labels";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   SensitivityLabelSource,
@@ -24,6 +25,7 @@ export function useSensitivityLabelsController({
   source: SensitivityLabelSource;
   disabled?: boolean;
 }): SensitivityLabelsController {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const {
     dataClassificationLabels,
@@ -88,16 +90,18 @@ export function useSensitivityLabelsController({
 
       sendNotification({
         type: "error",
-        title: "Failed to update labels setting",
+        title: t`Failed to update labels setting`,
         description: result.error,
       });
       return false;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update sensitivity labels setting",
+        title: t`Failed to update sensitivity labels setting`,
         description:
-          error instanceof Error ? error.message : "An unknown error occurred.",
+          error instanceof Error
+            ? error.message
+            : t`An unknown error occurred.`,
       });
       return false;
     } finally {
@@ -111,6 +115,7 @@ export function useSensitivityLabelsController({
     pendingAllowedLabels,
     sendNotification,
     source,
+    t,
   ]);
 
   return {

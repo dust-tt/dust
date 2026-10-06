@@ -111,8 +111,7 @@ export function SkillsBatchEditBar({
   return (
     <BulkSelectionBar
       selectedCount={selectedCount}
-      totalCount={totalCount}
-      itemLabel="skill"
+      selectAllLabel={t`Select all ${plural(totalCount, { one: "# skill", other: "# skills" })}`}
       canSelectAll={totalCount > selectedCount}
       onSelectAll={onSelectAll}
       onClear={onClear}

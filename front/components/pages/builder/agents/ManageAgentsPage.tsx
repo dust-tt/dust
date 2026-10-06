@@ -22,7 +22,7 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
-import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { getSearchFilterCategorySingularLabels } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
   useSetContentWidth,
@@ -485,7 +485,7 @@ export function ManageAgentsPage({
             summaries={getFilterSummaries(
               visibleFilter,
               filterCategories,
-              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+              getSearchFilterCategorySingularLabels(t)
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))

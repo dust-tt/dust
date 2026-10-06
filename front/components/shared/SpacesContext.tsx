@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { EnrichedSpaceType, PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo } from "react";
 
@@ -28,6 +29,7 @@ interface SpacesProviderProps {
 }
 
 export const SpacesProvider = ({ owner, children }: SpacesProviderProps) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { spaces, isSpacesLoading, isSpacesError } = useSpaces({
     kinds: "all",
@@ -38,11 +40,11 @@ export const SpacesProvider = ({ owner, children }: SpacesProviderProps) => {
     if (isSpacesError) {
       sendNotification({
         type: "error",
-        title: "Failed to load spaces",
-        description: "Unable to fetch workspace spaces. Please try again.",
+        title: t`Failed to load spaces`,
+        description: t`Unable to fetch workspace spaces. Please try again.`,
       });
     }
-  }, [isSpacesError, sendNotification]);
+  }, [isSpacesError, sendNotification, t]);
 
   const value: SpacesContextType = useMemo(
     () => ({

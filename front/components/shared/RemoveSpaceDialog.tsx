@@ -8,6 +8,7 @@ import { getSkillAvatarIcon, getSkillIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
 import { Chip, File02, Icon, ShapesPlus } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React, { useContext } from "react";
 
 function getActionDisplayName(
@@ -95,6 +96,7 @@ export function useRemoveSpaceConfirm({
   mcpServerViews,
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
+  const { t } = useLingui();
 
   return ({
     space,
@@ -121,16 +123,30 @@ export function useRemoveSpaceConfirm({
     ];
 
     const hasKnowledge = knowledge.length > 0;
+    const isPod = space.kind === "project";
+    const spaceName = getSpaceName(space);
+
+    const getIntroduction = () => {
+      if (!hasKnowledge) {
+        return entityName === "agent"
+          ? t`This will remove the following elements from the agent:`
+          : t`This will remove the following elements from the skill:`;
+      }
+      if (isPod) {
+        return entityName === "agent"
+          ? t`The following elements from this Pod are used in the agent:`
+          : t`The following elements from this Pod are used in the skill:`;
+      }
+      return entityName === "agent"
+        ? t`The following elements from this space are used in the agent:`
+        : t`The following elements from this space are used in the skill:`;
+    };
 
     return confirm({
-      title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "Pod" : "space"}`,
+      title: isPod ? t`Remove ${spaceName} Pod` : t`Remove ${spaceName} space`,
       message: (
         <div className="space-y-3">
-          <p className="text-sm">
-            {hasKnowledge
-              ? `The following elements from this ${space.kind === "project" ? "Pod" : "space"} are used in the ${entityName}:`
-              : `This will remove the following elements from the ${entityName}:`}
-          </p>
+          <p className="text-sm">{getIntroduction()}</p>
           <span className="flex flex-wrap items-center gap-1">
             {allItems.map((item, index) => (
               <span key={item.id} className="inline-flex items-center gap-1">
@@ -144,13 +160,22 @@ export function useRemoveSpaceConfirm({
           </span>
           {hasKnowledge && (
             <p className="text-sm">
-              To remove this {space.kind === "project" ? "Pod" : "space"}, first
-              update your instructions to remove the knowledge references.
+              {isPod ? (
+                <Trans>
+                  To remove this Pod, first update your instructions to remove
+                  the knowledge references.
+                </Trans>
+              ) : (
+                <Trans>
+                  To remove this space, first update your instructions to remove
+                  the knowledge references.
+                </Trans>
+              )}
             </p>
           )}
         </div>
       ),
-      validateLabel: "OK",
+      validateLabel: t`OK`,
       validateVariant: "warning",
       validateDisabled: hasKnowledge,
     });
@@ -163,6 +188,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
   mcpServerViews: MCPServerViewType[];
 }) {
   const confirm = useContext(ConfirmContext);
+  const { t } = useLingui();
 
   return ({
     space,
@@ -170,13 +196,17 @@ export function useBlockedSkillSpaceRemovalConfirm({
     knowledge,
     skills = [],
   }: ConfirmBlockedSkillSpaceRemovalParams): Promise<boolean> => {
+    const spaceName = getSpaceName(space);
+
     return confirm({
-      title: `${getSpaceName(space)} can't be removed`,
+      title: t`${spaceName} can't be removed`,
       message: (
         <div className="space-y-3">
           <p className="text-sm">
-            This space can't be removed from the skill because the skill uses
-            knowledge or capabilities that belong to it.
+            <Trans>
+              This space can't be removed from the skill because the skill uses
+              knowledge or capabilities that belong to it.
+            </Trans>
           </p>
           <div className="flex flex-wrap gap-2">
             {knowledge.map((knowledgeItem) => (
@@ -208,13 +238,15 @@ export function useBlockedSkillSpaceRemovalConfirm({
             ))}
           </div>
           <p className="text-sm text-muted-foreground">
-            Update the skill to stop relying on these items, then remove the
-            space.
+            <Trans>
+              Update the skill to stop relying on these items, then remove the
+              space.
+            </Trans>
           </p>
         </div>
       ),
-      cancelLabel: "Close",
-      validateLabel: "Remove",
+      cancelLabel: t`Close`,
+      validateLabel: t`Remove`,
       validateVariant: "warning",
       validateDisabled: true,
     });

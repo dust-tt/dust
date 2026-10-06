@@ -20,6 +20,7 @@ import {
   SheetTitle,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -64,6 +65,7 @@ export function SpaceSelectionSheet({
   selectedSpaces,
   setSelectedSpaces,
 }: SpaceSelectionSheetProps) {
+  const { t } = useLingui();
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleClose = () => {
@@ -87,16 +89,27 @@ export function SpaceSelectionSheet({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Data and access</SheetTitle>
+          <SheetTitle>
+            <Trans>Data and access</Trans>
+          </SheetTitle>
           <SheetDescription>
-            Adding spaces or pods will make the data from each of them available
-            to {entityName}.
+            {entityName === "agent" ? (
+              <Trans>
+                Adding spaces or pods will make the data from each of them
+                available to the agent.
+              </Trans>
+            ) : (
+              <Trans>
+                Adding spaces or pods will make the data from each of them
+                available to the skill.
+              </Trans>
+            )}
           </SheetDescription>
           <SearchInput
             name="space"
             onChange={(query) => setSearchQuery(query)}
             value={searchQuery}
-            placeholder="Search spaces and Pods"
+            placeholder={t`Search spaces and Pods`}
             className="mt-4"
           />
         </SheetHeader>
@@ -112,12 +125,12 @@ export function SpaceSelectionSheet({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: handleSave,
           }}
@@ -135,6 +148,7 @@ function SpaceSelectionPageContent({
   searchQuery = "",
   missingSpaceIds = [],
 }: SpaceSelectionPageProps) {
+  const { t } = useLingui();
   const { spaces, owner } = useSpacesContext();
   const { spaces: missingSpaces } = useSpaceProjectsLookup({
     workspaceId: owner.sId,
@@ -229,7 +243,9 @@ function SpaceSelectionPageContent({
     <div className="flex flex-col gap-4">
       {selectableSpaces.length > 0 ? (
         <div className="flex flex-col">
-          <ListItemSection size="sm">Spaces</ListItemSection>
+          <ListItemSection size="sm">
+            <Trans>Spaces</Trans>
+          </ListItemSection>
           <ListGroup>
             {spacesTableData.map((row) => {
               const SpaceIcon = getSpaceIcon(row.space);
@@ -267,7 +283,7 @@ function SpaceSelectionPageContent({
                 return (
                   <Tooltip
                     key={row.sId}
-                    label="Used by other resources"
+                    label={t`Used by other resources`}
                     side="right"
                     trigger={rowContent}
                   />
@@ -278,7 +294,9 @@ function SpaceSelectionPageContent({
             })}
           </ListGroup>
           <>
-            <ListItemSection size="sm">Pods</ListItemSection>
+            <ListItemSection size="sm">
+              <Trans>Pods</Trans>
+            </ListItemSection>
             <ListGroup>
               {projectsTableData.map((row) => {
                 const ProjectIcon = getSpaceIcon(row.space);
@@ -316,7 +334,7 @@ function SpaceSelectionPageContent({
                   return (
                     <Tooltip
                       key={row.sId}
-                      label="Used by other resources"
+                      label={t`Used by other resources`}
                       side="right"
                       trigger={rowContent}
                     />
@@ -331,8 +349,8 @@ function SpaceSelectionPageContent({
       ) : (
         <div className="py-4 text-center text-sm text-muted-foreground">
           {searchQuery.length > 0
-            ? "No results found for your search"
-            : "No spaces and Pods available"}
+            ? t`No results found for your search`
+            : t`No spaces and Pods available`}
         </div>
       )}
     </div>

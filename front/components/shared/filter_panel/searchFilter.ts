@@ -7,50 +7,66 @@ import type {
   CategoryFilter,
   FilterOptionBase,
 } from "@app/components/shared/filter_panel/filterState";
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/skillAvailabilityDisplay";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { compareStrings } from "@app/lib/i18n/format";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import mapValues from "lodash/mapValues";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // Every category a search-backed listing (Manage Agents, Manage Skills) can filter on. Each listing
 // picks its own categories and turns their selections into its search filters.
-export const SEARCH_FILTER_CATEGORY_LABEL = {
-  access: "Access",
-  availability: "Availability",
-  editor: "Editors",
-  model: "Models",
-  skill: "Skills",
-  space: "Spaces",
-  tag: "Tags",
-  tool: "Tools",
-  usage: "Usage",
-} as const;
+const SEARCH_FILTER_CATEGORY_LABEL = {
+  access: msg({ message: "Access", context: "filter category" }),
+  availability: msg({ message: "Availability", context: "filter category" }),
+  editor: msg({ message: "Editors", context: "filter category" }),
+  model: msg({ message: "Models", context: "filter category" }),
+  skill: msg({ message: "Skills", context: "filter category" }),
+  space: msg({ message: "Spaces", context: "filter category" }),
+  tag: msg({ message: "Tags", context: "filter category" }),
+  tool: msg({ message: "Tools", context: "filter category" }),
+  usage: msg({ message: "Usage", context: "filter category" }),
+};
 
 export type SearchFilterCategory = keyof typeof SEARCH_FILTER_CATEGORY_LABEL;
 
-export const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
+const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   SearchFilterCategory,
-  string
+  MessageDescriptor
 > = {
-  access: "Access",
-  availability: "Availability",
-  editor: "Editor",
-  model: "Model",
-  skill: "Skill",
-  space: "Space",
-  tag: "Tag",
-  tool: "Tool",
-  usage: "Usage",
+  access: msg({ message: "Access", context: "filter category" }),
+  availability: msg({ message: "Availability", context: "filter category" }),
+  editor: msg({ message: "Editor", context: "filter category" }),
+  model: msg({ message: "Model", context: "filter category" }),
+  skill: msg({ message: "Skill", context: "filter category" }),
+  space: msg({ message: "Space", context: "filter category" }),
+  tag: msg({ message: "Tag", context: "filter category" }),
+  tool: msg({ message: "Tool", context: "filter category" }),
+  usage: msg({ message: "Usage", context: "filter category" }),
 };
+
+export function getSearchFilterCategoryLabels(
+  t: Translate
+): Record<SearchFilterCategory, string> {
+  return mapValues(SEARCH_FILTER_CATEGORY_LABEL, (label) => t(label));
+}
+
+export function getSearchFilterCategorySingularLabels(
+  t: Translate
+): Record<SearchFilterCategory, string> {
+  return mapValues(SEARCH_FILTER_CATEGORY_SINGULAR_LABEL, (label) => t(label));
+}
 
 export type SearchFilterOption = FilterOptionBase &
   (
@@ -98,9 +114,12 @@ export interface SearchFilterFacets {
   usage?: { min: number | null; max: number | null };
 }
 
-const ACCESS_FILTER_OPTIONS: SearchFilterOption[] = [
-  { category: "access", id: "visible", name: "Published", disabled: false },
-  { category: "access", id: "hidden", name: "Not published", disabled: false },
+const ACCESS_FILTER_OPTIONS: {
+  id: Exclude<AgentConfigurationScope, "global">;
+  name: MessageDescriptor;
+}[] = [
+  { id: "visible", name: msg`Published` },
+  { id: "hidden", name: msg`Not published` },
 ];
 
 export function getModelFilterDisplayName(modelId: string): string {
@@ -145,17 +164,23 @@ function toToolFilterOptions(
 // Access options are static; the others are the values held by the matching resources.
 /**
  * @cc [owner:aubin-tchoi,label:product] current-editor-name
- * Editor options MUST use the editor's full name, with ` (You)` appended for the
+ * Editor options MUST use the editor's full name, with ` (You)` (translated) appended for the
  * current user. The current user's option MUST be listed first when present.
  */
 export function getSearchFilterOptions(
   category: SearchFilterCategory,
   facets: SearchFilterFacets | undefined,
-  currentUserId: string
+  currentUserId: string,
+  t: Translate
 ): SearchFilterOption[] {
   switch (category) {
     case "access":
-      return ACCESS_FILTER_OPTIONS;
+      return ACCESS_FILTER_OPTIONS.map(({ id, name }) => ({
+        category: "access",
+        id,
+        name: t(name),
+        disabled: false,
+      }));
     case "availability": {
       const availabilities = new Set(
         (facets?.availability ?? []).map(({ availability }) => availability)
@@ -165,22 +190,25 @@ export function getSearchFilterOptions(
       ).map((availability) => ({
         category: "availability",
         id: availability,
-        name: SKILL_AVAILABILITY_DISPLAY[availability].label,
+        name: t(SKILL_AVAILABILITY_DISPLAY[availability].label),
         disabled: false,
       }));
     }
     case "editor":
       return (facets?.editors ?? [])
-        .map((editor): SearchFilterOption => ({
-          category: "editor",
-          id: editor.sId,
-          name:
-            editor.sId === currentUserId
-              ? `${editor.fullName} (You)`
-              : editor.fullName,
-          image: editor.image,
-          disabled: false,
-        }))
+        .map((editor): SearchFilterOption => {
+          const { fullName } = editor;
+          return {
+            category: "editor",
+            id: editor.sId,
+            name:
+              editor.sId === currentUserId
+                ? t(msg`${fullName} (You)`)
+                : fullName,
+            image: editor.image,
+            disabled: false,
+          };
+        })
         .toSorted(
           (a, b) =>
             Number(b.id === currentUserId) - Number(a.id === currentUserId)
@@ -323,12 +351,14 @@ export function resolveSearchFilterSelection<
   knownOptions,
   facets,
   currentUserId,
+  t,
 }: {
   selection: SearchFilterSelection<Category>;
   categories: readonly Category[];
   knownOptions: ReadonlyMap<string, SearchFilterOption>;
   facets: SearchFilterFacets | undefined;
   currentUserId: string;
+  t: Translate;
 }): {
   filter: SearchFilter<Category>;
   unresolvedCategories: Category[];
@@ -347,7 +377,7 @@ export function resolveSearchFilterSelection<
 
   for (const category of categories) {
     const optionsByKey = new Map(
-      getSearchFilterOptions(category, allFacets, currentUserId).flatMap(
+      getSearchFilterOptions(category, allFacets, currentUserId, t).flatMap(
         (option) =>
           getSearchFilterOptionKeys(option).map((key) => [key, option])
       )
@@ -360,7 +390,7 @@ export function resolveSearchFilterSelection<
       const resolved =
         optionsByKey.get(key) ??
         knownOptions.get(key) ??
-        (category === "usage" ? parseUsageFilterOption(id) : undefined);
+        (category === "usage" ? parseUsageFilterOption(id, t) : undefined);
       const option = resolved ?? toUnresolvedOption(category, id, label);
       if (!option) {
         continue;
@@ -396,24 +426,36 @@ export function resolveSearchFilterSelection<
   return { filter, unresolvedCategories, unresolvedKeys };
 }
 
-export function toUsageFilterOption({
-  min,
-  max,
-}: {
-  min: number;
-  max: number;
-}): SearchFilterOption {
+export function toUsageFilterOption(
+  {
+    min,
+    max,
+  }: {
+    min: number;
+    max: number;
+  },
+  t: Translate
+): SearchFilterOption {
+  const usageRange = min === max ? `${min}` : `${min}–${max}`;
   return {
     category: "usage",
     id: `${min}-${max}`,
-    name: `${min === max ? min : `${min}–${max}`} active user${pluralize(max)}`,
+    name: t(
+      msg`${plural(max, {
+        one: `${usageRange} active user`,
+        other: `${usageRange} active users`,
+      })}`
+    ),
     min,
     max,
     disabled: false,
   };
 }
 
-function parseUsageFilterOption(id: string): SearchFilterOption | undefined {
+function parseUsageFilterOption(
+  id: string,
+  t: Translate
+): SearchFilterOption | undefined {
   const match = /^(\d+)-(\d+)$/.exec(id);
   if (!match) {
     return undefined;
@@ -421,7 +463,7 @@ function parseUsageFilterOption(id: string): SearchFilterOption | undefined {
   const min = Number(match[1]);
   const max = Number(match[2]);
   return Number.isSafeInteger(min) && Number.isSafeInteger(max) && min <= max
-    ? toUsageFilterOption({ min, max })
+    ? toUsageFilterOption({ min, max }, t)
     : undefined;
 }
 
