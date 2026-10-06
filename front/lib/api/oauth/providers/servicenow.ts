@@ -172,7 +172,6 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
     // client_secret must never be persisted in connection metadata (stored unencrypted,
     // unlike credential content) or end up in logs, so strip it unconditionally before
     // any branch below has a chance to forward it through untouched.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...safeConfig } = extraConfig;
 
     if (useCase === "personal_actions" || useCase === "platform_actions") {

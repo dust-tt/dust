@@ -49,7 +49,6 @@ class FreshserviceClient {
     const apiDomain = normalizeApiDomain(this.freshserviceDomain);
     const url = `https://${apiDomain}/api/v2/${endpoint}`;
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(url, {
       ...options,
       headers: {

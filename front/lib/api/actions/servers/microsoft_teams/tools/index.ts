@@ -467,7 +467,6 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
                       .get();
 
                 // Check chats in the current page
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 for (const chat of chatsResponse.value || []) {
                   const chatMemberIds = chat.members
                     .map((member: { userId: string }) => member.userId)

@@ -21,7 +21,6 @@ class PluginManager {
         for (const rt of resourceTypes) {
           // Initialize and push in one statement.
           (this.pluginsByResourceType[rt] =
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             this.pluginsByResourceType[rt] || []).push(plugin);
         }
 
@@ -41,7 +40,6 @@ class PluginManager {
   }
 
   getPluginsForResourceType(resourceType: SupportedResourceType): AllPlugins[] {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return this.pluginsByResourceType[resourceType] || [];
   }
 

@@ -194,7 +194,6 @@ const fetchFromOutlook = async (
     headers["Prefer"] = `outlook.timezone="${userTimezone}"`;
   }
 
-  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
     headers,
@@ -204,7 +203,6 @@ const fetchFromOutlook = async (
 const getErrorText = async (response: Response): Promise<string> => {
   try {
     const errorData = await response.json();
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return errorData.error?.message || errorData.error?.code || "Unknown error";
   } catch {
     return "Unknown error";
@@ -229,7 +227,6 @@ export async function getUserTimezone(
     }
 
     const result = await response.json();
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return result.timeZone || "UTC";
   } catch (error) {
     localLogger.error({ error }, "Error getting user timezone");
@@ -267,7 +264,6 @@ export async function listCalendars(
     const result = await response.json();
     const calendarsResult = z
       .array(OutlookCalendarSchema)
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       .safeParse(result.value || []);
 
     if (!calendarsResult.success) {
@@ -335,7 +331,6 @@ export async function listEvents(
       const result = await response.json();
       const eventsResult = z
         .array(OutlookEventSchema)
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         .safeParse(result.value || []);
 
       if (!eventsResult.success) {
@@ -403,7 +398,6 @@ export async function listEvents(
       const result = await response.json();
       const eventsResult = z
         .array(OutlookEventSchema)
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         .safeParse(result.value || []);
 
       if (!eventsResult.success) {
@@ -607,7 +601,6 @@ export async function updateEvent(
   }
   if (body !== undefined) {
     event.body = {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       contentType: contentType || "text",
       content: body,
     };
@@ -615,14 +608,12 @@ export async function updateEvent(
   if (startDateTime !== undefined) {
     event.start = {
       dateTime: startDateTime,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       timeZone: timeZone || "UTC",
     };
   }
   if (endDateTime !== undefined) {
     event.end = {
       dateTime: endDateTime,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       timeZone: timeZone || "UTC",
     };
   }
@@ -789,7 +780,6 @@ export async function checkAvailability(
             ? [{ start: startTime, end: endTime }]
             : [],
         availabilityView: schedule.availabilityView,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       })) || [];
 
     return {

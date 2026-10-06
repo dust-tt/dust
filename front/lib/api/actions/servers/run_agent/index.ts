@@ -374,7 +374,6 @@ export const runAgent = async (
   }
 
   const requestChildCancellation = () => {
-    /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     if (!childCancellationPromise) {
       childCancellationPromise = cancelAgentLoop(auth, {
         messageIds: [agentMessage.sId],
@@ -693,7 +692,6 @@ export const runAgent = async (
       if (agentMessage && agentMessage.status === "succeeded") {
         const { finalText, cot, refsFromAgent, files } =
           getFinishedContent(agentMessage);
-        /* eslint-disable-next-line @typescript-eslint/return-await */
         return await finalizeAndReturn(
           new Ok(
             buildSuccessContent({

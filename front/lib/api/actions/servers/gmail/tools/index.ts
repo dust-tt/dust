@@ -207,7 +207,6 @@ async function buildReplyContext(params: {
   }
 
   // Determine recipients
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const headers = originalMessage.payload?.headers || [];
   const originalFrom = getHeaderValue(headers, "From");
   const originalDate = getHeaderValue(headers, "Date");
@@ -215,7 +214,6 @@ async function buildReplyContext(params: {
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
   const originalSubject = getHeaderValue(headers, "Subject") ?? null;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const replyTo = params.to?.length ? params.to : originalFrom?.split(", ");
   const replyCc = params.cc?.length
     ? params.cc

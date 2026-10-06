@@ -99,7 +99,6 @@ const fetchFromOutlook = async (
   accessToken: string,
   options?: RequestInit
 ): Promise<Response> => {
-  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
     headers: {
@@ -139,7 +138,6 @@ const parseRetryAfterSeconds = (
 const getErrorText = async (response: Response): Promise<string> => {
   try {
     const errorData = await response.json();
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return errorData.error?.message || errorData.error?.code || "Unknown error";
   } catch {
     return "Unknown error";
@@ -1014,7 +1012,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         type: "text" as const,
         text: JSON.stringify(
           {
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             messages: (result.value || []) as OutlookMessage[],
             nextLink: result["@odata.nextLink"],
             totalCount: result["@odata.count"],
@@ -1431,7 +1428,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     // Get detailed information for each draft
     const draftDetails = await concurrentExecutor(
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       result.value || [],
       async (draft: { id: string }): Promise<OutlookMessage | null> => {
         const draftResponse = await fetchFromOutlook(
@@ -1974,7 +1970,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         type: "text" as const,
         text: JSON.stringify(
           {
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             contacts: (result.value || []) as OutlookContact[],
             nextLink: result["@odata.nextLink"],
             totalCount: result["@odata.count"],

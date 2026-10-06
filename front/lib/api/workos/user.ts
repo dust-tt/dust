@@ -364,7 +364,6 @@ export async function getWorkOSSessionFromCookie(
         );
 
         return {
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           cookie: cookie || refreshedCookie,
           session,
         };

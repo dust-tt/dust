@@ -318,7 +318,6 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     const csvContent = csvRows
       .map((row) =>
         input.propertiesToExport
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           .map((prop) => `"${String(row[prop] || "").replace(/"/g, '""')}"`)
           .join(",")
       )
@@ -697,7 +696,6 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
         },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
