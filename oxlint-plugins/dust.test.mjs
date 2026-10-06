@@ -150,6 +150,18 @@ const CASES = [
     `import { N } from "@app/components/editor/extensions/node";`,
     0,
   ],
+  [
+    "noClientImportsInServer",
+    "e.ts",
+    `import { loadDfm } from "@app/components/editor/document/dfm_persistence";`,
+    0,
+  ],
+  [
+    "noClientImportsInServer",
+    "f.ts",
+    `import { Document } from "@app/components/editor/document/Document";`,
+    1,
+  ],
   ["noNextImports", "a.ts", `import Head from "next/head";`, 1],
   [
     "noNextImports",

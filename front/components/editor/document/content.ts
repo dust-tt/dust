@@ -20,7 +20,7 @@ import { MarkdownManager } from "@tiptap/markdown";
 import type { Node } from "@tiptap/pm/model";
 import { Fragment } from "@tiptap/pm/model";
 
-const documentSchema = getSchema(documentExtensions);
+export const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });
