@@ -73,6 +73,37 @@ The `page cache` and `search` labels below are jd's workload categories; search 
 +--------------+------------------------------------------------+-------+------------+--------+
 ```
 
+## Cold open + fstat + close: RPC counts
+
+Focused rerun on 2026-10-06 using harness `8203a56c5c` and the **same server/FUSE binaries and
+defaults** as the full table. New isolated 10k corpus, fresh server/session/mount, FDB/OS caches
+retained. Only the first `open + fstat + close` pass ran: **35,921.14ms**, all sizes verified.
+This is a separate measurement; the original full-suite row above is unchanged.
+
+| RPC | Calls | Cumulative client elapsed (s) |
+| --- | ---: | ---: |
+| Lookup | 4,382 | 24.548 |
+| List (directory attribute prefetch) | 556 | 4.871 |
+| Stat | 37 | 0.138 |
+| **Workload total** | **4,975** | **29.557** |
+| CurrentSession (mount setup, excluded above) | 1 | 0.000346 |
+
+**0.4975 workload RPCs/file**; 4,976 including mount setup. No Read, mutation, or fsync RPCs.
+Open/close use local handles; metadata cache misses use the RPCs above. Directory prefetch overlaps
+foreground work, so cumulative RPC elapsed is not additive wall time. The original full-suite
+counters combined cold and warm; this first-only run isolates them without changing the runtime.
+
+Client/server Lookup/List/Stat counts agree exactly, all completed with zero errors, and the server
+reported no active handlers at shutdown. Mount counters additionally show **154,004 FUSE lookup**
+and **174,006 getattr** callbacks, plus 10,000 each of open/flush/release. These kernel-to-client calls
+are distinct from network RPCs; the userspace cache handles most of them.
+
+Reproduce by appending `--workload-prefix 'open + fstat + close' --first-only` to the GCP benchmark
+command. Population and manifest setup use separate mounts; `case-2-client-metrics.json` contains
+only this cold pass, its background directory prefetch, and mount initialization. Report:
+`/var/log/dfs-bench/v4/fstat-first-8203a56c5c-20261006/benchmark/run.json`. The focused run and service
+restoration both exited **0**. It omits scratch writes and does not resolve the full-suite cleanup bug.
+
 ## Where time is spent
 
 Cumulative instrumented seconds; read rows cover **first + warm** and their small untimed setup.
