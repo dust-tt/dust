@@ -5,8 +5,9 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the documents MCP server for commenting on Markdown documents. Its view only exists in
- * workspaces with `co_edition`, so a missing view is expected and not logged.
+ * Get the documents MCP server for commenting on Markdown documents. Its view is created only
+ * in workspaces with `co_edition`, so a missing view is expected and not logged. Disabling the
+ * flag does not delete the view, so the tool itself refuses to sign outside `co_edition`.
  */
 export function getDocumentsServer(
   conversation: ConversationWithoutContentType,
