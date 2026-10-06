@@ -7,7 +7,9 @@ use uuid::Uuid;
 
 use crate::{
     databases::{
-        csv::{GoogleCloudStorageCSVContent, MAX_CSV_FILE_SIZE_BYTES, MAX_TABLE_ROWS},
+        csv::{
+            GoogleCloudStorageCSVContent, MAX_CSV_FILE_SIZE_BYTES, MAX_TABLE_CELLS, MAX_TABLE_ROWS,
+        },
         table::{Row, Table},
         table_schema::TableSchema,
     },
@@ -19,6 +21,7 @@ use crate::{
 // match the limits of a single CSV file, which the worker must be able to handle anyway.
 const MAX_BATCH_BYTES: u64 = MAX_CSV_FILE_SIZE_BYTES;
 const MAX_BATCH_ROWS: usize = MAX_TABLE_ROWS;
+const MAX_BATCH_CELLS: usize = MAX_TABLE_CELLS;
 
 pub struct PendingCsvFile {
     pub name: String,
@@ -123,10 +126,10 @@ impl GoogleCloudStorageBackgroundProcessingStore {
     /**
      * @cc [owner:davidebbo,label:performance;security] bounded-batch
      * Only a prefix of `files` (expected oldest first) is read, and the returned count is its
-     * length. The prefix MUST NOT exceed `MAX_BATCH_BYTES` (by listed size) or `MAX_BATCH_ROWS`
-     * (parsed rows), except that the first file is always included when `files` is non-empty so
-     * the queue keeps draining. Files past the prefix MUST NOT be read beyond the one file whose
-     * rows overflow the row budget.
+     * length. The prefix MUST NOT exceed `MAX_BATCH_BYTES` (by listed size), `MAX_BATCH_ROWS`
+     * (parsed rows) or `MAX_BATCH_CELLS` (parsed row columns), except that the first file is
+     * always included when `files` is non-empty so the queue keeps draining. Files past the prefix
+     * MUST NOT be read beyond the one file whose rows overflow the row or cell budget.
      */
     /**
      * @cc [owner:davidebbo,label:product] dedup-last-wins
@@ -149,21 +152,27 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         let mut unique_rows = HashMap::new();
         let mut batch_bytes: u64 = 0;
         let mut batch_rows: usize = 0;
+        let mut batch_cells: usize = 0;
         let mut batch_file_count: usize = 0;
 
-        // Files are read one at a time so that the row budget is enforced as we go, rather than
-        // materialising every pending file before checking it.
+        // Files are read one at a time so that the row and cell budgets are enforced as we go,
+        // rather than materialising every pending file before checking them.
         for file in files {
             if batch_file_count > 0 && batch_bytes + file.size > MAX_BATCH_BYTES {
                 break;
             }
             let rows = get_rows(file.name.clone()).await?;
-            if batch_file_count > 0 && batch_rows + rows.len() > MAX_BATCH_ROWS {
+            let cells: usize = rows.iter().map(|row| row.columns.len()).sum();
+            if batch_file_count > 0
+                && (batch_rows + rows.len() > MAX_BATCH_ROWS
+                    || batch_cells + cells > MAX_BATCH_CELLS)
+            {
                 break;
             }
 
             batch_bytes += file.size;
             batch_rows += rows.len();
+            batch_cells += cells;
             batch_file_count += 1;
 
             // Dedup rows by row_id, keeping only the last one
@@ -236,13 +245,18 @@ mod tests {
     }
 
     fn rows(id_prefix: &str, count: usize, value: &str) -> Vec<Row> {
-        let headers = Arc::new(vec!["value".to_string()]);
+        wide_rows(id_prefix, count, 1, value)
+    }
+
+    fn wide_rows(id_prefix: &str, count: usize, column_count: usize, value: &str) -> Vec<Row> {
+        let headers: Arc<Vec<String>> =
+            Arc::new((0..column_count).map(|i| format!("c{}", i)).collect());
         (0..count)
             .map(|i| {
                 Row::new(
                     format!("{}-{}", id_prefix, i),
                     headers.clone(),
-                    vec![serde_json::Value::String(value.to_string())],
+                    vec![serde_json::Value::String(value.to_string()); column_count],
                 )
             })
             .collect()
@@ -317,6 +331,35 @@ mod tests {
         assert_eq!(batch_file_count, 1);
         assert_eq!(batch_rows.len(), MAX_BATCH_ROWS - 1);
         assert_eq!(read_files, vec!["a".to_string(), "b".to_string()]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_next_batch_stops_at_cell_budget() -> Result<()> {
+        // Each file stays well within the row budget but holds half of the cell budget.
+        let column_count = 100;
+        let row_count = MAX_BATCH_CELLS / column_count / 2;
+        let files = vec![file("a", 1), file("b", 1), file("c", 1)];
+        let contents = HashMap::from([
+            (
+                "a".to_string(),
+                wide_rows("a", row_count, column_count, "a"),
+            ),
+            (
+                "b".to_string(),
+                wide_rows("b", row_count, column_count, "b"),
+            ),
+            ("c".to_string(), wide_rows("c", 1, column_count, "c")),
+        ]);
+
+        let (batch_rows, batch_file_count, read_files) = run_batch(&files, contents).await?;
+
+        assert_eq!(batch_file_count, 2);
+        assert_eq!(batch_rows.len(), 2 * row_count);
+        assert_eq!(
+            read_files,
+            vec!["a".to_string(), "b".to_string(), "c".to_string()]
+        );
         Ok(())
     }
 
