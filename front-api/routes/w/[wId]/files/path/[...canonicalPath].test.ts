@@ -1251,6 +1251,12 @@ describe("comment signatures on Markdown saves", () => {
       (_workspaceId: string, _path: string, userId: string) =>
         file(`user:${userId}`),
     ],
+    [
+      "an unsigned comment in a file stored as Markdown without a Markdown name",
+      "notes",
+      (_workspaceId: string, _path: string, userId: string) =>
+        file(`user:${userId}`),
+    ],
   ])("refuses %s", async (_, fileName, content) => {
     const { workspace, user, path, mountPath } = await setupMarkdown({
       coEdition: true,
@@ -1264,6 +1270,28 @@ describe("comment signatures on Markdown saves", () => {
 
     expect(response.status).toBe(400);
     expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
+  });
+
+  it("writes a file stored as plain text as sent", async () => {
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/plain",
+      size: "7",
+    }));
+    const { workspace, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+      fileName: "notes.txt",
+    });
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: file("user:usr_someone_else"),
+    });
+
+    expect(response.status).toBe(200);
+    expect(fileStorageMock.getObject(mountPath)).toBe(
+      file("user:usr_someone_else")
+    );
   });
 
   it("writes Markdown as sent without co_edition", async () => {

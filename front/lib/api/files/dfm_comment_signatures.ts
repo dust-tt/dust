@@ -431,10 +431,32 @@ export async function readStoredText(
   });
 }
 
+const isMarkdownContentType = (contentType: string | undefined) =>
+  contentType !== undefined &&
+  stripMimeParameters(contentType) === "text/markdown";
+
+// The editor opens a file by its stored content type, so a stored Markdown file is validated
+// whatever its name and the request's content type.
+async function isMarkdownWrite(
+  dustFs: DustFileSystem,
+  scopedPath: string,
+  requestContentType: string | undefined
+): Promise<boolean> {
+  if (
+    contentTypeFromFileName(scopedPath) === "text/markdown" ||
+    isMarkdownContentType(requestContentType)
+  ) {
+    return true;
+  }
+  const stat = await dustFs.stat(scopedPath);
+  return stat.isErr() || isMarkdownContentType(stat.value?.contentType);
+}
+
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-validation-scope
- * Validation MUST run on every content write through the file API's PUT of a file whose name or
- * request content type is `text/markdown`, in a workspace with `co_edition`, against the file as
+ * Validation MUST run on every content write through the file API's PUT of a file whose name,
+ * request content type or stored content type is `text/markdown`, or whose stored content type
+ * cannot be read, in a workspace with `co_edition`, against the file as
  * stored right before the write, and MUST NOT run anywhere else until the codec bounds its input
  * before parsing. It MUST return the revision it validated against, when storage has one, so
  * the write can be conditional on it. Other writes, such as archive extraction and sandbox or
@@ -453,10 +475,8 @@ export async function validateMarkdownCommentsForWrite(
   const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
   if (
     resolvedPath.isErr() ||
-    (contentTypeFromFileName(resolvedPath.value) !== "text/markdown" &&
-      (requestContentType === undefined ||
-        stripMimeParameters(requestContentType) !== "text/markdown")) ||
-    !(await hasFeatureFlag(auth, "co_edition"))
+    !(await hasFeatureFlag(auth, "co_edition")) ||
+    !(await isMarkdownWrite(dustFs, resolvedPath.value, requestContentType))
   ) {
     return new Ok({ revision: undefined });
   }
