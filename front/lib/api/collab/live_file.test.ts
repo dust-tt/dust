@@ -1,10 +1,4 @@
-import {
-  loadLiveDocument,
-  openLiveFile,
-  parseLiveDocumentName,
-  toLiveDocumentName,
-} from "@app/lib/api/collab/live_file";
-import { BODY_FRAGMENT_NAME } from "@app/lib/api/collab/ydoc";
+import { loadLiveDocument, openLiveFile } from "@app/lib/api/collab/live_file";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
@@ -13,6 +7,11 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import {
+  BODY_FRAGMENT_NAME,
+  parseLiveDocumentName,
+  toLiveDocumentName,
+} from "@app/types/collab";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
