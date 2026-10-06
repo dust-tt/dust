@@ -5235,7 +5235,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   },
   {
     id: 10045,
-    name: "Superhuman Docs (Coda)",
+    name: "Superhuman Docs",
     description:
       "Superhuman Docs (Coda) tools for searching, reading and editing docs, pages, tables, comments and formulas.",
     url: "https://docs.superhuman.com/apis/mcp",
