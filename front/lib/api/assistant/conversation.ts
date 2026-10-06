@@ -206,6 +206,11 @@ const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
  * Conversation Creation, update and deletion
  */
 
+/**
+ * @cc [owner:tdraier,label:product] pod-conversation-notification
+ * Creating a pod conversation MUST notify the pod's members, unless `notifyPodMembers` is false,
+ * in which case the caller owns that notification.
+ */
 export async function createConversation(
   auth: Authenticator,
   {
@@ -215,6 +220,7 @@ export async function createConversation(
     triggerId,
     spaceId,
     metadata,
+    notifyPodMembers = true,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
@@ -222,6 +228,7 @@ export async function createConversation(
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
     metadata?: ConversationMetadata;
+    notifyPodMembers?: boolean;
   }
 ): Promise<ConversationResource> {
   let space: SpaceResource | null = null;
@@ -253,7 +260,7 @@ export async function createConversation(
 
   const conversationAsJson = conversation.toJSON();
 
-  if (isPodConversation(conversationAsJson)) {
+  if (notifyPodMembers && isPodConversation(conversationAsJson)) {
     notifyNewProjectConversation(auth, {
       conversation: conversationAsJson,
     });

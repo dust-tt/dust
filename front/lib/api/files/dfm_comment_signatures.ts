@@ -267,7 +267,7 @@ async function signMessage(
   });
 }
 
-const messageKey = (commentId: string, message: DfmMessage) =>
+export const messageKey = (commentId: string, message: DfmMessage) =>
   JSON.stringify([
     commentId,
     message.author.kind,
@@ -280,7 +280,6 @@ const messageKey = (commentId: string, message: DfmMessage) =>
 /** A message a save brings that the stored file did not have. */
 export interface NewCommentMessage {
   commentId: string;
-  /** The text the comment's anchors cover, or null for a thread without anchors. */
   quote: string | null;
   message: DfmMessage;
 }
@@ -351,7 +350,7 @@ export function validateCommentSignatures(
   if (parsed.isErr() || parsed.value.comments.length === 0) {
     return new Ok([]);
   }
-  const quotes = commentQuotes(parsed.value.body);
+  let quotes: Map<string, string> | null = null;
   const newMessages: NewCommentMessage[] = [];
 
   const stored = new Map<
@@ -424,6 +423,7 @@ export function validateCommentSignatures(
           )
         );
       }
+      quotes ??= commentQuotes(parsed.value.body);
       newMessages.push({
         commentId: comment.id,
         quote: quotes.get(comment.id) ?? null,
@@ -454,7 +454,11 @@ export async function readStoredText(
   }
   const buffer = await streamToBuffer(read.value.stream);
   if (buffer.isErr()) {
-    return new Err(new DustFileSystemError("internal", buffer.error));
+    // A file deleted between its lookup and its read does not exist, it is not unreadable.
+    const stat = await dustFs.stat(scopedPath);
+    return stat.isOk() && stat.value === null
+      ? new Ok(null)
+      : new Err(new DustFileSystemError("internal", buffer.error));
   }
   return new Ok({
     text: decodeBuffer(buffer.value),
@@ -475,15 +479,16 @@ const ABSENT_FILE_REVISION = "0";
  * request content type or stored content type is `text/markdown`, in a workspace with
  * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere else
  * until the codec bounds its input before parsing. It MUST return the revision it validated
- * against, when storage has one, so the write can be conditional on it, and the accepted new messages. A write it does not
- * validate MUST be bound to the stored state it was classified against: it MUST return the stored
- * file's revision, or for an absent file the revision that only matches an absent file, and MUST
- * validate the write instead when storage has no revision. A stored file that cannot be read MUST
- * refuse the write with `unreadable_file`, never count as absent. Other writes, such as archive extraction and sandbox or
- * plain agent file writes, are not validated: what they bring can only read as unverified, since
- * signatures bind the file and the thread order. The one exception is `documents.add_comment`,
- * which adds a message the server itself signs for the running agent
- * (`dfm-comment-signing-by-agent`).
+ * against, when storage has one, so the write can be conditional on it, and the accepted new
+ * messages. A write it does not validate MUST be bound to the stored state it was classified
+ * against: it MUST return the stored file's revision, or for an absent file the revision that
+ * only matches an absent file, and MUST validate the write instead when storage has no revision.
+ * A stored file that still exists but cannot be read MUST refuse the write with
+ * `unreadable_file`, never count as absent; one deleted before it could be read counts as absent.
+ * Other writes, such as archive extraction and sandbox or plain agent file writes, are not
+ * validated: what they bring can only read as unverified, since signatures bind the file and the
+ * thread order. The one exception is `documents.add_comment`, which adds a message the server
+ * itself signs for the running agent (`dfm-comment-signing-by-agent`).
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,
@@ -530,12 +535,19 @@ export async function validateMarkdownCommentsForWrite(
   }
 
   let storedText: string | null = null;
+  let storedRevision = stored?.revision;
   if (stored) {
     const buffer = await streamToBuffer(stored.stream);
-    if (buffer.isErr()) {
-      return new Err(unreadableFileError());
+    if (buffer.isOk()) {
+      storedText = decodeBuffer(buffer.value);
+    } else {
+      // A file deleted between its lookup and its read is absent, not unreadable.
+      const stat = await dustFs.stat(scopedPath);
+      if (!stat.isOk() || stat.value !== null) {
+        return new Err(unreadableFileError());
+      }
+      storedRevision = undefined;
     }
-    storedText = decodeBuffer(buffer.value);
   }
 
   const key = getSigningKey();
@@ -562,7 +574,7 @@ export async function validateMarkdownCommentsForWrite(
   );
   return validated.isErr()
     ? validated
-    : new Ok({ revision: stored?.revision, newMessages: validated.value });
+    : new Ok({ revision: storedRevision, newMessages: validated.value });
 }
 
 const unreadableFileError = () =>

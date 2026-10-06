@@ -1,11 +1,14 @@
 import { handleAgentMessage } from "@app/lib/api/assistant/conversation";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { postCommentMention } from "@app/lib/api/files/dfm_comment_mentions";
+import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { ApplicationFailure } from "@temporalio/common";
 
 /**
  * Handle mentions in the agent message content.
@@ -106,4 +109,22 @@ export async function handleMentionsActivity(
     conversation: conversation.toJSON(),
     agentMessage,
   });
+}
+
+export async function postDocumentCommentMentionActivity(
+  authType: AuthenticatorType,
+  {
+    documentPath,
+    newMessage,
+  }: {
+    documentPath: string;
+    newMessage: NewCommentMessage;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
+  const posted = await postCommentMention(auth, { documentPath, newMessage });
+  if (posted.isErr()) {
+    throw ApplicationFailure.retryable(posted.error.message, posted.error.name);
+  }
 }

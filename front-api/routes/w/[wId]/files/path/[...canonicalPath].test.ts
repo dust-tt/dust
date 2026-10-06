@@ -1225,6 +1225,52 @@ describe("comment signatures on Markdown saves", () => {
     expect(fileStorageMock.getObject(mountPath)).toBe(content);
   });
 
+  describe("a stored file that cannot be read", () => {
+    const failStoredRead = () =>
+      fileStorageMock.setFileMetadata(() => ({
+        contentType: "text/markdown",
+        size: "7",
+        generation: "999",
+      }));
+
+    it("refuses the save while the file still exists", async () => {
+      const { workspace, user, path } = await setupMarkdown({
+        coEdition: true,
+      });
+      failStoredRead();
+      const author = `user:${user.sId}`;
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: file(author, signatureFor(workspace.sId, path, author)),
+      });
+
+      expect(response.status).toBe(500);
+    });
+
+    it("saves as a new file when the file was deleted before its read", async () => {
+      const { workspace, user, path, mountPath } = await setupMarkdown({
+        coEdition: true,
+      });
+      failStoredRead();
+      fileStorageMock.setFileExists(
+        () => fileStorageMock.readStreamCalls.length === 0
+      );
+      const author = `user:${user.sId}`;
+      const content = file(author, signatureFor(workspace.sId, path, author));
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: content,
+      });
+
+      expect(response.status).toBeLessThan(300);
+      expect(fileStorageMock.getObject(mountPath)).toBe(content);
+    });
+  });
+
   describe("mention dispatch", () => {
     beforeEach(() => {
       vi.mocked(dispatchCommentMentions).mockClear();

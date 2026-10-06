@@ -378,7 +378,6 @@ const CommentThread = ({
 interface DocumentCommentsPanelProps {
   id: string;
   comments: DocumentCommentsController;
-  /** Renders a message's Markdown body; without it, bodies show as plain text. */
   renderCommentBody?: (body: string) => ReactNode;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;

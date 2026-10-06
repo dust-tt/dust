@@ -1,6 +1,7 @@
 import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
 import {
   agentMentionDirective,
+  getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -17,11 +18,6 @@ const COMMENT_MARKDOWN_PLUGINS: PluggableList = [
 interface AgentMentionProps {
   agentName: string;
   agentId: string;
-}
-
-interface UserMentionProps {
-  userName: string;
-  userId: string;
 }
 
 interface CommentBodyMarkdownProps {
@@ -53,20 +49,7 @@ export function CommentBodyMarkdown({ owner, body }: CommentBodyMarkdownProps) {
           showTooltip={false}
         />
       ),
-      mention_user: ({ userName, userId }: UserMentionProps) => (
-        <MentionDisplay
-          mention={{
-            id: userId,
-            label: userName,
-            type: "user",
-            pictureUrl: "",
-            description: "",
-          }}
-          interactive
-          owner={owner}
-          showTooltip={false}
-        />
-      ),
+      mention_user: getUserMentionPlugin(owner),
     }),
     [owner]
   );
