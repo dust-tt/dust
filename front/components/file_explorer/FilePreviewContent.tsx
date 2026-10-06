@@ -209,7 +209,6 @@ export interface FilePreviewContentData {
   isTooLarge: boolean;
   /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
   isTruncated: boolean;
-  /** The mount accepts writes from this user, per the content route. */
   canWrite: boolean;
   sizeBytes: number;
 }
@@ -388,6 +387,7 @@ export function FilePreviewContent({
             <Document
               key={markdownRichEditor.mountKey}
               initialContent={markdownRichEditor.initialContent}
+              readOnly={markdownRichEditor.readOnly}
               onSave={markdownRichEditor.onSave}
               onStateChange={markdownRichEditor.onStateChange}
               badge={<CoEditionBadge />}

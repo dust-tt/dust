@@ -10,6 +10,8 @@ export interface MarkdownRichEditor {
   /** Changes when the editor must reopen on new content; use it as the component key. */
   mountKey: string;
   initialContent: string;
+  /** The mount refuses writes; the editor keeps its draft without saving it. */
+  readOnly: boolean;
   onSave: (content: string) => Promise<DocumentSaveResult>;
   onStateChange: (state: DocumentDraftState) => void;
 }
@@ -17,6 +19,8 @@ export interface MarkdownRichEditor {
 interface UseRichMarkdownEditorParams {
   /** The rich editor is wanted for this file: the flag is on and the file is editable. */
   enabled: boolean;
+  /** The mount refuses writes from now on; an open editor stays, read only. */
+  readOnly: boolean;
   entryPath: string | undefined;
   isActive: boolean;
   /** The file text as fetched, or null while it loads. */
@@ -75,6 +79,7 @@ function isOwnWrite(
  */
 export function useRichMarkdownEditor({
   enabled,
+  readOnly,
   entryPath,
   isActive,
   rawContent,
@@ -152,6 +157,7 @@ export function useRichMarkdownEditor({
       ? {
           mountKey: `${entryPath}:${version}`,
           initialContent: base ?? source,
+          readOnly,
           onSave: save,
           onStateChange: setDraft,
         }
@@ -164,6 +170,7 @@ export function useRichMarkdownEditor({
     // Once a save has failed the editor shows it with Retry; leaving then is the user's call.
     holdsNavigation:
       richEditor !== null &&
+      !readOnly &&
       (draft.dirty || draft.saving) &&
       draft.error === null,
   };

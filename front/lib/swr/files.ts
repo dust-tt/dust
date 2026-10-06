@@ -231,13 +231,8 @@ export function useFileMetadataFromPath({
   };
 }
 
-type FileContentByUrlData =
-  | {
-      kind: "loaded";
-      content: string;
-      /** False when the mount refuses writes for this user; absent when the route says nothing. */
-      canWrite?: boolean;
-    }
+export type FileContentByUrlData =
+  | { kind: "loaded"; content: string; canWrite: boolean }
   | { kind: "not_found" };
 
 export function useFileContentByUrl({
@@ -266,7 +261,7 @@ export function useFileContentByUrl({
       return {
         kind: "loaded",
         content: await response.text(),
-        canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) !== "false",
+        canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) === "true",
       };
     },
     { disabled: isDisabled }
@@ -276,8 +271,8 @@ export function useFileContentByUrl({
 
   return {
     fileContent: data?.kind === "loaded" ? data.content : null,
-    /** Whether the mount accepts writes from this user; true until the file is loaded. */
-    fileCanWrite: data?.kind === "loaded" ? (data.canWrite ?? true) : true,
+    /** Whether the mount accepts writes from this user; false until the file is loaded. */
+    fileCanWrite: data?.kind === "loaded" && data.canWrite,
     isNotFound,
     isFileContentLoading: !error && data === undefined && !isDisabled,
     fileContentError: error ? normalizeError(error) : null,
@@ -444,7 +439,7 @@ export function useWriteFileContentByPath({
 
     await mutate<FileContentByUrlData>(
       url,
-      { kind: "loaded", content },
+      { kind: "loaded", content, canWrite: true },
       { revalidate: false }
     );
 

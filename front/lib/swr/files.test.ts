@@ -4,13 +4,16 @@ import {
   fetchFileMetadataFromPath,
   getFilePathContentApiPath,
   prepareFolderArchiveDownload,
+  useFileContentByUrl,
 } from "@app/lib/swr/files";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import {
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
   frameV2ContentType,
 } from "@app/types/files";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClientFetch = vi.fn();
@@ -166,5 +169,35 @@ describe("fetchFileMetadataFromPath", () => {
       contentType: "text/markdown",
       sizeBytes: 42,
     });
+  });
+});
+
+describe("useFileContentByUrl", () => {
+  it("reads write permission from the content route", async () => {
+    mockClientFetch.mockResolvedValue(
+      new Response("# Notes", {
+        status: 200,
+        headers: { [DUST_FILE_CAN_WRITE_HEADER]: "true" },
+      })
+    );
+
+    const { result } = renderHook(() =>
+      useFileContentByUrl({ url: "/api/w/w_test_ws/files/path/writable.md" })
+    );
+
+    await waitFor(() => expect(result.current.fileContent).toBe("# Notes"));
+    expect(result.current.fileCanWrite).toBe(true);
+  });
+
+  it("refuses writes while loading and when the header is absent", async () => {
+    mockClientFetch.mockResolvedValue(new Response("# Notes", { status: 200 }));
+
+    const { result } = renderHook(() =>
+      useFileContentByUrl({ url: "/api/w/w_test_ws/files/path/no-header.md" })
+    );
+
+    expect(result.current.fileCanWrite).toBe(false);
+    await waitFor(() => expect(result.current.fileContent).toBe("# Notes"));
+    expect(result.current.fileCanWrite).toBe(false);
   });
 });

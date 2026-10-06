@@ -72,6 +72,48 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor).toBeNull();
   });
 
+  it("keeps the open editor read only when a later fetch refuses writes", () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    const mountKey = result.current.richEditor?.mountKey;
+
+    rerender({ ...params, canWrite: false });
+
+    expect(result.current.richEditor?.mountKey).toBe(mountKey);
+    expect(result.current.richEditor?.readOnly).toBe(true);
+  });
+
+  it("closes the plain editor when a later fetch refuses writes", () => {
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    rerender({ ...params, canWrite: false });
+
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("opens no editor on the next file when its mount refuses writes", () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    rerender({
+      ...params,
+      entryPath: "conversation-abc/other.md",
+      canWrite: false,
+    });
+
+    expect(result.current.canEdit).toBe(false);
+    expect(result.current.richEditor).toBeNull();
+  });
+
   it("keeps the plain editor when co_edition is off", () => {
     const { result } = renderHook(() => useMarkdownFileEditor(params));
 
@@ -339,6 +381,25 @@ describe("useMarkdownFileEditor", () => {
 
     const again = await result.current.richEditor?.onSave("# Notes, more\n");
     expect(again?.isOk()).toBe(true);
+  });
+
+  it("lets the user leave a read-only editor with unsaved changes", () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
+    });
+
+    rerender({ ...params, canWrite: false });
+
+    expect(result.current.holdsNavigation).toBe(false);
   });
 
   it("holds navigation while unsaved, and lifts it once a save has failed", () => {
