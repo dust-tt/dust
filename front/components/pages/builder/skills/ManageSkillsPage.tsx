@@ -7,9 +7,13 @@ import {
 import {
   clearFilterCategory,
   getFilterSummaries,
+  selectAllFilterOptions,
 } from "@app/components/shared/filter_panel/filterState";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
-import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterPresets,
+  SEARCH_FILTER_CATEGORY_SINGULAR_LABEL,
+} from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -470,6 +474,23 @@ export function ManageSkillsPage({
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
             }
+            presetChips={getSearchFilterPresets({
+              filter: filter,
+              categories: SKILL_FILTER_CATEGORIES,
+              currentUser: user,
+            }).map((preset) => ({
+              key: preset.key,
+              categoryLabel: preset.categoryLabel,
+              optionLabel: preset.presetLabel,
+              onApply: () =>
+                setFilter(
+                  selectAllFilterOptions(
+                    filter,
+                    preset.category,
+                    preset.options
+                  )
+                ),
+            }))}
             extraChips={
               permissionFilteringOverride === undefined &&
               isAdmin &&

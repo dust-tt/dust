@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
+import { Button, Chip, cn, LoadingBlock } from "@dust-tt/sparkle";
 import {
   AnimatePresence,
   domMax,
@@ -34,10 +34,19 @@ interface FilterExtraChip {
   onRemove: () => void;
 }
 
+interface FilterPresetChip {
+  key: string;
+  categoryLabel: string;
+  optionLabel: string;
+  onApply: () => void;
+}
+
 interface FilterSummaryChipsProps<Category extends string> {
   summaries: FilterSummary<Category>[];
   // Chips for settings outside the filter categories, shown after the category chips.
   extraChips?: FilterExtraChip[];
+  // Greyed-out suggestions, shown after the active chips, that apply a filter when clicked.
+  presetChips?: FilterPresetChip[];
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
   isLoading?: boolean;
@@ -47,6 +56,7 @@ interface FilterSummaryChipsProps<Category extends string> {
 export function FilterSummaryChips<Category extends string>({
   summaries,
   extraChips = [],
+  presetChips = [],
   onClearCategory,
   onClearAll,
   isLoading = false,
@@ -73,7 +83,7 @@ export function FilterSummaryChips<Category extends string>({
   return (
     <LazyMotion features={domMax}>
       <AnimatePresence initial={false}>
-        {chips.length > 0 && (
+        {chips.length + presetChips.length > 0 && (
           <m.div
             key="filter-summary-chips"
             initial={shouldReduceMotion ? false : { opacity: 0 }}
@@ -110,20 +120,50 @@ export function FilterSummaryChips<Category extends string>({
                   </m.div>
                 ))}
               </AnimatePresence>
+              {presetChips.map((chip) => (
+                <m.div
+                  key={`preset:${chip.key}`}
+                  layout={!shouldReduceMotion}
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={shouldReduceMotion ? undefined : { opacity: 0 }}
+                  transition={transition}
+                  className="max-w-full"
+                >
+                  <Chip
+                    size="xs"
+                    color="primary"
+                    className={cn(
+                      "max-w-full border border-dashed border-border",
+                      "text-muted-foreground hover:text-foreground",
+                      "dark:border-border-night dark:text-muted-foreground-night",
+                      "dark:hover:text-foreground-night"
+                    )}
+                    onClick={chip.onApply}
+                  >
+                    <SummaryLabel
+                      categoryLabel={chip.categoryLabel}
+                      options={[{ id: chip.key, name: chip.optionLabel }]}
+                    />
+                  </Chip>
+                </m.div>
+              ))}
               {isLoading && (
                 <>
                   <LoadingBlock className="h-6 w-24 rounded-[9px]" />
                   <LoadingBlock className="h-6 w-32 rounded-[9px]" />
                 </>
               )}
-              <m.div layout={!shouldReduceMotion} transition={transition}>
-                <Button
-                  label="Clear all"
-                  size="xs"
-                  variant="ghost-secondary"
-                  onClick={onClearAll}
-                />
-              </m.div>
+              {chips.length > 0 && (
+                <m.div layout={!shouldReduceMotion} transition={transition}>
+                  <Button
+                    label="Clear all"
+                    size="xs"
+                    variant="ghost-secondary"
+                    onClick={onClearAll}
+                  />
+                </m.div>
+              )}
             </div>
           </m.div>
         )}

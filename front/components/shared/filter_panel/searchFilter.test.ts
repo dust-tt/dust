@@ -5,6 +5,7 @@ import {
 } from "@app/components/assistant/manager/agentFilter";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
 import {
+  getSearchFilterPresets,
   resolveSearchFilterSelection,
   toSearchFilterSelection,
   toUsageFilterOption,
@@ -137,5 +138,62 @@ describe("usage filter", () => {
     expect(toSkillSearchFilters(filter)).toEqual({
       activeUsersCount: { min: 5, max: 40 },
     });
+  });
+});
+
+describe("getSearchFilterPresets", () => {
+  const currentUser = { sId: "me", fullName: "Alice", image: null };
+
+  it("offers Editor is Me while the editor category is empty", () => {
+    expect(
+      getSearchFilterPresets({
+        filter: {},
+        categories: CATEGORIES,
+        currentUser,
+      })
+    ).toEqual([
+      {
+        key: "editor-is-me",
+        category: "editor",
+        categoryLabel: "Editor",
+        presetLabel: "Me",
+        options: [
+          {
+            category: "editor",
+            id: "me",
+            name: "Alice (You)",
+            image: null,
+            disabled: false,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("offers no preset once the category has a selection or is not listed", () => {
+    expect(
+      getSearchFilterPresets({
+        filter: {
+          editor: [
+            {
+              category: "editor",
+              id: "other",
+              name: "Bob",
+              image: null,
+              disabled: false,
+            },
+          ],
+        },
+        categories: CATEGORIES,
+        currentUser,
+      })
+    ).toEqual([]);
+    expect(
+      getSearchFilterPresets({
+        filter: {},
+        categories: ["model"],
+        currentUser,
+      })
+    ).toEqual([]);
   });
 });

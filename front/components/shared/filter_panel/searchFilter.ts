@@ -226,6 +226,50 @@ export function getSearchFilterOptions(
   }
 }
 
+export interface SearchFilterPreset<Category extends SearchFilterCategory> {
+  key: string;
+  category: Category;
+  categoryLabel: string;
+  presetLabel: string;
+  options: SearchFilterOption[];
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] empty-category-presets
+ * A preset MUST be offered only for a listed category with no selection, so clearing that
+ * category offers it again. The "Editor is Me" preset MUST select the current user's editor
+ * option, named as `getSearchFilterOptions` names it.
+ */
+export function getSearchFilterPresets<Category extends SearchFilterCategory>({
+  filter,
+  categories,
+  currentUser,
+}: {
+  filter: SearchFilter<Category>;
+  categories: readonly Category[];
+  currentUser: Pick<UserType, "sId" | "fullName" | "image">;
+}): SearchFilterPreset<Category>[] {
+  return categories.flatMap((category): SearchFilterPreset<Category>[] => {
+    if (category !== "editor" || filter[category]?.length) {
+      return [];
+    }
+    const [option] = getSearchFilterOptions(
+      "editor",
+      { editors: [currentUser] },
+      currentUser.sId
+    );
+    return [
+      {
+        key: "editor-is-me",
+        category,
+        categoryLabel: SEARCH_FILTER_CATEGORY_SINGULAR_LABEL.editor,
+        presetLabel: "Me",
+        options: [option],
+      },
+    ];
+  });
+}
+
 export function getSearchFilterIds<Category extends SearchFilterCategory>(
   filter: SearchFilter<Category>,
   category: Category

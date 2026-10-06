@@ -20,9 +20,13 @@ import {
 import {
   clearFilterCategory,
   getFilterSummaries,
+  selectAllFilterOptions,
 } from "@app/components/shared/filter_panel/filterState";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
-import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterPresets,
+  SEARCH_FILTER_CATEGORY_SINGULAR_LABEL,
+} from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
   useSetContentWidth,
@@ -483,6 +487,23 @@ export function ManageAgentsPage({
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
             }
+            presetChips={getSearchFilterPresets({
+              filter: visibleFilter,
+              categories: filterCategories,
+              currentUser: user,
+            }).map((preset) => ({
+              key: preset.key,
+              categoryLabel: preset.categoryLabel,
+              optionLabel: preset.presetLabel,
+              onApply: () =>
+                setFilter(
+                  selectAllFilterOptions(
+                    filter,
+                    preset.category,
+                    preset.options
+                  )
+                ),
+            }))}
             extraChips={
               canShowHiddenAgents && showHiddenAgents
                 ? [
