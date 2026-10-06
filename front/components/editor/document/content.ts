@@ -133,8 +133,9 @@ const sortCommentMarks = (marks: readonly Mark[]): readonly Mark[] => {
   const comments = marks
     .filter((mark) => mark.type.name === COMMENT_MARK_NAME)
     .sort((a, b) => (String(a.attrs.id) < String(b.attrs.id) ? -1 : 1));
+  let next = 0;
   return marks.map((mark) =>
-    mark.type.name === COMMENT_MARK_NAME ? (comments.shift() ?? mark) : mark
+    mark.type.name === COMMENT_MARK_NAME ? comments[next++] : mark
   );
 };
 
