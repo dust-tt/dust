@@ -443,10 +443,10 @@ export async function getGroupLimitsUsage(
     return null;
   }
 
-  const groups = await GroupResource.listLimitedGroups(auth);
-  const bounds = await resolveSpendLimitCycleBounds(
-    auth.getNonNullableWorkspace()
-  );
+  const [groups, bounds] = await Promise.all([
+    GroupResource.listLimitedGroups(auth),
+    resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
+  ]);
 
   const workspace = auth.getNonNullableWorkspace();
   const countByGroupId = new Map<string, number>();
