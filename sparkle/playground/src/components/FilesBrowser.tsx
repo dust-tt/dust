@@ -104,6 +104,11 @@ interface FilesBrowserProps {
    *  Naming it shows the trail at the top level too, since the root is a
    *  place of its own rather than "all files". */
   root?: { label: string; icon: ComponentType<{ className?: string }> };
+  /** Stands in for the folder trail where the parent has a better way of
+   *  showing where you are — the workspace screen hands over its folder tree
+   *  once it is too narrow for the sidebar. The trail still comes back while a
+   *  file is being dragged, being the only way to drop one on a parent. */
+  trailSlot?: React.ReactNode;
   currentFolderId?: string | null;
   onCurrentFolderIdChange?: (folderId: string | null) => void;
   /** Row to highlight (pod "reveal in files" flow). */
@@ -160,6 +165,7 @@ export function FilesBrowser({
   onSearchTextChange,
   hasSearchInput = true,
   root,
+  trailSlot,
   currentFolderId: controlledFolderId,
   onCurrentFolderIdChange,
   revealedFileId = null,
@@ -525,25 +531,33 @@ export function FilesBrowser({
     );
   }
 
-  const folderTrail = foldersEnabled &&
+  const isDragging = dnd !== undefined && dnd.draggingFileId !== null;
+
+  const breadcrumbTrail = (currentFolderId !== null || root !== undefined) && (
+    <div className="flex w-full min-w-0 items-center gap-2">
+      {isDragging && (
+        <AnimatedText variant="muted" className="shrink-0 text-sm italic">
+          Move to
+        </AnimatedText>
+      )}
+      {/* The trail folds its root-most folders away to fit, so it has to be
+          handed the free space rather than size itself to its content. */}
+      <Breadcrumbs
+        items={folderBreadcrumbItems}
+        size="sm"
+        hasLighterFont
+        className="min-w-0 flex-1"
+      />
+    </div>
+  );
+
+  // The slot stands in for the trail wherever it is given, the top level
+  // included: it says where you are in its own way. Dragging is the exception,
+  // the trail being the only way to drop a file on a folder further up.
+  const folderTrail =
+    foldersEnabled &&
     !isSearchActive &&
-    (currentFolderId !== null || root !== undefined) && (
-      <div className="flex w-full min-w-0 items-center gap-2">
-        {dnd && dnd.draggingFileId !== null && (
-          <AnimatedText variant="muted" className="shrink-0 text-sm italic">
-            Move to
-          </AnimatedText>
-        )}
-        {/* The trail folds its root-most folders away to fit, so it has to be
-            handed the free space rather than size itself to its content. */}
-        <Breadcrumbs
-          items={folderBreadcrumbItems}
-          size="sm"
-          hasLighterFont
-          className="min-w-0 flex-1"
-        />
-      </div>
-    );
+    (trailSlot !== undefined && !isDragging ? trailSlot : breadcrumbTrail);
 
   return (
     <div className="flex min-h-0 flex-col gap-3">

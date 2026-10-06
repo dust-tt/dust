@@ -17,6 +17,7 @@ import {
   getDataSourceIcon,
   getFolderPath,
   isDataSourceFolder,
+  ROOT_FOLDER_LABEL,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
 import {
@@ -39,7 +40,7 @@ import { TreeDnd } from "./TreeDnd";
 // breadcrumb. What may be picked up and where it may land is decided in
 // `data/fileMoves`, not here.
 
-/** Below this width the tree folds into a dropdown above the view. */
+/** Below this width the tree folds into a dropdown, taking the trail's place. */
 const COMPACT_BELOW = 720;
 
 /** The breadcrumbs name the workspace root this way; the model calls it null. */
@@ -278,33 +279,42 @@ export function WorkspaceFileSystem({
         </aside>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-        {isCompact && (
-          <PopoverRoot open={isTreeMenuOpen} onOpenChange={setIsTreeMenuOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                className="self-start"
-                icon={
-                  (currentFolder && getDataSourceIcon(currentFolder)) || Folder
-                }
-                label={currentFolder?.fileName ?? "Files"}
-              />
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="max-h-[60vh] w-72 overflow-y-auto p-2"
-            >
-              {tree}
-            </PopoverContent>
-          </PopoverRoot>
-        )}
         <FilesBrowser
           dataSources={files}
           searchText={searchText}
           onSearchTextChange={onSearchTextChange}
           hasSearchInput={false}
+          // Too narrow for the sidebar: the tree takes the trail's place,
+          // naming the open folder the way the trail did and opening on the
+          // whole tree rather than only the ancestors the trail held.
+          trailSlot={
+            isCompact ? (
+              <PopoverRoot
+                open={isTreeMenuOpen}
+                onOpenChange={setIsTreeMenuOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    isSelect
+                    hasLighterFont
+                    icon={
+                      (currentFolder && getDataSourceIcon(currentFolder)) ||
+                      Folder
+                    }
+                    label={currentFolder?.fileName ?? ROOT_FOLDER_LABEL}
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  className="max-h-[60vh] w-72 overflow-y-auto p-2"
+                >
+                  {tree}
+                </PopoverContent>
+              </PopoverRoot>
+            ) : undefined
+          }
           currentFolderId={currentFolderId}
           onCurrentFolderIdChange={setCurrentFolderId}
           onFileOpen={onFileOpen}
