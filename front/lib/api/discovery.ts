@@ -150,7 +150,8 @@ async function resolveViewerVisibleItems(
       candidates.map(({ resourceType, resourceId }) => ({
         type: resourceType,
         itemId: resourceId,
-      }))
+      })),
+      { bypassEditorVisibility: false }
     );
 
   return removeNulls(
@@ -169,7 +170,7 @@ async function resolveViewerVisibleItems(
               ? {
                   type: "skill",
                   target: skill.toDiscoveryJSON({
-                    editors: skillEditorsById.get(skill.sId),
+                    editors: skillEditorsById.get(skill.sId) ?? [],
                   }),
                 }
               : null;

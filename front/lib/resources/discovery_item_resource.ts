@@ -88,7 +88,7 @@ function resolvedDiscoveryItem(
   pin: DiscoveryItemResource,
   agentsById: Map<string, AgentResource>,
   skillsById: Map<string, SkillResource>,
-  skillEditorsById: Map<string, UserResource[] | null>
+  skillEditorsById: Map<string, UserResource[]>
 ): ResolvedDiscoveryItem | null {
   switch (pin.type) {
     case "agent": {
@@ -120,7 +120,7 @@ function resolvedDiscoveryItem(
           type: "skill",
           pin: discoveryPinJSON(pin),
           target: target.toDiscoveryJSON({
-            editors: skillEditorsById.get(target.sId),
+            editors: skillEditorsById.get(target.sId) ?? [],
           }),
         }),
       };
@@ -187,13 +187,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static async loadTargets(
     auth: Authenticator,
     items: Array<{ type: GroupPinnedItemType; itemId: string }>,
-    {
-      bypassEditorVisibility = false,
-    }: { bypassEditorVisibility?: boolean } = {}
+    { bypassEditorVisibility }: { bypassEditorVisibility: boolean }
   ): Promise<{
     agentsById: Map<string, AgentResource>;
     skillsById: Map<string, SkillResource>;
-    skillEditorsById: Map<string, UserResource[] | null>;
+    skillEditorsById: Map<string, UserResource[]>;
   }> {
     const agentIds = items
       .filter((item) => item.type === "agent")
@@ -221,10 +219,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           viewerCanWrite: auth.can("write", skill),
         })
     );
-    const skillEditorsById = await SkillResource.batchListEditors(
+    const editorsBySkillId = await SkillResource.batchListEditors(
       auth,
       visibleSkills
     );
+    const discoverySkills = bypassEditorVisibility ? skills : visibleSkills;
 
     return {
       agentsById: new Map(
@@ -236,22 +235,20 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           )
           .map((agent) => [agent.sId, agent])
       ),
-      skillsById: new Map(
-        (bypassEditorVisibility ? skills : visibleSkills).map((skill) => [
+      skillsById: new Map(discoverySkills.map((skill) => [skill.sId, skill])),
+      skillEditorsById: new Map(
+        discoverySkills.map((skill) => [
           skill.sId,
-          skill,
+          editorsBySkillId.get(skill.sId) ?? [],
         ])
       ),
-      skillEditorsById,
     };
   }
 
   private static async resolveTargets(
     auth: Authenticator,
     items: DiscoveryItemResource[],
-    {
-      bypassEditorVisibility = false,
-    }: { bypassEditorVisibility?: boolean } = {}
+    { bypassEditorVisibility }: { bypassEditorVisibility: boolean }
   ): Promise<ResolvedDiscoveryItem[]> {
     const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
       auth,
@@ -287,7 +284,9 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
     ]);
-    const resolvedItems = await this.resolveTargets(auth, items);
+    const resolvedItems = await this.resolveTargets(auth, items, {
+      bypassEditorVisibility: false,
+    });
     const rows = await omitPinsTheGroupCannotRead(
       auth,
       resolvedItems.filter((item) => auth.can("read", item.target))

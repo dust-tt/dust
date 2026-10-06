@@ -13,7 +13,7 @@ export type DiscoverySkillType = {
   name: string;
   description: string;
   icon: string | null;
-  editors?: string[];
+  editors: string[];
   editedBy: number | null;
 };
 

@@ -106,7 +106,11 @@ describe("discovery ranked sections", () => {
       {
         type: "skill",
         target: {
-          ...visibleSkill.toDiscoveryJSON(),
+          sId: visibleSkill.sId,
+          name: visibleSkill.name,
+          description: visibleSkill.userFacingDescription,
+          icon: visibleSkill.icon,
+          editedBy: visibleSkill.editedBy,
           editors: [auth.getNonNullableUser().fullName()],
         },
       },
@@ -141,7 +145,11 @@ describe("discovery ranked sections", () => {
       {
         type: "skill",
         target: {
-          ...visibleSkill.toDiscoveryJSON(),
+          sId: visibleSkill.sId,
+          name: visibleSkill.name,
+          description: visibleSkill.userFacingDescription,
+          icon: visibleSkill.icon,
+          editedBy: visibleSkill.editedBy,
           editors: [auth.getNonNullableUser().fullName()],
         },
       },
