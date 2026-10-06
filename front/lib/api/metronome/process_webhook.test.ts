@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import {
   dispatchPaygCapReached,
   syncPoolCreditStateFromBalance,
@@ -885,6 +887,38 @@ describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE st
     expect(result.isOk()).toBe(true);
     expect(setMetronomeCommitCustomFields).not.toHaveBeenCalled();
   });
+
+  it("stamps an AWU commit before reconciling the pool on commit.segment.start", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCommit).mockResolvedValue(
+      new Ok(commit(getCreditTypeAwuId()))
+    );
+    vi.mocked(syncPoolCreditStateFromBalance).mockResolvedValue(undefined);
+
+    const result = await processMetronomeWebhook({
+      event: {
+        id: "evt_commit_segment_start_xxx",
+        type: "commit.segment.start",
+        timestamp: new Date().toISOString(),
+        commit_id: COMMIT_ID,
+        commit_custom_fields: null,
+        customer_id: METRONOME_CUSTOMER_ID,
+        segment_index: 0,
+        segment_count: 1,
+        segment_id: "seg_xxx",
+      },
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const [stampOrder] = vi.mocked(setMetronomeCommitCustomFields).mock
+      .invocationCallOrder;
+    const [reconcileOrder] = vi.mocked(syncPoolCreditStateFromBalance).mock
+      .invocationCallOrder;
+    assert(stampOrder, "commit was not stamped");
+    assert(reconcileOrder, "pool was not reconciled");
+    expect(stampOrder).toBeLessThan(reconcileOrder);
+  });
 });
 
 describe("processMetronomeWebhook — credit.create pool reconcile", () => {
@@ -1033,12 +1067,15 @@ describe("processMetronomeWebhook — credit.segment.start / credit.edit", () =>
 
   beforeEach(() => {
     vi.mocked(syncPoolCreditStateFromBalance).mockResolvedValue(undefined);
+    vi.mocked(setMetronomeContractCreditCustomFields).mockResolvedValue(
+      new Ok(undefined)
+    );
     vi.mocked(
       launchReconcileWorkspaceUserCreditStatesWorkflow
     ).mockResolvedValue(undefined);
   });
 
-  it("reconciles the pool for a pool AWU credit segment", async () => {
+  it("stamps a pool AWU credit before reconciling the pool on its segment start", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCredit).mockResolvedValue(
       new Ok(credit(getCreditTypeAwuId()))
@@ -1054,6 +1091,13 @@ describe("processMetronomeWebhook — credit.segment.start / credit.edit", () =>
       workspace,
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
+    const [stampOrder] = vi.mocked(setMetronomeContractCreditCustomFields).mock
+      .invocationCallOrder;
+    const [reconcileOrder] = vi.mocked(syncPoolCreditStateFromBalance).mock
+      .invocationCallOrder;
+    assert(stampOrder, "credit was not stamped");
+    assert(reconcileOrder, "pool was not reconciled");
+    expect(stampOrder).toBeLessThan(reconcileOrder);
     expect(
       launchReconcileWorkspaceUserCreditStatesWorkflow
     ).not.toHaveBeenCalled();
