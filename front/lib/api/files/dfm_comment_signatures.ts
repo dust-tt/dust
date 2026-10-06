@@ -38,7 +38,8 @@ export type DfmCommentSignatureErrorCode =
   | "foreign_message"
   | "unsigned_message"
   | "altered_message"
-  | "moved_message";
+  | "moved_message"
+  | "unreadable_file";
 
 export class DfmCommentSignatureError extends Error {
   constructor(
@@ -435,31 +436,20 @@ const isMarkdownContentType = (contentType: string | undefined) =>
   contentType !== undefined &&
   stripMimeParameters(contentType) === "text/markdown";
 
-// The editor opens a file by its stored content type, so a stored Markdown file is validated
-// whatever its name and the request's content type.
-async function isMarkdownWrite(
-  dustFs: DustFileSystem,
-  scopedPath: string,
-  requestContentType: string | undefined
-): Promise<boolean> {
-  if (
-    contentTypeFromFileName(scopedPath) === "text/markdown" ||
-    isMarkdownContentType(requestContentType)
-  ) {
-    return true;
-  }
-  const stat = await dustFs.stat(scopedPath);
-  return stat.isErr() || isMarkdownContentType(stat.value?.contentType);
-}
+// GCS matches generation 0 only while the object does not exist.
+const ABSENT_FILE_REVISION = "0";
 
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-validation-scope
  * Validation MUST run on every content write through the file API's PUT of a file whose name,
- * request content type or stored content type is `text/markdown`, or whose stored content type
- * cannot be read, in a workspace with `co_edition`, against the file as
- * stored right before the write, and MUST NOT run anywhere else until the codec bounds its input
- * before parsing. It MUST return the revision it validated against, when storage has one, so
- * the write can be conditional on it. Other writes, such as archive extraction and sandbox or
+ * request content type or stored content type is `text/markdown`, in a workspace with
+ * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere else
+ * until the codec bounds its input before parsing. It MUST return the revision it validated
+ * against, when storage has one, so the write can be conditional on it. A write it does not
+ * validate MUST be bound to the stored state it was classified against: it MUST return the stored
+ * file's revision, or for an absent file the revision that only matches an absent file, and MUST
+ * validate the write instead when storage has no revision. A stored file that cannot be read MUST
+ * refuse the write with `unreadable_file`, never count as absent. Other writes, such as archive extraction and sandbox or
  * plain agent file writes, are not validated: what they bring can only read as unverified, since
  * signatures bind the file and the thread order. The one exception is `documents.add_comment`,
  * which adds a message the server itself signs for the running agent
@@ -473,21 +463,48 @@ export async function validateMarkdownCommentsForWrite(
   requestContentType: string | undefined
 ): Promise<Result<{ revision: string | undefined }, DfmCommentSignatureError>> {
   const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
-  if (
-    resolvedPath.isErr() ||
-    !(await hasFeatureFlag(auth, "co_edition")) ||
-    !(await isMarkdownWrite(dustFs, resolvedPath.value, requestContentType))
-  ) {
+  if (resolvedPath.isErr() || !(await hasFeatureFlag(auth, "co_edition"))) {
     return new Ok({ revision: undefined });
+  }
+
+  const read = await readCanonicalFileContent(dustFs, scopedPath);
+  if (read.isErr()) {
+    return new Err(unreadableFileError());
+  }
+  const stored = read.value;
+
+  // The editor opens a file by its stored content type, so a file stored as Markdown is
+  // validated whatever its name and the request's content type.
+  const isMarkdown =
+    contentTypeFromFileName(resolvedPath.value) === "text/markdown" ||
+    isMarkdownContentType(requestContentType) ||
+    isMarkdownContentType(stored?.contentType);
+  if (!isMarkdown) {
+    const classifiedRevision = stored
+      ? stored.revision
+      : dustFs.isGCSBacked()
+        ? ABSENT_FILE_REVISION
+        : undefined;
+    if (classifiedRevision !== undefined) {
+      stored?.stream.destroy();
+      return new Ok({ revision: classifiedRevision });
+    }
+  }
+
+  let storedText: string | null = null;
+  if (stored) {
+    const buffer = await streamToBuffer(stored.stream);
+    if (buffer.isErr()) {
+      return new Err(unreadableFileError());
+    }
+    storedText = decodeBuffer(buffer.value);
   }
 
   const key = getSigningKey();
   const publicKey = key ? createPublicKey(key) : null;
-  const read = await readStoredText(dustFs, scopedPath);
-  const stored = read.isOk() ? read.value : null;
   const validated = validateCommentSignatures(
     {
-      previous: stored?.text ?? null,
+      previous: storedText,
       next: decodeBuffer(content),
     },
     {
@@ -507,3 +524,9 @@ export async function validateMarkdownCommentsForWrite(
   );
   return validated.isErr() ? validated : new Ok({ revision: stored?.revision });
 }
+
+const unreadableFileError = () =>
+  new DfmCommentSignatureError(
+    "unreadable_file",
+    "The file could not be read to check its comments. Try again."
+  );
