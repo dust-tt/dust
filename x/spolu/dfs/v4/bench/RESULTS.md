@@ -2,7 +2,8 @@
 
 Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
 in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
-Later focused runs measure untar only, most recently [one shared memory budget](#one-shared-memory-budget).
+Later focused runs measure untar only, most recently
+[transaction throughput](#transaction-throughput-investigation).
 The full baseline table remains below.
 
 ## Configuration and method
@@ -280,6 +281,70 @@ serializes locally, while independent parents have substantial capacity.
 
 Reports: `/tmp/dfs-v4-ab57bf94ff-{scheduling,flight32,flight128,groups}/run.json`.
 
+### Create reads and same-parent concurrency
+
+UUID collision prefetch now starts alongside ancestry/name prefetch. The semantic check still adds
+its FDB read conflict and preserves authorization/error precedence. Source `92c6dfbbb9` measured
+**5.782s + 4.994s = 10.776s**, repeated at **5.866s + 4.834s = 10.700s**. The one-parent diagnostic
+improved from 10.475s to 9.276s; the 64-parent case was 0.351s.
+
+A final paired check on `4acecff7f4`, with only collision prefetch removed in the control binary,
+measured **10.933s total untar without / 11.084s with**. There is no established incremental untar gain
+from this small change. The paired one-parent diagnostic improved from **10.385s to 8.756s**, with zero
+retries; retain the overlap for that measured transaction-throughput benefit. The variant was not
+committed; both reports retain binary hashes. All diagnostic files passed content verification.
+
+Same-parent scheduling sweep, client capacity 128; source `4acecff7f4` for the 2/4 experiments and
+final default. Each create still has its own durable transaction and rechecks current authorization.
+
+| Transactions per primary | Untar (s) | Remaining drain (s) | Total (s) | Peak FDB attempts | Retry attempts |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **1 — retained default** | **5.751** | **5.333** | **11.084** | 10 | 113 |
+| 2 | 5.491 | 4.171 | 9.662 | 14 | 3,444 |
+| 4 | 5.950 | 4.516 | 10.466 | 25 | 10,321 |
+
+| Transactions per primary | One-parent diagnostic (s) | Retries | 64-parent diagnostic (s) | Retries |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 9.276 | 0 | 0.351 | 0 |
+| 2 | 8.393 | 853 | 0.463 | 205 |
+| 4 | 7.617 | 2,409 | 0.522 | 291 |
+
+Keep **one per primary**: higher concurrency buys some hot-directory latency with substantial retry
+amplification and worsens the independent-parent workload. `DFS_PRIMARY_CONCURRENCY=2|4` remains an
+explicit experiment. The [directory layout proposal](../DESIGN-DIRECTORY.md) addresses the underlying
+shared parent record; implementing it and proving its races are follow-up work.
+
+The final default uses one shared **1 GiB** budget, 128 in-flight client groups, 16 bounded envelopes,
+25ms coalescing and unchanged TTL/FDB durability. Relative to the instrumented control, total
+completion fell **32.230s → 11.084s (2.9×)**. Untar alone fell **16.803s → 5.751s**.
+
+In this run, group-slot waiting was 0.0005s and memory waiting 0.0043s. Envelope capacity was blocked
+for 7.202s over untar plus drain; cumulative parent waiting was 995.072s, transaction attempts 40.098s,
+and retry backoff 0.642s. These overlapping totals are not additive wall-time components. FUSE used
+4.480 CPU-seconds before drain; the server used 6.420 CPU-seconds including drain. There were 1,220
+client RPCs, including 1,179 batches / 10,121 independent groups, and no writeback failure.
+
+Reports inside `dfs-v4-dev-1`:
+
+- `/tmp/dfs-v4-92c6dfbbb9-{prefetch,prefetch-repeat,groups}/run.json`.
+- `/tmp/dfs-v4-4acecff7f4-{primary2,primary4,groups2,groups4,final}/run.json`.
+- `/tmp/dfs-v4-4acecff7f4-{no-prefetch,no-prefetch-groups,prefetch-groups}/run.json`.
+
+Final server SHA-256: `6f644e4f44d64d9ba32e9fa048a107a32cef24e74e43206b6beb160c3e206d62`.
+Final FUSE SHA-256: `715c8757f4dd2a1044fec97dbf786c82f59f47f57c6eed616407d4fad3325977`.
+The corpus manifest is unchanged. These are local, individual trials; the full read suite was not rerun.
+Rust/FDB tests and mounted filesystem checks passed. A new server/session/mount verified the final
+run's manifest and every persisted file size/SHA-256 (10,000 files), outside timing. Tests cover
+concurrent writers, UUID/name collisions, moved/revoked authority, stalled batch tails, and object-only
+fsync. Raw reports, verification output and logs remain outside Git.
+
+Reproduce the final default untar with the matching source and release binaries:
+
+```sh
+v4/local/run exec cargo build --workspace --release
+v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=4acecff7f4 python3 /dfs/v4/bench/run.py --untar-only
+```
+
 ## Comparison with v3
 
 [Latest v3 localhost results](../../v3/bench/RESULTS.md#latest-full-suites), same corpus and deep path.
@@ -298,7 +363,7 @@ V3's remaining untar drain was 22ms, versus 1801ms here. The timed fsync rows al
 different durability guarantees. First `rg --files` and random-tail reads do not necessarily improve;
 the gains depend on the metadata/content reuse and the number of RPCs avoided.
 
-## Where time is spent
+## Where time is spent — full-suite baseline
 
 Read rows combine first + warm and small untimed setup; untar includes fixture setup. FUSE CPU is
 sampled before unmount; DFS CPU and profiles include client drain. CPU excludes the FDB server and

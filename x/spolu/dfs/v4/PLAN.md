@@ -45,20 +45,22 @@ writeback, weaker durability or FDB consistency tuning in this work.
   batches start all groups, ready groups rotate across parents, and capacity returns per outcome.
   Only new groups reserve queue slots. A 32/64/128-group sweep selected 128: total deep 10k completion
   fell from 32.230s to 10.175s. Tests stall a parent/batch tail while unrelated work and fsync complete.
-- [ ] **Shorten each create transaction.** Start the new UUID collision read alongside the existing
-  ancestry/name prefetch, and remove measured sequential/duplicate reads. Keep all authority and
-  uniqueness checks in the same FDB transaction; no root-specific shortcuts.
-- [ ] **Evaluate same-parent concurrency last.** Compare serialized creates with a small concurrency
-  bound, including retry amplification. Every create currently reads and rewrites the same parent
-  record, so removing the mutex alone may only replace waiting with conflicts. If this remains the
-  limit, separately design a split between stable directory authority and membership revision/time
-  fields; prove create/remove/rename and grant races before changing the storage layout.
+- [x] **Shorten each create transaction.** UUID collision prefetch now overlaps ancestry/name reads;
+  the semantic collision check still registers a conflict and preserves error precedence. Real FDB
+  tests cover a raced UUID and unauthorized collision. The single-parent diagnostic improved from
+  10.475s to 9.276s; untar has no separately established gain from this small change.
+- [x] **Evaluate same-parent concurrency last.** Tested bounds 1/2/4 with the deep untar and one/many
+  parent diagnostics. Keep the default at one: two/four amplify retries and regress the many-parent
+  case. The bounded experiment setting remains available. The separate
+  [directory layout proposal](DESIGN-DIRECTORY.md) records the authority/membership split and race
+  obligations; no storage layout changed. Adoption requires deterministic two-server race tests.
 
 Run the same deep 10k untar after each step; retain only total-completion wins without correctness
 regressions. Validate concurrent clients, same-name collisions, moves, revocations and object fsync.
 
 ## Follow-up evaluation
 
+- [ ] Validate and benchmark the proposed directory authority/membership split before adoption.
 - [ ] 100k-file and multi-server contention benchmarks, then the separately authorized GCP evaluation.
 - [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
 - [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.
