@@ -178,6 +178,8 @@ msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/agent_builder/AgentBuilder.tsx
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
@@ -375,6 +377,432 @@ msgstr "The content of your saved memory may appear in responses sent to Slack a
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"
 msgstr "About you"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Unable to load models"
+msgstr "Unable to load models"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Retry"
+msgstr "Retry"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "We could not determine the default model for this agent. Please try again."
+msgstr "We could not determine the default model for this agent. Please try again."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Cannot save agent"
+msgstr "Cannot save agent"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Wait until agent editors finish loading before saving."
+msgstr "Wait until agent editors finish loading before saving."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Retry loading editors before saving changes."
+msgstr "Retry loading editors before saving changes."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Add yourself as an editor before saving changes."
+msgstr "Add yourself as an editor before saving changes."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Error updating agent"
+msgstr "Error updating agent"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Error creating agent"
+msgstr "Error creating agent"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Agent created"
+msgstr "Agent created"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Agent saved"
+msgstr "Agent saved"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly."
+msgstr "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "No changes to save"
+msgstr "No changes to save"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "This agent is already up to date."
+msgstr "This agent is already up to date."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Agent created!"
+msgstr "Agent created!"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Your agent has been successfully saved"
+msgstr "Your agent has been successfully saved"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Unknown error"
+msgstr "Unknown error"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Agent edition failed."
+msgstr "Agent edition failed."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Agent creation failed."
+msgstr "Agent creation failed."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Saving..."
+msgstr "Saving..."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Duplicate {agentName}"
+msgstr "Duplicate {agentName}"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Edit agent {agentName}"
+msgstr "Edit agent {agentName}"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Create new agent"
+msgstr "Create new agent"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "{count, plural, one {Instructions are required. Review pending suggestion first.} other {Instructions are required. Review pending suggestions first.}}"
+msgstr "{count, plural, one {Instructions are required. Review pending suggestion first.} other {Instructions are required. Review pending suggestions first.}}"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Instructions are required."
+msgstr "Instructions are required."
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Pending suggestions"
+msgstr "Pending suggestions"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "{pendingCount, plural, one {You have # pending instruction suggestion that won't be included in this save. You can review it later.} other {You have # pending instruction suggestions that won't be included in this save. You can review them later.}}"
+msgstr "{pendingCount, plural, one {You have # pending instruction suggestion that won't be included in this save. You can review it later.} other {You have # pending instruction suggestions that won't be included in this save. You can review them later.}}"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Save anyway"
+msgstr "Save anyway"
+
+#: front/components/agent_builder/AgentBuilder.tsx
+msgid "Go back"
+msgstr "Go back"
+
+#: front/components/agent_builder/AgentBuilderLeftPanel.tsx
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/me/UserAutomationsTable.tsx
+#: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+#: front/components/workspace/DirectorySync.tsx
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+#: front/components/workspace/GroupSeatPickerDropdown.tsx
+#: front/components/workspace/UpgradePlanDialog.tsx
+#: front/components/workspace/UpgradeRequests.tsx
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+#: front/components/workspace/sso/Toggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/agent_builder/AgentBuilderPreview.tsx
+msgid "Preview your agent here"
+msgstr "Preview your agent here"
+
+#: front/components/agent_builder/AgentBuilderPreview.tsx
+msgid "Unable to create preview"
+msgstr "Unable to create preview"
+
+#: front/components/agent_builder/AgentBuilderPreview.tsx
+msgid "There was an issue creating a preview of your agent. Try making a small change to refresh."
+msgstr "There was an issue creating a preview of your agent. Try making a small change to refresh."
+
+#: front/components/agent_builder/AgentBuilderPreview.tsx
+msgid "Preparing your agent..."
+msgstr "Preparing your agent..."
+
+#: front/components/agent_builder/AgentBuilderPreview.tsx
+msgid "Agent preview"
+msgstr "Agent preview"
+
+#: front/components/agent_builder/AgentBuilderRightPanel.tsx
+msgid "Hide preview"
+msgstr "Hide preview"
+
+#: front/components/agent_builder/AgentBuilderRightPanel.tsx
+msgctxt "noun, tab label"
+msgid "Preview"
+msgstr "Preview"
+
+#: front/components/agent_builder/AgentBuilderRightPanel.tsx
+msgid "Insights"
+msgstr "Insights"
+
+#: front/components/agent_builder/AgentBuilderRightPanel.tsx
+msgid "Open preview"
+msgstr "Open preview"
+
+#: front/components/agent_builder/AgentBuilderRightPanel.tsx
+msgid "Waiting for data"
+msgstr "Waiting for data"
+
+#: front/components/agent_builder/AgentBuilderRightPanel.tsx
+msgid "Use your agent or share it with your team to see insights data."
+msgstr "Use your agent or share it with your team to see insights data."
+
+#: front/components/agent_builder/AgentBuilderSidekick.tsx
+msgid "Attach files to Sidekick"
+msgstr "Attach files to Sidekick"
+
+#: front/components/agent_builder/AgentBuilderSidekick.tsx
+msgid "Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+msgstr "Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+
+#: front/components/agent_builder/AgentBuilderSidekick.tsx
+msgid "Unable to start Sidekick"
+msgstr "Unable to start Sidekick"
+
+#: front/components/agent_builder/AgentBuilderSidekick.tsx
+msgid "There was an issue starting the Sidekick session. Please try again later."
+msgstr "There was an issue starting the Sidekick session. Please try again later."
+
+#: front/components/agent_builder/AgentBuilderSidekick.tsx
+msgid "Starting Sidekick session..."
+msgstr "Starting Sidekick session..."
+
+#: front/components/agent_builder/AgentBuilderSidekick.tsx
+msgid "Agent Sidekick"
+msgstr "Agent Sidekick"
+
+#: front/components/agent_builder/AgentBuilderSimilarAgentsSection.tsx
+msgid "Couldn't check for similar agents."
+msgstr "Couldn't check for similar agents."
+
+#: front/components/agent_builder/AgentBuilderSimilarAgentsSection.tsx
+msgid "Checking for similar agents…"
+msgstr "Checking for similar agents…"
+
+#: front/components/agent_builder/AgentBuilderSimilarAgentsSection.tsx
+msgid "Similar agents found"
+msgstr "Similar agents found"
+
+#: front/components/agent_builder/AgentBuilderSpacesBlock.tsx
+msgid "Data and access"
+msgstr "Data and access"
+
+#: front/components/agent_builder/AgentBuilderSpacesBlock.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the agent. Only members of all the spaces and pods listed will have access to the agent."
+msgstr "Adding spaces or pods will make the data from each of them available to the agent. Only members of all the spaces and pods listed will have access to the agent."
+
+#: front/components/agent_builder/AgentBuilderSpacesBlock.tsx
+#: front/components/me/UserAutomationsTable.tsx
+#: front/components/workspace/settings/DustMcpServerSettingsItem.tsx
+msgid "Manage"
+msgstr "Manage"
+
+#: front/components/agent_builder/AgentCreatedDialog.tsx
+msgid "Agent {agentName} created!"
+msgstr "Agent {agentName} created!"
+
+#: front/components/agent_builder/AgentCreatedDialog.tsx
+msgid "You can now use {agentName} in conversations. Start a chat or keep editing this agent."
+msgstr "You can now use {agentName} in conversations. Start a chat or keep editing this agent."
+
+#: front/components/agent_builder/AgentCreatedDialog.tsx
+msgid "Keep editing"
+msgstr "Keep editing"
+
+#: front/components/agent_builder/AgentCreatedDialog.tsx
+msgid "Start chat"
+msgstr "Start chat"
+
+#: front/components/agent_builder/DataSourceViewsContext.tsx
+msgid "Failed to load data sources"
+msgstr "Failed to load data sources"
+
+#: front/components/agent_builder/DataSourceViewsContext.tsx
+msgid "Unable to fetch data source views. Please try again."
+msgstr "Unable to fetch data source views. Please try again."
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgid "Error loading the previous agent versions."
+msgstr "Error loading the previous agent versions."
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Feedback"
+msgstr "Feedback"
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgid "Unseen"
+msgstr "Unseen"
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgctxt "feedback filter"
+msgid "All"
+msgstr "All"
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgid "No feedback yet."
+msgstr "No feedback yet."
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgid "Version: {versionDate}"
+msgstr "Version: {versionDate}"
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgid "Mark feedback as unseen"
+msgstr "Mark feedback as unseen"
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+msgid "Mark feedback as seen"
+msgstr "Mark feedback as seen"
+
+#: front/components/agent_builder/FeedbacksSection.tsx
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "View conversation"
+msgstr "View conversation"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+msgid "{disconnectedCount, plural, one {Connection required for personal tools} other {Connections required for personal tools}}"
+msgstr "{disconnectedCount, plural, one {Connection required for personal tools} other {Connections required for personal tools}}"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+msgid "About personal tools"
+msgstr "About personal tools"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+msgid "Personal tools uses credentials of the user running the agent. Other users will be asked to connect their own accounts when they run the agent. <0>Learn more</0>"
+msgstr "Personal tools uses credentials of the user running the agent. Other users will be asked to connect their own accounts when they run the agent. <0>Learn more</0>"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+#: front/components/me/UserToolsTable.tsx
+msgid "Connected"
+msgstr "Connected"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+#: front/components/me/UserToolsTable.tsx
+msgid "Connect"
+msgstr "Connect"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+#: front/components/me/UserToolsTable.tsx
+msgid "Failed to connect provider"
+msgstr "Failed to connect provider"
+
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+msgid "{disconnectedCount, plural, one {# connection is required.} other {# connections are required.}} If you proceed without connecting, the agent will request credentials when they use the tool."
+msgstr "{disconnectedCount, plural, one {# connection is required.} other {# connections are required.}} If you proceed without connecting, the agent will request credentials when they use the tool."
+
+#: front/components/agent_builder/SidekickPanelContext.tsx
+msgid "Sidekick error"
+msgstr "Sidekick error"
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent description is required"
+msgstr "Agent description is required"
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Instructions are required"
+msgstr "Instructions are required"
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Max steps per run must be at least 1"
+msgstr "Max steps per run must be at least 1"
+
+#: front/components/agent_builder/hooks/useAgentPreview.ts
+msgid "Error saving draft agent"
+msgstr "Error saving draft agent"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "Add capabilities"
+msgstr "Add capabilities"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "Add knowledge"
+msgstr "Add knowledge"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "Configuration validation failed"
+msgstr "Configuration validation failed"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "Remove {skillName}?"
+msgstr "Remove {skillName}?"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "You will not be able to add this skill back because it is only accessible to the skill editors and you are not an editor."
+msgstr "You will not be able to add this skill back because it is only accessible to the skill editors and you are not an editor."
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "Capabilities and knowledge"
+msgstr "Capabilities and knowledge"
+
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+msgid "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
+msgstr "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
+
+#: front/components/agent_builder/types.ts
+msgid "The name cannot be empty."
+msgstr "The name cannot be empty."
+
+#: front/components/agent_builder/types.ts
+msgid "Description is required"
+msgstr "Description is required"
+
+#: front/components/agent_builder/types.ts
+msgid "Description should be less than {DESCRIPTION_MAX_LENGTH} characters."
+msgstr "Description should be less than {DESCRIPTION_MAX_LENGTH} characters."
+
+#: front/components/agent_builder/types.ts
+msgid "You must select at least one data source"
+msgstr "You must select at least one data source"
+
+#: front/components/agent_builder/types.ts
+msgid "You must use time frame between that and that when you have required enums in mcpServerViews."
+msgstr "You must use time frame between that and that when you have required enums in mcpServerViews."
 
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "A message asking Dust to improve an agent, next to the modified agent"
@@ -711,47 +1139,6 @@ msgid "Group members ({selectedMemberCount})"
 msgstr "Group members ({selectedMemberCount})"
 
 #: front/components/groups/GroupDialog.tsx
-#: front/components/groups/ProvisionedGroupDialog.tsx
-#: front/components/me/UserAutomationsTable.tsx
-#: front/components/members/InviteEmailButtonWithModal.tsx
-#: front/components/pages/workspace/UsagePage.tsx
-#: front/components/pages/workspace/developers/SecretsPage.tsx
-#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
-#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
-#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
-#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-#: front/components/workspace/BulkChangeSeatModal.tsx
-#: front/components/workspace/BulkEditSpendLimitModal.tsx
-#: front/components/workspace/BuyAwuCreditsDialog.tsx
-#: front/components/workspace/BuyCreditDialog.tsx
-#: front/components/workspace/ChangeMemberModal.tsx
-#: front/components/workspace/ChangeSeatModal.tsx
-#: front/components/workspace/DirectorySync.tsx
-#: front/components/workspace/DustMcpServerSettingsSheet.tsx
-#: front/components/workspace/EditMemberSpendLimitModal.tsx
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-#: front/components/workspace/UpgradePlanDialog.tsx
-#: front/components/workspace/UpgradeRequests.tsx
-#: front/components/workspace/WorkspaceAccessPanel.tsx
-#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
-#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
-#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
-#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
-#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
-#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-#: front/components/workspace/billing/SubscriptionActionButtons.tsx
-#: front/components/workspace/settings/EmailAgentsToggle.tsx
-#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
-#: front/components/workspace/settings/WorkspaceNameEditor.tsx
-#: front/components/workspace/sso/AutoJoinToggle.tsx
-#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
-#: front/components/workspace/sso/Toggle.tsx
-#: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Cancel"
-msgstr "Cancel"
-
-#: front/components/groups/GroupDialog.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Create"
@@ -1072,11 +1459,6 @@ msgid "Delete automation"
 msgstr "Delete automation"
 
 #: front/components/me/UserAutomationsTable.tsx
-#: front/components/workspace/settings/DustMcpServerSettingsItem.tsx
-msgid "Manage"
-msgstr "Manage"
-
-#: front/components/me/UserAutomationsTable.tsx
 msgid "Automation deleted"
 msgstr "Automation deleted"
 
@@ -1144,18 +1526,6 @@ msgstr "Success!"
 #: front/components/me/UserToolsTable.tsx
 msgid "Tool approbation history deleted."
 msgstr "Tool approbation history deleted."
-
-#: front/components/me/UserToolsTable.tsx
-msgid "Failed to connect provider"
-msgstr "Failed to connect provider"
-
-#: front/components/me/UserToolsTable.tsx
-msgid "Connected"
-msgstr "Connected"
-
-#: front/components/me/UserToolsTable.tsx
-msgid "Connect"
-msgstr "Connect"
 
 #: front/components/me/UserToolsTable.tsx
 msgid "Clear confirmation preferences"
@@ -1994,10 +2364,6 @@ msgstr "Your API key will remain visible for 10 minutes only. You can use it to 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 msgid "Error creating API key"
 msgstr "Error creating API key"
-
-#: front/components/pages/workspace/developers/APIKeysPage.tsx
-msgid "Unknown error"
-msgstr "Unknown error"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 msgid "Monthly cap updated"
@@ -3589,12 +3955,6 @@ msgstr "Add at least one redirect URI before saving."
 msgid "Remove {uri}"
 msgstr "Remove {uri}"
 
-#: front/components/workspace/DustMcpServerSettingsSheet.tsx
-#: front/components/workspace/settings/WorkspaceNameEditor.tsx
-#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
-msgid "Saving..."
-msgstr "Saving..."
-
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
 msgstr "Edit spend limit for {memberName}"
@@ -4391,10 +4751,6 @@ msgstr "Tool usage"
 #: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Messages"
 msgstr "Messages"
-
-#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
-msgid "Feedback"
-msgstr "Feedback"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 msgid "Export data"
@@ -5636,10 +5992,6 @@ msgid "Reconnect"
 msgstr "Reconnect"
 
 #: front/components/workspace/settings/BrandingSection.tsx
-msgid "Remove"
-msgstr "Remove"
-
-#: front/components/workspace/settings/BrandingSection.tsx
 msgid "SVG, PNG, WebP or ICO — Square format"
 msgstr "SVG, PNG, WebP or ICO — Square format"
 
@@ -6487,10 +6839,6 @@ msgstr "{author} replied in \"{conversationTitle}\""
 #: front/lib/notifications/workflows/conversation-unread.ts
 msgid "New message from {author} in \"{conversationTitle}\""
 msgstr "New message from {author} in \"{conversationTitle}\""
-
-#: front/lib/notifications/workflows/conversation-unread.ts
-msgid "View conversation"
-msgstr "View conversation"
 
 #: front/lib/notifications/workflows/conversation-unread.ts
 msgid "Preview not available due to data retention policy on conversations in this workspace."

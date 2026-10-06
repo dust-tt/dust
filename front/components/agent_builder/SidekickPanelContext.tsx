@@ -6,6 +6,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TemplateInfo } from "@app/types/assistant/templates";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -64,6 +65,7 @@ export const SidekickPanelProvider = ({
   conversationId,
   suppressAutoStart = false,
 }: SidekickPanelProviderProps) => {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
   const sendNotification = useSendNotification();
@@ -107,7 +109,7 @@ export const SidekickPanelProvider = ({
       setCreationFailed(true);
       setIsCreatingConversation(false);
       sendNotification({
-        title: "Sidekick error",
+        title: t`Sidekick error`,
         description: firstMessageResult.error.message,
         type: "error",
       });
@@ -157,6 +159,7 @@ export const SidekickPanelProvider = ({
     suppressAutoStart,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
+    t,
   ]);
 
   const resetConversation = useCallback(() => {

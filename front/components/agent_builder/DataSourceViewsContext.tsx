@@ -7,6 +7,7 @@ import {
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo } from "react";
 
@@ -39,6 +40,7 @@ export const DataSourceViewsProvider = ({
   owner,
   children,
 }: DataSourceViewsProviderProps) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags();
   const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
@@ -48,11 +50,11 @@ export const DataSourceViewsProvider = ({
     if (isDataSourceViewsError) {
       sendNotification({
         type: "error",
-        title: "Failed to load data sources",
-        description: "Unable to fetch data source views. Please try again.",
+        title: t`Failed to load data sources`,
+        description: t`Unable to fetch data source views. Please try again.`,
       });
     }
-  }, [isDataSourceViewsError, sendNotification]);
+  }, [isDataSourceViewsError, sendNotification, t]);
 
   const supportedDataSourceViews = useMemo(() => {
     return dataSourceViews.filter(
