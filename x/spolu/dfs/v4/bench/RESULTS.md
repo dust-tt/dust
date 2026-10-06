@@ -1,15 +1,14 @@
 # Benchmark results — dfs v4 localhost
 
-Latest full-suite measurements: 2026-10-06, source `26dbc5e862`, directory-record split and the
-current **512 MiB** client budget. All 24 timed checks passed, including both full-content hash
-passes, but final scratch-directory cleanup failed with `EIO`; this is **not a clean suite pass**.
-The [latest table](#latest-full-table--directory-record-split) includes every measured workload.
-The original 1 GiB baseline and intermediate measurements remain below.
-The same implementation's replicated-backend measurements are in [GCP results](../gcp/RESULTS.md).
+Latest full-suite measurements: **2026-10-06**, source `7d10f75eae`, directory cache and page-ahead
+prefetch with the **512 MiB** client budget. All 24 timed checks passed; final scratch cleanup still
+failed with `EIO`. The [new full table](#latest-full-table--directory-cache-and-page-ahead-prefetch)
+includes untar, remaining drain, every first/warm workload and the enlarged local fixture settings.
+All previous tables remain below. Replicated-backend measurements are in [GCP results](../gcp/RESULTS.md).
 
 ## Configuration and method
 
-- Native Linux ARM64 in Docker Desktop on an Apple M4 Max; 16 vCPUs, 7.65 GiB VM RAM.
+- Original fixture: native Linux ARM64 in Docker Desktop on an Apple M4 Max; 16 vCPUs, 7.65 GiB VM RAM.
   Rust 1.98.1 release builds, one local FDB 7.3.69 node, native tuning, `single ssd`, persistent
   Docker volume and 3 GiB FDB container limit. One DFS server. No ES or GCP.
 - Same jd corpus/workloads: **10,000 files, 100 directories, 177,499,149 bytes**, seed 42.
@@ -33,10 +32,83 @@ limit. Docker was increased to 16 GiB and FDB to 8 GiB, retaining the native 2 G
 A separate 2 GiB streamed write then completed in 40.207s plus 0.233s fsync; a fresh server/mount
 read and verified its SHA-256 in 11.612s. Peak FDB cgroup memory was 3.44 GiB, with zero OOM events
 or restarts. This was a large-file recovery check, not a Git clone or suite rerun. All benchmark
-tables below retain their original **3 GiB FDB / 7.65 GiB Docker** configuration and timings.
+tables except the new directory-cache full table retain their original **3 GiB FDB / 7.65 GiB Docker**
+configuration and timings.
 Diagnostic report: `/tmp/dfs-v4-large-write-omfo6v36/result.json` inside `dfs-v4-dev-1`.
 
-## Latest full table — directory-record split
+## Latest full table — directory cache and page-ahead prefetch
+
+2026-10-06, source `7d10f75eae` (runtime implementation `3e481abc97`). Full 10k suite with directory
+revision validation, independent child-attribute refresh and demand-driven one-page-ahead prefetch.
+Same corpus, deep `/shared` path, 512 MiB client budget, 25ms coalescing, one-second read TTL,
+128 in-flight groups, 16 RPC envelopes and eight FUSE workers as the preceding directory-split run.
+The server still commits directly to local FDB, with no authoritative read cache or writeback.
+
+This run uses the **enlarged local fixture: 16 GiB Docker / 8 GiB FDB limit**, native 2 GiB FDB page
+cache, 16 vCPUs and ARM64 release binaries. Earlier tables used 7.65 GiB Docker / 3 GiB FDB, so this
+is not a controlled code-only comparison. Each first read starts a new server/session/mount;
+FDB/OS caches and previous data remain. New isolated FDB prefix, no concurrent builds or tests;
+the idle interactive demo mount stayed available. Warm is one repeat, not a guarantee of fresh TTLs.
+
+Untar: **6.626s**, remaining client drain: **0.437s**, total: **7.063s**.
+Unmount including drain took 0.579s. No fsync/fsyncdir calls occurred during untar.
+All **24 timed checks passed**, including all 10,000 sizes and hashes in both full-content passes.
+Final recursive scratch-directory cleanup again failed with `EIO`; harness exit **1**, not a clean
+suite pass. Each row below reports its individual validation result.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| population   | untar (10,000 files, 177.5 MB)                 | once  |  6,626.42 | OK     |
+| writeback    | remaining client drain after untar             | once  |    437.00 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 11,510.45 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 18,213.57 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |    338.57 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |     35.81 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 10,898.51 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 13,278.87 | OK     |
+| metadata     | stat missing (256 paths)                       | first |  1,406.83 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |    915.03 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first |  4,057.97 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |  2,136.87 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |  3,999.42 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |  1,842.63 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |  1,724.35 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |  2,231.44 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |    365.28 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |    369.43 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 62,619.93 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 14,515.69 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |  2,085.89 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |  3,238.47 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |     24.80 | OK     |
+| file sync    | fsync (32 files)                               | once  |    146.57 | OK     |
+| write        | close (32 files)                               | once  |      0.81 | OK     |
+| write        | unlink (32 files)                              | once  |     27.49 | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Compared with the previous local full table, cold open/fstat/close falls from **23.184s to 10.899s**,
+and warm full-content reads from **25.322s to 14.516s**. Cold full-content reads remain near the
+previous result (**64.601s → 62.620s**). The gains are not uniform: warm scandir/stat rises from
+**11.258s to 18.214s**, and warm random tail reads from **1.833s to 3.238s**. These are single samples,
+with the fixture-memory difference above; further attribution needs a separate measurement.
+
+FDB was healthy before and after, with unchanged configuration, no container restarts or OOM kill.
+Workspace/FDB tests and release-mounted checks passed before timing. Existing corpora and the demo
+mount are retained. Raw reports and logs remain outside Git.
+
+```sh
+v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=7d10f75eae python3 /dfs/v4/bench/run.py --files 10000
+```
+
+Report: `/tmp/dfs-v4-7d10f75eae-full/run.json` inside `dfs-v4-dev-1`.
+Server SHA-256: `51f0ea219d8d37a2548a4d9674505c7280f92cedcffd0eed0d4e2046c22e74ea`.
+FUSE SHA-256: `a2577ab0306bf5441a5357503c4259eafa787f86ae84fb9bb5f84e07c702ec47`.
+Manifest SHA-256: `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
+
+## Previous full table — directory-record split
 
 Source `26dbc5e862` (implementation `9e8c6ea3c7`). Same 10k corpus and local setup described above;
 512 MiB shared clean/dirty/bookkeeping budget, including a 96 MiB transient reserve, with no separate

@@ -18,7 +18,7 @@ suite pass**. The table preserves every measured row and its individual validati
 - FUSE and DFS share the workload VM in zone `a`, communicating over loopback; FDB transactions
   cross the VPC. This is a replicated backend evaluation, not a remote client hop or multi-client test.
   Rust 1.98.1 release, native x86-64, Python 3.13.5, ripgrep 14.1.1, Linux `7.0.0-1011-gcp`.
-- Same jd generator/workloads as [localhost](../bench/RESULTS.md#latest-full-table--directory-record-split),
+- Same jd generator/workloads as [localhost](../bench/RESULTS.md#previous-full-table--directory-record-split),
   verified byte for byte: **10,000 files, 100 directories, 177,499,149 document bytes**, seed 42.
   Untar uses the uncompressed corpus archive, 13 directories below the tenant root through `/shared`
   and an inherited grant. The archive also includes `manifest.json`.
