@@ -372,8 +372,8 @@ export default defineConfig(({ mode }) => {
       // contains a single copy of each.
       // - @lingui/react: sparkle's components must read the same LinguiContext that front's
       //   I18nProvider fills, otherwise they silently stay in English.
-      // - @lingui/core: the `i18n` singleton that front activates must be the one sparkle's
-      //   components translate with.
+      // - @lingui/core: only to ship a single copy. Sparkle never uses the core `i18n` singleton,
+      //   it translates with the instance from front's LinguiContext.
       dedupe: ["react", "react-dom", "@lingui/react", "@lingui/core"],
     },
     build: {
