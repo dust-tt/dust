@@ -241,6 +241,7 @@ function buildMessageConsumptionDetails({
 /** Selects the newest self-consistent attribution stored for a message. */
 export function buildLatestAvailableMessageConsumptionDetails({
   actions,
+  attemptedRunIds,
   billedCredits,
   dustRunIds,
   items,
@@ -250,6 +251,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   usages,
 }: {
   actions: AgentMCPActionResource[];
+  attemptedRunIds: string[] | null;
   billedCredits: number | null;
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
@@ -263,6 +265,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
 }): MessageConsumptionDetails | null {
   const allocationResult = buildLatestMessageConsumptionAllocation({
     actions,
+    attemptedRunIds,
     billedCredits,
     dustRunIds,
     hasUnbilledExecution: false,

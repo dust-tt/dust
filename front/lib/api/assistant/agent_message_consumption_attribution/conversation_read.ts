@@ -133,6 +133,7 @@ export async function getConversationConsumption(
       message,
       details: buildLatestAvailableMessageConsumptionDetails({
         actions: message.actions,
+        attemptedRunIds: message.attemptedRunIds,
         billedCredits: message.billedCredits,
         dustRunIds: message.dustRunIds,
         items: message.items,

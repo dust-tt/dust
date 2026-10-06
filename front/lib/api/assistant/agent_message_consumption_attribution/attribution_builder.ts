@@ -295,6 +295,20 @@ export function buildRunUsageAttribution<TTool>({
   };
 }
 
+/** Prices a tool result footprint at the producing run's cache-naive input rate. */
+export function buildToolResultInputCreditAmountMicro({
+  usage,
+  inputTokensCount,
+}: {
+  usage: RunUsageForAttribution;
+  inputTokensCount: number;
+}): number {
+  return attributedCreditsForTokens({
+    tokensCount: inputTokensCount,
+    costMicroUsdPerToken: getRunTokenRates(usage).inputCostMicroUsdPerToken,
+  });
+}
+
 /**
  * Combines the emitted tool call, produced result, and exact direct charge into one tool
  * attribution. The result footprint uses cache-naive input pricing.
@@ -335,11 +349,7 @@ export function buildToolAttribution<TTool>({
   const inputCreditAmountMicro =
     inputTokensCount === null
       ? 0
-      : attributedCreditsForTokens({
-          tokensCount: inputTokensCount,
-          costMicroUsdPerToken:
-            getRunTokenRates(usage).inputCostMicroUsdPerToken,
-        });
+      : buildToolResultInputCreditAmountMicro({ usage, inputTokensCount });
 
   return {
     ...toolCall,
