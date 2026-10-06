@@ -107,6 +107,19 @@ app.post(
       });
     }
 
+    if (
+      conversationResource.isPodConversation() &&
+      !conversationResource.space?.isMember(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You are not a member of the Pod.",
+        },
+      });
+    }
+
     const messageRes = await conversationResource.getMessageById(
       auth,
       messageId
