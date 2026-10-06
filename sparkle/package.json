@@ -47,6 +47,11 @@
       "import": "./dist/esm/index.js",
       "default": "./dist/esm/index.js"
     },
+    "./i18n": {
+      "types": "./dist/esm/lib/i18n/index.d.ts",
+      "import": "./dist/esm/lib/i18n/index.js",
+      "default": "./dist/esm/lib/i18n/index.js"
+    },
     "./dist/esm/*": {
       "types": "./dist/esm/*.d.ts",
       "import": "./dist/esm/*.js",
