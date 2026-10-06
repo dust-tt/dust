@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
 import {
@@ -173,6 +176,7 @@ export function useBulkUpdateEgressDomain({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -206,10 +210,9 @@ export function useBulkUpdateEgressDomain({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: failureTitle,
-          description: error.message,
+          error,
         });
         return false;
       }
@@ -274,6 +277,7 @@ export function useDismissPodEgressRequestByPod({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDismissing, setIsDismissing] = useState(false);
 
@@ -294,10 +298,9 @@ export function useDismissPodEgressRequestByPod({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to reject domain request",
-          description: error.message,
+          error,
         });
         return false;
       }
@@ -352,6 +355,7 @@ export function useUpsertSandboxEnvVar({
   owner: LightWorkspaceType;
   spaceId?: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpserting, setIsUpserting] = useState(false);
   const { mutateSandboxEnvVars } = useSandboxEnvVars({
@@ -381,10 +385,9 @@ export function useUpsertSandboxEnvVar({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to save environment variable",
-          description: error.message,
+          error,
         });
         return false;
       }
@@ -426,6 +429,7 @@ export function usePatchSandboxEnvVar({
   owner: LightWorkspaceType;
   spaceId?: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isPatching, setIsPatching] = useState(false);
   const { mutateSandboxEnvVars } = useSandboxEnvVars({
@@ -458,10 +462,9 @@ export function usePatchSandboxEnvVar({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update environment variable",
-          description: error.message,
+          error,
         });
         return false;
       }
@@ -504,6 +507,7 @@ export function useDeleteSandboxEnvVar({
   owner: LightWorkspaceType;
   spaceId?: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDeleting, setIsDeleting] = useState(false);
   const { mutateSandboxEnvVars } = useSandboxEnvVars({
@@ -526,10 +530,9 @@ export function useDeleteSandboxEnvVar({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to delete environment variable",
-          description: error.message,
+          error,
         });
         return false;
       }
@@ -619,6 +622,7 @@ export function useUpdateWorkspaceEgressPolicy({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const { mutateWorkspaceEgressPolicy } = useWorkspaceEgressPolicy({
@@ -641,10 +645,9 @@ export function useUpdateWorkspaceEgressPolicy({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update network policy",
-          description: error.message,
+          error,
         });
         return false;
       }
@@ -690,6 +693,7 @@ export function useDismissWorkspaceEgressRequest({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDismissingRequest, setIsDismissing] = useState(false);
   const { mutateWorkspaceEgressPolicy } = useWorkspaceEgressPolicy({
@@ -713,10 +717,9 @@ export function useDismissWorkspaceEgressRequest({
 
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to reject domain request",
-          description: error.message,
+          error,
         });
         return false;
       }

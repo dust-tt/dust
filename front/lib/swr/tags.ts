@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetTagsUsageResponseBody } from "@app/lib/resources/tags_resource";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -91,7 +94,7 @@ export function useTagsSuggestions({
 }
 
 export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
 
@@ -109,11 +112,9 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
 
     if (!res.ok) {
       const json = await res.json();
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to create tag",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: json.error.message || "Failed to create tag",
+        error: json,
       });
 
       return null;
@@ -131,6 +132,7 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
@@ -146,11 +148,9 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
     if (!res.ok) {
       const json = await res.json();
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to delete tag",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: json.error.message || "Failed to delete tag",
+        error: json,
       });
 
       return;
@@ -177,6 +177,7 @@ export function useUpdateTag({
   owner: LightWorkspaceType;
   tagId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
@@ -196,11 +197,9 @@ export function useUpdateTag({
     if (!res.ok) {
       const json = await res.json();
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to delete tag",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: json.error.message || "Failed to create tag",
+        error: json,
       });
       return;
     }

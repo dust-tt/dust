@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -44,6 +47,7 @@ export function useAllowSlackWorkflow({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isAllowing, setIsAllowing] = useState(false);
   const { mutateWorkflows } = useSlackWorkflows({ owner, disabled: true });
@@ -65,10 +69,9 @@ export function useAllowSlackWorkflow({
 
       if (!res.ok) {
         const error = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to allow Slack workflow",
-          description: error.message,
+          error,
         });
         setIsAllowing(false);
 
@@ -85,7 +88,7 @@ export function useAllowSlackWorkflow({
 
       return true;
     },
-    [owner.sId, mutateWorkflows, sendNotification]
+    [owner.sId, mutateWorkflows, sendNotification, sendApiErrorNotification]
   );
 
   return { doAllowSlackWorkflow, isAllowing };
@@ -96,6 +99,7 @@ export function useRevokeSlackWorkflow({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isRevoking, setIsRevoking] = useState(false);
   const { mutateWorkflows } = useSlackWorkflows({ owner, disabled: true });
@@ -111,10 +115,9 @@ export function useRevokeSlackWorkflow({
 
       if (!res.ok) {
         const error = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to revoke Slack workflow",
-          description: error.message,
+          error,
         });
         setIsRevoking(false);
 
@@ -131,7 +134,7 @@ export function useRevokeSlackWorkflow({
 
       return true;
     },
-    [owner.sId, mutateWorkflows, sendNotification]
+    [owner.sId, mutateWorkflows, sendNotification, sendApiErrorNotification]
   );
 
   return { doRevokeSlackWorkflow, isRevoking };

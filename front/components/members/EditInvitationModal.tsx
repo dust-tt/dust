@@ -4,7 +4,10 @@ import {
   ROLE_DESCRIPTIONS,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { formatDate } from "@app/lib/i18n/format";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useWorkspaceGrantedRoles } from "@app/lib/swr/groups";
@@ -41,6 +44,7 @@ export function EditInvitationModal({
   );
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const confirm = useContext(ConfirmContext);
 
   // Managers cannot revoke or resend invitations targeting the admin role
@@ -81,6 +85,7 @@ export function EditInvitationModal({
         invitation,
         newRole: selectedRole,
         sendNotification,
+        sendApiErrorNotification,
         confirm,
       });
     }
@@ -145,6 +150,7 @@ export function EditInvitationModal({
                         emails: [invitation.inviteEmail],
                         invitationRole: selectedRole,
                         sendNotification,
+                        sendApiErrorNotification,
                         isNewInvitation: false,
                       });
                     }}
@@ -159,6 +165,7 @@ export function EditInvitationModal({
                         invitation,
                         owner,
                         sendNotification,
+                        sendApiErrorNotification,
                         confirm,
                       });
                     }}

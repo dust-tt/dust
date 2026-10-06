@@ -6,7 +6,10 @@ import {
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { MemberGroupsSection } from "@app/components/workspace/MemberGroupsSection";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useWorkspaceGrantedRoles } from "@app/lib/swr/groups";
@@ -57,6 +60,7 @@ export function ChangeMemberModal({
   const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
     role !== "none" ? role : null
   );
@@ -92,6 +96,7 @@ export function ChangeMemberModal({
       members: member ? [member] : [],
       role: selectedRole,
       sendNotification,
+      sendApiErrorNotification,
     });
     await mutateMembers();
     onClose();
@@ -203,6 +208,7 @@ export function ChangeMemberModal({
                                       members: [member],
                                       role: "none",
                                       sendNotification,
+                                      sendApiErrorNotification,
                                     });
                                     await mutateMembers();
                                     onClose();

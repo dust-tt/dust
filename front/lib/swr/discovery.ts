@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
@@ -114,6 +117,7 @@ interface PinDiscoveryItemArgs {
 }
 
 export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isPinning, setIsPinning] = useState(false);
 
@@ -139,11 +143,9 @@ export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to pin to Featured",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return false;
         }
@@ -169,7 +171,7 @@ export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
         setIsPinning(false);
       }
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification]
   );
 
   return { doPin, isPinning };

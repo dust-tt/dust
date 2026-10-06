@@ -14,7 +14,10 @@ import {
   sortSeatTypes,
 } from "@app/components/workspace/SeatCard";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type {
   SeatBillingFrequency,
   SeatTypeInfo,
@@ -157,6 +160,7 @@ export function InviteEmailButtonWithModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
@@ -374,6 +378,7 @@ export function InviteEmailButtonWithModal({
         invitationRole,
         seatType: selectedSeatType,
         sendNotification,
+        sendApiErrorNotification,
         isNewInvitation: true,
       });
 

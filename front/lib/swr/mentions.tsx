@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
@@ -108,7 +111,7 @@ export function useDismissMention({
   conversationId: string;
   messageId: string;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const dismissMention = useCallback(
     async (mention: RichMentionWithStatus): Promise<boolean> => {
       try {
@@ -128,10 +131,9 @@ export function useDismissMention({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: `Error dismissing mention`,
-            description: errorData.message ?? "An error occurred",
+            error: errorData,
           });
           return false;
         }
@@ -144,7 +146,7 @@ export function useDismissMention({
         return false;
       }
     },
-    [workspaceId, conversationId, messageId, sendNotification]
+    [workspaceId, conversationId, messageId, sendApiErrorNotification]
   );
 
   return { dismissMention };
@@ -161,6 +163,7 @@ export function useMentionValidation({
   messageId: string;
   isProjectConversation: boolean;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const validateMention = useCallback(
@@ -186,10 +189,9 @@ export function useMentionValidation({
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
           const actionLabel = action === "approved" ? "approving" : "rejecting";
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: `Error ${actionLabel} mention`,
-            description: errorData.message ?? "An error occurred",
+            error: errorData,
           });
           return false;
         }
@@ -227,6 +229,7 @@ export function useMentionValidation({
       messageId,
       isProjectConversation,
       sendNotification,
+      sendApiErrorNotification,
     ]
   );
 
