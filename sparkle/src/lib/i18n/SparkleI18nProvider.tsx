@@ -15,8 +15,7 @@ interface SparkleI18nProviderProps {
 /**
  * @cc [owner:ykmsd,label:product;react] sparkle-i18n-provider-follows-locale
  * Sparkle components below a `SparkleI18nProvider` MUST render in `locale` once its catalog is
- * loaded, and in the same render as the `locale` change when `loadSparkleCatalog(locale)` had
- * already resolved. While the catalog loads, or after it failed to load, they MUST keep rendering
+ * loaded, and in the same render as the `locale` change when that catalog was already loaded. While the catalog loads, or after it failed to load, they MUST keep rendering
  * the previously rendered locale, and a catalog that finishes loading after `locale` changed again
  * MUST NOT be rendered.
  */

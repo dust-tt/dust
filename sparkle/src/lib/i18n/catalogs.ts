@@ -54,15 +54,3 @@ export async function loadSparkleI18n(
   return i18n;
 }
 
-/**
- * @cc [owner:ykmsd,label:product] load-sparkle-catalog-before-provider
- * `loadSparkleCatalog` MUST resolve only once the compiled sparkle catalog of `locale` is loaded,
- * so that a `SparkleI18nProvider` given `locale` afterwards renders it from its first render. A
- * consumer that switches locale MUST await it together with its own catalog before activating the
- * new locale, so that its text and sparkle's switch in the same render.
- */
-export async function loadSparkleCatalog(
-  locale: SparkleCatalogLocale
-): Promise<void> {
-  await loadSparkleI18n(locale);
-}

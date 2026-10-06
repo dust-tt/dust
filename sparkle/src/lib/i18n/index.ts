@@ -1,6 +1,4 @@
-// Entry point of `@dust-tt/sparkle/i18n`. The provider and the catalog loader MUST come from the same
-// entry point: the provider renders the catalogs that `loadSparkleCatalog` loaded into its module.
-export { loadSparkleCatalog } from "@sparkle/lib/i18n/catalogs";
+// Entry point of `@dust-tt/sparkle/i18n`. The provider loads sparkle's catalogs itself.
 export {
   SPARKLE_CATALOG_LOCALES,
   type SparkleCatalogLocale,

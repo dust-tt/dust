@@ -4,7 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("loadCatalog", () => {
+describe("AppI18nProvider", () => {
   // `render` wraps the tree in `AppI18nProvider` (see `vite.i18nSetup.ts`).
   it("renders sparkle components in front's active locale", async () => {
     render(createElement(LoadMore, { rowCount: 2, onLoadMore: () => {} }));
@@ -13,7 +13,9 @@ describe("loadCatalog", () => {
     const messages = await loadCatalog("fr-FR");
     act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
 
-    // Synchronously after activation: `loadCatalog` already loaded sparkle's catalog.
-    expect(screen.getByRole("button", { name: "Charger plus" })).toBeDefined();
+    // Sparkle loads its own catalog once front's locale is activated.
+    expect(
+      await screen.findByRole("button", { name: "Charger plus" })
+    ).toBeDefined();
   });
 });

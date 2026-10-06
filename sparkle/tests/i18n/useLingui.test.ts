@@ -1,7 +1,7 @@
 import { setupI18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { LoadMore } from "@sparkle/components/LoadMore";
-import { loadSparkleCatalog } from "@sparkle/lib/i18n/catalogs";
+import { loadSparkleI18n } from "@sparkle/lib/i18n/catalogs";
 import { SparkleI18nProvider } from "@sparkle/lib/i18n/SparkleI18nProvider";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -19,7 +19,7 @@ describe("useLingui", () => {
   });
 
   it("renders a preloaded locale from the first render", async () => {
-    await loadSparkleCatalog("fr-FR");
+    await loadSparkleI18n("fr-FR");
 
     // `renderToStaticMarkup` renders once, without running effects.
     const html = renderToStaticMarkup(

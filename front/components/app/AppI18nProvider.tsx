@@ -27,8 +27,8 @@ function SparkleLocaleSync({ children }: { children: ReactNode }) {
  * @cc [owner:ykmsd,label:product;react] app-i18n-provider-syncs-sparkle
  * A tree that renders front or sparkle text MUST be wrapped in `AppI18nProvider` rather than a bare
  * `I18nProvider`, so that sparkle components render in the catalog locale of front's active
- * locale. Sparkle's locale MUST only change when front's active locale changes, which happens once
- * both catalogs are loaded (`load-catalog-waits-for-sparkle`).
+ * locale. Sparkle's locale MUST only change when front's active locale changes; sparkle loads its
+ * own catalog (`sparkle-i18n-provider-follows-locale`).
  */
 export function AppI18nProvider({ children }: { children: ReactNode }) {
   return (
