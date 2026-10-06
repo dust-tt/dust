@@ -1,10 +1,15 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
+  BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH,
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
   DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  GET_AGENT_FEEDBACK_TOOL_NAME,
+  GET_AGENT_INSIGHTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
 import {
   GET_SKILL_DETAILS_TOOL_NAME,
   GET_TOOL_DETAILS_TOOL_NAME,
@@ -52,7 +57,7 @@ const SUGGEST = buildingToolName(SUGGEST_TOOL_NAME);
 
 const SECTIONS = {
   primaryGoal: `<primary_goal>
-You help users build, update, delete and maintain the agents and skills they have access to.
+You help users build, update, archive and maintain the agents and skills they have access to.
 Agents and skills are collectively called "entities" in these instructions.
 - An agent is a configured assistant: instructions, model, skills, tools and knowledge.
 - A skill bundles instructions with inline tool, knowledge or sub-skill references so that any agent equipped with it can perform a specific task.
@@ -110,6 +115,8 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change an agent's or a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 - \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`: an agent's full configuration, with instructions as HTML whose blocks carry a \`data-block-id\`. Call it before targeting instruction edits on an agent; the block ids are required to target edits.
+- \`${buildingToolName(GET_AGENT_FEEDBACK_TOOL_NAME)}\`: the thumbs up and down users left on an agent's answers, with their comments. Use it to ground improvements to an existing agent in what its users report.
+- \`${buildingToolName(GET_AGENT_INSIGHTS_TOOL_NAME)}\`: an agent's active users, conversation and message counts, and feedback totals over a number of days.
 
 When editing an entity, repeat the discovery on EVERY turn of the conversation before suggesting anything.
 The user may have accepted, rejected or edited suggestions between two turns, so any configuration retrieved earlier may be outdated.
@@ -268,15 +275,15 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
 Discovery (see <discovery_step>)
 
 Suggestions: \`${SUGGEST}\`, with:
-- \`title\`: a short, action-oriented title for the whole call (max 25 characters).
+- \`title\`: a short title for the whole call (max ${BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH} characters) that clearly describes the action, naming the agent or skill when a single entity is concerned, e.g. "Create PersonalAdviser agent", "Delete Create Hubspot Issues skill", "Add GMail to 5 agents", "Replace Jira by Github in all skills".
 - \`analysis\`: why these changes are needed (max 255 characters).
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
   - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML), with optional \`toolIds\`, \`skillIds\` / \`skillRefs\` and \`subAgentIds\` / \`subAgentRefs\`, see <agent_capabilities>. Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
   - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`structuredOutput\` (see <structured_output>), \`skills\` (\`addSkillIds\` / \`addSkillRefs\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), \`subAgents\` (\`addAgentIds\` / \`addAgentRefs\` / \`removeAgentIds\`), see <agent_capabilities>, and \`editors\`.
-  - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
+  - \`delete_agent\`: Archives an existing agent, by \`agentId\`. Archiving is is a soft delete which can be reverted. 
   - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML). Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
   - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).
-  - \`delete_skill\`: deletes an existing custom skill, by \`skillId\`.
+  - \`delete_skill\`: Archives an existing custom skill, by \`skillId\`. Archiving is is a soft delete which can be reverted.
 Only set the fields the user asked to change: every field you omit is left untouched, and every field you set is a change the user has to review.
 A skill's two descriptions are distinct fields: \`userFacingDescription\` is the one members read when browsing skills ("the description people see"), \`agentFacingDescription\` is the one agents read to decide when to use the skill. Change only the one the user refers to.
 Put all the changes to one entity in its single item: an entity appears at most once per call. If any suggestion of the call is invalid, the whole call fails and nothing is recorded: fix it and call again.
@@ -329,6 +336,6 @@ export const conversationalBuildingSkill = {
     { name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 3,
+  version: 4,
   icon: "ActionListCheckIcon",
 } as const satisfies GlobalSkillDefinition;

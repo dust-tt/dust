@@ -1,113 +1,38 @@
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
   ensureSlackNotificationsReady,
-  getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
-import type {
-  ConversationDetailsPayload,
-  ConversationDetailsType,
-} from "@app/lib/notifications/helpers";
+import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
 import {
   ConversationDetailsPayloadSchema,
   ConversationDetailsSchema,
   getConversationDetails,
   getEmailSummary,
 } from "@app/lib/notifications/helpers";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { getNotificationLocale } from "@app/lib/notifications/locale";
+import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
+import {
+  shouldSkipConversation,
+  shouldSkipConversationExternalNotification,
+} from "@app/lib/notifications/triggers/conversation-unread";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
-import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
-  CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
-  DEFAULT_NOTIFICATION_CONDITION,
-  isNotificationCondition,
   NOTIFICATION_DELAY_OPTIONS,
   NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
 import { isDevelopment } from "@app/types/shared/env";
-import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
-import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { UserType } from "@app/types/user";
-import { areConversationExternalNotificationsEnabled } from "@app/types/user";
+import type { I18n } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 import assert from "assert";
 import z from "zod";
-
-// The unread workflow operates on the shared conversation-details payload.
-export type ConversationUnreadPayloadType = ConversationDetailsPayload;
-
-export async function shouldSkipConversationExternalNotification(
-  workspaceId: string
-): Promise<boolean> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    return true;
-  }
-  return !areConversationExternalNotificationsEnabled(
-    renderLightWorkspaceType({ workspace })
-  );
-}
-
-export const shouldSendNotificationForAgentAnswer = (
-  userMessageOrigin?: UserMessageOrigin | null
-): boolean => {
-  switch (userMessageOrigin) {
-    case "web":
-    case "extension":
-    case "cli":
-    case "cli_programmatic":
-    case "wakeup":
-      return true;
-    case "onboarding_conversation":
-    case "agent_sidekick":
-    case "analytics_panel":
-    case "reinforced_skill_notification":
-    case "reinforcement":
-    case "system_activation":
-      // Internal bootstrap conversations shouldn't trigger unread notifications.
-      return false;
-    case "api":
-    case "email":
-    case "excel":
-    case "gsheet":
-    case "make":
-    case "n8n":
-    case "powerpoint":
-    case "raycast":
-    case "slack":
-    case "slack_workflow":
-    case "teams":
-    case "transcript":
-    case "triggered_programmatic":
-    case "triggered":
-    case "zapier":
-    case "zendesk":
-    case "project_kickoff":
-    case undefined:
-    case null:
-      return false;
-    default:
-      assertNever(userMessageOrigin);
-  }
-};
 
 // Wrapper for workflow step that may fail when conversation is deleted.
 const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
@@ -124,143 +49,8 @@ const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-const shouldSkipUnreadConversation = async ({
-  subscriberId,
-  payload,
-  triggerShouldSkip,
-  hasUnreadMessages,
-}: {
-  subscriberId: string;
-  payload: ConversationUnreadPayloadType;
-  triggerShouldSkip: boolean;
-  hasUnreadMessages: boolean;
-}): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
-
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    payload.conversationId
-  );
-
-  if (!conversation) {
-    return true;
-  }
-
-  if (triggerShouldSkip && conversation.triggerSId) {
-    return true;
-  }
-
-  const { actionRequired, lastReadAt } =
-    await ConversationResource.getActionRequiredAndLastReadAtForUser(
-      auth,
-      conversation.id
-    );
-
-  const unread =
-    (lastReadAt === null || conversation.updatedAt > lastReadAt) &&
-    hasUnreadMessages;
-
-  if (!actionRequired && !unread) {
-    return true;
-  }
-
-  return false;
-};
-
-export const shouldSkipNewProjectConversation = async ({
-  subscriberId,
-  payload,
-}: {
-  subscriberId: string;
-  payload: ConversationUnreadPayloadType;
-}): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
-
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    payload.conversationId
-  );
-
-  if (!conversationResource) {
-    return true;
-  }
-
-  const { lastReadAt } =
-    await ConversationResource.getActionRequiredAndLastReadAtForUser(
-      auth,
-      conversationResource.id
-    );
-
-  const hasBeenOpened = !!lastReadAt;
-
-  if (hasBeenOpened) {
-    return true;
-  }
-
-  const conversationParticipants =
-    await conversationResource.listParticipants(auth);
-
-  const isConversationParticipant = conversationParticipants.some(
-    (participant) => participant.sId === subscriberId
-  );
-
-  if (isConversationParticipant) {
-    return true;
-  }
-
-  const conversation = conversationResource.toJSON();
-
-  if (!isPodConversation(conversation)) {
-    return true;
-  }
-
-  const project = await SpaceResource.fetchById(auth, conversation.spaceId);
-
-  if (!project) {
-    return true;
-  }
-
-  if (!project.isMember(auth)) {
-    return true;
-  }
-
-  return false;
-};
-
-export const shouldSkipConversation = async ({
-  subscriberId,
-  payload,
-  triggerShouldSkip,
-  hasUnreadMessages,
-}: {
-  subscriberId?: string | null;
-  payload: ConversationUnreadPayloadType;
-  triggerShouldSkip: boolean;
-  hasUnreadMessages: boolean;
-}): Promise<boolean> => {
-  if (!subscriberId) {
-    return true;
-  }
-
-  if (payload.isNewProjectConversation) {
-    return shouldSkipNewProjectConversation({ subscriberId, payload });
-  }
-
-  return shouldSkipUnreadConversation({
-    subscriberId,
-    payload,
-    triggerShouldSkip,
-    hasUnreadMessages,
-  });
-};
-
-const getEmailSubject = (
+export const buildConversationUnreadEmailSubject = (
+  i18n: I18n,
   conversations: {
     title: string;
     projectName?: string;
@@ -275,24 +65,93 @@ const getEmailSubject = (
       new Set(conversations.map((c) => c.projectName).filter(Boolean))
     );
     if (uniqueProjectNames.length === 1) {
-      return `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
+      const projectName = uniqueProjectNames[0];
+      const count = conversations.length;
+      return i18n._(
+        msg`[Dust] ${plural(count, {
+          one: `New conversation in "${projectName}"`,
+          other: `New conversations in "${projectName}"`,
+        })}`
+      );
     }
-    return `[Dust] New conversations in your Pods`;
+    return i18n._(msg`[Dust] New conversations in your Pods`);
   }
   if (conversations.length === 1) {
-    return `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
+    return `[Dust] ${conversations[0]?.title ?? i18n._(msg`New unread message(s) in conversation`)}`;
   }
-  return `[Dust] New unread messages in ${conversations.length} conversations`;
+  const count = conversations.length;
+  return i18n._(msg`[Dust] New unread messages in ${count} conversations`);
 };
 
+export function buildConversationUnreadInAppCopy(
+  i18n: I18n,
+  d: Pick<
+    ConversationDetailsType,
+    | "isNewProjectConversation"
+    | "projectName"
+    | "author"
+    | "authorIsAgent"
+    | "subject"
+  >
+): { subject: string; body: string; actionLabel: string } {
+  const { author, subject: conversationTitle } = d;
+  const projectName = d.projectName ?? "";
+  const actionLabel = i18n._(msg({ message: "View", context: "action" }));
+  if (d.isNewProjectConversation) {
+    return {
+      subject: i18n._(msg`New conversation in ${projectName}`),
+      body: i18n._(msg`${author} created "${conversationTitle}"`),
+      actionLabel,
+    };
+  }
+  return {
+    subject: i18n._(msg`New message from ${author}`),
+    body: d.authorIsAgent
+      ? i18n._(
+          msg`${author} replied in the conversation "${conversationTitle}".`
+        )
+      : i18n._(
+          msg`You have a new message from ${author} in the conversation "${conversationTitle}".`
+        ),
+    actionLabel,
+  };
+}
+
+export function buildConversationUnreadSlackMessage(
+  i18n: I18n,
+  d: ConversationDetailsType,
+  conversationUrl: string
+): string {
+  const { author, subject: conversationTitle } = d;
+  const projectName = d.projectName ?? "";
+  const messagePreview = getMessagePreviewSlack(i18n, d);
+  const baseMessage = d.isNewProjectConversation
+    ? i18n._(
+        msg`There is a new conversation in "${projectName}": ${author} started "${conversationTitle}"`
+      )
+    : d.authorIsAgent
+      ? i18n._(msg`${author} replied in "${conversationTitle}"`)
+      : i18n._(msg`New message from ${author} in "${conversationTitle}"`);
+  const viewLink = `<${conversationUrl}|${i18n._(msg`View conversation`)}>`;
+
+  return messagePreview
+    ? `${baseMessage}\n${messagePreview}\n${viewLink}`
+    : `${baseMessage}\n${viewLink}`;
+}
+
 export const getMessagePreviewText = (
+  i18n: I18n,
   details: ConversationDetailsType
 ): string | undefined => {
   if (details.hasConversationRetentionPolicy) {
-    return "Preview not available due to data retention policy on conversations in this workspace.";
+    return i18n._(
+      msg`Preview not available due to data retention policy on conversations in this workspace.`
+    );
   }
   if (details.hasAgentRetentionPolicies) {
-    return "Preview not available due to data retention policy on agents in this conversation.";
+    return i18n._(
+      msg`Preview not available due to data retention policy on agents in this conversation.`
+    );
   }
   if (details.newMessageContent) {
     const stripped = stripMarkdown(details.newMessageContent);
@@ -302,9 +161,10 @@ export const getMessagePreviewText = (
 };
 
 export const getMessagePreviewSlack = (
+  i18n: I18n,
   details: ConversationDetailsType
 ): string | undefined => {
-  const preview = getMessagePreviewText(details);
+  const preview = getMessagePreviewText(i18n, details);
   if (!preview) {
     return undefined;
   }
@@ -351,21 +211,22 @@ export const conversationUnreadWorkflow = workflow(
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const d = details!;
 
-        const isProjectNewConversation = d.isNewProjectConversation;
-        const subject = isProjectNewConversation
-          ? `New conversation in ${d.projectName}`
-          : `New message from ${d.author}`;
-        const body = isProjectNewConversation
-          ? `${d.author} created "${d.subject}"`
-          : d.authorIsAgent
-            ? `${d.author} replied in the conversation "${d.subject}".`
-            : `You have a new message from ${d.author} in the conversation "${d.subject}".`;
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const { subject, body, actionLabel } = buildConversationUnreadInAppCopy(
+          i18n,
+          d
+        );
 
         return {
           subject,
           body,
           primaryAction: {
-            label: "View",
+            label: actionLabel,
             redirect: {
               url: getConversationRoute(
                 payload.workspaceId,
@@ -405,19 +266,17 @@ export const conversationUnreadWorkflow = workflow(
           config.getAppUrl()
         );
 
-        // Create message preview
-        const messagePreview = getMessagePreviewSlack(d);
-
-        const isProjectNewConversation = d.isNewProjectConversation;
-        const baseMessage = isProjectNewConversation
-          ? `There is a new conversation in "${d.projectName}": ${d.author} started "${d.subject}"`
-          : d.authorIsAgent
-            ? `${d.author} replied in "${d.subject}"`
-            : `New message from ${d.author} in "${d.subject}"`;
-
-        const message = messagePreview
-          ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
-          : `${baseMessage}\n<${conversationUrl}|View conversation>`;
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const message = buildConversationUnreadSlackMessage(
+          i18n,
+          d,
+          conversationUrl
+        );
 
         return {
           body: message,
@@ -502,6 +361,12 @@ export const conversationUnreadWorkflow = workflow(
     await step.email(
       "send-email",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
         const conversations: Parameters<
           typeof renderEmail
         >[0]["conversations"] = [];
@@ -563,10 +428,14 @@ export const conversationUnreadWorkflow = workflow(
                 isNewProjectConversation: true,
                 projectName: detailsResult.value.projectName,
                 createdByFullName: detailsResult.value.author,
-                messagePreview: getMessagePreviewText(detailsResult.value),
+                messagePreview: getMessagePreviewText(
+                  i18n,
+                  detailsResult.value
+                ),
               });
             } else {
               const summary = await getEmailSummary({
+                i18n,
                 details: detailsResult.value,
                 subscriberId: subscriber.subscriberId ?? "",
                 payload,
@@ -584,7 +453,8 @@ export const conversationUnreadWorkflow = workflow(
 
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const body = await renderEmail({
-          name: subscriber.firstName ?? "You",
+          i18n,
+          name: subscriber.firstName ?? undefined,
           workspace: {
             id: payload.workspaceId,
             name: details!.workspaceName,
@@ -592,7 +462,10 @@ export const conversationUnreadWorkflow = workflow(
           conversations,
         });
 
-        const subject = getEmailSubject(conversations);
+        const subject = buildConversationUnreadEmailSubject(
+          i18n,
+          conversations
+        );
         return {
           subject,
           body,
@@ -641,193 +514,3 @@ export const conversationUnreadWorkflow = workflow(
     tags: ["conversations"] as NotificationAllowedTags,
   }
 );
-
-/**
- * Filters participants based on their notification condition preference.
- * Returns only participants who should receive notifications.
- * Note: If a user is the only human participant in the conversation, they are
- * always notified regardless of their preference.
- */
-export const filterParticipantsByNotifyCondition = async ({
-  auth,
-  participants,
-  mentionedUserIds,
-  totalParticipantCount,
-  spaceModelId,
-}: {
-  auth: Authenticator;
-  participants: (UserType & { lastReadAt: Date | null })[];
-  mentionedUserIds: Set<string>;
-  totalParticipantCount: number;
-  spaceModelId: ModelId | null;
-}): Promise<(UserType & { lastReadAt: Date | null })[]> => {
-  const userModelIds = participants.map((p) => p.id);
-
-  const generalPreferences =
-    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
-      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-      userModelIds
-    );
-
-  const generalPreferenceMap = new Map<number, NotificationCondition>();
-  for (const [userModelId, value] of generalPreferences) {
-    if (isNotificationCondition(value)) {
-      generalPreferenceMap.set(userModelId, value);
-    }
-  }
-
-  const projectPreferenceMap = spaceModelId
-    ? await UserProjectPreferencesResource.fetchNotificationPreferenceMap(
-        auth,
-        {
-          spaceModelId,
-          userModelIds,
-        }
-      )
-    : new Map<ModelId, NotificationCondition>();
-
-  return participants.filter((participant) => {
-    // Project-level preference overrides the general one if present.
-    const notifyCondition =
-      projectPreferenceMap.get(participant.id) ??
-      generalPreferenceMap.get(participant.id) ??
-      DEFAULT_NOTIFICATION_CONDITION;
-    switch (notifyCondition) {
-      case "all_messages":
-        return true;
-      case "only_mentions":
-        // Notify if mentioned OR if only human participant.
-        return (
-          mentionedUserIds.has(participant.sId) || totalParticipantCount === 1
-        );
-      case "never":
-        return false;
-    }
-  });
-};
-
-export const triggerConversationUnreadNotifications = async (
-  auth: Authenticator,
-  {
-    conversationId,
-    messageId,
-    userToNotifyId,
-  }: {
-    conversationId: string;
-    messageId: string;
-    userToNotifyId?: string; // Optional override for which user to notify, used in edge cases like adding a conversation participant.
-  }
-): Promise<
-  Result<
-    void,
-    Omit<DustError, "code"> & {
-      code: "internal_server_error";
-    }
-  >
-> => {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-  if (!conversation) {
-    return new Ok(undefined);
-  }
-  // Skip any sub-conversations.
-  if (conversation.depth > 0) {
-    return new Ok(undefined);
-  }
-
-  // Get conversation details including mentioned user IDs.
-  const detailsResult = await getConversationDetails({
-    auth,
-    payload: {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId: conversation.sId,
-      messageId,
-    },
-  });
-  if (detailsResult.isErr()) {
-    // Conversation or message was deleted - no notification needed.
-    return new Ok(undefined);
-  }
-  if (
-    detailsResult.value.isFromEmailAgentConversation ||
-    detailsResult.value.isFromSlackAgentConversation
-  ) {
-    return new Ok(undefined);
-  }
-  const { authorUserId } = detailsResult.value;
-  // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth);
-  const allParticipants = totalParticipants.filter((p) => {
-    if (userToNotifyId && p.sId !== userToNotifyId) {
-      return false;
-    }
-    // Exclude the message author from notifications (they don't need to be
-    // notified about their own message).
-    if (authorUserId && p.sId === authorUserId) {
-      return false;
-    }
-    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
-  });
-
-  if (allParticipants.length === 0) {
-    return new Ok(undefined);
-  }
-
-  // Filter participants based on their notification condition preference.
-  const participants = await filterParticipantsByNotifyCondition({
-    auth,
-    participants: allParticipants,
-    mentionedUserIds: new Set(detailsResult.value.mentionedUserIds),
-    totalParticipantCount: totalParticipants.length,
-    spaceModelId: conversation.spaceId,
-  });
-
-  if (participants.length === 0) {
-    return new Ok(undefined);
-  }
-
-  try {
-    const novuClient = await getNovuClient();
-
-    const r = await novuClient.triggerBulk({
-      events: participants.map((p) => {
-        const payload: ConversationUnreadPayloadType = {
-          conversationId: conversation.sId,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          messageId,
-        };
-        return {
-          workflowId: CONVERSATION_UNREAD_TRIGGER_ID,
-          to: {
-            subscriberId: p.sId,
-            email: p.email,
-            firstName: p.firstName ?? undefined,
-            lastName: p.lastName ?? undefined,
-          },
-          payload,
-        };
-      }),
-    });
-
-    if (r.result.some((event) => !!event.error?.length)) {
-      const eventErrors = r.result
-        .filter((res) => !!res.error?.length)
-        .map(({ error }) => error?.join("; "))
-        .join("; ");
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `Failed to trigger conversation unread notification due to network errors: ${eventErrors}`,
-      });
-    }
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to trigger conversation unread notification: ${normalizeError(error).message}`,
-    });
-  }
-};

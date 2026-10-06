@@ -140,18 +140,10 @@ const triggerProjectNewConversationNotifications = async (
     return new Ok(undefined);
   }
 
-  const projectMembers = await UserResource.fetchByModelIds(memberModelIds);
-  const { memberships: workspaceMemberships } =
-    await MembershipResource.getActiveMemberships({
-      users: projectMembers,
-      workspace: auth.getNonNullableWorkspace(),
-    });
-  const activeUserIds = new Set(
-    workspaceMemberships.map((membership) => membership.userId)
-  );
-  const activeProjectMembers = projectMembers.filter((member) =>
-    activeUserIds.has(member.id)
-  );
+  const activeProjectMembers = await MembershipResource.filterActiveMembers({
+    users: await UserResource.fetchByModelIds(memberModelIds),
+    workspace: auth.getNonNullableWorkspace(),
+  });
 
   const otherProjectMembers = activeProjectMembers.filter(
     (member) => member.sId !== userThatCreatedConversation.sId

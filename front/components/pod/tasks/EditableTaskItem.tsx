@@ -7,8 +7,8 @@ import {
   TASK_DESKTOP_HOVER_REVEAL_CLASS,
   TASK_TEXTAREA_FIELD_CLASS,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
-import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
 import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
+import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
 import { TaskOverflowMenu } from "@app/components/pod/tasks/TaskOverflowMenu";
 import {
   TaskMetadataTooltip,

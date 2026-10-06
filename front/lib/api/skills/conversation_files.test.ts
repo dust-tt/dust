@@ -75,77 +75,76 @@ describe("upsertSkillFilesToConversation", () => {
     { framesV2: true, documents: false, exposesDocuments: false },
     { framesV2: false, documents: true, exposesDocuments: false },
     { framesV2: true, documents: true, exposesDocuments: true },
-  ])("loads Frame attachments with frames_v2=$framesV2 and frame_documents=$documents", async ({
-    framesV2,
-    documents,
-    exposesDocuments,
-  }) => {
-    const { auth, workspace, conversation } =
-      await setupConversationAndSkillPermissions();
+  ])(
+    "loads Frame attachments with frames_v2=$framesV2 and frame_documents=$documents",
+    async ({ framesV2, documents, exposesDocuments }) => {
+      const { auth, workspace, conversation } =
+        await setupConversationAndSkillPermissions();
 
-    if (framesV2) {
-      await FeatureFlagFactory.basic(auth, "frames_v2");
-    }
-    if (documents) {
-      await FeatureFlagFactory.basic(auth, "frame_documents");
-    }
+      if (framesV2) {
+        await FeatureFlagFactory.basic(auth, "frames_v2");
+      }
+      if (documents) {
+        await FeatureFlagFactory.basic(auth, "frame_documents");
+      }
 
-    const skill = await SkillResource.fetchById(auth, "frames");
-    assert(skill);
-    if (exposesDocuments) {
-      expect(skill.instructions).toContain("### Editable documents");
-      expect(skill.instructions).toContain("`document.example.tsx`");
-      expect(skill.instructions).toContain("`document.example.json`");
-      expect(skill.instructions).toContain("`document.md`");
-      expect(skill.instructions).toContain("`@dust/document/v1`");
-      expect(skill.instructions).not.toContain(
-        "Illustrative quarterly revenue"
-      );
-    } else {
-      expect(skill.instructions).not.toContain("### Editable documents");
-      expect(skill.instructions).not.toContain("document.example");
-      expect(skill.instructions).not.toContain("document.md");
-      expect(skill.instructions).not.toContain("@dust/document/v1");
-      expect(skill.getCodeDefinedFiles()).toEqual(FRAME_SKILL_FILES);
-    }
-    fileStorageMock.setFileExists(() => false);
+      const skill = await SkillResource.fetchById(auth, "frames");
+      assert(skill);
+      if (exposesDocuments) {
+        expect(skill.instructions).toContain("### Editable documents");
+        expect(skill.instructions).toContain("`document.example.tsx`");
+        expect(skill.instructions).toContain("`document.example.json`");
+        expect(skill.instructions).toContain("`document.md`");
+        expect(skill.instructions).toContain("`@dust/document/v1`");
+        expect(skill.instructions).not.toContain(
+          "Illustrative quarterly revenue"
+        );
+      } else {
+        expect(skill.instructions).not.toContain("### Editable documents");
+        expect(skill.instructions).not.toContain("document.example");
+        expect(skill.instructions).not.toContain("document.md");
+        expect(skill.instructions).not.toContain("@dust/document/v1");
+        expect(skill.getCodeDefinedFiles()).toEqual(FRAME_SKILL_FILES);
+      }
+      fileStorageMock.setFileExists(() => false);
 
-    const result = await upsertSkillFilesToConversation(auth, {
-      skill,
-      conversation,
-    });
-
-    assert(result.isOk());
-    expect(result.value.loadedPaths).toEqual(
-      [
-        "lint.sh",
-        "tsconfig.json",
-        "oxlintrc.json",
-        "frame-rules.cjs",
-        "theme.ts",
-        "slideshow.example.tsx",
-        ...(exposesDocuments
-          ? ["document.md", "document.example.tsx", "document.example.json"]
-          : []),
-      ].map(
-        (fileName) =>
-          `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
-      )
-    );
-    for (const file of skill.getCodeDefinedFiles()) {
-      expect(fileStorageMock.saveFileCalls).toContainEqual({
-        filePath: gcsPathForSkillFile({
-          workspaceId: workspace.sId,
-          conversationId: conversation.sId,
-          skillName: skill.name,
-          fileName: file.fileName,
-        }),
-        content: Buffer.from(file.content),
-        contentType: file.contentType,
+      const result = await upsertSkillFilesToConversation(auth, {
+        skill,
+        conversation,
       });
+
+      assert(result.isOk());
+      expect(result.value.loadedPaths).toEqual(
+        [
+          "lint.sh",
+          "tsconfig.json",
+          "oxlintrc.json",
+          "frame-rules.cjs",
+          "theme.ts",
+          "slideshow.example.tsx",
+          ...(exposesDocuments
+            ? ["document.md", "document.example.tsx", "document.example.json"]
+            : []),
+        ].map(
+          (fileName) =>
+            `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
+        )
+      );
+      for (const file of skill.getCodeDefinedFiles()) {
+        expect(fileStorageMock.saveFileCalls).toContainEqual({
+          filePath: gcsPathForSkillFile({
+            workspaceId: workspace.sId,
+            conversationId: conversation.sId,
+            skillName: skill.name,
+            fileName: file.fileName,
+          }),
+          content: Buffer.from(file.content),
+          contentType: file.contentType,
+        });
+      }
+      expect(fileStorageMock.readStreamCalls).toHaveLength(0);
     }
-    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
-  });
+  );
 
   it("writes every missing skill file and returns their scoped paths", async () => {
     const { auth, user, workspace, conversation } =

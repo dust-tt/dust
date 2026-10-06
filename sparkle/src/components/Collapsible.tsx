@@ -66,7 +66,8 @@ const Collapsible = React.forwardRef<
 Collapsible.displayName = "Collapsible";
 
 export interface CollapsibleTriggerProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
+  extends
+    React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
   /** Text for the default chevron toggle; ignored when custom children are provided. */
   label?: string;
@@ -146,7 +147,8 @@ const contentVariants = cva("overflow-hidden transition-all", {
 });
 
 export interface CollapsibleContentProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
+  extends
+    React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
     VariantProps<typeof contentVariants> {
   /**
    * Set to false to open and close instantly. Worth doing for high-frequency

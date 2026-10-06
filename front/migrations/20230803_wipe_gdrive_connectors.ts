@@ -2,8 +2,8 @@ import assert from "assert";
 import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { Authenticator } from "@app/lib/auth";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";

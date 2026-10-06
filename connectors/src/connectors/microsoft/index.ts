@@ -31,7 +31,7 @@ import {
 import {
   getRootNodesToSyncFromResources,
   populateDeltas,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/activities";
 import { isGeneralExceptionError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
@@ -39,7 +39,7 @@ import {
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
   launchMicrosoftSensitivityLabelsReconciliationWorkflow,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/client";
 import {
   microsoftFullSyncWorkflowId,

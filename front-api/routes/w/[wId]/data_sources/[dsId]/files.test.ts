@@ -55,9 +55,8 @@ const mockFileContent = {
 vi.mock("@app/lib/file_storage", async (importOriginal) => {
   const original =
     await importOriginal<typeof import("@app/lib/file_storage")>();
-  const { fileStorageMock } = await import(
-    "@app/tests/utils/mocks/file_storage"
-  );
+  const { fileStorageMock } =
+    await import("@app/tests/utils/mocks/file_storage");
   return {
     ...original,
     ...fileStorageMock.mock(),

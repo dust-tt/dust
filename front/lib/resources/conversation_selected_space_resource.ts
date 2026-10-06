@@ -14,11 +14,8 @@ import uniqBy from "lodash/uniqBy";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ConversationSelectedSpaceResource
-  extends ReadonlyAttributesType<ConversationSelectedSpaceModel> {}
+export interface ConversationSelectedSpaceResource extends ReadonlyAttributesType<ConversationSelectedSpaceModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationSelectedSpaceResource extends BaseResource<ConversationSelectedSpaceModel> {
   static model: ModelStaticWorkspaceAware<ConversationSelectedSpaceModel> =
     ConversationSelectedSpaceModel;

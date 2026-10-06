@@ -3,6 +3,7 @@ import { useCheckPodName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { SpaceType } from "@app/types/space";
+import { MAX_POD_NAME_LENGTH } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -145,6 +146,7 @@ export function CreatePodModal({
                 placeholder="Enter Pod name"
                 value={podName}
                 name="podName"
+                maxLength={MAX_POD_NAME_LENGTH}
                 onChange={(e) => {
                   const newValue = e.target.value;
                   setPodName(newValue);

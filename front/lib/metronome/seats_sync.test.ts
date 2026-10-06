@@ -14,7 +14,6 @@ const {
   mockGetScheduledFutureMemberships,
   mockFetchSeatLimits,
   mockListPerUserCreditUserIds,
-  mockListPerUserCreditBalances,
   mockAddPerUserCredit,
   mockRevokePerUserCustomerCredit,
   mockListSeatBalances,
@@ -27,7 +26,6 @@ const {
   mockGetScheduledFutureMemberships: vi.fn(),
   mockFetchSeatLimits: vi.fn(),
   mockListPerUserCreditUserIds: vi.fn(),
-  mockListPerUserCreditBalances: vi.fn(),
   mockAddPerUserCredit: vi.fn(),
   mockRevokePerUserCustomerCredit: vi.fn(),
   mockListSeatBalances: vi.fn(),
@@ -39,7 +37,6 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
   listCustomerPerUserCreditUserIds: mockListPerUserCreditUserIds,
-  listCustomerPerUserCreditBalances: mockListPerUserCreditBalances,
   addPerUserCreditToCustomer: mockAddPerUserCredit,
   revokePerUserCustomerCredit: mockRevokePerUserCustomerCredit,
   // Seat-credit transfer path (no-op in these tests: empty balances ⇒ no
@@ -117,7 +114,6 @@ describe("syncSeatCount min clamping", () => {
     // Free-seat credit grant/revoke runs on every syncSeatCount; default to
     // "no existing credits" so the clamping tests (no free seats) are no-ops.
     mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
-    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
     mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
     // No seat balances / assignments ⇒ the credit-transfer reconciliation
@@ -513,7 +509,6 @@ describe("syncSeatCount subscription end boundary", () => {
         )
     );
     mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
-    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
     mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
     mockListSeatBalances.mockResolvedValue(new Ok([]));
@@ -523,111 +518,113 @@ describe("syncSeatCount subscription end boundary", () => {
     vi.useRealTimers();
   });
 
-  it.each(boundaryCases)("$name the SEAT_BASED source end", async ({
-    transitionAt,
-    updatesSource,
-  }) => {
-    mockGetScheduledFutureMemberships.mockResolvedValue([
-      {
-        ...membership("u1", "pro_yearly"),
-        startAt: new Date(transitionAt),
-      },
-    ]);
-
-    const result = await syncSeatCount({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      workspace: WORKSPACE,
-      planCode: "CP_BUSINESS_PLAN",
-      contract: makeContract([
+  it.each(boundaryCases)(
+    "$name the SEAT_BASED source end",
+    async ({ transitionAt, updatesSource }) => {
+      mockGetScheduledFutureMemberships.mockResolvedValue([
         {
-          id: "sub_pro",
-          productId: "pro-product",
-          mode: "SEAT_BASED",
-          endingBefore: sourceEndingBefore,
+          ...membership("u1", "pro_yearly"),
+          startAt: new Date(transitionAt),
         },
-        {
-          id: "sub_pro_yearly",
-          productId: "pro-yearly-product",
-          mode: "SEAT_BASED",
-        },
-      ]),
-    });
+      ]);
 
-    expect(result.isOk()).toBe(true);
-    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fromSubscriptionId: "sub_pro_yearly",
-        addSeatIds: ["u1"],
+      const result = await syncSeatCount({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        workspace: WORKSPACE,
+        planCode: "CP_BUSINESS_PLAN",
+        contract: makeContract([
+          {
+            id: "sub_pro",
+            productId: "pro-product",
+            mode: "SEAT_BASED",
+            endingBefore: sourceEndingBefore,
+          },
+          {
+            id: "sub_pro_yearly",
+            productId: "pro-yearly-product",
+            mode: "SEAT_BASED",
+          },
+        ]),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromSubscriptionId: "sub_pro_yearly",
+          addSeatIds: ["u1"],
+          startingAt: transitionAt,
+        })
+      );
+      const sourceRemoval = expect.objectContaining({
+        fromSubscriptionId: "sub_pro",
+        removeSeatIds: ["u1"],
         startingAt: transitionAt,
-      })
-    );
-    const sourceRemoval = expect.objectContaining({
-      fromSubscriptionId: "sub_pro",
-      removeSeatIds: ["u1"],
-      startingAt: transitionAt,
-    });
-    if (updatesSource) {
-      expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(sourceRemoval);
-    } else {
-      expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalledWith(
-        sourceRemoval
-      );
+      });
+      if (updatesSource) {
+        expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(sourceRemoval);
+      } else {
+        expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalledWith(
+          sourceRemoval
+        );
+      }
     }
-  });
+  );
 
-  it.each(boundaryCases)("$name the QUANTITY_ONLY source end", async ({
-    transitionAt,
-    updatesSource,
-  }) => {
-    mockGetScheduledFutureMemberships.mockResolvedValue([
-      {
-        ...membership("u1", "pro_yearly"),
-        startAt: new Date(transitionAt),
-      },
-    ]);
-
-    const result = await syncSeatCount({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      workspace: WORKSPACE,
-      planCode: "CP_BUSINESS_PLAN",
-      contract: makeContract([
+  it.each(boundaryCases)(
+    "$name the QUANTITY_ONLY source end",
+    async ({ transitionAt, updatesSource }) => {
+      mockGetScheduledFutureMemberships.mockResolvedValue([
         {
-          id: "sub_pro",
-          productId: "pro-product",
-          mode: "QUANTITY_ONLY",
-          endingBefore: sourceEndingBefore,
+          ...membership("u1", "pro_yearly"),
+          startAt: new Date(transitionAt),
         },
-        {
-          id: "sub_pro_yearly",
-          productId: "pro-yearly-product",
-          mode: "QUANTITY_ONLY",
-        },
-      ]),
-    });
+      ]);
 
-    expect(result.isOk()).toBe(true);
-    expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      subscriptionId: "sub_pro_yearly",
-      quantity: 1,
-      startingAt: transitionAt,
-    });
-    const sourceUpdate = {
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      subscriptionId: "sub_pro",
-      quantity: 0,
-      startingAt: transitionAt,
-    };
-    if (updatesSource) {
-      expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(sourceUpdate);
-    } else {
-      expect(mockUpdateSubscriptionQuantity).not.toHaveBeenCalledWith(
-        sourceUpdate
-      );
+      const result = await syncSeatCount({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        workspace: WORKSPACE,
+        planCode: "CP_BUSINESS_PLAN",
+        contract: makeContract([
+          {
+            id: "sub_pro",
+            productId: "pro-product",
+            mode: "QUANTITY_ONLY",
+            endingBefore: sourceEndingBefore,
+          },
+          {
+            id: "sub_pro_yearly",
+            productId: "pro-yearly-product",
+            mode: "QUANTITY_ONLY",
+          },
+        ]),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        subscriptionId: "sub_pro_yearly",
+        quantity: 1,
+        startingAt: transitionAt,
+      });
+      const sourceUpdate = {
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        subscriptionId: "sub_pro",
+        quantity: 0,
+        startingAt: transitionAt,
+      };
+      if (updatesSource) {
+        expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(
+          sourceUpdate
+        );
+      } else {
+        expect(mockUpdateSubscriptionQuantity).not.toHaveBeenCalledWith(
+          sourceUpdate
+        );
+      }
     }
-  });
+  );
 });

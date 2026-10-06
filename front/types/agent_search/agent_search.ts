@@ -1,4 +1,5 @@
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationScope,
   AgentConfigurationStatus,
@@ -62,6 +63,7 @@ export const AGENT_SEARCH_TERMS_FACETS = [
   "models",
   "tags",
   "skills",
+  "mcpServerViews",
   "spaces",
 ] as const;
 export type AgentSearchTermsFacet = (typeof AGENT_SEARCH_TERMS_FACETS)[number];
@@ -148,6 +150,13 @@ export type SearchAgentsResponseBody = {
       count: number;
     }[];
     spaces?: { sId: string; name: string; kind: SpaceKind; count: number }[];
+    mcpServerViews?: {
+      sId: string;
+      mcpServerId: string;
+      name: string;
+      icon: MCPServerType["icon"];
+      count: number;
+    }[];
     usage?: AgentSearchRangeFacetValue;
   };
 };

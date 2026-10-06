@@ -5,7 +5,9 @@
  * mentions in markdown content, enabling the :mention[name]{sId=xxx} syntax.
  */
 
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
+import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { WorkspaceType } from "@app/types/user";
 import { visit } from "unist-util-visit";
 
@@ -51,6 +53,8 @@ export function getAgentMentionPlugin(owner: WorkspaceType) {
     agentName: string;
     agentId: string;
   }) => {
+    const { openPanel } = useConversationSidePanelContext();
+
     return (
       <MentionDisplay
         mention={{
@@ -63,6 +67,9 @@ export function getAgentMentionPlugin(owner: WorkspaceType) {
         interactive
         owner={owner}
         showTooltip={false}
+        onSeeAgentDetails={() =>
+          openPanel({ type: AGENT_SIDE_PANEL_TYPE, agentId })
+        }
       />
     );
   };

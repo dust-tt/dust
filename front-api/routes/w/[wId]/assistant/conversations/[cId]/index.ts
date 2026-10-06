@@ -15,6 +15,7 @@ import type {
   GetConversationResponseBody,
   PatchConversationResponseBody,
 } from "@app/types/api/assistant/conversation/types";
+import { PatchConversationsRequestBodySchema } from "@app/types/api/assistant/conversation/types";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -52,16 +53,6 @@ import wakeups from "./wakeups";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-const PatchConversationsRequestBodySchema = z.union([
-  z.object({ title: z.string() }),
-  z.object({ read: z.boolean() }),
-  z.object({ spaceId: z.string() }),
-  z.object({
-    accessMode: z.enum(["participants_only", "workspace_members"]),
-  }),
-  z.object({ removeFromProject: z.literal(true) }),
-]);
 
 // Mounted under /api/w/:wId/assistant/conversations/:cId. The bare `/`
 // handles GET, DELETE, and PATCH on the conversation resource itself.
@@ -159,6 +150,7 @@ const app = workspaceApp();
  *                 properties:
  *                   title:
  *                     type: string
+ *                     maxLength: 512
  *               - type: object
  *                 required:
  *                   - read
@@ -264,7 +256,7 @@ app.patch(
     const { cId } = ctx.req.valid("param");
 
     const conversationRes =
-      // biome-ignore lint/plugin/noExpensiveConversationFetch: need unread + actionRequired
+      // oxlint-disable-next-line dust/noExpensiveConversationFetch -- need unread + actionRequired
       await ConversationResource.fetchConversationWithParticipantState(
         auth,
         cId

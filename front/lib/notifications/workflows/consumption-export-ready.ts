@@ -1,28 +1,43 @@
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
-import { getNovuClient } from "@app/lib/notifications";
-import logger from "@app/logger/logger";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { getNotificationLocale } from "@app/lib/notifications/locale";
+import { ConsumptionExportReadyPayloadSchema } from "@app/lib/notifications/triggers/consumption-export-ready";
 import { CONSUMPTION_EXPORT_READY_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { I18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
-import z from "zod";
 
-const ConsumptionExportReadyPayloadSchema = z.object({
-  workspaceId: z.string(),
-});
-
-type ConsumptionExportReadyPayloadType = z.infer<
-  typeof ConsumptionExportReadyPayloadSchema
->;
+export function buildConsumptionExportReadyInAppCopy(i18n: I18n): {
+  subject: string;
+  body: string;
+  actionLabel: string;
+} {
+  return {
+    subject: i18n._(msg`Your consumption export is ready`),
+    body: i18n._(
+      msg`The raw consumption data you requested has finished generating and is ready to download.`
+    ),
+    actionLabel: i18n._(msg({ message: "Download", context: "action" })),
+  };
+}
 
 export const consumptionExportReadyWorkflow = workflow(
   CONSUMPTION_EXPORT_READY_TRIGGER_ID,
-  async ({ step, payload }) => {
+  async ({ step, payload, subscriber }) => {
     await step.inApp("send-in-app", async () => {
+      const i18n = await getNotificationI18n(
+        await getNotificationLocale(
+          subscriber.subscriberId,
+          payload.workspaceId
+        )
+      );
+      const { subject, body, actionLabel } =
+        buildConsumptionExportReadyInAppCopy(i18n);
       return {
-        subject: "Your consumption export is ready",
-        body: "The raw consumption data you requested has finished generating and is ready to download.",
+        subject,
+        body,
         primaryAction: {
-          label: "Download",
+          label: actionLabel,
           redirect: {
             url: `${config.getAppUrl()}/w/${payload.workspaceId}/analytics/consumption`,
           },
@@ -38,58 +53,3 @@ export const consumptionExportReadyWorkflow = workflow(
     tags: ["admin"],
   }
 );
-
-/**
- * Fire-and-forget helper to notify the requesting user that their consumption export is
- * ready to download. Errors are logged but don't block the caller.
- */
-export function notifyConsumptionExportReady(
-  auth: Authenticator,
-  exportId: string
-): void {
-  const user = auth.user();
-  if (!user) {
-    return;
-  }
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const userId = user.sId;
-
-  const payload: ConsumptionExportReadyPayloadType = { workspaceId };
-
-  // Ties the Novu transaction to the stable exportId so a Temporal retry after the
-  // completion ack is lost re-sends the same transaction instead of a duplicate notification.
-  const transactionId = `consumption-export-ready-${workspaceId}-${userId}-${exportId}`;
-
-  void getNovuClient()
-    .then((novuClient) =>
-      novuClient.triggerBulk({
-        events: [
-          {
-            workflowId: CONSUMPTION_EXPORT_READY_TRIGGER_ID,
-            transactionId,
-            to: {
-              subscriberId: userId,
-              email: user.email,
-              firstName: user.firstName,
-              lastName: user.lastName ?? undefined,
-            },
-            payload,
-          },
-        ],
-      })
-    )
-    .then((r) => {
-      if (r.result.some((res) => !!res.error?.length)) {
-        logger.error(
-          { workspaceId, userId, transactionId },
-          "Failed to trigger consumption export ready notification"
-        );
-      }
-    })
-    .catch((err) => {
-      logger.error(
-        { err, workspaceId, userId, transactionId },
-        "Failed to trigger consumption export ready notification"
-      );
-    });
-}

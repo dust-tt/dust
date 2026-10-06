@@ -1,7 +1,7 @@
 import { assertNever } from "@dust-tt/client";
 import { Box, Static, Text } from "ink";
 import Spinner from "ink-spinner";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
+// oxlint-disable-next-line dust/noBulkLodash -- existing usage
 import _ from "lodash";
 import type { FC } from "react";
 import React, {

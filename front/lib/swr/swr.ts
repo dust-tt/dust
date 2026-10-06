@@ -183,7 +183,13 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
 }
 
 export async function getErrorFromResponse(response: Response) {
-  const errorData = await response.json();
+  let errorData: unknown;
+  try {
+    errorData = await response.json();
+  } catch {
+    // An empty or non-JSON body, from a proxy or a gateway error, still yields a message.
+    return { message: "An error occurred" };
+  }
 
   if (isAPIErrorResponse(errorData)) {
     /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */

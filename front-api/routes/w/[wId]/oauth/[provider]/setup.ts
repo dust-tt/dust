@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
+import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import type { GetOAuthSetupResponseBody } from "@app/types/api/oauth";
 import {
   ExtraConfigTypeSchema,
@@ -20,7 +21,12 @@ const ProviderParamSchema = z.object({
 const SetupQuerySchema = z.object({
   useCase: z.enum(OAUTH_USE_CASES),
   extraConfig: z.string().optional(),
-  openerOrigin: z.string().optional(),
+  openerOrigin: z
+    .string()
+    .refine(isTrustedDustOpenerOrigin, {
+      message: "must be an explicitly trusted Dust origin",
+    })
+    .optional(),
 });
 
 // Mounted at /api/w/:wId/oauth/:provider/setup.

@@ -30,7 +30,7 @@ makeScript(
   async ({ spaceId, conversationId, execute }, logger) => {
     // Step 1: Validate that the space is deleted (or doesn't exist at all).
     const [activeSpace] =
-      // biome-ignore lint/plugin/noRawSql: script uses raw SQL
+      // oxlint-disable-next-line dust/noRawSql -- script uses raw SQL
       await frontSequelize.query<{ id: number }>(
         `SELECT id FROM vaults WHERE id = :spaceId AND "deletedAt" IS NULL`,
         { replacements: { spaceId }, type: QueryTypes.SELECT }
@@ -50,7 +50,7 @@ makeScript(
       : "";
 
     const affected =
-      // biome-ignore lint/plugin/noRawSql: script uses raw SQL
+      // oxlint-disable-next-line dust/noRawSql -- script uses raw SQL
       await frontSequelize.query<ConversationWithDeletedSpace>(
         `
         SELECT c.id, c."sId", c."workspaceId", c."requestedSpaceIds"

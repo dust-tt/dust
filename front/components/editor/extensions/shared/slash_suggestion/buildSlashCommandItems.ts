@@ -1,3 +1,4 @@
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   SlashCommandSkillSuggestion,
   SlashCommandToolSuggestion,
@@ -9,7 +10,6 @@ import {
   MAX_RENDERED_CAPABILITY_ITEMS,
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
@@ -76,6 +76,7 @@ export function buildCapabilitySlashCommandItems<
       })),
   ];
 
+  const normalizedQuery = query.trim();
   const matches = useSearchRanking
     ? [
         ...items.filter((item) => item.kind === "skill"),
@@ -84,9 +85,16 @@ export function buildCapabilitySlashCommandItems<
           items: items.filter((item) => item.kind === "tool"),
         }),
       ]
-        .toSorted((a, b) =>
-          compareForAutocompleteSort(query.trim(), a.sortName, b.sortName)
-        )
+        .toSorted((a, b) => {
+          if (normalizedQuery.length === 0 && a.kind !== b.kind) {
+            return a.kind === "skill" ? -1 : 1;
+          }
+          return compareForAutocompleteSort(
+            normalizedQuery,
+            a.sortName,
+            b.sortName
+          );
+        })
         .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
     : searchCapabilityIndex({ query, items });
 

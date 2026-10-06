@@ -1,10 +1,12 @@
 // @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
+
+import type { Logger } from "@app/logger/logger";
 import assert from "assert";
 import _ from "lodash";
-import type { Logger } from "@app/logger/logger";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -14,10 +16,9 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types/user";
 import { AGENT_GROUP_PREFIX } from "@app/types/groups";
-import { DustError } from "@app/lib/error";
 import { Err } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,

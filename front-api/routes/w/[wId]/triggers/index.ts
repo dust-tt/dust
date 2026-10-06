@@ -106,8 +106,11 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+    const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+      auth,
+      aId
+    );
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -148,8 +151,11 @@ app.delete(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+    const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+      auth,
+      aId
+    );
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -212,8 +218,11 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+    const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+      auth,
+      aId
+    );
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

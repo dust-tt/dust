@@ -10,8 +10,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-interface MarkdownFileEditorProps
-  extends Omit<MarkdownEditorProps, "value" | "onChange"> {
+interface MarkdownFileEditorProps extends Omit<
+  MarkdownEditorProps,
+  "value" | "onChange"
+> {
   owner: LightWorkspaceType;
   /**
    * Canonical scoped file path, e.g. `pod-{podId}/AGENTS.md`.

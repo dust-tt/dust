@@ -68,18 +68,20 @@ const paginationSchemaShape = {
 };
 
 /**
- * @cc [owner:aubin-tchoi,label:product;mcp] name-query-required
- * Agent and skill search tools MUST require a non-empty name query after trimming whitespace.
- * Missing or blank queries MUST fail validation rather than return an exhaustive inventory.
+ * @cc [owner:aubin-tchoi;fabiencelier,label:product;mcp] empty-query-lists-all
+ * In agent and skill search tools, a missing, empty or whitespace-only query MUST list every
+ * entity accessible to the caller that matches the other filters, with the same pagination as a
+ * name search, rather than fail validation or return no result.
  */
 const searchQuerySchema = z
   .string()
   .trim()
-  .min(1)
   .max(200)
+  .default("")
   .describe(
     "Search by name. Words can appear anywhere in the name and in any order; " +
-      "partial words are supported. Results are ordered by relevance."
+      "partial words are supported. Results are ordered by relevance. Pass an empty " +
+      "string to list everything accessible, page by page, narrowed by the other filters."
   );
 
 const searchAgentsSchema = BaseSearchAgentsSchema.extend({
@@ -269,6 +271,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Search agents by name and return matching ids and descriptions, ordered " +
       "by relevance. Matches partial words anywhere in the name and in any order. " +
+      "An empty query lists all agents. " +
       "Only returns agents accessible to the caller, including eligible built-in agents.",
     schema: searchAgentsSchema.shape,
     stake: "never_ask",
@@ -303,6 +306,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Search skills by name and return matching ids and descriptions, ordered " +
       "by relevance. Matches partial words anywhere in the name and in any order. " +
+      "An empty query lists all skills. " +
       "Only returns skills accessible to the caller, including eligible built-in skills.",
     schema: searchSkillsSchema.shape,
     stake: "never_ask",

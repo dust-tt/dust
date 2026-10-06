@@ -1,4 +1,3 @@
-import { slugify } from "@marketing/types/shared/utils/string_utils";
 import type {
   Block,
   Document,
@@ -6,6 +5,7 @@ import type {
   Text,
 } from "@contentful/rich-text-types";
 import { BLOCKS } from "@contentful/rich-text-types";
+import { slugify } from "@marketing/types/shared/utils/string_utils";
 
 export interface TocItem {
   id: string;

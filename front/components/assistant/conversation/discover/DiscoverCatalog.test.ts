@@ -61,6 +61,7 @@ describe("DiscoverCatalog", () => {
       ""
     );
     const request = getCatalogPageRequest(query, {
+      query,
       items: [],
       next: { agents: null, skills: 25 },
     });
@@ -69,6 +70,7 @@ describe("DiscoverCatalog", () => {
     expect(request?.skills).toEqual({ offset: 25 });
     expect(
       getCatalogPageRequest(query, {
+        query,
         items: [],
         next: { agents: null, skills: null },
       })

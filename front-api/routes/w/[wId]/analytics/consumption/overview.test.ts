@@ -2,6 +2,7 @@ import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/cons
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -143,6 +144,39 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
         filter: { agents: [GLOBAL_AGENTS_SID.DUST], sources: ["slack"] },
         includeWorkspaceContext: false,
       })
+    );
+  });
+
+  it("returns 404 to a manager for a hidden agent they cannot read", async () => {
+    const { workspace } = await setupTest({ role: "manager" });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+    vi.mocked(fetchConsumptionOverview).mockClear();
+
+    const response = await postAgentOverviewRequest(workspace.sId, agent.sId);
+
+    expect(response.status).toBe(404);
+    expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin read a hidden agent's consumption they cannot read", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { workspace } = await setupTest({ role: "admin" });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await postAgentOverviewRequest(workspace.sId, agent.sId);
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ filter: { agents: [agent.sId] } })
     );
   });
 

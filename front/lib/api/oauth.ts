@@ -39,6 +39,7 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -109,6 +110,12 @@ export function getProviderStrategy(
  * extraConfig MUST NOT override the callback used for creation, authorization, or
  * finalization.
  */
+/**
+ * @cc [owner:spolu,label:security;logging] no-oauth-setup-config-values-in-logs
+ * Setup validation failures MUST NOT log extraConfig values, except extraConfig.mcp_server_id,
+ * which MAY be logged as a non-secret diagnostic identifier. Configuration payloads MUST be
+ * logged as key names only, never as raw objects.
+ */
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
@@ -120,9 +127,18 @@ export async function createConnectionAndGetSetupUrl(
 
   const providerStrategy = getProviderStrategy(provider);
 
+  // opener_origin is reserved for the validated query param. Strip it from
+  // caller-supplied extraConfig before validation/persistence so it cannot
+  // bypass the allowlist via metadata spread.
+  const {
+    opener_origin: _openerOriginFromExtraConfig,
+    ...extraConfigWithoutOpenerOrigin
+  } = extraConfig;
+  extraConfig = extraConfigWithoutOpenerOrigin;
+
   if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
-      { provider, useCase, extraConfig },
+      { provider, useCase, extraConfigKeys: Object.keys(extraConfig) },
       "OAuth: Invalid extraConfig before getting related credential"
     );
     return new Err({
@@ -215,7 +231,7 @@ export async function createConnectionAndGetSetupUrl(
         )
       ) {
         logger.error(
-          { provider, useCase, extraConfig },
+          { provider, useCase, extraConfigKeys: Object.keys(extraConfig) },
           "OAuth: Invalid extraConfig after getting related credential"
         );
         return new Err({
@@ -238,13 +254,27 @@ export async function createConnectionAndGetSetupUrl(
   // never persist it on the OAuth connection metadata.
   const { mcp_server_id: _mcpServerId, ...connectionExtraConfig } = extraConfig;
 
+  // Defense in depth: only persist opener origins that are trusted Dust
+  // surfaces. The setup route also rejects untrusted query values with 400.
+  const trustedOpenerOrigin =
+    openerOrigin && isTrustedDustOpenerOrigin(openerOrigin)
+      ? openerOrigin
+      : undefined;
+  if (openerOrigin && !trustedOpenerOrigin) {
+    return new Err({
+      code: "connection_creation_failed",
+      message:
+        "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
+    });
+  }
+
   const metadata: Record<string, unknown> = {
     use_case: useCase,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
     ...connectionExtraConfig,
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
-    ...(openerOrigin && { opener_origin: openerOrigin }),
+    ...(trustedOpenerOrigin && { opener_origin: trustedOpenerOrigin }),
   };
 
   const cRes = await api.createConnection({

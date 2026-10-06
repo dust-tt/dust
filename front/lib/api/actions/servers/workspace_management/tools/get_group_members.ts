@@ -74,15 +74,14 @@ export async function getGroupMembers(
 
   const users = await UserResource.fetchByModelIds(page);
   // Group memberships can outlive the workspace membership; only active members are listed.
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace: auth.getNonNullableWorkspace(),
+  const activeUsers = await MembershipResource.filterActiveMembers({
     users,
+    workspace: auth.getNonNullableWorkspace(),
   });
-  const activeUserModelIds = new Set(memberships.map((m) => m.userId));
 
-  const lines = users
-    .filter((user) => activeUserModelIds.has(user.id))
-    .map((user) => `${user.fullName() || user.email} [${user.sId}]`);
+  const lines = activeUsers.map(
+    (user) => `${user.fullName() || user.email} [${user.sId}]`
+  );
 
   if (total > page.length) {
     lines.push(renderPageFooter({ shown: page.length, total, nextCursor }));

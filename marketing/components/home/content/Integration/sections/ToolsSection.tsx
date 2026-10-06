@@ -1,5 +1,5 @@
-import { H2 } from "@marketing/components/home/ContentComponents";
 import { BookOpen01, Plus } from "@dust-tt/sparkle";
+import { H2 } from "@marketing/components/home/ContentComponents";
 
 import type { IntegrationTool } from "../types";
 

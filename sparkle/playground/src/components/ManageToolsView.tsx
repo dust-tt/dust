@@ -21,8 +21,8 @@ import {
 import { getCompanySpaceById } from "../data/companySpaces";
 import { getUserById } from "../data/users";
 import { ToolDetailsSheet } from "./BuildDetailSheets";
-import { UsedByCell } from "./buildTableShared";
 import { EmptyState } from "./EmptyState";
+import { UsedByCell } from "./buildTableShared";
 
 // The product's Tools table, the one an admin works through in the system
 // Space. It has no checkbox column: a tool's Spaces and its per-operation

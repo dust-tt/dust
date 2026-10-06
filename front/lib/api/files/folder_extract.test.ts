@@ -10,10 +10,14 @@ import { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import {
+  makeZipBombBuffer,
+  spyOnInflatedBytes,
+} from "@app/tests/utils/zip_bomb";
 import { isDustFileSystemError } from "@app/types/file_system";
 import AdmZip from "adm-zip";
 import assert from "assert";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Drives the real `DustFileSystem` rather than a stand-in, so entry paths go through the same
@@ -94,6 +98,10 @@ describe("extractArchiveToFolder", () => {
   beforeEach(() => {
     fileStorageMock.reset();
     fileStorageMock.setFileExists(() => false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("writes entries under the destination, preserving the archive's own root folder", async () => {
@@ -198,26 +206,29 @@ describe("extractArchiveToFolder", () => {
       "reports/../../escaped.txt",
     ],
     ["an absolute entry", "Xetc/passwd", "/etc/passwd"],
-  ])("rejects %s without writing anything", async (_label, placeholder, unsafePath) => {
-    const { dustFs, podPrefix } = await setupPodFileSystem();
+  ])(
+    "rejects %s without writing anything",
+    async (_label, placeholder, unsafePath) => {
+      const { dustFs, podPrefix } = await setupPodFileSystem();
 
-    const result = await extractArchiveToFolder(
-      dustFs,
-      `${podPrefix}/inbox`,
-      makeArchiveWithUnsafeEntry(
-        [
-          { path: "reports/a.txt", content: "alpha" },
-          { path: placeholder, content: "evil" },
-        ],
-        placeholder,
-        unsafePath
-      )
-    );
+      const result = await extractArchiveToFolder(
+        dustFs,
+        `${podPrefix}/inbox`,
+        makeArchiveWithUnsafeEntry(
+          [
+            { path: "reports/a.txt", content: "alpha" },
+            { path: placeholder, content: "evil" },
+          ],
+          placeholder,
+          unsafePath
+        )
+      );
 
-    assert(result.isErr());
-    expectExtractError(result.error, "unsafe_entry_path");
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
-  });
+      assert(result.isErr());
+      expectExtractError(result.error, "unsafe_entry_path");
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    }
+  );
 
   it("rejects an entry that only becomes traversal once control characters are stripped", async () => {
     const { dustFs, podPrefix } = await setupPodFileSystem();
@@ -333,6 +344,26 @@ describe("extractArchiveToFolder", () => {
     assert(result.isErr());
     expectExtractError(result.error, "too_large");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("does not inflate an entry declaring a size of 0", async () => {
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
+    const limits = { maxEntries: 10, maxUncompressedSizeBytes: 1024 };
+    const archive = makeZipBombBuffer("bomb.txt", 1024 * 1024);
+    const inflated = spyOnInflatedBytes();
+
+    const result = await extractArchiveToFolder(
+      dustFs,
+      podPrefix,
+      archive,
+      limits
+    );
+
+    assert(result.isOk());
+    expect(inflated.total).toBe(0);
+    expect(savedFile(`${filesRoot}/bomb.txt`)?.content).toEqual(
+      Buffer.alloc(0)
+    );
   });
 
   it("rejects a buffer that is not a ZIP archive", async () => {

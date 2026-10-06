@@ -42,7 +42,6 @@ const AgentBuilderCustomUpload = forwardRef<
     useCase: "avatar",
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useImperativeHandle(ref, () => {
     return {
       getUrl: async () => {

@@ -9,8 +9,8 @@ vi.mock("@app/lib/lock", () => ({
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { Authenticator, getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import type { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import type { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";

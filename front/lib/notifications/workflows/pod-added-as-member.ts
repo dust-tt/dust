@@ -1,30 +1,19 @@
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
-import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { getNotificationLocale } from "@app/lib/notifications/locale";
+import type { PodAddedAsMemberPayloadType } from "@app/lib/notifications/triggers/pod-added-as-member";
+import { PodAddedAsMemberPayloadSchema } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getPodRoute } from "@app/lib/utils/router";
 import { POD_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { SpaceType } from "@app/types/space";
+import type { I18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 import z from "zod";
-
-const PodAddedAsMemberPayloadSchema = z.object({
-  workspaceId: z.string(),
-  podId: z.string(),
-  userThatAddedYouId: z.string(),
-});
-
-type PodAddedAsMemberPayloadType = z.infer<
-  typeof PodAddedAsMemberPayloadSchema
->;
 
 const PodDetailsSchema = z.object({
   podName: z.string(),
@@ -35,15 +24,17 @@ const PodDetailsSchema = z.object({
 type PodDetailsType = z.infer<typeof PodDetailsSchema>;
 
 const getPodDetails = async ({
+  i18n,
   subscriberId,
   payload,
 }: {
+  i18n: I18n;
   subscriberId?: string | null;
   payload: PodAddedAsMemberPayloadType;
 }): Promise<PodDetailsType> => {
-  let podName: string = "A Pod";
-  let userThatAddedYouFullname: string = "Someone";
-  let workspaceName: string = "A workspace";
+  let podName: string = i18n._(msg`A Pod`);
+  let userThatAddedYouFullname: string = i18n._(msg`Someone`);
+  let workspaceName: string = i18n._(msg`A workspace`);
 
   if (subscriberId) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -72,6 +63,25 @@ const getPodDetails = async ({
     workspaceName,
   };
 };
+
+export function buildPodAddedAsMemberCopy(
+  i18n: I18n,
+  { podName, userThatAddedYouFullname }: PodDetailsType
+): {
+  emailSubject: string;
+  content: string;
+  inAppActionLabel: string;
+  emailActionLabel: string;
+} {
+  return {
+    emailSubject: i18n._(msg`[Dust] You were added to Pod "${podName}"`),
+    content: i18n._(
+      msg`${userThatAddedYouFullname} added you to Pod "${podName}".`
+    ),
+    inAppActionLabel: i18n._(msg({ message: "View", context: "action" })),
+    emailActionLabel: i18n._(msg`View Pod`),
+  };
+}
 
 const shouldSkipPod = async ({
   subscriberId,
@@ -102,7 +112,14 @@ export const podAddedAsMemberWorkflow = workflow(
     const details = await step.custom(
       "get-project-details",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
         return getPodDetails({
+          i18n,
           subscriberId: subscriber.subscriberId,
           payload,
         });
@@ -115,11 +132,21 @@ export const podAddedAsMemberWorkflow = workflow(
     await step.inApp(
       "send-in-app",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const { content, inAppActionLabel } = buildPodAddedAsMemberCopy(
+          i18n,
+          details
+        );
         return {
           subject: details.podName,
-          body: `${details.userThatAddedYouFullname} added you to Pod "${details.podName}".`,
+          body: content,
           primaryAction: {
-            label: "View",
+            label: inAppActionLabel,
             redirect: {
               url: getPodRoute(payload.workspaceId, payload.podId),
             },
@@ -137,22 +164,31 @@ export const podAddedAsMemberWorkflow = workflow(
     await step.email(
       "send-email",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const { emailSubject, content, emailActionLabel } =
+          buildPodAddedAsMemberCopy(i18n, details);
         const body = await renderEmail({
-          name: subscriber.firstName ?? "You",
+          i18n,
+          name: subscriber.firstName ?? undefined,
           workspace: {
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `${details.userThatAddedYouFullname} added you to Pod "${details.podName}".`,
+          content,
           action: {
-            label: "View Pod",
+            label: emailActionLabel,
             url:
               config.getAppUrl() +
               getPodRoute(payload.workspaceId, payload.podId),
           },
         });
         return {
-          subject: `[Dust] You were added to Pod '${details.podName}'`,
+          subject: emailSubject,
           body,
         };
       },
@@ -168,111 +204,3 @@ export const podAddedAsMemberWorkflow = workflow(
     tags: ["admin"] as NotificationAllowedTags,
   }
 );
-
-/**
- * Trigger notifications for users added to a pod.
- * Should be called from API endpoints after successfully adding members.
- */
-const triggerPodAddedAsMemberNotifications = async (
-  auth: Authenticator,
-  {
-    pod,
-    addedUserIds,
-  }: {
-    pod: SpaceType;
-    addedUserIds: string[];
-  }
-): Promise<Result<void, DustError<"internal_error">>> => {
-  // Only notify for project spaces.
-  if (pod.kind !== "project") {
-    return new Ok(undefined);
-  }
-
-  const userThatAddedYou = auth.user();
-
-  // If no user context (e.g., API call without specific user), skip notification.
-  if (!userThatAddedYou) {
-    return new Ok(undefined);
-  }
-
-  // Filter out the user who added them (don't notify yourself).
-  const userIdsToNotify = addedUserIds.filter(
-    (userId) => userId !== userThatAddedYou.sId
-  );
-
-  if (userIdsToNotify.length === 0) {
-    return new Ok(undefined);
-  }
-
-  const addedUsers = await UserResource.fetchByIds(userIdsToNotify);
-  if (addedUsers.length === 0) {
-    return new Ok(undefined);
-  }
-
-  try {
-    const novuClient = await getNovuClient();
-
-    const payload: PodAddedAsMemberPayloadType = {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      podId: pod.sId,
-      userThatAddedYouId: userThatAddedYou.sId,
-    };
-
-    const r = await novuClient.triggerBulk({
-      events: addedUsers.map((user: UserResource) => ({
-        workflowId: POD_ADDED_AS_MEMBER_TRIGGER_ID,
-        to: {
-          subscriberId: user.sId,
-          email: user.email,
-          firstName: user.firstName ?? undefined,
-          lastName: user.lastName ?? undefined,
-        },
-        payload,
-      })),
-    });
-
-    if (r.result.some((event) => !!event.error?.length)) {
-      const eventErrors = r.result
-        .filter((res) => !!res.error?.length)
-        .map(({ error }) => error?.join("; "))
-        .join("; ");
-      return new Err({
-        name: "dust_error",
-        code: "internal_error",
-        message: `Failed to trigger pod added as member notification: ${eventErrors}`,
-      });
-    }
-  } catch (err) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_error",
-      message: "Failed to trigger pod added as member notification",
-      cause: normalizeError(err),
-    });
-  }
-
-  return new Ok(undefined);
-};
-
-/**
- * Fire-and-forget helper to trigger pod member notifications.
- * The notification is sent asynchronously and errors are logged but don't block the caller.
- */
-export function notifyPodMembersAdded(
-  auth: Authenticator,
-  {
-    pod,
-    addedUserIds,
-  }: {
-    pod: SpaceType;
-    addedUserIds: string[];
-  }
-): void {
-  fireAndForgetNotification(
-    triggerPodAddedAsMemberNotifications(auth, { pod, addedUserIds }),
-    {
-      message: "Failed to trigger pod added as member notification",
-      context: { podId: pod.sId },
-    }
-  );
-}

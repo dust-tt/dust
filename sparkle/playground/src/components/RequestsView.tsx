@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import type { AdminRequest } from "../data/types";
 import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
 import {
   type DateBucket,
@@ -18,7 +19,6 @@ import {
   getDateBucket,
   READ_DWELL_MS,
 } from "../data/time";
-import type { AdminRequest } from "../data/types";
 import { EmptyState } from "./EmptyState";
 import { collectUsers, FilterMenu, type FilterSelection } from "./FilterMenu";
 import { getRowDate, RequestListItem } from "./RequestListItem";

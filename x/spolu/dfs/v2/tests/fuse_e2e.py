@@ -17,6 +17,8 @@ import fuse_e2e as v1
 
 
 def main():
+    # This compatibility fixture checks the original strict durable-acknowledgment mode.
+    os.environ['DFS_WRITEBACK_MIB'] = '0'
     work = Path(tempfile.mkdtemp(prefix='dfs-v2-fuse-'))
     prefix, key, key_path = support.identity(work)
     server, endpoint = support.start(work, 'e2e', prefix, key_path)

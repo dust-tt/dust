@@ -21,8 +21,8 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-import { getUserById, type PodGroup } from "../data";
 import type { Space } from "../data/types";
+import { getUserById, type PodGroup } from "../data";
 import { DataTable } from "./DataTableDnd";
 import { formatDate, type PodSettingsMember } from "./podSettingsShared";
 

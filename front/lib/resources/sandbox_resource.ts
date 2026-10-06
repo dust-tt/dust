@@ -12,6 +12,7 @@ import type {
   FileEntry,
   RootExecOptions,
   SandboxProvider,
+  SandboxReadFileOptions,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
@@ -192,9 +193,7 @@ function isSleepingOnOutdatedImage(
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
 
@@ -348,7 +347,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     after?: SandboxTimestampCursor;
   }): Promise<SandboxResource[]> {
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         status: opts.status,
@@ -1352,7 +1351,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         : {};
 
     const candidates = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       attributes: ["id"],
       where: {
@@ -1402,7 +1401,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }): Promise<SandboxResource[]> {
     const order = opts.order ?? "killRequestedAtAsc";
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         killRequestedAt: { [Op.ne]: null },
@@ -1639,11 +1638,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Read a file from the sandbox filesystem.
+   * Read a file from the sandbox filesystem, as `readOpts.user` and bounded by `readOpts.maxBytes`
+   * (see the provider's `readFile` contracts).
    */
   async readFile(
     auth: Authenticator,
-    path: string
+    path: string,
+    readOpts: SandboxReadFileOptions
   ): Promise<Result<Buffer, Error>> {
     const provider = getSandboxProvider();
     if (!provider) {
@@ -1653,7 +1654,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
     try {
-      const data = await provider.readFile(this.providerId, path, {
+      const data = await provider.readFile(this.providerId, path, readOpts, {
         workspaceId,
       });
 

@@ -37,7 +37,8 @@ export const ConversationContainer = React.forwardRef<
 ConversationContainer.displayName = "ConversationContainer";
 
 interface ConversationMessageProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
   /** Entries of the "…" dropdown menu in the message header; each onClick is invoked when its item is selected. */
   actions?: ConversationMessageAction[];
@@ -155,8 +156,7 @@ export const ConversationMessage = React.forwardRef<
 
 ConversationMessage.displayName = "ConversationMessage";
 
-interface ConversationMessageHeaderProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: ConversationMessageAction[];
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;

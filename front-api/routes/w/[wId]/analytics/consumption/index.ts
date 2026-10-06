@@ -88,9 +88,12 @@ export function createAgentConsumptionRoutes() {
         },
       });
     }
-    const agent = await AgentResource.fetchById(auth, agentId);
+    const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+      auth,
+      agentId
+    );
 
-    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

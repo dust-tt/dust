@@ -3,6 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBu
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
@@ -45,7 +46,7 @@ import {
   Folder,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 

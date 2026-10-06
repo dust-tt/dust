@@ -1,7 +1,3 @@
-import assert from "node:assert";
-import { mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import baseLogger from "@app/logger/logger";
@@ -14,6 +10,10 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "node:assert";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const logger = baseLogger.child({}, { level: "silent" });

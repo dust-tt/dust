@@ -11,9 +11,7 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-export class GongCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class GongCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

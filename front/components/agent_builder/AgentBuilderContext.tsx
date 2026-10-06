@@ -1,7 +1,7 @@
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
-import { SpacesProvider } from "@app/components/shared/SpacesContext";
 import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
+import { SpacesProvider } from "@app/components/shared/SpacesContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";

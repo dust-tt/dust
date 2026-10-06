@@ -147,6 +147,7 @@ const GetSpacesQuerySchema = z.object({
  *                 type: boolean
  *               name:
  *                 type: string
+ *                 maxLength: 256
  *               spaceKind:
  *                 type: string
  *                 enum: [regular, project]

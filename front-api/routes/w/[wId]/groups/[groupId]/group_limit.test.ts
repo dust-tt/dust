@@ -4,8 +4,8 @@ import type * as seatTypes from "@app/lib/metronome/seat_types";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import {
   mockActiveContract,
   POOL_ONLY_SEATS,

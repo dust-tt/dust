@@ -1,5 +1,5 @@
-import type { PartnerFormData } from "@marketing/lib/api/hubspot/partnerFormSchema";
 import { CheckCircle } from "@dust-tt/sparkle";
+import type { PartnerFormData } from "@marketing/lib/api/hubspot/partnerFormSchema";
 import { useFormContext } from "react-hook-form";
 
 export function PartnerFormThankYou() {

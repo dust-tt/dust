@@ -43,11 +43,10 @@ export function getAuthenticatedFrameUserIdentity(
   };
 }
 
-interface AuthenticatedVisualizationActionIframeProps
-  extends Omit<
-    VisualizationActionIframeProps,
-    "canInvokeFunctions" | "scopedUserIdentity" | "viewer"
-  > {
+interface AuthenticatedVisualizationActionIframeProps extends Omit<
+  VisualizationActionIframeProps,
+  "canInvokeFunctions" | "scopedUserIdentity" | "viewer"
+> {
   isPodEditor?: boolean;
   isPodMember?: boolean;
 }

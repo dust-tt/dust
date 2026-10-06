@@ -17,6 +17,7 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import { useMemo, useState } from "react";
 
+import type { PodTabCustomization } from "./podSettingsShared";
 import {
   DUST_DEFAULT_AGENT,
   mockAgents,
@@ -25,7 +26,6 @@ import {
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "../data";
 import { PodCustomizationSection } from "./PodCustomizationSection";
-import type { PodTabCustomization } from "./podSettingsShared";
 
 // Mirrors the pill used for the default agent / skills in the conversation
 // input bar, so the same selection reads identically in both places.

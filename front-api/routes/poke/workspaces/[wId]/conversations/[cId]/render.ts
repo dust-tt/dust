@@ -78,7 +78,7 @@ app.post(
     } = ctx.req.valid("json");
 
     const [conversationRes, agent] = await Promise.all([
-      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+      // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
       getConversation(auth, cId, true),
       AgentResource.fetchById(auth, agentId),
     ]);

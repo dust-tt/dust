@@ -1,4 +1,13 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import type { Options } from "@contentful/rich-text-react-renderer";
+import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
+import type {
+  Block,
+  Document,
+  Inline,
+  Text,
+} from "@contentful/rich-text-types";
+import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
+import { LegacyButton as Button, cn } from "@dust-tt/sparkle";
 import { LessonLink } from "@marketing/components/academy/LessonLink";
 import {
   A,
@@ -15,16 +24,6 @@ import {
 import { isDevelopment } from "@marketing/types/shared/env";
 import { isString } from "@marketing/types/shared/utils/general";
 import { slugify } from "@marketing/types/shared/utils/string_utils";
-import type { Options } from "@contentful/rich-text-react-renderer";
-import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import type {
-  Block,
-  Document,
-  Inline,
-  Text,
-} from "@contentful/rich-text-types";
-import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
-import { LegacyButton as Button, cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";

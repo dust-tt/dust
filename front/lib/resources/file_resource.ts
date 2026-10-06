@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import path from "node:path";
 
 import config from "@app/lib/api/config";
@@ -185,9 +182,9 @@ export type LegacyFrameFields = Pick<
   | "useCaseMetadata"
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
   static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =
@@ -281,7 +278,7 @@ export class FileResource extends BaseResource<FileModel> {
     const frames = await this.model.findAll({
       // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across workspaces; these IDs come
       // from workspace-scoped sandbox ownership rows.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -306,7 +303,7 @@ export class FileResource extends BaseResource<FileModel> {
     batchSize: number;
   }): Promise<FileResource[]> {
     const frames = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -462,7 +459,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { token },
       // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
       // point we don't know the workspaceId.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {

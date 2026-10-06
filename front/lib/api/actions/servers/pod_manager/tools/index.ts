@@ -63,7 +63,7 @@ import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -1489,7 +1489,7 @@ export function createProjectManagerTools(
           if (includeMessages) {
             const conversationResults = await concurrentExecutor(
               resourcePage,
-              // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+              // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
               async (c) => getLightConversation(auth, c.sId, false),
               { concurrency: 10 }
             );
@@ -1548,7 +1548,7 @@ export function createProjectManagerTools(
         if (includeMessages) {
           const conversationResults = await concurrentExecutor(
             pageResources,
-            // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+            // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
             async (c) => getLightConversation(auth, c.sId, false),
             { concurrency: 10 }
           );

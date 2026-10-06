@@ -11,9 +11,9 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { honoApp } from "@front-api/app";
@@ -313,38 +313,37 @@ describe("GET /api/v1/w/[wId]/skills", () => {
 });
 
 describe("POST /api/v1/w/[wId]/skills", () => {
-  it.each([
-    "error",
-    "skip",
-    "override",
-  ] as const)("rejects overlong skill names before importing any skills with onConflict=%s", async (onConflict) => {
-    const { workspace } = await createPublicApiMockRequest();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const validFile = await makeSkillZipFile({
-      name: "Valid Skill",
-      instructions: "Instructions",
-    });
-    const invalidFile = await makeSkillZipFile({
-      name: "a".repeat(257),
-      instructions: "Instructions",
-    });
+  it.each(["error", "skip", "override"] as const)(
+    "rejects overlong skill names before importing any skills with onConflict=%s",
+    async (onConflict) => {
+      const { workspace } = await createPublicApiMockRequest();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const validFile = await makeSkillZipFile({
+        name: "Valid Skill",
+        instructions: "Instructions",
+      });
+      const invalidFile = await makeSkillZipFile({
+        name: "a".repeat(257),
+        instructions: "Instructions",
+      });
 
-    const result = await importSkillsFromFiles(auth, {
-      uploadedFiles: [validFile, invalidFile],
-      source: "api",
-      onConflict,
-    });
+      const result = await importSkillsFromFiles(auth, {
+        uploadedFiles: [validFile, invalidFile],
+        source: "api",
+        onConflict,
+      });
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toContain("at most 256 characters");
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("at most 256 characters");
+      }
+      const skills = await SkillResource.fetchByNames(auth, [
+        "Valid Skill",
+        "a".repeat(257),
+      ]);
+      expect(skills).toHaveLength(0);
     }
-    const skills = await SkillResource.fetchByNames(auth, [
-      "Valid Skill",
-      "a".repeat(257),
-    ]);
-    expect(skills).toHaveLength(0);
-  });
+  );
 
   it("imports a skill with a 256-character name", async () => {
     const { workspace } = await createPublicApiMockRequest();

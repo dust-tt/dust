@@ -648,8 +648,7 @@ export function useConsumptionAttributionRowsQueryState(): ConsumptionAttributio
   };
 }
 
-interface ConsumptionAttributionRowsViewProps
-  extends ConsumptionAttributionRowsProps {
+interface ConsumptionAttributionRowsViewProps extends ConsumptionAttributionRowsProps {
   data: ConsumptionAttributionRowsData;
   emptyMessage: string;
   queryState: ConsumptionAttributionRowsQueryState;
@@ -918,8 +917,7 @@ export interface ConsumptionAttributionTableProps {
   onConversationNavigate?: () => void;
 }
 
-interface ConsumptionAttributionTableViewProps
-  extends ConsumptionAttributionTableProps {
+interface ConsumptionAttributionTableViewProps extends ConsumptionAttributionTableProps {
   AttributionRowsComponent: ComponentType<ConsumptionAttributionRowsProps>;
 }
 

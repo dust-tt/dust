@@ -63,7 +63,6 @@ export function DatasetPage() {
   // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
   // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
   // this should happen.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isFinishedEditing && app) {
       void router.push(

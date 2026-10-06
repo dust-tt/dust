@@ -60,10 +60,7 @@ type FetchDataSourceOptions = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceResource
-  extends ReadonlyAttributesType<DataSourceModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface DataSourceResource extends ReadonlyAttributesType<DataSourceModel> {}
 export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
 
@@ -368,7 +365,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: `dustAPIProjectId` is globally unique, so this lookup is
       // intentionally cross-workspace. Permissions are still enforced by `canFetch` after fetch.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

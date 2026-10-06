@@ -67,9 +67,7 @@ export interface DeleteMentionsByMessagesParams {
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MentionResource extends ReadonlyAttributesType<MentionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MentionResource extends BaseResource<MentionModel> {
   static model: ModelStatic<MentionModel> = MentionModel;
 
@@ -163,7 +161,7 @@ export class MentionResource extends BaseResource<MentionModel> {
     { notMentionedSince }: { notMentionedSince: Date }
   ): Promise<AgentIdleRow[]> {
     // Driven by the agents, of which there are far fewer than mentions.
-    // biome-ignore lint/plugin/noRawSql: needs a LATERAL, which the query builder cannot express.
+    // oxlint-disable-next-line dust/noRawSql -- needs a LATERAL, which the query builder cannot express.
     const rows: unknown[] = await frontSequelize.query(
       `
         SELECT

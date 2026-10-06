@@ -26,7 +26,7 @@ import {
  */
 function useSafeNavigate() {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
+    // oxlint-disable-next-line react/rules-of-hooks -- Intentional try/catch wrapper for Router context safety.
     return useNavigate();
   } catch {
     return null;
@@ -39,7 +39,7 @@ function useSafeNavigate() {
  */
 function useSafeLocation() {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
+    // oxlint-disable-next-line react/rules-of-hooks -- Intentional try/catch wrapper for Router context safety.
     return useLocation();
   } catch {
     return null;
@@ -52,7 +52,7 @@ function useSafeLocation() {
  */
 function useSafeSearchParams() {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
+    // oxlint-disable-next-line react/rules-of-hooks -- Intentional try/catch wrapper for Router context safety.
     return useRouterSearchParams();
   } catch {
     return [new URLSearchParams(window.location.search), () => {}] as const;
@@ -240,7 +240,7 @@ export const LinkWrapper = ReactRouterLinkWrapper;
  */
 export function usePathParams(): Record<string, string | undefined> {
   try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: Intentional try/catch wrapper for Router context safety.
+    // oxlint-disable-next-line react/rules-of-hooks -- Intentional try/catch wrapper for Router context safety.
     return useRouterParams();
   } catch {
     return {};

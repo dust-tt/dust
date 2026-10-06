@@ -1,13 +1,18 @@
 import config from "@app/lib/api/config";
-import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
+import {
+  EmailGreeting,
+  EmailLayout,
+  renderEmailWithI18n,
+} from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { pluralize } from "@app/types/shared/utils/string_utils";
-import { render } from "@react-email/render";
+import type { I18n } from "@lingui/core";
+import { plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as React from "react";
 import { z } from "zod";
 
 export const ConversationsUnreadEmailTemplatePropsSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   workspace: z.object({
     id: z.string(),
     name: z.string(),
@@ -36,6 +41,7 @@ const ConversationsUnreadEmailTemplate = ({
   workspace,
   conversations,
 }: ConversationsUnreadEmailTemplateProps) => {
+  const { t } = useLingui();
   const conversationsWithMention = conversations.filter(
     (c) => c.hasUnreadMentions && !c.isNewProjectConversation
   );
@@ -51,6 +57,10 @@ const ConversationsUnreadEmailTemplate = ({
     ),
   ];
   const isSingleProject = uniqueProjectNames.length === 1;
+  const mentionCount = conversationsWithMention.length;
+  const unreadCount = unreadConversationsWithoutMention.length;
+  const newProjectConversationCount = newProjectConversations.length;
+  const singleProjectName = uniqueProjectNames[0];
 
   const hasPreviousSection = (sectionIndex: number) => {
     const sections = [
@@ -63,13 +73,19 @@ const ConversationsUnreadEmailTemplate = ({
 
   return (
     <EmailLayout workspace={workspace}>
-      <p>Hi {name},</p>
+      <p>
+        <EmailGreeting name={name} />
+      </p>
 
       {conversationsWithMention.length > 0 && (
         <>
           <p>
-            🔔 You have been mentioned in the following conversation
-            {pluralize(conversationsWithMention.length)}:
+            🔔{" "}
+            <Plural
+              value={mentionCount}
+              one="You have been mentioned in the following conversation:"
+              other="You have been mentioned in the following conversations:"
+            />
           </p>
           <div
             style={{
@@ -106,8 +122,12 @@ const ConversationsUnreadEmailTemplate = ({
               marginTop: hasPreviousSection(1) ? "24px" : "0",
             }}
           >
-            📬 You have unread message(s) in the following conversation
-            {pluralize(unreadConversationsWithoutMention.length)}:
+            📬{" "}
+            <Plural
+              value={unreadCount}
+              one="You have unread message(s) in the following conversation:"
+              other="You have unread message(s) in the following conversations:"
+            />
           </p>
           <div
             style={{
@@ -146,47 +166,65 @@ const ConversationsUnreadEmailTemplate = ({
           >
             📁{" "}
             {isSingleProject
-              ? newProjectConversations.length === 1
-                ? `There's a new conversation in ${uniqueProjectNames[0]}:`
-                : `There are ${newProjectConversations.length} new conversations in ${uniqueProjectNames[0]}:`
-              : `There are ${newProjectConversations.length} new conversations in your Pods:`}
+              ? t`${plural(newProjectConversationCount, {
+                  one: `There's a new conversation in ${singleProjectName}:`,
+                  other: `There are # new conversations in ${singleProjectName}:`,
+                })}`
+              : t`${plural(newProjectConversationCount, {
+                  one: "There is # new conversation in your Pods:",
+                  other: "There are # new conversations in your Pods:",
+                })}`}
           </p>
           <div>
-            {newProjectConversations.map((conversation) => (
-              <div key={conversation.id}>
-                <h4>
-                  <a
-                    href={getConversationRoute(
-                      workspace.id,
-                      conversation.id,
-                      undefined,
-                      config.getAppUrl()
-                    )}
-                    target="_blank"
-                  >
-                    {conversation.createdByFullName ?? "Someone"} started "
-                    {conversation.title}"
-                    {!isSingleProject && ` in ${conversation.projectName}`}
-                  </a>
-                </h4>
-                {conversation.messagePreview && (
-                  <blockquote
-                    style={{
-                      borderLeft: "3px solid #969CA5",
-                      paddingLeft: "12px",
-                      margin: "4px 0 0 0",
-                    }}
-                  >
-                    {conversation.messagePreview.split("\n").map((line, i) => (
-                      <React.Fragment key={i}>
-                        {line}
-                        <br />
-                      </React.Fragment>
-                    ))}
-                  </blockquote>
-                )}
-              </div>
-            ))}
+            {newProjectConversations.map((conversation) => {
+              const createdBy = conversation.createdByFullName ?? t`Someone`;
+              const conversationTitle = conversation.title;
+              const projectName = conversation.projectName;
+              return (
+                <div key={conversation.id}>
+                  <h4>
+                    <a
+                      href={getConversationRoute(
+                        workspace.id,
+                        conversation.id,
+                        undefined,
+                        config.getAppUrl()
+                      )}
+                      target="_blank"
+                    >
+                      {isSingleProject ? (
+                        <Trans>
+                          {createdBy} started "{conversationTitle}"
+                        </Trans>
+                      ) : (
+                        <Trans>
+                          {createdBy} started "{conversationTitle}" in{" "}
+                          {projectName}
+                        </Trans>
+                      )}
+                    </a>
+                  </h4>
+                  {conversation.messagePreview && (
+                    <blockquote
+                      style={{
+                        borderLeft: "3px solid #969CA5",
+                        paddingLeft: "12px",
+                        margin: "4px 0 0 0",
+                      }}
+                    >
+                      {conversation.messagePreview
+                        .split("\n")
+                        .map((line, i) => (
+                          <React.Fragment key={i}>
+                            {line}
+                            <br />
+                          </React.Fragment>
+                        ))}
+                    </blockquote>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -194,6 +232,12 @@ const ConversationsUnreadEmailTemplate = ({
   );
 };
 
-export function renderEmail(args: ConversationsUnreadEmailTemplateProps) {
-  return render(<ConversationsUnreadEmailTemplate {...args} />);
+export function renderEmail({
+  i18n,
+  ...args
+}: ConversationsUnreadEmailTemplateProps & { i18n: I18n }) {
+  return renderEmailWithI18n(
+    i18n,
+    <ConversationsUnreadEmailTemplate {...args} />
+  );
 }

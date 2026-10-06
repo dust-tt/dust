@@ -19,6 +19,7 @@ import {
   DEFAULT_NOTIFICATION_CONDITION,
   isNotificationCondition,
 } from "@app/types/notification_preferences";
+import { MAX_POD_NAME_LENGTH } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Archive,
@@ -229,6 +230,7 @@ export function PodSettingsGeneralTab({
             }}
             placeholder="Enter Pod name"
             containerClassName="flex-1"
+            maxLength={MAX_POD_NAME_LENGTH}
           />
           {isEditingName && (
             <>

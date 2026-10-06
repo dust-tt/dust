@@ -92,9 +92,7 @@ type FetchRunOptions<T extends boolean> = {
   offset?: number;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RunResource extends ReadonlyAttributesType<RunModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RunResource extends BaseResource<RunModel> {
   static model: ModelStatic<RunModel> = RunModel;
 
@@ -186,7 +184,6 @@ export class RunResource extends BaseResource<RunModel> {
     workspace: LightWorkspaceType,
     options: FetchRunOptions<T>
   ): Promise<T extends true ? RunResourceWithApp[] : RunResource[]> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
     const { where, includes, includeDeleted, ...opts } =
       this.getOptions(options);
 

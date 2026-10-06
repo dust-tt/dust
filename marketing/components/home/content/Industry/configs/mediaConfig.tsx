@@ -1,6 +1,6 @@
+import { BookOpen01 } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@marketing/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@marketing/components/home/content/Industry/configs/utils";
-import { BookOpen01 } from "@dust-tt/sparkle";
 
 export const mediaConfig: IndustryPageConfig = {
   seo: {

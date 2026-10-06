@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 "use client";
 
 import { H2 } from "@marketing/components/home/ContentComponents";

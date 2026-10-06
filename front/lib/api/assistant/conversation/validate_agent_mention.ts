@@ -56,7 +56,7 @@ export async function validateAgentMention(
     approvalState: "approved" | "rejected";
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({

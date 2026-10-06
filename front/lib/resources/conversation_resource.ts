@@ -17,6 +17,7 @@ import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -193,11 +194,8 @@ const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ConversationResource
-  extends ReadonlyAttributesType<ConversationModel> {}
+export interface ConversationResource extends ReadonlyAttributesType<ConversationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
   static model: ModelStaticWorkspaceAware<ConversationModel> =
     ConversationModel;
@@ -414,7 +412,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // The reaper needs to drive sandbox lifecycle transitions even for deleted
     // conversations, so we include every visibility here.
     const conversations = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         id: ids,
@@ -1130,7 +1128,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       FROM sub_agents
     `;
 
-    // biome-ignore lint/plugin/noRawSql: recursive CTE has no Sequelize equivalent.
+    // oxlint-disable-next-line dust/noRawSql -- recursive CTE has no Sequelize equivalent.
     const rows = await frontSequelize.query<{
       total_credits: number | null;
       max_depth: number | null;
@@ -1927,7 +1925,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       LIMIT :limit OFFSET :offset
     `;
 
-    // biome-ignore lint/plugin/noRawSql: no association from conversations to agent_messages.
+    // oxlint-disable-next-line dust/noRawSql -- no association from conversations to agent_messages.
     const rows = await frontSequelize.query<{
       id: ModelId;
       total_count: number;
@@ -3614,7 +3612,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             WHERE rn = 1
         `;
 
-    // biome-ignore lint/plugin/noRawSql: automatic suppress
+    // oxlint-disable-next-line dust/noRawSql -- automatic suppress
     const results = await frontSequelize.query<{
       rank: number;
       agentMessageId: number;
@@ -3668,7 +3666,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ) AS "exists"
     `;
 
-    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    // oxlint-disable-next-line dust/noRawSql -- EXISTS subquery with DISTINCT ON
     const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -3714,7 +3712,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ) AS "exists"
     `;
 
-    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    // oxlint-disable-next-line dust/noRawSql -- EXISTS subquery with DISTINCT ON
     const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -3810,7 +3808,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       LIMIT 1
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON subquery with LIMIT 1
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON subquery with LIMIT 1
     const [result] = await frontSequelize.query<{
       clientSideMCPServerIds: string[] | null;
       requestedProviderId: string | null;
@@ -3862,7 +3860,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ORDER BY m.rank ASC, m.version DESC
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON for latest version per rank
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON for latest version per rank
     const latestPerRank = await frontSequelize.query<{
       id: ModelId;
       rank: number;
@@ -3950,7 +3948,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       LIMIT 1
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON latest version per rank
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON latest version per rank
     const [message] = await frontSequelize.query<{
       sId: string;
       rank: number;
@@ -4070,7 +4068,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       FROM latest
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON aggregate for branch creation
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON aggregate for branch creation
     const [stats] = await frontSequelize.query<{
       messageCount: number;
       nonContentFragmentCount: number;
@@ -5326,8 +5324,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(firstParticipant.userId === user.id);
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] only-active-members
+   * When `onlyActiveMembers` is true, the result MUST exclude participants without an active
+   * membership in the workspace of `auth`.
+   */
   async listParticipants(
-    auth: Authenticator
+    auth: Authenticator,
+    { onlyActiveMembers = false }: { onlyActiveMembers?: boolean } = {}
   ): Promise<(UserType & { lastReadAt: Date | null })[]> {
     const participants = await ConversationParticipantModel.findAll({
       where: {
@@ -5347,9 +5351,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversationReads.map((cr) => [cr.userId, cr.lastReadAt])
     );
 
-    const userResources = await UserResource.fetchByModelIds(
+    const participantUsers = await UserResource.fetchByModelIds(
       participants.map((p) => p.userId)
     );
+    // Revocation keeps participant rows, so membership is checked separately.
+    const userResources = onlyActiveMembers
+      ? await MembershipResource.filterActiveMembers({
+          users: participantUsers,
+          workspace: auth.getNonNullableWorkspace(),
+        })
+      : participantUsers;
 
     return userResources.map((userResource) => ({
       ...userResource.toJSON(),

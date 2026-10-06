@@ -23,12 +23,12 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import { type ReactNode } from "react";
 
+import type { Space } from "../data/types";
 import {
   getCompanySpaceIcon,
   openCompanySpaces,
   restrictedCompanySpaces,
 } from "../data/companySpaces";
-import type { Space } from "../data/types";
 
 // What you build with, rather than what you work in: the pieces an agent is
 // made of, then the Spaces that hold the knowledge it reads. Agents, Skills and

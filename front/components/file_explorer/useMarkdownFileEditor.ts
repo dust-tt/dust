@@ -1,13 +1,20 @@
+import type { DocumentSaveResult } from "@app/components/editor/document";
+import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreviewContent";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
+import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
+import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
+
+export type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 
 interface UseMarkdownFileEditorParams {
   category: FilePreviewCategory;
@@ -16,16 +23,25 @@ interface UseMarkdownFileEditorParams {
   isActive: boolean;
   isContentLoading: boolean;
   isTooLarge: boolean;
+  /** The preview text was cut; an editor fed with it would save a truncated file. */
+  isTruncated: boolean;
   owner: LightWorkspaceType | undefined;
+  /** The file text as fetched, for the rich editor. The processed text is trimmed. */
+  rawContent: string | null;
   processedContent: ProcessedContent | null;
 }
 
 export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
+  /** True while leaving the file would drop an edit the rich editor has not saved yet. */
+  holdsNavigation: boolean;
+  /** Unsaved edits in whichever editor is open. */
   isDirty: boolean;
   isSaving: boolean;
   revert: () => void;
+  /** Set when the file opens in the rich editor: every Markdown file behind the co_edition flag. */
+  richEditor: MarkdownRichEditor | null;
   save: () => Promise<void>;
   setDraft: (content: string) => void;
   setViewMode: (mode: MarkdownFilePreviewViewMode) => void;
@@ -39,7 +55,9 @@ export function useMarkdownFileEditor({
   isActive,
   isContentLoading,
   isTooLarge,
+  isTruncated,
   owner,
+  rawContent,
   processedContent,
 }: UseMarkdownFileEditorParams): MarkdownFileEditor {
   const [viewMode, setViewMode] =
@@ -53,12 +71,14 @@ export function useMarkdownFileEditor({
 
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
+  const { hasFeature } = useFeatureFlags();
 
   const editablePath =
     entryPath && owner && parseCanonicalScopedPath(entryPath)
       ? entryPath
       : null;
-  const canEdit = category === "markdown" && !!editablePath && !isTooLarge;
+  const canOpenEditor =
+    category === "markdown" && !!editablePath && !isTooLarge;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
@@ -69,7 +89,9 @@ export function useMarkdownFileEditor({
     initKeyRef.current = null;
   }
 
-  const isDirty = draft !== savedContent;
+  const isPlainDirty = draft !== savedContent;
+  // Saving cut preview text would truncate the file. An open draft stays so it can be copied.
+  const canEdit = canOpenEditor && (!isTruncated || isPlainDirty);
 
   useEffect(() => {
     if (
@@ -90,7 +112,7 @@ export function useMarkdownFileEditor({
     const hadInitializedForPath = initKeyRef.current?.startsWith(
       `${entryPath}:`
     );
-    if (hadInitializedForPath && isDirty) {
+    if (hadInitializedForPath && isPlainDirty) {
       return;
     }
 
@@ -103,51 +125,89 @@ export function useMarkdownFileEditor({
     entryPath,
     isActive,
     isContentLoading,
-    isDirty,
+    isPlainDirty,
     processedContent,
   ]);
 
+  const writeFile = async (content: string): Promise<DocumentSaveResult> => {
+    if (!owner || !editablePath) {
+      return new Err("This file cannot be edited.");
+    }
+    const result = await writeFileContentByPath({
+      owner,
+      canonicalPath: editablePath,
+      content,
+      contentType: "text/markdown",
+    });
+    return result.isOk() ? new Ok(undefined) : new Err(result.error.message);
+  };
+
+  /**
+   * Makes written content the one the preview shows and the plain editor's saved baseline. The
+   * plain draft is left alone: whatever was typed or undone during the save is still the draft.
+   */
+  const adoptWritten = async (content: string) => {
+    await mutate(
+      fileUrl,
+      { kind: "loaded", content },
+      {
+        revalidate: false,
+      }
+    );
+    setSavedContent(content);
+    initKeyRef.current = `${entryPath}:${content}`;
+  };
+
   const save = async () => {
-    if (!owner || !editablePath || !isDirty || isSaving) {
+    if (!isPlainDirty || isSaving) {
       return;
     }
-
+    if (isTruncated) {
+      sendNotification({ type: "error", ...CUT_TEXT_SAVE_REFUSED });
+      return;
+    }
     setIsSaving(true);
     try {
-      await writeFileContentByPath({
-        owner,
-        canonicalPath: editablePath,
-        content: draft,
-        contentType: "text/markdown",
-      });
-      await mutate(
-        fileUrl,
-        { kind: "loaded", content: draft },
-        {
-          revalidate: false,
-        }
-      );
-      setSavedContent(draft);
-      initKeyRef.current = `${entryPath}:${draft}`;
-      sendNotification({ type: "success", title: "File saved" });
-    } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: normalizeError(e).message,
-      });
+      const result = await writeFile(draft);
+      if (result.isOk()) {
+        await adoptWritten(draft);
+        sendNotification({ type: "success", title: "File saved" });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to save file",
+          description: result.error,
+        });
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
+  const rich = useRichMarkdownEditor({
+    // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
+    enabled: hasFeature("co_edition") && canOpenEditor,
+    entryPath,
+    isActive,
+    rawContent,
+    isTruncated,
+    writeFile,
+    // The plain editor is not shown while the rich one is open, so its draft follows the file.
+    adoptWritten: async (content) => {
+      await adoptWritten(content);
+      setDraft(content);
+    },
+  });
+
   return {
     canEdit,
     content:
       canEdit && sourcePath === entryPath ? draft : processedContent?.text,
-    isDirty,
-    isSaving,
+    holdsNavigation: rich.holdsNavigation,
+    isDirty: rich.richEditor ? rich.isDirty : isPlainDirty,
+    isSaving: rich.richEditor ? rich.isSaving : isSaving,
     revert: () => setDraft(savedContent),
+    richEditor: rich.richEditor,
     save,
     setDraft,
     setViewMode,

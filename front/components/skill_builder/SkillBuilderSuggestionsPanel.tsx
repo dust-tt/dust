@@ -1,6 +1,6 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
@@ -60,6 +60,7 @@ export function SkillBuilderSuggestionsPanel({
         case "create":
         case "delete":
         case "editors":
+        case "files":
         case "name":
         case "user_facing_description":
           return;

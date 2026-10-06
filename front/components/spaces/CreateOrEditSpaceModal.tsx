@@ -97,7 +97,6 @@ export function CreateOrEditSpaceModal({
   // membership it does not know.
   const isAccessUnavailable = (!!space && !!isSpaceInfoError) || isGroupsError;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;

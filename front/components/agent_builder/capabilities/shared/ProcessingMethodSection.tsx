@@ -139,7 +139,6 @@ export function ProcessingMethodSection() {
     return [mcpServerViewsWithKnowledge, warning];
   }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (serversToDisplay && sources.in.length > 0 && !mcpServerView) {
       const allTablesOrDatabases = sources.in.every(

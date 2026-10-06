@@ -30,8 +30,10 @@ const ICON_CLASS_FOR_AVATAR: Record<AvatarCounterSizeType, string> = {
 
 const POSITION_CLASSES = "pointer-events-none absolute -right-1 -top-1";
 
-export interface AvatarCounterProps
-  extends Omit<ComponentProps<typeof Avatar>, "size" | "className"> {
+export interface AvatarCounterProps extends Omit<
+  ComponentProps<typeof Avatar>,
+  "size" | "className"
+> {
   size?: AvatarCounterSizeType;
   /** Number shown in the corner counter. Cap large values yourself; 0 hides the counter. */
   count?: number;

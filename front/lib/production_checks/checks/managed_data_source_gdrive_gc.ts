@@ -59,7 +59,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
     workspaceModelId: number;
     workspaceId: string;
   }[] =
-    // biome-ignore lint/plugin/noRawSql: Leggit
+    // oxlint-disable-next-line dust/noRawSql -- Leggit
     await frontReplica.query(
       `SELECT ds.id, ds."connectorId", ds."workspaceId" AS "workspaceModelId", w."sId" AS "workspaceId"
        FROM data_sources ds
@@ -100,7 +100,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         const batch = (await withRetries(
           logger,
           async () =>
-            // biome-ignore lint/plugin/noRawSql: production check uses read replica
+            // oxlint-disable-next-line dust/noRawSql -- production check uses read replica
             connectorsReplica.query(
               'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
               {

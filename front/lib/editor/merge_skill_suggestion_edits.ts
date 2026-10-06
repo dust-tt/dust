@@ -16,6 +16,7 @@ export interface SkillEdits {
   availability?: SkillAvailability;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
+  files?: { removeFileIds: string[] };
   archive?: boolean;
 }
 
@@ -63,6 +64,9 @@ function editsForSuggestion(
     case "editors":
       return new Ok({ editors: data.suggestion });
 
+    case "files":
+      return new Ok({ files: data.suggestion });
+
     case "name":
       return new Ok({ name: data.suggestion.name });
 
@@ -108,16 +112,26 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
 
   // Union, not last-wins: approving two suggestions must apply both editor changes.
   const editorsEdits = edits.flatMap((e) => e.editors ?? []);
-  if (editorsEdits.length === 0) {
-    return {
-      agentFacingDescription,
-      userFacingDescription,
-      name,
-      availability,
-      instructionEdits,
-      archive,
-    };
-  }
+  const editors =
+    editorsEdits.length > 0
+      ? {
+          addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
+          removeUserIds: [
+            ...new Set(editorsEdits.flatMap((e) => e.removeUserIds)),
+          ],
+        }
+      : undefined;
+
+  // Union, like editors: approving two suggestions must apply both file changes.
+  const filesEdits = edits.flatMap((e) => e.files ?? []);
+  const files =
+    filesEdits.length > 0
+      ? {
+          removeFileIds: [
+            ...new Set(filesEdits.flatMap((e) => e.removeFileIds)),
+          ],
+        }
+      : undefined;
 
   return {
     agentFacingDescription,
@@ -126,10 +140,8 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     availability,
     instructionEdits,
     archive,
-    editors: {
-      addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
-      removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
-    },
+    editors,
+    files,
   };
 }
 

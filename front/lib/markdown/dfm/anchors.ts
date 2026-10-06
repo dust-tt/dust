@@ -4,8 +4,16 @@ import {
   requiredString,
 } from "@app/lib/markdown/dfm/grammar";
 import type { Range } from "@app/lib/markdown/dfm/parser";
-import { codeRanges, isEscaped } from "@app/lib/markdown/dfm/parser";
-import type { DfmAnchor, DfmError } from "@app/lib/markdown/dfm/types";
+import {
+  checkInputBounds,
+  codeRanges,
+  isEscaped,
+} from "@app/lib/markdown/dfm/parser";
+import type {
+  DfmAnchor,
+  DfmAnchorDirective,
+  DfmError,
+} from "@app/lib/markdown/dfm/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
@@ -30,6 +38,34 @@ const anchorAttributesSchema = z
 
 export function anchorDirective(kind: "start" | "end", id: string): string {
   return `:comment-${kind}{id=${id}}`;
+}
+
+/**
+ * @cc [owner:tdraier,label:product] dfm-anchor-directive-reader
+ * readAnchorDirective MUST return the directive only when `source` starts with a well-formed
+ * anchor directive whose attributes pass the anchor schema, with `length` covering exactly the
+ * directive, and null otherwise. It MUST NOT skip leading characters, so callers that read a
+ * body left to right keep handling code and backslash escapes themselves.
+ */
+export function readAnchorDirective(source: string): DfmAnchorDirective | null {
+  const match = new RegExp(ANCHOR_PATTERN.source, "y").exec(source);
+  if (!match || match[2] === undefined) {
+    return null;
+  }
+  const attributes = parseAttributes(match[2], anchorAttributesSchema);
+  if (attributes.isErr()) {
+    return null;
+  }
+  return {
+    kind: match[1] === "start" ? "start" : "end",
+    id: attributes.value.id,
+    length: match[0].length,
+  };
+}
+
+/** Index of the first anchor directive syntax in `source`, well-formed or not, or -1. */
+export function findAnchorDirective(source: string): number {
+  return source.search(ANCHOR_PATTERN);
 }
 
 interface ScannedAnchor extends DfmAnchor {
@@ -190,6 +226,10 @@ export function scanAnchors(
 export function extractAnchors(
   body: string
 ): Result<{ text: string; anchors: DfmAnchor[] }, DfmError> {
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return new Err(bounds);
+  }
   const scanned = scanAnchors(body, 0);
   if (scanned.isErr()) {
     return scanned;

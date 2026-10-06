@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
+/* oxlint-disable dust/noRawSql -- relocation SQL file requires raw SQL */
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { withTransaction } from "@app/lib/utils/sql_utils";

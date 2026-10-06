@@ -81,7 +81,7 @@ async function fetchSandbox(
         : { providerId: sandboxId },
     // WORKSPACE_ISOLATION_BYPASS: a provider sandbox id does not carry a workspace, and the
     // operator debugging a sandbox only has that id.
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 
@@ -188,7 +188,7 @@ async function mintExecToken(
 
   // The token claims need the last agent message and its sandbox action, which only the
   // full fetch renders.
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationResult = await getConversation(
     auth,
     conversationResource.sId

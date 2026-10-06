@@ -36,7 +36,8 @@ const NavTabPillList = React.forwardRef<
 NavTabPillList.displayName = TabsPrimitive.List.displayName;
 
 interface NavTabPillTriggerProps
-  extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>,
+  extends
+    React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>,
     Omit<LinkWrapperProps, "children" | "className"> {
   /** Icon shown in the pill; the label (children) expands only on the active pill and becomes a tooltip on inactive ones. */
   icon: React.ComponentType<{ className?: string }>;

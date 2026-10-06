@@ -1,9 +1,7 @@
 import type { ExtensionAppMessage } from "@extension/shared/messages";
 import type { BrowserMessagingService } from "@extension/shared/services/platform";
 
-export class ChromeFirefoxBrowserMessagingService
-  implements BrowserMessagingService
-{
+export class ChromeFirefoxBrowserMessagingService implements BrowserMessagingService {
   addMessageListener(
     listener: (message: ExtensionAppMessage) => void | Promise<void>
   ) {

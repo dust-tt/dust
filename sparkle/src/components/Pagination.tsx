@@ -34,6 +34,11 @@ interface PaginationProps {
  * e.g. a table backed by @tanstack/react-table.
  * @summary Controlled pager for tables and lists.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] pagination-narrow-layout
+ * Below 768px viewport width, the range summary MUST wrap below the page controls when
+ * they do not fit on one line. Desktop layout MUST remain unchanged.
+ */
 export function Pagination({
   size = "sm",
   showDetails = true,
@@ -80,13 +85,13 @@ export function Pagination({
   return (
     <div
       className={cn(
-        "flex w-full items-center",
+        "flex w-full items-center max-md:flex-wrap max-md:gap-2",
         controlsAreHidden ? "justify-end" : "justify-between"
       )}
     >
       <div
         className={cn(
-          "flex",
+          "flex max-md:shrink-0",
           controlsAreHidden ? "invisible" : "visible",
           showPageButtons ? "gap-0" : "gap-2"
         )}

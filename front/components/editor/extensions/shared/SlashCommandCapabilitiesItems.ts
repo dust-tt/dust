@@ -179,8 +179,9 @@ export interface ToolSlashCommand<
   };
 }
 
-export interface RunCommandSlashCommand<TCommand = unknown>
-  extends SlashCommand {
+export interface RunCommandSlashCommand<
+  TCommand = unknown,
+> extends SlashCommand {
   action: typeof RUN_COMMAND_SLASH_COMMAND_ACTION;
   data: {
     command: TCommand;

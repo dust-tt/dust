@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Collapsible,
   CollapsibleContent,
+  cn,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -27,6 +28,7 @@ interface FilterSelectionSummaryProps<
   onClearCategory: (category: Category) => void;
   onRemoveOption: (category: Category, id: string) => void;
   renderIcon?: (option: Option) => ReactNode;
+  className?: string;
 }
 
 export function FilterSelectionSummary<
@@ -39,6 +41,7 @@ export function FilterSelectionSummary<
   onClearCategory,
   onRemoveOption,
   renderIcon,
+  className,
 }: FilterSelectionSummaryProps<Category, Option>) {
   // Sections are open by default; a category lands here once the user
   // collapses it.
@@ -64,7 +67,7 @@ export function FilterSelectionSummary<
   );
 
   return (
-    <div className="flex h-full w-52 flex-col p-2">
+    <div className={cn("flex h-full w-52 flex-col p-2", className)}>
       <NavigationListLabel
         className="bg-transparent pt-1.5 font-medium"
         label={`${selectionCount} filter${pluralize(selectionCount)} selected`}

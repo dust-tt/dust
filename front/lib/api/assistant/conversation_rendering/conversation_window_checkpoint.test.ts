@@ -514,11 +514,12 @@ describe("conversation window checkpoints", () => {
     ],
   ];
 
-  it.each(
-    profileMutations
-  )("invalidates the profile when %s changes", (_name, mutate) => {
-    expect(computeConversationWindowProfileHash(mutate(baseProfile))).not.toBe(
-      computeConversationWindowProfileHash(baseProfile)
-    );
-  });
+  it.each(profileMutations)(
+    "invalidates the profile when %s changes",
+    (_name, mutate) => {
+      expect(
+        computeConversationWindowProfileHash(mutate(baseProfile))
+      ).not.toBe(computeConversationWindowProfileHash(baseProfile));
+    }
+  );
 });

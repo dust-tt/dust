@@ -1,4 +1,5 @@
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import { ModelIdSchema } from "@app/types/assistant/models/models";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
@@ -177,7 +178,12 @@ const SkillSchema = z.object({
 export const PostOrPatchAgentConfigurationRequestBodySchema = z.object({
   assistant: z
     .object({
-      name: z.string(),
+      name: z
+        .string()
+        .max(
+          AGENT_NAME_MAX_LENGTH,
+          `Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`
+        ),
       description: z.string(),
       instructions: z.string().nullable(),
       pictureUrl: z.string(),

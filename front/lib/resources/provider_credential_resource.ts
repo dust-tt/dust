@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
-import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/workflows/provider-credential-updated";
+import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/triggers/provider-credential-updated";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -65,8 +65,7 @@ type ProviderCredential = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface ProviderCredentialResource
-  extends ReadonlyAttributesType<ProviderCredentialModel> {}
+export interface ProviderCredentialResource extends ReadonlyAttributesType<ProviderCredentialModel> {}
 export class ProviderCredentialResource extends BaseResource<ProviderCredentialModel> {
   static model: ModelStaticWorkspaceAware<ProviderCredentialModel> =
     ProviderCredentialModel;

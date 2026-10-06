@@ -21,9 +21,9 @@ import type {
   DataSource,
   DataSourceFileType,
 } from "../data/types";
+import type { PanelSizingType } from "./PanelLayout";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { FilesBrowser } from "./FilesBrowser";
-import type { PanelSizingType } from "./PanelLayout";
 
 // Fake "Files" and "Credit usage" conversation side panels mirroring front's
 // conversation side panel, plus the shared model (view kinds, sizing rules,

@@ -1,6 +1,6 @@
-import chunk from "lodash/chunk";
-import fs from "fs";
 import type { Logger } from "@app/logger/logger";
+import fs from "fs";
+import chunk from "lodash/chunk";
 import { Op } from "sequelize";
 
 import {
@@ -9,13 +9,13 @@ import {
   type AutoInternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";

@@ -1,8 +1,8 @@
-import config from "@marketing/lib/api/config";
 import {
   fetchAuthContext,
   hasWorkosSessionCookie,
 } from "@marketing/lib/api/authContext";
+import config from "@marketing/lib/api/config";
 import { getConversationDraftBySlug } from "@marketing/lib/contentful/client";
 import logger from "@marketing/logger/logger";
 

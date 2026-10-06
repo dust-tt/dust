@@ -1,4 +1,4 @@
-name: Check no new bulk Biome suppressions
+name: Check no new bulk lint suppressions
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
       - name: Check the bulk suppression count did not grow
         shell: bash
         run: |
-          # The Biome migration silenced every existing violation with this
+          # The Biome-to-oxlint migration silenced every existing violation with this
           # marker. It is meant to shrink over time, never to be copied.
           # Comparing added against removed lets refactors move an existing
           # suppression without being flagged.
@@ -34,12 +34,12 @@ jobs:
             /^-/ { removed++ }
             END {
               if (added > removed) {
-                printf "ERROR: %d bulk Biome suppressions added, %d removed.\n", added, removed
-                printf "This marker comes from the Biome migration and must not be copied.\n\n"
+                printf "ERROR: %d bulk lint suppressions added, %d removed.\n", added, removed
+                printf "This marker comes from the Biome migration (kept verbatim in converted comments) and must not be copied.\n\n"
                 printf "Added lines:\n%s\n", lines
-                printf "Fix the violation instead, or write a biome-ignore comment that explains why it is needed.\n"
+                printf "Fix the violation instead, or write an oxlint-disable comment that explains why it is needed.\n"
                 exit 1
               }
-              printf "OK: %d bulk Biome suppressions added, %d removed.\n", added, removed
+              printf "OK: %d bulk lint suppressions added, %d removed.\n", added, removed
             }
           '

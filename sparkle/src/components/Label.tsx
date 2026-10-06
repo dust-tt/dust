@@ -19,7 +19,8 @@ const labelVariants = cva(
 );
 
 export interface LabelProps
-  extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,
+  extends
+    React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,
     VariantProps<typeof labelVariants> {
   /** Renders the label in the muted color, for secondary or optional captions. */
   isMuted?: boolean;

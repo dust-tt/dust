@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Run commands on the manually provisioned dust-dev experiment; never provision resources."""
+import shlex
+import subprocess
+import sys
+
+NODES = {
+    'a': ('dfs-v2-spolu-fdb-a', 'us-central1-a'),
+    'b': ('dfs-v2-spolu-fdb-b', 'us-central1-b'),
+    'f': ('dfs-v2-spolu-fdb-f', 'us-central1-f'),
+    'tx': ('dfs-v2-spolu-tx-a', 'us-central1-a'),
+    'workload': ('dfs-v2-spolu-workload', 'us-central1-a'),
+}
+COMPOSE = ['sudo', 'docker', 'compose', '-f', '/opt/dfs/v2/gcp/compose.yaml']
+
+
+def ssh(node, command):
+    """@cc [owner:spolu,label:security] scoped-ssh
+    SSH MUST target an allowlisted dust-dev VM over IAP and preserve each remote argument literally.
+    """
+    name, zone = NODES[node]
+    subprocess.run(['gcloud', 'compute', 'ssh', name, '--project=dust-dev', '--zone=' + zone,
+                    '--tunnel-through-iap', '--quiet', '--command=' + shlex.join(command)], check=True)
+
+
+def main():
+    args = sys.argv[1:]
+    if args and args[0] == 'exec' and len(args) > 1:
+        ssh('workload', [*COMPOSE, 'exec', '-T', 'dev', *args[1:]])
+    elif args and args[0] == 'fdb' and len(args) == 2:
+        ssh('workload', [*COMPOSE, 'exec', '-T', 'dev', 'fdbcli', '--timeout', '30',
+                         '--exec', args[1]])
+    elif args and args[0] == 'ssh' and len(args) > 2 and args[1] in NODES:
+        ssh(args[1], args[2:])
+    else:
+        raise SystemExit('Usage: gcp/run exec COMMAND ... | fdb "COMMAND" | ssh a|b|f|tx|workload COMMAND ...')
+
+
+if __name__ == '__main__':
+    main()

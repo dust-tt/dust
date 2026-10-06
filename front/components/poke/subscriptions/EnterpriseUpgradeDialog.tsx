@@ -89,7 +89,6 @@ export default function EnterpriseUpgradeDialog({
   const freeCreditsOverrideEnabled = form.watch("freeCreditsOverrideEnabled");
   const paygEnabled = form.watch("paygEnabled");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
     (values: EnterpriseUpgradeFormType) => {
       const cleanedValues = Object.fromEntries(

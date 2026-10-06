@@ -9,6 +9,8 @@ import { AnalyticsExportPanel } from "@app/components/workspace/analytics/Analyt
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionOverviewProps } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import {
@@ -17,11 +19,6 @@ import {
 } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionSummaryProps } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
@@ -29,7 +26,11 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 
+import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
@@ -62,6 +63,10 @@ import {
   Robot,
   SafeSuspense,
   safeLazy,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
@@ -73,9 +78,9 @@ const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
-    import(
-      "@app/components/workspace/analytics/consumption/ConsumptionChart"
-    ).then((mod) => ({ default: mod.ConsumptionChart })),
+    import("@app/components/workspace/analytics/consumption/ConsumptionChart").then(
+      (mod) => ({ default: mod.ConsumptionChart })
+    ),
   { canReload }
 );
 
@@ -94,6 +99,9 @@ const WORKSPACE_CONSUMPTION_COMPONENTS: AnalyticsConsumptionComponents = {
   Summary: ConsumptionSummary,
   UsageFilterPanel,
 };
+
+const ANALYTICS_TABS = ["consumption", "export"] as const;
+type AnalyticsTab = (typeof ANALYTICS_TABS)[number];
 
 function trackAnalyticsClick(
   workspaceId: string | null,
@@ -215,27 +223,51 @@ export function AnalyticsConsumptionPage() {
     }
   }, [isNavigationBarOpen]);
 
+  const { tab, setTab } = useAdminPageTab<AnalyticsTab>(
+    ANALYTICS_TABS,
+    "consumption"
+  );
+
   const content = (
     <AdminPageContainer>
-      <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.consumption}>
-        <AnalyticsConsumptionContent
-          owner={owner}
-          state={{ ...state, filter }}
-          headerActions={
-            analyticsAssistantEnabled &&
-            !isOpen && (
-              <Button
-                variant="primary"
-                icon={Robot}
-                label="Ask @analyst"
-                onClick={() => setIsOpen(true)}
-              />
-            )
-          }
-          onAgentClick={setAgentDetailsId}
-          onSkillClick={setSkillDetailsId}
-        />
-      </AdminSectionAnchor>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as AnalyticsTab)}
+      >
+        <TabsList className="mb-6">
+          <TabsTrigger value="consumption" label="Consumption" />
+          <TabsTrigger value="export" label="Export" />
+        </TabsList>
+        <TabsContent value="consumption" className="flex flex-col gap-4">
+          <AdminSectionAnchor
+            sectionId={ADMIN_SECTION_IDS.analytics.consumption}
+          >
+            <AnalyticsConsumptionContent
+              owner={owner}
+              state={{ ...state, filter }}
+              showExportPanel={false}
+              headerActions={
+                analyticsAssistantEnabled &&
+                !isOpen && (
+                  <Button
+                    variant="primary"
+                    icon={Robot}
+                    label="Ask @analyst"
+                    onClick={() => setIsOpen(true)}
+                  />
+                )
+              }
+              onAgentClick={setAgentDetailsId}
+              onSkillClick={setSkillDetailsId}
+            />
+          </AdminSectionAnchor>
+        </TabsContent>
+        <TabsContent value="export" className="flex flex-col gap-4">
+          <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.export}>
+            <AnalyticsExportPanel workspaceId={owner.sId} />
+          </AdminSectionAnchor>
+        </TabsContent>
+      </Tabs>
     </AdminPageContainer>
   );
 
@@ -293,6 +325,9 @@ interface AnalyticsConsumptionContentProps {
   onAgentClick?: (agentId: string) => void;
   onSkillClick?: (skillId: string) => void;
   showExport?: boolean;
+  // Whether the bottom export-to-CSV panel is rendered inline. Set to false
+  // when the export panel is hoisted into its own tab (see AnalyticsConsumptionPage).
+  showExportPanel?: boolean;
   showMemberGroupFilter?: boolean;
   showOverviewError?: boolean;
   state: AnalyticsConsumptionState;
@@ -309,11 +344,12 @@ export function AnalyticsConsumptionContent({
   onAgentClick,
   onSkillClick,
   showExport = true,
+  showExportPanel = showExport,
   showMemberGroupFilter = true,
   showOverviewError = false,
   state,
   title = "Analytics",
-  usageHref = `/w/${owner.sId}/usage`,
+  usageHref = `/w/${owner.sId}/credits`,
   usageLinkLabel,
 }: AnalyticsConsumptionContentProps) {
   const {
@@ -502,7 +538,7 @@ export function AnalyticsConsumptionContent({
         showExport={showExport}
       />
 
-      {showExport && <AnalyticsExportPanel workspaceId={owner.sId} />}
+      {showExportPanel && <AnalyticsExportPanel workspaceId={owner.sId} />}
     </Page.Vertical>
   );
 }

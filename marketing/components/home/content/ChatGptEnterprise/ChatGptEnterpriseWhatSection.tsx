@@ -1,5 +1,5 @@
-import { H2, P } from "@marketing/components/home/ContentComponents";
 import { cn } from "@dust-tt/sparkle";
+import { H2, P } from "@marketing/components/home/ContentComponents";
 import { AlertTriangle, Check, Cpu, Lock, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 

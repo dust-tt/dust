@@ -68,8 +68,9 @@ const TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS = [
 ];
 
 // Define a custom FindOptions extension with the skipWorkspaceCheck flag.
-interface WorkspaceTenantIsolationSecurityBypassOptions<T>
-  extends FindOptions<T> {
+interface WorkspaceTenantIsolationSecurityBypassOptions<
+  T,
+> extends FindOptions<T> {
   /**
    * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this query.
    *
@@ -226,7 +227,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
     > = {
       ...options,
       // WORKSPACE_ISOLATION_BYPASS: Reloading an instance does not require workspace isolation.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     };
     return super.reload(optionsWithBypass);
@@ -316,7 +317,6 @@ export class SoftDeletableWorkspaceAwareModel<
     const updateOptions: UpdateOptions<Attributes<M>> = {
       ...options,
       fields: ["deletedAt"],
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       where: options?.where || {},
     };
 

@@ -1,4 +1,5 @@
 import {
+  CUT_TEXT_SAVE_REFUSED,
   FilePreviewContent,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
@@ -108,6 +109,7 @@ export function PodFileTabPreview({
     hasError,
     isContentLoading,
     isTooLarge,
+    isTruncated,
     sizeBytes,
   } = useFilePreviewContent({
     entry,
@@ -119,9 +121,13 @@ export function PodFileTabPreview({
     entry && canEdit && parseCanonicalScopedPath(entry.path)
       ? entry.path
       : null;
-  const canEditMarkdown =
-    category === "markdown" && !!editableMarkdownFilePath && !isTooLarge;
   const isMarkdownDirty = markdownDraft !== markdownSavedContent;
+  // Saving cut preview text would truncate the file. An open draft stays so it can be copied.
+  const canEditMarkdown =
+    category === "markdown" &&
+    !!editableMarkdownFilePath &&
+    !isTooLarge &&
+    (!isTruncated || isMarkdownDirty);
 
   useEffect(() => {
     if (
@@ -162,15 +168,27 @@ export function PodFileTabPreview({
     if (!editableMarkdownFilePath || !isMarkdownDirty || isMarkdownSaving) {
       return;
     }
+    if (isTruncated) {
+      sendNotification({ type: "error", ...CUT_TEXT_SAVE_REFUSED });
+      return;
+    }
 
     setIsMarkdownSaving(true);
     try {
-      await writeFileContentByPath({
+      const result = await writeFileContentByPath({
         owner,
         canonicalPath: editableMarkdownFilePath,
         content: markdownDraft,
         contentType: "text/markdown",
       });
+      if (result.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to save file",
+          description: result.error.message,
+        });
+        return;
+      }
       await mutate(
         contentApiPath,
         { kind: "loaded", content: markdownDraft },
@@ -186,12 +204,6 @@ export function PodFileTabPreview({
         markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
       }
       sendNotification({ type: "success", title: "File saved" });
-    } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: e instanceof Error ? e.message : "Unknown error",
-      });
     } finally {
       setIsMarkdownSaving(false);
     }

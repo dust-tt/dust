@@ -1,6 +1,5 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
-import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import {
   parseDataAsMessageIdAndActionId,
@@ -34,6 +33,7 @@ import {
   reconcileAgentMessage,
   reconcileCachedAgentMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import {
   CONVERSATION_MESSAGES_PAGE_LIMIT,
   requestConversationMarkAsRead,
@@ -443,7 +443,6 @@ export const ConversationViewer = ({
   );
 
   // Setup the initial list data when the conversation is loaded.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
     // Consider this scenario:

@@ -18,27 +18,30 @@ describe("classifyStreamError", () => {
     ["network is unreachable", "ENETUNREACH"],
     ["no route to host", "EHOSTUNREACH"],
     ["software caused connection abort", "ECONNABORTED"],
-  ] as const)("classifies %s with cause code %s as a network error", (message, code) => {
-    // Network codes on the cause win over a stream-close code on the wrapper.
-    const error = Object.assign(
-      new TypeError(message, {
-        cause: Object.assign(new Error("socket failure"), { code }),
-      }),
-      { code: "ERR_STREAM_PREMATURE_CLOSE" }
-    );
+  ] as const)(
+    "classifies %s with cause code %s as a network error",
+    (message, code) => {
+      // Network codes on the cause win over a stream-close code on the wrapper.
+      const error = Object.assign(
+        new TypeError(message, {
+          cause: Object.assign(new Error("socket failure"), { code }),
+        }),
+        { code: "ERR_STREAM_PREMATURE_CLOSE" }
+      );
 
-    expect(
-      classifyStreamError({
-        error,
-        metadata,
-        providerName: "Fireworks",
-      }).content
-    ).toMatchObject({
-      errorSource: "unknown",
-      type: "network_error",
-      message: `Network error connecting to Fireworks: ${message} (${code})`,
-    });
-  });
+      expect(
+        classifyStreamError({
+          error,
+          metadata,
+          providerName: "Fireworks",
+        }).content
+      ).toMatchObject({
+        errorSource: "unknown",
+        type: "network_error",
+        message: `Network error connecting to Fireworks: ${message} (${code})`,
+      });
+    }
+  );
 
   it("classifies a response timeout by undici code without blaming the provider", () => {
     expect(
@@ -70,38 +73,38 @@ describe("classifyStreamError", () => {
     });
   });
 
-  it.each([
-    "connection",
-    "timeout",
-  ] as const)("classifies an SDK %s error from the adapter instanceof hint", (sdkClass) => {
-    expect(
-      classifyStreamError({
-        error: new Error("sdk failure"),
-        metadata,
-        providerName: "OpenAI",
-        sdkClass,
-      }).content
-    ).toMatchObject({
-      errorSource: "unknown",
-      type: sdkClass === "connection" ? "network_error" : "timeout_error",
-    });
-  });
+  it.each(["connection", "timeout"] as const)(
+    "classifies an SDK %s error from the adapter instanceof hint",
+    (sdkClass) => {
+      expect(
+        classifyStreamError({
+          error: new Error("sdk failure"),
+          metadata,
+          providerName: "OpenAI",
+          sdkClass,
+        }).content
+      ).toMatchObject({
+        errorSource: "unknown",
+        type: sdkClass === "connection" ? "network_error" : "timeout_error",
+      });
+    }
+  );
 
-  it.each([
-    new TypeError("terminated"),
-    new SyntaxError("unexpected token"),
-  ])("does not classify on free-form message text or an arbitrary exception", (error) => {
-    expect(
-      classifyStreamError({
-        error,
-        metadata,
-        providerName: "Fireworks",
-      }).content
-    ).toMatchObject({
-      errorSource: "unknown",
-      type: "unknown_error",
-    });
-  });
+  it.each([new TypeError("terminated"), new SyntaxError("unexpected token")])(
+    "does not classify on free-form message text or an arbitrary exception",
+    (error) => {
+      expect(
+        classifyStreamError({
+          error,
+          metadata,
+          providerName: "Fireworks",
+        }).content
+      ).toMatchObject({
+        errorSource: "unknown",
+        type: "unknown_error",
+      });
+    }
+  );
 
   it.each([
     new DOMException("The operation was aborted.", "AbortError"),

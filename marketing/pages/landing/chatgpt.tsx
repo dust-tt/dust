@@ -1,17 +1,17 @@
+import { OpenaiLogo } from "@dust-tt/sparkle";
+import { FAQ } from "@marketing/components/home/FAQ";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { ComparisonTableSection } from "@marketing/components/home/content/Competitive/ComparisonTableSection";
 import { CompetitiveCustomersSection } from "@marketing/components/home/content/Competitive/CompetitiveCustomersSection";
 import { CompetitiveHeroSection } from "@marketing/components/home/content/Competitive/CompetitiveHeroSection";
-import { chatgptConfig } from "@marketing/components/home/content/Competitive/config/chatgptConfig";
 import { DifferentiatorsSection } from "@marketing/components/home/content/Competitive/DifferentiatorsSection";
 import { EmailCTASection } from "@marketing/components/home/content/Competitive/EmailCTASection";
 import { SalesAnimationWidget } from "@marketing/components/home/content/Competitive/SalesAnimationWidget";
 import { StatsSection } from "@marketing/components/home/content/Competitive/StatsSection";
 import { TestimonialsGridSection } from "@marketing/components/home/content/Competitive/TestimonialsGridSection";
-import { FAQ } from "@marketing/components/home/FAQ";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { OpenaiLogo } from "@dust-tt/sparkle";
+import { chatgptConfig } from "@marketing/components/home/content/Competitive/config/chatgptConfig";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {
@@ -24,7 +24,7 @@ export async function getStaticProps() {
   };
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function ChatGPTLandingPage() {
   return (
     <>

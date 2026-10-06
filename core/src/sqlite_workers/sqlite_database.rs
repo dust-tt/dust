@@ -14,6 +14,7 @@ use rayon::prelude::*;
 use rusqlite::{
     config::DbConfig,
     hooks::{AuthAction, AuthContext, Authorization},
+    limits::Limit,
     Batch, Connection, InterruptHandle,
 };
 use std::{collections::HashMap, io::Write, sync::Arc};
@@ -52,6 +53,9 @@ impl From<anyhow::Error> for SqliteDatabaseError {
 }
 
 const MAX_ROWS: usize = 2048;
+// Upper bound on the length of any string, blob or row SQLite builds while running a user query,
+// including intermediate values that never reach the result. SQLite's default is 1 GB.
+const MAX_VALUE_LENGTH_BYTES: i32 = 10 * 1024 * 1024;
 
 impl SqliteDatabase {
     pub fn new() -> Self {
@@ -245,8 +249,13 @@ async fn create_in_memory_sqlite_db(
     Ok((conn, temporary_files))
 }
 
+/// @cc [owner:davidebbo,label:security;performance] bounded-value-length
+/// Connections serving user queries MUST cap `SQLITE_LIMIT_LENGTH` at `MAX_VALUE_LENGTH_BYTES`,
+/// so that any string, blob or row SQLite builds while running a query, including intermediate
+/// values absent from the result, fails with "string or blob too big" beyond that length.
 fn configure_connection_for_user_queries(conn: &Connection) -> Result<()> {
     conn.set_db_config(DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true)?;
+    conn.set_limit(Limit::SQLITE_LIMIT_LENGTH, MAX_VALUE_LENGTH_BYTES);
     conn.pragma_update(None, "query_only", true)?;
     conn.authorizer(Some(authorize_user_query));
     Ok(())
@@ -501,6 +510,28 @@ mod tests {
         assert!(matches!(
             result,
             Err(SqliteDatabaseError::QueryExecutionError(_))
+        ));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_values_exceeding_max_length() -> Result<()> {
+        let database = create_test_database()?;
+
+        // The hex string is twice the blob length, so it exceeds the limit while the blob fits.
+        let result = database
+            .query(
+                &format!(
+                    "SELECT length(hex(zeroblob({}))) AS value",
+                    MAX_VALUE_LENGTH_BYTES / 2 + 1
+                ),
+                1_000,
+            )
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SqliteDatabaseError::InternalError(e)) if e.to_string().contains("too big")
         ));
         Ok(())
     }

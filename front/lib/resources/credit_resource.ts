@@ -25,9 +25,7 @@ import type {
 } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class CreditResource extends BaseResource<CreditModel> {
   static model: ModelStatic<CreditModel> = CreditModel;
 

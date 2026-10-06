@@ -122,22 +122,24 @@ describe("planFolderArchive", () => {
     });
   });
 
-  it.each([
-    mount,
-    podMount,
-  ])("allows an empty $kind mount root", async (currentMount) => {
-    const result = await planFolderArchive(
-      makeFileSystem({ mounts: [currentMount] }),
-      currentMount.scopedPrefix
-    );
+  it.each([mount, podMount])(
+    "allows an empty $kind mount root",
+    async (currentMount) => {
+      const result = await planFolderArchive(
+        makeFileSystem({ mounts: [currentMount] }),
+        currentMount.scopedPrefix
+      );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      expect(result.value.directories).toEqual([
+        `${currentMount.scopedPrefix}/`,
+      ]);
+      expect(result.value.files).toEqual([]);
     }
-    expect(result.value.directories).toEqual([`${currentMount.scopedPrefix}/`]);
-    expect(result.value.files).toEqual([]);
-  });
+  );
 
   it("rejects a file path", async () => {
     const result = await planFolderArchive(

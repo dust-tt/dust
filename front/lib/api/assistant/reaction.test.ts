@@ -107,9 +107,8 @@ describe("deleteMessageReaction", () => {
   it("should only delete reactions matching user context", async () => {
     // Create another user in the same workspace
     const { UserFactory } = await import("@app/tests/utils/UserFactory");
-    const { MembershipFactory } = await import(
-      "@app/tests/utils/MembershipFactory"
-    );
+    const { MembershipFactory } =
+      await import("@app/tests/utils/MembershipFactory");
     const user2 = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user2, {
       role: "user",

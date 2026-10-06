@@ -98,8 +98,8 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/triggers/conversation-unread";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
-import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -268,6 +268,11 @@ export async function createConversation(
  * - If forceDelete is false and the user is the last participant: perform a soft-delete
  * - Otherwise just remove the user from the participants
  */
+/**
+ * @cc [owner:avervaet,label:security] participants-only
+ * A caller who is not a participant of the conversation MUST get an error and MUST NOT change its
+ * participants or visibility, whatever its participant count (including zero).
+ */
 export async function deleteOrLeaveConversation(
   auth: Authenticator,
   {
@@ -293,6 +298,16 @@ export async function deleteOrLeaveConversation(
   const user = auth.user();
   if (!user) {
     return new Err(new Error("User not authenticated."));
+  }
+
+  // Leaving reports a last member from the whole-conversation count, which a non-participant
+  // would also satisfy.
+  const isParticipant = await ConversationResource.isConversationParticipant(
+    auth,
+    { conversation, user: user.toJSON() }
+  );
+  if (!isParticipant) {
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   let isConversationCreator = false;

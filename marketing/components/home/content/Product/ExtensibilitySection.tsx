@@ -1,8 +1,7 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import { ImgBlock } from "@marketing/components/home/ContentBlocks";
 import { A, H2, P } from "@marketing/components/home/ContentComponents";
 import { classNames } from "@marketing/lib/utils";
-import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 export function ExtensibilitySection({ page = "default" }) {

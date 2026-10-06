@@ -60,8 +60,8 @@ export async function getGroupManagersForGroups(
 
 /**
  * @cc [owner:philipperolet,label:security;backend] group-manager-assignment
- * Only a workspace admin may replace group managers. Every requested manager MUST be an active
- * member of the same workspace. Validation MUST finish before any grant is changed.
+ * Only a workspace admin or manager may replace group managers. Every requested manager MUST be
+ * an active member of the same workspace. Validation MUST finish before any grant is changed.
  */
 export async function replaceGroupManagers(
   auth: Authenticator,
@@ -76,7 +76,7 @@ export async function replaceGroupManagers(
       removedUsers: UserType[];
     }
 > {
-  if (!auth.isAdmin()) {
+  if (!auth.isManager()) {
     return { kind: "unauthorized" };
   }
   if (

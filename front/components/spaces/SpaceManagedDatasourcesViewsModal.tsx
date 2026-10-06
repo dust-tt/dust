@@ -153,6 +153,7 @@ export default function SpaceManagedDataSourcesViewsModal({
     if (isOpen) {
       initialConfigurations.refetch();
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen, initialConfigurations.refetch]);
 
   useEffect(() => {
@@ -228,7 +229,6 @@ export default function SpaceManagedDataSourcesViewsModal({
     spaceDataSourceViews,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
       setHasChanged(true);

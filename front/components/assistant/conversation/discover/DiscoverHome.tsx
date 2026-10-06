@@ -17,6 +17,8 @@ import {
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import type { DiscoverySuggestionSection } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import {
+  trackDiscoverItemDetailsOpen,
+  trackDiscoverItemSelect,
   trackDiscoverySuggestionClick,
   trackDiscoverySuggestionView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
@@ -163,7 +165,10 @@ export function DiscoverHome({
           items={featured}
           isLoading={isFeaturedLoadingAll}
           isRefreshing={isCatalogRefreshing}
-          onUse={onUse}
+          onUse={(item) => {
+            trackDiscoverItemSelect({ source: "featured", item });
+            onUse(item);
+          }}
         />
       )}
       <DiscoverSection
@@ -417,11 +422,13 @@ function DiscoverSection({
               item={item}
               onUse={() => {
                 trackClick(item);
+                trackDiscoverItemSelect({ source: section, item });
                 onUse(item);
               }}
               onPin={onPin && (() => onPin(item))}
               onDetails={() => {
                 trackClick(item);
+                trackDiscoverItemDetailsOpen({ source: section, item });
                 onDetails(item);
               }}
             />

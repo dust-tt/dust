@@ -43,8 +43,10 @@ interface SpaceSelectionPageProps {
   missingSpaceIds?: string[];
 }
 
-interface SpaceSelectionSheetProps
-  extends Omit<SpaceSelectionPageProps, "searchQuery"> {
+interface SpaceSelectionSheetProps extends Omit<
+  SpaceSelectionPageProps,
+  "searchQuery"
+> {
   entityName: "agent" | "skill";
   onClose: () => void;
   onSave: () => void;

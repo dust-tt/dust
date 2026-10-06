@@ -62,7 +62,8 @@ export function FilePreviewBody({
     );
   }
 
-  if (hasError) {
+  // A refetch that fails must not unmount an open editor: the content it holds is still the file.
+  if (hasError && !markdown.richEditor) {
     return (
       <FilePreviewFallback
         download={download}
@@ -85,6 +86,7 @@ export function FilePreviewBody({
       isFullWidth={isFullWidth}
       markdownCanEdit={markdown.canEdit}
       markdownContent={markdown.content}
+      markdownRichEditor={markdown.richEditor}
       markdownViewMode={markdown.viewMode}
       onMarkdownContentChange={markdown.canEdit ? markdown.setDraft : undefined}
       onMarkdownViewModeChange={onMarkdownViewModeChange}

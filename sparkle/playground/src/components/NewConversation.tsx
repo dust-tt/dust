@@ -31,8 +31,8 @@ import {
 } from "@dust-tt/sparkle";
 import { type ComponentType, useRef, useState } from "react";
 
-import { mockAgents, mockSkills, mockUsers, type Skill } from "../data";
 import type { Agent } from "../data/types";
+import { mockAgents, mockSkills, mockUsers, type Skill } from "../data";
 import { InputBar } from "./InputBar";
 
 // Mirrors front's new-conversation screen behind `discovery_homepage`: a home

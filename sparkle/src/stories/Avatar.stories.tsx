@@ -326,7 +326,7 @@ export const StackDefault: Story = {
 };
 
 /**
- * When the group exceeds `nbVisibleItems`, the stack truncates and shows a
+ * When the group exceeds `maxVisibleAvatars`, the stack truncates and shows a
  * "+N" counter for the hidden members.
  *
  * @summary Stack truncation with a hidden-count badge.
@@ -335,7 +335,7 @@ export const StackWithHiddenCount: Story = {
   render: () => (
     <Avatar.Stack
       size="sm"
-      nbVisibleItems={3}
+      maxVisibleAvatars={3}
       avatars={[...DROID_AVATARS, ...NAME_ONLY_AVATARS]}
     />
   ),

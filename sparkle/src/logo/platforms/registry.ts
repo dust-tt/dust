@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 
 import AdomikLogo from "./Adomik";
 import Ai21Logo from "./Ai21";
+import AirtableLogo from "./Airtable";
 import AmplitudeLogo from "./Amplitude";
 import AnthropicLogo from "./Anthropic";
 import ApifyLogo from "./Apify";
@@ -14,6 +15,7 @@ import CanvaLogo from "./Canva";
 import ChromeLogo from "./Chrome";
 import ClariLogo from "./Clari";
 import ClaudeLogo from "./Claude";
+import ClayLogo from "./Clay";
 import CohereLogo from "./Cohere";
 import ConfluenceLogo from "./Confluence";
 import ContentsquareLogo from "./Contentsquare";
@@ -33,6 +35,7 @@ import FrameLogo from "./Frame";
 import FreshdeskLogo from "./Freshdesk";
 import FreshserviceLogo from "./Freshservice";
 import FrontLogo from "./Front";
+import FullEnrichLogo from "./FullEnrich";
 import GammaLogo from "./Gamma";
 import GcalLogo from "./Gcal";
 import GeminiLogo from "./Gemini";
@@ -122,6 +125,7 @@ type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 export const PLATFORM_LOGOS = {
   AdomikLogo,
   Ai21Logo,
+  AirtableLogo,
   AmplitudeLogo,
   AnthropicLogo,
   ApifyLogo,
@@ -134,6 +138,7 @@ export const PLATFORM_LOGOS = {
   ChromeLogo,
   ClariLogo,
   ClaudeLogo,
+  ClayLogo,
   CohereLogo,
   ConfluenceLogo,
   ContentsquareLogo,
@@ -153,6 +158,7 @@ export const PLATFORM_LOGOS = {
   FreshdeskLogo,
   FreshserviceLogo,
   FrontLogo,
+  FullEnrichLogo,
   GammaLogo,
   GcalLogo,
   GeminiLogo,

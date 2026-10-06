@@ -1,8 +1,8 @@
 import { ConfluencePageModel } from "@connectors/lib/models/confluence";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types/shared/model_id";
 import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
-import type { Logger } from "@connectors/logger/logger";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 

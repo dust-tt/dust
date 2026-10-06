@@ -20,7 +20,6 @@ import {
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Avatar,
   Button,
   Chip,
   DataTable,
@@ -41,6 +40,7 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
+const MAX_VISIBLE_MANAGERS = 3;
 
 type GroupRowData = {
   groupId: string;
@@ -82,23 +82,22 @@ const columns: ColumnDef<GroupRowData>[] = [
     cell: ({ row }) => {
       const { managers } = row.original;
       if (managers.length === 0) {
-        return null;
+        return <DataTable.CellContent>-</DataTable.CellContent>;
       }
       return (
-        <DataTable.CellContent>
-          <div className="flex items-center gap-2">
-            <Avatar.Stack
-              avatars={managers.map(({ fullName, image }) => ({
-                name: fullName,
-                visual: image ?? undefined,
-                isRounded: true,
-              }))}
-              nbVisibleItems={4}
-              size="xs"
-              hasMagnifier={false}
-            />
-            {managers.length === 1 && managers[0].fullName}
-          </div>
+        <DataTable.CellContent
+          className="gap-2"
+          avatarStack={{
+            items: managers.map(({ fullName, image }) => ({
+              name: fullName,
+              visual: image ?? undefined,
+              isRounded: true,
+            })),
+            maxVisibleAvatars: MAX_VISIBLE_MANAGERS,
+            hasMagnifier: false,
+          }}
+        >
+          {managers.length === 1 && managers[0].fullName}
         </DataTable.CellContent>
       );
     },

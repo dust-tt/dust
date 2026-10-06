@@ -76,8 +76,7 @@ const MultiPageSheetRoot = Sheet;
 const MultiPageSheetTrigger = SheetTrigger;
 const MultiPageSheetClose = SheetClose;
 
-interface MultiPageSheetFooterProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface MultiPageSheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   addTopSeparator: boolean;
   leftButton?: React.ComponentProps<typeof Button>;
   centerButton?: React.ComponentProps<typeof Button>;

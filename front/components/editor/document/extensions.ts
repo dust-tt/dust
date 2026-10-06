@@ -1,4 +1,9 @@
 import { DocumentAnchors } from "@app/components/editor/document/DocumentAnchors";
+import { DocumentCommentAnchor } from "@app/components/editor/document/DocumentCommentAnchor";
+import {
+  DocumentCommentMark,
+  DocumentComments,
+} from "@app/components/editor/document/DocumentComments";
 import { cn } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -6,6 +11,9 @@ import { StarterKit } from "@tiptap/starter-kit";
 
 export const documentExtensions = [
   DocumentAnchors,
+  DocumentComments,
+  DocumentCommentMark,
+  DocumentCommentAnchor,
   StarterKit.configure({
     heading: {
       HTMLAttributes: {

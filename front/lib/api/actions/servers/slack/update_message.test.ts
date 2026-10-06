@@ -15,10 +15,6 @@ vi.mock("@slack/web-api", () => {
   };
 });
 
-vi.mock("@app/lib/cache/redis", () => ({
-  cacheWithRedis: (fn: unknown) => fn,
-}));
-
 describe("executeUpdateMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -14,6 +14,7 @@ import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 
@@ -78,15 +79,17 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
         description={dustStatus.description}
         footer={
           <>
-            Check our{" "}
-            <LinkWrapper
-              href={dustStatus.link}
-              target="_blank"
-              className="underline"
-            >
-              status page
-            </LinkWrapper>{" "}
-            for updates.
+            <Trans>
+              Check our{" "}
+              <LinkWrapper
+                href={dustStatus.link}
+                target="_blank"
+                className="underline"
+              >
+                status page
+              </LinkWrapper>{" "}
+              for updates.
+            </Trans>
           </>
         }
       />
@@ -113,19 +116,20 @@ interface UnhealthyCredentialsBannerProps {
 function UnhealthyCredentialsBanner({
   owner,
 }: UnhealthyCredentialsBannerProps) {
+  const { t } = useLingui();
   const { providersHealth } = useAuth();
 
   if (!providersHealth) {
     return null;
   }
 
-  const title = "Your workspace is not operational";
+  const title = t`Your workspace is not operational`;
   const footer = isAdmin(owner) ? (
     <LinkWrapper href={`/w/${owner.sId}/model-providers`} className="underline">
-      Model providers
+      <Trans>Model providers</Trans>
     </LinkWrapper>
   ) : (
-    <>Contact your workspace admin.</>
+    <Trans>Contact your workspace admin.</Trans>
   );
 
   const hasConfiguredProviders = Object.keys(providersHealth).length > 0;
@@ -135,10 +139,9 @@ function UnhealthyCredentialsBanner({
 
   let description: string | null = null;
   if (!hasConfiguredProviders) {
-    description =
-      "No provider credentials configured. Please set up at least one model provider.";
+    description = t`No provider credentials configured. Please set up at least one model provider.`;
   } else if (!hasConfiguredEmbeddingProvider) {
-    description = "Please set up your OpenAI credentials.";
+    description = t`Please set up your OpenAI credentials.`;
   } else if (!isWorkspaceHealthy) {
     const invalidProviderNames = Object.entries(providersHealth)
       .filter(([_, isHealthy]) => !isHealthy)
@@ -147,7 +150,7 @@ function UnhealthyCredentialsBanner({
           PRETTIFIED_PROVIDER_NAMES[providerId as ByokModelProviderIdType]
       )
       .join(", ");
-    description = `The following model providers have invalid credentials: ${invalidProviderNames}.`;
+    description = t`The following model providers have invalid credentials: ${invalidProviderNames}.`;
   } else {
     return null;
   }
@@ -163,27 +166,33 @@ function UnhealthyCredentialsBanner({
 }
 
 function SubscriptionPastDueBanner() {
+  const { t } = useLingui();
   return (
     <StatusBanner
       variant="warning"
-      title="Your payment has failed!"
+      title={t`Your payment has failed!`}
       description={
         <>
           <br />
-          Please make sure to update your payment method in the Admin section to
-          maintain access to your workspace. We will retry in a few days.
+          <Trans>
+            Please make sure to update your payment method in the Admin section
+            to maintain access to your workspace. We will retry in a few days.
+          </Trans>
           <br />
           <br />
-          After 3 attempts, your workspace will be downgraded to the free plan.
-          Connections will be deleted and members will be revoked. Details{" "}
-          <LinkWrapper
-            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </LinkWrapper>
-          .
+          <Trans>
+            After 3 attempts, your workspace will be downgraded to the free
+            plan. Connections will be deleted and members will be revoked.
+            Details{" "}
+            <LinkWrapper
+              href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+              target="_blank"
+              className="underline"
+            >
+              here
+            </LinkWrapper>
+            .
+          </Trans>
         </>
       }
     />
@@ -197,6 +206,7 @@ interface WorkspaceUsageStatusBannerProps {
 function WorkspaceUsageStatusBanner({
   owner,
 }: WorkspaceUsageStatusBannerProps) {
+  const { t } = useLingui();
   const {
     poolCreditState,
     programmaticCreditStatus,
@@ -255,8 +265,8 @@ function WorkspaceUsageStatusBanner({
   // warning, which is why "Your credit balance is running low" never shows
   // alongside it.
   const manageCreditsFooter = (
-    <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
-      Manage credits
+    <LinkWrapper href={`/w/${owner.sId}/credits`} className="underline">
+      <Trans>Manage credits</Trans>
     </LinkWrapper>
   );
 
@@ -265,11 +275,11 @@ function WorkspaceUsageStatusBanner({
       return {
         variant: isPoolDepleted ? "danger" : "warning",
         title: isPoolDepleted
-          ? "Your workspace is out of credits"
-          : "Your workspace has used all its credits",
+          ? t`Your workspace is out of credits`
+          : t`Your workspace has used all its credits`,
         description: isPoolDepleted
-          ? "Your workspace has run out of credits. Agents are blocked until you top up."
-          : "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges.",
+          ? t`Your workspace has run out of credits. Agents are blocked until you top up.`
+          : t`Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges.`,
         footer: manageCreditsFooter,
       };
     }
@@ -279,15 +289,15 @@ function WorkspaceUsageStatusBanner({
         variant: programmaticCreditStatus === "depleted" ? "danger" : "warning",
         title:
           programmaticCreditStatus === "depleted"
-            ? "Programmatic API cap reached"
-            : "Programmatic API cap at 80%",
+            ? t`Programmatic API cap reached`
+            : t`Programmatic API cap at 80%`,
         description:
           programmaticCreditStatus === "depleted"
-            ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
-            : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions.",
+            ? t`Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised.`
+            : t`Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions.`,
         footer: (
-          <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
-            Manage usage
+          <LinkWrapper href={`/w/${owner.sId}/credits`} className="underline">
+            <Trans>Manage usage</Trans>
           </LinkWrapper>
         ),
       };
@@ -296,9 +306,8 @@ function WorkspaceUsageStatusBanner({
     if (showBalanceThresholdBanner) {
       return {
         variant: "warning",
-        title: "Your credit balance is running low",
-        description:
-          "Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits.",
+        title: t`Your credit balance is running low`,
+        description: t`Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits.`,
         footer: manageCreditsFooter,
       };
     }

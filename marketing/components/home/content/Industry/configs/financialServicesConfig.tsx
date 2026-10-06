@@ -1,6 +1,6 @@
+import { Bank } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@marketing/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@marketing/components/home/content/Industry/configs/utils";
-import { Bank } from "@dust-tt/sparkle";
 
 export const financialServicesConfig: IndustryPageConfig = {
   seo: {

@@ -125,11 +125,8 @@ function resolvedDiscoveryItem(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DiscoveryItemResource
-  extends ReadonlyAttributesType<GroupPinnedItemModel> {}
+export interface DiscoveryItemResource extends ReadonlyAttributesType<GroupPinnedItemModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static model: ModelStaticWorkspaceAware<GroupPinnedItemModel> =
     GroupPinnedItemModel;

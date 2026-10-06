@@ -4,18 +4,14 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type { PokeCreateTemplateResponseBody } from "@app/types/api/poke/templates";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
-import {
-  CreateTemplateFormSchema,
-  isTemplateTagCodeArray,
-} from "@app/types/assistant/templates";
+import { CreateTemplateFormSchema } from "@app/types/assistant/templates";
 import { isDevelopment } from "@app/types/shared/env";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   tId: z.string(),
@@ -54,9 +50,9 @@ app.patch(
     const { tId: templateId } = ctx.req.valid("param");
 
     const body = await ctx.req.json().catch(() => null);
-    const bodyValidation = CreateTemplateFormSchema.decode(body);
-    if (isLeft(bodyValidation)) {
-      const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    const bodyValidation = CreateTemplateFormSchema.safeParse(body);
+    if (!bodyValidation.success) {
+      const pathError = fromError(bodyValidation.error).toString();
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -65,18 +61,7 @@ app.patch(
         },
       });
     }
-    const data = bodyValidation.right;
-
-    if (!isTemplateTagCodeArray(data.tags)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The request body is invalid: tags must be an array of template tag names.",
-        },
-      });
-    }
+    const data = bodyValidation.data;
 
     if (regionConfig.getDustRegionSyncEnabled() && !isDevelopment()) {
       return apiError(ctx, {
@@ -115,7 +100,7 @@ app.patch(
     }
 
     await existingTemplate.updateAttributes({
-      ...buildSharedTemplateAttributes({ ...data, tags: data.tags }, model),
+      ...buildSharedTemplateAttributes(data, model),
       timeFrameDuration: data.timeFrameDuration
         ? parseInt(data.timeFrameDuration, 10)
         : null,

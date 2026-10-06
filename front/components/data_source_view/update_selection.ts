@@ -4,7 +4,7 @@ import type {
   DataSourceViewSelectionConfigurations,
 } from "@app/types/data_source_view";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import cloneDeep from "lodash/cloneDeep";
 import omit from "lodash/omit";

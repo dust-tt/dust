@@ -36,11 +36,8 @@ function applyMarkup(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SelfImprovingSkillsUsageResource
-  extends ReadonlyAttributesType<SelfImprovingSkillsUsageModel> {}
+export interface SelfImprovingSkillsUsageResource extends ReadonlyAttributesType<SelfImprovingSkillsUsageModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImprovingSkillsUsageModel> {
   static model: ModelStaticWorkspaceAware<SelfImprovingSkillsUsageModel> =
     SelfImprovingSkillsUsageModel;

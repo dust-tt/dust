@@ -32,9 +32,7 @@ function isBigQueryPolicyViolationError(err: unknown): err is Error {
  * and `ThirdPartyConfigurationError`, respectively. Return successful activity results and rethrow
  * unrecognized errors unchanged.
  */
-export class BigQueryCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class BigQueryCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

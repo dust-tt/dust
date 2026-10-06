@@ -16,7 +16,7 @@ import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
-import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -47,7 +47,7 @@ import {
   Markdown,
   TextArea,
 } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 import map from "lodash/map";
 import { ChevronDownIcon } from "lucide-react";
 import type React from "react";
@@ -445,7 +445,6 @@ export function TemplateDetailPage() {
     sId: templateId === "new" ? undefined : templateId,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
     (values: CreateTemplateFormType) => {
       const cleanedValues = Object.fromEntries(
@@ -545,13 +544,13 @@ export function TemplateDetailPage() {
   });
 
   const form = useForm<CreateTemplateFormType>({
-    resolver: ioTsResolver(CreateTemplateFormSchema),
+    resolver: zodResolver(CreateTemplateFormSchema),
     defaultValues: {
       userFacingDescription: "",
       agentFacingDescription: "",
       handle: "",
       presetInstructions: "",
-      presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      presetModelId: CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG.modelId,
       helpInstructions: "",
       helpActions: "",
       sidekickInstructions: "",

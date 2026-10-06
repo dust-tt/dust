@@ -144,11 +144,10 @@ const ICON_MARGIN: Record<InputSizeType, { left: string; right: string }> = {
   md: { left: "ml-3", right: "mr-3" },
 };
 
-export interface InputProps
-  extends Omit<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "size" | "prefix"
-  > {
+export interface InputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "size" | "prefix"
+> {
   /** Field height: "xs" (24px), "sm" (32px), or "md" (40px); a number falls back to "sm". */
   size?: InputSizeType | number;
   /** Helper or error text shown under the field, colored by `messageStatus`. */

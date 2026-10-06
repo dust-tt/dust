@@ -105,11 +105,11 @@ export function DiscoverPinDialog({
         className={audienceOpen ? "overflow-visible" : undefined}
       >
         <DialogHeader>
-          <DialogTitle>
-            Pin <span className="notranslate">{name}</span> to Featured
+          <DialogTitle className="pr-8">
+            Pin <span className="notranslate">{name}</span>
           </DialogTitle>
           <DialogDescription>
-            It will show at the top of Discover for the audience you pick.
+            It will show at the top of Featured for the audience you pick.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>

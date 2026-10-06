@@ -79,7 +79,7 @@ app.get(
 
     // Non manager callers receive only minimal
     // essential user data (LightUserType).
-    // biome-ignore lint/plugin/noDirectRoleCheck: selects the response shape, does not gate access
+    // oxlint-disable-next-line dust/noDirectRoleCheck -- selects the response shape, does not gate access
     if (auth.isManager()) {
       return ctx.json({ members, total });
     }

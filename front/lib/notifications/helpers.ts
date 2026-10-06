@@ -7,12 +7,13 @@ import {
 } from "@app/lib/api/assistant/conversation/render_as_text";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
   getConversationsDataRetention,
 } from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
+import { getActiveSubscriberAuth } from "@app/lib/notifications";
 import {
   conversationUsesAgentsWithRetention,
   conversationWithoutContentForResource,
@@ -41,6 +42,8 @@ import {
   decodeHtmlEntities,
   stripMarkdown,
 } from "@app/types/shared/utils/markdown";
+import type { I18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 // When isNewProjectConversation is true, messageId is not required (the first
@@ -116,10 +119,14 @@ export const getConversationDetails = async ({
         isNewProjectConversation: false,
       });
     }
-    auth = await Authenticator.fromUserIdAndWorkspaceId(
+    const subscriberAuth = await getActiveSubscriberAuth(
       subscriberId,
       payload.workspaceId
     );
+    if (!subscriberAuth) {
+      return new Err(new ConversationError("conversation_access_restricted"));
+    }
+    auth = subscriberAuth;
   }
 
   const resource = await ConversationResource.fetchById(
@@ -387,12 +394,14 @@ const generateUnreadMessagesSummary = async ({
     return new Ok("");
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return new Err(
+      new DustError("user_not_found", "User is not a member of the workspace")
+    );
+  }
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: message content is needed to compute unread messages.
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- message content is needed to compute unread messages.
   const conversationRes = await getLightConversation(
     auth,
     payload.conversationId
@@ -510,20 +519,26 @@ const generateUnreadMessagesSummary = async ({
 };
 
 export const getEmailSummary = async ({
+  i18n,
   details,
   subscriberId,
   payload,
 }: {
+  i18n: I18n;
   details: ConversationDetailsType;
   subscriberId: string;
   payload: ConversationDetailsPayload;
 }): Promise<string | null> => {
   if (details.hasConversationRetentionPolicy) {
-    return "Summary not generated due to data retention policy on conversations in this workspace.";
+    return i18n._(
+      msg`Summary not generated due to data retention policy on conversations in this workspace.`
+    );
   }
 
   if (details.hasAgentRetentionPolicies) {
-    return "Summary not generated due to data retention policy on agents in this conversation.";
+    return i18n._(
+      msg`Summary not generated due to data retention policy on agents in this conversation.`
+    );
   }
 
   // Generate summary of unread messages

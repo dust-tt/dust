@@ -1,9 +1,7 @@
 import { GROK_4_7_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export function WithDustGrok47Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGrok47 extends Base {
     static readonly displayName = "Grok 4.7";

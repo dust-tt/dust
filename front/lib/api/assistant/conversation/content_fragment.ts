@@ -38,12 +38,12 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { DustMimeType } from "@dust-tt/client";
 
 import {
   DATA_SOURCE_MIME_TYPE,
-  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+  // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 } from "@dust-tt/client";
 import assert from "assert";
 

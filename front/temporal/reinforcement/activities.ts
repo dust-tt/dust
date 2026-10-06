@@ -34,7 +34,7 @@ import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import { notifySkillSuggestionsReady } from "@app/lib/notifications/workflows/skill-suggestions-ready";
+import { notifySkillSuggestionsReady } from "@app/lib/notifications/triggers/skill-suggestions-ready";
 import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
@@ -293,7 +293,7 @@ async function runReinforcedSkillsStep({
     };
   }
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(
     auth,
     reinforcementConversationId

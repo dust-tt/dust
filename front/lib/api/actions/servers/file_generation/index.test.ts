@@ -9,99 +9,101 @@ import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 describe("file_generation PDF availability", () => {
-  it.each([
-    true,
-    false,
-  ])("routes PDF output according to workspace Computer (%s)", async (computerEnabled) => {
-    const { authenticator: auth } = await createResourceTest({});
-    if (!computerEnabled) {
-      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-    }
+  it.each([true, false])(
+    "routes PDF output according to workspace Computer (%s)",
+    async (computerEnabled) => {
+      const { authenticator: auth } = await createResourceTest({});
+      if (!computerEnabled) {
+        await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+      }
 
-    const server = await createFileGenerationServer(auth);
-    const client = new Client({
-      name: "file-generation-test",
-      version: "1.0.0",
-    });
-    const [clientTransport, serverTransport] =
-      InMemoryWithAuthTransport.createLinkedPair();
-    await server.connect(serverTransport);
-    await client.connect(clientTransport);
+      const server = await createFileGenerationServer(auth);
+      const client = new Client({
+        name: "file-generation-test",
+        version: "1.0.0",
+      });
+      const [clientTransport, serverTransport] =
+        InMemoryWithAuthTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      await client.connect(clientTransport);
 
-    const { tools } = await client.listTools();
-    for (const name of [
-      "get_supported_source_formats_for_output_format",
-      "convert_file_format",
-    ]) {
-      expect(tools.find((tool) => tool.name === name)).toMatchObject({
-        inputSchema: {
-          properties: {
-            output_format: {
-              enum: computerEnabled
-                ? OUTPUT_FORMATS.filter((format) => format !== "pdf")
-                : [...OUTPUT_FORMATS],
+      const { tools } = await client.listTools();
+      for (const name of [
+        "get_supported_source_formats_for_output_format",
+        "convert_file_format",
+      ]) {
+        expect(tools.find((tool) => tool.name === name)).toMatchObject({
+          inputSchema: {
+            properties: {
+              output_format: {
+                enum: computerEnabled
+                  ? OUTPUT_FORMATS.filter((format) => format !== "pdf")
+                  : [...OUTPUT_FORMATS],
+              },
             },
           },
-        },
-      });
-      if (computerEnabled) {
-        const result = await client.callTool({
-          name,
-          arguments: {
-            output_format: "pdf",
-            ...(name === "convert_file_format"
-              ? {
-                  file_name: "report",
-                  file_id_or_url: "https://example.com/report.docx",
-                  source_format: "docx",
-                }
-              : {}),
-          },
         });
-        expect(result.isError).toBe(true);
-        expect(result.content).toEqual([
-          expect.objectContaining({
-            type: "text",
-            text: expect.stringContaining("output_format"),
-          }),
-        ]);
+        if (computerEnabled) {
+          const result = await client.callTool({
+            name,
+            arguments: {
+              output_format: "pdf",
+              ...(name === "convert_file_format"
+                ? {
+                    file_name: "report",
+                    file_id_or_url: "https://example.com/report.docx",
+                    source_format: "docx",
+                  }
+                : {}),
+            },
+          });
+          expect(result.isError).toBe(true);
+          expect(result.content).toEqual([
+            expect.objectContaining({
+              type: "text",
+              text: expect.stringContaining("output_format"),
+            }),
+          ]);
+        }
       }
-    }
 
-    const definitions = await createFileGenerationTools(auth);
-    const generateFile = definitions.find(
-      (tool) => tool.name === "generate_file"
-    );
-    assert(generateFile);
-    for (const name of [
-      "report.pdf",
-      "report.PDF",
-      "report.pdf/",
-      "report.pdf///",
-    ]) {
-      expect(generateFile.schema.file_name.safeParse(name).success).toBe(
-        !computerEnabled
+      const definitions = await createFileGenerationTools(auth);
+      const generateFile = definitions.find(
+        (tool) => tool.name === "generate_file"
       );
-      if (computerEnabled) {
-        const result = await client.callTool({
-          name: "generate_file",
-          arguments: { file_name: name, file_content: "Report" },
-        });
-        expect(result.isError).toBe(true);
-        expect(result.content).toEqual([
-          expect.objectContaining({
-            type: "text",
-            text: expect.stringContaining("PDFs skill"),
-          }),
-        ]);
+      assert(generateFile);
+      for (const name of [
+        "report.pdf",
+        "report.PDF",
+        "report.pdf/",
+        "report.pdf///",
+      ]) {
+        expect(generateFile.schema.file_name.safeParse(name).success).toBe(
+          !computerEnabled
+        );
+        if (computerEnabled) {
+          const result = await client.callTool({
+            name: "generate_file",
+            arguments: { file_name: name, file_content: "Report" },
+          });
+          expect(result.isError).toBe(true);
+          expect(result.content).toEqual([
+            expect.objectContaining({
+              type: "text",
+              text: expect.stringContaining("PDFs skill"),
+            }),
+          ]);
+        }
       }
-    }
-    for (const format of OUTPUT_FORMATS.filter((format) => format !== "pdf")) {
-      expect(
-        generateFile.schema.file_name.safeParse(`report.${format}`).success
-      ).toBe(true);
-    }
+      for (const format of OUTPUT_FORMATS.filter(
+        (format) => format !== "pdf"
+      )) {
+        expect(
+          generateFile.schema.file_name.safeParse(`report.${format}`).success
+        ).toBe(true);
+      }
 
-    await client.close();
-  });
+      await client.close();
+    }
+  );
 });

@@ -14,9 +14,9 @@ import {
   makeToolValidationBlock,
   makeUserQuestionBlock,
   type SlackMessageUpdate,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { PlanMessageHandler } from "@connectors/connectors/slack/chat/plan_message_handler";
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";

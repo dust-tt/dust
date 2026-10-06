@@ -2,6 +2,7 @@ import { sanitizeOAuthRegistrationRequestBody } from "@app/lib/api/mcp_server/oa
 import {
   getMcpAuthorizationServers,
   getMcpAuthorizationServerUrl,
+  getMcpClientIdMetadataDocument,
   getMcpProtectedResourcePath,
   getMcpResourceServerUrl,
   getWorkOSAuthKitDomain,
@@ -116,6 +117,12 @@ mcpWellKnownApp.get(protectedResourcePath, serveProtectedResourceMetadata);
 mcpWellKnownApp.get(
   "/.well-known/oauth-protected-resource",
   serveProtectedResourceMetadata
+);
+
+// CIMD client identity for remote MCP servers Dust connects to as a client.
+/** @ignoreswagger */
+mcpWellKnownApp.get("/.well-known/oauth-client.json", (c) =>
+  c.json(getMcpClientIdMetadataDocument())
 );
 
 // Compatibility fallback for clients that look for Authorization Server

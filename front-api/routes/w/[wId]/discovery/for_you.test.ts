@@ -18,9 +18,8 @@ const mockedListForYou = vi.mocked(listDiscoveryForYouItems);
 describe("GET /api/w/:wId/discovery/for_you", () => {
   beforeEach(async () => {
     mockedListForYou.mockReset();
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],

@@ -350,7 +350,6 @@ export const InputBarAttachmentsPicker = ({
     return projectContextFiles;
   }, [projectContextFiles, projectId]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setSelectedDataSourcesAndTools({});

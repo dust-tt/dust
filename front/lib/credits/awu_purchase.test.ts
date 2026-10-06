@@ -36,7 +36,6 @@ vi.mock("@app/lib/metronome/plan_type", async () => {
   return {
     ...actual,
     getActiveContract: vi.fn(),
-    isLegacyPlan: vi.fn(),
   };
 });
 

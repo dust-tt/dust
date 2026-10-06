@@ -72,7 +72,7 @@ app.get(
       : false;
 
     const featureFlags = await getFeatureFlags(auth);
-    const locale = await user.getLocale(workspace);
+    const locale = await user.getLocale(workspace.locale);
 
     const workspacePermissions = await auth.getWorkspacePermissions();
     let groupManagement: GroupManagementAccess | undefined;

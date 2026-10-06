@@ -15,7 +15,7 @@ import type {
   ConversationAttachmentType,
 } from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export async function listAttachments(

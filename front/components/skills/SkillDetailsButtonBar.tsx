@@ -1,5 +1,9 @@
 import { useSkillSuggestionPreviewBatchId } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { trackSuggestionPreviewEdit } from "@app/components/markdown/suggestion/suggestionTracking";
+import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/components/pages/builder/manageTracking";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import config from "@app/lib/api/config";
@@ -44,6 +48,7 @@ export function SkillDetailsButtonBar({
   replaceOnEdit,
   onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
+  const tracking = useManageTracking();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
   const previewBatchId = useSkillSuggestionPreviewBatchId();
@@ -79,6 +84,7 @@ export function SkillDetailsButtonBar({
           <Button
             size="sm"
             tooltip="Try skill"
+            onClick={() => trackManageItemAction(tracking, "try", skill.sId)}
             href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
             variant="outline"
             icon={MessagePlusCircle}
@@ -90,6 +96,7 @@ export function SkillDetailsButtonBar({
             tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
             onClick={() => {
+              trackManageItemAction(tracking, "edit", skill.sId);
               if (previewBatchId) {
                 trackSuggestionPreviewEdit({
                   batchId: previewBatchId,

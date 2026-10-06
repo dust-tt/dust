@@ -140,7 +140,9 @@ Frame documents retirement PR.
 The parser is superlinear on some shapes (see Facts). The codec must cap body size and
 container nesting before calling the parser, and server callers must run it off the main
 thread with a timeout. A depth rule inside the grammar was rejected: it would refuse valid
-Markdown and reintroduce hand-written Markdown rules.
+Markdown and reintroduce hand-written Markdown rules. `checkInputBounds` in `parser.ts` is the
+one place allowed to approximate CommonMark (what a list marker or a quote prefix looks like),
+because it only decides whether to parse, never what the text means.
 
 ## Open questions
 
@@ -152,9 +154,6 @@ Markdown and reintroduce hand-written Markdown rules.
   comments ship.
 - **Where the document to conversation link lives.** Front matter keeps the file
   self-contained; a link table is more robust. Leaning link table, like project tasks.
-- **Anchors inside link destinations or entities.** The structure check lets them through
-  because node types do not change. Whether the editor can highlight such a span decides if the
-  codec should refuse them.
 - **Suggestions.** Next directive. Insert, delete, replace; accept or reject one by one or
   all. Same attribution and enforcement as comments. The codec's "adding a directive" steps are
   written for it.

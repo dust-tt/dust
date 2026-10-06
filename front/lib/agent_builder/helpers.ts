@@ -1,5 +1,6 @@
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 
 // Agent rules shared by the agent builder and conversational building.
@@ -8,6 +9,9 @@ import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creati
 export function getAgentNameFormatError(name: string): string | null {
   if (!name) {
     return "Agent name cannot be empty.";
+  }
+  if (name.length > AGENT_NAME_MAX_LENGTH) {
+    return `Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`;
   }
   if (/\s/.test(name)) {
     return "Agent name cannot contain spaces.";

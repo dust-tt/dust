@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
@@ -106,7 +106,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
   it("replaces managers without changing a provisioned group's members", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "admin",
+      role: "manager",
     });
     await FeatureFlagFactory.basic(auth, "group_management");
     const alice = await UserFactory.basic();
@@ -165,7 +165,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect(body.managers).toEqual([]);
   });
 
-  it("keeps assignments admin-only and behind the feature flag", async () => {
+  it("rejects ordinary users and keeps assignments behind the feature flag", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
@@ -182,12 +182,12 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     await FeatureFlagFactory.basic(auth, "group_management");
     await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "manager",
+      role: "user",
       workspace,
     });
-    const manager = await patchGroupRequest(workspace.sId, group.sId, {
+    const user = await patchGroupRequest(workspace.sId, group.sId, {
       managerIds: [alice.sId],
     });
-    expect(manager.status).toBe(403);
+    expect(user.status).toBe(403);
   });
 });

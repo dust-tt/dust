@@ -10,8 +10,7 @@ import type { CellType } from "@app/types/cell";
 import type { RegionType } from "@app/types/region";
 import { useEffect, useMemo, useState } from "react";
 
-export interface GlobalAgentFeedbackItemWithCell
-  extends GlobalAgentFeedbackItem {
+export interface GlobalAgentFeedbackItemWithCell extends GlobalAgentFeedbackItem {
   cell: CellType;
   region: RegionType;
 }
@@ -30,9 +29,8 @@ export function usePokeGlobalAgentFeedbacksAllCells({
   exhaustedCells: ReadonlySet<CellType>;
 }) {
   const { cells } = useCellContext();
-  const [feedbacks, setFeedbacks] = useState<GlobalAgentFeedbackItemWithCell[]>(
-    emptyArray()
-  );
+  const [feedbacks, setFeedbacks] =
+    useState<GlobalAgentFeedbackItemWithCell[]>(emptyArray());
   const [hasMoreByCell, setHasMoreByCell] = useState<
     Partial<Record<CellType, boolean>>
   >({});

@@ -1,4 +1,5 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -109,6 +110,7 @@ const CreateSuggestionSchema = z.object({
     .string()
     .trim()
     .min(1)
+    .max(AGENT_NAME_MAX_LENGTH)
     .describe("Unique, human-readable agent name (no leading '@')."),
   description: z
     .string()
@@ -143,7 +145,7 @@ const DeleteSuggestionSchema = z.object({
 });
 
 const NameSuggestionSchema = z.object({
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(AGENT_NAME_MAX_LENGTH),
 });
 
 const DescriptionSuggestionSchema = z.object({

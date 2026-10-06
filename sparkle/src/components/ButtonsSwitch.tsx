@@ -110,7 +110,8 @@ const isSameRect = (a: IndicatorRect | null, b: IndicatorRect) =>
   a.height === b.height;
 
 export interface ButtonsSwitchListProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
   /** Disable every option in the switch. */
@@ -187,7 +188,6 @@ export const ButtonsSwitchList = React.forwardRef<
     const [indicator, setIndicator] = React.useState<IndicatorRect | null>(
       null
     );
-    // biome-ignore lint/correctness/useExhaustiveDependencies: children drives re-measurement.
     React.useLayoutEffect(() => {
       const list = listRef.current;
       const active =
@@ -262,8 +262,10 @@ const activeOptionStyles = cn(
   "duration-200 ease-in-out"
 );
 
-interface ButtonsSwitchProps
-  extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
+interface ButtonsSwitchProps extends Omit<
+  React.ComponentProps<typeof Button>,
+  "size" | "variant"
+> {
   /** Unique value identifying this option within the list. */
   value: string;
   label?: string;

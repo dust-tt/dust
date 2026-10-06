@@ -1,9 +1,9 @@
-import { addons } from "storybook/manager-api";
-import { create } from "storybook/theming/create";
 import {
   defaultConfig,
   type TagBadgeParameters,
 } from "storybook-addon-tag-badges/manager-helpers";
+import { addons } from "storybook/manager-api";
+import { create } from "storybook/theming/create";
 
 // Served from `.storybook/assets` via the `/brand` staticDir in main.ts.
 const dustTheme = create({

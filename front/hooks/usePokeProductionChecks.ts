@@ -31,9 +31,8 @@ export interface ProductionChecksForCell {
 
 export function usePokeProductionChecksAllCells() {
   const { cells } = useCellContext();
-  const [checksByCell, setChecksByCell] = useState<ProductionChecksForCell[]>(
-    emptyArray()
-  );
+  const [checksByCell, setChecksByCell] =
+    useState<ProductionChecksForCell[]>(emptyArray());
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -42,7 +41,6 @@ export function usePokeProductionChecksAllCells() {
     setRefreshKey((key) => key + 1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional refetch trigger via mutateProductionChecks()
   useEffect(() => {
     let cancelled = false;
     let intervalId: ReturnType<typeof setInterval> | undefined;

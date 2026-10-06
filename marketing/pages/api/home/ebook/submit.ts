@@ -27,7 +27,7 @@ function generateDownloadToken(): string {
   return `${expiresMs}.${signature}`;
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: API route
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- API route
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<EbookSubmitResponse>

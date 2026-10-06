@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/skills/detection/github/github_api";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
 import type {
+  GitHubDetectedSkill,
   GitHubDetectedSkillAttachment,
   GitHubSkillDetectionError,
 } from "@app/lib/api/skills/detection/github/types";
@@ -29,6 +30,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Octokit } from "@octokit/core";
+import groupBy from "lodash/groupBy";
 import path from "path";
 import { fromError } from "zod-validation-error";
 
@@ -46,9 +48,32 @@ type ImportSkillsFromGitHubError =
   | GitHubSkillDetectionError
   | { type: "unauthorized"; message: string };
 
+// The message listing every name shared by several selected SKILL.md files, with their paths, or
+// null when all selected names are distinct.
+function getDuplicateNamesError(skills: GitHubDetectedSkill[]): string | null {
+  const skillsByName = groupBy(skills, (skill) => skill.name);
+  const duplicates = Object.entries(skillsByName)
+    .filter(([, sameNameSkills]) => sameNameSkills.length > 1)
+    .map(
+      ([name, sameNameSkills]) =>
+        `"${name}" (${sameNameSkills.map((skill) => skill.skillMdPath).join(", ")})`
+    );
+  if (duplicates.length === 0) {
+    return null;
+  }
+
+  return `Several skills in the repository share the same name: ${duplicates.join("; ")}. Rename them so each name is unique, then import again.`;
+}
+
 /**
  * Imports skills from a GitHub repository. Detects skills, fetches their
  * attachments, and creates or updates SkillResource objects.
+ */
+/**
+ * @cc [owner:davidebbo,label:product] reject-duplicate-names
+ * If several selected SKILL.md files share a `name`, the import MUST fail with a
+ * `validation_error` naming each duplicated name and its SKILL.md paths, before any skill is
+ * created or updated, whatever `onConflict` is.
  */
 export async function importSkillsFromGitHub(
   auth: Authenticator,
@@ -88,6 +113,14 @@ export async function importSkillsFromGitHub(
     (skill) =>
       requestedNames.has(skill.name) && skill.name && skill.instructions.trim()
   );
+
+  const duplicateNamesError = getDuplicateNamesError(selectedSkills);
+  if (duplicateNamesError) {
+    return new Err({
+      type: "validation_error",
+      message: duplicateNamesError,
+    });
+  }
 
   const nameValidation = SkillNameSchema.array().safeParse(
     selectedSkills.map((skill) => skill.name)

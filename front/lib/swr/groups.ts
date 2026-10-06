@@ -395,16 +395,18 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
     async ({
       name,
       memberIds,
+      managerIds,
     }: {
       name: string;
       memberIds: string[];
+      managerIds?: string[];
     }): Promise<PostGroupResponseBody | null> => {
       setIsCreating(true);
       try {
         const res = await clientFetch(`/api/w/${owner.sId}/groups`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, memberIds }),
+          body: JSON.stringify({ name, memberIds, managerIds }),
         });
 
         if (!res.ok) {

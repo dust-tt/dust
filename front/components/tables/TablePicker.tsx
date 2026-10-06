@@ -73,7 +73,6 @@ export default function TablePicker({
     pageIndex,
   } = useCursorPagination(PAGE_SIZE);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [debouncedSearch, resetPagination]);

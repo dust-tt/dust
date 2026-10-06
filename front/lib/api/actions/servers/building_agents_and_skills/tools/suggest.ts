@@ -29,10 +29,10 @@ import {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type {
+  ArchiveAgentSuggestion,
+  ArchiveSkillSuggestion,
   CreateAgentSuggestion,
   CreateSkillSuggestion,
-  DeleteAgentSuggestion,
-  DeleteSkillSuggestion,
   EditAgentSuggestion,
   EditSkillSuggestion,
   SuggestArgs,
@@ -416,7 +416,7 @@ async function planAgentEdit(
 
 async function planAgentDeletion(
   auth: Authenticator,
-  { agentId }: DeleteAgentSuggestion
+  { agentId }: ArchiveAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
   if (agentRes.isErr()) {
@@ -560,7 +560,7 @@ async function planSkillEdit(
 
 async function planSkillDeletion(
   auth: Authenticator,
-  { skillId }: DeleteSkillSuggestion
+  { skillId }: ArchiveSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const skillRes = await fetchSkillForSuggestion(auth, skillId);
   if (skillRes.isErr()) {
@@ -891,7 +891,7 @@ async function createPendingSkills(
   );
   const pendingSkills = await SkillResource.createPendings(
     auth,
-    skillCreations.length
+    skillCreations.map((change) => change.create.name)
   );
   if (pendingSkills.isErr()) {
     return new Err(new MCPError(pendingSkills.error.message));
@@ -1006,6 +1006,7 @@ function resolveSkillRow(
     case "name":
     case "delete":
     case "availability":
+    case "files":
       return row;
     default:
       assertNever(row);

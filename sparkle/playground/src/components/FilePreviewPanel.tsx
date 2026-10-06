@@ -11,8 +11,8 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import { useState } from "react";
 
-import { getDataSourceIcon } from "../data/dataSources";
 import type { DataSource, DataSourceFileType } from "../data/types";
+import { getDataSourceIcon } from "../data/dataSources";
 
 interface FilePreviewPanelProps {
   dataSource: DataSource;

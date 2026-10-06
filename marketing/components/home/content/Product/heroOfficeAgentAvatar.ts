@@ -3,7 +3,7 @@
 // the agent (sets `--x`/`--y` and `_planX`/`_planY` etc.) after appending
 // the returned element to the SVG.
 
-// biome-ignore-all lint/suspicious/noExplicitAny: ad-hoc fields are stored
+// ad-hoc fields are stored
 // directly on the SVG <g> (e.g. _agentTag, _tagBg, _idleLabel) and read by
 // the scene engine. Typing them properly would require a parallel WeakMap
 // and gain little — they are scoped to this scene.

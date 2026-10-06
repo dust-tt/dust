@@ -1,15 +1,29 @@
+import {
+  AGENT_SEARCH_ALIAS_NAME,
+  SKILL_SEARCH_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import {
   convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { serializeToolTag } from "@app/lib/tools/format";
+import {
+  deleteWorkspaceAgentSearchActivity,
+  deleteWorkspaceSkillSearchActivity,
+  indexAgentSearchActivity,
+  indexSkillSearchActivity,
+} from "@app/temporal/es_indexation/activities";
 import type {
   SeededKnowledgeNode,
   SeededScenario,
   TestCase,
 } from "@app/tests/conversational-building-evals/lib/types";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { runInCommittedTransaction } from "@app/tests/utils/eval_workspace";
@@ -21,6 +35,10 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { CoreAPIDocument } from "@app/types/core/data_source";
+
+// Skill instructions cite a seeded tool as `{{tool:<key>}}`, replaced at seed time by the
+// `<tool/>` tag of its view, whose id the database assigns.
+const TOOL_PLACEHOLDER_REGEX = /\{\{tool:([^}]+)\}\}/g;
 
 // Document nodes live in the core service, which the eval does not run. Seeded documents are
 // registered here by core data source id, and the test file answers core's bulk search from
@@ -43,6 +61,58 @@ export function getSeededDocuments(dataSourceIds: string[]): CoreAPIDocument[] {
 export async function seedScenario(
   testCase: TestCase
 ): Promise<SeededScenario> {
+  const scenario = await seedDatabase(testCase);
+  await indexSeededEntities(scenario);
+  return scenario;
+}
+
+/**
+ * The search tools read from Elasticsearch, which the factories do not feed: production indexes
+ * through Temporal workflows. Runs the indexation activities directly once the seed is committed
+ * (they read the entities back with their own authenticator), then refreshes the indices so the
+ * documents are searchable as soon as the run starts.
+ */
+async function indexSeededEntities(scenario: SeededScenario): Promise<void> {
+  const workspaceId = scenario.auth.getNonNullableWorkspace().sId;
+  for (const skillId of scenario.skillIdsByKey.values()) {
+    await indexSkillSearchActivity({ workspaceId, skillId });
+  }
+  for (const agentId of scenario.agentIdsByKey.values()) {
+    await indexAgentSearchActivity({ workspaceId, agentId });
+  }
+  const refreshResult = await withEs((client) =>
+    client.indices.refresh({
+      index: [SKILL_SEARCH_ALIAS_NAME, AGENT_SEARCH_ALIAS_NAME],
+    })
+  );
+  if (refreshResult.isErr()) {
+    throw refreshResult.error;
+  }
+}
+
+/** Removes the search documents `seedScenario` indexed for the scenario's workspace. */
+export async function deleteSeededSearchDocuments(
+  scenario: SeededScenario
+): Promise<void> {
+  const workspaceId = scenario.auth.getNonNullableWorkspace().sId;
+  await deleteWorkspaceSkillSearchActivity({ workspaceId });
+  await deleteWorkspaceAgentSearchActivity({ workspaceId });
+}
+
+type SeededToolView = { view: MCPServerViewResource; name: string };
+
+function getToolView(
+  toolViewsByKey: Map<string, SeededToolView>,
+  toolKey: string
+): SeededToolView {
+  const view = toolViewsByKey.get(toolKey);
+  if (!view) {
+    throw new Error(`Seed references unknown tool key "${toolKey}"`);
+  }
+  return view;
+}
+
+async function seedDatabase(testCase: TestCase): Promise<SeededScenario> {
   return runInCommittedTransaction(async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -68,6 +138,7 @@ export async function seedScenario(
     }
 
     const toolIdsByKey = new Map<string, string>();
+    const toolViewsByKey = new Map<string, SeededToolView>();
     for (const tool of testCase.workspaceSeed.tools ?? []) {
       const server = await RemoteMCPServerFactory.create(workspace, {
         name: tool.name,
@@ -84,6 +155,7 @@ export async function seedScenario(
         globalSpace
       );
       toolIdsByKey.set(tool.key, view.sId);
+      toolViewsByKey.set(tool.key, { view, name: tool.name });
     }
 
     const knowledgeByKey = new Map<string, SeededKnowledgeNode>();
@@ -139,21 +211,41 @@ export async function seedScenario(
         instructionsHtml: agent.instructionsHtml,
         model: agent.model,
       });
+      for (const toolKey of agent.toolKeys ?? []) {
+        await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+          agent: created,
+          mcpServerView: getToolView(toolViewsByKey, toolKey).view,
+        });
+      }
       agentIdsByKey.set(agent.key, created.sId);
     }
 
     const skillIdsByKey = new Map<string, string>();
     for (const seed of testCase.workspaceSeed.skills) {
+      const toolKeys = [
+        ...seed.instructions.matchAll(TOOL_PLACEHOLDER_REGEX),
+      ].map(([, toolKey]) => toolKey);
+      const instructions = seed.instructions.replace(
+        TOOL_PLACEHOLDER_REGEX,
+        (_, toolKey: string) => {
+          const { view, name } = getToolView(toolViewsByKey, toolKey);
+          return serializeToolTag({ icon: null, id: view.sId, name });
+        }
+      );
+      const instructionsHtml = convertMarkdownToBlockHtml(
+        instructions,
+        getMarkdownPipeline("skill")
+      );
       const skill = await SkillFactory.create(auth, {
         name: seed.name,
         agentFacingDescription: seed.agentFacingDescription,
         userFacingDescription: seed.userFacingDescription ?? "",
-        instructions: seed.instructions,
-        instructionsHtml: convertMarkdownToBlockHtml(
-          seed.instructions,
-          getMarkdownPipeline("skill")
-        ),
+        instructions,
+        instructionsHtml,
         availability: seed.availability,
+        mcpServerViews: [...new Set(toolKeys)].map(
+          (toolKey) => getToolView(toolViewsByKey, toolKey).view
+        ),
       });
       skillIdsByKey.set(seed.key, skill.sId);
     }

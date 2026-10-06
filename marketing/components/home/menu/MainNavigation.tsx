@@ -1,7 +1,6 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { ChevronDown } from "@dust-tt/sparkle";
 import { menuConfig } from "@marketing/components/home/menu/config";
 import { classNames } from "@marketing/lib/utils";
-import { ChevronDown } from "@dust-tt/sparkle";
 import Link from "next/link";
 import * as React from "react";
 

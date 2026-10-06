@@ -1,7 +1,10 @@
+import { Document } from "@app/components/editor/document";
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -23,6 +26,12 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
 export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
+
+export const CUT_TEXT_SAVE_REFUSED = {
+  title: "File too long to save here",
+  description:
+    "It grew too long to edit here. Copy your changes, then reopen the file.",
+};
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",
@@ -198,6 +207,8 @@ export interface FilePreviewContentData {
   hasError: boolean;
   isContentLoading: boolean;
   isTooLarge: boolean;
+  /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
+  isTruncated: boolean;
   sizeBytes: number;
 }
 
@@ -240,6 +251,7 @@ export function useFilePreviewContent({
     enabled && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const isTruncated = (fileContent?.length ?? 0) > MAX_TEXT_CHARS;
 
   const processedContent =
     category === "markdown" && truncatedContent
@@ -260,6 +272,7 @@ export function useFilePreviewContent({
     hasError,
     isContentLoading,
     isTooLarge,
+    isTruncated,
     sizeBytes,
   };
 }
@@ -275,6 +288,8 @@ interface FilePreviewContentProps {
   isFullWidth?: boolean;
   markdownCanEdit?: boolean;
   markdownContent?: string;
+  /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
+  markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
   onMarkdownContentChange?: (content: string) => void;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
@@ -291,6 +306,7 @@ export function FilePreviewContent({
   isFullWidth = false,
   markdownCanEdit,
   markdownContent,
+  markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
   onMarkdownViewModeChange,
@@ -358,6 +374,19 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
+      if (markdownRichEditor) {
+        return (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Document
+              key={markdownRichEditor.mountKey}
+              initialContent={markdownRichEditor.initialContent}
+              onSave={markdownRichEditor.onSave}
+              onStateChange={markdownRichEditor.onStateChange}
+              badge={<CoEditionBadge />}
+            />
+          </div>
+        );
+      }
       if (
         processedContent &&
         markdownContent !== undefined &&

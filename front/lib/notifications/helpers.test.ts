@@ -7,6 +7,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { getConversationDetails } from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -31,7 +32,7 @@ async function backdateMessageCreatedAt({
   createdAt: Date;
 }) {
   // Sequelize validates FK exclusivity on update; raw SQL avoids that hook.
-  // biome-ignore lint/plugin/noRawSql: test helper backdating timestamps
+  // oxlint-disable-next-line dust/noRawSql -- test helper backdating timestamps
   await frontSequelize.query(
     `UPDATE messages SET "createdAt" = :createdAt WHERE id = :id AND "workspaceId" = :workspaceId`,
     {
@@ -400,6 +401,43 @@ describe("getConversationDetails", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe("message_not_found");
+    }
+  });
+
+  it("returns conversation_access_restricted once the subscriber was revoked", async () => {
+    const { messageRow } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Posted after removal",
+      origin: "web",
+    });
+    const payload = {
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId: messageRow.sId,
+    };
+
+    const beforeRevocation = await getConversationDetails({
+      subscriberId: mentionedUser.sId,
+      payload,
+    });
+    expect(beforeRevocation.isOk()).toBe(true);
+
+    const revokeResult = await MembershipResource.revokeMembership({
+      user: mentionedUser,
+      workspace,
+    });
+    expect(revokeResult.isOk()).toBe(true);
+
+    const result = await getConversationDetails({
+      subscriberId: mentionedUser.sId,
+      payload,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("conversation_access_restricted");
     }
   });
 

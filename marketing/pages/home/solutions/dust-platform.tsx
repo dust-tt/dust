@@ -1,23 +1,23 @@
 import {
-  ImgBlock,
-  QuoteSection,
-} from "@marketing/components/home/ContentBlocks";
-import { Grid } from "@marketing/components/home/ContentComponents";
-import { ExtensibilitySection } from "@marketing/components/home/content/Product/ExtensibilitySection";
-import { PlatformIntroSection } from "@marketing/components/home/content/Product/PlatformIntroSection";
-import type { DemoVideoProps } from "@marketing/components/home/content/Solutions/DemoVideoSection";
-import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { classNames } from "@marketing/lib/utils";
-import {
   LegacyButton as Button,
   Div3D,
   Hover3D,
   Rocket02,
 } from "@dust-tt/sparkle";
+import {
+  ImgBlock,
+  QuoteSection,
+} from "@marketing/components/home/ContentBlocks";
+import { Grid } from "@marketing/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { ExtensibilitySection } from "@marketing/components/home/content/Product/ExtensibilitySection";
+import { PlatformIntroSection } from "@marketing/components/home/content/Product/PlatformIntroSection";
+import type { DemoVideoProps } from "@marketing/components/home/content/Solutions/DemoVideoSection";
+import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
+import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
+import { classNames } from "@marketing/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -36,7 +36,7 @@ export const DemoVideo: DemoVideoProps = {
     "https://fast.wistia.net/embed/iframe/3ej9a2ruip?web_component=true&seo=true",
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function DustPlatform() {
   const router = useRouter();
 

@@ -107,12 +107,15 @@ export function ModelProvidersPageContent({
             allowed tier — set per workspace, group, or member.
           </div>
           <Button
-            label="Manage in Usage"
+            label="Manage in Credits"
             variant="highlight-ghost"
             size="sm"
             iconRight={ArrowRight}
             onClick={() => {
-              void router.push(`/w/${workspace.sId}/usage`);
+              // Per-member and per-group model tiers are edited on Credits
+              // (Members / Groups tables). Workspace-level defaults live on
+              // Models › Access tiers.
+              void router.push(`/w/${workspace.sId}/credits`);
             }}
           />
         </div>

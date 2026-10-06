@@ -29,6 +29,7 @@ const SKILL_SUGGESTION_KIND_ORDER = [
   "name",
   "user_facing_description",
   "edit",
+  "files",
   "editors",
   "availability",
 ] as const satisfies readonly SkillSuggestionKind[];

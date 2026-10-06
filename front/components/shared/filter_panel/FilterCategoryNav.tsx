@@ -1,5 +1,6 @@
 import {
   Counter,
+  cn,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -13,6 +14,7 @@ interface FilterCategoryNavProps<Category extends string> {
   activeCategory: Category;
   onCategoryChange: (category: Category) => void;
   footer?: ReactNode;
+  className?: string;
 }
 
 export function FilterCategoryNav<Category extends string>({
@@ -22,9 +24,10 @@ export function FilterCategoryNav<Category extends string>({
   activeCategory,
   onCategoryChange,
   footer,
+  className,
 }: FilterCategoryNavProps<Category>) {
   return (
-    <div className="flex h-full w-44 flex-col p-2">
+    <div className={cn("flex h-full w-44 flex-col p-2", className)}>
       <NavigationListLabel
         label="Filter"
         className="bg-transparent pt-1.5 font-medium"

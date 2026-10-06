@@ -2,19 +2,19 @@ import { Authenticator } from "@app/lib/auth";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   extractToolTags,
   parseToolTag,
   serializeToolTag,
   TOOL_TAG_NAME,
 } from "@app/lib/tools/format";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
-import * as cheerio from "cheerio";
 import type { Logger } from "@app/logger/logger";
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { removeNulls } from "@app/types/shared/utils/general";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import type { LightWorkspaceType } from "@app/types/user";
+import * as cheerio from "cheerio";
 
 const ASSOCIATED_TOOLS_LABEL = "Tools associated with this skill:";
 const TOOLS_SECTION_SEPARATOR = "----";

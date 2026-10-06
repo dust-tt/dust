@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
@@ -131,7 +130,6 @@ import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
 import partition from "lodash/partition";
-import range from "lodash/range";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -273,9 +271,7 @@ export type UpdateSkillParams = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillResource
-  extends ReadonlyAttributesType<SkillConfigurationModel> {}
+export interface SkillResource extends ReadonlyAttributesType<SkillConfigurationModel> {}
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -340,7 +336,6 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "user", permissions: ["read"] },
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:fabiencelier,label:security;product] skill-verbs
  * The verbs a caller holds on a skill mean:
@@ -822,12 +817,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(createdSuggestedSkill);
   }
 
-  // Creates a pending skill: an empty placeholder, edited only by the caller, that a conversational
-  // `create` suggestion is recorded on. Accepting the suggestion fills it and makes it `active`.
+  // Creates a pending skill with nothing but its suggested name, edited only by the caller, that a
+  // conversational `create` suggestion is recorded on. Accepting the suggestion fills it and makes
+  // it `active`.
   static async createPending(
-    auth: Authenticator
+    auth: Authenticator,
+    name?: string
   ): Promise<Result<SkillResource, Error>> {
-    const pendingSkills = await this.createPendings(auth, 1);
+    const pendingSkills = await this.createPendings(auth, [
+      name ?? "__PENDING__",
+    ]);
     if (pendingSkills.isErr()) {
       return pendingSkills;
     }
@@ -837,9 +836,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async createPendings(
     auth: Authenticator,
-    count: number
+    names: string[]
   ): Promise<Result<SkillResource[], Error>> {
-    if (count === 0) {
+    if (names.length === 0) {
       return new Ok([]);
     }
 
@@ -851,12 +850,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     const pendingSkills = await concurrentExecutor(
-      range(count),
-      () =>
+      names,
+      (name) =>
         this.makeNew(
           auth,
           {
-            name: `__PENDING__${randomUUID()}`,
+            name,
             agentFacingDescription: "",
             userFacingDescription: "",
             instructions: "",
@@ -2004,6 +2003,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return skills;
+  }
+
+  /**
+   * List the workspace's pending skills created before `createdBefore`, oldest first, for the
+   * hard-delete cron. Skips read filtering so no row is missed; the caller must be an admin.
+   */
+  static async listExpiredPending(
+    auth: Authenticator,
+    { createdBefore, limit }: { createdBefore: Date; limit: number }
+  ): Promise<SkillResource[]> {
+    assert(auth.isAdmin(), "Only admins can list expired pending skills.");
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          status: "pending",
+          createdAt: { [Op.lt]: createdBefore },
+        },
+        onlyCustom: true,
+        order: [["createdAt", "ASC"]],
+        limit,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      },
+      { permissionFiltering: "dangerously_skip" }
+    );
   }
 
   /**

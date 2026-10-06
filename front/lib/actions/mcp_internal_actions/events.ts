@@ -42,14 +42,14 @@ interface ToolExecutionBase<
 // the conversation message channel.
 export interface AgentLoopToolExecution<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
-> extends ToolExecutionBase<T>,
-    AgentLoopEventScope {}
+>
+  extends ToolExecutionBase<T>, AgentLoopEventScope {}
 
 // Tool execution scoped to a sandbox function invocation.
 export interface SandboxFunctionToolExecution<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
-> extends ToolExecutionBase<T>,
-    SandboxFunctionEventScope {}
+>
+  extends ToolExecutionBase<T>, SandboxFunctionEventScope {}
 
 type ToolPersonalAuthError = {
   mcpServerId: string;
@@ -66,14 +66,12 @@ type ToolAuthMetadataType = MCPValidationMetadataType & {
 
 // Event sent when personal authentication is required for a tool call.
 // This is a non-terminal event that pauses the workflow until authentication is completed.
-export interface AgentLoopToolPersonalAuthRequiredEvent
-  extends AgentLoopToolExecution<ToolAuthMetadataType> {
+export interface AgentLoopToolPersonalAuthRequiredEvent extends AgentLoopToolExecution<ToolAuthMetadataType> {
   type: "tool_personal_auth_required";
   authError: ToolPersonalAuthError;
 }
 
-export interface SandboxFunctionToolPersonalAuthRequiredEvent
-  extends SandboxFunctionToolExecution<ToolAuthMetadataType> {
+export interface SandboxFunctionToolPersonalAuthRequiredEvent extends SandboxFunctionToolExecution<ToolAuthMetadataType> {
   type: "tool_personal_auth_required";
   authError: ToolPersonalAuthError;
 }
@@ -93,14 +91,12 @@ type ToolFileAuthError = {
 
 // Pauses agent execution to prompt user for file access consent (e.g., Google Drive).
 // Non-terminal because the tool can resume once the user authorizes the file.
-export interface AgentLoopToolFileAuthRequiredEvent
-  extends AgentLoopToolExecution<ToolAuthMetadataType> {
+export interface AgentLoopToolFileAuthRequiredEvent extends AgentLoopToolExecution<ToolAuthMetadataType> {
   type: "tool_file_auth_required";
   fileAuthError: ToolFileAuthError;
 }
 
-export interface SandboxFunctionToolFileAuthRequiredEvent
-  extends SandboxFunctionToolExecution<ToolAuthMetadataType> {
+export interface SandboxFunctionToolFileAuthRequiredEvent extends SandboxFunctionToolExecution<ToolAuthMetadataType> {
   type: "tool_file_auth_required";
   fileAuthError: ToolFileAuthError;
 }
@@ -109,14 +105,12 @@ export type ToolFileAuthRequiredEvent =
   | AgentLoopToolFileAuthRequiredEvent
   | SandboxFunctionToolFileAuthRequiredEvent;
 
-export interface AgentLoopMCPApproveExecutionEvent
-  extends AgentLoopToolExecution {
+export interface AgentLoopMCPApproveExecutionEvent extends AgentLoopToolExecution {
   type: "tool_approve_execution";
   editableArguments?: readonly string[];
 }
 
-export interface SandboxFunctionMCPApproveExecutionEvent
-  extends SandboxFunctionToolExecution {
+export interface SandboxFunctionMCPApproveExecutionEvent extends SandboxFunctionToolExecution {
   type: "tool_approve_execution";
 }
 
@@ -129,14 +123,12 @@ export type MCPApproveExecutionEvent =
   | AgentLoopMCPApproveExecutionEvent
   | SandboxFunctionMCPApproveExecutionEvent;
 
-export interface AgentLoopToolAskUserQuestionEvent
-  extends AgentLoopToolExecution {
+export interface AgentLoopToolAskUserQuestionEvent extends AgentLoopToolExecution {
   type: "tool_ask_user_question";
   question: UserQuestion;
 }
 
-export interface SandboxFunctionToolAskUserQuestionEvent
-  extends SandboxFunctionToolExecution {
+export interface SandboxFunctionToolAskUserQuestionEvent extends SandboxFunctionToolExecution {
   type: "tool_ask_user_question";
   question: UserQuestion;
 }

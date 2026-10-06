@@ -1,8 +1,8 @@
 import { QueryTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { makeScript } from "@app/scripts/helpers";
 import type { Logger } from "@app/logger/logger";
+import { makeScript } from "@app/scripts/helpers";
 
 interface ConversationWithBogusUpdatedAt {
   id: number;

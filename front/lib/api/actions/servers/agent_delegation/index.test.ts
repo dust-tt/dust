@@ -45,20 +45,20 @@ describe("agent_delegation", () => {
     await client.close();
   });
 
-  it.each([
-    "run-agent",
-    "handoff",
-  ] as const)("accepts %s execution mode", (executionMode) => {
-    expect(
-      z.object(GENERIC_RUN_AGENT_TOOL_SCHEMA).safeParse({
-        agentId: "agent_123",
-        description: "Summarize the work.",
-        query: "Summarize the work.",
-        executionMode: {
-          value: executionMode,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-        },
-      }).success
-    ).toBe(true);
-  });
+  it.each(["run-agent", "handoff"] as const)(
+    "accepts %s execution mode",
+    (executionMode) => {
+      expect(
+        z.object(GENERIC_RUN_AGENT_TOOL_SCHEMA).safeParse({
+          agentId: "agent_123",
+          description: "Summarize the work.",
+          query: "Summarize the work.",
+          executionMode: {
+            value: executionMode,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+          },
+        }).success
+      ).toBe(true);
+    }
+  );
 });

@@ -2,8 +2,8 @@ import { Cube01, MessageQuestionCircle, Zap } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 import type { AvatarCounterVariantType } from "../components/AvatarCounter";
-import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "./requests";
 import type { AdminRequest, Conversation } from "./types";
+import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "./requests";
 
 // What a list row wears on its avatar. A badge answers the question its list
 // leaves open, so the same row can wear a different one from one list to the

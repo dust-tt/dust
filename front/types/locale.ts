@@ -11,6 +11,10 @@ export const CATALOG_LOCALES = [
 
 export type CatalogLocale = (typeof CATALOG_LOCALES)[number];
 
+export const PSEUDO_LOCALE = "pseudo";
+
+export type PseudoLocale = typeof PSEUDO_LOCALE;
+
 /**
  * @cc [owner:sfriquet,label:product] en-gb-shares-en-us-catalog
  * `en-GB` MUST render the messages of the `en-US` catalog: it only changes date and number

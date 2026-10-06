@@ -36,9 +36,7 @@ type WithCustomModelConfigParams = CustomModelType & {
 // Mixin, like the per-model configs, so the config-built `configSchema` can replace the
 // base client's own without clashing with its static type.
 function WithCustomModelConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(
   Base: TBase,
   {

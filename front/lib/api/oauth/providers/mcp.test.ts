@@ -81,50 +81,52 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     expect(updated.use_static_ip_proxy).toBe("true");
   });
 
-  it.each([
-    "personal_actions",
-    "platform_actions",
-  ] as const)("keeps workspace connection metadata authoritative for %s with mcp_server_id", async (useCase) => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    const provider = new MCPOAuthProvider();
+  it.each(["personal_actions", "platform_actions"] as const)(
+    "keeps workspace connection metadata authoritative for %s with mcp_server_id",
+    async (useCase) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const provider = new MCPOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
-      new Ok(
-        makeConnection({
-          client_id: "workspace-client",
-          token_endpoint: "https://unverified.example.com/token",
-          authorization_endpoint: "https://unverified.example.com/authorize",
-          scope: "workspace-scope",
-          resource: "workspace-resource",
-          token_endpoint_auth_method: "client_secret_basic",
-        })
-      )
-    );
+      mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+        new Ok(
+          makeConnection({
+            client_id: "workspace-client",
+            token_endpoint: "https://unverified.example.com/token",
+            authorization_endpoint: "https://unverified.example.com/authorize",
+            scope: "workspace-scope",
+            resource: "workspace-resource",
+            token_endpoint_auth_method: "client_secret_basic",
+          })
+        )
+      );
 
-    const updated = await provider.getUpdatedExtraConfig(authenticator, {
-      useCase,
-      extraConfig: {
-        mcp_server_id: "srv_123",
-        client_id: "spoofed-client",
-        token_endpoint: "https://spoofed.example.com/token",
-        authorization_endpoint: "https://spoofed.example.com/authorize",
-        scope: "spoofed-scope",
-        use_static_ip_proxy: "true",
-      },
-    });
+      const updated = await provider.getUpdatedExtraConfig(authenticator, {
+        useCase,
+        extraConfig: {
+          mcp_server_id: "srv_123",
+          client_id: "spoofed-client",
+          token_endpoint: "https://spoofed.example.com/token",
+          authorization_endpoint: "https://spoofed.example.com/authorize",
+          scope: "spoofed-scope",
+          use_static_ip_proxy: "true",
+        },
+      });
 
-    expect(updated.client_id).toBe("workspace-client");
-    expect(updated.token_endpoint).toBe("https://unverified.example.com/token");
-    expect(updated.authorization_endpoint).toBe(
-      "https://unverified.example.com/authorize"
-    );
-    expect(updated.scope).toBe("workspace-scope");
-    expect(updated.mcp_server_id).toBeUndefined();
-    expect(updated.use_static_ip_proxy).toBe("false");
-    expect(provider.isExtraConfigValidPostRelatedCredential(updated)).toBe(
-      true
-    );
-  });
+      expect(updated.client_id).toBe("workspace-client");
+      expect(updated.token_endpoint).toBe(
+        "https://unverified.example.com/token"
+      );
+      expect(updated.authorization_endpoint).toBe(
+        "https://unverified.example.com/authorize"
+      );
+      expect(updated.scope).toBe("workspace-scope");
+      expect(updated.mcp_server_id).toBeUndefined();
+      expect(updated.use_static_ip_proxy).toBe("false");
+      expect(provider.isExtraConfigValidPostRelatedCredential(updated)).toBe(
+        true
+      );
+    }
+  );
 
   it("falls through to caller credentials for platform_actions when workspace connection is missing", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
@@ -244,28 +246,28 @@ describe("MCPOAuthProvider.setupUri", () => {
       provider: new MCPOAuthStaticOAuthProvider(),
       expectedProvider: "mcp_static",
     },
-  ])("uses the $expectedProvider callback path", ({
-    provider,
-    expectedProvider,
-  }) => {
-    const connection = makeConnection({
-      client_id: "test-client",
-      authorization_endpoint: "https://example.com/authorize",
-      code_challenge: "test-challenge",
-      scope: "sql offline_access",
-    });
-    connection.connection_id = "con_test";
+  ])(
+    "uses the $expectedProvider callback path",
+    ({ provider, expectedProvider }) => {
+      const connection = makeConnection({
+        client_id: "test-client",
+        authorization_endpoint: "https://example.com/authorize",
+        code_challenge: "test-challenge",
+        scope: "sql offline_access",
+      });
+      connection.connection_id = "con_test";
 
-    const uri = provider.setupUri({
-      connection,
-      useCase: "platform_actions",
-    });
-    const url = new URL(uri);
-    expect(url.origin + url.pathname).toBe("https://example.com/authorize");
-    expect(url.searchParams.get("client_id")).toBe("test-client");
-    expect(url.searchParams.get("state")).toBe("con_test");
-    expect(url.searchParams.get("redirect_uri")).toContain(
-      `/oauth/${expectedProvider}/finalize`
-    );
-  });
+      const uri = provider.setupUri({
+        connection,
+        useCase: "platform_actions",
+      });
+      const url = new URL(uri);
+      expect(url.origin + url.pathname).toBe("https://example.com/authorize");
+      expect(url.searchParams.get("client_id")).toBe("test-client");
+      expect(url.searchParams.get("state")).toBe("con_test");
+      expect(url.searchParams.get("redirect_uri")).toContain(
+        `/oauth/${expectedProvider}/finalize`
+      );
+    }
+  );
 });

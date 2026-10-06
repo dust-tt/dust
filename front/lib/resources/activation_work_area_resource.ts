@@ -49,10 +49,7 @@ function matchingActivationWorkAreaStatuses(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ActivationWorkAreaResource
-  extends ReadonlyAttributesType<ActivationWorkAreaModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ActivationWorkAreaResource extends ReadonlyAttributesType<ActivationWorkAreaModel> {}
 export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaModel> {
   static model: ModelStaticWorkspaceAware<ActivationWorkAreaModel> =
     ActivationWorkAreaModel;

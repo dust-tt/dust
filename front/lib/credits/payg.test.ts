@@ -28,14 +28,6 @@ vi.mock("@app/lib/plans/stripe", async () => {
   };
 });
 
-vi.mock("@app/lib/auth", async () => {
-  const actual = await vi.importActual("@app/lib/auth");
-  return {
-    ...actual,
-    getFeatureFlags: vi.fn(),
-  };
-});
-
 const MONTH_SECONDS = 30 * 24 * 60 * 60;
 const NOW = 1700000000;
 const NOW_MS = NOW * 1000;

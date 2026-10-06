@@ -46,3 +46,33 @@ export function normalizeError(error: unknown): Error {
 
   return new Error(errorToString(error));
 }
+
+export function getTabNotOnDomainError({
+  tabId,
+  tabUrl,
+  domainToFetch,
+}: {
+  tabId: number;
+  tabUrl: string;
+  domainToFetch: string;
+}): string | null {
+  // The model may send "https://example.com". Keep the hostname only.
+  const trimmedDomain = domainToFetch.trim();
+  const domainUrl = trimmedDomain.includes("://")
+    ? trimmedDomain
+    : `https://${trimmedDomain}`;
+  const domain = URL.canParse(domainUrl) ? new URL(domainUrl).hostname : null;
+  const tabHostname = URL.canParse(tabUrl) ? new URL(tabUrl).hostname : null;
+  if (
+    tabHostname &&
+    domain &&
+    (tabHostname === domain || tabHostname.endsWith(`.${domain}`))
+  ) {
+    return null;
+  }
+
+  return (
+    `Tab ${tabId} is on "${tabHostname ?? "unknown"}", not on "${domainToFetch}". ` +
+    "Call the tool again with the tab's domain in domainToFetch, one call per domain."
+  );
+}

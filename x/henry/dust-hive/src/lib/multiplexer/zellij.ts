@@ -44,7 +44,7 @@ function getUserShell(): string {
  * Strip ANSI escape codes from a string
  */
 function stripAnsi(str: string): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional for ANSI escape code stripping
+  // oxlint-disable-next-line eslint/no-control-regex -- intentional for ANSI escape code stripping
   return str.replace(/\x1b\[[0-9;]*m/g, "");
 }
 

@@ -15,7 +15,7 @@ import {
 import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/microsoft/lib/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { normalizeError } from "@connectors/types";

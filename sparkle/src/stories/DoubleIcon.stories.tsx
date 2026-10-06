@@ -3,7 +3,6 @@ import React from "react";
 
 import { DoubleIcon } from "@sparkle/components";
 
-import { DriveLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
 import {
   AlertCircle,
   CheckCircle,
@@ -12,6 +11,7 @@ import {
   InfoCircle,
   MessageDotsCircle,
 } from "@sparkle/icons/v2-stroke";
+import { DriveLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
 
 const MAIN_ICONS = {
   Folder: Folder,

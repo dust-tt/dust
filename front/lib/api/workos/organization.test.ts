@@ -9,12 +9,14 @@ const {
   mockListDirectories,
   mockDeleteDirectory,
   mockDisableSSOEnforcement,
+  mockCreateEvent,
 } = vi.hoisted(() => ({
   mockListConnections: vi.fn(),
   mockDeleteConnection: vi.fn(),
   mockListDirectories: vi.fn(),
   mockDeleteDirectory: vi.fn(),
   mockDisableSSOEnforcement: vi.fn(),
+  mockCreateEvent: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/workos/client", () => ({
@@ -27,6 +29,9 @@ vi.mock("@app/lib/api/workos/client", () => ({
       listDirectories: mockListDirectories,
       deleteDirectory: mockDeleteDirectory,
     },
+    auditLogs: {
+      createEvent: mockCreateEvent,
+    },
   }),
 }));
 
@@ -36,7 +41,11 @@ vi.mock("@app/lib/resources/workspace_resource", () => ({
   },
 }));
 
-import { disableWorkOSSSOAndSCIM } from "@app/lib/api/workos/organization";
+import {
+  AUDIT_TARGET_NAME_MAX_CHARS,
+  createAuditLogEvent,
+  disableWorkOSSSOAndSCIM,
+} from "@app/lib/api/workos/organization";
 
 function makeWorkspace(
   overrides: Partial<LightWorkspaceType> = {}
@@ -202,5 +211,86 @@ describe("disableWorkOSSSOAndSCIM", () => {
     expect(mockListConnections).not.toHaveBeenCalled();
     expect(mockListDirectories).not.toHaveBeenCalled();
     expect(mockDisableSSOEnforcement).not.toHaveBeenCalled();
+  });
+});
+
+describe("createAuditLogEvent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCreateEvent.mockResolvedValue(undefined);
+  });
+
+  function makeEvent(
+    overrides: Partial<{
+      action: string;
+      targets: { type: string; id: string; name?: string }[];
+      metadata: Record<string, string>;
+    }> = {}
+  ) {
+    return {
+      action: overrides.action ?? "conversation.updated",
+      actor: { type: "user", id: "user_1", name: "Ada" },
+      targets: overrides.targets ?? [
+        { type: "workspace", id: "ws-test", name: "Test Workspace" },
+      ],
+      context: { location: "internal" },
+      metadata: overrides.metadata,
+    };
+  }
+
+  it("truncates oversized target names before sending the event", async () => {
+    const workspace = makeWorkspace();
+    const longName = "x".repeat(AUDIT_TARGET_NAME_MAX_CHARS + 5_000);
+
+    const result = await createAuditLogEvent({
+      workspace,
+      event: makeEvent({
+        targets: [
+          { type: "workspace", id: "ws-test", name: "Test Workspace" },
+          { type: "conversation", id: "conv_1", name: longName },
+        ],
+      }),
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockCreateEvent).toHaveBeenCalledTimes(1);
+    const sentTargets = mockCreateEvent.mock.calls[0][1].targets;
+    expect(sentTargets[1].name).toHaveLength(AUDIT_TARGET_NAME_MAX_CHARS);
+    expect(sentTargets[1].name.endsWith("...[truncated]")).toBe(true);
+  });
+
+  it("sends an event that would have exceeded the payload limit without name truncation", async () => {
+    const workspace = makeWorkspace();
+    // A raw 70k-character name would push JSON.stringify(event) past 60k bytes.
+    const hugeName = "y".repeat(70_000);
+
+    const result = await createAuditLogEvent({
+      workspace,
+      event: makeEvent({
+        targets: [{ type: "conversation", id: "conv_1", name: hugeName }],
+      }),
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockCreateEvent).toHaveBeenCalledTimes(1);
+    expect(mockCreateEvent.mock.calls[0][1].targets[0].name).toHaveLength(
+      AUDIT_TARGET_NAME_MAX_CHARS
+    );
+  });
+
+  it("still skips events that remain oversized after name truncation", async () => {
+    const workspace = makeWorkspace();
+    const hugeMetadata: Record<string, string> = {};
+    for (let i = 0; i < 80; i++) {
+      hugeMetadata[`field_${i}`] = "z".repeat(1_000);
+    }
+
+    const result = await createAuditLogEvent({
+      workspace,
+      event: makeEvent({ metadata: hugeMetadata }),
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockCreateEvent).not.toHaveBeenCalled();
   });
 });

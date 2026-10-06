@@ -1,6 +1,6 @@
+import type { Logger } from "@app/logger/logger";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
-import type { Logger } from "@app/logger/logger";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
@@ -22,10 +22,10 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
