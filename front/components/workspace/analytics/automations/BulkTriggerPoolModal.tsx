@@ -1,6 +1,5 @@
 import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
-import { formatNumber } from "@app/lib/i18n/format";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { isTriggerExecutionMode } from "@app/types/assistant/triggers";
 import {
@@ -13,6 +12,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface BulkTriggerPoolModalProps {
@@ -54,6 +54,7 @@ function BulkTriggerPoolForm({
   triggerCount,
   onValidate,
 }: BulkTriggerPoolFormProps) {
+  const { t } = useLingui();
   const { canUseExecutionMode } = useTriggerExecutionModes();
   const [executionMode, setExecutionMode] =
     useState<TriggerExecutionMode>("workspace_pool");
@@ -75,11 +76,20 @@ function BulkTriggerPoolForm({
     <>
       <DialogHeader>
         <DialogTitle>
-          Set the pool for {formatNumber(triggerCount)} automations
+          <Trans>
+            Set the pool for{" "}
+            <Plural
+              value={triggerCount}
+              one="# automation"
+              other="# automations"
+            />
+          </Trans>
         </DialogTitle>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Runs are billed to the workspace&apos;s credits, or to the credits of
-          the member who owns each automation.
+          <Trans>
+            Runs are billed to the workspace's credits, or to the credits of the
+            member who owns each automation.
+          </Trans>
         </p>
       </DialogHeader>
       <DialogContainer>
@@ -105,12 +115,12 @@ function BulkTriggerPoolForm({
       </DialogContainer>
       <DialogFooter
         leftButtonProps={{
-          label: "Cancel",
+          label: t`Cancel`,
           variant: "outline",
           onClick: onClose,
         }}
         rightButtonProps={{
-          label: "Validate",
+          label: t`Validate`,
           variant: "primary",
           disabled: isSaving || !canUseExecutionMode(executionMode),
           onClick: handleValidate,

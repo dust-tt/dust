@@ -7,6 +7,7 @@ import {
   NavigationListItem,
   Plus,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UsageFilterMemberGroupsControlsProps {
@@ -22,6 +23,7 @@ export function UsageFilterMemberGroupsControls({
   onAddGroup,
   onRemoveGroup,
 }: UsageFilterMemberGroupsControlsProps) {
+  const { t } = useLingui();
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
 
   const availableGroups = groups.filter(
@@ -35,10 +37,10 @@ export function UsageFilterMemberGroupsControls({
 
   return (
     <FilterSection
-      title="Groups"
+      title={t`Groups`}
       action={
         <Button
-          label="Add group"
+          label={t`Add group`}
           icon={Plus}
           size="xmini"
           variant="ghost-secondary"
@@ -62,7 +64,7 @@ export function UsageFilterMemberGroupsControls({
             ))
           ) : (
             <div className="flex items-center p-2 text-sm text-muted-foreground">
-              No more groups
+              <Trans>No more groups</Trans>
             </div>
           )}
         </NavigationList>
