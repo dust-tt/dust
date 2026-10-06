@@ -5,13 +5,11 @@ import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { streamToBuffer } from "@app/lib/utils/streams";
+import { isMarkdownContentType, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DOCUMENT_NAME_SEPARATOR = ":";
-
-// What both file system backends report as a directory's content type.
-const DIRECTORY_CONTENT_TYPE = "application/x-directory";
 
 /** A file the live session can open, with the caller's access to it. */
 export interface LiveFile {
@@ -44,18 +42,19 @@ export function parseLiveDocumentName(
 
 /**
  * @cc [owner:PopDaph,label:security] live-file-access
- * A live file MUST open only for a `.md` file, not a directory, that exists and that `auth` can
- * read through the file system, with the same mount permissions as the file API, and only under
- * its normalized path, so one file never has two live documents. `canWrite` MUST be the file
- * system's write check for that path.
+ * A live file MUST open only for a file that exists, whose stored type is Markdown by
+ * `isMarkdownContentType` as for the browser's editor, and that `auth` can read through the file
+ * system, with the same mount permissions as the file API, and only under its normalized path,
+ * so one file never has two live documents. `canWrite` MUST be the file system's write check
+ * for that path.
  */
 export async function openLiveFile(
   auth: Authenticator,
   canonicalPath: string
 ): Promise<Result<LiveFile, string>> {
   const workspace = auth.workspace();
-  if (!workspace || !canonicalPath.endsWith(".md")) {
-    return new Err("Only Markdown files open in a live session.");
+  if (!workspace) {
+    return new Err("No workspace.");
   }
   if (DustFileSystem.normalizeScopedPath(canonicalPath) !== canonicalPath) {
     return new Err("Open the file by its normalized path.");
@@ -72,8 +71,9 @@ export async function openLiveFile(
   if (stat.value === null) {
     return new Err("File not found.");
   }
-  if (stat.value.contentType === DIRECTORY_CONTENT_TYPE) {
-    return new Err("A directory cannot open in a live session.");
+  // Directories have their own type, so they are refused here too.
+  if (!isMarkdownContentType(stripMimeParameters(stat.value.contentType))) {
+    return new Err("Only Markdown files open in a live session.");
   }
 
   return new Ok({

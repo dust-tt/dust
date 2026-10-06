@@ -17,7 +17,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function writeUserFile(auth: Authenticator, name: string, text: string) {
+async function writeUserFile(
+  auth: Authenticator,
+  name: string,
+  text: string,
+  contentType = "text/markdown"
+) {
   const path = `user-${auth.getNonNullableUser().sId}/${name}`;
   const dustFs = await DustFileSystem.forUser(auth);
   if (dustFs.isErr()) {
@@ -28,11 +33,17 @@ async function writeUserFile(auth: Authenticator, name: string, text: string) {
     dustFs.value,
     path,
     new TextEncoder().encode(text),
-    "text/markdown"
+    contentType
   );
   if (written.isErr()) {
     throw written.error;
   }
+  // The storage mock does not keep the type a file was written with.
+  fileStorageMock.setFileMetadata((gcsPath) =>
+    gcsPath.endsWith(`/${name}`)
+      ? { contentType, size: String(text.length) }
+      : null
+  );
   return path;
 }
 
@@ -73,9 +84,21 @@ describe("openLiveFile and loadLiveDocument", () => {
     }
   });
 
+  it("open a .markdown file, as the editor does", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const path = await writeUserFile(auth, "notes.markdown", "# Notes\n");
+
+    expect((await openLiveFile(auth, path)).isOk()).toBe(true);
+  });
+
   it("refuse a file that is not Markdown", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    const path = await writeUserFile(auth, "notes.txt", "Hello.\n");
+    const path = await writeUserFile(
+      auth,
+      "notes.txt",
+      "Hello.\n",
+      "text/plain"
+    );
 
     expect((await openLiveFile(auth, path)).isErr()).toBe(true);
   });
