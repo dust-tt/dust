@@ -27,8 +27,6 @@ export const DEFAULT_COST_CAP_PER_SKILL_LABEL = "Default cost cap per skill";
 export const GLOBAL_SPENDING_CAP_LABEL = "Global spending cap";
 export const SELF_IMPROVING_SETTINGS_SECTION_LABEL = "Settings";
 export const SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL = "Skills";
-export const SELF_IMPROVING_CONSUMPTION_SECTION_LABEL =
-  "Current period consumption";
 
 export function capUnitLabel(unit: ReinforcementBillingUnit): string {
   switch (unit) {

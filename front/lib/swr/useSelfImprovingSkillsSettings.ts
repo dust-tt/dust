@@ -10,7 +10,6 @@ import {
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  GetReinforcementDailySpendResponseBody,
   GetSkillsReinforcementSettingsResponseBody,
   GetSkillsSpendResponseBody,
 } from "@app/types/api/skills";
@@ -237,32 +236,6 @@ export function useSkillsSelfImprovingSpend({
     isSpendLoading: isLoading,
     isSpendError: !!error,
     mutateSpend: mutate,
-  };
-}
-
-export function useSelfImprovingDailySpend({
-  owner,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const dailyFetcher: Fetcher<GetReinforcementDailySpendResponseBody> = fetcher;
-
-  const { data, error, isLoading } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills/reinforcement_daily_spend`,
-    dailyFetcher,
-    { disabled }
-  );
-
-  return {
-    dailySpendMicroUsd: data?.dailySpendMicroUsd ?? {},
-    dailySpendAwuCredits: data?.dailySpendAwuCredits ?? {},
-    periodStartDate: data?.periodStartDate ?? null,
-    periodEndDate: data?.periodEndDate ?? null,
-    isDailySpendLoading: isLoading,
-    isDailySpendError: !!error,
   };
 }
 
