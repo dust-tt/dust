@@ -345,7 +345,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 });
 
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - hidden agent", () => {
-  it("returns 404 to a manager who can list but not read the agent", async () => {
+  it("returns 403 to a manager who can list but not read the agent", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       role: "manager",
       method: "PATCH",
@@ -382,7 +382,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - hidden agent",
       },
     });
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
 
     const unchanged = await AgentConfigurationFactory.refetch(
       agentOwnerAuth,

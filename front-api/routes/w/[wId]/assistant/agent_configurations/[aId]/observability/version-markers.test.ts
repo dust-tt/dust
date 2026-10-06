@@ -45,13 +45,15 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/observability/vers
     expect(await response.json()).toEqual({ versionMarkers: [] });
   });
 
-  it("returns 404 to a manager for a hidden agent they cannot read", async () => {
+  it("lets a manager read a hidden agent they cannot read", async () => {
     const { workspace, agent } = await setupHiddenAgent("manager");
 
     const response = await getVersionMarkers(workspace, agent.sId);
 
-    expect(response.status).toBe(404);
-    expect(vi.mocked(fetchVersionMarkers)).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchVersionMarkers)).toHaveBeenCalledWith(
+      expect.objectContaining({ agentId: agent.sId })
+    );
   });
 
   it("lets an admin read a hidden agent they cannot read", async () => {

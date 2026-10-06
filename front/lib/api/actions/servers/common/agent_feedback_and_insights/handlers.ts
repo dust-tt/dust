@@ -108,6 +108,12 @@ export async function getAgentFeedbackToolResult(
   ]);
 }
 
+/**
+ * @cc [owner:tdraier,label:security;product] agent-insights-for-fetchable-agents
+ * The insights MUST be returned to any caller holding a verb on the agent, `list` alone included
+ * (see `agent-verbs`), and fail otherwise. Only aggregates and core fields: never feedback content
+ * or instructions.
+ */
 export async function getAgentInsightsToolResult(
   auth: Authenticator,
   {
@@ -115,10 +121,7 @@ export async function getAgentInsightsToolResult(
     days,
   }: AgentInsightsInput & { agentConfigurationId: string }
 ): Promise<ToolHandlerResult> {
-  const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
-    auth,
-    agentConfigurationId
-  );
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
   if (!agent) {
     return new Err(
       new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
