@@ -123,6 +123,19 @@ describe("GET /api/w/:wId/analytics/export", () => {
     expect(vi.mocked(exportTable)).not.toHaveBeenCalled();
   });
 
+  it("returns 400 for a messages export over 90 days", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await exportRequest(workspace.sId, {
+      table: "messages",
+      startDate: "2026-01-01",
+      endDate: "2026-04-02",
+    });
+
+    expect(response.status).toBe(400);
+    expect(vi.mocked(exportTable)).not.toHaveBeenCalled();
+  });
+
   it("returns 400 for an unrecognized timezone", async () => {
     const { workspace } = await setupTest();
 

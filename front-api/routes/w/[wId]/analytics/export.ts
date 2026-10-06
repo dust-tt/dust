@@ -1,9 +1,11 @@
 import {
   exportTable,
+  MAX_MESSAGES_EXPORT_DAYS,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
 import { parseCalendarDate, timezoneSchema } from "@app/lib/api/timezone";
 import logger from "@app/logger/logger";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -44,7 +46,19 @@ const QuerySchema = z
   })
   .refine((d) => d.startDate <= d.endDate, {
     message: "startDate must be before or equal to endDate",
-  });
+  })
+  .refine(
+    (d) => {
+      if (d.table !== "messages") {
+        return true;
+      }
+      const diffMs = Date.parse(d.endDate) - Date.parse(d.startDate);
+      return diffMs <= MAX_MESSAGES_EXPORT_DAYS * ONE_DAY_MS;
+    },
+    {
+      message: `Time range must not exceed ${MAX_MESSAGES_EXPORT_DAYS} days for the messages table`,
+    }
+  );
 
 // Mounted at /api/w/:wId/analytics/export. Same export logic (exportTable) as
 // the public endpoint, reachable from the workspace analytics page without an

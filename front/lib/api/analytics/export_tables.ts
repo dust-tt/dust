@@ -175,6 +175,14 @@ type ExportTableData =
       rows: FeedbackExportRow[];
     };
 
+export const MAX_MESSAGES_EXPORT_DAYS = 90;
+
+/**
+ * @cc [owner:philipperolet,label:performance] messages-export-range-cap
+ * For `table: "messages"`, callers MUST reject requests where `endDate` is more than
+ * `MAX_MESSAGES_EXPORT_DAYS` days after `startDate`, without calling `exportTable`: every message of
+ * the range is loaded in memory, and wider ranges on large workspaces crash the server.
+ */
 export async function exportTable({
   auth,
   table,

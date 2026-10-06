@@ -3286,6 +3286,10 @@ const AnalyticsDateSchema = z.string().refine(isRealCalendarDate, {
   message: "Date must be a real calendar day in YYYY-MM-DD format",
 });
 
+// The server holds every exported message in memory. Mirrors MAX_MESSAGES_EXPORT_DAYS in
+// front/lib/api/analytics/export_tables.ts.
+const MAX_MESSAGES_EXPORT_DAYS = 90;
+
 export const GetAnalyticsExportRequestSchema = z
   .object({
     table: AnalyticsExportTableSchema,
@@ -3296,7 +3300,19 @@ export const GetAnalyticsExportRequestSchema = z
   })
   .refine((d) => d.startDate <= d.endDate, {
     message: "startDate must be before or equal to endDate",
-  });
+  })
+  .refine(
+    (d) => {
+      if (d.table !== "messages") {
+        return true;
+      }
+      const diffMs = Date.parse(d.endDate) - Date.parse(d.startDate);
+      return diffMs <= MAX_MESSAGES_EXPORT_DAYS * 24 * 60 * 60 * 1000;
+    },
+    {
+      message: `Time range must not exceed ${MAX_MESSAGES_EXPORT_DAYS} days for the messages table`,
+    }
+  );
 
 export type GetAnalyticsExportRequestType = z.infer<
   typeof GetAnalyticsExportRequestSchema
