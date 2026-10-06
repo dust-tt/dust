@@ -11,9 +11,11 @@ import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { APIError } from "@app/types/error";
 import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useState } from "react";
 
 export function AppSettingsPage() {
+  const { t } = useLingui();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -71,8 +73,8 @@ export function AppSettingsPage() {
 
     if (
       await confirm({
-        title: "Double checking",
-        message: "Are you sure you want to delete this app?",
+        title: t`Double checking`,
+        message: t`Are you sure you want to delete this app?`,
         validateVariant: "warning",
       })
     ) {
@@ -88,8 +90,10 @@ export function AppSettingsPage() {
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
+        const errorType = err.error.type;
+        const errorMessage = err.error.message;
         window.alert(
-          `Failed to delete the app (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+          t`Failed to delete the app (contact support@dust.tt for assistance) (internal error: type=${errorType} message=${errorMessage})`
         );
       }
       return true;
@@ -124,8 +128,10 @@ export function AppSettingsPage() {
     } else {
       setIsUpdating(false);
       const err = (await res.json()) as { error: APIError };
+      const errorType = err.error.type;
+      const errorMessage = err.error.message;
       window.alert(
-        `Failed to update the app (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        t`Failed to update the app (contact support@dust.tt for assistance) (internal error: type=${errorType} message=${errorMessage})`
       );
     }
   };
@@ -163,27 +169,31 @@ export function AppSettingsPage() {
       <div className="flex flex-col">
         <div className="flex flex-col gap-6">
           <div className="flex w-64 flex-col gap-2">
-            <Label>App Name</Label>
+            <Label>
+              <Trans>App name</Trans>
+            </Label>
             <Input
               type="text"
               name="name"
               id="appName"
               value={appName}
               onChange={(e) => setAppName(e.target.value)}
-              message="Use only a-z, 0-9, - or _. Must be unique."
+              message={t`Use only a-z, 0-9, - or _. Must be unique.`}
               messageStatus={appNameError ? "error" : "default"}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>Description</Label>
+            <Label>
+              <Trans>Description</Trans>
+            </Label>
             <Input
               type="text"
               name="description"
               id="appDescription"
               value={appDescription}
               onChange={(e) => setAppDescription(e.target.value)}
-              message="Description needed to use in Agent Builder - helps agents understand when to use your app."
+              message={t`Description needed to use in Agent Builder - helps agents understand when to use your app.`}
               messageStatus="default"
             />
           </div>
@@ -192,13 +202,13 @@ export function AppSettingsPage() {
           <Button
             disabled={disable || isUpdating || isDeleting}
             onClick={handleUpdate}
-            label={isUpdating ? "Updating..." : "Update"}
+            label={isUpdating ? t`Updating...` : t`Update`}
           />
           <Button
             variant="warning"
             onClick={handleDelete}
             disabled={isDeleting || isUpdating}
-            label={isDeleting ? "Deleting..." : "Delete"}
+            label={isDeleting ? t`Deleting...` : t`Delete`}
           />
         </div>
       </div>

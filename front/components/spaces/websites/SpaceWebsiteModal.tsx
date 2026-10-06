@@ -29,6 +29,9 @@ import {
   SheetTitle,
   Trash01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useReducer, useState } from "react";
 
 const WEBSITE_CAT = "website";
@@ -56,21 +59,23 @@ function getInitialFormState(
 function validateFormName(
   name: string,
   spaceDataSourceViews: DataSourceViewType[],
+  t: (descriptor: MessageDescriptor) => string,
   currentViewId?: string
 ) {
   if (!name.length) {
-    return "Please provide a name.";
+    return t(msg`Please provide a name.`);
   }
-  const nameValidation = isDataSourceNameValid(name);
-  if (nameValidation.isErr()) {
-    return nameValidation.error;
+  if (isDataSourceNameValid(name).isErr()) {
+    return t(msg`The name cannot be blank or start with "managed-".`);
   }
   const nameExists = spaceDataSourceViews.some(
     (view) =>
       view.dataSource.name.toLowerCase() === name.toLowerCase() &&
       view.sId !== currentViewId
   );
-  return nameExists ? "A website with this name already exists" : undefined;
+  return nameExists
+    ? t(msg`A website with this name already exists`)
+    : undefined;
 }
 
 type ValidationResult = {
@@ -81,14 +86,17 @@ type ValidationResult = {
 function validateFormState(
   state: WebsiteFormState,
   spaceDataSourceViews: DataSourceViewType[],
+  t: (descriptor: MessageDescriptor) => string,
   currentViewId?: string
 ): ValidationResult {
   const urlValidation = validateUrl(state.url);
   const errors: WebsiteFormState["errors"] = {
     url: !urlValidation.valid
-      ? "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))."
+      ? t(
+          msg`Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c).`
+        )
       : undefined,
-    name: validateFormName(state.name, spaceDataSourceViews, currentViewId),
+    name: validateFormName(state.name, spaceDataSourceViews, t, currentViewId),
   };
   return { isValid: urlValidation.valid && !errors.name, errors };
 }
@@ -133,6 +141,7 @@ export default function SpaceWebsiteModal({
   space,
   canWriteInSpace,
 }: SpaceWebsiteModalProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -185,6 +194,7 @@ export default function SpaceWebsiteModal({
         const result = validateFormState(
           state,
           spaceDataSourceViews,
+          t,
           dataSourceView?.sId
         );
         return { ...state, errors: result.errors };
@@ -215,6 +225,7 @@ export default function SpaceWebsiteModal({
     const validation = validateFormState(
       formState,
       spaceDataSourceViews,
+      t,
       dataSourceView?.sId
     );
     if (!validation.isValid) {
@@ -241,18 +252,22 @@ export default function SpaceWebsiteModal({
         await createWebsite(owner.sId, space.sId, formState.name, config);
       }
       sendNotification({
-        title: `Website ${dataSourceView ? "updated" : "created"}`,
+        title: dataSourceView ? t`Website updated` : t`Website created`,
         type: "success",
-        description: `The website has been successfully ${dataSourceView ? "updated" : "created"}.`,
+        description: dataSourceView
+          ? t`The website has been successfully updated.`
+          : t`The website has been successfully created.`,
       });
       void mutateSpaceDataSourceViews();
       onClose();
       dispatch({ type: "RESET", config: null });
     } catch (err) {
       sendNotification({
-        title: `Error ${dataSourceView ? "updating" : "creating"} website`,
+        title: dataSourceView
+          ? t`Error updating website`
+          : t`Error creating website`,
         type: "error",
-        description: err instanceof Error ? err.message : "An error occurred",
+        description: err instanceof Error ? err.message : t`An error occurred`,
       });
     } finally {
       setIsSaving(false);
@@ -280,14 +295,16 @@ export default function SpaceWebsiteModal({
       onClose();
     } catch (err) {
       sendNotification({
-        title: "Error deleting website",
+        title: t`Error deleting website`,
         type: "error",
-        description: err instanceof Error ? err.message : "An error occurred",
+        description: err instanceof Error ? err.message : t`An error occurred`,
       });
     } finally {
       setIsSaving(false);
     }
   };
+
+  const dataSourceName = dataSourceView?.dataSource.name;
 
   return (
     <Sheet
@@ -301,9 +318,7 @@ export default function SpaceWebsiteModal({
       <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>
-            {dataSourceView
-              ? `Edit ${dataSourceView.dataSource.name}`
-              : "Create a website"}
+            {dataSourceView ? t`Edit ${dataSourceName}` : t`Create a website`}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -326,12 +341,12 @@ export default function SpaceWebsiteModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await handleSubmit();
@@ -359,12 +374,14 @@ function DeleteSection({
   owner,
   dataSource,
 }: DeleteSectionProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex justify-end">
       <Button
         variant="warning"
         icon={Trash01}
-        label="Delete this website"
+        label={t`Delete this website`}
         onClick={() => onOpenChange(true)}
       />
       <DeleteStaticDataSourceDialog

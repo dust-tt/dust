@@ -204,6 +204,7 @@ msgstr "How you appear to other members of the workspace"
 #: front/components/spaces/SpaceCreateAppModal.tsx
 #: front/components/spaces/SpaceFolderModal.tsx
 #: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
 #: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
@@ -542,6 +543,7 @@ msgstr "Go back"
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/me/UserAutomationsTable.tsx
 #: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/pages/spaces/apps/AppViewPage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
@@ -562,6 +564,8 @@ msgstr "Go back"
 #: front/components/spaces/SpaceCreateAppModal.tsx
 #: front/components/spaces/SpaceFolderModal.tsx
 #: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
 #: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 #: front/components/workspace/BulkChangeSeatModal.tsx
@@ -957,6 +961,8 @@ msgstr "Unselect all"
 #: front/components/spaces/SpaceCreateAppModal.tsx
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 #: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/search/columns.tsx
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
 #: front/components/triggers/AdminTriggersList.tsx
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 #: front/components/triggers/WebhookSourceDetailsInfo.tsx
@@ -1037,6 +1043,7 @@ msgid "Error searching results."
 msgstr "Error searching results."
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+#: front/components/spaces/search/columns.tsx
 msgid "Location"
 msgstr "Location"
 
@@ -1861,6 +1868,7 @@ msgid "Try adding more details to your instructions to get better suggestions."
 msgstr "Try adding more details to your instructions to get better suggestions."
 
 #: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
 #: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
 #: front/components/skill_builder/SkillSuggestionCard.tsx
 #: front/components/skill_builder/SuggestedSkillUserFacingDescription.tsx
@@ -2873,6 +2881,7 @@ msgid "More settings available. Type to filter."
 msgstr "More settings available. Type to filter."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/spaces/search/columns.tsx
 msgid "Actions"
 msgstr "Actions"
 
@@ -2906,6 +2915,7 @@ msgid "Group members ({selectedMemberCount})"
 msgstr "Group members ({selectedMemberCount})"
 
 #: front/components/groups/GroupDialog.tsx
+#: front/components/pages/spaces/apps/NewDatasetPage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
@@ -2988,6 +2998,7 @@ msgstr "Group Manager"
 
 #: front/components/groups/WorkspaceGroupsList.tsx
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
 #: front/components/spaces/ContentActions.tsx
@@ -4002,6 +4013,204 @@ msgstr "Archived skills"
 msgid "All availabilities"
 msgstr "All availabilities"
 
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Double checking"
+msgstr "Double checking"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Are you sure you want to delete this app?"
+msgstr "Are you sure you want to delete this app?"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Failed to delete the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
+msgstr "Failed to delete the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Failed to update the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
+msgstr "Failed to update the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "App name"
+msgstr "App name"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Use only a-z, 0-9, - or _. Must be unique."
+msgstr "Use only a-z, 0-9, - or _. Must be unique."
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Description needed to use in Agent Builder - helps agents understand when to use your app."
+msgstr "Description needed to use in Agent Builder - helps agents understand when to use your app."
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+#: front/components/pages/spaces/apps/DatasetPage.tsx
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Update"
+msgstr "Update"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Updating..."
+msgstr "Updating..."
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Deleting..."
+msgstr "Deleting..."
+
+#: front/components/pages/spaces/apps/AppSpecificationPage.tsx
+msgid "Current specifications:"
+msgstr "Current specifications:"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Failed to cancel the run"
+msgstr "Failed to cancel the run"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Specification error: {runErrorMessage}"
+msgstr "Specification error: {runErrorMessage}"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Error: {runErrorMessage}"
+msgstr "Error: {runErrorMessage}"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Canceling..."
+msgstr "Canceling..."
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Running"
+msgstr "Running"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgctxt "button label, verb"
+msgid "Run"
+msgstr "Run"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+msgid "Secrets"
+msgstr "Secrets"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Documentation"
+msgstr "Documentation"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Welcome to your new Dust app."
+msgstr "Welcome to your new Dust app."
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "To get started, add your first block or:"
+msgstr "To get started, add your first block or:"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Follow the quickstart guide"
+msgstr "Follow the quickstart guide"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "Are you sure you want to delete this dataset entirely?"
+msgstr "Are you sure you want to delete this dataset entirely?"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "New dataset"
+msgstr "New dataset"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "No description"
+msgstr "No description"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "Datasets are used as input data to apps (<0/> block) or few-shot examples to prompt models (<1/> block)."
+msgstr "Datasets are used as input data to apps (<0/> block) or few-shot examples to prompt models (<1/> block)."
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "This will revert the app specification to the state it was in when this run was saved ({restoredRunId}). Are you sure?"
+msgstr "This will revert the app specification to the state it was in when this run was saved ({restoredRunId}). Are you sure?"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Viewing run:"
+msgstr "Viewing run:"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Specification hash:"
+msgstr "Specification hash:"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Restore"
+msgstr "Restore"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Restoring..."
+msgstr "Restoring..."
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Latest version"
+msgstr "Latest version"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "tab of the app runs"
+msgid "Design"
+msgstr "Design"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "tab of the app runs"
+msgid "API"
+msgstr "API"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "app run status"
+msgid "running"
+msgstr "running"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "app run status"
+msgid "succeeded"
+msgstr "succeeded"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "app run status"
+msgid "errored"
+msgstr "errored"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Tabs"
+msgstr "Tabs"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgctxt "pagination button"
+msgid "Previous"
+msgstr "Previous"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgctxt "pagination button"
+msgid "Next"
+msgstr "Next"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Showing runs {first} - {last} of {total, plural, one {# run} other {# runs}}"
+msgstr "Showing runs {first} - {last} of {total, plural, one {# run} other {# runs}}"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "({runInputCount, plural, one {# input} other {# inputs}})"
+msgstr "({runInputCount, plural, one {# input} other {# inputs}})"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "No runs found"
+msgstr "No runs found"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Runs triggered from Dust will appear here."
+msgstr "Runs triggered from Dust will appear here."
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Runs triggered by API will appear here."
+msgstr "Runs triggered by API will appear here."
+
 #: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
 msgid "Everything that runs on its own: who set it up, how often it runs, what it costs."
 msgstr "Everything that runs on its own: who set it up, how often it runs, what it costs."
@@ -4392,10 +4601,6 @@ msgid "API keys"
 msgstr "API keys"
 
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
-msgid "Secrets"
-msgstr "Secrets"
-
-#: front/components/pages/workspace/developers/DevelopersPage.tsx
 msgid "Computer environment"
 msgstr "Computer environment"
 
@@ -4490,11 +4695,6 @@ msgstr "Secret values are encrypted and stored securely in our database."
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Type the secret value"
 msgstr "Type the secret value"
-
-#: front/components/pages/workspace/developers/SecretsPage.tsx
-#: front/components/skills/SkillsBatchEdit.tsx
-msgid "Update"
-msgstr "Update"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Search secrets"
@@ -4694,10 +4894,6 @@ msgstr "Embedding models are used to create numerical representations of your da
 #: front/components/triggers/AdminTriggersList.tsx
 msgid "Provider"
 msgstr "Provider"
-
-#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
-msgid "Documentation"
-msgstr "Documentation"
 
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
 msgid "Configure {providerName} API key"
@@ -5541,16 +5737,6 @@ msgstr "From existing"
 msgid "Discoverable skills"
 msgstr "Discoverable skills"
 
-#: front/components/skills/DiscoverableSkillsList.tsx
-msgctxt "pagination button"
-msgid "Previous"
-msgstr "Previous"
-
-#: front/components/skills/DiscoverableSkillsList.tsx
-msgctxt "pagination button"
-msgid "Next"
-msgstr "Next"
-
 #: front/components/skills/RedactedSkillMessage.tsx
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 msgid "Security notice"
@@ -5649,10 +5835,6 @@ msgstr "This skill has been archived."
 #: front/components/skills/SkillDetailsBody.tsx
 msgid "It is no longer active and cannot be used."
 msgstr "It is no longer active and cannot be used."
-
-#: front/components/skills/SkillDetailsBody.tsx
-msgid "Restore"
-msgstr "Restore"
 
 #: front/components/skills/SkillDetailsButtonBar.tsx
 msgid "Try skill"
@@ -6459,6 +6641,7 @@ msgstr "Available to"
 
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 #: front/components/spaces/SpaceTriggersList.tsx
+#: front/components/spaces/search/columns.tsx
 #: front/components/triggers/AdminTriggersList.tsx
 msgid "Last updated"
 msgstr "Last updated"
@@ -6730,6 +6913,66 @@ msgstr "No agents found"
 msgid "Edit website"
 msgstr "Edit website"
 
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Error sending email"
+msgstr "Error sending email"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "An unexpected error occurred while sending email."
+msgstr "An unexpected error occurred while sending email."
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Email sent!"
+msgstr "Email sent!"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Your request was sent to {adminFullName}"
+msgstr "Your request was sent to {adminFullName}"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "An unexpected error occurred while sending the request."
+msgstr "An unexpected error occurred while sending the request."
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Request tool"
+msgstr "Request tool"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Requesting access to {selectedToolName}"
+msgstr "Requesting access to {selectedToolName}"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Requesting access"
+msgstr "Requesting access"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "There are no extra tools set up that you can request access to. Ask an admin to set one up."
+msgstr "There are no extra tools set up that you can request access to. Ask an admin to set one up."
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Which tools you want to get access to?"
+msgstr "Which tools you want to get access to?"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Pick tools"
+msgstr "Pick tools"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "{adminName} is the administrator for the {selectedToolName} tool within Dust. Send an email to {adminName}, explaining your request."
+msgstr "{adminName} is the administrator for the {selectedToolName} tool within Dust. Send an email to {adminName}, explaining your request."
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Hello"
+msgstr "Hello"
+
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+msgid "Send"
+msgstr "Send"
+
+#: front/components/spaces/search/SearchingInSpace.tsx
+msgid "Searching in <0>\"{searchingIn}\"</0>"
+msgstr "Searching in <0>\"{searchingIn}\"</0>"
+
 #: front/components/spaces/spaceCategoryLabels.ts
 msgid "Folders"
 msgstr "Folders"
@@ -6741,6 +6984,192 @@ msgstr "Websites"
 #: front/components/spaces/spaceCategoryLabels.ts
 msgid "Apps"
 msgstr "Apps"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Advanced settings"
+msgstr "Advanced settings"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Custom headers"
+msgstr "Custom headers"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Add custom request headers for the web crawler."
+msgstr "Add custom request headers for the web crawler."
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Header name"
+msgstr "Header name"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Header value"
+msgstr "Header value"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Add header"
+msgstr "Add header"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgctxt "website refresh schedule"
+msgid "Never"
+msgstr "Never"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every day"
+msgstr "Every day"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every week"
+msgstr "Every week"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every month"
+msgstr "Every month"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "{depth, plural, one {# level} other {# levels}}"
+msgstr "{depth, plural, one {# level} other {# levels}}"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Website entry point"
+msgstr "Website entry point"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Enter the address of the website you'd like to index."
+msgstr "Enter the address of the website you'd like to index."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Ensure the website is public"
+msgstr "Ensure the website is public"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Only public websites accessible without authentication will work."
+msgstr "Only public websites accessible without authentication will work."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Indexing settings"
+msgstr "Indexing settings"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Adjust the settings to only index the data you are interested in."
+msgstr "Adjust the settings to only index the data you are interested in."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Crawling strategy"
+msgstr "Crawling strategy"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Do you want to limit to child pages or not?"
+msgstr "Do you want to limit to child pages or not?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Only child pages of the provided URL"
+msgstr "Only child pages of the provided URL"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Follow all the links within the domain"
+msgstr "Follow all the links within the domain"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Refresh schedule"
+msgstr "Refresh schedule"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "How often would you like to check for updates?"
+msgstr "How often would you like to check for updates?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Depth of search"
+msgstr "Depth of search"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "How far from the initial page would you like to go?"
+msgstr "How far from the initial page would you like to go?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Page limit"
+msgstr "Page limit"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "What is the maximum number of pages you'd like to index?"
+msgstr "What is the maximum number of pages you'd like to index?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Maximum pages must be between 1 and {WEBCRAWLER_MAX_PAGES}"
+msgstr "Maximum pages must be between 1 and {WEBCRAWLER_MAX_PAGES}"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Website name cannot be changed."
+msgstr "Website name cannot be changed."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Give a name to this data source."
+msgstr "Give a name to this data source."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Articles"
+msgstr "Articles"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Please provide a name."
+msgstr "Please provide a name."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The name cannot be blank or start with \"managed-\"."
+msgstr "The name cannot be blank or start with \"managed-\"."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "A website with this name already exists"
+msgstr "A website with this name already exists"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)."
+msgstr "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Website updated"
+msgstr "Website updated"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Website created"
+msgstr "Website created"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The website has been successfully updated."
+msgstr "The website has been successfully updated."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The website has been successfully created."
+msgstr "The website has been successfully created."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error updating website"
+msgstr "Error updating website"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error creating website"
+msgstr "Error creating website"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "An error occurred"
+msgstr "An error occurred"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error deleting website"
+msgstr "Error deleting website"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Edit {dataSourceName}"
+msgstr "Edit {dataSourceName}"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Create a website"
+msgstr "Create a website"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Delete this website"
+msgstr "Delete this website"
 
 #: front/components/sparkle/ConversationFontContext.tsx
 msgctxt "conversation font"
@@ -6837,10 +7266,6 @@ msgstr "Choose which events will activate this trigger"
 #: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
 msgid "Select all"
 msgstr "Select all"
-
-#: front/components/triggers/CreateWebhookSourceForm.tsx
-msgid "Advanced settings"
-msgstr "Advanced settings"
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 #: front/components/triggers/WebhookSourceDetailsInfo.tsx

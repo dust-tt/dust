@@ -12,9 +12,11 @@ import { useDatasets } from "@app/lib/swr/datasets";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { classNames } from "@app/lib/utils";
 import { Button, Chip, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext } from "react";
 
 export function DatasetsPage() {
+  const { t } = useLingui();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -42,8 +44,8 @@ export function DatasetsPage() {
 
     if (
       await confirm({
-        title: "Double checking",
-        message: "Are you sure you want to delete this dataset entirely?",
+        title: t`Double checking`,
+        message: t`Are you sure you want to delete this dataset entirely?`,
         validateVariant: "warning",
       })
     ) {
@@ -85,7 +87,7 @@ export function DatasetsPage() {
             <Button
               disabled={readOnly}
               variant="primary"
-              label="New Dataset"
+              label={t`New dataset`}
               icon={Plus}
               onClick={() => {
                 void router.push(
@@ -131,7 +133,7 @@ export function DatasetsPage() {
                             )}
                           >
                             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                            {d.description ? d.description : "No description"}
+                            {d.description ? d.description : t`No description`}
                           </p>
                         </div>
                       </div>
@@ -142,10 +144,12 @@ export function DatasetsPage() {
             </ul>
             <div className="mt-2 px-2">
               <div className="py-2 text-sm text-primary-400">
-                Datasets are used as input data to apps (
-                <Chip label="input" /> block) or few-shot examples to prompt
-                models (
-                <Chip label="data" /> block).
+                <Trans>
+                  Datasets are used as input data to apps (
+                  <Chip label="input" /> block) or few-shot examples to prompt
+                  models (
+                  <Chip label="data" /> block).
+                </Trans>
               </div>
             </div>
           </div>
