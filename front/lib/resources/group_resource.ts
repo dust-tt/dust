@@ -34,6 +34,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
+import type { GroupLimitUsage } from "@app/types/api/groups/group_limit";
 import type { GrantVerb } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
@@ -3546,6 +3547,18 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   // JSON Serialization
+
+  toGroupLimitUsageJSON({
+    usedAwuCredits,
+  }: {
+    usedAwuCredits: number;
+  }): GroupLimitUsage {
+    return {
+      groupId: this.sId,
+      limitAwuCredits: this.groupLimitAwuCredits ?? 0,
+      usedAwuCredits,
+    };
+  }
 
   toJSON(): GroupType {
     return {

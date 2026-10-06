@@ -35,7 +35,6 @@ import {
 import logger from "@app/logger/logger";
 import type {
   GroupLimit,
-  GroupLimitUsage,
   SetGroupLimitResponse,
 } from "@app/types/api/groups/group_limit";
 import { isCapEligibleGroupKind } from "@app/types/groups";
@@ -432,13 +431,13 @@ export async function readGroupLimitCount(
 }
 
 /**
- * Each limited group's limit and usage this cycle, or null when group limits are not enabled. Reads
+ * Each limited group with its usage this cycle, or null when group limits are not enabled. Reads
  * the counters without seeding them; groups whose counter reads 0 are filled from a single
  * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
  */
 export async function getGroupLimitsUsage(
   auth: Authenticator
-): Promise<GroupLimitUsage[] | null> {
+): Promise<{ group: GroupResource; usedAwuCredits: number }[] | null> {
   if (!(await areGroupLimitsEnabled(auth))) {
     return null;
   }
@@ -481,8 +480,7 @@ export async function getGroupLimitsUsage(
   }
 
   return groups.map((group) => ({
-    groupId: group.sId,
-    limitAwuCredits: group.groupLimitAwuCredits ?? 0,
+    group,
     usedAwuCredits: microCreditsToCredits(countByGroupId.get(group.sId) ?? 0),
   }));
 }

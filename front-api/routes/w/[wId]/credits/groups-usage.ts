@@ -14,8 +14,8 @@ app.get(
   async (ctx): HandlerResult<GetGroupsUsageResponseBody> => {
     const auth = ctx.get("auth");
 
-    const groups = await getGroupLimitsUsage(auth);
-    if (groups === null) {
+    const usage = await getGroupLimitsUsage(auth);
+    if (usage === null) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -24,7 +24,11 @@ app.get(
         },
       });
     }
-    return ctx.json({ groups });
+    return ctx.json({
+      groups: usage.map(({ group, usedAwuCredits }) =>
+        group.toGroupLimitUsageJSON({ usedAwuCredits })
+      ),
+    });
   }
 );
 
