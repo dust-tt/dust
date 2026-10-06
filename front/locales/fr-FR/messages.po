@@ -478,6 +478,14 @@ msgid "View profile"
 msgstr "Voir le profil"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Use skill"
+msgstr "Utiliser la compétence"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this skill to your message"
+msgstr "Ajouter cette compétence à votre message"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Go"
 msgstr "Accéder"
 

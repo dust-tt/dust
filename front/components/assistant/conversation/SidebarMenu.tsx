@@ -428,8 +428,7 @@ export function AgentSidebarMenu({
   const moveConversationToPod = useMoveConversationToPod(owner);
   const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
   const { hasFeature } = useFeatureFlags();
-  // The extension (the only hideActions caller) mounts no command palette.
-  const hasUnifiedSearch = hasFeature("unified_search") && !hideActions;
+  const hasUnifiedSearch = hasFeature("unified_search");
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);

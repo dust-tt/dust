@@ -256,9 +256,11 @@ function useCommandPaletteConversations({
 function useCommandPaletteSettings({
   isOpen,
   trimmedQuery,
+  hideSettings,
 }: {
   isOpen: boolean;
   trimmedQuery: string;
+  hideSettings: boolean;
 }): {
   settings: CommandPaletteSetting[];
   hasMoreSettings: boolean;
@@ -274,7 +276,7 @@ function useCommandPaletteSettings({
   } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
-  const canSearchSettings = isAdminUser;
+  const canSearchSettings = isAdminUser && !hideSettings;
   const isSearchActive = isOpen && trimmedQuery.length > 0;
 
   const menusByPageId = useMemo(() => {
@@ -347,11 +349,13 @@ export function useCommandPaletteSearch({
   isOpen,
   searchQuery,
   currentUserId,
+  hideSettings,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
   searchQuery: string;
   currentUserId: string;
+  hideSettings: boolean;
 }) {
   const trimmedQuery = searchQuery.trim();
   const isSearchActive =
@@ -379,7 +383,11 @@ export function useCommandPaletteSearch({
     trimmedQuery,
     currentUserId,
   });
-  const settings = useCommandPaletteSettings({ isOpen, trimmedQuery });
+  const settings = useCommandPaletteSettings({
+    isOpen,
+    trimmedQuery,
+    hideSettings,
+  });
 
   // Below the minimum (including empty): no search results. Empty query uses
   // frecency / default actions in the UI instead.

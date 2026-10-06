@@ -1,4 +1,5 @@
 import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import type {
@@ -8,6 +9,7 @@ import type {
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import type {
+  CommandPaletteActionOptions,
   CommandPaletteFilter,
   CommandPaletteItem,
 } from "@app/components/command_palette/CommandPaletteSearchPhase";
@@ -33,18 +35,42 @@ import {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const MAX_FREQUENT_ITEMS = 5;
 
 interface CommandPaletteProps {
   owner: LightWorkspaceType;
   user: UserType;
+  /** Hide the Settings category and results. */
+  hideSettings?: boolean;
+  /** Agents get no actions phase: selecting one only starts a conversation. */
+  hideAgentActions?: boolean;
+  /** Skills get no actions phase: selecting one only adds it to the message. */
+  hideSkillActions?: boolean;
+  /** Members get no actions phase: selecting one only starts a conversation. */
+  hideMemberActions?: boolean;
 }
 
-export function CommandPalette({ owner, user }: CommandPaletteProps) {
+export function CommandPalette({
+  owner,
+  user,
+  hideSettings = false,
+  hideAgentActions = false,
+  hideSkillActions = false,
+  hideMemberActions = false,
+}: CommandPaletteProps) {
   const { isOpen, close, initialCategory } = useCommandPalette();
   const router = useAppRouter();
+  const { setPendingSkill } = useContext(InputBarContext);
+  const actionOptions = useMemo(
+    (): CommandPaletteActionOptions => ({
+      hideAgentActions,
+      hideSkillActions,
+      hideMemberActions,
+    }),
+    [hideAgentActions, hideSkillActions, hideMemberActions]
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [phase, setPhase] = useState<"search" | "action">("search");
@@ -81,6 +107,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     isOpen,
     searchQuery,
     currentUserId: user.sId,
+    hideSettings,
   });
 
   const podId = useActivePodId();
@@ -121,6 +148,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const executeAction = useCallback(
     (item: CommandPaletteItem, action: CommandPaletteAction) => {
       switch (action) {
+        case "use_skill":
+          close();
+          if (item.kind === "skill") {
+            setPendingSkill(item.skill);
+          }
+          break;
         case "chat_with_in_pod":
           close();
           if (item.kind === "agent") {
@@ -205,7 +238,15 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           assertNever(action);
       }
     },
-    [close, router, owner.sId, podId, starPod, updateUserFavorite]
+    [
+      close,
+      router,
+      owner.sId,
+      podId,
+      setPendingSkill,
+      starPod,
+      updateUserFavorite,
+    ]
   );
 
   // Enter / row click: run the item's default action.
@@ -272,7 +313,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           executeAction(item, "chat_with");
           break;
         case "skill":
-          executeAction(item, "view_details");
+          executeAction(item, "use_skill");
           break;
         default:
           assertNever(item);
@@ -284,7 +325,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // Right arrow / row chevron: open the actions phase when the item has one.
   const handleOpenActions = useCallback(
     (item: CommandPaletteItem) => {
-      if (!commandPaletteItemHasActions(item)) {
+      if (!commandPaletteItemHasActions(item, actionOptions)) {
         return;
       }
 
@@ -292,7 +333,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       setSelectedItem(item);
       setPhase("action");
     },
-    [visitItem]
+    [actionOptions, visitItem]
   );
 
   const handleBack = useCallback(() => {
@@ -363,6 +404,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               hasMoreSkills={hasMoreSkills}
               hasMoreSettings={hasMoreSettings}
               canSearchSettings={canSearchSettings}
+              actionOptions={actionOptions}
               selectedCategory={selectedCategory}
               onSelectedCategoryChange={setSelectedCategory}
               isLoading={isLoading}
