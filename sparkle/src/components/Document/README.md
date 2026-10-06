@@ -6,6 +6,11 @@ typography, and debounced save lifecycle.
 It uses Tailwind utilities and Sparkle tokens through the standard Sparkle
 stylesheet, with no separate Document stylesheet.
 
+Hover a block to reveal its left gutter handle. Drag it to reorder whole blocks, including
+lists and custom visuals, or click it to select the block for copying or cutting. Moves keep
+attached comments and use the normal undo, redo and autosave behavior. Read-only documents
+hide the handle.
+
 Pass `initialContent` as Markdown (the default) or serialized TipTap document JSON
 with `contentType="json"`. Supply `onSave` to enable editing. Saves return JSON by
 default, independently of the input format. Set `saveFormat="markdown"` to receive
