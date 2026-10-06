@@ -16,7 +16,7 @@ without suppressing entries accessible through the main tree. No exclusive tenan
   state in the client overlay and each FDB transaction. Reads MUST NOT mix block revisions or expose
   old tails after truncate/re-extension. Separate calls need not observe the same state.
 - **Bounded freshness:** client write buffering and read/authorization caching MUST share one
-  `MAX_EVENTUAL_CONSISTENCY_DELAY_MS = 1000` budget. Server processing and network delays are
+  `MAX_EVENTUAL_CONSISTENCY_DELAY_MS = 2000` budget. Server processing and network delays are
   excluded. Hits and subsequent writes MUST NOT renew the client budget.
 - **Minimal transactions:** independent objects MUST NOT share a write transaction merely because
   they share a tenant, parent, or network request. Namespace operations coordinate their explicit
@@ -36,13 +36,13 @@ server processing, FDB transactions/retries, and network delays are entirely out
 
 | Budget | Initial value |
 | --- | ---: |
-| Client write buffering before dispatch (`W`) | 500 ms |
-| Client read/authorization cache validity (`C`) | 500 ms |
-| Total client-added delay `W + C <= D` | 1000 ms |
+| Client write buffering before dispatch (`W`) | 1000 ms |
+| Client read/authorization cache validity (`C`) | 1000 ms |
+| Total client-added delay `W + C <= D` | 2000 ms |
 
-Giving the writing client's buffer and the reading client's cache separate 1s budgets would permit
-roughly 2s of client-added staleness. Start dispatch after a short **25 ms coalescing window**, earlier
-on pressure or fsync; `W` bounds client-controlled coalescing and scheduling, not commit latency.
+The writing client's 1s buffer and the reading client's 1s cache allow up to 2s of client-added
+staleness. Start dispatch after a short **25 ms coalescing window**, earlier on pressure or fsync.
+`W` bounds client-controlled coalescing and scheduling, not commit latency.
 Measure it from the oldest remaining accepted edit, without resetting it when more edits arrive.
 Waiting for an in-flight prerequisite RPC is excluded; dispatch as soon as that prerequisite completes
 once the coalescing window has elapsed. Apply backpressure before RAM acknowledgment when capacity
@@ -53,7 +53,7 @@ Cache hits, later use of prefetched entries, and block fills do not restart that
 authorization refresh together against current FDB state. An unchanged file revision does not prove
 that ancestor grants or parent links are unchanged. Session expiry also caps cached access.
 
-There is no 1s acceptance-to-commit deadline or wall-clock convergence promise: total visibility delay
+There is no 2s acceptance-to-commit deadline or wall-clock convergence promise: total visibility delay
 also includes server and network time. An RPC exceeding `W` or `D` is not itself a freshness failure.
 Use independent RPC timeouts for stalled requests; on failure, invalidate affected tentative overlays
 and retain deferred errors. A timeout cannot cancel an already submitted commit, whose outcome may
