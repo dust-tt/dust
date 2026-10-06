@@ -27,6 +27,7 @@ impl Api {
         F: FnOnce(Arc<State>) -> Fut + Send + 'static,
         Fut: Future<Output = Result<T>> + Send + 'static,
     {
+        let admission_wait = Guard::new(Phase::Admission);
         let permit = self
             .0
             .admission
@@ -34,6 +35,7 @@ impl Api {
             .acquire_owned()
             .await
             .map_err(|_| status(ErrorCode::Capacity))?;
+        drop(admission_wait);
         let state = self.0.clone();
         let value = tokio::spawn(async move {
             let _permit = permit;
@@ -109,7 +111,9 @@ async fn apply_group(
         .ok_or_else(|| status(ErrorCode::InvalidInput))?;
     validate::id_ref(first.primary_id())?;
     let scheduling = state.schedule(&session.info.tenant_id, first.primary_id());
+    let parent_wait = Guard::new(Phase::Parent);
     let _scheduled = scheduling.lock().await;
+    drop(parent_wait);
     let _gate = session.gate.read().await;
     let result = state
         .storage
@@ -453,6 +457,7 @@ impl Dfs for Api {
             return Err(status(ErrorCode::InvalidInput));
         }
         let (tx, rx) = tokio::sync::mpsc::channel(64);
+        let received = std::time::Instant::now();
         let api = self.clone();
         tokio::spawn(async move {
             let tasks = futures::stream::iter(request.groups)
@@ -460,6 +465,7 @@ impl Dfs for Api {
                     let api = api.clone();
                     let session = session.clone();
                     async move {
+                        crate::profile::record(Phase::BatchQueue, received.elapsed());
                         let id = group.id;
                         let result = match changes(group) {
                             Ok(edits) => api

@@ -4,7 +4,7 @@ use std::{
         OnceLock,
         atomic::{AtomicU64, Ordering},
     },
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 struct Metric {
@@ -12,6 +12,8 @@ struct Metric {
     nanos: AtomicU64,
     items: AtomicU64,
     max_items: AtomicU64,
+    active: AtomicU64,
+    max_active: AtomicU64,
 }
 impl Metric {
     const fn new() -> Self {
@@ -20,6 +22,8 @@ impl Metric {
             nanos: AtomicU64::new(0),
             items: AtomicU64::new(0),
             max_items: AtomicU64::new(0),
+            active: AtomicU64::new(0),
+            max_active: AtomicU64::new(0),
         }
     }
 }
@@ -36,10 +40,12 @@ phases! {
     Create => "rpc.create", Update => "rpc.update",
     Rename => "rpc.rename", Remove => "rpc.remove", Write => "rpc.write",
     Batch => "rpc.mutate_group",
+    BatchQueue => "wait.batch", Admission => "wait.admission", Parent => "wait.parent",
     Prefetch => "read.prefetch", Object => "read.object", Authorize => "read.authorize",
     Child => "read.child", Collision => "read.collision", Block => "read.block",
     FdbVersion => "fdb.read_version", FdbGet => "fdb.get", FdbRange => "fdb.range",
     FdbCommit => "fdb.commit",
+    FdbTransaction => "fdb.transaction", FdbRetry => "fdb.retry_backoff",
 }
 fn enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
@@ -56,9 +62,15 @@ pub(crate) struct Guard {
 }
 impl Guard {
     pub fn new(phase: Phase) -> Self {
+        let start = enabled().then(Instant::now);
+        if start.is_some() {
+            let metric = &METRICS[phase as usize];
+            let active = metric.active.fetch_add(1, Ordering::Relaxed) + 1;
+            metric.max_active.fetch_max(active, Ordering::Relaxed);
+        }
         Self {
             phase,
-            start: enabled().then(Instant::now),
+            start,
             items: 0,
         }
     }
@@ -67,6 +79,7 @@ impl Drop for Guard {
     fn drop(&mut self) {
         if let Some(start) = self.start {
             let metric = &METRICS[self.phase as usize];
+            metric.active.fetch_sub(1, Ordering::Relaxed);
             metric.calls.fetch_add(1, Ordering::Relaxed);
             metric
                 .nanos
@@ -76,6 +89,15 @@ impl Drop for Guard {
                 .max_items
                 .fetch_max(self.items as u64, Ordering::Relaxed);
         }
+    }
+}
+pub(crate) fn record(phase: Phase, elapsed: Duration) {
+    if enabled() {
+        let metric = &METRICS[phase as usize];
+        metric.calls.fetch_add(1, Ordering::Relaxed);
+        metric
+            .nanos
+            .fetch_add(elapsed.as_nanos() as u64, Ordering::Relaxed);
     }
 }
 pub(crate) fn report() {
@@ -93,6 +115,8 @@ pub(crate) fn report() {
                     "elapsed_ms": metric.nanos.load(Ordering::Relaxed) as f64 / 1_000_000.0,
                     "items": metric.items.load(Ordering::Relaxed),
                     "max_items": metric.max_items.load(Ordering::Relaxed),
+                    "active": metric.active.load(Ordering::Relaxed),
+                    "max_active": metric.max_active.load(Ordering::Relaxed),
                 }),
             )
         })

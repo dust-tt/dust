@@ -16,12 +16,14 @@ struct Operation {
 struct Receipt {
     id: u64,
     result: watch::Sender<Option<std::result::Result<(), ErrorCode>>>,
+    completed: std::sync::OnceLock<Instant>,
 }
 impl Receipt {
     fn new(id: u64) -> Arc<Self> {
         Arc::new(Self {
             id,
             result: watch::channel(None).0,
+            completed: Default::default(),
         })
     }
     async fn wait(&self) -> Result<()> {
@@ -44,8 +46,10 @@ struct Group {
     operations: Vec<Arc<Operation>>,
     dependencies: Vec<Arc<Receipt>>,
     receipt: Arc<Receipt>,
+    accepted: Instant,
     ready: Instant,
     forced: bool,
+    forced_at: Option<Instant>,
     inflight: bool,
     dispatched: Option<Instant>,
     cost: usize,
@@ -75,6 +79,7 @@ pub(super) struct Pending {
     sync_errors: HashMap<String, ErrorCode>,
     next: u64,
     retired: std::collections::VecDeque<String>,
+    envelope_wait: Option<Instant>,
 }
 impl Pending {
     pub fn names(&self, parent: &str) -> impl Iterator<Item = &str> {
@@ -201,6 +206,7 @@ impl Pending {
             }
             if let Some(group) = self.groups.get_mut(&receipt.id) {
                 group.forced = true;
+                group.forced_at.get_or_insert_with(Instant::now);
                 stack.extend(group.dependencies.iter().cloned());
             }
         }
@@ -243,6 +249,7 @@ impl CachedClient {
                     .values_mut()
                     .map(|g| {
                         g.forced = true;
+                        g.forced_at.get_or_insert_with(Instant::now);
                         g.receipt.clone()
                     })
                     .collect::<Vec<_>>()
@@ -825,8 +832,10 @@ impl Inner {
                 })],
                 dependencies: dependencies.into_values().collect(),
                 receipt: receipt.clone(),
+                accepted: received,
                 ready: received + Duration::from_millis(self.config.write_delay_ms),
                 forced: false,
+                forced_at: None,
                 inflight: false,
                 dispatched: None,
                 cost: edit_cost(&edit),
@@ -945,6 +954,16 @@ impl Inner {
             }
         }
         let Ok(permit) = self.write_slots.clone().try_acquire_owned() else {
+            let mut pending = self.pending.lock();
+            if pending.groups.values().any(|g| {
+                !g.inflight
+                    && (g.forced || Instant::now() >= g.ready)
+                    && g.dependencies
+                        .iter()
+                        .all(|d| matches!(*d.result.borrow(), Some(Ok(()))))
+            }) {
+                pending.envelope_wait.get_or_insert_with(Instant::now);
+            }
             return;
         };
         let mut failed = Vec::new();
@@ -952,6 +971,10 @@ impl Inner {
         let mut bytes = 0;
         {
             let mut pending = self.pending.lock();
+            if let Some(started) = pending.envelope_wait.take() {
+                self.rpc
+                    .record("writeback.envelope_blocked", started.elapsed(), false);
+            }
             // Avoid self-contention without coupling receipts or fsync to a parent queue. Forced
             // groups bypass this preference; independent clients remain arbitrated by FDB.
             let mut busy: BTreeSet<_> = pending
@@ -1001,7 +1024,30 @@ impl Inner {
                 }
                 bytes += group.bytes;
                 group.inflight = true;
-                group.dispatched = Some(Instant::now());
+                let dispatched = Instant::now();
+                let dependencies_done = group
+                    .dependencies
+                    .iter()
+                    .filter_map(|d| d.completed.get())
+                    .copied()
+                    .max()
+                    .unwrap_or(group.accepted)
+                    .max(group.accepted);
+                let eligible = group
+                    .forced_at
+                    .map_or(group.ready, |t| t.min(group.ready))
+                    .max(dependencies_done);
+                self.rpc.record(
+                    "writeback.ready_queue",
+                    dispatched.saturating_duration_since(eligible),
+                    false,
+                );
+                self.rpc.record(
+                    "writeback.dependencies",
+                    dependencies_done.duration_since(group.accepted),
+                    false,
+                );
+                group.dispatched = Some(dispatched);
                 busy.extend(group.participants.iter().cloned());
                 groups.push(MutationGroup {
                     id: group.id,
@@ -1178,6 +1224,7 @@ impl Inner {
                 );
             }
         }
+        let _ = group.receipt.completed.set(Instant::now());
         group.receipt.result.send_replace(Some(result.map(|_| ())));
         drop(pending);
         self.changed.notify_one();

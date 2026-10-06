@@ -91,10 +91,13 @@ impl Storage {
     {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         for attempt in 0..1024 {
+            let transaction_time = Guard::new(Phase::FdbTransaction);
             let snapshot = self.snapshot().await?;
             let (batch, result) = operation(snapshot.clone()).await?;
             batch.apply(&snapshot)?;
-            match commit(snapshot).await {
+            let outcome = commit(snapshot).await;
+            drop(transaction_time);
+            match outcome {
                 Ok(_) => return Ok(result),
                 Err(e)
                     if e.is_retryable_not_committed()
@@ -103,6 +106,7 @@ impl Storage {
                 {
                     // Concurrent creates share a parent. Jitter avoids retrying their conflicts in lockstep.
                     let jitter = 1 + (uuid::Uuid::new_v4().as_u128() % 8) as u64;
+                    let _backoff = Guard::new(Phase::FdbRetry);
                     tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;
                 }
                 Err(e) => {
