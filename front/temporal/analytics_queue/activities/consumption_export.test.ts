@@ -86,7 +86,12 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   step_index: 0,
   trigger_id: null,
   usage_type: "user",
-  user: { id: "user1", group_ids: ["group1"], seat_type: "pro" },
+  user: {
+    id: "user1",
+    group_ids: ["group1"],
+    seat_type: "pro",
+    limit_group_id: null,
+  },
   consumption_type: "llm",
   gross_credit_micro: {
     system: 100_000,
