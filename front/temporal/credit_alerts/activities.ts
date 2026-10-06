@@ -1,7 +1,8 @@
-import { sendCreditUsageAlertEmail } from "@app/lib/api/email";
 import { expireUserSpendLimitOverride } from "@app/lib/api/users/spend_limit";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { notifyAdminsCreditUsageAlert } from "@app/lib/notifications/triggers/credit-usage-alert";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -47,14 +48,16 @@ export async function sendCreditAlertEmailActivity({
     (totalConsumedMicroUsd / totalInitialMicroUsd) * 100
   );
 
-  for (const admin of admins) {
-    await sendCreditUsageAlertEmail({
-      email: admin.email,
-      workspace,
-      percentUsed,
-      totalInitialMicroUsd,
-      totalConsumedMicroUsd,
-    });
+  const result = await notifyAdminsCreditUsageAlert({
+    admins: admins.map(emailRecipientFromUser),
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
+    percentUsed,
+    totalInitialMicroUsd,
+    totalConsumedMicroUsd,
+  });
+  if (result.isErr()) {
+    throw result.error;
   }
 
   logger.info(

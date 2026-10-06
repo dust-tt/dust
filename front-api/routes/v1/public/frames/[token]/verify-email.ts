@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/share/frame_sharing";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
-import { auditLog } from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -42,7 +42,7 @@ app.post(
       return ctx.json({ success: true });
     }
 
-    const { file, shareScope } = result.value;
+    const { file, shareScope, workspace } = result.value;
 
     // Only email-based scopes require OTP — return 200 to prevent scope enumeration.
     if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
@@ -73,11 +73,19 @@ app.post(
       });
     }
 
-    await sendFrameOtpEmail({
+    const sendResult = await sendFrameOtpEmail({
       to: email,
       code: otpResult.value.code,
       sharedByName: activeGrant.grantingUser?.fullName() ?? "Someone",
+      workspace,
     });
+    if (sendResult.isErr()) {
+      // Still 200 to prevent enumeration.
+      logger.error(
+        { error: sendResult.error, fileId: file.sId },
+        "Failed to send frame login code email"
+      );
+    }
 
     return ctx.json({ success: true });
   }
