@@ -37,6 +37,19 @@ export type PinnedDiscoveryItemInput = {
   position: number;
 };
 
+type LoadedDiscoveryTargets = {
+  agentsById: Map<string, AgentResource>;
+  skillsById: Map<string, SkillResource>;
+  skillEditorsById: Map<string, UserResource[]>;
+  agentMetadataById: Map<
+    string,
+    {
+      lastAuthors: readonly string[];
+      userFavorite: boolean;
+    }
+  >;
+};
+
 export type ResolvedDiscoveryItem =
   | {
       type: "agent";
@@ -95,7 +108,7 @@ function resolvedDiscoveryItem(
     skillsById,
     skillEditorsById,
     agentMetadataById,
-  }: Awaited<ReturnType<typeof DiscoveryItemResource.loadTargets>>
+  }: LoadedDiscoveryTargets
 ): ResolvedDiscoveryItem | null {
   switch (pin.type) {
     case "agent": {
@@ -205,18 +218,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     auth: Authenticator,
     items: Array<{ type: GroupPinnedItemType; itemId: string }>,
     { bypassEditorVisibility }: { bypassEditorVisibility: boolean }
-  ): Promise<{
-    agentsById: Map<string, AgentResource>;
-    skillsById: Map<string, SkillResource>;
-    skillEditorsById: Map<string, UserResource[]>;
-    agentMetadataById: Map<
-      string,
-      {
-        lastAuthors: readonly string[];
-        userFavorite: boolean;
-      }
-    >;
-  }> {
+  ): Promise<LoadedDiscoveryTargets> {
     if (bypassEditorVisibility && !auth.isAdmin()) {
       throw new Error("Only admins can bypass editor visibility.");
     }
