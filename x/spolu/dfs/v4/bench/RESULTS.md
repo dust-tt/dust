@@ -205,7 +205,7 @@ TTL, transaction scheduling and server binary remain unchanged. Same deep 10k-fi
 Tar returns **25% sooner**; total completion is essentially unchanged in these single runs. More work
 is buffered, with the remaining foreground wait at the **4,096-group queue limit**. Every edit currently
 reserves a group slot before deciding whether it can coalesce, so this counter includes both new and
-merged edits. The scheduling/throughput work is proposed in [PLAN.md](../PLAN.md#4-transaction-throughput--proposed),
+merged edits. The scheduling/throughput work is proposed in [PLAN.md](../PLAN.md#4-transaction-throughput),
 not implemented in this measurement. Unmount including drain took 13.991s.
 
 There were 750 RPCs: 613 mutation batches carrying 10,114 independent groups, 81 Stat, 32 Lookup,
@@ -258,6 +258,27 @@ v4/local/run exec cargo build --workspace --release
 v4/local/run exec cargo build --workspace --examples --release
 v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=b9f56a195e python3 /dfs/v4/bench/groups.py
 ```
+
+### Independent-group scheduling
+
+Same instrumented 10k corpus and shared 1 GiB budget. Revision `ab57bf94ff` separates queued groups
+from active transactions, starts all bounded batch groups, rotates ready parents, releases client
+capacity per outcome, and reserves queue slots only for new groups.
+
+| Configuration | Untar (s) | Remaining drain (s) | Total (s) |
+| --- | ---: | ---: | ---: |
+| Instrumented control | 16.803 | 15.427 | 32.230 |
+| Scheduler, 32 in-flight groups | 6.126 | 5.728 | 11.854 |
+| Scheduler, 64 in-flight groups | 5.675 | 5.549 | 11.224 |
+| Scheduler, 128 in-flight groups | 5.277 | 4.898 | 10.175 |
+
+Use **128 groups** by default; envelope, byte and total memory bounds still apply. These are individual
+runs, not confidence intervals. At 64 groups, queue-slot waiting fell to 0.303s, peak FDB attempts rose
+from 4 to 10, and retries fell from 331 to 59. The separate direct-gRPC diagnostic took 10.475s with one
+parent and 0.354s with 64 parents (195 / 5,786 groups/s); all files verified. A single hot parent still
+serializes locally, while independent parents have substantial capacity.
+
+Reports: `/tmp/dfs-v4-ab57bf94ff-{scheduling,flight32,flight128,groups}/run.json`.
 
 ## Comparison with v3
 

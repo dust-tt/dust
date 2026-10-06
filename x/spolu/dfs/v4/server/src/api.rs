@@ -122,6 +122,7 @@ impl Api {
 /// @cc [owner:spolu,label:backend;concurrency] one-group-one-commit
 /// Each group MUST commit independently after transactional authorization of every edit. Its response
 /// MUST carry revisions actually written by that commit. Failed groups MUST publish no partial state.
+/// Speculative collision reads MUST stay in this transaction and preserve validation/error ordering.
 async fn apply_group(
     state: Arc<State>,
     session: Arc<auth::SessionState>,
@@ -158,15 +159,24 @@ async fn apply_group(
                 let first = changes
                     .first()
                     .ok_or_else(|| status(ErrorCode::InvalidInput))?;
-                let view = View::prefetch(
+                let prefetch = View::prefetch(
                     snapshot.clone(),
                     &session.info.tenant_id,
                     session.grants.clone(),
                     first.primary_id(),
                     first.child_name(),
                     ancestry,
-                )
-                .await?;
+                );
+                let collision = async {
+                    if let Change::Create(request) = first
+                        && let Ok(key) = Keys::new(&session.info.tenant_id)
+                            .and_then(|keys| keys.object(&request.object_id))
+                    {
+                        let _ = snapshot.peek(key).await;
+                    }
+                };
+                let (view, _) = tokio::join!(prefetch, collision);
+                let view = view?;
                 let mut result = Mutation::default();
                 let mut related = BTreeSet::new();
                 let mut bytes = 0;

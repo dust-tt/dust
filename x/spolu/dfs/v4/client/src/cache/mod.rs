@@ -38,7 +38,7 @@ pub struct CacheConfig {
     pub cache_ttl_ms: u64,
     #[arg(long, env = "DFS_CLIENT_WRITE_DELAY_MS", default_value_t = 25)]
     pub write_delay_ms: u64,
-    #[arg(long, env = "DFS_CLIENT_WRITE_CONCURRENCY", default_value_t = 64)]
+    #[arg(long, env = "DFS_CLIENT_WRITE_CONCURRENCY", default_value_t = 128)]
     pub write_concurrency: usize,
 }
 impl Default for CacheConfig {
@@ -47,7 +47,7 @@ impl Default for CacheConfig {
             cache_mib: 1024,
             cache_ttl_ms: 1000,
             write_delay_ms: 25,
-            write_concurrency: 64,
+            write_concurrency: 128,
         }
     }
 }

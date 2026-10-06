@@ -508,8 +508,87 @@ fn real_fdb_contracts() -> Result<()> {
         assert!(conflict.is_retryable_not_committed());
         client_cache_contracts().await?;
         independent_batch_scheduling().await?;
+        prefetched_collision().await?;
         Ok(())
     })
+}
+
+async fn prefetched_collision() -> Result<()> {
+    let f = Fixture::new().await?;
+    let a = f.create(&f.tenant.root_id, "a", true).await?;
+    let b = f.create(&f.tenant.root_id, "b", true).await?;
+    let id = uuid::Uuid::new_v4().simple().to_string();
+    let create = |parent: &str| CreateRequest {
+        object_id: id.clone(),
+        parent_id: parent.into(),
+        name: "file".into(),
+        mode: 0o644,
+        ..Default::default()
+    };
+    let snapshot = f.api.0.storage.snapshot().await?;
+    let view = read::View::prefetch(
+        snapshot.clone(),
+        &f.tenant.tenant_id,
+        ["owner".into()].into(),
+        &a.id,
+        Some("file"),
+        f.api.0.ancestry.clone(),
+    )
+    .await?;
+    assert!(snapshot.peek(view.keys.object(&id)?).await?.is_none());
+    let (edit, _) = view.create(create(&a.id)).await?;
+    edit.batch.apply(&snapshot)?;
+    drop(view);
+    f.api
+        .create(request(&f.owner.session_key, create(&b.id))?)
+        .await?;
+    let conflict = storage::commit(snapshot)
+        .await
+        .err()
+        .context("prefetched UUID absence must remain conflict-tracked")?;
+    assert!(conflict.is_retryable_not_committed());
+
+    let unauthorized = Fixture::session(&f.api, &f.tenant, &[]).await?;
+    for (key, expected) in [
+        (&f.owner.session_key, ErrorCode::AlreadyExists),
+        (&unauthorized.session_key, ErrorCode::NotFound),
+    ] {
+        let error = f
+            .api
+            .create(request(key, create(&a.id))?)
+            .await
+            .err()
+            .context("collision must not replace or disclose an existing object")?;
+        assert_eq!(code(&error), expected);
+    }
+    let absent = f
+        .api
+        .lookup(request(
+            &f.owner.session_key,
+            LookupRequest {
+                parent_id: a.id,
+                name: "file".into(),
+            },
+        )?)
+        .await
+        .err()
+        .context("losing create must leave no name binding")?;
+    assert_eq!(code(&absent), ErrorCode::NotFound);
+    assert_eq!(
+        f.api
+            .lookup(request(
+                &f.owner.session_key,
+                LookupRequest {
+                    parent_id: b.id,
+                    name: "file".into(),
+                }
+            )?)
+            .await?
+            .into_inner()
+            .id,
+        id
+    );
+    Ok(())
 }
 
 async fn independent_batch_scheduling() -> Result<()> {

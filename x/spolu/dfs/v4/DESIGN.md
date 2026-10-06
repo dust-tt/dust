@@ -162,7 +162,7 @@ Background dispatch prefers disjoint object sets to avoid this client's own FDB 
 and the oldest edit's buffering deadline bypass that preference; it creates no dependency between
 sibling files. Rotate ready groups across primary objects. Independent clients still contend in FDB.
 Bound the queue to 4,096 groups; coalescing into an existing group needs no additional queue slot.
-Allow 64 in-flight groups (configurable 1–128), releasing capacity on each outcome, with at most 16
+Allow 128 in-flight groups (configurable 1–128), releasing capacity on each outcome, with at most 16
 envelopes of 32 groups / 1 MiB each. A slow envelope tail must not occupy already-completed group slots.
 Only known noncommits retry, with bounded jitter, never uncertain outcomes.
 

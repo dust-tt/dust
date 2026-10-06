@@ -41,12 +41,10 @@ writeback, weaker durability or FDB consistency tuning in this work.
 - [x] **Locate serialization.** Measure client ready-queue/envelope waits, server batch/admission/parent
   waits, active FDB transactions, read/commit time and retries. Compare one busy directory with several
   directories; current aggregate group timings include queuing and cannot separate these costs.
-- [ ] **Keep independent work running.** Stop parent-lock waiters consuming transaction permits and
-  filling each batch's 16-worker window. Schedule ready groups across parents fairly; refill client
-  capacity as groups complete instead of letting slow envelope tails limit new work. Keep explicit
-  group/byte/RPC bounds. The shared-memory run spends 10.121s at the 4,096-group queue limit: acquire
-  slots only for new groups (currently every edit reserves one before checking coalescing), and
-  distinguish queue-capacity changes from throughput wins. Sweep concurrency after measuring occupancy.
+- [x] **Keep independent work running.** Parent waiters stay outside transaction admission; bounded
+  batches start all groups, ready groups rotate across parents, and capacity returns per outcome.
+  Only new groups reserve queue slots. A 32/64/128-group sweep selected 128: total deep 10k completion
+  fell from 32.230s to 10.175s. Tests stall a parent/batch tail while unrelated work and fsync complete.
 - [ ] **Shorten each create transaction.** Start the new UUID collision read alongside the existing
   ancestry/name prefetch, and remove measured sequential/duplicate reads. Keep all authority and
   uniqueness checks in the same FDB transaction; no root-specific shortcuts.
