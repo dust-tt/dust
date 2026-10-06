@@ -49,18 +49,18 @@ describe("DiscoveryItemResource", () => {
     skillId = skill.sId;
   });
 
-  it.each([
-    "user",
-    "manager",
-  ] as const)("rejects an editor-visibility bypass for a %s", async (role) => {
-    const setup = await createResourceTest({ role });
+  it.each(["user", "manager"] as const)(
+    "rejects an editor-visibility bypass for a %s",
+    async (role) => {
+      const setup = await createResourceTest({ role });
 
-    await expect(
-      DiscoveryItemResource.loadTargets(setup.authenticator, [], {
-        bypassEditorVisibility: true,
-      })
-    ).rejects.toThrow("Only admins can bypass editor visibility.");
-  });
+      await expect(
+        DiscoveryItemResource.loadTargets(setup.authenticator, [], {
+          bypassEditorVisibility: true,
+        })
+      ).rejects.toThrow("Only admins can bypass editor visibility.");
+    }
+  );
 
   it("sets pins independently and lists them by position", async () => {
     await DiscoveryItemResource.setPinnedForGroup(auth, {
