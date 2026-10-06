@@ -322,8 +322,7 @@ const config = {
     return port;
   },
   getCollabServerPort: (): number => {
-    const value =
-      EnvironmentConfig.getOptionalEnvVariable("COLLAB_PORT") ?? "3010";
+    const value = EnvironmentConfig.getEnvVariable("COLLAB_PORT");
     const port = Number.parseInt(value, 10);
 
     if (Number.isNaN(port) || port <= 0) {
@@ -333,9 +332,7 @@ const config = {
     return port;
   },
   getCollabServerHostname: (): string => {
-    return (
-      EnvironmentConfig.getOptionalEnvVariable("COLLAB_HOSTNAME") ?? "localhost"
-    );
+    return EnvironmentConfig.getEnvVariable("COLLAB_HOSTNAME");
   },
   getEgressProxyTlsName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_TLS_NAME");
