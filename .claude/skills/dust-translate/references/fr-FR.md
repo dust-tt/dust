@@ -29,6 +29,7 @@
 | Pro, Enterprise, … (plan names) | Pro, Enterprise, … | Never translated: « S’abonner à Pro » |
 | plan | forfait | Generic noun only, plan names stay as is |
 | memory (user memory) | mémoire | |
+| wake-up | réveil | An agent’s scheduled return to a conversation: « Réveils », « Impossible de charger vos réveils. » |
 | conversation | conversation | |
 | mention | mention | |
 | admin | administrateur | |
