@@ -21,7 +21,7 @@ import { MarkdownManager } from "@tiptap/markdown";
 import type { Mark, Node } from "@tiptap/pm/model";
 import { Fragment } from "@tiptap/pm/model";
 
-const documentSchema = getSchema(documentExtensions);
+export const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });

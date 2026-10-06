@@ -118,6 +118,7 @@
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/static-renderer": "^3.31.3",
     "@tiptap/suggestion": "^3.31.3",
+    "@tiptap/y-tiptap": "^3.0.9",
     "@types/adm-zip": "^0.5.7",
     "@types/archiver": "^8.0.0",
     "@types/json-schema": "^7.0.15",
@@ -225,6 +226,7 @@
     "unist-util-visit": "^4.1.2",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2",
+    "yjs": "^13.6.33",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6",
     "zod-validation-error": "^3.4.0"
