@@ -44,6 +44,7 @@ export const DOCUMENTS_TOOLS_METADATA = [
         ),
       comment: z
         .string()
+        .trim()
         .min(1)
         .describe("The comment, in Markdown. No line may start with `::`."),
     },
