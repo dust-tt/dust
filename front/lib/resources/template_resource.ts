@@ -61,14 +61,25 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new this(TemplateModel, template.get());
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] published-only-by-default
+   * Returns `null` for a template that is not published unless `includeUnpublished` is `true`.
+   * Only callers restricted to superusers, or that never expose the template's content, may pass
+   * `includeUnpublished: true`.
+   */
   static async fetchByExternalId(
-    sId: string
+    sId: string,
+    { includeUnpublished = false }: { includeUnpublished?: boolean } = {}
   ): Promise<TemplateResource | null> {
     const id = getResourceIdFromSId(sId);
     if (!id) {
       return null;
     }
-    return this.fetchByModelId(id);
+    const template = await this.fetchByModelId(id);
+    if (!template || (!includeUnpublished && !template.isPublished())) {
+      return null;
+    }
+    return template;
   }
 
   static async listAll({

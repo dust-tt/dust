@@ -28,7 +28,9 @@ app.get(
   async (ctx): HandlerResult<PokeFetchAssistantTemplateResponse> => {
     const { tId: templateId } = ctx.req.valid("param");
 
-    const template = await TemplateResource.fetchByExternalId(templateId);
+    const template = await TemplateResource.fetchByExternalId(templateId, {
+      includeUnpublished: true,
+    });
     if (!template) {
       return apiError(ctx, {
         status_code: 404,
@@ -87,8 +89,12 @@ app.patch(
       });
     }
 
-    const existingTemplate =
-      await TemplateResource.fetchByExternalId(templateId);
+    const existingTemplate = await TemplateResource.fetchByExternalId(
+      templateId,
+      {
+        includeUnpublished: true,
+      }
+    );
     if (!existingTemplate) {
       return apiError(ctx, {
         status_code: 404,
@@ -118,7 +124,9 @@ app.delete(
     const auth = ctx.get("auth");
     const { tId: templateId } = ctx.req.valid("param");
 
-    const template = await TemplateResource.fetchByExternalId(templateId);
+    const template = await TemplateResource.fetchByExternalId(templateId, {
+      includeUnpublished: true,
+    });
     if (!template) {
       return apiError(ctx, {
         status_code: 404,
