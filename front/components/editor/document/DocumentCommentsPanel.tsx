@@ -140,21 +140,6 @@ const DraftCard = ({
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (
-        event.target instanceof Node &&
-        !ref.current?.contains(event.target)
-      ) {
-        onCancel();
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown, true);
-    return () =>
-      document.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [onCancel]);
-
-  useEffect(() => {
     if (visible) {
       ref.current?.scrollIntoView({ block: "nearest" });
     }
@@ -330,9 +315,9 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * @cc [owner:tdraier,label:react] document-comment-draft-card
  * While a draft is pending and the user can comment, the panel MUST show a new comment card
  * among the open threads at the draft's place in document order, with its field focused once
- * the panel is visible. Escape in the field, a pointer press outside the card and closing the
- * panel MUST cancel the draft. Enter MUST submit the trimmed text. A refused submission MUST
- * keep the typed text and show the reason.
+ * the panel is visible. Escape in the field and closing the panel MUST cancel the draft; a
+ * pointer press elsewhere MUST NOT, so typed text survives a stray click. Enter MUST submit the
+ * trimmed text. A refused submission MUST keep the typed text and show the reason.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comments-panel

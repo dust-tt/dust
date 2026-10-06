@@ -174,6 +174,21 @@ describe("Document comments", () => {
     );
   });
 
+  it("keeps the draft and its text on a pointer press outside the card", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    const field = screen.getByRole("textbox", { name: "Comment" });
+    fireEvent.change(field, { target: { value: "Too bold?" } });
+    fireEvent.pointerDown(dom);
+
+    expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
+    expect(screen.getByRole("textbox", { name: "Comment" })).toHaveProperty(
+      "value",
+      "Too bold?"
+    );
+  });
+
   it("cancels the draft on Escape and keeps the document unchanged", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
     const before = JSON.stringify(editor.getJSON());
