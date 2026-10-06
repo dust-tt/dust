@@ -1,12 +1,11 @@
-import config from "@app/lib/api/config";
-import { sendEmailWithTemplate } from "@app/lib/api/email";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { notifyAccessRequest } from "@app/lib/notifications/triggers/access-request";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import escape from "lodash/escape";
 import { z } from "zod";
 
 const PostRequestAccessBodySchema = z.object({
@@ -23,7 +22,6 @@ const app = workspaceApp();
 app.post("/", validate("json", PostRequestAccessBodySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
-  const emailRequester = user.email;
   const { emailMessage, dataSourceId } = ctx.req.valid("json");
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
@@ -80,16 +78,16 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (ctx) => {
     });
   }
 
-  const body =
-    `${emailRequester} has sent you a request regarding access to connection ` +
-    `${escape(dataSource.name)}: ${escape(emailMessage)}`;
-
-  const result = await sendEmailWithTemplate({
-    to: dataSource.editedByUser.email,
-    from: config.getSupportEmailAddress(),
-    replyTo: emailRequester,
-    subject: `[Dust] Request Data source from ${emailRequester}`,
-    body,
+  const owner = auth.getNonNullableWorkspace();
+  const result = await notifyAccessRequest({
+    recipient: emailRecipientFromUser(dataSource.editedByUser),
+    workspaceId: owner.sId,
+    workspaceName: owner.name,
+    resourceKind: "data_source",
+    resourceName: dataSource.name,
+    requesterName: user.fullName(),
+    requesterEmail: user.email,
+    message: emailMessage,
   });
 
   if (result.isErr()) {

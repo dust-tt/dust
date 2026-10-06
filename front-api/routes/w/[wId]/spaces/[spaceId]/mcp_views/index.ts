@@ -1,17 +1,17 @@
-import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
-import { getActiveAdminEmails } from "@app/lib/api/workspace";
+import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { notifyAdminsMCPGlobalSharingReconfiguration } from "@app/lib/notifications/triggers/mcp-global-sharing-reconfiguration";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import type {
   GetMCPServerViewsResponseBody,
   PostMCPServerViewResponseBody,
 } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -53,41 +53,30 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
 
   const workspace = auth.getNonNullableWorkspace();
   try {
-    const adminEmails = await getActiveAdminEmails(auth);
+    const { members: admins } = await getMembers(auth, {
+      roles: ["admin"],
+      activeOnly: true,
+    });
 
-    const results = await concurrentExecutor(
-      adminEmails,
-      async (email) =>
-        sendMCPGlobalSharingReconfigurationEmail({
-          email,
-          workspaceName: workspace.name,
+    const result = await notifyAdminsMCPGlobalSharingReconfiguration({
+      admins: admins.map(emailRecipientFromUser),
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
+      toolName,
+      agentNames,
+    });
+    if (result.isErr()) {
+      logger.error(
+        {
+          error: result.error,
+          workspaceId: workspace.sId,
           toolName,
           agentNames,
-        }),
-      { concurrency: 8 }
-    );
-
-    const failedEmails = results.flatMap((result, index) =>
-      result.isErr() ? [adminEmails[index]] : []
-    );
-
-    if (failedEmails.length === 0) {
-      return new Ok(undefined);
+        },
+        "Failed to send MCP global sharing reconfiguration emails"
+      );
     }
-
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        toolName,
-        agentNames,
-        failedEmails,
-      },
-      "Failed to send MCP global sharing reconfiguration emails"
-    );
-
-    return new Err(
-      new Error("Failed to send MCP global sharing reconfiguration emails")
-    );
+    return result;
   } catch (error) {
     const normalizedError = normalizeError(error);
 

@@ -1,16 +1,6 @@
-import config from "@app/lib/api/config";
-import {
-  sendAdminSubscriptionPaymentFailedEmail,
-  sendCancelSubscriptionEmail,
-  sendReactivateSubscriptionEmail,
-} from "@app/lib/api/email";
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import {
-  getActiveAdminEmails,
-  getMembers,
-  isWorkspaceRelocationDone,
-} from "@app/lib/api/workspace";
+import { getMembers, isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -35,6 +25,12 @@ import {
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import {
+  notifyAdminsSubscriptionCanceled,
+  notifyAdminsSubscriptionPaymentFailed,
+  notifyAdminsSubscriptionReactivated,
+} from "@app/lib/notifications/triggers/subscription-lifecycle";
 import {
   resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
@@ -544,12 +540,20 @@ async function notifyAdminsOfPaymentFailure({
       paymentFailingSince: now,
     });
   }
-  const adminEmails = await getActiveAdminEmails(auth);
-  const manageSubscriptionUrl = `${config.getAppUrl()}/w/${owner.sId}/subscription/manage`;
-  for (const adminEmail of adminEmails) {
-    await sendAdminSubscriptionPaymentFailedEmail(
-      adminEmail,
-      manageSubscriptionUrl
+  const { members: admins } = await getMembers(auth, {
+    roles: ["admin"],
+    activeOnly: true,
+  });
+  // The email links to `/w/:wId/subscription/manage`, built by the workflow from `workspaceId`.
+  const result = await notifyAdminsSubscriptionPaymentFailed({
+    admins: admins.map(emailRecipientFromUser),
+    workspaceId: owner.sId,
+    workspaceName: owner.name,
+  });
+  if (result.isErr()) {
+    logger.error(
+      { error: result.error, workspaceId: owner.sId, stripeError: true },
+      "[Stripe Webhook] Failed to send payment failed email."
     );
   }
 }
@@ -1393,24 +1397,34 @@ export async function processStripeWebhookEvent({
           roles: ["admin"],
           activeOnly: true,
         });
-        const adminEmails = members.map((u) => u.email);
-        if (adminEmails.length === 0) {
+        if (members.length === 0) {
           logger.warn(
             { workspaceId: workspace.sId, stripeError: true },
             "[Stripe Webhook] No active admins found, skipping cancel/reactivate email."
           );
         }
-        // send email to admins
-        for (const adminEmail of adminEmails) {
-          if (endDate) {
-            await sendCancelSubscriptionEmail(
-              adminEmail,
-              workspace.sId,
-              endDate
-            );
-          } else {
-            await sendReactivateSubscriptionEmail(adminEmail);
-          }
+        const admins = members.map(emailRecipientFromUser);
+        const emailResult = endDate
+          ? await notifyAdminsSubscriptionCanceled({
+              admins,
+              workspaceId: workspace.sId,
+              workspaceName: workspace.name,
+              endDate: endDate.toISOString(),
+            })
+          : await notifyAdminsSubscriptionReactivated({
+              admins,
+              workspaceId: workspace.sId,
+              workspaceName: workspace.name,
+            });
+        if (emailResult.isErr()) {
+          logger.error(
+            {
+              error: emailResult.error,
+              workspaceId: workspace.sId,
+              stripeError: true,
+            },
+            "[Stripe Webhook] Failed to send cancel/reactivate email."
+          );
         }
       } else if (stripeSubscription.status === "active") {
         const subscription = await SubscriptionResource.fetchByStripeId(

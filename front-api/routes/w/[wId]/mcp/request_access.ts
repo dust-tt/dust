@@ -1,13 +1,12 @@
-import config from "@app/lib/api/config";
-import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { PostRequestActionsAccessBodySchema } from "@app/lib/api/mcp_schemas";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { notifyAccessRequest } from "@app/lib/notifications/triggers/access-request";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import escape from "lodash/escape";
 
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
@@ -22,7 +21,6 @@ app.post(
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
     const { emailMessage, mcpServerViewId } = ctx.req.valid("json");
-    const emailRequester = user.email;
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
@@ -69,17 +67,16 @@ app.post(
       });
     }
 
-    const body =
-      `${emailRequester} has sent you a request regarding access to ` +
-      `tools ${mcpServerView.getDisplayName()}: ` +
-      escape(emailMessage);
-
-    const result = await sendEmailWithTemplate({
-      to: mcpServerView.editedByUser.email,
-      from: config.getSupportEmailAddress(),
-      replyTo: emailRequester,
-      subject: `[Dust] Tools request from ${emailRequester}`,
-      body,
+    const owner = auth.getNonNullableWorkspace();
+    const result = await notifyAccessRequest({
+      recipient: emailRecipientFromUser(mcpServerView.editedByUser),
+      workspaceId: owner.sId,
+      workspaceName: owner.name,
+      resourceKind: "mcp_server",
+      resourceName: mcpServerView.getDisplayName(),
+      requesterName: user.fullName(),
+      requesterEmail: user.email,
+      message: emailMessage,
     });
 
     if (result.isErr()) {

@@ -1,5 +1,7 @@
-import { sendAdminSubscriptionPaymentFailedEmail } from "@app/lib/api/email";
 import { processStripeWebhookEvent } from "@app/lib/api/stripe/webhook_handler";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { notifyAdminsSubscriptionPaymentFailed } from "@app/lib/notifications/triggers/subscription-lifecycle";
+import { buildSubscriptionPaymentFailedEmailCopy } from "@app/lib/notifications/workflows/subscription-lifecycle";
 import {
   createCustomerPortalSession,
   getStripeSubscription,
@@ -14,11 +16,24 @@ import type { WorkspaceType } from "@app/types/user";
 import { Stripe } from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/email", () => ({
-  sendAdminSubscriptionPaymentFailedEmail: vi.fn(),
-  sendCancelSubscriptionEmail: vi.fn(),
-  sendReactivateSubscriptionEmail: vi.fn(),
-}));
+vi.mock(
+  import("@app/lib/notifications/triggers/subscription-lifecycle"),
+  async (importOriginal) => {
+    const { Ok } = await import("@app/types/shared/result");
+    return {
+      ...(await importOriginal()),
+      notifyAdminsSubscriptionPaymentFailed: vi
+        .fn()
+        .mockResolvedValue(new Ok(undefined)),
+      notifyAdminsSubscriptionCanceled: vi
+        .fn()
+        .mockResolvedValue(new Ok(undefined)),
+      notifyAdminsSubscriptionReactivated: vi
+        .fn()
+        .mockResolvedValue(new Ok(undefined)),
+    };
+  }
+);
 
 vi.mock(import("@app/lib/plans/stripe"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -169,11 +184,12 @@ describe.each(BILLING_RAILS)(
       const result = await processPaymentFailed(formerAdmin.email);
 
       expect(result.isOk()).toBe(true);
-      expect(sendAdminSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
-      expect(sendAdminSubscriptionPaymentFailedEmail).toHaveBeenCalledWith(
-        activeAdmin.email,
-        `http://fake-url/w/${workspace.sId}/subscription/manage`
-      );
+      expect(notifyAdminsSubscriptionPaymentFailed).toHaveBeenCalledTimes(1);
+      const [{ admins, workspaceId }] = vi.mocked(
+        notifyAdminsSubscriptionPaymentFailed
+      ).mock.calls[0];
+      expect(workspaceId).toBe(workspace.sId);
+      expect(admins.map((a) => a.email)).toEqual([activeAdmin.email]);
     });
 
     it("does not email an outsider customer_email", async () => {
@@ -184,8 +200,8 @@ describe.each(BILLING_RAILS)(
 
       expect(result.isOk()).toBe(true);
       const recipients = vi
-        .mocked(sendAdminSubscriptionPaymentFailedEmail)
-        .mock.calls.map(([email]) => email);
+        .mocked(notifyAdminsSubscriptionPaymentFailed)
+        .mock.calls.flatMap(([{ admins }]) => admins.map((a) => a.email));
       expect(recipients).toEqual([activeAdmin.email]);
     });
 
@@ -197,12 +213,15 @@ describe.each(BILLING_RAILS)(
 
       expect(result.isOk()).toBe(true);
       expect(createCustomerPortalSession).not.toHaveBeenCalled();
-      const urls = vi
-        .mocked(sendAdminSubscriptionPaymentFailedEmail)
-        .mock.calls.map(([, url]) => url);
-      expect(urls).toEqual([
-        `http://fake-url/w/${workspace.sId}/subscription/manage`,
-      ]);
+      const [[payload]] = vi.mocked(notifyAdminsSubscriptionPaymentFailed).mock
+        .calls;
+      const { action } = buildSubscriptionPaymentFailedEmailCopy(
+        await getNotificationI18n("en-US"),
+        payload
+      );
+      expect(action?.url).toBe(
+        `http://fake-url/w/${workspace.sId}/subscription/manage`
+      );
     });
   }
 );

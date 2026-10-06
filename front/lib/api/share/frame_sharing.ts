@@ -1,8 +1,13 @@
-import config from "@app/lib/api/config";
-import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
+import type { EmailRecipient } from "@app/lib/notifications/transactional_emails";
+import { emailRecipientsFromAddresses } from "@app/lib/notifications/transactional_emails";
+import {
+  notifyFrameLoginCode,
+  notifyFrameShared,
+} from "@app/lib/notifications/triggers/frame-sharing";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -18,7 +23,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
-import escape from "lodash/escape";
 
 export interface FrameSharingState {
   grants: SharingGrantResource[];
@@ -382,56 +386,62 @@ export async function generateFrameOtpChallenge({
   return new Ok({ code });
 }
 
+/**
+ * Email a frame login code. The recipient may have no Dust user: the email then renders in the
+ * locale of `workspace`, the workspace owning the frame.
+ */
 export async function sendFrameOtpEmail({
   to,
   code,
   sharedByName,
+  workspace,
 }: {
   to: string;
   code: string;
   sharedByName: string;
+  workspace: { sId: string; name: string };
 }): Promise<Result<void, Error>> {
-  return sendEmailWithTemplate({
-    to,
-    // TODO(2026-03-19 FRAME SHARING): Consider sending from another email address.
-    from: config.getSupportEmailAddress(),
-    subject: "Your Dust login code",
-    body: `<p>${escape(sharedByName)} shared a frame with you on Dust.</p>
-      <p>Your login code:</p>
-      <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; margin-block: 20px;">${escape(code)}</p>
-      <p>Expires in ${Math.floor(OTP_TTL_SECONDS / 60)} minutes. Didn't request this? Ignore this email.</p>`,
+  const [recipient] = await emailRecipientsFromAddresses([to]);
+  return notifyFrameLoginCode({
+    recipient,
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
+    sharedByName,
+    code,
+    expiresInMinutes: Math.floor(OTP_TTL_SECONDS / 60),
   });
 }
 
-export async function sendFrameSharedEmail({
+async function sendFrameSharedEmail({
   frameUrl,
   sharedByName,
   shareToken,
-  to,
+  recipient,
+  workspace,
 }: {
   frameUrl: string;
   sharedByName: string;
   shareToken: string;
-  to: string;
-}): Promise<void> {
+  recipient: EmailRecipient;
+  workspace: { sId: string; name: string };
+}): Promise<Result<void, Error>> {
   // Rate limit to 1 notification per recipient per frame per 24 hours to prevent spam.
   const remaining = await rateLimiter({
-    key: `frame_share_notification:${shareToken}:${to}`,
+    key: `frame_share_notification:${shareToken}:${recipient.email}`,
     maxPerTimeframe: SHARE_NOTIFICATION_MAX_PER_DAY,
     timeframeSeconds: SHARE_NOTIFICATION_TIMEFRAME_SECONDS,
     logger,
   });
   if (remaining <= 0) {
-    return;
+    return new Ok(undefined);
   }
 
-  await sendEmailWithTemplate({
-    to,
-    from: config.getSupportEmailAddress(),
-    subject: `${sharedByName} shared a frame with you`,
-    body: `<p>${escape(sharedByName)} is sharing a frame with you on Dust.</p>`,
-    buttonLabel: "View frame",
-    buttonUrl: frameUrl,
+  return notifyFrameShared({
+    recipient,
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
+    sharedByName,
+    frameUrl,
   });
 }
 
@@ -457,23 +467,26 @@ function notifyFrameSharingInvitations(
     const frameUrl = shareInfo.shareUrl;
     const shareToken = frameUrl.split("/").at(-1) ?? "";
 
-    for (const email of emails) {
-      void sendFrameSharedEmail({
-        to: email,
-        sharedByName: user.fullName(),
-        frameUrl,
-        shareToken,
-      }).catch((error) => {
-        logger.info(
-          {
-            email,
-            error: normalizeError(error),
+    const workspace = auth.getNonNullableWorkspace();
+    const recipients = await emailRecipientsFromAddresses(emails);
+    for (const recipient of recipients) {
+      fireAndForgetNotification(
+        sendFrameSharedEmail({
+          recipient,
+          sharedByName: user.fullName(),
+          frameUrl,
+          shareToken,
+          workspace,
+        }),
+        {
+          message: "Failed to send sharing notification email",
+          context: {
+            email: recipient.email,
             fileId: file.sId,
             workspaceId: file.workspaceId,
           },
-          "Failed to send sharing notification email"
-        );
-      });
+        }
+      );
     }
   };
   void sendNotifications().catch((error) => {
