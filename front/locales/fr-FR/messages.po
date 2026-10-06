@@ -9160,10 +9160,6 @@ msgid "Error saving app"
 msgstr "Erreur lors de l’enregistrement de l’app"
 
 #: front/components/spaces/SpaceCreateAppModal.tsx
-msgid "Error: {errorMessage}"
-msgstr "Erreur : {errorMessage}"
-
-#: front/components/spaces/SpaceCreateAppModal.tsx
 msgid "Create a new app"
 msgstr "Créer une nouvelle app"
 

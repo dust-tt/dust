@@ -1,8 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
-import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, IntercomLogo, SliderToggle } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -20,6 +19,7 @@ export function IntercomConfigView({
   dataSource: DataSourceType;
 }) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const configKey = "intercomConversationsNotesSyncEnabled";
   const { configValue: syncNotesConfig, mutateConfig: mutateSyncNotesConfig } =
     useConnectorConfig({
@@ -29,7 +29,6 @@ export function IntercomConfigView({
     });
   const isSyncNotesEnabled = syncNotesConfig === "true";
 
-  const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
   const handleSetNewConfig = async (configValue: boolean) => {
@@ -49,11 +48,10 @@ export function IntercomConfigView({
       setLoading(false);
     } else {
       setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to edit Intercom configuration`,
-        description: err.error.message,
+        error: err,
       });
     }
     return true;
