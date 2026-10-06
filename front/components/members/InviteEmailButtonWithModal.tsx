@@ -249,17 +249,6 @@ export function InviteEmailButtonWithModal({
     }
   }
 
-  /**
-   * @cc [owner:avervaet,label:security] role-change-exact-email-only
-   * An existing member's role MUST only be changed when their email equals one of the invited
-   * addresses (case-insensitively); members merely matching an address by name or email prefix
-   * MUST NOT be listed for confirmation nor have their role changed.
-   */
-  /**
-   * @cc [owner:avervaet,label:security] confirmation-shows-email
-   * The confirmation listing members whose role will change MUST show each member's email, since
-   * the display name is user-editable and cannot identify the account.
-   */
   async function handleSendInvitations(
     inviteEmailsList: string[]
   ): Promise<void> {
