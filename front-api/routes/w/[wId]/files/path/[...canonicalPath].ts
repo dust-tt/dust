@@ -683,13 +683,24 @@ app.put(
       ctx.req.header("content-type") ?? undefined
     );
     if (comments.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: comments.error.message,
-        },
-      });
+      return apiError(
+        ctx,
+        comments.error.code === "unreadable_file"
+          ? {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: comments.error.message,
+              },
+            }
+          : {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: comments.error.message,
+              },
+            }
+      );
     }
 
     // A Markdown write is conditional on the revision its comments were validated against.

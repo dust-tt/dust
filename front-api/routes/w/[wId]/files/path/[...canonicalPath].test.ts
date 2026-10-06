@@ -1251,6 +1251,12 @@ describe("comment signatures on Markdown saves", () => {
       (_workspaceId: string, _path: string, userId: string) =>
         file(`user:${userId}`),
     ],
+    [
+      "an unsigned comment in a file stored as Markdown without a Markdown name",
+      "notes",
+      (_workspaceId: string, _path: string, userId: string) =>
+        file(`user:${userId}`),
+    ],
   ])("refuses %s", async (_, fileName, content) => {
     const { workspace, user, path, mountPath } = await setupMarkdown({
       coEdition: true,
@@ -1263,6 +1269,87 @@ describe("comment signatures on Markdown saves", () => {
     });
 
     expect(response.status).toBe(400);
+    expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
+  });
+
+  it("writes a file stored as plain text as sent", async () => {
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/plain",
+      size: "7",
+    }));
+    const { workspace, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+      fileName: "notes.txt",
+    });
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: file("user:usr_someone_else"),
+    });
+
+    expect(response.status).toBe(200);
+    expect(fileStorageMock.getObject(mountPath)).toBe(
+      file("user:usr_someone_else")
+    );
+  });
+
+  it("refuses a write to a plain-text file that changed since it was classified", async () => {
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/plain",
+      size: "7",
+      generation: "999999",
+    }));
+    const { workspace, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+      fileName: "notes",
+    });
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: file("user:usr_someone_else"),
+    });
+
+    expect(response.status).toBe(412);
+    expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
+  });
+
+  it("refuses to create a file that appeared since it was classified as absent", async () => {
+    const { workspace, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+      fileName: "notes",
+    });
+    fileStorageMock.setFileExists(() => false);
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: file("user:usr_someone_else"),
+    });
+
+    expect(response.status).toBe(412);
+    expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
+  });
+
+  it("refuses the save when the stored file cannot be read", async () => {
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/markdown",
+      size: "7",
+      generation: "999999",
+    }));
+    const { workspace, user, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+    });
+    const author = `user:${user.sId}`;
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/markdown" },
+      body: file(author, signatureFor(workspace.sId, path, author)),
+    });
+
+    expect(response.status).toBe(500);
     expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
   });
 
