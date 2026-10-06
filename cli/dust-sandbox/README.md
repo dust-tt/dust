@@ -74,8 +74,8 @@ export const schema = {
   Frame's source files.
 
 Adding a policy requires a runner-first rollout. Publish a `dsbx` release that
-parses the policy, then update `DSBX_CLI_VERSION` in
-`front/lib/api/sandbox/image/registry.ts` before exposing the policy to Frame
+parses the policy, then update `DSBX_CLI_VERSION` and `DSBX_CLI_SHA256` (printed
+in the release body) in `front/lib/api/sandbox/image/registry.ts` before exposing the policy to Frame
 authors. During a mixed-version rollout, servers deny unknown persisted
 policies, so invocation fails closed until all revisions understand the policy.
 

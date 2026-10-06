@@ -7,6 +7,10 @@ on:
         description: "openai/codex release tag to build from (e.g. rust-v0.115.0)"
         required: true
         default: "rust-v0.115.0"
+      codex_commit:
+        description: "Full openai/codex commit SHA that codex_tag points to (the build checks out this commit, not the tag)"
+        required: true
+        default: "f028679abb30051cec2434e624cd99975986b41b"
       apply_patch_version:
         description: "apply_patch release version (e.g. 0.1.0)"
         required: true
@@ -26,28 +30,47 @@ jobs:
   apply-patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout codex repo at pinned tag
+      - name: Validate codex commit
+        env:
+          CODEX_COMMIT: ${{ inputs.codex_commit }}
+        run: |
+          if ! [[ "$CODEX_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "codex_commit must be a full 40-character commit SHA" >&2
+            exit 1
+          fi
+
+      # Tags are mutable, so build from the immutable commit SHA.
+      - name: Checkout codex repo at pinned commit
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: openai/codex
-          ref: ${{ inputs.codex_tag }}
+          ref: ${{ inputs.codex_commit }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
 
       - name: Install cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        # Pinned to a cross-rs/cross commit (main as of 2026-09-24; the last release,
+        # v0.2.5, is from 2023) with --locked, so every release build runs the same
+        # toolchain code. When bumping the rev, re-resolve the image digest below.
+        run: cargo install cross --locked --git https://github.com/cross-rs/cross --rev 74e99b2223de06166f8cdcc1af7f1308ec52baf4
 
       - name: Build with cross
         working-directory: codex-rs
+        env:
+          # Digest of ghcr.io/cross-rs/x86_64-unknown-linux-musl:main, the image the
+          # pinned cross rev would otherwise pull by mutable tag.
+          CROSS_TARGET_X86_64_UNKNOWN_LINUX_MUSL_IMAGE: ghcr.io/cross-rs/x86_64-unknown-linux-musl@sha256:664b119c13833d07bbbfb60f17cfa6f8b4e7d730bf30aad31dd803887ecd7e39
         run: cross build --release --target x86_64-unknown-linux-musl -p codex-apply-patch
 
       - name: Prepare release artifacts
+        id: artifacts
         run: |
           mkdir -p artifacts
           cp codex-rs/target/x86_64-unknown-linux-musl/release/apply_patch artifacts/apply_patch-linux-x86_64
           cd artifacts
           sha256sum apply_patch-linux-x86_64 > checksums-sha256.txt
+          echo "sha256=$(cut -d" " -f1 checksums-sha256.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
@@ -55,7 +78,9 @@ jobs:
           tag_name: apply-patch-v${{ inputs.apply_patch_version }}
           name: apply_patch v${{ inputs.apply_patch_version }}
           body: |
-            Built from [openai/codex](https://github.com/openai/codex) at tag `${{ inputs.codex_tag }}` (Apache-2.0).
+            Built from [openai/codex](https://github.com/openai/codex) at tag `${{ inputs.codex_tag }}`, commit `${{ inputs.codex_commit }}` (Apache-2.0).
+
+            **SHA-256** (`apply_patch-linux-x86_64`): `${{ steps.artifacts.outputs.sha256 }}`. Pin it as `APPLY_PATCH_SHA256` in `front/lib/api/sandbox/image/registry.ts`.
 
             ### Download
 

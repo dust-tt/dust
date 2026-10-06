@@ -28,13 +28,20 @@ import path from "path";
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.122";
 const DSBX_CLI_VERSION = "0.1.67";
+// SHA-256 of dsbx-linux-x86_64 at DSBX_CLI_VERSION, printed in the release body.
+// Bump it with the version.
+const DSBX_CLI_SHA256 =
+  "477b99e0660301bff644368e53bc3e00be4f57a1ed5c11d46a8f67e33f88b940";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
 const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
-// Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
-// Released via the "Release sandbox tool" GitHub Actions workflow.
+// Built from https://github.com/openai/codex at tag rust-v0.115.0, commit
+// f028679abb30051cec2434e624cd99975986b41b (Apache-2.0). Released via the
+// "Release sandbox tool" GitHub Actions workflow, whose body prints the SHA-256.
 const APPLY_PATCH_VERSION = "0.1.0";
+const APPLY_PATCH_SHA256 =
+  "f08b6f40545dfcbe87ed46b5b92eda7d182bdd6b98743bdda0613a7148d07ab3";
 // Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
 // future sandbox CPU lacks it.
 const BUN_VERSION = "1.3.14";
@@ -313,6 +320,13 @@ function getSshHardeningCommand(): string {
  * The dust-base runtime MUST provide Tesseract, pytesseract, and English, French,
  * and orientation data so the PDF skill can run OCR without installing packages.
  */
+/**
+ * @cc [owner:fontanierh,label:security] dust-release-binaries-pinned-hash
+ * Every binary downloaded from a dust-tt/dust GitHub release (dsbx, apply_patch) MUST pass
+ * `sha256sum -c` against a SHA-256 constant held in this file before it is installed. A
+ * checksums file fetched from the same release MUST NOT be the verification source, since the
+ * release job that builds the binary also writes it.
+ */
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
 )
@@ -513,8 +527,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
-      `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
-      "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
+      `echo "${DSBX_CLI_SHA256}  /tmp/dsbx" | sha256sum -c - && ` +
       "chmod +x /tmp/dsbx && " +
       "mv /tmp/dsbx /opt/bin/dsbx && " +
       "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx",
@@ -529,8 +542,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/apply_patch-linux-x86_64 -o /tmp/apply_patch && ` +
-      `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
-      "grep apply_patch-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/apply_patch\"}' | sha256sum -c - && " +
+      `echo "${APPLY_PATCH_SHA256}  /tmp/apply_patch" | sha256sum -c - && ` +
       "chmod +x /tmp/apply_patch && " +
       "mv /tmp/apply_patch /opt/bin/apply_patch",
     { user: "root" }
