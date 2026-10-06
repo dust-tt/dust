@@ -51,7 +51,7 @@ export function SkillBuilderSimilarDiscoverableSkills() {
       if (!signal.aborted) {
         setIsLoading(false);
         if (result.isOk()) {
-          const similarSkillIds = new Set(result.value);
+          const similarSkillIds = new Set(result.value.similar_skills);
           setSimilarSkills(
             skills.filter((skill) => similarSkillIds.has(skill.sId))
           );
