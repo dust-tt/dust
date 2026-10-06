@@ -28,6 +28,8 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface DialogState {
@@ -106,6 +108,7 @@ export function PersonalConnectionRequiredDialog({
   onCancel: () => void;
   onClose: (confirmed: boolean) => void;
 }) {
+  const { t } = useLingui();
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const sendNotification = useSendNotification();
   const [isConnecting, setIsConnecting] = useState(false);
@@ -152,26 +155,30 @@ export function PersonalConnectionRequiredDialog({
       <DialogContent isAlertDialog={true} trapFocusScope={true}>
         <DialogHeader hideButton={true}>
           <DialogTitle>
-            {disconnectedCount > 1 ? "Connections" : "Connection"} required for
-            personal tools
+            {t`${plural(disconnectedCount, {
+              one: "Connection required for personal tools",
+              other: "Connections required for personal tools",
+            })}`}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <ContentMessage
             icon={Lock01}
             variant="highlight"
-            title="About personal tools"
+            title={t`About personal tools`}
           >
-            Personal tools uses credentials of the user running the agent. Other
-            users will be asked to connect their own accounts when they run the
-            agent.{" "}
-            <Hoverable
-              variant="highlight"
-              href={`https://docs.dust.tt/docs/personal-vs-workspace-credentials-for-tools-mcp-servers`}
-              target="_blank"
-            >
-              Learn more
-            </Hoverable>
+            <Trans>
+              Personal tools uses credentials of the user running the agent.
+              Other users will be asked to connect their own accounts when they
+              run the agent.{" "}
+              <Hoverable
+                variant="highlight"
+                href={`https://docs.dust.tt/docs/personal-vs-workspace-credentials-for-tools-mcp-servers`}
+                target="_blank"
+              >
+                Learn more
+              </Hoverable>
+            </Trans>
           </ContentMessage>
 
           <DialogDescription>
@@ -198,13 +205,13 @@ export function PersonalConnectionRequiredDialog({
                       </div>
                       <div>
                         {isAlreadyConnected ? (
-                          <Chip color="success" label="Connected" />
+                          <Chip color="success" label={t`Connected`} />
                         ) : (
                           <Button
                             icon={CloudArrowLeftRight}
                             size="xs"
                             variant="outline"
-                            label="Connect"
+                            label={t`Connect`}
                             disabled={
                               isConnecting ||
                               !areCredentialOverridesValid(
@@ -237,7 +244,7 @@ export function PersonalConnectionRequiredDialog({
                                 if (!result.success && result.error) {
                                   sendNotification({
                                     type: "error",
-                                    title: "Failed to connect provider",
+                                    title: t`Failed to connect provider`,
                                     description: result.error,
                                   });
                                 }
@@ -270,22 +277,22 @@ export function PersonalConnectionRequiredDialog({
               }
             )}
             <p className="mt-4">
-              {disconnectedCount}{" "}
-              {disconnectedCount > 1 ? "connections are" : "connection is"}{" "}
-              required. If you proceed without connecting, the agent will
-              request credentials when they use the tool.
+              {t`${plural(disconnectedCount, {
+                one: "# connection is required.",
+                other: "# connections are required.",
+              })} If you proceed without connecting, the agent will request credentials when they use the tool.`}
             </p>
           </DialogDescription>
         </DialogContainer>
 
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onCancel,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: disconnectedCount > 0 ? "warning" : "primary",
             onClick: () => onClose(true),
           }}

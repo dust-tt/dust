@@ -12,6 +12,7 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 interface AgentBuilderLeftPanelProps {
@@ -41,6 +42,7 @@ export function AgentBuilderLeftPanel({
   isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AgentBuilderLeftPanelProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
 
   const handleCancel = async () => {
@@ -94,7 +96,7 @@ export function AgentBuilderLeftPanel({
         leftActions={
           <Button
             variant="outline"
-            label="Cancel"
+            label={t`Cancel`}
             onClick={handleCancel}
             type="button"
           />

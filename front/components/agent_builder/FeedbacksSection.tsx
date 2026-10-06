@@ -31,19 +31,20 @@ import {
   ThumbsUp,
   Timeline,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { memo, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 const FEEDBACKS_PAGE_SIZE = 50;
 
-const getAgentConfigurationVersionString = (
+const getAgentConfigurationVersionDate = (
   config: LightAgentConfigurationType
 ) => {
   if (!config.versionCreatedAt) {
-    return `v${config.version}`;
+    return null;
   }
   const versionDate = new Date(config.versionCreatedAt);
-  return `Version: ${formatTimestampToFriendlyDate(versionDate.getTime(), "long")}`;
+  return formatTimestampToFriendlyDate(versionDate.getTime(), "long");
 };
 
 type FeedbackFilter = "unseen" | "all";
@@ -61,6 +62,7 @@ export const FeedbacksSection = ({
   version,
   days,
 }: FeedbacksSectionProps) => {
+  const { t } = useLingui();
   const [feedbackFilter, setFeedbackFilter] =
     useState<FeedbackFilter>("unseen");
 
@@ -122,7 +124,7 @@ export const FeedbacksSection = ({
   if (!agentConfigurationHistory) {
     return (
       <div className="mt-3 text-sm text-foreground">
-        Error loading the previous agent versions.
+        <Trans>Error loading the previous agent versions.</Trans>
       </div>
     );
   }
@@ -160,12 +162,16 @@ export const FeedbacksSection = ({
 
   return (
     <TabContentChildSectionLayout
-      title="Feedback"
+      title={t`Feedback`}
       headerAction={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              label={feedbackFilter === "unseen" ? "Unseen" : "All"}
+              label={
+                feedbackFilter === "unseen"
+                  ? t`Unseen`
+                  : t({ message: "All", context: "feedback filter" })
+              }
               isSelect
               variant="outline"
             />
@@ -173,11 +179,11 @@ export const FeedbacksSection = ({
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               onClick={() => setFeedbackFilter("unseen")}
-              label="Unseen"
+              label={t`Unseen`}
             />
             <DropdownMenuItem
               onClick={() => setFeedbackFilter("all")}
-              label="All"
+              label={t({ message: "All", context: "feedback filter" })}
             />
           </DropdownMenuContent>
         </DropdownMenu>
@@ -186,23 +192,22 @@ export const FeedbacksSection = ({
       {!agentConfigurationFeedbacks ||
       agentConfigurationFeedbacks.length === 0 ? (
         <div className="mt-3 text-sm text-muted-foreground">
-          No feedback yet.
+          <Trans>No feedback yet.</Trans>
         </div>
       ) : (
         <Timeline>
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
             const agentConfig = agentConfigByVersion[version];
+            const versionDate = agentConfig
+              ? getAgentConfigurationVersionDate(agentConfig)
+              : null;
 
             return (
               <Timeline.Item
                 key={version}
                 variant="upcoming"
-                title={
-                  agentConfig
-                    ? getAgentConfigurationVersionString(agentConfig)
-                    : `v${version}`
-                }
+                title={versionDate ? t`Version: ${versionDate}` : `v${version}`}
                 meta={
                   agentConfig?.versionCreatedAt
                     ? timeAgoFrom(
@@ -257,6 +262,7 @@ function FeedbackCard({
   className,
   onDismiss,
 }: FeedbackCardProps) {
+  const { t } = useLingui();
   const { isDismissing, toggleDismiss } = useDismissFeedback({
     workspaceId: owner.sId,
     agentConfigurationId: feedback.agentConfigurationId,
@@ -295,7 +301,11 @@ function FeedbackCard({
             icon={feedback.dismissed ? Eye : EyeOff}
             onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
-            tooltip={`Mark feedback as ${feedback.dismissed ? "unseen" : "seen"}`}
+            tooltip={
+              feedback.dismissed
+                ? t`Mark feedback as unseen`
+                : t`Mark feedback as seen`
+            }
           />
           {conversationUrl && (
             <CardActionButton
@@ -303,7 +313,7 @@ function FeedbackCard({
               icon={LinkExternal01}
               href={conversationUrl ?? ""}
               disabled={!conversationUrl}
-              tooltip="View conversation"
+              tooltip={t`View conversation`}
               target="_blank"
             />
           )}
@@ -353,7 +363,7 @@ function FeedbackCard({
       {conversationUrl && (
         <div className="flex-shrink-0 px-4 py-3">
           <Hoverable variant="primary" href={conversationUrl} target="_blank">
-            View conversation
+            <Trans>View conversation</Trans>
           </Hoverable>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { useAgentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
@@ -49,7 +49,6 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { TemplateInfo } from "@app/types/assistant/templates";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   ContentMessage,
   ContentMessageAction,
@@ -58,6 +57,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import isEqual from "lodash/isEqual";
 import {
   useCallback,
@@ -77,6 +78,7 @@ interface AgentBuilderProps {
 }
 
 export default function AgentBuilder(props: AgentBuilderProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { defaultModel, isModelsError } = useModels({ owner });
 
@@ -85,21 +87,23 @@ export default function AgentBuilder(props: AgentBuilderProps) {
       return (
         <div className="flex h-full w-full items-center justify-center p-4">
           <ContentMessage
-            title="Unable to load models"
+            title={t`Unable to load models`}
             variant="warning"
             icon={InfoCircle}
             size="lg"
             action={
               <ContentMessageAction
                 icon={RefreshCw02}
-                label="Retry"
+                label={t`Retry`}
                 variant="warning"
                 onClick={() => window.location.reload()}
               />
             }
           >
-            We could not determine the default model for this agent. Please try
-            again.
+            <Trans>
+              We could not determine the default model for this agent. Please
+              try again.
+            </Trans>
           </ContentMessage>
         </div>
       );
@@ -135,6 +139,7 @@ function AgentBuilderForm({
   onSaved,
   newAgentDefaultModel,
 }: AgentBuilderFormProps) {
+  const { t } = useLingui();
   const { owner, user, isAdmin, assistantTemplate } = useAgentBuilderContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const { fetcherWithBody } = useFetcher();
@@ -208,6 +213,7 @@ function AgentBuilderForm({
     newAgentDefaultModel,
   ]);
 
+  const agentBuilderFormSchema = useAgentBuilderFormSchema();
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues,
@@ -282,8 +288,8 @@ function AgentBuilderForm({
   const notifyLockedSave = useCallback(() => {
     if (isEditorsLoading) {
       sendNotification({
-        title: "Cannot save agent",
-        description: "Wait until agent editors finish loading before saving.",
+        title: t`Cannot save agent`,
+        description: t`Wait until agent editors finish loading before saving.`,
         type: "error",
       });
       return;
@@ -291,19 +297,19 @@ function AgentBuilderForm({
 
     if (isEditorsError) {
       sendNotification({
-        title: "Cannot save agent",
-        description: "Retry loading editors before saving changes.",
+        title: t`Cannot save agent`,
+        description: t`Retry loading editors before saving changes.`,
         type: "error",
       });
       return;
     }
 
     sendNotification({
-      title: "Cannot save agent",
-      description: "Add yourself as an editor before saving changes.",
+      title: t`Cannot save agent`,
+      description: t`Add yourself as an editor before saving changes.`,
       type: "error",
     });
-  }, [isEditorsError, isEditorsLoading, sendNotification]);
+  }, [isEditorsError, isEditorsLoading, sendNotification, t]);
 
   const handleAddSelfAsEditor = async () => {
     if (!agentConfiguration || isAddingSelfAsEditor) {
@@ -404,8 +410,8 @@ function AgentBuilderForm({
       if (!result.isOk()) {
         sendNotification({
           title: agentConfiguration
-            ? "Error updating agent"
-            : "Error creating agent",
+            ? t`Error updating agent`
+            : t`Error creating agent`,
           description: result.error.message,
           type: "error",
         });
@@ -454,23 +460,22 @@ function AgentBuilderForm({
         createdAgent._warning === "slack_channel_linking_in_progress"
       ) {
         sendNotification({
-          title: isCreatingNew ? "Agent created" : "Agent saved",
-          description:
-            "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          title: isCreatingNew ? t`Agent created` : t`Agent saved`,
+          description: t`The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.`,
           type: "info",
         });
       } else if (nothingChanged) {
         sendNotification({
-          title: "No changes to save",
-          description: "This agent is already up to date.",
+          title: t`No changes to save`,
+          description: t`This agent is already up to date.`,
           type: "info",
         });
       } else {
         sendNotification({
-          title: isCreatingNew ? "Agent created" : "Agent saved",
+          title: isCreatingNew ? t`Agent created` : t`Agent saved`,
           description: isCreatingNew
-            ? "Agent created!"
-            : "Your agent has been successfully saved",
+            ? t`Agent created!`
+            : t`Your agent has been successfully saved`,
           type: "success",
         });
       }
@@ -512,7 +517,7 @@ function AgentBuilderForm({
           }
         }
       }
-      return "Unknown error";
+      return t`Unknown error`;
     };
     const errorMessage = getFirstErrorMessage(errors);
     datadogLogger.error(
@@ -523,7 +528,9 @@ function AgentBuilderForm({
       "[Agent builder] - Form validation error"
     );
     sendNotification({
-      title: `Agent ${agentConfiguration ? "edition" : "creation"} failed.`,
+      title: agentConfiguration
+        ? t`Agent edition failed.`
+        : t`Agent creation failed.`,
       description: errorMessage,
       type: "error",
     });
@@ -571,13 +578,14 @@ function AgentBuilderForm({
   // Disable navigation lock during save process for new agents
   useNavigationLock(hasUnsavedChanges && !isSaving);
 
-  const saveLabel = isSubmitting ? "Saving..." : "Save";
+  const saveLabel = isSubmitting ? t`Saving...` : t`Save`;
 
+  const agentName = agentConfiguration?.name;
   const title = agentConfiguration
     ? duplicateAgentId
-      ? `Duplicate ${agentConfiguration.name}`
-      : `Edit agent ${agentConfiguration.name}`
-    : "Create new agent";
+      ? t`Duplicate ${agentName}`
+      : t`Edit agent ${agentName}`
+    : t`Create new agent`;
 
   // Only load suggestions when not duplicating an existing agent.
   const suggestionsAgentId = duplicateAgentId
@@ -689,6 +697,7 @@ function AgentBuilderContent({
   templateInfo,
   conversationId,
 }: AgentBuilderContentProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -719,23 +728,32 @@ function AgentBuilderContent({
     if (!committedInstructions.trim()) {
       const count = pendingInstructionSuggestions.length;
       sendNotification({
-        title: "Cannot save agent",
+        title: t`Cannot save agent`,
         description:
           count > 0
-            ? `Instructions are required. Review pending suggestion${pluralize(count)} first.`
-            : "Instructions are required.",
+            ? t`${plural(count, {
+                one: "Instructions are required. Review pending suggestion first.",
+                other:
+                  "Instructions are required. Review pending suggestions first.",
+              })}`
+            : t`Instructions are required.`,
         type: "error",
       });
       return;
     }
 
     if (pendingInstructionSuggestions.length > 0) {
+      const pendingCount = pendingInstructionSuggestions.length;
       const confirmed = await confirm({
-        title: "Pending suggestions",
-        message: `You have ${pendingInstructionSuggestions.length} pending instruction suggestion${pluralize(pendingInstructionSuggestions.length)} that won't be included in this save. You can review ${pendingInstructionSuggestions.length === 1 ? "it" : "them"} later.`,
-        validateLabel: "Save anyway",
+        title: t`Pending suggestions`,
+        message: t`${plural(pendingCount, {
+          one: "You have # pending instruction suggestion that won't be included in this save. You can review it later.",
+          other:
+            "You have # pending instruction suggestions that won't be included in this save. You can review them later.",
+        })}`,
+        validateLabel: t`Save anyway`,
         validateVariant: "primary",
-        cancelLabel: "Go back",
+        cancelLabel: t`Go back`,
       });
 
       if (!confirmed) {
@@ -751,6 +769,7 @@ function AgentBuilderContent({
     confirm,
     sendNotification,
     handleSave,
+    t,
   ]);
 
   return (
