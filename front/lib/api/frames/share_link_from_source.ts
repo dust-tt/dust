@@ -42,7 +42,18 @@ export type FrameShareLinkResult = {
   sourceDirectoryPath: string;
 };
 
-/** Retrieve the existing share link for a registered Frame without changing its use rights. */
+/**
+ * @cc [owner:davidebbo,label:product] share-link-source-resolution
+ * `sourceDirectoryPath` MUST resolve to the Frames v2 package registered at
+ * `<sourceDirectoryPath>/manifest.json`, or to the legacy Frame registered at `sourceDirectoryPath`
+ * itself (its entry file, as created by `create_interactive_content_file` and published by
+ * `dsbx frame publish`). Any other path fails with `invalid_source`.
+ */
+/**
+ * @cc [owner:davidebbo,label:product;security] share-link-read-only
+ * Retrieving a share link MUST NOT create, change, or remove sharing state. A Frame with no share
+ * link fails with `not_shared`.
+ */
 export async function getFrameShareLinkFromSource(
   auth: Authenticator,
   {
@@ -60,19 +71,18 @@ export async function getFrameShareLinkFromSource(
     );
   }
 
-  const sourceDirectory =
-    DustFileSystem.normalizeScopedPath(sourceDirectoryPath);
+  const sourcePath = DustFileSystem.normalizeScopedPath(sourceDirectoryPath);
   if (
-    !sourceDirectory ||
-    !sourceDirectory.includes("/") ||
-    path.posix.basename(sourceDirectory) === FRAME_MANIFEST_FILE
+    !sourcePath ||
+    !sourcePath.includes("/") ||
+    path.posix.basename(sourcePath) === FRAME_MANIFEST_FILE
   ) {
     return shareLinkError(
       "invalid_source",
-      "Retrieving a Frame share link requires a source folder path."
+      "Retrieving a Frame share link requires a Frame folder or a legacy Frame file path."
     );
   }
-  const manifestPath = path.posix.join(sourceDirectory, FRAME_MANIFEST_FILE);
+  const manifestPath = path.posix.join(sourcePath, FRAME_MANIFEST_FILE);
 
   const fsResult = await DustFileSystem.forConversation(auth, conversation);
   if (fsResult.isErr()) {
@@ -82,7 +92,7 @@ export async function getFrameShareLinkFromSource(
   if (!dustFs.isGCSBacked()) {
     return shareLinkError(
       "invalid_source",
-      "Frames v2 share links do not support the database-backed filesystem."
+      "Frame share links do not support the database-backed filesystem."
     );
   }
 
@@ -90,28 +100,35 @@ export async function getFrameShareLinkFromSource(
     .getMounts()
     .find(
       (candidate) =>
-        manifestPath.startsWith(`${candidate.scopedPrefix}/`) &&
+        sourcePath.startsWith(`${candidate.scopedPrefix}/`) &&
         candidate.permissions.canRead
     );
   if (!mount) {
     return shareLinkError(
       "unauthorized",
-      "Read access to the Frame source folder is required."
+      "Read access to the Frame source is required."
     );
   }
 
-  const mountFilePath = dustFs.toMountFilePath(manifestPath);
-  if (!mountFilePath) {
-    return shareLinkError("invalid_source", "Invalid Frame source folder.");
+  const sourceMountFilePath = dustFs.toMountFilePath(sourcePath);
+  const manifestMountFilePath = dustFs.toMountFilePath(manifestPath);
+  if (!sourceMountFilePath || !manifestMountFilePath) {
+    return shareLinkError("invalid_source", "Invalid Frame source path.");
   }
 
-  const [frame] = await FileResource.fetchByMountFilePaths(auth, [
-    mountFilePath,
+  const files = await FileResource.fetchByMountFilePaths(auth, [
+    sourceMountFilePath,
+    manifestMountFilePath,
   ]);
-  if (!frame?.isFrameV2) {
+  const frame = files.find(
+    (file) =>
+      (file.mountFilePath === manifestMountFilePath && file.isFrameV2) ||
+      (file.mountFilePath === sourceMountFilePath && file.isInteractiveContent)
+  );
+  if (!frame) {
     return shareLinkError(
       "invalid_source",
-      `No registered Frames v2 package found at ${sourceDirectory}.`
+      `No registered Frame found at ${sourcePath}.`
     );
   }
 
@@ -119,7 +136,7 @@ export async function getFrameShareLinkFromSource(
   if (!shareInfo) {
     return shareLinkError(
       "not_shared",
-      `No existing share link found for the Frame at ${sourceDirectory}. Configure sharing in the Dust UI.`
+      `No existing share link found for the Frame at ${sourcePath}. Configure sharing in the Dust UI.`
     );
   }
 
@@ -127,6 +144,6 @@ export async function getFrameShareLinkFromSource(
     frameId: frame.sId,
     shareScope: shareInfo.scope,
     shareUrl: shareInfo.shareUrl,
-    sourceDirectoryPath: sourceDirectory,
+    sourceDirectoryPath: sourcePath,
   });
 }
