@@ -369,11 +369,8 @@ export default defineConfig(({ mode }) => {
         },
       ],
       // dedupe makes every import of these packages resolve from this app's root, so the bundle
-      // contains a single copy of each.
-      // - @lingui/react: sparkle's components must read the same LinguiContext that front's
-      //   I18nProvider fills, otherwise they silently stay in English.
-      // - @lingui/core: only to ship a single copy. Sparkle never uses the core `i18n` singleton,
-      //   it translates with the instance from front's LinguiContext.
+      // contains a single copy of each. For Lingui this only saves bundle size: sparkle uses its
+      // own context and instances, never front's.
       dedupe: ["react", "react-dom", "@lingui/react", "@lingui/core"],
     },
     build: {

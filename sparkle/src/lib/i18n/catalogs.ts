@@ -1,19 +1,27 @@
-import type { Messages } from "@lingui/core";
+import type { I18n, Messages } from "@lingui/core";
+import { setupI18n } from "@lingui/core";
 import type { SparkleCatalogLocale } from "@sparkle/lib/i18n/locales";
+import { SPARKLE_SOURCE_LOCALE } from "@sparkle/lib/i18n/locales";
 import { assertNever } from "@sparkle/lib/internal_utils";
 import { messages as sourceLocaleMessages } from "@sparkle/locales/en-US/messages";
 
-// Synchronous, so that a consumer can activate its source locale before the first render.
-export const sparkleSourceLocaleMessages: Messages = sourceLocaleMessages;
+// Sparkle never uses the core `i18n` singleton, which belongs to the consumer: each catalog locale
+// gets its own instance, activated once and never reloaded.
+function createI18n(locale: SparkleCatalogLocale, messages: Messages): I18n {
+  return setupI18n({ locale, messages: { [locale]: messages } });
+}
 
-/**
- * @cc [owner:ykmsd,label:product] load-sparkle-catalog-compiled
- * `loadSparkleCatalog` MUST resolve to the compiled sparkle messages of `locale`, keyed by message
- * id, which a consumer can merge into the messages it loads into its own Lingui instance.
- */
-export async function loadSparkleCatalog(
-  locale: SparkleCatalogLocale
-): Promise<Messages> {
+// Synchronous, so that sparkle renders without a provider and before any catalog loads.
+export const sourceLocaleI18n = createI18n(
+  SPARKLE_SOURCE_LOCALE,
+  sourceLocaleMessages
+);
+
+const loadedI18nByLocale = new Map<SparkleCatalogLocale, I18n>([
+  [SPARKLE_SOURCE_LOCALE, sourceLocaleI18n],
+]);
+
+async function importCatalog(locale: SparkleCatalogLocale): Promise<Messages> {
   switch (locale) {
     case "en-US":
       return sourceLocaleMessages;
@@ -23,4 +31,38 @@ export async function loadSparkleCatalog(
     default:
       assertNever(locale);
   }
+}
+
+export function getLoadedSparkleI18n(
+  locale: SparkleCatalogLocale
+): I18n | undefined {
+  return loadedI18nByLocale.get(locale);
+}
+
+export async function loadSparkleI18n(
+  locale: SparkleCatalogLocale
+): Promise<I18n> {
+  const loadedI18n = loadedI18nByLocale.get(locale);
+  if (loadedI18n) {
+    return loadedI18n;
+  }
+
+  const messages = await importCatalog(locale);
+  // A concurrent load of the same locale may have finished first: keep its instance.
+  const i18n = loadedI18nByLocale.get(locale) ?? createI18n(locale, messages);
+  loadedI18nByLocale.set(locale, i18n);
+  return i18n;
+}
+
+/**
+ * @cc [owner:ykmsd,label:product] load-sparkle-catalog-before-provider
+ * `loadSparkleCatalog` MUST resolve only once the compiled sparkle catalog of `locale` is loaded,
+ * so that a `SparkleI18nProvider` given `locale` afterwards renders it from its first render. A
+ * consumer that switches locale MUST await it together with its own catalog before activating the
+ * new locale, so that its text and sparkle's switch in the same render.
+ */
+export async function loadSparkleCatalog(
+  locale: SparkleCatalogLocale
+): Promise<void> {
+  await loadSparkleI18n(locale);
 }

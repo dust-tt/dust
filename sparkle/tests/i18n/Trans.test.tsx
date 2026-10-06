@@ -1,6 +1,6 @@
 import { setupI18n } from "@lingui/core";
-import { I18nProvider } from "@lingui/react";
 import { Plural, Trans } from "@lingui/react/macro";
+import { SparkleI18nContext, toI18nContext } from "@sparkle/lib/i18n/useLingui";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ function ItemCount({ count }: { count: number }) {
 }
 
 describe("Trans", () => {
-  it("renders the English message without an I18nProvider", () => {
+  it("renders the English message without a provider", () => {
     expect(renderToStaticMarkup(<Greeting name="Ada" />)).toBe(
       '<p>Hello <b>Ada</b>, read the <a href="/docs">documentation</a>.</p>'
     );
@@ -29,7 +29,7 @@ describe("Trans", () => {
     expect(renderToStaticMarkup(<ItemCount count={3} />)).toBe("3 items");
   });
 
-  it("renders in the locale of the nearest I18nProvider", () => {
+  it("renders in the locale of the nearest sparkle context", () => {
     const i18n = setupI18n();
     i18n.loadAndActivate({
       locale: "fr-FR",
@@ -41,10 +41,10 @@ describe("Trans", () => {
     });
 
     const html = renderToStaticMarkup(
-      <I18nProvider i18n={i18n}>
+      <SparkleI18nContext.Provider value={toI18nContext(i18n)}>
         <Greeting name="Ada" />
         <ItemCount count={3} />
-      </I18nProvider>
+      </SparkleI18nContext.Provider>
     );
 
     expect(html).toBe(

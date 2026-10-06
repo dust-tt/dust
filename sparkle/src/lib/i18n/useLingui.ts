@@ -1,30 +1,27 @@
-import { setupI18n } from "@lingui/core";
+import type { I18n } from "@lingui/core";
 import type { I18nContext } from "@lingui/react";
-import { LinguiContext } from "@lingui/react";
-import { SPARKLE_SOURCE_LOCALE } from "@sparkle/lib/i18n/locales";
-import { messages as sourceLocaleMessages } from "@sparkle/locales/en-US/messages";
-import { useContext } from "react";
+import { sourceLocaleI18n } from "@sparkle/lib/i18n/catalogs";
+import { createContext, useContext } from "react";
 
-const fallbackI18n = setupI18n({
-  locale: SPARKLE_SOURCE_LOCALE,
-  messages: { [SPARKLE_SOURCE_LOCALE]: sourceLocaleMessages },
-});
+export function toI18nContext(i18n: I18n): I18nContext {
+  return { i18n, _: i18n.t.bind(i18n) };
+}
 
-// Also rendered by `Trans` when there is no provider.
-export const FALLBACK_CONTEXT: I18nContext = {
-  i18n: fallbackI18n,
-  _: fallbackI18n.t.bind(fallbackI18n),
-};
+// Sparkle's own context, independent of the consumer's `I18nProvider`: the consumer picks sparkle's
+// locale with `SparkleI18nProvider`.
+export const SparkleI18nContext = createContext<I18nContext>(
+  toI18nContext(sourceLocaleI18n)
+);
 
 /**
  * @cc [owner:ykmsd,label:product;react] use-lingui-works-without-provider
- * Inside an `I18nProvider`, `useLingui` MUST return the context of the nearest provider, so that
- * sparkle renders in the consumer's active locale and re-renders when it changes. Without a provider,
- * it MUST NOT throw and MUST return a context that renders sparkle's compiled
- * `SPARKLE_SOURCE_LOCALE` catalog.
+ * Inside a `SparkleI18nProvider`, `useLingui` MUST return the context of the nearest one, so that
+ * sparkle renders in the locale the consumer passed and re-renders when it changes. It MUST NOT
+ * read the consumer's `LinguiContext`. Without a provider, it MUST NOT throw and MUST return a
+ * context that renders sparkle's compiled `SPARKLE_SOURCE_LOCALE` catalog.
  */
 // Target of the `useLingui` macro (see `runtimeConfigModule` in `sparkle/lingui.config.ts`):
 // components import `useLingui` from `@lingui/react/macro`, never from this module.
 export function useLingui(): I18nContext {
-  return useContext(LinguiContext) ?? FALLBACK_CONTEXT;
+  return useContext(SparkleI18nContext);
 }
