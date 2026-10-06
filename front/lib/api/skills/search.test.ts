@@ -102,12 +102,12 @@ describe("searchSkills pagination", () => {
         limit: 1,
       });
       assert(result.isOk());
-      const favoritesOnly =
+      const restrictToFavorites =
         selectionMode === "favorites_only" ||
         (selectionMode === "favorites_or_all" &&
           !searchTerm.trim() &&
           hasFavorites);
-      const expectedSkills = favoritesOnly
+      const expectedSkills = restrictToFavorites
         ? hasFavorites
           ? [beta.sId]
           : []
@@ -116,19 +116,19 @@ describe("searchSkills pagination", () => {
         expectedSkills
       );
       expect(result.value.total).toBe(
-        favoritesOnly ? (hasFavorites ? 2 : 0) : 3
+        restrictToFavorites ? (hasFavorites ? 2 : 0) : 3
       );
       expect(result.value.hasMore).toBe(expectedSkills.length > 0);
-      expect(result.value.isFavoritesOnly).toBe(favoritesOnly);
+      expect(result.value.isFavoritesOnly).toBe(restrictToFavorites);
       expect(
         result.value.skills.every((skill) => !("isFavorite" in skill))
       ).toBe(true);
       expect(mockSearch.mock.lastCall![0].sort[0]).toEqual(
-        selectionMode === "favorites_or_all" && favoritesOnly
+        selectionMode === "favorites_or_all" && restrictToFavorites
           ? { "name.keyword": { order: "asc", missing: "_last" } }
           : { _score: { order: "desc" } }
       );
-      if (favoritesOnly) {
+      if (restrictToFavorites) {
         const codeDefinedSkillIds =
           await SkillResource.listAvailableCodeDefinedIds(auth);
         expect(mockSearch.mock.lastCall![0].query.bool.must).toEqual([

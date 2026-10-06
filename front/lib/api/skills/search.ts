@@ -151,12 +151,12 @@ export async function searchSkills(
     codeDefinedSkillIds,
   });
 
-  const fetchResults = (favoritesOnly: boolean) =>
+  const fetchResults = (restrictToFavorites: boolean) =>
     withEs((client) =>
       client.search<SkillSearchDocument, SkillSearchAggregations>({
         index: SKILL_SEARCH_ALIAS_NAME,
         _source: true,
-        query: favoritesOnly
+        query: restrictToFavorites
           ? {
               bool: {
                 must: [query],
@@ -170,7 +170,7 @@ export async function searchSkills(
         sort: buildSkillDefaultSort({
           sortBy:
             sortBy ??
-            (selectionMode === "favorites_or_all" && favoritesOnly
+            (selectionMode === "favorites_or_all" && restrictToFavorites
               ? "name"
               : "relevance"),
           sortOrder,
@@ -184,21 +184,21 @@ export async function searchSkills(
           : {}),
       })
     );
-  let favoritesOnly =
+  let restrictToFavorites =
     selectionMode === "favorites_only" || favoriteIds.length > 0;
-  let result = await fetchResults(favoritesOnly);
+  let result = await fetchResults(restrictToFavorites);
   if (result.isErr()) {
     return result;
   }
   const matchingFavorites = result.value.hits.total;
   if (
     selectionMode === "favorites_or_all" &&
-    favoritesOnly &&
+    restrictToFavorites &&
     (isNumber(matchingFavorites)
       ? matchingFavorites
       : (matchingFavorites?.value ?? 0)) === 0
   ) {
-    favoritesOnly = false;
+    restrictToFavorites = false;
     result = await fetchResults(false);
     if (result.isErr()) {
       return result;
@@ -229,7 +229,7 @@ export async function searchSkills(
     ),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
-    isFavoritesOnly: favoritesOnly,
+    isFavoritesOnly: restrictToFavorites,
     facets: facetValues,
   });
 }
