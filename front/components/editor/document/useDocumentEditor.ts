@@ -3,13 +3,13 @@ import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
-import { setExternalCursor } from "@app/components/editor/document/ExternalCursor";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import {
   adoptionFrames,
   diffBlocks,
   insertedTextLength,
 } from "@app/components/editor/document/external_changes";
+import { setExternalCursor } from "@app/components/editor/document/ExternalCursor";
 import type {
   DocumentProps,
   DocumentSaveResult,
