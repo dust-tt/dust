@@ -1941,6 +1941,11 @@ export async function postNewContentFragment(
     }
   }
 
+  const cfBlobRes = await getContentFragmentBlob(auth, cf);
+  if (cfBlobRes.isErr()) {
+    return cfBlobRes;
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -1951,11 +1956,6 @@ export async function postNewContentFragment(
   }
 
   const messageId = generateRandomModelSId();
-
-  const cfBlobRes = await getContentFragmentBlob(auth, cf);
-  if (cfBlobRes.isErr()) {
-    return cfBlobRes;
-  }
 
   const supersededContentFragmentId = cf.supersededContentFragmentId;
   // If the request is superseding an existing content fragment, we need to validate that it exists

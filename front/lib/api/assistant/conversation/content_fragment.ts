@@ -6,7 +6,7 @@ import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -108,6 +108,13 @@ export async function toFileContentFragment(
   });
 }
 
+/**
+ * @cc [owner:achilleburah,label:security] content-fragment-file-read-access
+ * A `fileId` content fragment MUST resolve only a file the caller can read: a file bound to a
+ * conversation MUST be fetchable by the caller through `ConversationResource.fetchById`, an unbound
+ * file MUST pass `canAccessUnattachedConversationFile`. Any other conversation file MUST be reported
+ * as not found. Callers MUST call it before `maybeUpsertFileAttachment` binds an unbound file.
+ */
 export async function getContentFragmentBlob(
   auth: Authenticator,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode
@@ -129,6 +136,14 @@ export async function getContentFragmentBlob(
       return new Err(
         new Error("File not meant to be attached in a conversation.")
       );
+    }
+
+    const fileConversationId = file.useCaseMetadata?.conversationId;
+    const canReadFile = fileConversationId
+      ? !!(await ConversationResource.fetchById(auth, fileConversationId))
+      : file.canAccessUnattachedConversationFile(auth);
+    if (!canReadFile) {
+      return new Err(new Error("File not found."));
     }
 
     if (!file.isReady) {
