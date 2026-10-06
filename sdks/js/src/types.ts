@@ -98,6 +98,7 @@ export type KnownModelLLMId =
   | "claude-sonnet-5"
   | "claude-sonnet-5-5"
   | "mistral-large-latest"
+  | "mistral-large-4"
   | "mistral-medium"
   | "mistral-medium-3-5"
   | "mistral-small-latest"

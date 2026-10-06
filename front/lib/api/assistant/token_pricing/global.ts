@@ -432,6 +432,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.5,
     cache_read_input_tokens: 0.05,
   },
+  // https://docs.mistral.ai/models/mistral-large-4 (2026-10-06): public-preview
+  // promotional rate, half the listed 1.36/4.18/0.14. No end date is published;
+  // re-verify when the preview ends.
+  "mistral-large-4": {
+    input: 0.68,
+    output: 2.09,
+    cache_read_input_tokens: 0.07,
+  },
   // Retired by Mistral and absent from the pricing page; left at its last known
   // rate. It has no endpoint, so nothing can bill under it going forward.
   "mistral-medium": {

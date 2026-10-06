@@ -3,6 +3,9 @@ import type { ModelConfigurationType } from "./types";
 // Pointing to mistral large 3 as of 2025-12-05
 // https://docs.mistral.ai/models/mistral-large-3-25-12
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
+// Public preview as of 2026-10-06; `mistral-large-latest` still resolves to Large 3.
+// https://docs.mistral.ai/models/mistral-large-4
+export const MISTRAL_LARGE_4_MODEL_ID = "mistral-large-4" as const;
 // Pointing to mistral medium 3.1 as of 2025-12-05
 // https://docs.mistral.ai/models/mistral-medium-3-1-25-08
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
@@ -24,7 +27,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `large` model (256k context).",
   shortDescription: "Mistral's large model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -39,6 +42,39 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": false,
+    "europe-west1": true,
+  },
+};
+export const MISTRAL_LARGE_4_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
+  modelId: MISTRAL_LARGE_4_MODEL_ID,
+  displayName: "Mistral Large 4 (Preview)",
+  contextSize: 524_288,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: true,
+  description:
+    "Mistral's `large 4` reasoning model, multimodal (512k context). Public preview.",
+  shortDescription: "Mistral's flagship large model (preview).",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    minimal: false,
+    low: false,
+    medium: false,
+    high: true,
+    xhigh: false,
+    maximal: false,
+  },
+  defaultReasoningEffort: "none",
+  tokenizer: { type: "sentence_piece", base: "model_v2" },
+  supportsBatchProcessing: true,
+  supportsResponseFormat: true,
   regionalAvailability: {
     "us-central1": false,
     "europe-west1": true,
