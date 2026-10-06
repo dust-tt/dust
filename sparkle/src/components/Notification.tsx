@@ -108,11 +108,11 @@ export function NotificationContent({
   details,
   action,
   onDismiss,
-  onExpandDetails,
+  onToggleDetails,
 }: NotificationType & {
   onDismiss?: () => void;
-  /** Called each time the details are expanded. */
-  onExpandDetails?: () => void;
+  /** Called each time the details are expanded or collapsed. */
+  onToggleDetails?: (open: boolean) => void;
 }) {
   const icon = resolveIcon(type);
   const foreground = resolveForeground(type);
@@ -163,18 +163,13 @@ export function NotificationContent({
         )}
       </div>
       {details && (
-        <Collapsible
-          className="pl-6"
-          onOpenChange={(open) => {
-            if (open) {
-              onExpandDetails?.();
-            }
-          }}
-        >
+        <Collapsible className="pl-6" onOpenChange={onToggleDetails}>
           <CollapsibleTrigger>
             <span className={cn("copy-xs", foreground)}>Details</span>
           </CollapsibleTrigger>
-          <CollapsibleContent>
+          {/* Not animated: the toast's height is measured right after the toggle, so the details
+              must already be at their final size. */}
+          <CollapsibleContent animated={false}>
             <pre
               className={cn(
                 "copy-xs mt-1 max-h-40 select-text overflow-auto whitespace-pre-wrap break-words font-mono opacity-80",
@@ -215,6 +210,7 @@ export const Notification = {
   Area: ({ children }: { children: React.ReactNode }) => {
     const sendNotification = React.useCallback(
       (notification: NotificationType) => {
+        let detailsToggleCount = 0;
         const render = (id: string | number) => (
           <NotificationContent
             type={notification.type}
@@ -223,11 +219,18 @@ export const Notification = {
             details={notification.details}
             action={notification.action}
             onDismiss={() => toast.dismiss(id)}
-            // Someone reading the details must not lose the toast: update it in place without a
-            // dismiss timer.
-            onExpandDetails={() =>
-              toast.custom(render, { id, duration: Infinity })
-            }
+            onToggleDetails={() => {
+              detailsToggleCount += 1;
+              // Update the toast in place without a dismiss timer, so someone reading the details
+              // doesn't lose it. Sonner only re-measures a toast's height when its `description`
+              // changes (custom toasts don't render it), and caps the toast to that height while
+              // the stack is expanded on hover: a new value makes it fit the toggled details.
+              toast.custom(render, {
+                id,
+                duration: Infinity,
+                description: String(detailsToggleCount),
+              });
+            }}
           />
         );
         toast.custom(render, { duration: NOTIFICATION_DELAY_MS });
