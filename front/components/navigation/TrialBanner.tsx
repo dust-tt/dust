@@ -7,6 +7,8 @@ import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { Button, cn } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
@@ -30,6 +32,7 @@ export function SubscriptionEndBanner({
   owner,
   subscription,
 }: SubscriptionEndBannerProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const endDate = subscription.endDate;
   const isTrial = isFreeTrialPhonePlan(subscription.plan.code);
@@ -76,22 +79,28 @@ export function SubscriptionEndBanner({
 
   if (isTrial) {
     title = hasEnded
-      ? "Heads up, your trial has ended"
-      : `Heads up, your trial ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
-    description =
-      "When your trial wraps up, your connections and team member access will be removed. Subscribe now to keep everything.";
+      ? t`Heads up, your trial has ended`
+      : t`${plural(daysRemaining, {
+          one: "Heads up, your trial ends in # day",
+          other: "Heads up, your trial ends in # days",
+        })}`;
+    description = t`When your trial wraps up, your connections and team member access will be removed. Subscribe now to keep everything.`;
   } else if (isEnterprise) {
     title = hasEnded
-      ? "Your current subscription period has ended"
-      : `Your current subscription period ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
-    description =
-      "Please reach out to your account manager to ensure continuity.";
+      ? t`Your current subscription period has ended`
+      : t`${plural(daysRemaining, {
+          one: "Your current subscription period ends in # day",
+          other: "Your current subscription period ends in # days",
+        })}`;
+    description = t`Please reach out to your account manager to ensure continuity.`;
   } else {
     title = hasEnded
-      ? "Heads up, your subscription has ended"
-      : `Heads up, your subscription ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
-    description =
-      "When your subscription wraps up, your connections and team member access will be removed. Subscribe now to keep everything.";
+      ? t`Heads up, your subscription has ended`
+      : t`${plural(daysRemaining, {
+          one: "Heads up, your subscription ends in # day",
+          other: "Heads up, your subscription ends in # days",
+        })}`;
+    description = t`When your subscription wraps up, your connections and team member access will be removed. Subscribe now to keep everything.`;
   }
 
   return (
@@ -108,7 +117,7 @@ export function SubscriptionEndBanner({
       {isAdmin && !isEnterprise && (
         <Button
           href={ctaHref}
-          label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
+          label={isTrial ? t`Subscribe to Dust` : t`Resume subscription`}
           className="hover:opacity-90 hover:bg-transparent"
           variant="ghost-secondary"
           size="sm"

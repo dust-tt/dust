@@ -266,7 +266,7 @@ export default function SpaceWebsiteModal({
     setIsSaving(true);
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
+        `/api/w/${owner.sId}/spaces/${encodeURIComponent(space.sId)}/data_sources/${encodeURIComponent(dataSourceView.dataSource.sId)}`,
         { method: "DELETE" }
       );
       if (!res.ok) {

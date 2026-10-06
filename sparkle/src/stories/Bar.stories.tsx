@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { fn } from "storybook/test";
 
+import { Robot } from "@sparkle/icons/v2-stroke";
 import {
   Bar,
   BarFooter,
@@ -12,7 +13,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "../index_with_tw_base";
-import { Robot } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Navigation/Bar",

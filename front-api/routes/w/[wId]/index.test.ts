@@ -6,7 +6,17 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/workos/organization", async (importOriginal) => {
+  const mod =
+    await importOriginal<typeof import("@app/lib/api/workos/organization")>();
+  const { Ok } = await import("@app/types/shared/result");
+  return {
+    ...mod,
+    updateWorkOSOrganizationName: vi.fn().mockResolvedValue(new Ok(undefined)),
+  };
+});
 
 async function setup(role: MembershipRoleType = "admin") {
   return createPrivateApiMockRequest({ method: "POST", role });
@@ -19,6 +29,20 @@ function post(workspace: { sId: string }, body: unknown) {
     body: JSON.stringify(body),
   });
 }
+
+describe("POST /api/w/:wId (rename)", () => {
+  it("HTML-escapes the new workspace name", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, { name: `Acme <R&D> "Labs" 'EU'` });
+
+    const expectedName = "Acme &lt;R&amp;D&gt; &quot;Labs&quot; &#39;EU&#39;";
+    expect(response.status).toBe(200);
+    expect((await response.json()).workspace.name).toBe(expectedName);
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.name).toBe(expectedName);
+  });
+});
 
 describe("POST /api/w/:wId (WorkOS organization)", () => {
   it("does not let workspace admins change the WorkOS organization binding", async () => {

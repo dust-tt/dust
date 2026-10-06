@@ -30,24 +30,27 @@ describe("PodFrameVisualization", () => {
     ["pod-spc_pod/Admin/Admin.frame.json", "pod-spc_pod/Admin"],
     ["manifest.json", null],
     [undefined, null],
-  ])("passes the Frame identity and package directory for %s", (framePath, framePackageRoot) => {
-    render(
-      <PodFrameVisualization
-        owner={{ sId: "w_current" } as LightWorkspaceType}
-        spaceId="spc_pod"
-        fileContent="export default function Frame() {}"
-        vizUrl="https://viz.dust.tt"
-        identifier="viz-frame"
-        frameId="fil_frame"
-        framePath={framePath}
-      />
-    );
+  ])(
+    "passes the Frame identity and package directory for %s",
+    (framePath, framePackageRoot) => {
+      render(
+        <PodFrameVisualization
+          owner={{ sId: "w_current" } as LightWorkspaceType}
+          spaceId="spc_pod"
+          fileContent="export default function Frame() {}"
+          vizUrl="https://viz.dust.tt"
+          identifier="viz-frame"
+          frameId="fil_frame"
+          framePath={framePath}
+        />
+      );
 
-    expect(mocks.iframe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        frameId: "fil_frame",
-        framePackageRoot,
-      })
-    );
-  });
+      expect(mocks.iframe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          frameId: "fil_frame",
+          framePackageRoot,
+        })
+      );
+    }
+  );
 });

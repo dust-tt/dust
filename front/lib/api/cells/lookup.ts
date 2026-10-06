@@ -184,7 +184,6 @@ async function lookupUserInOtherCells(
   };
 
   try {
-    // eslint-disable-next-line no-restricted-globals
     for (const cell of otherCells) {
       const res = await fetch(`${cell.url}/api/lookup/user`, {
         method: "POST",
@@ -219,7 +218,6 @@ export async function fetchInvitationsInOtherCells(
   const invitations: PendingInvitationOption[] = [];
 
   try {
-    // eslint-disable-next-line no-restricted-globals
     for (const cell of otherCells) {
       const res = await fetch(`${cell.url}/api/lookup/invitations`, {
         method: "POST",
@@ -256,7 +254,6 @@ export async function lookupShareTokenInOtherCells(
 
   try {
     for (const cell of otherCells) {
-      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(`${cell.url}/api/lookup/share-token`, {
         method: "POST",
         headers: {

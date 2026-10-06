@@ -211,7 +211,6 @@ export function AgentDetailsBody({
     [webhookSourceViews]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // Reset to info tab and close trigger editing when we open/close the modal
     setSelectedTab("info");

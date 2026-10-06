@@ -24,6 +24,7 @@ import type {
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
 } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 const MAX_DISPLAYED_AGENTS = 3;
@@ -255,14 +256,17 @@ function useCommandPaletteConversations({
 function useCommandPaletteSettings({
   isOpen,
   trimmedQuery,
+  hideSettings,
 }: {
   isOpen: boolean;
   trimmedQuery: string;
+  hideSettings: boolean;
 }): {
   settings: CommandPaletteSetting[];
   hasMoreSettings: boolean;
   canSearchSettings: boolean;
 } {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const {
     subscription,
@@ -272,7 +276,7 @@ function useCommandPaletteSettings({
   } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
-  const canSearchSettings = isAdminUser;
+  const canSearchSettings = isAdminUser && !hideSettings;
   const isSearchActive = isOpen && trimmedQuery.length > 0;
 
   const menusByPageId = useMemo(() => {
@@ -288,6 +292,7 @@ function useCommandPaletteSettings({
       hasManagedGroups:
         featureFlags.includes("group_management") &&
         hasGroupManagementScope(groupManagement?.read_usage),
+      t,
     });
     return accessibleAdminMenus(subNavigation, hasFeature);
   }, [
@@ -299,6 +304,7 @@ function useCommandPaletteSettings({
     hasPermission,
     groupManagement,
     hasFeature,
+    t,
   ]);
 
   const { settings, hasMoreSettings } = useMemo(() => {
@@ -343,11 +349,13 @@ export function useCommandPaletteSearch({
   isOpen,
   searchQuery,
   currentUserId,
+  hideSettings,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
   searchQuery: string;
   currentUserId: string;
+  hideSettings: boolean;
 }) {
   const trimmedQuery = searchQuery.trim();
   const isSearchActive =
@@ -375,7 +383,11 @@ export function useCommandPaletteSearch({
     trimmedQuery,
     currentUserId,
   });
-  const settings = useCommandPaletteSettings({ isOpen, trimmedQuery });
+  const settings = useCommandPaletteSettings({
+    isOpen,
+    trimmedQuery,
+    hideSettings,
+  });
 
   // Below the minimum (including empty): no search results. Empty query uses
   // frecency / default actions in the UI instead.

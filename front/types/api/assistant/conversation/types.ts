@@ -2,6 +2,7 @@
 // endpoints. Used by the assistant conversation API routes under
 // `front-api/routes` so there is a single source of truth.
 
+import { MAX_CONVERSATION_TITLE_LENGTH } from "@app/lib/api/assistant/conversation/constants";
 import type {
   ConversationListItemType,
   ConversationType,
@@ -34,7 +35,12 @@ export type PostConversationsResponseBody = {
 
 export const PatchConversationsRequestBodySchema = z.union([
   z.object({
-    title: z.string(),
+    title: z
+      .string()
+      .max(
+        MAX_CONVERSATION_TITLE_LENGTH,
+        `Conversation title must be at most ${MAX_CONVERSATION_TITLE_LENGTH} characters.`
+      ),
   }),
   z.object({
     read: z.boolean(),

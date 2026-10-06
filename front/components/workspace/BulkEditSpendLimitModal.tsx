@@ -9,10 +9,8 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatNumber } from "@app/lib/i18n/format";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -24,6 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 interface BulkEditSpendLimitModalProps {
@@ -114,6 +114,7 @@ function BulkEditSpendLimitForm({
   onValidate,
   onSaved,
 }: BulkEditSpendLimitFormProps) {
+  const { t } = useLingui();
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
     workspaceId: owner.sId,
   });
@@ -135,7 +136,7 @@ function BulkEditSpendLimitForm({
   async function handleValidate(event: React.MouseEvent) {
     event.preventDefault();
     const result = parseCreditsInput(personalLimitInput);
-    setValidationMessage(result.ok ? null : result.message);
+    setValidationMessage(result.ok ? null : t(result.message));
     const newDefaultLimit = defaultLimitField.validate();
     if (!result.ok || newDefaultLimit === "invalid") {
       return;
@@ -177,14 +178,15 @@ function BulkEditSpendLimitForm({
           )}
           <div className="flex flex-col gap-1">
             <DialogTitle>
-              {`Set personal limit for ${formatNumber(memberCount)} member${pluralize(memberCount)}`}
+              {t`Set personal limit for ${plural(memberCount, {
+                one: "# member",
+                other: "# members",
+              })}`}
             </DialogTitle>
             <DialogDescription>
-              {`These limits cap what each member can spend${
-                seatsHaveBuiltInAllowance
-                  ? ", once their seat credits are used"
-                  : ""
-              }. Personal limits override workspace and group limits.`}
+              {seatsHaveBuiltInAllowance
+                ? t`These limits cap what each member can spend, once their seat credits are used. Personal limits override workspace and group limits.`
+                : t`These limits cap what each member can spend. Personal limits override workspace and group limits.`}
             </DialogDescription>
           </div>
         </div>
@@ -196,7 +198,7 @@ function BulkEditSpendLimitForm({
               field={defaultLimitField}
               readOnlyTooltip={
                 !canEditDefaultLimit
-                  ? "Only workspace admins can edit the workspace default limit."
+                  ? t`Only workspace admins can edit the workspace default limit.`
                   : undefined
               }
               isActive={false}
@@ -220,7 +222,11 @@ function BulkEditSpendLimitForm({
             />
             {removeRequested && (
               <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {`Personal limit${pluralize(memberCount)} will be removed for ${formatNumber(memberCount)} member${pluralize(memberCount)}. They will fall back to the workspace default.`}
+                {t`${plural(memberCount, {
+                  one: "Personal limit will be removed for # member. They will fall back to the workspace default.",
+                  other:
+                    "Personal limits will be removed for # members. They will fall back to the workspace default.",
+                })}`}
               </p>
             )}
           </div>
@@ -228,12 +234,12 @@ function BulkEditSpendLimitForm({
       </DialogContainer>
       <DialogFooter
         leftButtonProps={{
-          label: "Cancel",
+          label: t`Cancel`,
           variant: "outline",
           onClick: onClose,
         }}
         rightButtonProps={{
-          label: "Validate",
+          label: t`Validate`,
           variant: "highlight",
           disabled:
             isSaving ||

@@ -6,8 +6,8 @@ type Attachment = NonNullable<MessageElement["attachments"]>[number];
 function isUnfurlAttachment(attachment: Attachment): boolean {
   return Boolean(
     attachment.is_msg_unfurl ||
-      attachment.is_reply_unfurl ||
-      attachment.is_thread_root_unfurl
+    attachment.is_reply_unfurl ||
+    attachment.is_thread_root_unfurl
   );
 }
 

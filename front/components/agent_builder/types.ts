@@ -10,8 +10,10 @@ import type { DataSourceViewSelectionConfigurations } from "@app/types/data_sour
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import type { Icon } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { ComponentProps } from "react";
+import { useMemo } from "react";
 import { z } from "zod";
 
 export const BUILDER_FLOWS = [
@@ -22,7 +24,9 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export const DESCRIPTION_MAX_LENGTH = 800;
 
-export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
+export type CapabilityFormData = z.infer<
+  ReturnType<typeof getCapabilityFormSchema>
+>;
 
 export const CONFIGURATION_SHEET_PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
@@ -38,82 +42,103 @@ const TOOLS_SHEET_PAGE_IDS = {
 export type ConfigurationPagePageId =
   (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
 
+interface CapabilityFormSchemaMessages {
+  nameRequired: string;
+  descriptionRequired: string;
+  descriptionTooLong: string;
+  sourcesRequired: string;
+  timeFrameRequired: string;
+}
+
 // TODO: merge this with MCP form schema. Right now it only validates two fields.
-export const capabilityFormSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, "The name cannot be empty.")
-      .transform((val) => {
-        // Convert to lowercase and replace spaces and special chars with underscores
-        return (
-          val
-            .toLowerCase()
-            .replace(/[^a-z0-9_]/g, "_")
-            // Remove consecutive underscores
-            .replace(/_+/g, "_")
-            // Remove leading/trailing underscores
-            .replace(/^_+|_+$/g, "")
-        );
-      })
-      .default(""),
-    description: z
-      .string()
-      .min(1, "Description is required")
-      .max(
-        DESCRIPTION_MAX_LENGTH,
-        "Description should be less than 800 characters."
+const getCapabilityFormSchema = (messages: CapabilityFormSchemaMessages) =>
+  z
+    .object({
+      name: z
+        .string()
+        .min(1, messages.nameRequired)
+        .transform((val) => {
+          // Convert to lowercase and replace spaces and special chars with underscores
+          return (
+            val
+              .toLowerCase()
+              .replace(/[^a-z0-9_]/g, "_")
+              // Remove consecutive underscores
+              .replace(/_+/g, "_")
+              // Remove leading/trailing underscores
+              .replace(/^_+|_+$/g, "")
+          );
+        })
+        .default(""),
+      description: z
+        .string()
+        .min(1, messages.descriptionRequired)
+        .max(DESCRIPTION_MAX_LENGTH, messages.descriptionTooLong),
+      sources: dataSourceBuilderTreeType.refine(
+        (val) => {
+          return val.in.length > 0;
+        },
+        { message: messages.sourcesRequired }
       ),
-    sources: dataSourceBuilderTreeType.refine(
-      (val) => {
-        return val.in.length > 0;
-      },
-      { message: "You must select at least on data sources" }
-    ),
-    mcpServerView: z.custom<MCPServerViewType>().nullable(),
-    configuration: mcpServerConfigurationSchema,
-  })
-  .superRefine((val, ctx) => {
-    const {
-      mayRequireTimeFrameConfiguration,
-      mayRequireJsonSchemaConfiguration,
-    } = getMCPServerRequirements(val.mcpServerView);
-    const configuration = val.configuration;
+      mcpServerView: z.custom<MCPServerViewType>().nullable(),
+      configuration: mcpServerConfigurationSchema,
+    })
+    .superRefine((val, ctx) => {
+      const {
+        mayRequireTimeFrameConfiguration,
+        mayRequireJsonSchemaConfiguration,
+      } = getMCPServerRequirements(val.mcpServerView);
+      const configuration = val.configuration;
 
-    if (mayRequireTimeFrameConfiguration) {
+      if (mayRequireTimeFrameConfiguration) {
+        if (
+          configuration.timeFrame !== null &&
+          (configuration.timeFrame.duration === null ||
+            configuration.timeFrame.unit === null)
+        ) {
+          return ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["configuration.timeFrame"],
+            message: messages.timeFrameRequired,
+          });
+        }
+      }
+
       if (
-        configuration.timeFrame !== null &&
-        (configuration.timeFrame.duration === null ||
-          configuration.timeFrame.unit === null)
+        mayRequireJsonSchemaConfiguration &&
+        configuration._jsonSchemaString !== null
       ) {
-        return ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["configuration.timeFrame"],
-          message:
-            "You must use time frame between that and that when you have required enums in mcpServerViews.",
-        });
+        const parsedSchema = validateConfiguredJsonSchema(
+          configuration._jsonSchemaString
+        );
+
+        if (parsedSchema.isErr()) {
+          return ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["configuration.jsonSchema"],
+            message: parsedSchema.error.message,
+          });
+        }
       }
-    }
 
-    if (
-      mayRequireJsonSchemaConfiguration &&
-      configuration._jsonSchemaString !== null
-    ) {
-      const parsedSchema = validateConfiguredJsonSchema(
-        configuration._jsonSchemaString
-      );
+      return true;
+    });
 
-      if (parsedSchema.isErr()) {
-        return ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["configuration.jsonSchema"],
-          message: parsedSchema.error.message,
-        });
-      }
-    }
+export function useCapabilityFormSchema() {
+  const { t } = useLingui();
 
-    return true;
-  });
+  return useMemo(
+    () =>
+      getCapabilityFormSchema({
+        nameRequired: t`The name cannot be empty.`,
+        descriptionRequired: t`Description is required`,
+        descriptionTooLong: t`Description should be less than ${DESCRIPTION_MAX_LENGTH} characters.`,
+        sourcesRequired: t`You must select at least one data source`,
+        timeFrameRequired: t`You must use time frame between that and that when you have required enums in mcpServerViews.`,
+      }),
+    [t]
+  );
+}
 
 export interface ActionSpecification {
   label: string;

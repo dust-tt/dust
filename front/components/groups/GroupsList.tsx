@@ -1,6 +1,8 @@
 import assert from "@app/lib/utils/assert";
 import type { GroupType } from "@app/types/groups";
 import { Button, DataTable, Spinner, Users01, XClose } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -18,7 +20,7 @@ const groupColumns = [
   {
     id: "name" as const,
     accessorKey: "name",
-    header: "Group name",
+    header: msg`Group name`,
     cell: (info: GroupInfo) => (
       <DataTable.CellContent icon={Users01} className="capitalize">
         {info.row.original.name}
@@ -29,7 +31,7 @@ const groupColumns = [
   {
     id: "memberCount" as const,
     accessorKey: "memberCount",
-    header: "Members",
+    header: msg`Members`,
     meta: {
       className: "w-[120px]",
     },
@@ -83,6 +85,7 @@ export function GroupsList({
   onRemoveGroupClick,
   ...tableProps
 }: GroupsListProps) {
+  const { t } = useLingui();
   assert(
     !showColumns.includes("action") || onRemoveGroupClick,
     "onRemoveGroupClick is required if action is shown"
@@ -109,7 +112,10 @@ export function GroupsList({
     <DataTable
       filterColumn="name"
       data={rows}
-      columns={groupColumns.filter(filterColumn(showColumns))}
+      columns={groupColumns.filter(filterColumn(showColumns)).map((column) => ({
+        ...column,
+        header: column.header ? t(column.header) : undefined,
+      }))}
       columnsBreakpoints={{
         name: "md",
       }}

@@ -27,7 +27,7 @@ export function getGroupAllowedActions(
     canSetUsageLimits: canUseDelegation && auth.can("set_usage_limits", group),
     canAssignManagers:
       isGroupManagementEnabled &&
-      auth.isAdmin() &&
+      auth.isManager() &&
       isManageableGroupKind(group.kind),
   };
 }

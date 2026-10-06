@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
+import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 import {
   LegacyButton as Button,
   LegacyFlexSplitButton,
 } from "../index_with_tw_base";
-import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<React.ComponentProps<typeof LegacyFlexSplitButton>> = {
   title: "Actions/LegacySplitButton",

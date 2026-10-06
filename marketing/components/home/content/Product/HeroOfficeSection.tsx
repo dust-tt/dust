@@ -1,12 +1,10 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-
+import { Button } from "@dust-tt/sparkle";
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { homeScenarios } from "@marketing/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@marketing/components/home/content/Product/heroOfficeScene";
 import type { TeamMember } from "@marketing/components/home/content/shared/team";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 

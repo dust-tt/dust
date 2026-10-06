@@ -152,10 +152,10 @@ export const NEW_METRICS: MetricDef[] = [
   // grouping unrelated to any single user/key, so it needs its own compound
   // key rather than piggybacking on the user_id/api_key_name ones. Bare
   // `[api_key_name(, tool_category)]` (no usage_type) is also kept so
-  // per_api_key_usage.ts's existing query — which still targets whichever
-  // metric ID `getMetricToolInvocationsId()`/`getMetricLlmProviderCostAwuId()`
-  // resolve to per environment (the live billing metrics in prod today, v2
-  // only once repointed) — keeps working unchanged against either shape.
+  // per_api_key_usage.ts's existing query — which targets whichever metric ID
+  // `getMetricLlmProviderCostAwuId()` resolves to per environment (the live
+  // billing metric in prod today, v2 only once repointed) — keeps working
+  // unchanged against either shape.
   // `[agent_id, usage_type(, tool_category)]` is reserved now, unused today,
   // for a possible future agent_id-filtered spend alert (same compound-key
   // requirement as the api_key_name alert above). Once v2 goes live in prod
@@ -219,20 +219,18 @@ const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC] as const;
 
 function buildAwuToolUsageRates(): RateDef[] {
   return TOOL_COST_CATEGORIES.flatMap((category): RateDef[] => [
-    ...PAID_USAGE_TYPES.map(
-      (usageType): RateDef => ({
-        product_name: "Tool Usage",
-        starting_at: "2026-04-01T00:00:00.000Z",
-        entitled: true,
-        rate_type: "FLAT",
-        price: TOOL_COST_CATEGORY_AWU_WEIGHTS[category],
-        credit_type_id: getCreditTypeAwuId(),
-        pricing_group_values: {
-          tool_category: category,
-          [USAGE_TYPE_GROUP_KEY]: usageType,
-        },
-      })
-    ),
+    ...PAID_USAGE_TYPES.map((usageType): RateDef => ({
+      product_name: "Tool Usage",
+      starting_at: "2026-04-01T00:00:00.000Z",
+      entitled: true,
+      rate_type: "FLAT",
+      price: TOOL_COST_CATEGORY_AWU_WEIGHTS[category],
+      credit_type_id: getCreditTypeAwuId(),
+      pricing_group_values: {
+        tool_category: category,
+        [USAGE_TYPE_GROUP_KEY]: usageType,
+      },
+    })),
     {
       product_name: "Tool Usage",
       starting_at: "2026-04-01T00:00:00.000Z",
@@ -252,17 +250,15 @@ function buildAwuToolUsageRates(): RateDef[] {
 // free is priced at 0.
 function buildAwuAiUsageRates(): RateDef[] {
   return [
-    ...PAID_USAGE_TYPES.map(
-      (usageType): RateDef => ({
-        product_name: "AI Usage",
-        starting_at: "2026-04-01T00:00:00.000Z",
-        entitled: true,
-        rate_type: "FLAT",
-        price: 1,
-        credit_type_id: getCreditTypeAwuId(),
-        pricing_group_values: { [USAGE_TYPE_GROUP_KEY]: usageType },
-      })
-    ),
+    ...PAID_USAGE_TYPES.map((usageType): RateDef => ({
+      product_name: "AI Usage",
+      starting_at: "2026-04-01T00:00:00.000Z",
+      entitled: true,
+      rate_type: "FLAT",
+      price: 1,
+      credit_type_id: getCreditTypeAwuId(),
+      pricing_group_values: { [USAGE_TYPE_GROUP_KEY]: usageType },
+    })),
     {
       product_name: "AI Usage",
       starting_at: "2026-04-01T00:00:00.000Z",

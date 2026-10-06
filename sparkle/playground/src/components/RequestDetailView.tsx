@@ -2,6 +2,7 @@ import { Avatar, Button, Chip, Separator } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import { useState } from "react";
 
+import type { AdminRequest, RequestOutcome } from "../data/types";
 import {
   getBeneficiary,
   getRequestTypeIcon,
@@ -11,7 +12,6 @@ import {
   SEAT_TYPE_LABELS,
   SEAT_UPGRADE_TARGET,
 } from "../data/requests";
-import type { AdminRequest, RequestOutcome } from "../data/types";
 import { getUserById } from "../data/users";
 import {
   ApproveDialog,

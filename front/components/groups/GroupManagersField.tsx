@@ -6,11 +6,12 @@ import { MemberSelectionTable } from "@app/components/members/MemberSelectionTab
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface GroupManagersFieldProps {
   owner: LightWorkspaceType;
-  group: GroupType;
+  group: Pick<GroupType, "name" | "kind" | "grantedRole">;
   managers: SearchMemberType[];
   groupMemberIds: Set<string>;
   onChange: (managers: SearchMemberType[]) => void;
@@ -31,12 +32,16 @@ export function GroupManagersField({
   onChange,
   disabled = false,
 }: GroupManagersFieldProps) {
+  const { t } = useLingui();
+  const groupName = group.name;
+  const managerCount = managers.length;
   const membershipRestriction =
     group.kind === "provisioned"
-      ? "Membership stays managed by your directory."
+      ? t`Membership stays managed by your directory.`
       : group.grantedRole === "admin"
-        ? "Only workspace admins can change this group's members."
+        ? t`Only workspace admins can change this group's members.`
         : null;
+  const limitsMessage = t`Group managers can manage usage and credit limits for this group's members.`;
   const managerIds = new Set(managers.map((manager) => manager.sId));
   const membershipColumns: ColumnDef<MemberRowData>[] = [
     {
@@ -47,6 +52,10 @@ export function GroupManagersField({
         if (groupMemberIds.has(sId)) {
           return null;
         }
+        const notMemberMessage = t`${fullName} isn't a member of ${groupName} but can manage it.`;
+        const accessMessage =
+          membershipRestriction ??
+          t`They can grant themselves access to the group's permissions and data.`;
         return (
           <Tooltip
             tooltipTriggerAsChild
@@ -55,10 +64,14 @@ export function GroupManagersField({
                 type="button"
                 onClick={(event) => event.stopPropagation()}
               >
-                <Chip color="highlight" size="mini" label="Not group member" />
+                <Chip
+                  color="highlight"
+                  size="mini"
+                  label={t`Not group member`}
+                />
               </button>
             }
-            label={`${fullName} isn't a member of ${group.name} but can manage it. ${membershipRestriction ?? "They can grant themselves access to the group's permissions and data."}`}
+            label={`${notMemberMessage} ${accessMessage}`}
           />
         );
       },
@@ -68,12 +81,12 @@ export function GroupManagersField({
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold">
-        Group managers ({managers.length})
+        <Trans>Group managers ({managerCount})</Trans>
       </h3>
       <p className="text-sm text-muted-foreground">
         {membershipRestriction
-          ? `Group managers can manage usage and credit limits for this group's members. ${membershipRestriction}`
-          : "Group managers can add members and set their usage and credit limits."}
+          ? `${limitsMessage} ${membershipRestriction}`
+          : t`Group managers can add members and set their usage and credit limits.`}
       </p>
       <MemberSelectionTable
         owner={owner}

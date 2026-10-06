@@ -158,7 +158,7 @@ export async function fetchAgentExportRows(
   // TODO(business-functions-use-resources): Migrate to AgentConfigurationResource when a suitable
   // method exists.
   const readReplica = getFrontReplicaDbConnection();
-  // biome-ignore lint/plugin/noRawSql: Matches existing Activity Report query pattern.
+  // oxlint-disable-next-line dust/noRawSql -- Matches existing Activity Report query pattern.
   const agents = await readReplica.query<AgentMetadataRow>(
     `
     SELECT ac."sId",

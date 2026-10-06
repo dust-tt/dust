@@ -24,7 +24,7 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import {
   CONFIGURATION_SHEET_PAGE_IDS,
-  capabilityFormSchema,
+  useCapabilityFormSchema,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -207,6 +207,7 @@ function KnowledgeConfigurationSheetForm({
     });
   }, [action, mcpServerViews, isEditing, presetActionData]);
 
+  const capabilityFormSchema = useCapabilityFormSchema();
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
@@ -292,7 +293,6 @@ function KnowledgeConfigurationSheetContent({
   }, [currentPageId, setFocus]);
 
   // Prefill name field and set defaults when mcpServerView.id changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getKnowledgeLookupMethodLabel(

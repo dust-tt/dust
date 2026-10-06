@@ -41,9 +41,7 @@ const configSchema = z.union([
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithMistralMedium35Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class MistralMedium35 extends Base {
     static readonly model = MISTRAL_MEDIUM_3_5;

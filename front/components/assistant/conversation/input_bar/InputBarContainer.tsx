@@ -1,15 +1,15 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
-import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
-import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
-import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
   INPUT_BAR_COMPACT_PREVIEW_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
+import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -24,6 +24,12 @@ import {
   getInputBarSlashMenuMode,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
+import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
+import {
+  isSelectSpacesSlashCommand,
+  SELECT_SPACES_SLASH_COMMAND_ACTION,
+} from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   RunCommandSlashCommand,
   SkillSlashCommand,
@@ -37,12 +43,6 @@ import {
   SELECT_SKILL_SLASH_COMMAND_ACTION,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
-import {
-  isSelectSpacesSlashCommand,
-  SELECT_SPACES_SLASH_COMMAND_ACTION,
-} from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
@@ -263,10 +263,10 @@ function hasActiveSelectionInEditor(
   const selection = window.getSelection();
   return Boolean(
     selection &&
-      !selection.isCollapsed &&
-      editorDom &&
-      selection.anchorNode &&
-      editorDom.contains(selection.anchorNode)
+    !selection.isCollapsed &&
+    editorDom &&
+    selection.anchorNode &&
+    editorDom.contains(selection.anchorNode)
   );
 }
 
@@ -470,7 +470,6 @@ const InputBarContainer = ({
     [selectableSpacesById, selectedSpaceIds]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
       const editorInstance = editorRef.current;
@@ -502,7 +501,6 @@ const InputBarContainer = ({
     [editorRef]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const insertPastedAttachmentChip = useCallback(
     ({
       fileId,
@@ -583,7 +581,6 @@ const InputBarContainer = ({
     conversationId: conversation?.sId,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
@@ -981,6 +978,30 @@ const InputBarContainer = ({
     },
     [setOverlayOpen]
   );
+  const handlePlusMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("plus-menu", open);
+    },
+    [setOverlayOpen]
+  );
+  // Every member is a stable ref, so the object is built once and `InputBarButtons` stays memoized.
+  const plusMenuSlashMenu = useMemo(
+    () => ({
+      conversationIdRef,
+      editorRef,
+      includeAttachKnowledgeRef,
+      includePickModelRef,
+      includeSelectSpacesRef,
+      onDetailsRef,
+      onModelSelectRef,
+      onNodeSelectRef,
+      onSelectRef,
+      slashCommandsRef,
+      slashMenuModeRef,
+      spaceIdRef,
+    }),
+    []
+  );
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
@@ -1162,7 +1183,6 @@ const InputBarContainer = ({
         }
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!nodeOrUrlCandidate || isSearchLoading || isSpacesLoading) {
       return;
@@ -1406,7 +1426,6 @@ const InputBarContainer = ({
 
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     hasCompletedInitialContentRestoreRef.current = false;
 
@@ -1809,6 +1828,8 @@ const InputBarContainer = ({
                       onCapabilitiesPickerOpenChange={
                         handleCapabilitiesPickerOpenChange
                       }
+                      onPlusMenuOpenChange={handlePlusMenuOpenChange}
+                      slashMenu={plusMenuSlashMenu}
                     />
                   </div>
                 )}

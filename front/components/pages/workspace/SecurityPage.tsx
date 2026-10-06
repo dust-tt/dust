@@ -22,11 +22,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 const SECURITY_TABS = ["identity", "network", "audit"] as const;
 type SecurityTab = (typeof SECURITY_TABS)[number];
 
 export function SecurityPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const plan = subscription.plan;
@@ -61,19 +63,19 @@ export function SecurityPage() {
     <AdminPageContainer>
       <div className="flex flex-col gap-6">
         <Page.Header
-          title="Security"
-          description="Verify your domain, manage authentication and network access."
+          title={t`Security`}
+          description={t`Verify your domain, manage authentication and network access.`}
         />
         <Tabs
           value={activeTab}
           onValueChange={(value) => setTab(value as SecurityTab)}
         >
           <TabsList className="mb-6">
-            <TabsTrigger value="identity" label="Domains & SSO" />
+            <TabsTrigger value="identity" label={t`Domains & SSO`} />
             {isComputerEnabled && (
-              <TabsTrigger value="network" label="Network" />
+              <TabsTrigger value="network" label={t`Network`} />
             )}
-            <TabsTrigger value="audit" label="Audit Logs" />
+            <TabsTrigger value="audit" label={t`Audit Logs`} />
           </TabsList>
           <TabsContent value="identity" className="flex flex-col gap-4">
             <WorkspaceAccessPanel

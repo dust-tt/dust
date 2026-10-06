@@ -9,6 +9,7 @@ import {
   resolveUsageFilter,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
+  USAGE_FILTER_CATEGORY_SINGULAR_LABEL,
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import { describe, expect, it } from "vitest";
@@ -141,14 +142,14 @@ describe("setUsageFilterFromAttributionRow", () => {
     { dimension: "skill", expectedScopeFilter: { skills: [row.id] } },
     { dimension: "source", expectedScopeFilter: { sources: [row.id] } },
     { dimension: "api_key", expectedScopeFilter: { api_keys: [row.id] } },
-  ])("maps a $dimension row to its page-level filter", ({
-    dimension,
-    expectedScopeFilter,
-  }) => {
-    const filter = setUsageFilterFromAttributionRow({}, dimension, row);
+  ])(
+    "maps a $dimension row to its page-level filter",
+    ({ dimension, expectedScopeFilter }) => {
+      const filter = setUsageFilterFromAttributionRow({}, dimension, row);
 
-    expect(toConsumptionScopeFilter(filter)).toEqual(expectedScopeFilter);
-  });
+      expect(toConsumptionScopeFilter(filter)).toEqual(expectedScopeFilter);
+    }
+  );
 
   it("replaces the selected dimension while preserving other filters", () => {
     const filter = setUsageFilterFromAttributionRow(
@@ -190,33 +191,36 @@ describe("setUsageFilterFromAttributionRow", () => {
 describe("getUsageFilterSummaries", () => {
   it("flattens selected options into ordered, human-readable categories", () => {
     expect(
-      getUsageFilterSummaries({
-        agent: [
-          {
-            id: "agent-1",
-            name: "@dust",
-            kind: "agent",
-            image: null,
-            disabled: false,
-          },
-        ],
-        member: [
-          {
-            id: "member-1",
-            name: "Nath",
-            kind: "member",
-            image: null,
-            disabled: false,
-          },
-          {
-            id: "member-2",
-            name: "Adrien",
-            kind: "member",
-            image: null,
-            disabled: false,
-          },
-        ],
-      })
+      getUsageFilterSummaries(
+        {
+          agent: [
+            {
+              id: "agent-1",
+              name: "@dust",
+              kind: "agent",
+              image: null,
+              disabled: false,
+            },
+          ],
+          member: [
+            {
+              id: "member-1",
+              name: "Nath",
+              kind: "member",
+              image: null,
+              disabled: false,
+            },
+            {
+              id: "member-2",
+              name: "Adrien",
+              kind: "member",
+              image: null,
+              disabled: false,
+            },
+          ],
+        },
+        USAGE_FILTER_CATEGORY_SINGULAR_LABEL
+      )
     ).toEqual([
       {
         category: "agent",
@@ -235,7 +239,12 @@ describe("getUsageFilterSummaries", () => {
   });
 
   it("omits empty categories", () => {
-    expect(getUsageFilterSummaries({ group: [] })).toEqual([]);
+    expect(
+      getUsageFilterSummaries(
+        { group: [] },
+        USAGE_FILTER_CATEGORY_SINGULAR_LABEL
+      )
+    ).toEqual([]);
   });
 });
 
@@ -293,17 +302,22 @@ describe("removeUsageFilterFromAttributionRow", () => {
     { dimension: "skill" },
     { dimension: "source" },
     { dimension: "api_key" },
-  ])("removes a previously added $dimension row, clearing the category", ({
-    dimension,
-  }) => {
-    const added = addUsageFilterFromAttributionRow({}, dimension, row);
+  ])(
+    "removes a previously added $dimension row, clearing the category",
+    ({ dimension }) => {
+      const added = addUsageFilterFromAttributionRow({}, dimension, row);
 
-    expect(toConsumptionScopeFilter(added)).not.toEqual({});
+      expect(toConsumptionScopeFilter(added)).not.toEqual({});
 
-    const removed = removeUsageFilterFromAttributionRow(added, dimension, row);
+      const removed = removeUsageFilterFromAttributionRow(
+        added,
+        dimension,
+        row
+      );
 
-    expect(toConsumptionScopeFilter(removed)).toEqual({});
-  });
+      expect(toConsumptionScopeFilter(removed)).toEqual({});
+    }
+  );
 
   it("removes only the targeted row, preserving other selections", () => {
     const filter = addUsageFilterFromAttributionRow(

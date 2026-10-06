@@ -94,16 +94,20 @@ describe("checkPoolCreditGate", () => {
   it.each([
     "credits_exhausted",
     "user_cap_reached",
+    "group_limit_reached",
     "no_seat",
-  ] as const)("stops with reason %s when isUserBlocked returns it", async (blockedReason) => {
-    mockIsUserBlocked.mockResolvedValue(blockedReason);
-    const auth = makeAuth({ hasUser: true });
-    const result = await callGate(auth);
-    expect(result).toEqual({
-      shouldStop: true,
-      reason: blockedReason,
-    });
-  });
+  ] as const)(
+    "stops with reason %s when isUserBlocked returns it",
+    async (blockedReason) => {
+      mockIsUserBlocked.mockResolvedValue(blockedReason);
+      const auth = makeAuth({ hasUser: true });
+      const result = await callGate(auth);
+      expect(result).toEqual({
+        shouldStop: true,
+        reason: blockedReason,
+      });
+    }
+  );
 
   it("checks isPoolDepleted (not isUserBlocked) when there is no human user", async () => {
     const auth = makeAuth({ hasUser: false });

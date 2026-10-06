@@ -55,6 +55,15 @@ import {
   type ReactNode,
 } from "react";
 
+import type {
+  Agent,
+  Conversation,
+  DataSource,
+  Space,
+  Trigger,
+  User,
+} from "../data/types";
+import type { PodTabCustomizationItem } from "./PodCustomizationSection";
 import { getAgentById } from "../data/agents";
 import {
   getDataSourcesBySpaceId,
@@ -73,18 +82,11 @@ import {
 } from "../data/podSettings";
 import { formatRowTime } from "../data/time";
 import { getTriggerById } from "../data/triggers";
-import type {
-  Agent,
-  Conversation,
-  DataSource,
-  Space,
-  Trigger,
-  User,
-} from "../data/types";
 import { getUserById } from "../data/users";
-import type { PodTabCustomizationItem } from "./PodCustomizationSection";
-import { buildConversationRowMenuItems } from "./conversationRowMenu";
+import { ConversationListItem } from "./ConversationListItem";
 import { EmptyState } from "./EmptyState";
+import { FilePreviewPanel } from "./FilePreviewPanel";
+import { FilesBrowser } from "./FilesBrowser";
 import {
   collectAgents,
   collectUsers,
@@ -92,8 +94,6 @@ import {
   type FilterGroup,
   type FilterSelection,
 } from "./FilterMenu";
-import { FilePreviewPanel } from "./FilePreviewPanel";
-import { FilesBrowser } from "./FilesBrowser";
 import { FrameSheetHeader } from "./FrameSheetHeader";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
@@ -104,9 +104,9 @@ import { NewConversation } from "./NewConversation";
 import { PodSettingsSection } from "./PodSettingsSection";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
-import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import { TodoInputBar } from "./TodoInputBar";
-import { ConversationListItem } from "./ConversationListItem";
+import { TriggerRunAvatar } from "./TriggerRunAvatar";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 
 /** Mirrors the Inbox clear menu, cut the way a pod's conversations are. */
 const MARK_READ_ACTIONS = [

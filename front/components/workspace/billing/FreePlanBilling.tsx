@@ -5,6 +5,7 @@ import { SubscriptionStatusChip } from "@app/components/workspace/billing/Subscr
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface FreePlanBillingProps {
   owner: LightWorkspaceType;
@@ -12,6 +13,8 @@ interface FreePlanBillingProps {
 }
 
 export function FreePlanBilling({ owner, subscription }: FreePlanBillingProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
@@ -27,7 +30,7 @@ export function FreePlanBilling({ owner, subscription }: FreePlanBillingProps) {
       <FreePlanUpgradeSection
         action={
           <Button
-            label="Upgrade a member"
+            label={t`Upgrade a member`}
             size="sm"
             variant="highlight"
             href={`/w/${owner.sId}/credits`}

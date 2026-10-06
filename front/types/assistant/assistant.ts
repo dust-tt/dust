@@ -105,6 +105,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_DEEPSEEK = "dust-deepseek",
   DUST_MISTRAL_MEDIUM_NONE = "dust-mistral-medium-none",
   DUST_MISTRAL_MEDIUM_HIGH = "dust-mistral-medium-high",
+  DUST_MISTRAL_LARGE_NONE = "dust-mistral-large-none",
+  DUST_MISTRAL_LARGE_HIGH = "dust-mistral-large-high",
   DUST_NEXT_HIGH = "dust-next-high",
   DUST_NEXT_NONE = "dust-next-none",
   DUST_NEXT_XHIGH = "dust-next-xhigh",

@@ -8,6 +8,11 @@ import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { isResourceSId } from "../resources/string_ids";
 
+/**
+ * @cc [owner:achilleburah,label:security] approval-label-readable-pod-names
+ * The inputs come from the model before the tool checks any permission, so the label names a Pod
+ * only when the approving user can read it. Any other Pod shows its URI, the same as an unknown id.
+ */
 export async function getApprovalArgsLabel({
   auth,
   toolName,
@@ -36,7 +41,9 @@ export async function getApprovalArgsLabel({
         }
 
         const space = await SpaceResource.fetchById(auth, projectId);
-        return `Always allow agents to ${asDisplayName(toolName)} in "${space?.name ?? parsed.data.uri}".`;
+        const podLabel =
+          space && auth.can("read", space) ? space.name : parsed.data.uri;
+        return `Always allow agents to ${asDisplayName(toolName)} in "${podLabel}".`;
       }
     }
 

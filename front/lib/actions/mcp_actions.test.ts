@@ -83,11 +83,10 @@ const { withToolResultProcessingSpyRef } = vi.hoisted(() => ({
 vi.mock(
   "@app/lib/actions/mcp_internal_actions/wrappers",
   async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-        typeof import("@app/lib/actions/mcp_internal_actions/wrappers")
-      >();
+    const actual = await importOriginal<
+      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+      typeof import("@app/lib/actions/mcp_internal_actions/wrappers")
+    >();
     const spy = vi.fn(actual.withToolResultProcessing);
     withToolResultProcessingSpyRef.current = spy;
     // registerTool closes over the original withToolResultProcessing, so we must inject the spy
@@ -121,20 +120,17 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
   const actual = await vi.importActual(
     "@app/lib/api/actions/servers/search/tools"
   );
-  const { buildTools } = await import(
-    "@app/lib/actions/mcp_internal_actions/tool_definition"
-  );
+  const { buildTools } =
+    await import("@app/lib/actions/mcp_internal_actions/tool_definition");
   const {
     SEARCH_TOOL_METADATA_WITH_TAGS,
     SEARCH_TOOLS_METADATA,
     SEARCH_TOOL_NAME,
   } = await import("@app/lib/api/actions/servers/search/metadata");
-  const { executeFindTags } = await import(
-    "@app/lib/api/actions/tools/find_tags"
-  );
-  const { FIND_TAGS_TOOL_NAME } = await import(
-    "@app/lib/api/actions/tools/find_tags/metadata"
-  );
+  const { executeFindTags } =
+    await import("@app/lib/api/actions/tools/find_tags");
+  const { FIND_TAGS_TOOL_NAME } =
+    await import("@app/lib/api/actions/tools/find_tags/metadata");
 
   // Rebuild handlers so they call mockSearchFunction (the real handlers close
   // over the real searchFunction, so replacing only the export doesn't work).
@@ -257,41 +253,41 @@ describe("MCP Actions", () => {
       createWorkspace: () => WorkspaceFactory.basic(),
       expectedStake: "high",
     },
-  ])("sets schedule_wakeup to $expectedStake stake for $planType plans", async ({
-    createWorkspace,
-    expectedStake,
-  }) => {
-    const workspace = await createWorkspace();
-    const { auth, connectionParams, mcpClient, config } = await setupTest({
-      workspace,
-      serverName: "wakeups",
-    });
+  ])(
+    "sets schedule_wakeup to $expectedStake stake for $planType plans",
+    async ({ createWorkspace, expectedStake }) => {
+      const workspace = await createWorkspace();
+      const { auth, connectionParams, mcpClient, config } = await setupTest({
+        workspace,
+        serverName: "wakeups",
+      });
 
-    const toolsResult = await listToolsForServerSideMCPServer(
-      auth,
-      connectionParams,
-      mcpClient,
-      config
-    );
+      const toolsResult = await listToolsForServerSideMCPServer(
+        auth,
+        connectionParams,
+        mcpClient,
+        config
+      );
 
-    assert(toolsResult.isOk());
-    expect(toolsResult.value).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: "schedule_wakeup",
-          permission: expectedStake,
-        }),
-        expect.objectContaining({
-          name: "list_wakeups",
-          permission: "never_ask",
-        }),
-        expect.objectContaining({
-          name: "cancel_wakeup",
-          permission: "never_ask",
-        }),
-      ])
-    );
-  });
+      assert(toolsResult.isOk());
+      expect(toolsResult.value).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "schedule_wakeup",
+            permission: expectedStake,
+          }),
+          expect.objectContaining({
+            name: "list_wakeups",
+            permission: "never_ask",
+          }),
+          expect.objectContaining({
+            name: "cancel_wakeup",
+            permission: "never_ask",
+          }),
+        ])
+      );
+    }
+  );
 
   it("should filter disabled tools and store metadata settings", async () => {
     const { auth, mcpServerId, connectionParams, mcpClient, config } =
@@ -597,9 +593,8 @@ describe("tryCallMCPTool", () => {
 
     if (!systemView) {
       // Create system view if it doesn't exist using MCPServerViewModel directly
-      const { MCPServerViewModel } = await import(
-        "@app/lib/models/agent/actions/mcp_server_view"
-      );
+      const { MCPServerViewModel } =
+        await import("@app/lib/models/agent/actions/mcp_server_view");
       const systemViewModel = await MCPServerViewModel.create({
         workspaceId: workspace.id,
         serverType: "internal",

@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -79,9 +76,9 @@ const API_KEY_CACHE_ID = "api-key-by-secret-v2";
 // to avoid row-lock contention on hot API keys.
 export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:philipperolet,label:security;backend] supported-api-key-roles
  * `KeyResource` construction MUST throw when the persisted role is not accepted by `RoleSchema`.
@@ -101,7 +98,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       where: { secret },
       // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
       // don't know the workspaceId.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

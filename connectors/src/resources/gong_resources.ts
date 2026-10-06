@@ -37,8 +37,7 @@ export const MAX_EXCLUDE_KEYWORD_LENGTH = 100;
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface GongConfigurationResource
-  extends ReadonlyAttributesType<GongConfigurationModel> {}
+export interface GongConfigurationResource extends ReadonlyAttributesType<GongConfigurationModel> {}
 
 export class GongConfigurationResource extends BaseResource<GongConfigurationModel> {
   static model: ModelStatic<GongConfigurationModel> = GongConfigurationModel;
@@ -227,8 +226,7 @@ export type GongUserBlob = Omit<
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface GongUserResource
-  extends ReadonlyAttributesType<GongUserModel> {}
+export interface GongUserResource extends ReadonlyAttributesType<GongUserModel> {}
 
 export class GongUserResource extends BaseResource<GongUserModel> {
   static model: ModelStatic<GongUserModel> = GongUserModel;
@@ -327,8 +325,7 @@ export class GongUserResource extends BaseResource<GongUserModel> {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface GongTranscriptResource
-  extends ReadonlyAttributesType<GongTranscriptModel> {}
+export interface GongTranscriptResource extends ReadonlyAttributesType<GongTranscriptModel> {}
 
 export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   static model: ModelStatic<GongTranscriptModel> = GongTranscriptModel;

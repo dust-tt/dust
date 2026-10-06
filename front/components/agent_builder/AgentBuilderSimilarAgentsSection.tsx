@@ -10,6 +10,7 @@ import {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, cn, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -169,7 +170,7 @@ export function AgentBuilderSimilarAgentsSection({
   if (hasError) {
     return (
       <div className="text-sm text-muted-foreground">
-        Couldn&apos;t check for similar agents.
+        <Trans>Couldn't check for similar agents.</Trans>
       </div>
     );
   }
@@ -182,7 +183,9 @@ export function AgentBuilderSimilarAgentsSection({
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Spinner size="xs" />
-        <span>Checking for similar agents…</span>
+        <span>
+          <Trans>Checking for similar agents…</Trans>
+        </span>
       </div>
     );
   }
@@ -190,7 +193,9 @@ export function AgentBuilderSimilarAgentsSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="heading-sm text-foreground">Similar agents found</span>
+        <span className="heading-sm text-foreground">
+          <Trans>Similar agents found</Trans>
+        </span>
         {isLoading && <Spinner size="xs" />}
       </div>
       <div className="space-y-3">

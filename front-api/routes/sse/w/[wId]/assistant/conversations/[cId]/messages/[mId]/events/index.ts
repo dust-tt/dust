@@ -1,6 +1,6 @@
-import type { MessageEventsOptions } from "@front-api/lib/api/sse/message_events";
 import {
   MessageParamSchema,
+  PRIVATE_MESSAGE_EVENTS_OPTIONS,
   streamMessageEventsForRoute,
 } from "@front-api/lib/api/sse/message_events";
 import { SseQuerySchema } from "@front-api/lib/api/sse/stream_events";
@@ -12,10 +12,6 @@ import poll from "./poll";
 
 // Mounted at /api/sse/w/:wId/assistant/conversations/:cId/messages/:mId/events.
 // Handler logic lives in `@front-api/lib/api/sse/message_events`.
-
-const PRIVATE_OPTIONS: MessageEventsOptions = {
-  transformEvent: (_auth, event) => event,
-};
 
 const app = workspaceApp();
 
@@ -32,7 +28,7 @@ app.get(
       ctx,
       ctx.var.auth,
       { conversationId: cId, messageId: mId, lastEventId },
-      PRIVATE_OPTIONS
+      PRIVATE_MESSAGE_EVENTS_OPTIONS
     );
   }
 );

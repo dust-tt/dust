@@ -14,24 +14,22 @@ describe("splitConsumedAwuCredits", () => {
     { total: 150, allowance: 100, fromAllowance: 100, fromPool: 50 },
     { total: 150, allowance: 0, fromAllowance: 0, fromPool: 150 },
     { total: 150, allowance: -10, fromAllowance: 0, fromPool: 150 },
-  ])("splits $total against allowance $allowance", ({
-    total,
-    allowance,
-    fromAllowance,
-    fromPool,
-  }) => {
-    const split = splitConsumedAwuCredits({
-      totalConsumedAwuCredits: total,
-      allowanceAwuCredits: allowance,
-    });
-    expect(split).toEqual({
-      consumedFromAllowanceAwuCredits: fromAllowance,
-      consumedFromPoolAwuCredits: fromPool,
-    });
-    expect(
-      split.consumedFromAllowanceAwuCredits + split.consumedFromPoolAwuCredits
-    ).toBe(total);
-  });
+  ])(
+    "splits $total against allowance $allowance",
+    ({ total, allowance, fromAllowance, fromPool }) => {
+      const split = splitConsumedAwuCredits({
+        totalConsumedAwuCredits: total,
+        allowanceAwuCredits: allowance,
+      });
+      expect(split).toEqual({
+        consumedFromAllowanceAwuCredits: fromAllowance,
+        consumedFromPoolAwuCredits: fromPool,
+      });
+      expect(
+        split.consumedFromAllowanceAwuCredits + split.consumedFromPoolAwuCredits
+      ).toBe(total);
+    }
+  );
 });
 
 describe("computeSeatUsage", () => {
@@ -125,19 +123,19 @@ describe("computeSeatUsage", () => {
     { seatType: "pro" as const, memberUsageLimit: null },
     { seatType: null, memberUsageLimit: 100 },
     { seatType: "none" as const, memberUsageLimit: 100 },
-  ])("returns a null percent for seatType=$seatType limit=$memberUsageLimit", ({
-    seatType,
-    memberUsageLimit,
-  }) => {
-    const usage = computeSeatUsage({
-      seatType,
-      memberUsageLimit,
-      seatBalanceAwu: null,
-      consumedFromAllowanceAwuCredits: 10,
-    });
-    expect(usage.percent).toBeNull();
-    expect(usage.consumed).toBe(10);
-  });
+  ])(
+    "returns a null percent for seatType=$seatType limit=$memberUsageLimit",
+    ({ seatType, memberUsageLimit }) => {
+      const usage = computeSeatUsage({
+        seatType,
+        memberUsageLimit,
+        seatBalanceAwu: null,
+        consumedFromAllowanceAwuCredits: 10,
+      });
+      expect(usage.percent).toBeNull();
+      expect(usage.consumed).toBe(10);
+    }
+  );
 
   it("returns a null percent instead of throwing for a seat type the client doesn't recognize", () => {
     const usage = computeSeatUsage({
@@ -174,13 +172,12 @@ describe("computePoolLimitAwuCredits", () => {
     { memberUsageLimit: 100, effectiveLimit: null, poolLimit: 0 },
     { memberUsageLimit: null, effectiveLimit: 80, poolLimit: 80 },
     { memberUsageLimit: null, effectiveLimit: null, poolLimit: 0 },
-  ])("derives $poolLimit from allowance $memberUsageLimit and cap $effectiveLimit", ({
-    memberUsageLimit,
-    effectiveLimit,
-    poolLimit,
-  }) => {
-    expect(
-      computePoolLimitAwuCredits({ memberUsageLimit, effectiveLimit })
-    ).toBe(poolLimit);
-  });
+  ])(
+    "derives $poolLimit from allowance $memberUsageLimit and cap $effectiveLimit",
+    ({ memberUsageLimit, effectiveLimit, poolLimit }) => {
+      expect(
+        computePoolLimitAwuCredits({ memberUsageLimit, effectiveLimit })
+      ).toBe(poolLimit);
+    }
+  );
 });

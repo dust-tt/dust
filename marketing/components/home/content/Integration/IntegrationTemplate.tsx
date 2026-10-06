@@ -1,21 +1,19 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-
-import { FinalCTASection } from "@marketing/components/home/content/Competitor/FinalCTASection";
 import { FAQ } from "@marketing/components/home/FAQ";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { FinalCTASection } from "@marketing/components/home/content/Competitor/FinalCTASection";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import type { IntegrationBase, IntegrationPageConfig } from "./types";
 import { IntegrationBenefitsSection } from "./sections/IntegrationBenefitsSection";
 import { IntegrationChatMockupSection } from "./sections/IntegrationChatMockupSection";
 import { IntegrationHeroSection } from "./sections/IntegrationHeroSection";
 import { RelatedIntegrationsSection } from "./sections/RelatedIntegrationsSection";
 import { ToolsSection } from "./sections/ToolsSection";
 import { UseCasesSection } from "./sections/UseCasesSection";
-import type { IntegrationBase, IntegrationPageConfig } from "./types";
 import { getBenefitsForIntegration } from "./utils/benefitsTemplates";
 import { getChatStorylineForIntegration } from "./utils/chatMockupTemplates";
 import {

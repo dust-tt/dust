@@ -4,9 +4,9 @@ import {
   isMCPEventResult,
 } from "@app/lib/api/actions/mcp_client_side";
 import { publishEvent } from "@app/lib/api/assistant/streaming/events";
-import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { Authenticator } from "@app/lib/auth";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";

@@ -1,5 +1,6 @@
 import { formatNumber } from "@app/lib/i18n/format";
 import { Button, Input, Page, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface CreditLimitNumberInputProps {
   value: string;
@@ -14,8 +15,9 @@ export function CreditLimitNumberInput({
   readOnly,
   validationMessage,
   onChange,
-  suffix = "credits/month",
+  suffix,
 }: CreditLimitNumberInputProps) {
+  const { t } = useLingui();
   return (
     <Input
       size="sm"
@@ -31,7 +33,7 @@ export function CreditLimitNumberInput({
       isError={validationMessage !== null}
       message={validationMessage ?? undefined}
       messageStatus={validationMessage !== null ? "error" : undefined}
-      suffix={suffix}
+      suffix={suffix ?? t`credits/month`}
       isUnit
     />
   );
@@ -39,10 +41,14 @@ export function CreditLimitNumberInput({
 
 // Marks the limit that currently applies.
 export function ActiveLimitDot() {
+  const { t } = useLingui();
   return (
     <span
       role="img"
-      aria-label="Active"
+      aria-label={t({
+        message: "Active",
+        context: "credit limit currently applied",
+      })}
       className="inline-block h-2 w-2 shrink-0 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500"
     />
   );
@@ -127,9 +133,10 @@ export function PersonalLimitInput({
   onChange,
   onRemove,
 }: PersonalLimitInputProps) {
+  const { t } = useLingui();
   return (
     <CreditLimitInput
-      label="Personal limit"
+      label={t`Personal limit`}
       value={value}
       readOnly={readOnly}
       isActive={isActive}
@@ -137,7 +144,7 @@ export function PersonalLimitInput({
       onChange={onChange}
       action={
         onRemove
-          ? { label: "Remove personal limit", onClick: onRemove }
+          ? { label: t`Remove personal limit`, onClick: onRemove }
           : undefined
       }
     />

@@ -30,11 +30,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const agent = await AgentResource.fetchById(
+  const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
     auth,
     trigger.agentConfigurationId
   );
-  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+  if (!agent) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {

@@ -18,9 +18,8 @@ const mockedListTrending = vi.mocked(listDiscoveryTrendingItems);
 describe("GET /api/w/:wId/discovery/trending", () => {
   beforeEach(async () => {
     mockedListTrending.mockReset();
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],
@@ -61,6 +60,8 @@ describe("GET /api/w/:wId/discovery/trending", () => {
             name: "Agent",
             description: "An agent",
             pictureUrl: "https://example.com/agent.png",
+            scope: "visible",
+            lastAuthors: ["Alice"],
           },
         },
       ],

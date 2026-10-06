@@ -30,10 +30,7 @@ import type { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MembershipInvitationResource
-  extends ReadonlyAttributesType<MembershipInvitationModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface MembershipInvitationResource extends ReadonlyAttributesType<MembershipInvitationModel> {}
 /**
  * @cc [owner:philipperolet,label:security;backend] supported-invitation-roles
  * `MembershipInvitationResource` construction MUST throw when the persisted initial role is not an
@@ -168,7 +165,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Invitations can span multiple workspaces prior to login.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -458,7 +455,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         },
         include: [WorkspaceModel],
         // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
       if (!membershipInvite) {
@@ -540,7 +537,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       limit,
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -587,9 +584,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   }
 
   delete(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     auth: Authenticator,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     { transaction }: { transaction?: Transaction | undefined }
   ): Promise<Result<number | undefined, Error>> {
     throw new Error("Method not implemented.");

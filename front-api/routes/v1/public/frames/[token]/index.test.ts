@@ -1,6 +1,7 @@
 import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -16,6 +18,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { FileShareScope } from "@app/types/files";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -572,6 +575,64 @@ describe("GET /api/v1/public/frames/[token]", () => {
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body).toHaveProperty("accessToken");
+    });
+  });
+
+  describe("conversationUrl", () => {
+    const createConversationFrame = async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      const conversation = await ConversationFactory.create(otherAuth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "test-frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+      await file.setShareScope(auth, "workspace");
+      const shareInfo = await file.getShareInfo();
+      assert(shareInfo, "Expected share info");
+      const token = shareInfo.shareUrl.split("/").at(-1);
+      assert(token, "Expected share token");
+
+      return { conversation, token };
+    };
+
+    it("links to the conversation for a viewer who participates in it", async () => {
+      const { conversation, token } = await createConversationFrame();
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        user: user.toJSON(),
+        action: "posted",
+      });
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.conversationUrl).toContain(conversation.sId);
+    });
+
+    it("withholds the link from a viewer who does not participate in it", async () => {
+      const { token } = await createConversationFrame();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.conversationUrl).toBeNull();
     });
   });
 

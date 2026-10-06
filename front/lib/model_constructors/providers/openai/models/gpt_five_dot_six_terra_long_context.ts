@@ -13,9 +13,7 @@ const CONTEXT_SIZE = 1_050_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 
 export function WithOpenAIGptFiveDotSixTerraLongContextConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class OpenAIGptFiveDotSixTerraLongContext extends Base {
     // Keep a distinct Dust model ID while sending the provider's model ID.

@@ -1,4 +1,5 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
+import { POD_KNOWLEDGE_POLICIES } from "@app/components/workspace/settings/settings_metadata";
 import { usePodKnowledgePolicy } from "@app/hooks/usePodKnowledgePolicy";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -9,29 +10,32 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-
-export const POD_KNOWLEDGE_POLICIES = [
-  {
-    value: "enabled",
-    label: "Manual updates allowed",
-    description: "Members can manually add files to Pod",
-    allowManualProjectKnowledgeManagement: true,
-  },
-  {
-    value: "disabled",
-    label: "Manual updates disabled",
-    description: "Members cannot manually add files to Pod",
-    allowManualProjectKnowledgeManagement: false,
-  },
-] as const;
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 type PodKnowledgePolicy = (typeof POD_KNOWLEDGE_POLICIES)[number];
 
-export const POD_KNOWLEDGE_LABEL = "Pod files";
-export const POD_KNOWLEDGE_DESCRIPTION =
-  "Whether members can manually add files to Pods";
+const POD_KNOWLEDGE_POLICY_TEXTS: Record<
+  PodKnowledgePolicy["value"],
+  { label: MessageDescriptor; description: MessageDescriptor }
+> = {
+  enabled: {
+    label: msg`Manual updates allowed`,
+    description: msg`Members can manually add files to Pods`,
+  },
+  disabled: {
+    label: msg`Manual updates disabled`,
+    description: msg`Members cannot manually add files to Pods`,
+  },
+};
 
-export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
+interface PodKnowledgePolicyProps {
+  owner: WorkspaceType;
+}
+
+export function PodKnowledgePolicy({ owner }: PodKnowledgePolicyProps) {
+  const { t } = useLingui();
   const {
     allowManualPodKnowledgeManagement,
     isChanging,
@@ -46,8 +50,8 @@ export function PodKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <GovernanceSettingRowLayout
-      label={POD_KNOWLEDGE_LABEL}
-      description={POD_KNOWLEDGE_DESCRIPTION}
+      label={t`Pod files`}
+      description={t`Whether members can manually add files to Pods`}
       action={
         <PodKnowledgePolicyDropdown
           selectedPolicy={selectedPolicy}
@@ -72,6 +76,8 @@ const PodKnowledgePolicyDropdown = ({
   isChanging,
   doUpdatePodKnowledgePolicy,
 }: PodKnowledgePolicyDropdownProps) => {
+  const { t } = useLingui();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -79,7 +85,11 @@ const PodKnowledgePolicyDropdown = ({
           variant="outline"
           size="sm"
           isSelect
-          label={selectedPolicy?.label}
+          label={
+            selectedPolicy
+              ? t(POD_KNOWLEDGE_POLICY_TEXTS[selectedPolicy.value].label)
+              : undefined
+          }
           disabled={isChanging}
           className="grid grid-cols-[auto_1fr_auto] truncate"
         />
@@ -90,8 +100,10 @@ const PodKnowledgePolicyDropdown = ({
             <DropdownMenuRadioItem
               key={policy.value}
               value={policy.value}
-              label={policy.label}
-              description={policy.description}
+              label={t(POD_KNOWLEDGE_POLICY_TEXTS[policy.value].label)}
+              description={t(
+                POD_KNOWLEDGE_POLICY_TEXTS[policy.value].description
+              )}
               onClick={() =>
                 void doUpdatePodKnowledgePolicy(
                   policy.allowManualProjectKnowledgeManagement

@@ -268,6 +268,11 @@ export async function createConversation(
  * - If forceDelete is false and the user is the last participant: perform a soft-delete
  * - Otherwise just remove the user from the participants
  */
+/**
+ * @cc [owner:avervaet,label:security] participants-only
+ * A caller who is not a participant of the conversation MUST get an error and MUST NOT change its
+ * participants or visibility, whatever its participant count (including zero).
+ */
 export async function deleteOrLeaveConversation(
   auth: Authenticator,
   {
@@ -293,6 +298,16 @@ export async function deleteOrLeaveConversation(
   const user = auth.user();
   if (!user) {
     return new Err(new Error("User not authenticated."));
+  }
+
+  // Leaving reports a last member from the whole-conversation count, which a non-participant
+  // would also satisfy.
+  const isParticipant = await ConversationResource.isConversationParticipant(
+    auth,
+    { conversation, user }
+  );
+  if (!isParticipant) {
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   let isConversationCreator = false;
@@ -1926,6 +1941,11 @@ export async function postNewContentFragment(
     }
   }
 
+  const cfBlobRes = await getContentFragmentBlob(auth, cf);
+  if (cfBlobRes.isErr()) {
+    return cfBlobRes;
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -1936,11 +1956,6 @@ export async function postNewContentFragment(
   }
 
   const messageId = generateRandomModelSId();
-
-  const cfBlobRes = await getContentFragmentBlob(auth, cf);
-  if (cfBlobRes.isErr()) {
-    return cfBlobRes;
-  }
 
   const supersededContentFragmentId = cf.supersededContentFragmentId;
   // If the request is superseding an existing content fragment, we need to validate that it exists
@@ -2467,6 +2482,16 @@ export async function checkMessagesLimit(
           api_error: {
             type: "user_cap_reached",
             message: "You have reached your personal usage cap.",
+          },
+        });
+      }
+      // No seat auto-upgrade: a seat does not raise a group's budget.
+      if (blockedReason === "group_limit_reached") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "group_limit_reached",
+            message: "Your group has reached its usage limit.",
           },
         });
       }

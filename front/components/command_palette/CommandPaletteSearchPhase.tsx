@@ -31,7 +31,9 @@ import {
   SearchInput,
   Settings01,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -52,6 +54,16 @@ const ACCESSIBLE_CATEGORY_ORDER: CommandPaletteCategory[] = [
   "Conversations",
   "Settings",
 ];
+
+const FILTER_LABELS: Record<CommandPaletteFilter, MessageDescriptor> = {
+  All: msg`All`,
+  Conversations: msg`Conversations`,
+  Pods: msg`Pods`,
+  Agents: msg`Agents`,
+  Members: msg`Members`,
+  Skills: msg`Skills`,
+  Settings: msg`Settings`,
+};
 
 /** Stable empty list so category filters don't invalidate memos every render. */
 const NO_ITEMS: never[] = [];
@@ -115,21 +127,36 @@ export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
   }
 }
 
+export interface CommandPaletteActionOptions {
+  /** Agents get no actions phase: selecting one only starts a conversation. */
+  hideAgentActions: boolean;
+  /** Skills get no actions phase: selecting one only adds it to the message. */
+  hideSkillActions: boolean;
+  /** Members get no actions phase: selecting one only starts a conversation. */
+  hideMemberActions: boolean;
+}
+
 /** True when Right arrow / the row chevron should open the actions phase. */
 export function commandPaletteItemHasActions(
-  item: CommandPaletteItem
+  item: CommandPaletteItem,
+  {
+    hideAgentActions,
+    hideSkillActions,
+    hideMemberActions,
+  }: CommandPaletteActionOptions
 ): item is Extract<
   CommandPaletteItem,
   { kind: "agent" | "member" | "skill" | "pod" }
 > {
   switch (item.kind) {
     case "agent":
+      return !hideAgentActions;
     case "member":
+      return !hideMemberActions;
     case "pod":
       return true;
     case "skill":
-      // Without edit access the only action is view details (the default).
-      return item.skill.canAdministrate;
+      return !hideSkillActions;
     case "action":
     case "conversation":
     case "setting":
@@ -159,6 +186,7 @@ interface CommandPaletteSearchPhaseProps {
   hasMoreSkills: boolean;
   hasMoreSettings: boolean;
   canSearchSettings: boolean;
+  actionOptions: CommandPaletteActionOptions;
   selectedCategory: CommandPaletteFilter;
   onSelectedCategoryChange: (category: CommandPaletteFilter) => void;
   isLoading: boolean;
@@ -323,19 +351,19 @@ function getFlatItems(
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
-    ...members.map(
-      (member): CommandPaletteItem => ({ kind: "member", member })
-    ),
+    ...members.map((member): CommandPaletteItem => ({
+      kind: "member",
+      member,
+    })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
-    ...conversations.map(
-      (conversation): CommandPaletteItem => ({
-        kind: "conversation",
-        conversation,
-      })
-    ),
-    ...settings.map(
-      (setting): CommandPaletteItem => ({ kind: "setting", setting })
-    ),
+    ...conversations.map((conversation): CommandPaletteItem => ({
+      kind: "conversation",
+      conversation,
+    })),
+    ...settings.map((setting): CommandPaletteItem => ({
+      kind: "setting",
+      setting,
+    })),
   ];
 }
 
@@ -394,6 +422,7 @@ export function CommandPaletteSearchPhase({
   hasMoreSkills,
   hasMoreSettings,
   canSearchSettings,
+  actionOptions,
   selectedCategory,
   onSelectedCategoryChange,
   isLoading,
@@ -466,6 +495,15 @@ export function CommandPaletteSearchPhase({
     hasSearchResults,
     categoriesWithResults,
   ]);
+
+  const filterLabels = useMemo(
+    () => filters.map((filter) => t(FILTER_LABELS[filter])),
+    [filters, t]
+  );
+  const disabledFilterLabels = useMemo(
+    () => disabledFilters.map((filter) => t(FILTER_LABELS[filter])),
+    [disabledFilters, t]
+  );
 
   const filteredConversations =
     effectiveSelectedCategory === "All" ||
@@ -594,7 +632,7 @@ export function CommandPaletteSearchPhase({
         break;
       case "ArrowRight": {
         const item = flatItems[selectedIndex];
-        if (item && commandPaletteItemHasActions(item)) {
+        if (item && commandPaletteItemHasActions(item, actionOptions)) {
           e.preventDefault();
           onOpenActions(item);
         }
@@ -636,20 +674,25 @@ export function CommandPaletteSearchPhase({
         <SearchInput
           ref={searchInputRef}
           name="command-palette-search"
-          placeholder="Search…"
+          placeholder={t`Search…`}
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
         />
         <div className="pt-2">
           <FilterChips
-            filters={filters}
-            selectedFilter={effectiveSelectedCategory}
-            disabledFilters={disabledFilters}
+            filters={filterLabels}
+            selectedFilter={t(FILTER_LABELS[effectiveSelectedCategory])}
+            disabledFilters={disabledFilterLabels}
             variant="secondary"
-            onFilterClick={(filter) => {
-              onSelectedCategoryChange(filter);
-              onSelectedIndexChange(0);
+            onFilterClick={(label) => {
+              const filter = filters.find(
+                (candidate) => t(FILTER_LABELS[candidate]) === label
+              );
+              if (filter) {
+                onSelectedCategoryChange(filter);
+                onSelectedIndexChange(0);
+              }
             }}
           />
         </div>
@@ -681,7 +724,9 @@ export function CommandPaletteSearchPhase({
 
         {showFrequentItems && (
           <div>
-            <ItemTitle>Suggestions</ItemTitle>
+            <ItemTitle>
+              <Trans>Suggestions</Trans>
+            </ItemTitle>
             {frequentItems.map((item, i) => {
               const globalIndex = defaultActions.length + i;
               return (
@@ -694,7 +739,7 @@ export function CommandPaletteSearchPhase({
                   onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                   onOpenActions={
-                    commandPaletteItemHasActions(item)
+                    commandPaletteItemHasActions(item, actionOptions)
                       ? () => onOpenActions(item)
                       : undefined
                   }
@@ -720,12 +765,16 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
         {isSearchQueryReady && !isLoading && !hasSearchResults && (
-          <ItemEmptyState>No results found.</ItemEmptyState>
+          <ItemEmptyState>
+            <Trans>No results found.</Trans>
+          </ItemEmptyState>
         )}
 
         {isSearchQueryReady && filteredAgents.length > 0 && (
           <div>
-            <ItemTitle>Agents</ItemTitle>
+            <ItemTitle>
+              <Trans>Agents</Trans>
+            </ItemTitle>
             {filteredAgents.map((agent, i) => (
               <ItemRow
                 key={agent.sId}
@@ -735,14 +784,18 @@ export function CommandPaletteSearchPhase({
                 isSelected={selectedIndex === i}
                 onClick={() => onItemSelect({ kind: "agent", agent })}
                 onMouseMove={() => onSelectedIndexChange(i)}
-                onOpenActions={() => onOpenActions({ kind: "agent", agent })}
+                onOpenActions={
+                  actionOptions.hideAgentActions
+                    ? undefined
+                    : () => onOpenActions({ kind: "agent", agent })
+                }
               >
                 <CommandPaletteItemContent item={{ kind: "agent", agent }} />
               </ItemRow>
             ))}
             {hasMoreAgents && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More agents available. Type to filter.
+                <Trans>More agents available. Type to filter.</Trans>
               </div>
             )}
           </div>
@@ -750,7 +803,9 @@ export function CommandPaletteSearchPhase({
 
         {isSearchQueryReady && filteredSkills.length > 0 && (
           <div>
-            <ItemTitle>Skills</ItemTitle>
+            <ItemTitle>
+              <Trans>Skills</Trans>
+            </ItemTitle>
             {filteredSkills.map((skill, i) => {
               const globalIndex = skillsOffset + i;
               const item = {
@@ -767,7 +822,7 @@ export function CommandPaletteSearchPhase({
                   onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                   onOpenActions={
-                    commandPaletteItemHasActions(item)
+                    commandPaletteItemHasActions(item, actionOptions)
                       ? () => onOpenActions(item)
                       : undefined
                   }
@@ -778,7 +833,7 @@ export function CommandPaletteSearchPhase({
             })}
             {hasMoreSkills && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More skills available. Type to filter.
+                <Trans>More skills available. Type to filter.</Trans>
               </div>
             )}
           </div>
@@ -786,7 +841,9 @@ export function CommandPaletteSearchPhase({
 
         {isSearchQueryReady && filteredMembers.length > 0 && (
           <div>
-            <ItemTitle>Members</ItemTitle>
+            <ItemTitle>
+              <Trans>Members</Trans>
+            </ItemTitle>
             {filteredMembers.map((member, i) => {
               const globalIndex = membersOffset + i;
               return (
@@ -798,8 +855,10 @@ export function CommandPaletteSearchPhase({
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "member", member })}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                  onOpenActions={() =>
-                    onOpenActions({ kind: "member", member })
+                  onOpenActions={
+                    actionOptions.hideMemberActions
+                      ? undefined
+                      : () => onOpenActions({ kind: "member", member })
                   }
                 >
                   <CommandPaletteItemContent
@@ -810,7 +869,7 @@ export function CommandPaletteSearchPhase({
             })}
             {hasMoreMembers && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More members available. Type to filter.
+                <Trans>More members available. Type to filter.</Trans>
               </div>
             )}
           </div>
@@ -818,7 +877,9 @@ export function CommandPaletteSearchPhase({
 
         {isSearchQueryReady && filteredPods.length > 0 && (
           <div>
-            <ItemTitle>Pods</ItemTitle>
+            <ItemTitle>
+              <Trans>Pods</Trans>
+            </ItemTitle>
             {filteredPods.map((pod, i) => {
               const globalIndex = podsOffset + i;
               const item = { kind: "pod" as const, pod };
@@ -839,7 +900,7 @@ export function CommandPaletteSearchPhase({
             })}
             {hasMorePods && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More pods available. Type to filter.
+                <Trans>More pods available. Type to filter.</Trans>
               </div>
             )}
           </div>
@@ -847,7 +908,9 @@ export function CommandPaletteSearchPhase({
 
         {isSearchQueryReady && filteredConversations.length > 0 && (
           <div>
-            <ItemTitle>Conversations</ItemTitle>
+            <ItemTitle>
+              <Trans>Conversations</Trans>
+            </ItemTitle>
             {filteredConversations.map((conversation, i) => {
               const globalIndex = conversationsOffset + i;
               return (
@@ -870,7 +933,7 @@ export function CommandPaletteSearchPhase({
             })}
             {hasMoreConversations && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More conversations available. Type to filter.
+                <Trans>More conversations available. Type to filter.</Trans>
               </div>
             )}
           </div>
@@ -878,7 +941,9 @@ export function CommandPaletteSearchPhase({
 
         {isSearchQueryReady && filteredSettings.length > 0 && (
           <div>
-            <ItemTitle>Settings</ItemTitle>
+            <ItemTitle>
+              <Trans>Settings</Trans>
+            </ItemTitle>
             {filteredSettings.map((setting, i) => {
               const globalIndex = settingsOffset + i;
               return (
@@ -899,7 +964,7 @@ export function CommandPaletteSearchPhase({
             })}
             {hasMoreSettings && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More settings available. Type to filter.
+                <Trans>More settings available. Type to filter.</Trans>
               </div>
             )}
           </div>
@@ -907,10 +972,10 @@ export function CommandPaletteSearchPhase({
       </div>
       <KeyboardHints
         hints={[
-          { keys: ["↑", "↓"], label: "Navigate" },
-          { keys: ["↵"], label: "Select" },
-          { keys: ["→"], label: "Actions" },
-          { keys: ["Esc"], label: "Close" },
+          { keys: ["↑", "↓"], label: t`Navigate` },
+          { keys: ["↵"], label: t`Select` },
+          { keys: ["→"], label: t`Actions` },
+          { keys: ["Esc"], label: t`Close` },
         ]}
       />
     </div>

@@ -12,9 +12,7 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-export class ZendeskCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ZendeskCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

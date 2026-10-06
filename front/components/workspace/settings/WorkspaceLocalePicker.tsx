@@ -11,10 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-
-export const WORKSPACE_LOCALE_LABEL = "Language";
-const WORKSPACE_LOCALE_DESCRIPTION =
-  "The default language of Dust for members who have not chosen their own";
+import { useLingui } from "@lingui/react/macro";
 
 interface WorkspaceLocalePickerProps {
   owner: WorkspaceType;
@@ -31,13 +28,14 @@ export function WorkspaceLocalePicker({ owner }: WorkspaceLocalePickerProps) {
 }
 
 function WorkspaceLocaleRow({ owner }: WorkspaceLocalePickerProps) {
+  const { t } = useLingui();
   const { workspaceLocale, isChanging, doUpdateWorkspaceLocale } =
     useWorkspaceLocale({ owner });
 
   return (
     <GovernanceSettingRowLayout
-      label={WORKSPACE_LOCALE_LABEL}
-      description={WORKSPACE_LOCALE_DESCRIPTION}
+      label={t`Language`}
+      description={t`The default language of Dust for members who have not chosen their own`}
       action={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

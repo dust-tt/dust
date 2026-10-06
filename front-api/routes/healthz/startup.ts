@@ -58,7 +58,7 @@ app.get("/", async (ctx) => {
   const results = await Promise.all([
     checkDependency("redis", () => getRedisHybridManager().ping()),
     checkDependency("database", () =>
-      // biome-ignore lint/plugin: health check needs direct DB ping
+      // oxlint-disable-next-line dust/noRawSql -- health check needs direct DB ping
       frontSequelize.query("SELECT 1")
     ),
   ]);

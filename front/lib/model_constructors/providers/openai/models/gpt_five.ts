@@ -30,9 +30,7 @@ const configSchema = inputConfigSchema.extend({
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithOpenAIGptFiveConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class OpenAIGptFive extends Base {
     static readonly model = GPT_5;

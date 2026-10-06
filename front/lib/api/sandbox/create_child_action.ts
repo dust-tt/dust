@@ -141,7 +141,7 @@ export async function createSandboxChildAction(
 
   // Need per-user actionRequired (and related read state) on the resource.
   const conversationRes =
-    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired
+    // oxlint-disable-next-line dust/noExpensiveConversationFetch -- need actionRequired
     await ConversationResource.fetchConversationWithParticipantState(
       auth,
       conversationId

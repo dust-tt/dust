@@ -89,46 +89,48 @@ describe("SkillResource", () => {
       expect(document).not.toHaveProperty("instructions");
     });
 
-    it.each([
-      GLOBAL_SKILLS_ARRAY[0],
-      SYSTEM_SKILLS_ARRAY[0],
-    ])("serializes $kind definitions without workspace-specific metadata", async (definition) => {
-      const { authenticator: auth, globalSpace, user } = testContext;
-      const skill = await SkillResource.fetchById(auth, definition.sId, {
-        effectiveSpaceIds: [globalSpace.sId],
-        withInstructions: false,
-        withTools: false,
-      });
-      assert(skill);
+    it.each([GLOBAL_SKILLS_ARRAY[0], SYSTEM_SKILLS_ARRAY[0]])(
+      "serializes $kind definitions without workspace-specific metadata",
+      async (definition) => {
+        const { authenticator: auth, globalSpace, user } = testContext;
+        const skill = await SkillResource.fetchById(auth, definition.sId, {
+          effectiveSpaceIds: [globalSpace.sId],
+          withInstructions: false,
+          withTools: false,
+        });
+        assert(skill);
 
-      const document = skill.toSearchDocument(auth, {
-        editors: [user],
-        lastEditedByUser: user,
-        activeUsersCount: 4,
-        childSkillIds: [],
-      });
+        const document = skill.toSearchDocument(auth, {
+          editors: [user],
+          lastEditedByUser: user,
+          activeUsersCount: 4,
+          childSkillIds: [],
+        });
 
-      expect(document).toEqual({
-        workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
-        skill_id: definition.sId,
-        status: "active",
-        availability:
-          definition.kind === "global" ? "users_and_agents" : "workspace_users",
-        name: definition.name,
-        description: definition.userFacingDescription,
-        icon: definition.icon,
-        last_edited_by_user_id: null,
-        editor_ids: [],
-        requested_space_ids: [],
-        mcp_server_view_ids: [],
-        child_skill_ids: [],
-        active_users_count: null,
-        favorite_count: 0,
-        created_at: null,
-        updated_at: null,
-      });
-      expect(toSkillListItem(auth, document).updatedAt).toBeNull();
-    });
+        expect(document).toEqual({
+          workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
+          skill_id: definition.sId,
+          status: "active",
+          availability:
+            definition.kind === "global"
+              ? "users_and_agents"
+              : "workspace_users",
+          name: definition.name,
+          description: definition.userFacingDescription,
+          icon: definition.icon,
+          last_edited_by_user_id: null,
+          editor_ids: [],
+          requested_space_ids: [],
+          mcp_server_view_ids: [],
+          child_skill_ids: [],
+          active_users_count: null,
+          favorite_count: 0,
+          created_at: null,
+          updated_at: null,
+        });
+        expect(toSkillListItem(auth, document).updatedAt).toBeNull();
+      }
+    );
   });
 
   describe("permissions", () => {
@@ -259,14 +261,16 @@ describe("SkillResource", () => {
       expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
     });
 
-    it("creates several pending skills in the same workspace", async () => {
+    it("creates several pending skills with the same name", async () => {
       const { authenticator: auth } = testContext;
 
-      const first = await SkillResource.createPending(auth);
-      const second = await SkillResource.createPending(auth);
+      const first = await SkillResource.createPending(auth, "Meeting Notes");
+      const second = await SkillResource.createPending(auth, "Meeting Notes");
 
       assert(first.isOk() && second.isOk());
       expect(first.value.sId).not.toBe(second.value.sId);
+      expect(first.value.name).toBe("Meeting Notes");
+      expect(second.value.name).toBe("Meeting Notes");
     });
 
     it("refuses a caller without the create capability", async () => {

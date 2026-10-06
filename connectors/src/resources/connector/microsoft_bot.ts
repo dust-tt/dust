@@ -10,9 +10,7 @@ import { MicrosoftBotConfigurationResource } from "@connectors/resources/microso
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class MicrosoftBotConnectorStrategy
-  implements ConnectorProviderStrategy<"microsoft_bot">
-{
+export class MicrosoftBotConnectorStrategy implements ConnectorProviderStrategy<"microsoft_bot"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftBotConfigurationModel>,

@@ -8,8 +8,10 @@ type SparkleCounterProps = ComponentProps<typeof SparkleCounter>;
 export const COUNTER_SIZES = ["xxs", "xs", "sm", "md"] as const;
 export type CounterSizeType = (typeof COUNTER_SIZES)[number];
 
-export interface CounterProps
-  extends Omit<SparkleCounterProps, "value" | "size"> {
+export interface CounterProps extends Omit<
+  SparkleCounterProps,
+  "value" | "size"
+> {
   /**
    * The count to display. Left out — or down to one, which a dot already says —
    * the counter keeps its footprint and shows a dot instead of a number.

@@ -4,6 +4,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { clientFetch } from "@app/lib/egress/client";
 import { Button, Stars02, TextArea } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -14,6 +15,7 @@ interface JsonSchemaSectionProps {
 export function JsonSchemaSection({
   getAgentInstructions,
 }: JsonSchemaSectionProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext();
 
@@ -32,9 +34,9 @@ export function JsonSchemaSection({
     const agentInstructions = getAgentInstructions();
     if (!agentInstructions) {
       sendNotification({
-        title: "Instructions required",
+        title: t`Instructions required`,
         type: "error",
-        description: "Please add agent instructions first.",
+        description: t`Please add agent instructions first.`,
       });
       return;
     }
@@ -76,9 +78,9 @@ export function JsonSchemaSection({
       jsonSchemaStringField.onChange(schemaString);
     } catch {
       sendNotification({
-        title: "Failed to generate schema.",
+        title: t`Failed to generate schema.`,
         type: "error",
-        description: `An error occurred while generating the schema. Please contact us if the error persists.`,
+        description: t`An error occurred while generating the schema. Please contact us if the error persists.`,
       });
     } finally {
       setIsGeneratingSchema(false);
@@ -108,13 +110,13 @@ export function JsonSchemaSection({
 
   return (
     <ConfigurationSectionContainer
-      title="Schema"
-      description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+      title={t`Schema`}
+      description={t`Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context.`}
       error={fieldState.error?.message}
     >
       <Button
-        tooltip="Automatically re-generate the extraction schema based on Instructions"
-        label="Re-generate from Instructions"
+        tooltip={t`Automatically re-generate the extraction schema based on instructions`}
+        label={t`Re-generate from instructions`}
         variant="primary"
         icon={Stars02}
         size="sm"

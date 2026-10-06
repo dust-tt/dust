@@ -9,7 +9,7 @@ import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permi
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";

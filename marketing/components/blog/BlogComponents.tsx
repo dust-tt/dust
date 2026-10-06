@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { LegacyButton as Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
 import { Grid, H1, P } from "@marketing/components/home/ContentComponents";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
 import type { BlogPostSummary } from "@marketing/lib/contentful/types";
@@ -6,7 +6,6 @@ import {
   classNames,
   formatTimestampToFriendlyDate,
 } from "@marketing/lib/utils";
-import { LegacyButton as Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 export const BLOG_PAGE_SIZE = 12;

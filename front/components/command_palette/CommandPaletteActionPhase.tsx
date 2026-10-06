@@ -15,13 +15,16 @@ import {
   Eye,
   Icon,
   MessageCircle01,
+  Plus,
   Star01,
   StarFilled,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type CommandPaletteAction =
+  | "use_skill"
   | "view_details"
   | "edit"
   | "chat_with"
@@ -120,6 +123,7 @@ export function CommandPaletteActionPhase({
   onAction,
   onBack,
 }: CommandPaletteActionPhaseProps) {
+  const { t } = useLingui();
   const podId = useActivePodId();
   const needsAgentFetch =
     item.kind === "agent" &&
@@ -147,38 +151,38 @@ export function CommandPaletteActionPhase({
         if (podId) {
           result.push({
             action: "chat_with_in_pod",
-            label: "New conversation in pod",
-            description: "Open a new conversation in the active pod",
+            label: t`New conversation in pod`,
+            description: t`Open a new conversation in the active pod`,
             icon: MessageCircle01,
           });
         }
         result.push({
           action: "chat_with",
-          label: "New conversation",
-          description: "Open a new conversation",
+          label: t`New conversation`,
+          description: t`Open a new conversation`,
           icon: MessageCircle01,
         });
         result.push({
           action: "view_details",
-          label: "Details",
-          description: "View description and settings",
+          label: t`Details`,
+          description: t`View description and settings`,
           icon: Eye,
         });
         if (canEdit(item, canEditAgent)) {
           result.push({
             action: "edit",
-            label: "Edit",
-            description: "Change instructions and settings",
+            label: t`Edit`,
+            description: t`Change instructions and settings`,
             icon: Edit04,
           });
         }
         const isFavorite = getAgentIsFavorite(item, fetchedUserFavorite);
         result.push({
           action: isFavorite ? "unfavorite" : "favorite",
-          label: isFavorite ? "Remove from favorites" : "Add to favorites",
+          label: isFavorite ? t`Remove from favorites` : t`Add to favorites`,
           description: isFavorite
-            ? "Remove this agent from your favorites"
-            : "Add this agent to your favorites",
+            ? t`Remove this agent from your favorites`
+            : t`Add this agent to your favorites`,
           icon: isFavorite ? StarFilled : Star01,
         });
         break;
@@ -187,36 +191,42 @@ export function CommandPaletteActionPhase({
         if (podId) {
           result.push({
             action: "chat_with_in_pod",
-            label: "New conversation in pod",
-            description: "Open a new conversation in the active pod",
+            label: t`New conversation in pod`,
+            description: t`Open a new conversation in the active pod`,
             icon: MessageCircle01,
           });
         }
         result.push({
           action: "chat_with",
-          label: "New conversation",
-          description: "Open a new conversation",
+          label: t`New conversation`,
+          description: t`Open a new conversation`,
           icon: MessageCircle01,
         });
         result.push({
           action: "view_details",
-          label: "Details",
-          description: "View profile",
+          label: t`Details`,
+          description: t`View profile`,
           icon: Eye,
         });
         break;
       case "skill":
         result.push({
+          action: "use_skill",
+          label: t`Use skill`,
+          description: t`Add this skill to your message`,
+          icon: Plus,
+        });
+        result.push({
           action: "view_details",
-          label: "Details",
-          description: "View description and settings",
+          label: t`Details`,
+          description: t`View description and settings`,
           icon: Eye,
         });
         if (canEdit(item, canEditAgent)) {
           result.push({
             action: "edit",
-            label: "Edit",
-            description: "Change instructions and settings",
+            label: t`Edit`,
+            description: t`Change instructions and settings`,
             icon: Edit04,
           });
         }
@@ -224,8 +234,8 @@ export function CommandPaletteActionPhase({
       case "pod": {
         result.push({
           action: "go",
-          label: "Go",
-          description: "Open this Pod",
+          label: t`Go`,
+          description: t`Open this Pod`,
           icon: ArrowRight,
         });
         const isStarred =
@@ -233,10 +243,10 @@ export function CommandPaletteActionPhase({
             .isStarred ?? item.pod.isStarred;
         result.push({
           action: isStarred ? "unstar" : "star",
-          label: isStarred ? "Remove from starred" : "Add to starred",
+          label: isStarred ? t`Remove from starred` : t`Add to starred`,
           description: isStarred
-            ? "Remove this Pod from your starred list"
-            : "Add this Pod to your starred list",
+            ? t`Remove this Pod from your starred list`
+            : t`Add this Pod to your starred list`,
           icon: isStarred ? StarFilled : Star01,
         });
         break;
@@ -245,7 +255,7 @@ export function CommandPaletteActionPhase({
         assertNever(item);
     }
     return result;
-  }, [item, canEditAgent, fetchedUserFavorite, podId, podSummary]);
+  }, [item, canEditAgent, fetchedUserFavorite, podId, podSummary, t]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -255,7 +265,6 @@ export function CommandPaletteActionPhase({
   }, []);
 
   // Reset selection when the available actions change (e.g., switching between items).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: actions is an intentional trigger
   useEffect(() => {
     setSelectedIndex(0);
   }, [actions]);
@@ -336,9 +345,9 @@ export function CommandPaletteActionPhase({
       </div>
       <KeyboardHints
         hints={[
-          { keys: ["↑", "↓"], label: "Navigate" },
-          { keys: ["↵"], label: "Select" },
-          { keys: ["←", "Esc"], label: "Back" },
+          { keys: ["↑", "↓"], label: t`Navigate` },
+          { keys: ["↵"], label: t`Select` },
+          { keys: ["←", "Esc"], label: t`Back` },
         ]}
       />
     </div>

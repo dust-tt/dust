@@ -1,8 +1,8 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import {
@@ -140,7 +140,7 @@ describe("AgentPicker", () => {
     await user.click(screen.getByRole("menuitem", { name: "Beta" }));
     expect(onItemClick).toHaveBeenCalledWith(remoteAgents[1]);
     expect(
-      screen.queryByPlaceholderText("Search Agents")
+      screen.queryByPlaceholderText("Search for agents")
     ).not.toBeInTheDocument();
     expect(fetcherWithBody).toHaveBeenCalledTimes(1);
   });
@@ -158,7 +158,29 @@ describe("AgentPicker", () => {
     await user.click(screen.getByRole("menuitem", { name: "Zulu" }));
     expect(onDeselect).toHaveBeenCalledOnce();
     expect(onItemClick).not.toHaveBeenCalled();
-    expect(screen.getByPlaceholderText("Search Agents")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search for agents")
+    ).toBeInTheDocument();
+  });
+
+  it("asks the search to rank favorites first and keeps its order", async () => {
+    const { fetcherWithBody, renderPicker } = await setup();
+    fetcherWithBody.mockResolvedValue({
+      ...searchResponse,
+      agents: [remoteAgents[1], remoteAgents[0]],
+    });
+    const user = userEvent.setup();
+    renderPicker({ favoritesFirst: true, agents: [] });
+    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
+    await screen.findByRole("menuitem", { name: "Beta" });
+    expect(fetcherWithBody).toHaveBeenCalledWith([
+      expect.any(String),
+      expect.objectContaining({ favoritesFirst: true }),
+      "POST",
+    ]);
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent)
+    ).toEqual(["Beta", "Alpha"]);
   });
 
   it("does not select stale results while a typed query is loading", async () => {
@@ -174,7 +196,7 @@ describe("AgentPicker", () => {
           resolveSearch = resolve;
         })
     );
-    const input = screen.getByPlaceholderText("Search Agents");
+    const input = screen.getByPlaceholderText("Search for agents");
     fireEvent.change(input, { target: { value: "beta" } });
     expect(
       screen.getByRole("status", { name: "Loading agents" })
@@ -195,31 +217,31 @@ describe("AgentPicker", () => {
     expect(onItemClick).toHaveBeenCalledWith(remoteAgents[1]);
   });
 
-  it.each([
-    false,
-    true,
-  ])("distinguishes empty results from a search failure (failure: %s)", async (failure) => {
-    const { fetcherWithBody, onItemClick, renderPicker } = await setup();
-    if (failure) {
-      fetcherWithBody.mockRejectedValue(new Error("Search unavailable"));
-    } else {
-      fetcherWithBody.mockResolvedValue({
-        ...searchResponse,
-        agents: [],
-        total: 0,
+  it.each([false, true])(
+    "distinguishes empty results from a search failure (failure: %s)",
+    async (failure) => {
+      const { fetcherWithBody, onItemClick, renderPicker } = await setup();
+      if (failure) {
+        fetcherWithBody.mockRejectedValue(new Error("Search unavailable"));
+      } else {
+        fetcherWithBody.mockResolvedValue({
+          ...searchResponse,
+          agents: [],
+          total: 0,
+        });
+      }
+      const user = userEvent.setup();
+      renderPicker();
+      await user.click(screen.getByRole("button", { name: "Pick an agent" }));
+      expect(
+        await screen.findByText(
+          failure ? "Unable to load agents" : "No results found"
+        )
+      ).toBeInTheDocument();
+      fireEvent.keyDown(screen.getByPlaceholderText("Search for agents"), {
+        key: "Enter",
       });
+      expect(onItemClick).not.toHaveBeenCalled();
     }
-    const user = userEvent.setup();
-    renderPicker();
-    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
-    expect(
-      await screen.findByText(
-        failure ? "Unable to load agents" : "No results found"
-      )
-    ).toBeInTheDocument();
-    fireEvent.keyDown(screen.getByPlaceholderText("Search Agents"), {
-      key: "Enter",
-    });
-    expect(onItemClick).not.toHaveBeenCalled();
-  });
+  );
 });

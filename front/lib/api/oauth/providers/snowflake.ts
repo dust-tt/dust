@@ -19,6 +19,7 @@ import type {
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 import {
+  isValidSnowflakeAccount,
   isValidSnowflakeRole,
   snowflakeRoleToOAuthScope,
 } from "@app/types/oauth/lib";
@@ -142,6 +143,13 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
+  /**
+   * @cc [owner:fontanierh,label:security] validate-account-identifier
+   * When the caller supplies the Snowflake credentials (no `mcp_server_id`), `snowflake_account`
+   * MUST satisfy `isValidSnowflakeAccount`, otherwise the config is invalid. The account is
+   * interpolated into the authorize and token URL hosts, so values such as `evil.example/x?` MUST
+   * be rejected server-side, not only by the setup UI.
+   */
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
       // If we have an mcp_server_id it means the admin already setup the connection.
@@ -152,7 +160,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       return !!(
         extraConfig.client_id &&
         extraConfig.client_secret &&
-        extraConfig.snowflake_account &&
+        isValidSnowflakeAccount(extraConfig.snowflake_account) &&
         extraConfig.snowflake_role &&
         extraConfig.snowflake_warehouse
       );
@@ -302,7 +310,6 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
     return restConfig;

@@ -59,168 +59,168 @@ function pollMessageEvents({
   );
 }
 
-describe.each([
-  "/api/sse",
-  "/api",
-])("GET %s/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", (prefix) => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("returns 404 when the conversation does not exist", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-
-    const response = await pollMessageEvents({
-      prefix,
-      workspaceId: workspace.sId,
-      conversationId: "conv_unknown",
-      messageId: "msg_unknown",
-      lastEventId: "end-of-stream",
+describe.each(["/api/sse", "/api"])(
+  "GET %s/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll",
+  (prefix) => {
+    beforeEach(() => {
+      vi.clearAllMocks();
     });
 
-    expect(response.status).toBe(404);
-    expect(getMessagesEventsBatch).not.toHaveBeenCalled();
-  });
+    it("returns 404 when the conversation does not exist", async () => {
+      const { workspace } = await createPrivateApiMockRequest();
 
-  it("returns end-of-stream without reading Redis when polling after completion", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-    const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
+      const response = await pollMessageEvents({
+        prefix,
+        workspaceId: workspace.sId,
+        conversationId: "conv_unknown",
+        messageId: "msg_unknown",
+        lastEventId: "end-of-stream",
+      });
 
-    const response = await pollMessageEvents({
-      prefix,
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-      messageId,
-      lastEventId: "end-of-stream",
+      expect(response.status).toBe(404);
+      expect(getMessagesEventsBatch).not.toHaveBeenCalled();
     });
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(await response.json()).toEqual({
-      events: [
-        JSON.stringify({
-          eventId: "end-of-stream",
-          data: { type: "end-of-stream" },
-        }),
-      ],
-    });
-    expect(getMessagesEventsBatch).not.toHaveBeenCalled();
-  });
+    it("returns end-of-stream without reading Redis when polling after completion", async () => {
+      const { workspace, auth } = await createPrivateApiMockRequest();
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
 
-  it("still rejects user messages with an end-of-stream cursor", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-    const messageId = await getMessageIdByRank(auth, conversation.sId, 0);
+      const response = await pollMessageEvents({
+        prefix,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+        messageId,
+        lastEventId: "end-of-stream",
+      });
 
-    const response = await pollMessageEvents({
-      prefix,
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-      messageId,
-      lastEventId: "end-of-stream",
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(await response.json()).toEqual({
+        events: [
+          JSON.stringify({
+            eventId: "end-of-stream",
+            data: { type: "end-of-stream" },
+          }),
+        ],
+      });
+      expect(getMessagesEventsBatch).not.toHaveBeenCalled();
     });
 
-    expect(response.status).toBe(400);
-    expect(getMessagesEventsBatch).not.toHaveBeenCalled();
-  });
+    it("still rejects user messages with an end-of-stream cursor", async () => {
+      const { workspace, auth } = await createPrivateApiMockRequest();
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const messageId = await getMessageIdByRank(auth, conversation.sId, 0);
 
-  it("returns serialized events after the requested event ID", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
+      const response = await pollMessageEvents({
+        prefix,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+        messageId,
+        lastEventId: "end-of-stream",
+      });
+
+      expect(response.status).toBe(400);
+      expect(getMessagesEventsBatch).not.toHaveBeenCalled();
     });
-    const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
-    const events: MessageStreamBatchEvent[] = [
-      {
-        eventId: "2-0",
-        data: {
-          type: "generation_tokens",
-          created: 0,
-          configurationId: "dust",
-          messageId,
-          text: "hello",
-          classification: "tokens",
-          step: 0,
+
+    it("returns serialized events after the requested event ID", async () => {
+      const { workspace, auth } = await createPrivateApiMockRequest();
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
+      const events: MessageStreamBatchEvent[] = [
+        {
+          eventId: "2-0",
+          data: {
+            type: "generation_tokens",
+            created: 0,
+            configurationId: "dust",
+            messageId,
+            text: "hello",
+            classification: "tokens",
+            step: 0,
+          },
         },
-      },
-    ];
-    vi.mocked(getMessagesEventsBatch).mockResolvedValue(events);
+      ];
+      vi.mocked(getMessagesEventsBatch).mockResolvedValue(events);
 
-    const response = await pollMessageEvents({
-      prefix,
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-      messageId,
-      lastEventId: "1-0",
-    });
+      const response = await pollMessageEvents({
+        prefix,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+        messageId,
+        lastEventId: "1-0",
+      });
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      events: events.map((event) => JSON.stringify(event)),
-    });
-    expect(getMessagesEventsBatch).toHaveBeenCalledWith({
-      messageId,
-      lastEventId: "1-0",
-      signal: expect.any(AbortSignal),
-    });
-  });
-
-  it("returns end-of-stream when a completed message has no events after the cursor", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-    const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
-    const message = await ConversationResource.getMessageByIdInConversation(
-      auth,
-      conversation,
-      messageId
-    );
-    if (message.isErr() || !message.value.agentMessageId) {
-      throw new Error("Expected an agent message.");
-    }
-    vi.mocked(getMessagesEventsBatch).mockResolvedValue([]);
-
-    const activeResponse = await pollMessageEvents({
-      prefix,
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-      messageId,
-      lastEventId: "1-0",
-    });
-    expect(await activeResponse.json()).toEqual({ events: [] });
-
-    await ConversationFactory.setAgentMessageStatus({
-      workspace,
-      agentMessageModelId: message.value.agentMessageId,
-      status: "succeeded",
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        events: events.map((event) => JSON.stringify(event)),
+      });
+      expect(getMessagesEventsBatch).toHaveBeenCalledWith({
+        messageId,
+        lastEventId: "1-0",
+        signal: expect.any(AbortSignal),
+      });
     });
 
-    const response = await pollMessageEvents({
-      prefix,
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-      messageId,
-      lastEventId: "1-0",
-    });
+    it("returns end-of-stream when a completed message has no events after the cursor", async () => {
+      const { workspace, auth } = await createPrivateApiMockRequest();
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
+      const message = await ConversationResource.getMessageByIdInConversation(
+        auth,
+        conversation,
+        messageId
+      );
+      if (message.isErr() || !message.value.agentMessageId) {
+        throw new Error("Expected an agent message.");
+      }
+      vi.mocked(getMessagesEventsBatch).mockResolvedValue([]);
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      events: [
-        JSON.stringify({
-          eventId: "end-of-stream",
-          data: { type: "end-of-stream" },
-        }),
-      ],
+      const activeResponse = await pollMessageEvents({
+        prefix,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+        messageId,
+        lastEventId: "1-0",
+      });
+      expect(await activeResponse.json()).toEqual({ events: [] });
+
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: message.value.agentMessageId,
+        status: "succeeded",
+      });
+
+      const response = await pollMessageEvents({
+        prefix,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+        messageId,
+        lastEventId: "1-0",
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        events: [
+          JSON.stringify({
+            eventId: "end-of-stream",
+            data: { type: "end-of-stream" },
+          }),
+        ],
+      });
     });
-  });
-});
+  }
+);

@@ -61,11 +61,44 @@ export function FilePreviewDialog({
     }
   };
 
+  const preview = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
+  const { category, recordCounts } = preview;
+
+  const FileIcon = entry
+    ? getFileTypeIcon(entry.contentType, entry.fileName)
+    : null;
+
+  const markdown = useMarkdownFileEditor({
+    category,
+    entryPath: entry?.path,
+    fileUrl,
+    isActive: isOpen,
+    isContentLoading: preview.isContentLoading,
+    isTooLarge: preview.isTooLarge,
+    isTruncated: preview.isTruncated,
+    canWrite: preview.canWrite,
+    owner,
+    rawContent: preview.truncatedContent,
+    processedContent: preview.processedContent,
+  });
+
+  // The rich editor autosaves after a delay; leaving the file before that would drop the edit.
+  const { holdsNavigation } = markdown;
+  const handleOpenChange = (open: boolean) => {
+    if (!open && holdsNavigation) {
+      return;
+    }
+    onOpenChange(open);
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (holdsNavigation) {
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (
         target?.tagName === "INPUT" ||
@@ -84,28 +117,10 @@ export function FilePreviewDialog({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onPrev, onNext]);
-
-  const preview = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
-  const { category, recordCounts } = preview;
-
-  const FileIcon = entry
-    ? getFileTypeIcon(entry.contentType, entry.fileName)
-    : null;
-
-  const markdown = useMarkdownFileEditor({
-    category,
-    entryPath: entry?.path,
-    fileUrl,
-    isActive: isOpen,
-    isContentLoading: preview.isContentLoading,
-    isTooLarge: preview.isTooLarge,
-    owner,
-    processedContent: preview.processedContent,
-  });
+  }, [isOpen, onPrev, onNext, holdsNavigation]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
         <DialogHeader className="flex gap-4">
           <DialogTitle>
@@ -135,7 +150,7 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
-        {markdown.canEdit && (
+        {markdown.canEdit && !markdown.richEditor && (
           <div className="flex shrink-0 justify-end px-4">
             <MarkdownFilePreviewViewModeSwitch
               key={`${entry?.path ?? "none"}:${isOpen}`}
@@ -173,7 +188,7 @@ export function FilePreviewDialog({
                 size="sm"
                 icon={ChevronLeft}
                 onClick={onPrev}
-                disabled={!onPrev}
+                disabled={!onPrev || holdsNavigation}
                 tooltip="Previous"
               />
               <Button
@@ -181,11 +196,11 @@ export function FilePreviewDialog({
                 size="sm"
                 icon={ChevronRight}
                 onClick={onNext}
-                disabled={!onNext}
+                disabled={!onNext || holdsNavigation}
                 tooltip="Next"
               />
             </div>
-            {markdown.canEdit ? (
+            {markdown.canEdit && !markdown.richEditor ? (
               <div className="flex items-center gap-2">
                 <Button
                   label="Save"

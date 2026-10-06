@@ -4,8 +4,8 @@ import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnab
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
-import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
+import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";

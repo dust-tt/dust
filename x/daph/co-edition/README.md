@@ -115,14 +115,11 @@ The plan:
    written on checkpoints and on close, through the codec, so reload or disconnect loses
    nothing. Plan mode (`plan.md`, Redis lock, `plan_updated` event) is the closest existing
    shape, minus the streaming.
-3. **The sync layer is chosen when building step 2, not before.** Two candidates. Yjs with
-   `y-prosemirror`, its awareness protocol for cursors, and a Hocuspocus-style server: cursors,
-   presence and any number of clients come with it, and the product brainstorm assumed it.
-   ProseMirror `collab` with a central authority: simpler, no CRDT, enough for one human plus
-   agents, but cursors and multi-client have to be built. Leaning Yjs. The spike that settles
-   it answers two questions: can an agent tool act as a client from the server (apply
-   operations to the shared document and publish its awareness state), and how is the file
-   checkpoint produced from the shared document through the codec, anchors included.
+3. **The sync layer is Yjs, with Hocuspocus embedded in our own server.** Chosen 2026-10-06,
+   design in `LIVE_SESSION.md`. Yjs with `y-prosemirror` brings cursors, presence and any
+   number of clients. The alternative, ProseMirror `collab` with a central authority, is simpler
+   and has no CRDT, but cursors and multi-client would have to be built, and several humans
+   editing together is part of the plan.
 
 Several humans editing the same document at once is then a matter of opening more clients on
 the same session, not a new architecture.
@@ -140,7 +137,9 @@ Frame documents retirement PR.
 The parser is superlinear on some shapes (see Facts). The codec must cap body size and
 container nesting before calling the parser, and server callers must run it off the main
 thread with a timeout. A depth rule inside the grammar was rejected: it would refuse valid
-Markdown and reintroduce hand-written Markdown rules.
+Markdown and reintroduce hand-written Markdown rules. `checkInputBounds` in `parser.ts` is the
+one place allowed to approximate CommonMark (what a list marker or a quote prefix looks like),
+because it only decides whether to parse, never what the text means.
 
 ## Open questions
 
@@ -152,9 +151,6 @@ Markdown and reintroduce hand-written Markdown rules.
   comments ship.
 - **Where the document to conversation link lives.** Front matter keeps the file
   self-contained; a link table is more robust. Leaning link table, like project tasks.
-- **Anchors inside link destinations or entities.** The structure check lets them through
-  because node types do not change. Whether the editor can highlight such a span decides if the
-  codec should refuse them.
 - **Suggestions.** Next directive. Insert, delete, replace; accept or reject one by one or
   all. Same attribution and enforcement as comments. The codec's "adding a directive" steps are
   written for it.

@@ -15,7 +15,7 @@ export async function runInCommittedTransaction<T>(
   fn: () => Promise<T>
 ): Promise<T> {
   const namespace = createNamespace("eval-setup-namespace");
-  // biome-ignore lint/correctness/useHookAtTopLevel: Sequelize's CLS setter, not a React hook
+  // oxlint-disable-next-line react/rules-of-hooks -- Sequelize's CLS setter, not a React hook
   Sequelize.useCLS(namespace);
   const context = namespace.createContext();
   namespace.enter(context);

@@ -33,12 +33,6 @@ import {
   useState,
 } from "react";
 
-import { getAgentById } from "../data/agents";
-import { isTriggeredConversation } from "../data/myPod";
-import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
-import { getConversationBadge, INBOX_ROW_BADGES } from "../data/rowBadges";
-import { formatRowTime, READ_DWELL_MS } from "../data/time";
-import { getTriggerById } from "../data/triggers";
 import type {
   AdminRequest,
   Agent,
@@ -47,8 +41,14 @@ import type {
   Trigger,
   User,
 } from "../data/types";
+import { getAgentById } from "../data/agents";
+import { isTriggeredConversation } from "../data/myPod";
+import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
+import { getConversationBadge, INBOX_ROW_BADGES } from "../data/rowBadges";
+import { formatRowTime, READ_DWELL_MS } from "../data/time";
+import { getTriggerById } from "../data/triggers";
 import { getUserById } from "../data/users";
-import { buildConversationRowMenuItems } from "./conversationRowMenu";
+import { ConversationListItem } from "./ConversationListItem";
 import { EmptyState } from "./EmptyState";
 import {
   collectAgents,
@@ -59,7 +59,7 @@ import {
 } from "./FilterMenu";
 import { RequestListItem } from "./RequestListItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
-import { ConversationListItem } from "./ConversationListItem";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 
 type InboxConversationSearchItem = {
   type: "conversation";

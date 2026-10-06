@@ -508,7 +508,6 @@ export default function DatasetView({
     fileData.readAsText(file);
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // Validate the dataset types and dataset name
     const valid = datasetTypesValidation() && datasetNameValidation();

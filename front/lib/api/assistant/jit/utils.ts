@@ -1,3 +1,4 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import config from "@app/lib/api/config";
@@ -6,7 +7,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type {
   ContentNodeAttachmentType,
@@ -16,6 +19,31 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { CoreAPI } from "@app/types/core/core_api";
 import assert from "assert";
+
+/** The configuration of an internal server added just in time through its view. */
+export function buildJITServerConfiguration(
+  view: MCPServerViewResource,
+  fallback: { name: string; description: string }
+): ServerSideMCPServerConfigurationType {
+  return {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name: view.name ?? fallback.name,
+    description: view.description ?? fallback.description,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    secretName: null,
+    dustProject: null,
+    additionalConfiguration: {},
+    mcpServerViewId: view.sId,
+    dustAppConfiguration: null,
+    internalMCPServerId: view.mcpServerId,
+  };
+}
 
 export async function getTablesFromMultiSheetSpreadsheet(
   auth: Authenticator,

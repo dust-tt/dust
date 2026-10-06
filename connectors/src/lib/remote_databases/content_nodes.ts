@@ -1,7 +1,7 @@
 import {
   buildInternalId,
   parseInternalId,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/lib/remote_databases/utils";
 import type {
   ConnectorPermission,

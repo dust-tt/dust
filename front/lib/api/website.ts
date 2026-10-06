@@ -8,7 +8,7 @@ export async function updateWebsite(
   config: WebCrawlerConfigurationType
 ) {
   const res = await clientFetch(
-    `/api/w/${workspaceId}/spaces/${spaceId}/data_sources/${dataSourceId}/configuration`,
+    `/api/w/${workspaceId}/spaces/${encodeURIComponent(spaceId)}/data_sources/${encodeURIComponent(dataSourceId)}/configuration`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

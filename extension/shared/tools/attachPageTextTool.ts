@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@extension/shared/lib/utils";
+import {
+  getTabNotOnDomainError,
+  normalizeError,
+} from "@extension/shared/lib/utils";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -11,9 +14,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
  */
 export async function attachTabsTextTool({
   tabIds,
+  domainToFetch,
   captureService,
 }: {
   tabIds: number[];
+  domainToFetch: string;
   captureService: CaptureService | null;
 }): Promise<ToolHandlerResult> {
   if (!captureService) {
@@ -36,6 +41,15 @@ export async function attachTabsTextTool({
 
       if (result.isErr()) {
         return new Err(new MCPError(`Error: ${result.error.message}`));
+      }
+
+      const domainError = getTabNotOnDomainError({
+        tabId,
+        tabUrl: result.value.url ?? "",
+        domainToFetch,
+      });
+      if (domainError) {
+        return new Err(new MCPError(domainError));
       }
 
       const { title, url, content } = result.value;

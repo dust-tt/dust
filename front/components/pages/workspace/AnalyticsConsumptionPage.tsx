@@ -9,6 +9,8 @@ import { AnalyticsExportPanel } from "@app/components/workspace/analytics/Analyt
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionOverviewProps } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import {
@@ -17,11 +19,6 @@ import {
 } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionSummaryProps } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
@@ -29,6 +26,9 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 
 import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
@@ -68,6 +68,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -78,9 +79,9 @@ const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
-    import(
-      "@app/components/workspace/analytics/consumption/ConsumptionChart"
-    ).then((mod) => ({ default: mod.ConsumptionChart })),
+    import("@app/components/workspace/analytics/consumption/ConsumptionChart").then(
+      (mod) => ({ default: mod.ConsumptionChart })
+    ),
   { canReload }
 );
 
@@ -172,6 +173,7 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 }
 
 export function AnalyticsConsumptionPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user } = useAuth();
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
@@ -235,8 +237,8 @@ export function AnalyticsConsumptionPage() {
         onValueChange={(value) => setTab(value as AnalyticsTab)}
       >
         <TabsList className="mb-6">
-          <TabsTrigger value="consumption" label="Consumption" />
-          <TabsTrigger value="export" label="Export" />
+          <TabsTrigger value="consumption" label={t`Consumption`} />
+          <TabsTrigger value="export" label={t`Export`} />
         </TabsList>
         <TabsContent value="consumption" className="flex flex-col gap-4">
           <AdminSectionAnchor
@@ -252,7 +254,7 @@ export function AnalyticsConsumptionPage() {
                   <Button
                     variant="primary"
                     icon={Robot}
-                    label="Ask @analyst"
+                    label={t`Ask @analyst`}
                     onClick={() => setIsOpen(true)}
                   />
                 )
@@ -348,10 +350,11 @@ export function AnalyticsConsumptionContent({
   showMemberGroupFilter = true,
   showOverviewError = false,
   state,
-  title = "Analytics",
+  title,
   usageHref = `/w/${owner.sId}/credits`,
   usageLinkLabel,
 }: AnalyticsConsumptionContentProps) {
+  const { t } = useLingui();
   const {
     dimension,
     filter,
@@ -422,7 +425,7 @@ export function AnalyticsConsumptionContent({
   ) : (
     <div className="flex w-full flex-row justify-between">
       <div className="flex flex-col gap-1">
-        <Page.H variant="h3">{title}</Page.H>
+        <Page.H variant="h3">{title ?? t`Analytics`}</Page.H>
         <OverviewComponent workspaceId={owner.sId} period={period} />
       </div>
       {selectors}
@@ -443,7 +446,9 @@ export function AnalyticsConsumptionContent({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-foreground">Explore</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              <Trans>Explore</Trans>
+            </h2>
             <UsageFilterPanelComponent
               owner={owner}
               period={period}

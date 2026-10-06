@@ -1,6 +1,6 @@
+import { Minus, Plus, Separator } from "@dust-tt/sparkle";
 import { H2 } from "@marketing/components/home/ContentComponents";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { Minus, Plus, Separator } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useState } from "react";
 

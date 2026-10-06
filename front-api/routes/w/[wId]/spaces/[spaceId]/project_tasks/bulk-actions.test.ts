@@ -23,6 +23,15 @@ function bulkActions(
   );
 }
 
+// An open Pod (the workspace global group is attached as a viewer) that the caller can read but is
+// not a member of.
+async function setupOpenPodWithoutCallerMembership() {
+  const { workspace, user, globalGroup } = await createPrivateApiMockRequest();
+  const pod = await SpaceFactory.project(workspace);
+  await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+  return { workspace, user, pod };
+}
+
 describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/bulk-actions", () => {
   it("marks all provided todos as done", async () => {
     const { workspace, user } = await createPrivateApiMockRequest();
@@ -198,5 +207,40 @@ describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/bulk-actions", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("rejects a non-member of an open Pod without modifying any todo", async () => {
+    const { workspace, user, pod } =
+      await setupOpenPodWithoutCallerMembership();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const todo = await ProjectTaskFactory.create(workspace, pod, {
+      userId: user.id,
+    });
+    const suggestion = await ProjectTaskFactory.create(workspace, pod, {
+      userId: user.id,
+    });
+    await suggestion.updateWithVersion(auth, {
+      agentSuggestionStatus: "pending",
+    });
+
+    const setStatusResponse = await bulkActions(workspace, pod.sId, {
+      action: "set_status",
+      taskIds: [todo.sId],
+      status: "done",
+    });
+    const rejectResponse = await bulkActions(workspace, pod.sId, {
+      action: "reject_agent_suggestion",
+      taskIds: [suggestion.sId],
+    });
+
+    expect(setStatusResponse.status).toBe(404);
+    expect(rejectResponse.status).toBe(404);
+    const refreshedTodo = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+    expect(refreshedTodo?.status).toBe("todo");
+    const refreshedSuggestion = await ProjectTaskResource.fetchBySId(
+      auth,
+      suggestion.sId
+    );
+    expect(refreshedSuggestion?.agentSuggestionStatus).toBe("pending");
   });
 });

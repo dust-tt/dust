@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import config from "@app/lib/api/config";
 import type { AppType } from "@app/types/app";
 import type { RunConfig, RunType } from "@app/types/run";
@@ -116,9 +116,8 @@ export function ViewAppAPIModal({
               <Page.P>
                 <ul className="text-muted-foreground">
                   <li>
-                    spaceId: <span className="font-bold">
-                      {app.space.sId}
-                    </span>{" "}
+                    spaceId:{" "}
+                    <span className="font-bold">{app.space.sId}</span>{" "}
                   </li>
                   <li>
                     appId: <span className="font-bold">{app.sId}</span>

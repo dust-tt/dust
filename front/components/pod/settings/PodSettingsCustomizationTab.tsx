@@ -12,7 +12,6 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { usePodMetadata, useUpdatePodMetadata } from "@app/lib/swr/pods";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -49,7 +48,11 @@ export function PodSettingsCustomizationTab({
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
 
   // Pod metadata
-  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
+  const {
+    podMetadata,
+    defaultSkills: selectedDefaultSkills,
+    isPodMetadataLoading,
+  } = usePodMetadata({
     workspaceId: owner.sId,
     podId: pod.sId,
   });
@@ -105,20 +108,10 @@ export function PodSettingsCustomizationTab({
   );
 
   // Default skills
-  const { skills } = useSkills({
-    owner,
-    status: "active",
-  });
-
   const defaultSkillIds = useMemo(
     () => podMetadata?.defaultSkillIds ?? [],
     [podMetadata]
   );
-  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
-  const selectedDefaultSkills = defaultSkillIds.flatMap((skillId) => {
-    const skill = skillById.get(skillId);
-    return skill ? [skill] : [];
-  });
   const addDefaultSkill = useCallback(
     async (skillId: string) => {
       await doUpdateMetadata({

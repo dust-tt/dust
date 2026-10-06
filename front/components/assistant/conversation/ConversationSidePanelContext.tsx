@@ -302,7 +302,6 @@ export function ConversationSidePanelProvider({
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setPanelRef = useCallback(
     (ref: ImperativePanelHandle | null) => {
       panelRef.current = ref;
@@ -329,7 +328,6 @@ export function ConversationSidePanelProvider({
   }, [setData, setCurrentPanel]);
 
   // Collapse without touching the history.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const collapsePanel = useCallback(() => {
     currentParamsRef.current = null;
     if (panelRef && panelRef.current) {

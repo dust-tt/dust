@@ -12,12 +12,12 @@
   "review-pull-request": {
     "userFacingDescription": "Reviews pull requests.",
     "agentFacingDescription": "Use when reviewing a pull request diff for bugs, missing tests and style issues.",
-    "instructions": "# Review Pull Request\n\nList blocking issues first, then suggestions.\n\nFlag any change without a test."
+    "instructions": "# Review Pull Request\n\nList blocking issues first, then suggestions.\n\nFlag any change without a test.\n\nFind the issue the pull request fixes with {{tool:github}} and check that the change addresses it."
   },
   "create-support-issue": {
     "userFacingDescription": "Files support escalations as engineering issues.",
     "agentFacingDescription": "Use when turning a customer support escalation into an engineering issue.",
-    "instructions": "# Create Support Issue\n\nWrite a title, the steps to reproduce, the expected and actual behavior, and the affected customer.\n\nLabel the issue with its severity: low, medium or high."
+    "instructions": "# Create Support Issue\n\nWrite a title, the steps to reproduce, the expected and actual behavior, and the affected customer.\n\nLabel the issue with its severity: low, medium or high.\n\nFile the issue in the engineering tracker with {{tool:github}}."
   },
   "write-job-description": {
     "userFacingDescription": "Writes job descriptions for open roles.",

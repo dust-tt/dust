@@ -8,7 +8,11 @@ import {
   requiredString,
   validateAttributes,
 } from "@app/lib/markdown/dfm/grammar";
-import { codeLines, endsInsideFence } from "@app/lib/markdown/dfm/parser";
+import {
+  checkInputBounds,
+  codeLines,
+  endsInsideFence,
+} from "@app/lib/markdown/dfm/parser";
 import type {
   DfmAuthor,
   DfmAuthorKind,
@@ -30,6 +34,7 @@ import { z } from "zod";
  */
 
 const AUTHOR_ID_PATTERN = /^[^\s"{}]+$/;
+const SIGNATURE_PATTERN = /^[A-Za-z0-9_-]+$/;
 const INVALID_NAME_PATTERN = /["}\r\n]/;
 const TIMESTAMP_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-](\d{2}):(\d{2}))$/;
@@ -79,6 +84,60 @@ function isValidTimestamp(value: string): boolean {
     offsetValid
   );
 }
+
+/**
+ * @cc [owner:tdraier,label:coding] dfm-comment-schema-exact
+ * `dfmCommentSchema` MUST describe exactly `DfmComment`, its messages and their authors, and MUST
+ * refuse unknown keys, so a caller that keeps threads outside the codec can never drop a field
+ * silently. A field added to those types MUST fail type-checking until it is added here.
+ */
+export const dfmCommentSchema = z
+  .object({
+    id: z.string(),
+    status: z.enum(COMMENT_STATUSES),
+    messages: z.array(
+      z
+        .object({
+          author: z
+            .object({
+              kind: z.enum(AUTHOR_KINDS),
+              id: z.string(),
+              name: z.string(),
+            })
+            .strict(),
+          createdAt: z.string(),
+          body: z.string(),
+          signature: z.string().optional(),
+        })
+        .strict()
+    ),
+  })
+  .strict();
+
+// Identical types, optional fields included: structural `extends` lets either side add one.
+type Exactly<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? true
+    : false;
+const schemaMatchesComment: Exactly<
+  z.infer<typeof dfmCommentSchema>,
+  DfmComment
+> = true;
+void schemaMatchesComment;
+
+/**
+ * @cc [owner:tdraier,label:coding] dfm-comments-schema-writable
+ * `dfmCommentsSchema` MUST accept exactly the thread lists that `dfmCommentSchema` describes and
+ * `validateComments` accepts, so threads kept outside the codec are the ones `serializeDfm` writes.
+ */
+export const dfmCommentsSchema = z
+  .array(dfmCommentSchema)
+  .superRefine((comments, context) => {
+    const error = validateComments(comments);
+    if (error) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: error.message });
+    }
+  });
 
 const commentAttributesSchema = z
   .object({
@@ -133,18 +192,27 @@ export const messageAttributesSchema = z
       isValidTimestamp,
       "Message without a valid timestamp."
     ),
+    sig: z
+      .string({ invalid_type_error: "Message with an invalid signature." })
+      .regex(SIGNATURE_PATTERN, "Message with an invalid signature.")
+      .optional(),
   })
   .strict();
 
 /** The attribute record a message writes, validated before serialization. */
-function messageAttributes(
-  author: DfmAuthor,
-  createdAt: string
-): Record<"author" | "name" | "at", string> {
+function messageAttributes({
+  author,
+  createdAt,
+  signature,
+}: Pick<DfmMessage, "author" | "createdAt" | "signature">): Record<
+  "author" | "name" | "at",
+  string
+> & { sig?: string } {
   return {
     author: `${author.kind}:${author.id}`,
     name: author.name,
     at: createdAt,
+    ...(signature === undefined ? {} : { sig: signature }),
   };
 }
 
@@ -153,13 +221,11 @@ function commentDirective(comment: Pick<DfmComment, "id" | "status">): string {
 }
 
 function messageDirective(
-  message: Pick<DfmMessage, "author" | "createdAt">
+  message: Pick<DfmMessage, "author" | "createdAt" | "signature">
 ): string {
-  const { author, name, at } = messageAttributes(
-    message.author,
-    message.createdAt
-  );
-  return `::message{author=${author} name="${name}" at=${at}}`;
+  const { author, name, at, sig } = messageAttributes(message);
+  const signature = sig === undefined ? "" : ` sig=${sig}`;
+  return `::message{author=${author} name="${name}" at=${at}${signature}}`;
 }
 
 function trimBlankLines(lines: string[]): string[] {
@@ -209,6 +275,7 @@ function parseDirectiveLine(
 interface PendingMessage {
   author: DfmAuthor;
   createdAt: string;
+  signature: string | undefined;
   bodyLines: string[];
 }
 
@@ -232,6 +299,9 @@ export function parseAnnotationsBlock(
         author: pending.author,
         createdAt: pending.createdAt,
         body: trimBlankLines(pending.bodyLines).join("\n"),
+        ...(pending.signature === undefined
+          ? {}
+          : { signature: pending.signature }),
       });
       pending = null;
     }
@@ -291,8 +361,13 @@ export function parseAnnotationsBlock(
       });
     }
     flush();
-    const { author, name, at } = directive.value.attributes;
-    pending = { author: { ...author, name }, createdAt: at, bodyLines: [] };
+    const { author, name, at, sig } = directive.value.attributes;
+    pending = {
+      author: { ...author, name },
+      createdAt: at,
+      signature: sig,
+      bodyLines: [],
+    };
   }
 
   flush();
@@ -328,9 +403,9 @@ function validateMessage(
   commentId: string,
   message: DfmMessage
 ): DfmError | null {
-  const { author, createdAt, body } = message;
+  const { body } = message;
   const attributes = validateAttributes(
-    messageAttributes(author, createdAt),
+    messageAttributes(message),
     messageAttributesSchema
   );
   if (attributes.isErr()) {
@@ -339,6 +414,12 @@ function validateMessage(
   if (body.includes("\r")) {
     return {
       message: `Message body on comment "${commentId}" cannot contain a carriage return.`,
+    };
+  }
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return {
+      message: `Message body on comment "${commentId}": ${bounds.message}`,
     };
   }
   const lines = body.split("\n");

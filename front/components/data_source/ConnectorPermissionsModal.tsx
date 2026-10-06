@@ -290,7 +290,6 @@ function UpdateConnectionOAuthModal({
 
   // Populate extraConfig from metadata on first load only
   // This preserves user's unsaved changes when closing/reopening the modal
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !isMetadataLoading && isMicrosoft) {
       if (metadata?.client_id) {
@@ -978,7 +977,6 @@ export function ConnectorPermissionsModal({
     [selectedNodes, initialTreeSelectionModel]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setModalToShow(initialModalState);

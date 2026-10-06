@@ -25,8 +25,9 @@ import {
   LoadingBlock,
   Page,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -40,10 +41,10 @@ export function toCreditPoolFetchStatus(
   return isLoading ? "loading" : "ready";
 }
 
-function formatCycleDayLabel(
+function getCycleDays(
   currentCycleStartMs: number | null,
   currentCycleEndMs: number | null
-): string | null {
+): { elapsedDays: number; totalDays: number } | null {
   if (
     currentCycleStartMs === null ||
     currentCycleEndMs === null ||
@@ -58,13 +59,13 @@ function formatCycleDayLabel(
     totalDays,
     Math.max(0, Math.ceil((Date.now() - currentCycleStartMs) / ONE_DAY_MS))
   );
-  return `Day ${elapsedDays}/${totalDays}`;
+  return { elapsedDays, totalDays };
 }
 
-function formatProgrammaticUsageShare(
+function getProgrammaticUsagePercentage(
   programmaticConsumedCredits: number | null,
   consumedCredits: number | null
-): string | null {
+): number | null {
   if (
     typeof programmaticConsumedCredits !== "number" ||
     typeof consumedCredits !== "number" ||
@@ -72,10 +73,9 @@ function formatProgrammaticUsageShare(
   ) {
     return null;
   }
-  const percentage = Math.round(
+  return Math.round(
     Math.min(100, (programmaticConsumedCredits / consumedCredits) * 100)
   );
-  return `${percentage}% of the usage`;
 }
 
 interface WorkspaceCreditUsageValueCardsProps {
@@ -99,6 +99,7 @@ export function WorkspaceCreditUsageValueCards({
   isLoading,
   isRefreshing,
 }: WorkspaceCreditUsageValueCardsProps) {
+  const { t } = useLingui();
   if (isLoading) {
     return (
       <div
@@ -114,9 +115,13 @@ export function WorkspaceCreditUsageValueCards({
     );
   }
 
-  const cycleDayLabel = formatCycleDayLabel(
-    currentCycleStartMs,
-    currentCycleEndMs
+  const cycleDays = getCycleDays(currentCycleStartMs, currentCycleEndMs);
+  const elapsedDays = cycleDays?.elapsedDays;
+  const totalDays = cycleDays?.totalDays;
+  const cycleDayLabel = cycleDays ? t`Day ${elapsedDays}/${totalDays}` : null;
+  const percentage = getProgrammaticUsagePercentage(
+    programmaticConsumedCredits,
+    consumedCredits
   );
   return (
     <div
@@ -124,14 +129,14 @@ export function WorkspaceCreditUsageValueCards({
     >
       {showPoolCard && (
         <SummaryCard
-          label="Remaining credits in the pool"
+          label={t`Remaining credits in the pool`}
           value={formatCredits(totalRemainingCredits)}
           hint={null}
           isRefreshing={isRefreshing}
         />
       )}
       <SummaryCard
-        label="Used this cycle"
+        label={t`Used this cycle`}
         value={
           typeof consumedCredits === "number"
             ? formatCredits(consumedCredits)
@@ -141,16 +146,13 @@ export function WorkspaceCreditUsageValueCards({
         isRefreshing={isRefreshing}
       />
       <SummaryCard
-        label="Programmatic usage this cycle"
+        label={t`Programmatic usage this cycle`}
         value={
           typeof programmaticConsumedCredits === "number"
             ? formatCredits(programmaticConsumedCredits)
             : "—"
         }
-        hint={formatProgrammaticUsageShare(
-          programmaticConsumedCredits,
-          consumedCredits
-        )}
+        hint={percentage === null ? null : t`${percentage}% of the usage`}
         isRefreshing={isRefreshing}
       />
     </div>
@@ -177,27 +179,33 @@ type CycleHistoryRowData = {
   onClick?: () => void;
 };
 
-const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
-  {
-    accessorKey: "cycle",
-    header: "Cycle",
-    enableSorting: false,
-    cell: ({ row }) => (
-      <DataTable.CellContent>{row.original.cycle}</DataTable.CellContent>
-    ),
-  },
-  {
-    accessorKey: "consumedCredits",
-    header: "Used credits",
-    enableSorting: false,
-    meta: { headerAlign: "right" },
-    cell: ({ row }) => (
-      <span className="block text-right text-sm">
-        {row.original.consumedCredits}
-      </span>
-    ),
-  },
-];
+function useCycleHistoryColumns(): ColumnDef<CycleHistoryRowData, string>[] {
+  const { t } = useLingui();
+  return useMemo(
+    () => [
+      {
+        accessorKey: "cycle",
+        header: t`Cycle`,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <DataTable.CellContent>{row.original.cycle}</DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "consumedCredits",
+        header: t`Used credits`,
+        enableSorting: false,
+        meta: { headerAlign: "right" },
+        cell: ({ row }) => (
+          <span className="block text-right text-sm">
+            {row.original.consumedCredits}
+          </span>
+        ),
+      },
+    ],
+    [t]
+  );
+}
 
 export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
 export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
@@ -217,6 +225,8 @@ export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
   cycleHistoryLoadMore,
 }: WorkspaceCreditPoolCycleHistoryTableProps) {
+  const { t } = useLingui();
+  const cycleHistoryColumns = useCycleHistoryColumns();
   if (cycleBreakdown.length === 0) {
     return null;
   }
@@ -225,7 +235,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
     cycle:
       cycle.cycleStartMs && cycle.cycleEndMs
         ? `${formatConsumptionDate(cycle.cycleStartMs, getActiveLocale())} – ${formatConsumptionDate(cycle.cycleEndMs, getActiveLocale())}`
-        : "Unknown cycle",
+        : t`Unknown cycle`,
     consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
   }));
 
@@ -233,7 +243,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
     <>
       <DataTable
         data={rows}
-        columns={CYCLE_HISTORY_COLUMNS}
+        columns={cycleHistoryColumns}
         // The true total is unknown while more cycles remain; once everything
         // is loaded, the total lets the footer hide its control.
         totalRowCount={
@@ -260,22 +270,24 @@ function WorkspaceCreditPoolHistory({
   cycleBreakdown,
   cycleHistoryLoadMore,
 }: WorkspaceCreditPoolHistoryProps) {
+  const { t } = useLingui();
+  const cycleHistoryColumns = useCycleHistoryColumns();
   switch (tableStatus) {
     case "error":
       return (
         <ContentMessage
-          title="Failed to load cycle history"
+          title={t`Failed to load cycle history`}
           icon={AlertCircle}
           variant="warning"
         >
-          An error occurred while loading past-cycle consumption.
+          <Trans>An error occurred while loading past-cycle consumption.</Trans>
         </ContentMessage>
       );
     case "loading":
       return (
         <div className="flex flex-col gap-2">
           <DataTableSkeleton
-            columns={CYCLE_HISTORY_COLUMNS}
+            columns={cycleHistoryColumns}
             SkeletonCell={CycleHistorySkeletonCell}
             rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}
           />
@@ -328,6 +340,7 @@ export function WorkspaceCreditPoolSection({
   programmaticConsumedCredits,
   cycleHistoryLoadMore,
 }: WorkspaceCreditPoolSectionProps) {
+  const { t } = useLingui();
   if (cardsStatus === "ready" && !isVisible) {
     return null;
   }
@@ -336,11 +349,13 @@ export function WorkspaceCreditPoolSection({
     <Page.Vertical align="stretch" gap="xl">
       {cardsStatus === "error" ? (
         <ContentMessage
-          title="Failed to load Workspace Credits Pool"
+          title={t`Failed to load Workspace Credits Pool`}
           icon={AlertCircle}
           variant="warning"
         >
-          An error occurred while loading the workspace&apos;s credit pool data.
+          <Trans>
+            An error occurred while loading the workspace's credit pool data.
+          </Trans>
         </ContentMessage>
       ) : (
         <>

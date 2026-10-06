@@ -11,9 +11,9 @@ import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPSer
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";

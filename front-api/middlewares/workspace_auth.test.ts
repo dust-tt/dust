@@ -144,9 +144,8 @@ describe("workspaceAuth factory — SSO enforcement", () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
     await enforceSSO(workspace.sId);
 
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     const { session } = await getWorkOSSessionWithSetCookies(undefined);
     assert(session, "Expected a mocked session.");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({

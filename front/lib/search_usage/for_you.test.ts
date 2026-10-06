@@ -66,8 +66,8 @@ import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 

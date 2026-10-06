@@ -113,7 +113,6 @@ export function useZendeskOrganizationTagFilters({
     ]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removeOrganizationTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
       try {

@@ -4,8 +4,10 @@ import { BrandingSection } from "@app/components/workspace/settings/BrandingSect
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { cn, Page } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function WorkspaceBrandingPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { hasFeature } = useFeatureFlags();
   const isWhitelabelFramesAllowed = hasFeature("whitelabel_frames");
@@ -13,7 +15,7 @@ export function WorkspaceBrandingPage() {
   return (
     <AdminPageContainer>
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title="Branding" />
+        <Page.Header title={t`Branding`} />
         <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.branding.branding}>
           {isWhitelabelFramesAllowed ? (
             <BrandingSection owner={owner} />
@@ -24,11 +26,15 @@ export function WorkspaceBrandingPage() {
                 "border-border bg-muted"
               )}
             >
-              <p className="heading-lg text-foreground">Workspace branding</p>
+              <p className="heading-lg text-foreground">
+                <Trans>Workspace branding</Trans>
+              </p>
               <p className="text-sm text-muted-foreground">
-                Workspace branding is not available for this workspace.
-                Whitelabel frames must be enabled to customize your workspace
-                logo.
+                <Trans>
+                  Workspace branding is not available for this workspace.
+                  Whitelabel frames must be enabled to customize your workspace
+                  logo.
+                </Trans>
               </p>
             </div>
           )}

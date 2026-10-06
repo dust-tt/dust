@@ -160,12 +160,10 @@ export const EmojiDropdown = forwardRef<
     },
   }));
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setSelectedIndex(0);
   }, [filteredEmojis]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (selectedItemRef.current) {
       selectedItemRef.current.scrollIntoView({

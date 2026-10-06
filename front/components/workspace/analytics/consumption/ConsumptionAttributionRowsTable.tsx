@@ -129,8 +129,7 @@ export interface ConsumptionAttributionRowsTableProps {
   onSortingChange: OnChangeFn<SortingState>;
 }
 
-interface ConsumptionAttributionRowsTableViewProps
-  extends ConsumptionAttributionRowsTableProps {
+interface ConsumptionAttributionRowsTableViewProps extends ConsumptionAttributionRowsTableProps {
   BreakdownComponent: ComponentType<ConsumptionAttributionBreakdownProps>;
 }
 

@@ -1,9 +1,9 @@
+import { Chip, cn } from "@dust-tt/sparkle";
 import { H2 } from "@marketing/components/home/ContentComponents";
 import {
   getIcon,
   ResourceAvatar,
 } from "@marketing/components/resources/resources_icons";
-import { Chip, cn } from "@dust-tt/sparkle";
 
 import type { BenefitCard, BenefitCardColor } from "../types";
 

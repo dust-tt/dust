@@ -21,6 +21,9 @@ pub struct GoogleCloudStorageCSVContent {
 pub const MAX_TABLE_COLUMNS: usize = 512;
 pub const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
+// Every cell is materialized as a `serde_json::Value`, so the parsed table's memory footprint
+// follows the cell count rather than the file size.
+const MAX_TABLE_CELLS: usize = 10_000_000;
 
 // TODO(2026-02-26 INCIDENT): Revisit once we found limit.
 pub const MAX_CSV_FILE_SIZE_BYTES: u64 = 100 * 1024 * 1024; // 100MB
@@ -270,6 +273,10 @@ impl GoogleCloudStorageCSVContent {
         ))
     }
 
+    /// @cc [owner:davidebbo,label:performance;security] bounded-cell-count
+    /// Parsing MUST fail with an error once the total number of cells across all records exceeds
+    /// `MAX_TABLE_CELLS`, before any further row is materialized. The file size cap alone does not
+    /// bound memory, since a file of one-character cells expands ~20x once parsed.
     async fn csv_to_rows<R>(rdr: R, delimiter: u8) -> Result<Vec<Row>>
     where
         R: tokio::io::AsyncRead + Unpin + Send,
@@ -304,9 +311,15 @@ impl GoogleCloudStorageCSVContent {
 
         let mut records = csv.records();
         let mut row_idx = 0;
+        let mut cell_count: usize = 0;
         while let Some(record) = records.next().await {
             let record = record?;
             let mut record = record.iter().collect::<Vec<_>>();
+
+            cell_count += record.len();
+            if cell_count > MAX_TABLE_CELLS {
+                Err(anyhow!("Too many cells in CSV file"))?;
+            }
 
             // If we have a __dust_id column, we need to remove it from the record and use it as the row id.
             // It has been removed from the headers already.
@@ -360,6 +373,55 @@ BAR,acme";
         let (delimiter, _) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
         assert_eq!(delimiter, b',');
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_rows_rejects_too_many_cells() -> anyhow::Result<()> {
+        let row_count = MAX_TABLE_CELLS / MAX_TABLE_COLUMNS + 1;
+        let header = (0..MAX_TABLE_COLUMNS)
+            .map(|i| format!("c{}", i))
+            .collect::<Vec<_>>()
+            .join(",");
+        let row = vec!["1"; MAX_TABLE_COLUMNS].join(",");
+        let csv = std::iter::once(header)
+            .chain(std::iter::repeat(row).take(row_count))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let err = GoogleCloudStorageCSVContent::csv_to_rows(std::io::Cursor::new(csv), b',')
+            .await
+            .err()
+            .ok_or_else(|| anyhow!("Expected csv_to_rows to fail"))?;
+        assert_eq!(err.to_string(), "Too many cells in CSV file");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_rows_counts_dust_id_cells() -> anyhow::Result<()> {
+        // Data cells alone stay under MAX_TABLE_CELLS; only counting the __dust_id cells exceeds it.
+        let row_count = MAX_TABLE_CELLS / MAX_TABLE_COLUMNS + 1;
+        let header = (0..MAX_TABLE_COLUMNS - 1)
+            .map(|i| format!("c{}", i))
+            .chain(std::iter::once("__dust_id".to_string()))
+            .collect::<Vec<_>>()
+            .join(",");
+        let csv = std::iter::once(header)
+            .chain((0..row_count).map(|i| {
+                let mut row = vec!["1".to_string(); MAX_TABLE_COLUMNS - 1];
+                row.push(format!("id{}", i));
+                row.join(",")
+            }))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let err = GoogleCloudStorageCSVContent::csv_to_rows(std::io::Cursor::new(csv), b',')
+            .await
+            .err()
+            .ok_or_else(|| anyhow!("Expected csv_to_rows to fail"))?;
+        assert_eq!(err.to_string(), "Too many cells in CSV file");
 
         Ok(())
     }

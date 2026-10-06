@@ -2,9 +2,7 @@ import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configu
 import { GPT_5_4_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 
 export function WithDustGptFiveDotFourMiniConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGptFiveDotFourMini extends Base {
     static readonly displayName = "GPT-5.4 Mini";

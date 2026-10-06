@@ -42,7 +42,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
-import type { WorkspaceSegmentationType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSegmentationType,
+} from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
   Attributes,
@@ -79,9 +82,7 @@ type WorkspaceModelIdBatchRow = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceResource
-  extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
 
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",
@@ -133,7 +134,6 @@ function validatePlanLimitOverride(
   return new Ok(undefined);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static model: ModelStatic<WorkspaceModel> = WorkspaceModel;
   private static workspaceDomainModel: ModelStaticWorkspaceAware<WorkspaceHasDomainModel> =
@@ -362,7 +362,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const workspaceDomain = await this.workspaceDomainModel.findOne({
       where: { domain },
       // WORKSPACE_ISOLATION_BYPASS: Looking up which workspace owns a domain requires cross-workspace query.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -495,7 +495,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: cross-workspace listing of workspaces with a given feature flag enabled.
       // @ts-expect-error -- Cross-workspace query by design.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     const workspaceModelIds = Array.from(
@@ -616,7 +616,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       await WorkspaceResource.workspaceDomainModel.findOne({
         where: { domain },
         // WORKSPACE_ISOLATION_BYPASS: Need to check domain across all workspaces.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
 
@@ -1014,7 +1014,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       // WORKSPACE_ISOLATION_BYPASS: Plans are resolved for several workspaces at
       // once (`SubscriptionResource.fetchActiveByWorkspacesModelId`); the query
       // is scoped to exactly the requested workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -1100,6 +1100,18 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   toLogJSON(): ResourceLogJSON {
     return {
       sId: this.blob.sId,
+    };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] public-json-name-only
+   * Returned to callers who are not members of the workspace. MUST NOT include any field other than
+   * `sId` and `name`.
+   */
+  toPublicJSON(): Pick<LightWorkspaceType, "sId" | "name"> {
+    return {
+      sId: this.blob.sId,
+      name: this.blob.name,
     };
   }
 

@@ -41,7 +41,6 @@ export const DocumentCommentInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const trimmed = value.trim();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the height follows the rendered value
   useLayoutEffect(() => {
     const field = textareaRef.current;
     if (field) {

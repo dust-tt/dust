@@ -1,0 +1,4 @@
+@cc [owner:tdraier,label:security;product] agent-observability-for-fetchable-agents
+An agent's observability aggregates MUST be served to any caller holding a verb on it, `list` alone
+included (see `agent-verbs`), and a 404 returned otherwise. Only aggregates: never feedback content
+or the agent's configuration.

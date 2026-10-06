@@ -1,4 +1,7 @@
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 
 export const MEMBERSHIP_ROLE_TYPES = ["admin", "manager", "user"] as const;
 
@@ -78,22 +81,35 @@ export const NORMALIZED_POOL_LIMIT_SEAT_TYPES = [
 export type NormalizedPoolLimitSeatType =
   (typeof NORMALIZED_POOL_LIMIT_SEAT_TYPES)[number];
 
+// Seat types with their `_yearly` variants collapsed onto the base tier.
+export type BaseSeatType = "none" | "free" | "workspace" | "pro" | "max";
+
 /**
  * Collapse a seat type's `_yearly` variant onto its base tier (e.g.
  * `pro_yearly` → `pro`). Yearly and monthly variants share a tier, icon and
  * label, so this is used both for display and for matching a base seat-type
  * filter against either cadence.
  */
-export function toBaseSeatType(
-  seatType: MembershipSeatType
-): MembershipSeatType {
-  if (seatType.endsWith("_yearly")) {
-    const base = seatType.slice(0, -"_yearly".length);
-    if (isMembershipSeatType(base)) {
-      return base;
-    }
+export function toBaseSeatType(seatType: MembershipSeatType): BaseSeatType {
+  switch (seatType) {
+    case "none":
+    case "free":
+      return seatType;
+    case "workspace":
+    case "workspace_yearly":
+      return "workspace";
+    case "pro":
+    case "pro_yearly":
+      return "pro";
+    case "max":
+    case "max_yearly":
+      return "max";
+    default:
+      // Seat types reach the browser from the API: pass unknown values through
+      // rather than throw, so display fallbacks keep working.
+      assertNeverAndIgnore(seatType);
+      return seatType;
   }
-  return seatType;
 }
 
 /**

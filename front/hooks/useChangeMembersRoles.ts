@@ -4,12 +4,12 @@ import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   LightWorkspaceType,
   RoleType,
-  UserTypeWithWorkspaces,
+  UserTypeWithWorkspace,
 } from "@app/types/user";
 import { useCallback } from "react";
 
 type HandleMembersRoleChangeParams = {
-  members: UserTypeWithWorkspaces[];
+  members: UserTypeWithWorkspace[];
   role: RoleType;
 };
 

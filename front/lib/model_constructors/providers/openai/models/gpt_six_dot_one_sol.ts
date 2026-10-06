@@ -34,9 +34,7 @@ const configSchema = inputConfigSchema.extend({
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithOpenAIGptSixDotOneSolConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class OpenAIGptSixDotOneSol extends Base {
     static readonly model = GPT_6_1_SOL;

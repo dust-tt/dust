@@ -9,11 +9,8 @@ import { Err } from "@app/types/shared/result";
 import assert from "assert";
 import type { Attributes, Transaction } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface FramePublicationResource
-  extends ReadonlyAttributesType<FramePublicationModel> {}
+export interface FramePublicationResource extends ReadonlyAttributesType<FramePublicationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FramePublicationResource extends BaseResource<FramePublicationModel> {
   static model: ModelStaticWorkspaceAware<FramePublicationModel> =
     FramePublicationModel;

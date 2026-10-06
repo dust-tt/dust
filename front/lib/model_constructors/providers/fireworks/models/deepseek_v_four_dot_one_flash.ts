@@ -22,9 +22,7 @@ const configSchema = fireworksConfigSchema.extend({
 });
 
 export function WithDeepSeekDeepSeekV41FlashConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DeepSeekDeepSeekV41Flash extends Base {
     static readonly model = DEEPSEEK_V4P1_FLASH;

@@ -23,7 +23,7 @@ export async function getWorkspaceAnalytics(
 ): Promise<WorkspaceAnalytics> {
   const replicaDb = getFrontReplicaDbConnection();
 
-  // biome-ignore lint/plugin/noRawSql: Legit, we need to run a complex query here.
+  // oxlint-disable-next-line dust/noRawSql -- Legit, we need to run a complex query here.
   const results = await replicaDb.query<{
     member_count: number;
     weekly_active: number;

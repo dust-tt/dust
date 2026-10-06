@@ -15,6 +15,7 @@ import { useAnalyticsMCPServer } from "@app/hooks/useAnalyticsMCPServer";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Icon, Robot, Spinner, XClose } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
@@ -24,6 +25,7 @@ interface AnalyticsConversationPanelHeaderProps {
 function AnalyticsConversationPanelHeader({
   onClose,
 }: AnalyticsConversationPanelHeaderProps) {
+  const { t } = useLingui();
   return (
     <div className="flex h-14 w-full items-center justify-between px-2">
       <div className="flex min-w-0 items-center gap-1.5 px-2">
@@ -34,7 +36,7 @@ function AnalyticsConversationPanelHeader({
         icon={XClose}
         size="sm"
         variant="ghost-secondary"
-        tooltip="Close panel"
+        tooltip={t`Close panel`}
         onClick={onClose}
       />
     </div>
@@ -66,6 +68,7 @@ function AnalyticsConversationPanelBody({
   onRetry,
   resetConversation,
 }: AnalyticsConversationPanelBodyProps) {
+  const { t } = useLingui();
   const { currentPanel } = useConversationSidePanelContext();
   useRegisterSidePanelConversation(!!conversation);
 
@@ -94,12 +97,12 @@ function AnalyticsConversationPanelBody({
       <div className="flex h-full min-h-0 items-center justify-center">
         <div className="flex flex-col items-center gap-3 px-4 text-center">
           <div className="text-lg font-medium text-foreground">
-            Unable to start Analyst
+            <Trans>Unable to start Analyst</Trans>
           </div>
           <div className="max-w-sm text-muted-foreground">
-            The Analyst session could not be started.
+            <Trans>The Analyst session could not be started.</Trans>
           </div>
-          <Button variant="outline" label="Try again" onClick={onRetry} />
+          <Button variant="outline" label={t`Try again`} onClick={onRetry} />
         </div>
       </div>
     );
@@ -111,7 +114,7 @@ function AnalyticsConversationPanelBody({
         <div className="flex items-center gap-3">
           <Spinner size="md" />
           <span className="text-muted-foreground">
-            Starting Analyst session...
+            <Trans>Starting Analyst session...</Trans>
           </span>
         </div>
       </div>

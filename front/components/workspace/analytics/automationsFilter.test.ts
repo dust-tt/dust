@@ -204,12 +204,22 @@ describe("automationsFilterSelectionCount", () => {
 });
 
 describe("getAutomationsFilterSummaries", () => {
+  const CATEGORY_LABELS = {
+    agent: "Agent",
+    member: "Member",
+    type: "Type",
+    pool: "Pool",
+  };
+
   it("flattens selected options into ordered, human-readable categories", () => {
     expect(
-      getAutomationsFilterSummaries({
-        agent: [agentOption],
-        member: [memberOption],
-      })
+      getAutomationsFilterSummaries(
+        {
+          agent: [agentOption],
+          member: [memberOption],
+        },
+        CATEGORY_LABELS
+      )
     ).toEqual([
       {
         category: "agent",
@@ -225,6 +235,8 @@ describe("getAutomationsFilterSummaries", () => {
   });
 
   it("omits empty categories", () => {
-    expect(getAutomationsFilterSummaries({ type: [] })).toEqual([]);
+    expect(
+      getAutomationsFilterSummaries({ type: [] }, CATEGORY_LABELS)
+    ).toEqual([]);
   });
 });

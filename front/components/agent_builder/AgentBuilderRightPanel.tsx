@@ -18,6 +18,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type AgentBuilderRightPanelTabType = "sidekick" | "preview" | "insights";
@@ -37,6 +38,7 @@ function PanelHeader({
   onTogglePanel,
   onTabChange,
 }: PanelHeaderProps) {
+  const { t } = useLingui();
   return (
     <div className="flex h-14 items-end">
       {isPreviewPanelOpen ? (
@@ -48,7 +50,7 @@ function PanelHeader({
                   icon={LayoutRight}
                   size="sm"
                   variant="ghost-secondary"
-                  tooltip="Hide preview"
+                  tooltip={t`Hide preview`}
                   onClick={onTogglePanel}
                 />
                 {!isSidekickDisabled && (
@@ -61,13 +63,13 @@ function PanelHeader({
                 )}
                 <TabsTrigger
                   value="preview"
-                  label="Preview"
+                  label={t({ message: "Preview", context: "noun, tab label" })}
                   icon={Beaker02}
                   onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
                   value="insights"
-                  label="Insights"
+                  label={t`Insights`}
                   icon={BarChart01}
                   onClick={withTracking(
                     TRACKING_AREAS.BUILDER,
@@ -85,7 +87,7 @@ function PanelHeader({
             icon={LayoutRight}
             size="sm"
             variant="ghost-secondary"
-            tooltip="Open preview"
+            tooltip={t`Open preview`}
             onClick={onTogglePanel}
           />
         </div>
@@ -103,6 +105,7 @@ function CollapsedTabs({
   isSidekickDisabled,
   onTabSelect,
 }: CollapsedTabsProps) {
+  const { t } = useLingui();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       {!isSidekickDisabled && (
@@ -118,14 +121,14 @@ function CollapsedTabs({
         icon={Beaker02}
         variant="ghost"
         size="sm"
-        tooltip="Preview"
+        tooltip={t({ message: "Preview", context: "noun, tab label" })}
         onClick={() => onTabSelect("preview")}
       />
       <Button
         icon={BarChart01}
         variant="ghost"
         size="sm"
-        tooltip="Insights"
+        tooltip={t`Insights`}
         onClick={withTracking(TRACKING_AREAS.BUILDER, "insights_tab", () =>
           onTabSelect("insights")
         )}
@@ -145,6 +148,7 @@ function ExpandedContent({
   isSidekickDisabled,
   agentConfiguration,
 }: ExpandedContentProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
 
   return (
@@ -168,11 +172,11 @@ function ExpandedContent({
             />
           </section>
         ) : (
-          <TabContentLayout title="Insights">
+          <TabContentLayout title={t`Insights`}>
             <EmptyPlaceholder
               icon={BarChart01}
-              title="Waiting for data"
-              description="Use your agent or share it with your team to see insights data."
+              title={t`Waiting for data`}
+              description={t`Use your agent or share it with your team to see insights data.`}
             />
           </TabContentLayout>
         ))}

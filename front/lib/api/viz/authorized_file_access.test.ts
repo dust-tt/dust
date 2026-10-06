@@ -644,40 +644,43 @@ describe("computeAuthorizedFileAccess", () => {
     "upsert_table",
     "skill_attachment",
     "workspace_branding",
-  ] satisfies FileUseCase[])("marks %s file_id refs as unverifiable even with conversation metadata", async (useCase) => {
-    const { authenticator: auth } = await createResourceTest({});
+  ] satisfies FileUseCase[])(
+    "marks %s file_id refs as unverifiable even with conversation metadata",
+    async (useCase) => {
+      const { authenticator: auth } = await createResourceTest({});
 
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
 
-    const excludedFile = await FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: `${useCase}.txt`,
-      fileSize: 10,
-      status: "ready",
-      useCase,
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
+      const excludedFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: `${useCase}.txt`,
+        fileSize: 10,
+        status: "ready",
+        useCase,
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-    const frameFile = await FileFactory.create(auth, null, {
-      contentType: frameContentType,
-      fileName: "Frame.tsx",
-      fileSize: 100,
-      status: "ready",
-      useCase: "conversation",
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-    const result = await frameFile.computeAuthorizedFileAccess(auth, {
-      frameContent: `useFile("${excludedFile.sId}");`,
-    });
-    assert(result.isOk());
+      const result = await frameFile.computeAuthorizedFileAccess(auth, {
+        frameContent: `useFile("${excludedFile.sId}");`,
+      });
+      assert(result.isOk());
 
-    expect(result.value.refs).toEqual([]);
-    expect(result.value.unverifiableRefs).toEqual([excludedFile.sId]);
-  });
+      expect(result.value.refs).toEqual([]);
+      expect(result.value.unverifiableRefs).toEqual([excludedFile.sId]);
+    }
+  );
 
   it("verifies file_id refs from another accessible conversation", async () => {
     const { authenticator: auth } = await createResourceTest({});
@@ -1406,6 +1409,92 @@ describe("reverifyAuthorAccess", () => {
         workspace
       )
     ).toBe(false);
+  });
+
+  it("denies file_id refs once the author is removed from the file's pod", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const project = await SpaceFactory.project(workspace);
+    await project.addMembers(internalAdminAuth, {
+      userIds: [auth.user()!.sId],
+    });
+    await auth.refresh();
+
+    const podFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "pod-data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: project.sId },
+    });
+
+    const allowlist = makeAllowlist({
+      generatedByUserId: auth.user()!.id,
+      refs: [{ kind: "file_id", ref: podFile.sId, fileName: "pod-data.txt" }],
+    });
+
+    expect(await reverifyAuthorAccess(allowlist, podFile.sId, workspace)).toBe(
+      true
+    );
+
+    const removed = await project.removeMembers(internalAdminAuth, {
+      userIds: [auth.user()!.sId],
+    });
+    assert(removed.isOk());
+
+    expect(await reverifyAuthorAccess(allowlist, podFile.sId, workspace)).toBe(
+      false
+    );
+  });
+
+  it("denies file_id refs once the author can no longer read the file's conversation", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const project = await SpaceFactory.project(workspace);
+    await project.addMembers(internalAdminAuth, {
+      userIds: [auth.user()!.sId],
+    });
+    await auth.refresh();
+
+    const podConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      spaceId: project.id,
+    });
+
+    const dataFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: podConversation.sId },
+    });
+
+    const allowlist = makeAllowlist({
+      generatedByUserId: auth.user()!.id,
+      refs: [{ kind: "file_id", ref: dataFile.sId, fileName: "data.txt" }],
+    });
+
+    expect(await reverifyAuthorAccess(allowlist, dataFile.sId, workspace)).toBe(
+      true
+    );
+
+    const removed = await project.removeMembers(internalAdminAuth, {
+      userIds: [auth.user()!.sId],
+    });
+    assert(removed.isOk());
+
+    expect(await reverifyAuthorAccess(allowlist, dataFile.sId, workspace)).toBe(
+      false
+    );
   });
 });
 

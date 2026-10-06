@@ -1,9 +1,7 @@
 import { FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustDeepSeekDeepSeekV41FlashConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustDeepSeekDeepSeekV41Flash extends Base {
     static readonly displayName = "DeepSeek V4.1 Flash";

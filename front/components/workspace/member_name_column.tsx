@@ -4,6 +4,7 @@ import {
   DataTable,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 // The minimal row shape the name column needs.
@@ -34,7 +35,7 @@ export function buildMemberNameColumn<TRow extends MemberNameRow>(): ColumnDef<
 > {
   return {
     id: "name" as const,
-    header: "Name",
+    header: () => <Trans>Name</Trans>,
     enableSorting: true,
     accessorFn: (row) => row.name,
     cell: (info: CellContext<TRow, string>) => (

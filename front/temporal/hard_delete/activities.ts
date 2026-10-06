@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
+/* oxlint-disable dust/noRawSql -- hard delete activities require raw SQL for cascade deletions */
 import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";

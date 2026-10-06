@@ -71,6 +71,16 @@ that follows until the next directive, and may have several paragraphs. The firs
 the comment itself, the rest are replies. A thread may exist with no anchor in the body, for
 instance when the commented text was deleted; an anchor with no thread is an error.
 
+A message may also carry `sig`, the server's Ed25519 signature in base64url over
+`messageSignaturePayload` in `signatures.ts`: workspace, file path, comment id, the message's
+position in the thread and the message before it, author, name, timestamp and body, not the status. A copy into another
+file, a rename or a reordering therefore reads as unverified. The server writes and signs a
+message when a signed-in user posts it or an agent calls the `documents.add_comment` tool, and
+refuses a save through the file API that brings a new message it did not sign for the saving user
+at that place, or moves a verified one; a message without a valid `sig`, such as one written from
+a sandbox or by a plain file edit, is unverified. The codec carries the attribute and never checks it, so nothing here proves who
+wrote a message. `tests/fixtures/signed_comments.md` shows one.
+
 **How an agent reads it.** Text first: the body reads as Markdown with a few directives. To
 find what a comment is about, follow the id from `::comment` to the anchors. To answer a
 comment, append a `::message` line and a body to its thread. To comment on new text, wrap the
@@ -99,10 +109,22 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 | `serializeDfm(document)` | Document to canonical source, or the reason it cannot be written. |
 | `extractAnchors(body)` | The body without anchor directives plus `{ id, start, end }` offsets into it in document order, for the editor and search. |
 | `anchorComment({ body, id, quote, nth })` | Wraps the nth occurrence of `quote` in a new anchor pair, for agents that quote words instead of computing offsets. |
+| `dfmCommentSchema` | The zod schema of a `DfmComment`, exactly, refusing unknown keys, for callers that keep threads outside the codec and read them back. |
 
-Every function returns a `Result` from `@app/types/shared/result`. Nothing here touches the
-network, the database or React: the module runs on the server and in the browser, next to the
-`:preview_file` directive codec in `lib/markdown/file_preview.ts`.
+Every function above returns a `Result` from `@app/types/shared/result`; `dfmCommentSchema` is
+a schema, not a function. The editor's Markdown parser and serializer read and write anchors one
+at a time, with the first three helpers below, which keep the directive's spelling in this
+module; the last one is shared by message signing:
+
+| Function | Purpose |
+| --- | --- |
+| `readAnchorDirective(source)` | The well-formed anchor directive at the very start of `source` with its `kind`, `id` and `length`, or null. |
+| `findAnchorDirective(source)` | Index of the first anchor directive syntax in `source`, or -1. |
+| `anchorDirective(kind, id)` | The directive text for one end of an anchor pair. |
+| `messageSignaturePayload({ workspaceId, filePath, commentId, position, previous, message })` | The exact string a message signature covers, for the server that signs and the browser that checks. |
+
+Nothing here touches the network, the database or React: the module runs on the server and in
+the browser, next to the `:preview_file` directive codec in `lib/markdown/file_preview.ts`.
 
 ## Module map
 
@@ -114,12 +136,14 @@ network, the database or React: the module runs on the server and in the browser
 | `anchors.ts` | The `:comment-start` / `:comment-end` directives: pattern, schema, builder, and scanning and pairing them in the body. |
 | `annotations.ts` | The `::comment` and `::message` directives: value rules, schemas, builders, and parsing, validating and serializing the block. |
 | `operations.ts` | Editing operations on a body, such as `anchorComment`. New operations go here. |
+| `signatures.ts` | What a message signature covers. Signing and checking live with their callers. |
 | `document.ts` | The whole-file layout: front matter, body, block. Each parse rule has its mirror in the serializer's validation. |
 | `index.ts` | The public surface. |
 
 Tests live in `tests/` and mirror the split, one file per module, with shared fixtures and
 helpers in `tests/dfm.test_utils.ts`. Each "refuses to serialize" table names the file whose
-checks it covers.
+checks it covers. `tests/bounds.test.ts` checks the input bounds across the public API against
+a spied parser.
 
 ## Adding a directive
 
@@ -141,7 +165,8 @@ Suggestions are the next one. The steps are the same for any directive:
 - A file starting with a `---` rule and containing another `---` line is read as front matter.
 - Code positions and block structure come from `mdast-util-from-markdown`, so anchors inside
   fenced, indented and quoted code blocks and code spans are text, and `anchorComment` refuses
-  an insertion that would change the parse tree. HTML blocks are not treated as code: a
+  an insertion that would change the parse tree, a node's properties included: a quote inside
+  a link destination, an image's alt text or raw HTML is refused. HTML blocks are not treated as code: a
   directive inside raw HTML is interpreted. GFM extensions such as tables and autolink
   literals are not parsed, so a directive inside them is interpreted too.
 - A backslash before an anchor escapes it, as CommonMark does for any punctuation:
@@ -149,3 +174,13 @@ Suggestions are the next one. The steps are the same for any directive:
   raw HTML and autolinks where CommonMark would not. An escaped anchor whose pair is live is
   an error.
 - A leading UTF-8 byte order mark is dropped on parse and never written back.
+- Input is bounded before parsing (`INPUT_LIMITS` in `parser.ts`): 256k characters, 256
+  characters of quote markers, list markers and indentation opening a line, 15k emphasis, link
+  and code delimiters, 15k list items. The Markdown parser is quadratic on the shapes these
+  bound; within them a parse takes about a second at worst. Delimiters are counted inside code
+  blocks too, so a very large, code-heavy or heavily formatted document can reach a count and
+  is then refused with the reason. A server calling the codec on untrusted input still needs
+  its own isolation, since a second of blocked event loop per call is not free.
+- The codec does not authenticate authors. `author=user:<id>` is data; any file writer can put
+  any id there. Whoever stores a file decides what to trust; see the design notes in
+  `x/daph/co-edition/README.md`.

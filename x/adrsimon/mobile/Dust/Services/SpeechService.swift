@@ -8,12 +8,20 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "Speech")
 /// Captures microphone audio and streams it to ElevenLabs Scribe for real-time
 /// transcription. Transcript text arrives live while the user speaks (via `onTranscript`)
 /// rather than after a post-recording upload.
+/**
+ * @cc [owner:adrsimon,label:product] survive-network-drop
+ * A disconnect while recording or finalizing MUST NOT end the session or drop captured audio:
+ * capture continues, and audio not yet covered by a committed transcript is replayed on a new
+ * connection once one is established. Only a server error, `cancel`, the final commit, or the
+ * finalize timeout end it; audio sent between a server commit and its receipt may be lost.
+ */
 @MainActor
 @Observable
 final class SpeechService {
     var isRecording = false
-    /// True briefly after stop while we wait for the server's final committed segment.
+    /// True after stop while we wait for the server's final committed segment.
     var isFinalizing = false
+    var isReconnecting = false
     var error: String?
     var audioLevel: Float = 0
 
@@ -22,11 +30,20 @@ final class SpeechService {
     var onError: ((String) -> Void)?
 
     private let sampleRateHz: Double = 16000
+    private let finalizeTimeout: Duration = .seconds(2)
+    private let replayFinalizeTimeout: Duration = .seconds(15)
+    private let initialReconnectDelay: Duration = .seconds(1)
+    private let maxReconnectDelay: Duration = .seconds(8)
+    private let handshakeTimeout: Duration = .seconds(5)
 
     private var audioEngine: AVAudioEngine?
     private var converter: AVAudioConverter?
     private var targetFormat: AVAudioFormat?
     private var client: ScribeRealtimeClient?
+    private let relay = ScribeAudioRelay()
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectDelay: Duration = .zero
+    private var handshakeTask: Task<Void, Never>?
     private var lastReportedLevel: Float = 0
 
     private var committedText = ""
@@ -61,29 +78,14 @@ final class SpeechService {
         committedText = ""
         partialText = ""
         error = nil
+        relay.reset()
+        reconnectDelay = initialReconnectDelay
 
         do {
-            let credentials = try await TranscribeTokenService.fetch(
-                workspaceId: workspaceId,
-                tokenProvider: tokenProvider
-            )
-
-            let client = ScribeRealtimeClient(token: credentials.token, baseUri: credentials.baseUri)
-            client.onPartial = { [weak self] text in
-                Task { @MainActor in self?.handlePartial(text) }
-            }
-            client.onCommitted = { [weak self] text in
-                Task { @MainActor in self?.handleCommitted(text) }
-            }
-            client.onError = { [weak self] message in
-                Task { @MainActor in self?.fail(message) }
-            }
-            try client.connect()
-            self.client = client
+            try await connect(commitStrategy: .vad)
 
             guard configureAudioSession(), startEngine() else {
-                client.close()
-                self.client = nil
+                closeClient()
                 return
             }
 
@@ -103,15 +105,22 @@ final class SpeechService {
         isRecording = false
         audioLevel = 0
 
-        guard let client else {
-            finish()
-            return
-        }
         isFinalizing = true
+        // While reconnecting, the reconnect commits once the pending audio is replayed.
+        guard let client else { return }
         client.commit()
-        // Safety net: stop waiting if the server never delivers the final commit.
+        armFinalizeTimeout(finalizeTimeout)
+    }
+
+    /// Safety net: stop waiting if the server never delivers the final commit.
+    private func armFinalizeTimeout(_ timeout: Duration) {
+        finalizeTask?.cancel()
         finalizeTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+            do {
+                try await Task.sleep(for: timeout)
+            } catch {
+                return
+            }
             self?.finish()
         }
     }
@@ -120,13 +129,109 @@ final class SpeechService {
         teardownAudio()
         finalizeTask?.cancel()
         finalizeTask = nil
-        client?.close()
-        client = nil
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        closeClient()
+        relay.reset()
         isRecording = false
         isFinalizing = false
+        isReconnecting = false
         committedText = ""
         partialText = ""
         audioLevel = 0
+    }
+
+    private func connect(commitStrategy: ScribeRealtimeClient.CommitStrategy) async throws {
+        let credentials = try await TranscribeTokenService.fetch(
+            workspaceId: workspaceId,
+            tokenProvider: tokenProvider
+        )
+        try Task.checkCancellation()
+
+        let client = ScribeRealtimeClient(
+            token: credentials.token,
+            baseUri: credentials.baseUri,
+            commitStrategy: commitStrategy
+        )
+        client.onEvent = { [weak self, weak client] event in
+            Task { @MainActor in
+                guard let self, let client, self.client === client else { return }
+                self.handle(event)
+            }
+        }
+        try client.connect()
+        self.client = client
+        relay.attach(client)
+
+        handshakeTask = Task { [weak self, weak client, handshakeTimeout] in
+            do {
+                try await Task.sleep(for: handshakeTimeout)
+            } catch {
+                return
+            }
+            guard let self, let client, self.client === client else { return }
+            logger.error("Transcription handshake timed out")
+            handleDisconnect()
+        }
+    }
+
+    private func handle(_ event: ScribeRealtimeClient.Event) {
+        switch event {
+        case .sessionStarted:
+            handshakeTask?.cancel()
+            handshakeTask = nil
+            reconnectDelay = initialReconnectDelay
+            if isReconnecting {
+                logger.notice("Transcription reconnected")
+                isReconnecting = false
+                if isFinalizing { armFinalizeTimeout(replayFinalizeTimeout) }
+            }
+        case let .partial(text):
+            handlePartial(text)
+        case let .committed(text):
+            relay.markCommitted()
+            handleCommitted(text)
+        case let .error(message):
+            fail(message)
+        case .disconnected:
+            handleDisconnect()
+        }
+    }
+
+    private func handleDisconnect() {
+        logger.warning("Transcription connection lost, reconnecting")
+        closeClient()
+        finalizeTask?.cancel()
+        finalizeTask = nil
+        isReconnecting = true
+        guard reconnectTask == nil else { return }
+        reconnectTask = Task { [weak self, maxReconnectDelay] in
+            while let delay = self?.reconnectDelay {
+                do {
+                    try await Task.sleep(for: delay)
+                    guard let self else { return }
+                    reconnectDelay = min(reconnectDelay * 2, maxReconnectDelay)
+                    // After stop, a single manual commit covers the whole replay.
+                    let strategy: ScribeRealtimeClient.CommitStrategy = isFinalizing ? .manual : .vad
+                    try await connect(commitStrategy: strategy)
+                    if isFinalizing { client?.commit() }
+                    reconnectTask = nil
+                    return
+                } catch is CancellationError {
+                    return
+                } catch {
+                    logger.error("Transcription reconnect failed: \(error)")
+                }
+            }
+        }
+    }
+
+    private func closeClient() {
+        handshakeTask?.cancel()
+        handshakeTask = nil
+        relay.detach()
+        client?.close()
+        client = nil
     }
 
     private func handlePartial(_ text: String) {
@@ -148,8 +253,8 @@ final class SpeechService {
         finalizeTask?.cancel()
         finalizeTask = nil
         isFinalizing = false
-        client?.close()
-        client = nil
+        closeClient()
+        relay.reset()
     }
 
     private func fail(_ message: String) {
@@ -222,14 +327,14 @@ final class SpeechService {
         // Captured locally so the audio-thread closure never touches main-actor state.
         let converter = converter
         let target = targetFormat
-        let client = client
+        let relay = relay
         let sampleRateHz = sampleRateHz
 
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
-            if let converter, let target, let client,
+            if let converter, let target,
                let base64 = Self.encodeChunk(buffer, converter: converter, target: target, sampleRateHz: sampleRateHz)
             {
-                client.sendAudio(base64: base64)
+                relay.send(base64)
             }
             let level = Self.computeLevel(from: buffer)
             Task { @MainActor in

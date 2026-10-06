@@ -67,7 +67,6 @@ import { Op, Sequelize } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
 
 /**
@@ -150,7 +149,6 @@ const EMPTY_SPACE_ACCESS: SpaceAccess = {
   isRestricted: false,
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 function memberGrant(space: SpaceResource): GrantSpec {
   return {
     grantType: SPACE_MEMBER_GRANT_TYPE,
@@ -244,7 +242,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeConversationsSpace: true,
     });
     const systemSpace =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isSystem()) ||
       (await SpaceResource.makeNew(
         auth,
@@ -281,7 +278,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     const conversationsSpace =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isConversations()) ||
       (await SpaceResource.makeNew(
         auth,
@@ -436,10 +432,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: ResourceFindOptions<SpaceModel> = {},
     t?: Transaction
   ) {
-    const includeClauses: Includeable[] = [
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      ...(includes || []),
-    ];
+    const includeClauses: Includeable[] = includes ?? [];
 
     const spacesModels = await this.model.findAll({
       where: {
@@ -814,7 +807,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across
     // workspaces. The ids come from workspace-scoped sandbox ownership rows.
     const spaces = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         id: {
@@ -1043,7 +1036,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   // just removed. Mirrors the grant-tuple lock in `GroupPermissionResource`.
   private async getMembershipLock(transaction: Transaction): Promise<void> {
     const key = `space_membership:${this.workspaceId}:${this.id}`;
-    // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+    // oxlint-disable-next-line dust/noRawSql -- advisory lock requires raw SQL
     await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
       replacements: { key },
       transaction,

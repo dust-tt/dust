@@ -13,7 +13,6 @@ export function useDatadogLogs() {
 
   const { cellInfo } = useCellContext();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (userId) {
       datadogLogs.setUser({

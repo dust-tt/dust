@@ -1,4 +1,8 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/components/pages/builder/manageTracking";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -36,6 +40,7 @@ export function AgentSearchActionsMenu({
   onSelect,
   onRefresh,
 }: AgentSearchActionsMenuProps) {
+  const tracking = useManageTracking();
   const router = useAppRouter();
   const { isAdmin, providersHealth } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -90,9 +95,10 @@ export function AgentSearchActionsMenu({
       kind: "item",
       label: "Edit",
       icon: Edit04,
-      onClick: withoutPropagation(
-        () => void router.push(getAgentBuilderRoute(owner.sId, agentId))
-      ),
+      onClick: withoutPropagation(() => {
+        trackManageItemAction(tracking, "edit", agentId);
+        void router.push(getAgentBuilderRoute(owner.sId, agentId));
+      }),
     });
   }
   menuItems.push(
@@ -120,12 +126,12 @@ export function AgentSearchActionsMenu({
       kind: "item",
       label: "Duplicate (New)",
       icon: Clipboard,
-      onClick: withoutPropagation(
-        () =>
-          void router.push(
-            getAgentBuilderRoute(owner.sId, "new", `duplicate=${agentId}`)
-          )
-      ),
+      onClick: withoutPropagation(() => {
+        trackManageItemAction(tracking, "duplicate", agentId);
+        void router.push(
+          getAgentBuilderRoute(owner.sId, "new", `duplicate=${agentId}`)
+        );
+      }),
     });
   }
   if (canEdit) {

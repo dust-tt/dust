@@ -22,10 +22,7 @@ export type GetExtensionConfigResponseBody = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ExtensionConfigurationResource
-  extends ReadonlyAttributesType<ExtensionConfigurationModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ExtensionConfigurationResource extends ReadonlyAttributesType<ExtensionConfigurationModel> {}
 export class ExtensionConfigurationResource extends BaseResource<ExtensionConfigurationModel> {
   static model: ModelStaticWorkspaceAware<ExtensionConfigurationModel> =
     ExtensionConfigurationModel;
@@ -128,7 +125,7 @@ export class ExtensionConfigurationResource extends BaseResource<ExtensionConfig
       },
       // WORKSPACE_ISOLATION_BYPASS: exceptional case where we need to fetch the blacklistedDomains \
       // across multiple workspaces in the login flow.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

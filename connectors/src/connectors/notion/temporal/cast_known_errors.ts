@@ -14,9 +14,7 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-export class NotionCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class NotionCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   // Delay hint for transient upstream 5xx.
   private static readonly TRANSIENT_RETRY_DELAY_MS = 2 * 60 * 60 * 1000;
 

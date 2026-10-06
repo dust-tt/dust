@@ -18,9 +18,8 @@ const mockedListForYou = vi.mocked(listDiscoveryForYouItems);
 describe("GET /api/w/:wId/discovery/for_you", () => {
   beforeEach(async () => {
     mockedListForYou.mockReset();
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],
@@ -47,7 +46,7 @@ describe("GET /api/w/:wId/discovery/for_you", () => {
   });
 
   it("returns the viewer-filtered For You items", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
+    const { auth, workspace } = await createPrivateApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -61,6 +60,8 @@ describe("GET /api/w/:wId/discovery/for_you", () => {
             name: "Skill",
             description: "A skill",
             icon: null,
+            editors: [auth.getNonNullableUser().fullName()],
+            editedBy: auth.getNonNullableUser().id,
           },
         },
       ],

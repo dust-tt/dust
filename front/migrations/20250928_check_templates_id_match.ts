@@ -6,11 +6,11 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import type { Logger } from "@app/logger/logger";
 import type {
   AssistantTemplateListType,
   FetchAssistantTemplatesResponse,
 } from "@app/lib/resources/template_resource";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 async function computeTemplateIdMatches({

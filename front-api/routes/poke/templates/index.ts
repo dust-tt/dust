@@ -3,16 +3,12 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { AssistantTemplateListType } from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
-import {
-  CreateTemplateFormSchema,
-  isTemplateTagCodeArray,
-} from "@app/types/assistant/templates";
+import { CreateTemplateFormSchema } from "@app/types/assistant/templates";
 import { isDevelopment } from "@app/types/shared/env";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 import tId from "./[tId]";
 import pull from "./pull";
@@ -28,10 +24,6 @@ interface PokeFetchAssistantTemplatesResponse {
 
 // Mounted at /api/poke/templates. pokeAuth is applied by the parent poke
 // sub-app.
-//
-// `CreateTemplateFormSchema` is a shared io-ts codec also used by the
-// template form component (`ioTsResolver`); migrating it to zod is out of
-// scope for this PR, so io-ts is used inline here.
 const app = pokeApp();
 
 /** @ignoreswagger */
@@ -49,9 +41,9 @@ app.get(
 
 app.post("/", async (ctx): HandlerResult<CreateTemplateResponseBody> => {
   const body = await ctx.req.json().catch(() => null);
-  const bodyValidation = CreateTemplateFormSchema.decode(body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = CreateTemplateFormSchema.safeParse(body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
     return apiError(ctx, {
       status_code: 400,
       api_error: {
@@ -60,18 +52,7 @@ app.post("/", async (ctx): HandlerResult<CreateTemplateResponseBody> => {
       },
     });
   }
-  const data = bodyValidation.right;
-
-  if (!isTemplateTagCodeArray(data.tags)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The request body is invalid: tags must be an array of template tag names.",
-      },
-    });
-  }
+  const data = bodyValidation.data;
 
   if (regionConfig.getDustRegionSyncEnabled() && !isDevelopment()) {
     return apiError(ctx, {
@@ -98,7 +79,7 @@ app.post("/", async (ctx): HandlerResult<CreateTemplateResponseBody> => {
   }
 
   await TemplateResource.makeNew({
-    ...buildSharedTemplateAttributes({ ...data, tags: data.tags }, model),
+    ...buildSharedTemplateAttributes(data, model),
     // Not configurable in the template, keeping the column for now since some
     // templates do have a custom temperature.
     presetTemperature: "balanced",

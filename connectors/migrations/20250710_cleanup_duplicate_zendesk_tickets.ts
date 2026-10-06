@@ -5,10 +5,10 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import _ from "lodash";
-import type { Logger } from "@connectors/logger/logger";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 

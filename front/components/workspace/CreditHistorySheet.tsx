@@ -1,5 +1,5 @@
 import {
-  creditColumns,
+  getCreditColumns,
   getTableRows,
 } from "@app/components/workspace/CreditsList";
 import type { CreditDisplayData } from "@app/types/credits";
@@ -15,6 +15,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
@@ -43,6 +44,7 @@ export function CreditHistorySheet({
   credits,
   isLoading,
 }: CreditHistorySheetProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [sixMonthsAgo] = useState(() => Date.now() - SIX_MONTHS_MS);
   const sixMonthsCredits = useMemo(() => {
@@ -53,13 +55,14 @@ export function CreditHistorySheet({
   }, [credits, sixMonthsAgo]);
 
   const displayedRows = useMemo(() => {
-    return getTableRows(sortCredits([...sixMonthsCredits]));
-  }, [sixMonthsCredits]);
+    return getTableRows(sortCredits([...sixMonthsCredits]), t);
+  }, [sixMonthsCredits, t]);
+  const columns = useMemo(() => getCreditColumns(t), [t]);
 
   return (
     <>
       <Button
-        label="Past credits"
+        label={t`Past credits`}
         variant="outline"
         size="xs"
         onClick={() => setIsOpen(true)}
@@ -67,7 +70,9 @@ export function CreditHistorySheet({
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent size="xl">
           <SheetHeader>
-            <SheetTitle>Past credits</SheetTitle>
+            <SheetTitle>
+              <Trans>Past credits</Trans>
+            </SheetTitle>
           </SheetHeader>
           <SheetContainer>
             {isLoading ? (
@@ -76,22 +81,27 @@ export function CreditHistorySheet({
               </div>
             ) : displayedRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No expired credits in the last 6 months.
+                <Trans>No expired credits in the last 6 months.</Trans>
               </p>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Expired credits from the last 6 months.
+                  <Trans>Expired credits from the last 6 months.</Trans>
                 </p>
-                <DataTable data={displayedRows} columns={creditColumns} />
+                <DataTable data={displayedRows} columns={columns} />
               </>
             )}
             <p className="text-sm text-muted-foreground">
-              For older credits,{" "}
-              <LinkWrapper href="mailto:support@dust.tt" className="underline">
-                contact support
-              </LinkWrapper>
-              .
+              <Trans>
+                For older credits,{" "}
+                <LinkWrapper
+                  href="mailto:support@dust.tt"
+                  className="underline"
+                >
+                  contact support
+                </LinkWrapper>
+                .
+              </Trans>
             </p>{" "}
           </SheetContainer>
         </SheetContent>

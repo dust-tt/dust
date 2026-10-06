@@ -32,7 +32,7 @@ async function backdateMessageCreatedAt({
   createdAt: Date;
 }) {
   // Sequelize validates FK exclusivity on update; raw SQL avoids that hook.
-  // biome-ignore lint/plugin/noRawSql: test helper backdating timestamps
+  // oxlint-disable-next-line dust/noRawSql -- test helper backdating timestamps
   await frontSequelize.query(
     `UPDATE messages SET "createdAt" = :createdAt WHERE id = :id AND "workspaceId" = :workspaceId`,
     {

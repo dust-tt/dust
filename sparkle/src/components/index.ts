@@ -1,8 +1,5 @@
 export type { ActionCardDiffStatus } from "./ActionCard";
-export {
-  ACTION_CARD_DIFF_STATUSES,
-  ActionCard,
-} from "./ActionCard";
+export { ACTION_CARD_DIFF_STATUSES, ActionCard } from "./ActionCard";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
 export {

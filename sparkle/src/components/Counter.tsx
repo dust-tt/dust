@@ -123,7 +123,8 @@ export const counterVariants = cva(
 );
 
 export interface CounterProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof counterVariants> {
   /** The count to display. Cap large values for legibility (e.g. show "99+"). */
   value: number;

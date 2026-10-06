@@ -229,6 +229,12 @@ export const useDocumentEditor = ({
     }
   }, [editor, initial]);
 
+  const isSavable = useCallback(
+    (document: JSONContent) =>
+      initial.isOk() && saveDfm(initial.value.envelope, document).isOk(),
+    [initial]
+  );
+
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {
       return;
@@ -247,5 +253,7 @@ export const useDocumentEditor = ({
     saving,
     error,
     save,
+    /** Whether the document, as TipTap JSON, would save. */
+    isSavable,
   };
 };

@@ -3,8 +3,9 @@ import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 import { useMemo } from "react";
 
-interface ScrollAreaProps
-  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
+interface ScrollAreaProps extends React.ComponentPropsWithoutRef<
+  typeof ScrollAreaPrimitive.Root
+> {
   /** Hide the built-in scrollbar entirely (it also auto-hides when a custom ScrollBar child is present). */
   hideScrollBar?: boolean;
   /** Axis of the default scrollbar rendered when no ScrollBar child is given. */
@@ -133,10 +134,9 @@ const scrollBarSizes = {
 
 type ScrollBarSize = keyof typeof scrollBarSizes;
 
-interface ScrollBarProps
-  extends React.ComponentPropsWithoutRef<
-    typeof ScrollAreaPrimitive.ScrollAreaScrollbar
-  > {
+interface ScrollBarProps extends React.ComponentPropsWithoutRef<
+  typeof ScrollAreaPrimitive.ScrollAreaScrollbar
+> {
   /** Visual style of the bar: `compact` (default), `classic`, or `minimal`. */
   size?: ScrollBarSize;
 }

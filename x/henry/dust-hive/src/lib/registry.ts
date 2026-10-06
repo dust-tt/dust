@@ -39,7 +39,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sparkle/dist/esm/index.js`,
+      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sparkle/dist/.build-complete`,
     },
   },
   sdk: {
@@ -308,7 +308,7 @@ async function waitForHttpReady(
 }
 
 // Wait for file-based service (like SDK build) to be ready
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex build wait with error detection
+// oxlint-disable-next-line eslint/complexity -- complex build wait with error detection
 async function waitForFileReady(
   service: ServiceName,
   env: Environment,

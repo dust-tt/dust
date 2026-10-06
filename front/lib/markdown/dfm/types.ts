@@ -11,6 +11,11 @@ export interface DfmMessage {
   /** ISO 8601 timestamp with seconds and a zone, such as 2026-09-25T14:16:32.380Z. */
   createdAt: string;
   body: string;
+  /**
+   * The server's signature over the message, base64url, absent on a message no server signed.
+   * The codec only carries it; checking it is up to the caller.
+   */
+  signature?: string;
 }
 
 export type DfmCommentStatus = "open" | "resolved";
@@ -38,6 +43,13 @@ export interface DfmAnchor {
   id: string;
   start: number;
   end: number;
+}
+
+/** An anchor directive read from the start of a string, `length` characters long. */
+export interface DfmAnchorDirective {
+  kind: "start" | "end";
+  id: string;
+  length: number;
 }
 
 export interface DfmError {

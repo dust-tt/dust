@@ -1,6 +1,6 @@
-import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";

@@ -15,8 +15,8 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -1286,34 +1286,34 @@ describe("POST /api/w/:wId/skills", () => {
   it.each([
     { length: 256, status: 200 },
     { length: 257, status: 400 },
-  ])("returns $status for a skill name of $length characters", async ({
-    length,
-    status,
-  }) => {
-    const { auth, workspace } = await setupTest("admin");
-    const name = "a".repeat(length);
+  ])(
+    "returns $status for a skill name of $length characters",
+    async ({ length, status }) => {
+      const { auth, workspace } = await setupTest("admin");
+      const name = "a".repeat(length);
 
-    const response = await postSkill(workspace, {
-      name,
-      agentFacingDescription: "Agent description",
-      userFacingDescription: "User description",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: null,
-    });
+      const response = await postSkill(workspace, {
+        name,
+        agentFacingDescription: "Agent description",
+        userFacingDescription: "User description",
+        instructions: "Instructions",
+        icon: "PuzzleIcon",
+        tools: [],
+        attachedKnowledge: [],
+        instructionsHtml: null,
+      });
 
-    expect(response.status).toBe(status);
-    const skill = await SkillResource.fetchByName(auth, name);
-    if (status === 200) {
-      expect(skill?.name).toBe(name);
-    } else {
-      expect(skill).toBeNull();
-      const body = await response.json();
-      expect(body.error.message).toContain("at most 256 characters");
+      expect(response.status).toBe(status);
+      const skill = await SkillResource.fetchByName(auth, name);
+      if (status === 200) {
+        expect(skill?.name).toBe(name);
+      } else {
+        expect(skill).toBeNull();
+        const body = await response.json();
+        expect(body.error.message).toContain("at most 256 characters");
+      }
     }
-  });
+  );
 
   it("creates a simple skill configuration", async () => {
     const { auth, workspace } = await setupTest("admin");

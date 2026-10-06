@@ -1,15 +1,15 @@
 import { Op } from "sequelize";
 
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { Logger } from "@app/logger/logger";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types/user";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const TOOL_NAME = "send_mail";
 const INTERNAL_MCP_SERVER_NAME = "outlook";

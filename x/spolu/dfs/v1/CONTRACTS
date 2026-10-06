@@ -58,6 +58,12 @@ freshness deadline. Every RPC MUST still use current server authorization. Obser
 stop the mount, and reconnecting MUST NOT reuse cached state. Local mutations MUST maintain cache
 coherence across aliases; no workspace-wide revision or periodic authorization polling.
 
+@cc [owner:spolu,label:performance;concurrency] client-xattr-cache
+Unsupported xattr namespaces MUST fail before any RPC. Supported values, absent names, and listings
+MAY use a bounded mount-local cache with the same TTL as inode attributes. Local mutations, including
+ambiguous failures, MUST invalidate affected entries under the shared object lock. Cache fills MUST
+NOT change file versions or clear writeback errors. RPC failures MUST NOT be cached as absent values.
+
 @cc [owner:spolu,label:concurrency;error-handling] failed-writeback-stays-failed
 Cached file data and queued writes MUST retain their base object version, advancing only for this
 client's successful mutations. A failure MUST NOT refresh the version of pending dirty data. Retain

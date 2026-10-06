@@ -9,8 +9,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-export interface DustProjectMountFileResource
-  extends ReadonlyAttributesType<DustProjectMountFileModel> {}
+export interface DustProjectMountFileResource extends ReadonlyAttributesType<DustProjectMountFileModel> {}
 export class DustProjectMountFileResource extends BaseResource<DustProjectMountFileModel> {
   static model: ModelStatic<DustProjectMountFileModel> =
     DustProjectMountFileModel;

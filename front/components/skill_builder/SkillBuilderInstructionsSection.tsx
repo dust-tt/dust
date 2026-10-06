@@ -1,6 +1,6 @@
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
   Button,

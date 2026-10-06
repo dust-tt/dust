@@ -108,18 +108,18 @@ describe("retrieveDataSourceCoreIdsBatch", () => {
     });
   });
 
-  it.each([
-    undefined,
-    100,
-  ])("handles an empty batch after cursor %s", async (lastId) => {
-    await expect(
-      retrieveDataSourceCoreIdsBatch({ workspaceId, lastId })
-    ).resolves.toEqual({
-      dataSourceCoreIds: [],
-      hasMore: false,
-      lastId: lastId ?? 0,
-    });
-  });
+  it.each([undefined, 100])(
+    "handles an empty batch after cursor %s",
+    async (lastId) => {
+      await expect(
+        retrieveDataSourceCoreIdsBatch({ workspaceId, lastId })
+      ).resolves.toEqual({
+        dataSourceCoreIds: [],
+        hasMore: false,
+        lastId: lastId ?? 0,
+      });
+    }
+  );
 
   it("preserves ordinary sources and handles the empty page after an exact full batch", async () => {
     mocks.findAll.mockResolvedValueOnce(

@@ -2,8 +2,8 @@ import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
-import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import {
@@ -11,15 +11,15 @@ import {
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import type { Logger } from "@app/logger/logger";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { LightWorkspaceType } from "@app/types/user";
 import type { AgentMessageAnalyticsToolUsed } from "@app/types/assistant/analytics";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { LightWorkspaceType } from "@app/types/user";
 
 const BATCH_SIZE = 1000;
 

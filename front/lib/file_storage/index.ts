@@ -11,7 +11,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { Bucket, File, SaveOptions } from "@google-cloud/storage";
-import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
+import {
+  IdempotencyStrategy,
+  RETRYABLE_ERR_FN_DEFAULT,
+  Storage,
+} from "@google-cloud/storage";
 import isNumber from "lodash/isNumber";
 
 const GCS_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
@@ -65,7 +69,7 @@ function isRetryableGCSError(err: unknown): boolean {
  * Retry an operation that fails with a transient GCS error ("socket hang up"
  * and other errors the SDK considers retryable).
  *
- * Needed for streamed uploads, which bypass the SDK's built-in retryOptions.
+ * Needed for non-resumable streamed uploads, which bypass the SDK's built-in retryOptions.
  * Only use when the operation can safely be re-run from scratch (e.g. the
  * source stream can be re-created on each attempt).
  */
@@ -106,6 +110,13 @@ export async function withRetryOnTransientGCSError<T>(
   return result.value;
 }
 
+/**
+ * @cc [owner:philipperolet,label:performance] sdk-retries-reads
+ * A transient GCS error (e.g. "socket hang up") that occurs before GCS responds to a read
+ * (download, metadata, read stream) MUST be retried by the SDK (up to `GCS_MAX_RETRIES` times),
+ * including when the read happens during or after a write without a precondition on this class's
+ * `Storage` client.
+ */
 export class FileStorage {
   private readonly bucket: Bucket;
   private readonly storage: Storage;
@@ -119,6 +130,10 @@ export class FileStorage {
       retryOptions: {
         maxRetries: GCS_MAX_RETRIES,
         retryableErrorFn: isRetryableGCSError,
+        // With the default strategy (RetryConditional), a write without a precondition (e.g.
+        // `save()`) sets the client's shared `autoRetry` flag to false and never restores it,
+        // which silently disables retries for every later call on this client, reads included.
+        idempotencyStrategy: IdempotencyStrategy.RetryAlways,
       },
     });
 
@@ -138,9 +153,9 @@ export class FileStorage {
     contentType: AllSupportedFileContentType;
     filePath: string;
   }) {
-    // A single-request upload without preconditions is not retried by the
-    // SDK (conditional idempotency), so retry transient errors at the
-    // application level: the buffer is replayable.
+    // The SDK already retries transient errors (RetryAlways strategy); this
+    // application-level retry is a slower second layer, safe because the
+    // buffer is replayable.
     await withRetryOnTransientGCSError(
       () => this.file(filePath).save(buffer, { contentType, resumable: false }),
       {
@@ -469,9 +484,8 @@ export class FileStorage {
   /**
    * Copy a file within Cloud Storage with retry logic.
    *
-   * The GCS SDK's built-in autoRetry is effectively disabled for copy operations and
-   * "socket hang up" errors aren't in the SDK's retryable error list anyway.
-   * Since copy is idempotent (same source, same destination), retrying is safe.
+   * The GCS SDK already retries transient errors (RetryAlways strategy); this loop is a slower
+   * second layer. Since copy is idempotent (same source, same destination), retrying is safe.
    */
   async copyFile(
     srcPath: string,
@@ -528,9 +542,8 @@ export class FileStorage {
    * at `GCS_COMPOSE_MAX_SOURCES` source objects; callers with more sources than that must
    * batch across multiple calls themselves (e.g. composing into intermediate objects first).
    *
-   * Not retried by the SDK's built-in autoRetry (no precondition is set), so retried at the
-   * application level instead: since the same sources produce the same destination bytes,
-   * retrying from scratch is safe.
+   * Retried at the application level on top of the SDK's own retries: since the same sources
+   * produce the same destination bytes, retrying from scratch is safe.
    */
   async composeFiles(
     sourcePaths: string[],

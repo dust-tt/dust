@@ -22,6 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
@@ -29,6 +30,7 @@ const EMPTY_IDS = new Set<string>();
 const NOOP_MEMBER_ACTION = (_member: MemberUsageType) => {};
 
 export function GroupManagerUsagePage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription, groupManagement } = useAuth();
   const { tab: tabParam } = useQueryParams(["tab"]);
@@ -143,8 +145,12 @@ export function GroupManagerUsagePage() {
     <AdminPageContainer>
       <Page.Vertical align="stretch" gap="xl">
         <Page.Header
-          title={<Page.H variant="h3">Credits</Page.H>}
-          description="Manage credit limits for members and groups in your scope."
+          title={
+            <Page.H variant="h3">
+              <Trans>Credits</Trans>
+            </Page.H>
+          }
+          description={t`Manage credit limits for members and groups in your scope.`}
         />
         <Tabs
           value={tab}
@@ -154,8 +160,8 @@ export function GroupManagerUsagePage() {
           className="flex flex-col gap-4"
         >
           <TabsList>
-            <TabsTrigger value="members" label="Members" />
-            <TabsTrigger value="groups" label="Groups" />
+            <TabsTrigger value="members" label={t`Members`} />
+            <TabsTrigger value="groups" label={t`Groups`} />
           </TabsList>
           <TabsContent
             value="members"
@@ -175,7 +181,7 @@ export function GroupManagerUsagePage() {
                   setGroupId(value);
                   setPagination((current) => ({ ...current, pageIndex: 0 }));
                 }}
-                allGroupsLabel="All managed groups"
+                allGroupsLabel={t`All managed groups`}
                 requests={
                   canHandleRequests
                     ? {

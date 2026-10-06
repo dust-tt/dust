@@ -57,23 +57,26 @@ const PREMIUM_ENDPOINTS = [
 ] as const;
 
 describe("premium model endpoints route on plan entitlement only", () => {
-  it.each(PREMIUM_ENDPOINTS)("$name routes credit-priced plans", ({
-    endpoint,
-  }) => {
-    expect(routes(endpoint, { isCreditPriced: true })).toBe(true);
-  });
+  it.each(PREMIUM_ENDPOINTS)(
+    "$name routes credit-priced plans",
+    ({ endpoint }) => {
+      expect(routes(endpoint, { isCreditPriced: true })).toBe(true);
+    }
+  );
 
-  it.each(PREMIUM_ENDPOINTS)("$name routes plans with advanced-model access", ({
-    endpoint,
-  }) => {
-    expect(routes(endpoint, { isAdvancedModels: true })).toBe(true);
-  });
+  it.each(PREMIUM_ENDPOINTS)(
+    "$name routes plans with advanced-model access",
+    ({ endpoint }) => {
+      expect(routes(endpoint, { isAdvancedModels: true })).toBe(true);
+    }
+  );
 
-  it.each(
-    PREMIUM_ENDPOINTS
-  )("$name does not route a plan with neither entitlement", ({ endpoint }) => {
-    expect(routes(endpoint, {})).toBe(false);
-  });
+  it.each(PREMIUM_ENDPOINTS)(
+    "$name does not route a plan with neither entitlement",
+    ({ endpoint }) => {
+      expect(routes(endpoint, {})).toBe(false);
+    }
+  );
 
   it("vetoes GPT-6 Astra when its kill switch is on, whatever the plan", () => {
     expect(

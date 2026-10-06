@@ -1,6 +1,6 @@
+import { Building02 } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@marketing/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@marketing/components/home/content/Industry/configs/utils";
-import { Building02 } from "@dust-tt/sparkle";
 
 export const retailEcommerceConfig: IndustryPageConfig = {
   seo: {

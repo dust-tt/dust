@@ -1,8 +1,15 @@
-import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
-import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { QuoteSection } from "@marketing/components/home/ContentBlocks";
 import { Grid } from "@marketing/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import TrustedBy from "@marketing/components/home/TrustedBy";
 import { BenefitsSection } from "@marketing/components/home/content/Solutions/BenefitsSection";
+// import { CustomerStoriesSection } from "@marketing/components/home/content/Solutions/CustomerStoriesSection";
+import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
+import { HeroSection } from "@marketing/components/home/content/Solutions/HeroSection";
+import { UseCasesSection } from "@marketing/components/home/content/Solutions/UseCasesSection";
 import {
   Benefits,
   DemoVideo,
@@ -12,17 +19,10 @@ import {
   // Stories,
   UseCases,
 } from "@marketing/components/home/content/Solutions/configs/dataConfig";
-// import { CustomerStoriesSection } from "@marketing/components/home/content/Solutions/CustomerStoriesSection";
-import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
-import { HeroSection } from "@marketing/components/home/content/Solutions/HeroSection";
-import { UseCasesSection } from "@marketing/components/home/content/Solutions/UseCasesSection";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import TrustedBy from "@marketing/components/home/TrustedBy";
+import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
+import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -47,7 +47,7 @@ const GRID_SECTION_CLASSES = classNames(
   "2xl:col-start-1"
 );
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Data() {
   const router = useRouter();
 

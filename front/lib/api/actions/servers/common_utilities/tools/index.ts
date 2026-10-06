@@ -160,7 +160,7 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
     }
 
     const conversationRes =
-      // biome-ignore lint/plugin/noExpensiveConversationFetch: need unread + actionRequired
+      // oxlint-disable-next-line dust/noExpensiveConversationFetch -- need unread + actionRequired
       await ConversationResource.fetchConversationWithParticipantState(
         auth,
         conversationId

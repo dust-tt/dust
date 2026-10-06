@@ -31,6 +31,9 @@ struct Config {
     /// Maximum kernel background requests in flight.
     #[arg(long, default_value = "32", value_parser = clap::value_parser!(u16).range(1..=64))]
     max_background: u16,
+    /// Mount-local xattr cache budget; zero keeps namespace filtering but disables caching.
+    #[arg(long, env = "DFS_XATTR_CACHE_MIB", default_value = "16", value_parser = clap::value_parser!(u32).range(0..=1024))]
+    xattr_cache_mib: u32,
 }
 
 fn main() -> Result<()> {
@@ -78,6 +81,7 @@ fn run(config: Config) -> Result<()> {
         dfs_fuse::linux::IoConfig {
             read_ahead_bytes: config.read_ahead_kib * 1024,
             max_background: config.max_background,
+            xattr_cache_bytes: config.xattr_cache_mib as usize * 1024 * 1024,
         },
     )?;
     signal_hook::flag::register(SIGINT, stopped.clone())?;

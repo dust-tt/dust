@@ -34,6 +34,7 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
   // Check if content is actually truncated by comparing scroll height to
   // client height
   // This ensures we only show the tooltip when text is cut off by line-clamp-
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   React.useLayoutEffect(() => {
     const element = textRef.current;
     if (element) {

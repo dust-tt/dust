@@ -1,7 +1,7 @@
 import { AgentMessageView } from "@app/components/poke/conversation/AgentMessageView";
+import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
 import { ConversationActions } from "@app/components/poke/conversation/ConversationActions";
 import { ConversationMessagesHeader } from "@app/components/poke/conversation/ConversationMessagesHeader";
-import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
 import {
   CompactionMessageView,
   ContentFragmentView,

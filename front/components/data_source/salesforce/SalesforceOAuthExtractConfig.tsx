@@ -12,7 +12,6 @@ export function SalesforceOauthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     async function generatePKCE() {
       const { code_verifier, code_challenge } = await getPKCEConfig();

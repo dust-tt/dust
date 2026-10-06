@@ -39,8 +39,24 @@ app.get(
     }
 
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+    const skills = await SkillResource.fetchByIds(
+      auth,
+      metadata?.defaultSkillIds ?? [],
+      {
+        onlyActive: true,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      }
+    );
+
     return ctx.json({
       projectMetadata: metadata ? metadata.toJSON() : null,
+      defaultSkills: skills
+        .sort(
+          (a, b) => a.name.localeCompare(b.name) || a.sId.localeCompare(b.sId)
+        )
+        .map((skill) => skill.toJSON(auth)),
     });
   }
 );

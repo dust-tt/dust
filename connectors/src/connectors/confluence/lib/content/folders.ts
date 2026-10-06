@@ -10,7 +10,7 @@ import {
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { fetchConfluenceConfigurationActivity } from "@connectors/connectors/confluence/temporal/activities";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {

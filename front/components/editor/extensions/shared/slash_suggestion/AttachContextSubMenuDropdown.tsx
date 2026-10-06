@@ -5,12 +5,12 @@ import {
   navigateToKnowledgeBrowserItem,
   useKnowledgeBrowserNavigation,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
-import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
   isAttachContextSlashCommand,
   SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
+import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   ContextSlashSearchSelection,
@@ -118,16 +118,16 @@ function getSubMenuListProps({
   }
 }
 
-interface AttachContextSubMenuDropdownProps
-  extends Pick<
-    SuggestionProps<SlashCommand>,
-    "clientRect" | "editor" | "query" | "range"
-  > {
+interface AttachContextSubMenuDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "query"
+> {
   // The sub-menu command the user came from, and how to return to it. Absent when the browser is
   // the whole menu: no Back row, Escape closes.
   activeFrame?: SlashMenuStackFrame;
   onBack?: () => void;
   conversationId?: string | null;
+  dropdownHeaders?: React.ReactNode;
   onClose: () => void;
   // Extra rows shown as the last section of the browser's root with an empty query, for a menu
   // where the browser is the whole menu and commands such as "Upload file" have nowhere else to go.
@@ -168,6 +168,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
       activeFrame,
       clientRect,
       conversationId = null,
+      dropdownHeaders,
       onBack,
       onClose,
       onRootSectionSelect,
@@ -349,6 +350,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
         ref={dropdownRef}
         clientRect={clientRect}
         command={handleSelect}
+        dropdownHeaders={dropdownHeaders}
         emptyMessage={mode === "browse" ? BROWSE_EMPTY_MESSAGE : emptyMessage}
         headerContent={breadcrumbs}
         isLoading={

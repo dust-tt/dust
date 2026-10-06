@@ -31,7 +31,7 @@ export function registerConversationsGetMessagesTool(server: McpServer) {
       inputSchema,
     },
     async (auth, { conversationId, lastValue }) => {
-      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+      // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
       const conversationRes = await getLightConversation(
         auth,
         conversationId,

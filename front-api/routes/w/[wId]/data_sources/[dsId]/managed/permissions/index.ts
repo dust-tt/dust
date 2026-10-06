@@ -90,7 +90,7 @@ app.get(
         }
         break;
       case undefined:
-        // biome-ignore lint/plugin/noDirectRoleCheck: conditional role check based on filterPermission query param
+        // oxlint-disable-next-line dust/noDirectRoleCheck -- conditional role check based on filterPermission query param
         if (!auth.isAdmin()) {
           return apiError(ctx, {
             status_code: 403,

@@ -26,9 +26,7 @@ const configSchema = inputConfigSchema.extend({
 });
 
 export function WithXaiGrokFourDotSixConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class XaiGrokFourDotSix extends Base {
     static readonly model = GROK_4_6;

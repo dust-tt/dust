@@ -18,5 +18,5 @@ npx @svgr/cli --no-prettier --index-template svgr-v2-stroke-icon-template.js --o
 npx @svgr/cli --no-prettier --no-runtime-config --icon --typescript --expand-props end --index-template svgr-platform-template.js --out-dir src/logo/platforms/ src/logo/src/platforms/
 npx @svgr/cli --no-prettier --index-template svgr-logo-template.js --out-dir src/logo/dust/ src/logo/src/dust/
 
-# Format and lint generated files with Biome
-npx biome check --write .
+# Format and lint generated files from the repo root so the root oxc configs apply
+(cd .. && npx oxlint --fix sparkle/src/icons/v2-stroke sparkle/src/logo && npx oxfmt sparkle/src/icons/v2-stroke sparkle/src/logo)

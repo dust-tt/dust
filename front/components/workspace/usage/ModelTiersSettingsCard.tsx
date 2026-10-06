@@ -10,16 +10,14 @@ import {
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
-
-export const MODELS_TIER_SECTION_LABEL = "Models tier";
-export const WORKSPACE_MODEL_ACCESS_LABEL = "Workspace access";
-export const PUBLISHED_AGENTS_MODEL_ACCESS_LABEL = "Published agents";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ModelTiersSettingsCardProps {
   owner: LightWorkspaceType;
 }
 
 export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
+  const { t } = useLingui();
   const {
     maxTierName: workspaceMaxTierName,
     isWorkspaceAllowedModelTiersLoading,
@@ -37,13 +35,13 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
   return (
     <Page.Vertical gap="sm" align="stretch">
       <span className="flex items-center gap-1 heading-base text-foreground dark:text-foreground-night">
-        {MODELS_TIER_SECTION_LABEL}
+        <Trans>Models tier</Trans>
         <ModelTiersInfoButton />
       </span>
       <SettingsList>
         <SettingsList.Row
-          title={WORKSPACE_MODEL_ACCESS_LABEL}
-          description="Set the highest model tier available to all members of this workspace."
+          title={t`Workspace access`}
+          description={t`Set the highest model tier available to all members of this workspace.`}
           action={
             <ModelTierPickerDropdown
               selectedValue={selectedValue}
@@ -59,8 +57,8 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
           }
         />
         <SettingsList.Row
-          title={PUBLISHED_AGENTS_MODEL_ACCESS_LABEL}
-          description="Allow all members to run published agents even when the agent's model tier is above their own access."
+          title={t`Published agents`}
+          description={t`Allow all members to run published agents even when the agent's model tier is above their own access.`}
           action={
             <SliderToggle
               selected={isRestrictedModelsForPublishedAgentsEnabled}

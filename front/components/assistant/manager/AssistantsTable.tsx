@@ -602,7 +602,6 @@ export function AssistantsTable({
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAgentConfigurations has an unstable identity but always mutates the same SWR cache key.
   const columns = useMemo(
     () =>
       getTableColumns({
@@ -610,6 +609,7 @@ export function AssistantsTable({
         tags: sortedTags,
         mutateAgentConfigurations,
       }),
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [owner, sortedTags]
   );
   const skeletonColumns = useMemo(
@@ -647,7 +647,6 @@ export function AssistantsTable({
     [selection]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {

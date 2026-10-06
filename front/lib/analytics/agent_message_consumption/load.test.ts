@@ -13,8 +13,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -180,6 +180,7 @@ async function setupSettledMessage({
   return {
     agent,
     agentMessage,
+    agentMessageModelId,
     auth,
     completedAt,
     conversation,
@@ -259,7 +260,41 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       id: testContext.authenticator.getNonNullableUser().sId,
       group_ids: [group.sId],
       seat_type: "workspace",
+      limit_group_id: null,
     });
+  });
+
+  it("tags the limit group stored on the message, even outside the user's current groups", async () => {
+    const context = await setupSettledMessage();
+    const engineering = await GroupFactory.regularManual(
+      context.workspace,
+      "Engineering"
+    );
+    await ConversationResource.setAgentMessageLimitGroup(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      limitGroupModelId: engineering.id,
+    });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.user).toMatchObject({
+      group_ids: [],
+      limit_group_id: engineering.sId,
+    });
+  });
+
+  it("leaves the limit group empty when none is stored on the message", async () => {
+    const context = await setupSettledMessage();
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.user?.limit_group_id).toBeNull();
   });
 
   it("lists the full agent chain from the root to the direct parent", async () => {

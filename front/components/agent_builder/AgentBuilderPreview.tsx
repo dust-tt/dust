@@ -28,6 +28,7 @@ import type { ConversationSidePanelType } from "@app/types/conversation_side_pan
 import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -132,7 +133,7 @@ function PreviewContent({
           {!conversation && (
             <div className="flex h-full items-center justify-center px-6 text-center">
               <div className="text-base font-medium text-muted-foreground">
-                Preview your agent here
+                <Trans>Preview your agent here</Trans>
               </div>
             </div>
           )}
@@ -168,6 +169,7 @@ function PreviewContent({
 }
 
 export function AgentBuilderPreview() {
+  const { t } = useLingui();
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user, subscription } = useAuth();
   const isTrialPlan = isFreeTrialPhonePlan(subscription.plan.code);
@@ -276,7 +278,7 @@ export function AgentBuilderPreview() {
       return (
         <div className="flex h-full flex-1 items-center justify-center px-6 text-center">
           <div className="text-base font-medium text-muted-foreground">
-            Preview your agent here
+            <Trans>Preview your agent here</Trans>
           </div>
         </div>
       );
@@ -285,14 +287,14 @@ export function AgentBuilderPreview() {
     if (draftCreationFailed) {
       return (
         <EmptyState
-          message="Unable to create preview"
-          description="There was an issue creating a preview of your agent. Try making a small change to refresh."
+          message={t`Unable to create preview`}
+          description={t`There was an issue creating a preview of your agent. Try making a small change to refresh.`}
         />
       );
     }
 
     if (showLoader) {
-      return <LoadingState message="Preparing your agent..." />;
+      return <LoadingState message={t`Preparing your agent...`} />;
     }
 
     return (
@@ -312,7 +314,7 @@ export function AgentBuilderPreview() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col" aria-label="Agent preview">
+    <div className="flex h-full w-full flex-col" aria-label={t`Agent preview`}>
       <BlockedActionsProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
       </BlockedActionsProvider>

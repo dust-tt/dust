@@ -390,12 +390,10 @@ export type AgentResourceSnapshot = {
  */
 const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentResource
-  extends Omit<
-    ReadonlyAttributesType<AgentModel>,
-    "name" | "status" | "scope" | "reinforcement"
-  > {
+export interface AgentResource extends Omit<
+  ReadonlyAttributesType<AgentModel>,
+  "name" | "status" | "scope" | "reinforcement"
+> {
   readonly agentConfigurationModelId: ModelId;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
@@ -412,7 +410,6 @@ export interface AgentResource
   readonly versionUpdatedAt: Date;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:tdraier,label:backend] agent-resource-identity
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
@@ -1039,6 +1036,21 @@ export class AgentResource
     return resource ?? null;
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] fetch-for-reader-or-workspace-admin
+   * Returns `null` unless the caller holds `read` on the agent or is a workspace admin.
+   */
+  static async fetchByIdForReaderOrWorkspaceAdmin(
+    auth: Authenticator,
+    agentId: string
+  ): Promise<AgentResource | null> {
+    const agent = await this.fetchById(auth, agentId);
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+      return null;
+    }
+    return agent;
+  }
+
   // -- Versions: the configuration versions of an already-resolved agent --
 
   /**
@@ -1318,6 +1330,15 @@ export class AgentResource
   static async listFavoritesForCurrentUser(
     auth: Authenticator
   ): Promise<AgentResource[]> {
+    return this.fetchByIds(
+      auth,
+      await this.listFavoriteIdsForCurrentUser(auth)
+    );
+  }
+
+  static async listFavoriteIdsForCurrentUser(
+    auth: Authenticator
+  ): Promise<string[]> {
     const user = auth.user();
     if (!user) {
       return [];
@@ -1332,10 +1353,7 @@ export class AgentResource
       },
     });
 
-    return this.fetchByIds(
-      auth,
-      relations.map((relation) => relation.agentConfiguration)
-    );
+    return relations.map((relation) => relation.agentConfiguration);
   }
 
   // Agents `authorModelId` authored any version of (matches the legacy "created by me" view; the
@@ -3566,12 +3584,18 @@ export class AgentResource
     };
   }
 
-  toDiscoveryJSON(): DiscoveryAgentType {
+  toDiscoveryJSON({
+    lastAuthors,
+  }: {
+    lastAuthors: readonly string[];
+  }): DiscoveryAgentType {
     return {
       sId: this.sId,
       name: this.name,
       description: this.description,
       pictureUrl: this.pictureUrl,
+      scope: this.scope,
+      lastAuthors,
     };
   }
 
@@ -4124,7 +4148,9 @@ export class AgentResource
       let template: TemplateResource | null = null;
       let createdInitialEditorGrant = false;
       if (templateId) {
-        template = await TemplateResource.fetchByExternalId(templateId);
+        template = await TemplateResource.fetchByExternalId(templateId, {
+          includeUnpublished: true,
+        });
       }
       const performCreation = async (
         t: Transaction
@@ -4134,7 +4160,6 @@ export class AgentResource
           { agentConfigurationId, authorId, owner, transaction: t }
         );
 
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const sId = agentConfigurationId || generateRandomModelSId();
         // A brand-new agent needs its identity row before the configuration that references it, and
         // carries the head fields of the version 0 row written just below. `findOrCreate` covers an

@@ -2,6 +2,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getActiveSubscriberAuth } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { getNotificationLocale } from "@app/lib/notifications/locale";
 import type { AgentMessageFeedbackPayloadType } from "@app/lib/notifications/triggers/agent-message-feedback";
 import {
   AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
@@ -15,6 +17,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
+import type { I18n } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 import z from "zod";
 
@@ -34,15 +38,17 @@ const FeedbackDetailsSchema = z.object({
 type FeedbackDetailsType = z.infer<typeof FeedbackDetailsSchema>;
 
 const getFeedbackDetails = async ({
+  i18n,
   subscriberId,
   payload,
 }: {
+  i18n: I18n;
   subscriberId?: string | null;
   payload: AgentMessageFeedbackPayloadType;
 }): Promise<FeedbackDetailsType> => {
-  let userWhoGaveFeedbackFullName: string = "Someone";
-  let agentName: string = "an agent";
-  let workspaceName: string = "A workspace";
+  let userWhoGaveFeedbackFullName: string = i18n._(msg`Someone`);
+  let agentName: string = i18n._(msg`an agent`);
+  let workspaceName: string = i18n._(msg`A workspace`);
   let isConversationShared = false;
 
   if (subscriberId) {
@@ -92,6 +98,45 @@ const getFeedbackDetails = async ({
   };
 };
 
+export function buildAgentMessageFeedbackInAppCopy(
+  i18n: I18n,
+  {
+    agentName,
+    userWhoGaveFeedbackFullName,
+    thumbDirection,
+  }: Pick<FeedbackDetailsType, "agentName" | "userWhoGaveFeedbackFullName"> &
+    Pick<AgentMessageFeedbackPayloadType, "thumbDirection">
+): { subject: string; body: string; actionLabel: string } {
+  return {
+    subject: i18n._(msg`New feedback on ${agentName}`),
+    body:
+      thumbDirection === "up"
+        ? i18n._(
+            msg`${userWhoGaveFeedbackFullName} left a positive feedback on ${agentName}.`
+          )
+        : i18n._(
+            msg`${userWhoGaveFeedbackFullName} left a negative feedback on ${agentName}.`
+          ),
+    actionLabel: i18n._(msg({ message: "View", context: "action" })),
+  };
+}
+
+export function buildAgentMessageFeedbackDigestSubject(
+  i18n: I18n,
+  {
+    feedbackCount,
+    positiveCount,
+    negativeCount,
+  }: { feedbackCount: number; positiveCount: number; negativeCount: number }
+): string {
+  return i18n._(
+    msg`[Dust] ${plural(feedbackCount, {
+      one: "# feedback on your agents",
+      other: "# feedbacks on your agents",
+    })} (👍 ${positiveCount} - 👎 ${negativeCount})`
+  );
+}
+
 const shouldSkipNotification = async ({
   subscriberId,
   payload,
@@ -131,7 +176,14 @@ export const agentMessageFeedbackWorkflow = workflow(
     const details = await step.custom(
       "get-feedback-details",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
         return getFeedbackDetails({
+          i18n,
           subscriberId: subscriber.subscriberId,
           payload,
         });
@@ -144,13 +196,25 @@ export const agentMessageFeedbackWorkflow = workflow(
     await step.inApp(
       "send-in-app",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const { subject, body, actionLabel } =
+          buildAgentMessageFeedbackInAppCopy(i18n, {
+            agentName: details.agentName,
+            userWhoGaveFeedbackFullName: details.userWhoGaveFeedbackFullName,
+            thumbDirection: payload.thumbDirection,
+          });
         return {
-          subject: `New feedback on ${details.agentName}`,
-          body: `${details.userWhoGaveFeedbackFullName} left a ${payload.thumbDirection === "up" ? "positive" : "negative"} feedback on ${details.agentName}.`,
+          subject,
+          body,
           ...(details.isConversationShared
             ? {
                 primaryAction: {
-                  label: "View",
+                  label: actionLabel,
                   redirect: {
                     url: getConversationRoute(
                       payload.workspaceId,
@@ -207,6 +271,13 @@ export const agentMessageFeedbackWorkflow = workflow(
         const feedbacks: Parameters<typeof renderDigestEmail>[0]["feedbacks"] =
           [];
 
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+
         let feedbackAuth: Authenticator | null = null;
 
         if (subscriber.subscriberId) {
@@ -230,6 +301,7 @@ export const agentMessageFeedbackWorkflow = workflow(
           }
 
           const eventDetails = await getFeedbackDetails({
+            i18n,
             subscriberId: subscriber.subscriberId,
             payload: event.payload,
           });
@@ -287,7 +359,8 @@ export const agentMessageFeedbackWorkflow = workflow(
         ).length;
 
         const body = await renderDigestEmail({
-          name: subscriber.firstName ?? "You",
+          i18n,
+          name: subscriber.firstName ?? undefined,
           workspace: {
             id: payload.workspaceId,
             name: details.workspaceName,
@@ -296,7 +369,11 @@ export const agentMessageFeedbackWorkflow = workflow(
         });
 
         return {
-          subject: `[Dust] ${feedbacks.length} feedback${feedbacks.length > 1 ? "s" : ""} on your agents (👍 ${positiveCount} - 👎 ${negativeCount})`,
+          subject: buildAgentMessageFeedbackDigestSubject(i18n, {
+            feedbackCount: feedbacks.length,
+            positiveCount,
+            negativeCount,
+          }),
           body,
         };
       },

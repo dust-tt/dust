@@ -119,10 +119,13 @@ interface SlashCommandSubMenuNavigation {
   onBack: () => void;
 }
 
-export interface SlashCommandDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "command"> {
+export interface SlashCommandDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "command"
+> {
   // Row highlighted when the list (re)renders; falls back to the first item.
   defaultSelectedItemId?: string | null;
+  dropdownHeaders?: React.ReactNode;
   emptyMessage?: string;
   header?: string;
   // Rendered at the top of the list, after the sub-menu "Back" row when there is one (e.g. the
@@ -290,6 +293,7 @@ export const SlashCommandDropdown = forwardRef<
       command,
       clientRect,
       defaultSelectedItemId,
+      dropdownHeaders,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
       headerContent,
@@ -442,7 +446,6 @@ export const SlashCommandDropdown = forwardRef<
     );
 
     // Reset selected index when the visible item list changes, not on every render.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: itemIdsKey is intentional trigger
     useEffect(() => {
       setSelectedIndex(
         getDefaultSelectedIndex(
@@ -451,6 +454,7 @@ export const SlashCommandDropdown = forwardRef<
           defaultSelectedItemId
         )
       );
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     }, [itemIdsKey]);
 
     // Update virtual trigger position.
@@ -492,6 +496,7 @@ export const SlashCommandDropdown = forwardRef<
           align="start"
           avoidCollisions
           collisionPadding={12}
+          dropdownHeaders={dropdownHeaders}
           highlightedItemId={highlightedItemId}
           side="bottom"
           sideOffset={4}

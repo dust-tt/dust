@@ -34,7 +34,9 @@ app.post(
       auth,
       invitationId
     );
-    if (!invitation) {
+    // Only pending invitations can be edited or revoked. Reviving a revoked or
+    // consumed invitation must go through POST /invitations (seat/payment checks).
+    if (!invitation || invitation.status !== "pending") {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -45,7 +47,6 @@ app.post(
     }
 
     const body = ctx.req.valid("json");
-    const previousStatus = invitation.status;
     const previousRole = invitation.initialRole;
 
     // Escalation guard: elevating an invitation to `admin`, or modifying/
@@ -65,7 +66,7 @@ app.post(
     await invitation.updateStatus(body.status);
     await invitation.updateRole(body.initialRole);
 
-    if (body.status === "revoked" && previousStatus !== "revoked") {
+    if (body.status === "revoked") {
       void emitAuditLogEvent({
         auth,
         action: "invitation.revoked",

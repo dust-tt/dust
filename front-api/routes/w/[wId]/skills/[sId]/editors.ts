@@ -63,7 +63,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const members = (await skill.listEditors(auth)) ?? [];
   const memberUsers = members.map((m) => m.toJSON());
 
-  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+  // oxlint-disable-next-line dust/noDirectRoleCheck -- non-admins receive only minimal essential user data (LightUserType)
   if (auth.isAdmin()) {
     return ctx.json({ editors: memberUsers });
   }
@@ -182,7 +182,7 @@ app.patch(
     const updatedMembers = (await skillRes.listEditors(auth)) ?? [];
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    // oxlint-disable-next-line dust/noDirectRoleCheck -- non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
       return ctx.json({ editors: updatedEditors });
     }

@@ -152,7 +152,7 @@ async function fetchAgentEditorGroupWorkspaceModelIds(): Promise<ModelId[]> {
     where: { kind: "agent_editors" },
     group: ["workspaceId"],
     raw: true,
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 

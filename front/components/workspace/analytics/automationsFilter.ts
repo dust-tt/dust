@@ -12,6 +12,8 @@ import type {
   TriggerKind,
 } from "@app/types/assistant/triggers";
 import { isTriggerExecutionMode } from "@app/types/assistant/triggers";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export const AUTOMATIONS_FILTER_CATEGORIES = [
   "agent",
@@ -32,22 +34,22 @@ export const USER_AUTOMATIONS_FILTER_CATEGORIES = [
 
 export const AUTOMATIONS_FILTER_CATEGORY_LABEL: Record<
   AutomationsFilterCategory,
-  string
+  MessageDescriptor
 > = {
-  agent: "Agents",
-  member: "Members",
-  type: "Type",
-  pool: "Pool",
+  agent: msg`Agents`,
+  member: msg`Members`,
+  type: msg`Type`,
+  pool: msg`Pool`,
 };
 
 export const AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   AutomationsFilterCategory,
-  string
+  MessageDescriptor
 > = {
-  agent: "Agent",
-  member: "Member",
-  type: "Type",
-  pool: "Pool",
+  agent: msg`Agent`,
+  member: msg`Member`,
+  type: msg`Type`,
+  pool: msg`Pool`,
 };
 
 export interface AutomationsFilterOption extends FilterOptionBase {
@@ -62,13 +64,10 @@ export type AutomationsFilter = CategoryFilter<
 
 export function getAutomationsFilterSummaries(
   filter: AutomationsFilter,
+  categoryLabels: Record<AutomationsFilterCategory, string>,
   categories: readonly AutomationsFilterCategory[] = AUTOMATIONS_FILTER_CATEGORIES
 ) {
-  return getFilterSummaries(
-    filter,
-    categories,
-    AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL
-  );
+  return getFilterSummaries(filter, categories, categoryLabels);
 }
 
 export function automationsFilterSelectionCount(

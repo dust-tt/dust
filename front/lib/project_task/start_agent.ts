@@ -149,6 +149,11 @@ async function resolveDefaultAgentIdForTask(
   return candidateId;
 }
 
+/**
+ * @cc [owner:davidebbo,label:security;product] members-only-before-side-effects
+ * When the caller is not a member of `space`, the call MUST fail with a 403 before any
+ * conversation, content fragment or task link is written.
+ */
 export async function startAgentForProjectTask(
   auth: Authenticator,
   {
@@ -178,6 +183,14 @@ export async function startAgentForProjectTask(
       statusCode: 400,
       type: "invalid_request_error",
       message: "Tasks are only available for Pod spaces.",
+    });
+  }
+
+  if (!space.isMember(auth)) {
+    return new Err({
+      statusCode: 403,
+      type: "workspace_auth_error",
+      message: "You are not a member of the Pod.",
     });
   }
 

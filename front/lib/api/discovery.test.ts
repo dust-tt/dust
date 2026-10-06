@@ -2,11 +2,16 @@ import {
   listDiscoveryForYouItems,
   listDiscoveryTrendingItems,
 } from "@app/lib/api/discovery";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import {
+  GLOBAL_AGENTS_SID,
+  getGlobalAgentAuthorName,
+} from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,6 +52,7 @@ describe("discovery ranked sections", () => {
     });
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible trending skill",
+      addCurrentUserAsEditor: true,
     });
 
     mockedFetchTrending.mockResolvedValue(
@@ -99,9 +105,21 @@ describe("discovery ranked sections", () => {
           name: visibleAgent.name,
           description: visibleAgent.description,
           pictureUrl: visibleAgent.pictureUrl,
+          scope: visibleAgent.scope,
+          lastAuthors: ["Me"],
         },
       },
-      { type: "skill", target: visibleSkill.toDiscoveryJSON() },
+      {
+        type: "skill",
+        target: {
+          sId: visibleSkill.sId,
+          name: visibleSkill.name,
+          description: visibleSkill.userFacingDescription,
+          icon: visibleSkill.icon,
+          editedBy: visibleSkill.editedBy,
+          editors: [auth.getNonNullableUser().fullName()],
+        },
+      },
     ]);
   });
 
@@ -112,6 +130,7 @@ describe("discovery ranked sections", () => {
     });
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible for-you skill",
+      addCurrentUserAsEditor: true,
     });
 
     mockedFetchForYou.mockResolvedValue(
@@ -129,7 +148,17 @@ describe("discovery ranked sections", () => {
       throw result.error;
     }
     expect(result.value).toEqual([
-      { type: "skill", target: visibleSkill.toDiscoveryJSON() },
+      {
+        type: "skill",
+        target: {
+          sId: visibleSkill.sId,
+          name: visibleSkill.name,
+          description: visibleSkill.userFacingDescription,
+          icon: visibleSkill.icon,
+          editedBy: visibleSkill.editedBy,
+          editors: [auth.getNonNullableUser().fullName()],
+        },
+      },
       {
         type: "agent",
         target: {
@@ -137,7 +166,32 @@ describe("discovery ranked sections", () => {
           name: visibleAgent.name,
           description: visibleAgent.description,
           pictureUrl: visibleAgent.pictureUrl,
+          scope: visibleAgent.scope,
+          lastAuthors: ["Me"],
         },
+      },
+    ]);
+  });
+
+  it("returns global agent attribution and scope", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("agent", GLOBAL_AGENTS_SID.HELPER)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "agent",
+        target: expect.objectContaining({
+          sId: GLOBAL_AGENTS_SID.HELPER,
+          scope: "global",
+          lastAuthors: [getGlobalAgentAuthorName(GLOBAL_AGENTS_SID.HELPER)],
+        }),
       },
     ]);
   });
@@ -159,6 +213,53 @@ describe("discovery ranked sections", () => {
       throw result.error;
     }
     expect(result.value).toEqual([]);
+  });
+
+  it("omits editors-only skills for viewers outside their editor group", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "admin" });
+    const unpublished = await SkillFactory.create(auth, {
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+    expect(auth.can("read", unpublished)).toBe(true);
+    expect(auth.can("write", unpublished)).toBe(false);
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("skill", unpublished.sId)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([]);
+  });
+
+  it("returns code-defined skill targets without an editing user or editors", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const definition = GLOBAL_SKILLS_ARRAY[0];
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("skill", definition.sId)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "skill",
+        target: {
+          sId: definition.sId,
+          name: definition.name,
+          description: definition.userFacingDescription,
+          icon: definition.icon,
+          editors: [],
+          editedBy: null,
+        },
+      },
+    ]);
   });
 
   it("preserves a pending trending cache fill", async () => {

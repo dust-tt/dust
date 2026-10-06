@@ -82,12 +82,9 @@ type ConsumptionItemEvidenceAttributes = Pick<
 type ConsumptionItemCreationAttributes =
   CreationAttributes<AgentMessageConsumptionItemModel>;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMessageConsumptionItemResource
-  extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
+export interface AgentMessageConsumptionItemResource extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
-export interface AgentMessageModelConsumptionItemResource
-  extends AgentMessageConsumptionItemResource {
+export interface AgentMessageModelConsumptionItemResource extends AgentMessageConsumptionItemResource {
   readonly itemType: Exclude<
     AgentMessageConsumptionItemType,
     "tool" | "rounding"
@@ -97,13 +94,11 @@ export interface AgentMessageModelConsumptionItemResource
   readonly completedAt: Date;
 }
 
-export interface AgentMessageToolConsumptionItemResource
-  extends AgentMessageConsumptionItemResource {
+export interface AgentMessageToolConsumptionItemResource extends AgentMessageConsumptionItemResource {
   readonly itemType: "tool";
   readonly agentMCPActionId: ModelId;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessageConsumptionItemModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionItemModel> =
     AgentMessageConsumptionItemModel;
@@ -573,7 +568,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     // `unnest` pairs both arrays by position into rows of item ID and reconciled amount.
-    // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
+    // oxlint-disable-next-line dust/noRawSql -- Sequelize cannot bulk-update each row with a distinct value.
     await frontSequelize.query(
       `
         UPDATE agent_message_consumption_items AS item

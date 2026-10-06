@@ -2,13 +2,17 @@ import {
   getAdminSectionHref,
   subNavigationAdmin,
 } from "@app/components/navigation/config";
+import { i18n } from "@app/lib/i18n/i18n";
 import { LightSubscriptionFactory } from "@app/tests/utils/LightSubscriptionFactory";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
 
 const SUBSCRIPTION = LightSubscriptionFactory.build();
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 function ownerWithRole(role: MembershipRoleType): WorkspaceType {
   return LightWorkspaceFactory.build({ role });
@@ -21,6 +25,7 @@ function platformNavItem(owner: WorkspaceType, id: string) {
     featureFlags: [],
     subscription: SUBSCRIPTION,
     hasPermission: () => false,
+    t: translate,
   });
   const section = nav.find((s) => s.id === "platform");
   return section?.menus.find((menu) => menu.id === id);
@@ -33,6 +38,7 @@ function spendNavItems(owner: WorkspaceType, currentRoute: string) {
     featureFlags: [],
     subscription: SUBSCRIPTION,
     hasPermission: () => false,
+    t: translate,
   });
 
   return nav.find((section) => section.id === "spend")?.menus ?? [];
@@ -89,6 +95,7 @@ describe("subNavigationAdmin Organization / Spend / Platform groups", () => {
       featureFlags: [],
       subscription: SUBSCRIPTION,
       hasPermission: () => true,
+      t: translate,
     });
 
     expect(nav.map((section) => section.id)).toEqual([
@@ -111,6 +118,7 @@ describe("subNavigationAdmin Organization / Spend / Platform groups", () => {
       subscription: SUBSCRIPTION,
       hasPermission: () => false,
       hasManagedGroups: true,
+      t: translate,
     });
     const organization = nav.find(
       (section) => section.id === "organization"

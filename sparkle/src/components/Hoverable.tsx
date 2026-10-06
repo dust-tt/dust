@@ -47,8 +47,7 @@ const variantStyle = cva(
 );
 
 interface MetaHoverableProps
-  extends React.HTMLAttributes<HTMLElement>,
-    VariantProps<typeof variantStyle> {
+  extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof variantStyle> {
   asChild?: boolean;
 }
 
@@ -69,8 +68,7 @@ const MetaHoverable = React.forwardRef<HTMLElement, MetaHoverableProps>(
 MetaHoverable.displayName = "MetaHoverable";
 
 export interface HoverableProps
-  extends MetaHoverableProps,
-    Omit<LinkWrapperProps, "children"> {}
+  extends MetaHoverableProps, Omit<LinkWrapperProps, "children"> {}
 
 /**
  * An inline text element that reveals interactivity on hover — underline plus

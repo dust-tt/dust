@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { MAX_CONVERSATION_TITLE_LENGTH } from "@app/lib/api/assistant/conversation/constants";
 import { z } from "zod";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
@@ -115,6 +116,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
       title: z
         .string()
         .min(1)
+        .max(MAX_CONVERSATION_TITLE_LENGTH)
         .describe("The new title for the current conversation."),
     },
     stake: "never_ask",

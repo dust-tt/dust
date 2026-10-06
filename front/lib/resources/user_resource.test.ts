@@ -263,9 +263,8 @@ describe("UserResource", () => {
 
         expect(inMemoryCache.has(cacheKey)).toBe(false);
 
-        const { UserResource } = await import(
-          "@app/lib/resources/user_resource"
-        );
+        const { UserResource } =
+          await import("@app/lib/resources/user_resource");
         await UserResource.fetchByWorkOSUserId(workOSUserId);
 
         expect(inMemoryCache.has(cacheKey)).toBe(true);
@@ -276,9 +275,8 @@ describe("UserResource", () => {
         await UserFactory.withWorkOSId(workOSUserId);
         const cacheKey = getCacheKeyForWorkOSUserId(workOSUserId);
 
-        const { UserResource } = await import(
-          "@app/lib/resources/user_resource"
-        );
+        const { UserResource } =
+          await import("@app/lib/resources/user_resource");
         await UserResource.fetchByWorkOSUserId(workOSUserId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
@@ -293,9 +291,8 @@ describe("UserResource", () => {
         const userWithWorkOS = await UserFactory.withWorkOSId(workOSUserId);
         const cacheKey = getCacheKeyForWorkOSUserId(workOSUserId);
 
-        const { UserResource } = await import(
-          "@app/lib/resources/user_resource"
-        );
+        const { UserResource } =
+          await import("@app/lib/resources/user_resource");
         await UserResource.fetchByWorkOSUserId(workOSUserId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
@@ -314,9 +311,8 @@ describe("UserResource", () => {
 
         const oldCacheKey = getCacheKeyForWorkOSUserId(oldWorkOSUserId);
 
-        const { UserResource } = await import(
-          "@app/lib/resources/user_resource"
-        );
+        const { UserResource } =
+          await import("@app/lib/resources/user_resource");
         await UserResource.fetchByWorkOSUserId(oldWorkOSUserId);
         expect(inMemoryCache.has(oldCacheKey)).toBe(true);
 
@@ -342,9 +338,8 @@ describe("UserResource", () => {
 
         const oldCacheKey = getCacheKeyForWorkOSUserId(oldWorkOSUserId);
 
-        const { UserResource } = await import(
-          "@app/lib/resources/user_resource"
-        );
+        const { UserResource } =
+          await import("@app/lib/resources/user_resource");
         await UserResource.fetchByWorkOSUserId(oldWorkOSUserId);
         expect(inMemoryCache.has(oldCacheKey)).toBe(true);
 

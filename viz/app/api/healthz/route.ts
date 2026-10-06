@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { NextResponse } from "next/server";
 
 export async function GET() {

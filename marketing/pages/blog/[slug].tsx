@@ -1,4 +1,10 @@
+import { Chip } from "@dust-tt/sparkle";
 import { TableOfContents } from "@marketing/components/blog/TableOfContents";
+import {
+  renderCtaFromContentful,
+  renderRichTextFromContentful,
+  splitDocumentForMidCta,
+} from "@marketing/components/contentful/richTextRenderer";
 import { BlogBlock } from "@marketing/components/home/ContentBlocks";
 import { Grid, H1, H2 } from "@marketing/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
@@ -10,11 +16,6 @@ import {
   getRelatedPosts,
 } from "@marketing/lib/contentful/client";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
-import {
-  renderCtaFromContentful,
-  renderRichTextFromContentful,
-  splitDocumentForMidCta,
-} from "@marketing/components/contentful/richTextRenderer";
 import { extractTableOfContents } from "@marketing/lib/contentful/tableOfContents";
 import type { BlogPostPageProps } from "@marketing/lib/contentful/types";
 import {
@@ -23,7 +24,6 @@ import {
 } from "@marketing/lib/utils";
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
-import { Chip } from "@dust-tt/sparkle";
 import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -95,7 +95,7 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async (
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function BlogPost({
   post,
   relatedPosts,

@@ -56,7 +56,7 @@ makeScript(
       where: { contentType: frameV2ContentType },
       // @ts-expect-error
       // WORKSPACE_ISOLATION_BYPASS: Discovery query across workspaces that own Frames v2.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       raw: true,
     });

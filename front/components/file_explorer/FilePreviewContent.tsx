@@ -1,7 +1,16 @@
+import { Document } from "@app/components/editor/document";
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import {
+  useDfmMessageVerifier,
+  useSignDfmCommentMessage,
+} from "@app/hooks/useDfmCommentSignatures";
+import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -19,10 +28,17 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useContext } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
 export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
+
+export const CUT_TEXT_SAVE_REFUSED = {
+  title: "File too long to save here",
+  description:
+    "It grew too long to edit here. Copy your changes, then reopen the file.",
+};
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",
@@ -198,6 +214,10 @@ export interface FilePreviewContentData {
   hasError: boolean;
   isContentLoading: boolean;
   isTooLarge: boolean;
+  /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
+  isTruncated: boolean;
+  /** The mount accepts writes from this user, per the content route. */
+  canWrite: boolean;
   sizeBytes: number;
 }
 
@@ -229,17 +249,23 @@ export function useFilePreviewContent({
     category === "markdown" ||
     category === "delimited";
 
-  const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
-    useFileContentByUrl({
-      url: fileUrl,
-      disabled: !enabled || !entry || !needsTextContent || isTooLarge,
-    });
+  const {
+    fileContent,
+    fileCanWrite,
+    isNotFound,
+    isFileContentLoading,
+    fileContentError,
+  } = useFileContentByUrl({
+    url: fileUrl,
+    disabled: !enabled || !entry || !needsTextContent || isTooLarge,
+  });
 
   const hasError = needsTextContent && (!!fileContentError || isNotFound);
   const isContentLoading =
     enabled && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const isTruncated = (fileContent?.length ?? 0) > MAX_TEXT_CHARS;
 
   const processedContent =
     category === "markdown" && truncatedContent
@@ -260,6 +286,8 @@ export function useFilePreviewContent({
     hasError,
     isContentLoading,
     isTooLarge,
+    isTruncated,
+    canWrite: fileCanWrite,
     sizeBytes,
   };
 }
@@ -275,11 +303,47 @@ interface FilePreviewContentProps {
   isFullWidth?: boolean;
   markdownCanEdit?: boolean;
   markdownContent?: string;
+  /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
+  markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
   onMarkdownContentChange?: (content: string) => void;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
   owner?: LightWorkspaceType;
   processedContent: ProcessedContent | null;
+}
+
+interface RichMarkdownDocumentProps {
+  editor: MarkdownRichEditor;
+  owner: LightWorkspaceType;
+}
+
+function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
+  const user = useContext(AuthContext)?.user;
+  const signCommentMessage = useSignDfmCommentMessage({
+    owner,
+    filePath: editor.path,
+  });
+  const verifyCommentMessage = useDfmMessageVerifier({
+    owner,
+    filePath: editor.path,
+  });
+
+  return (
+    <Document
+      initialContent={editor.initialContent}
+      onSave={editor.onSave}
+      onStateChange={editor.onStateChange}
+      commentAuthor={
+        user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
+      }
+      signCommentMessage={signCommentMessage}
+      verifyCommentMessage={verifyCommentMessage ?? undefined}
+      badge={<CoEditionBadge />}
+      renderCommentAuthorAvatar={(author, size) => (
+        <CommentAuthorAvatar owner={owner} author={author} size={size} />
+      )}
+    />
+  );
 }
 
 export function FilePreviewContent({
@@ -291,6 +355,7 @@ export function FilePreviewContent({
   isFullWidth = false,
   markdownCanEdit,
   markdownContent,
+  markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
   onMarkdownViewModeChange,
@@ -358,6 +423,17 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
+      if (markdownRichEditor && owner) {
+        return (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <RichMarkdownDocument
+              key={markdownRichEditor.mountKey}
+              editor={markdownRichEditor}
+              owner={owner}
+            />
+          </div>
+        );
+      }
       if (
         processedContent &&
         markdownContent !== undefined &&

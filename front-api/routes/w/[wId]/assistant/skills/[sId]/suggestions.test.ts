@@ -4,9 +4,9 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
-import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
@@ -472,9 +472,8 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
   });
 
   it("returns 400 when reinforcement is disabled", async () => {
-    const { hasReinforcementEnabled } = await import(
-      "@app/lib/reinforcement/workspace_check"
-    );
+    const { hasReinforcementEnabled } =
+      await import("@app/lib/reinforcement/workspace_check");
     vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
 
     const { workspace, auth, skill } = await setup();
@@ -646,9 +645,8 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
   });
 
   it("returns empty suggestions when reinforcement is disabled", async () => {
-    const { hasReinforcementEnabled } = await import(
-      "@app/lib/reinforcement/workspace_check"
-    );
+    const { hasReinforcementEnabled } =
+      await import("@app/lib/reinforcement/workspace_check");
     vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
 
     const { workspace, auth, skill } = await setup();

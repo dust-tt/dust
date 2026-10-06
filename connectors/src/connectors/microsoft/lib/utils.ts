@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
 import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";

@@ -10,6 +10,7 @@ import { z } from "zod";
 export const CreateGroupBodySchema = z.object({
   name: z.string().min(1),
   memberIds: z.array(z.string()).min(1),
+  managerIds: z.array(z.string()).optional(),
 });
 
 export type PostGroupResponseBody = {

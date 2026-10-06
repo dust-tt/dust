@@ -1,8 +1,6 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
-import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
 import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
@@ -11,11 +9,19 @@ import {
   AGENT_SEARCH_TABS,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
-import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
+import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
+import {
+  ManageTrackingContext,
+  trackManageDetails,
+  useManageTracking,
+  useTrackManageResults,
+} from "@app/components/pages/builder/manageTracking";
 import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
@@ -52,6 +58,7 @@ const AGENT_SEARCH_PAGE_SIZE = 25;
 type SearchTabId = (typeof AGENT_SEARCH_TABS)[number]["id"];
 
 interface AgentsListProps {
+  isFilterLoading: boolean;
   readOnly?: boolean;
   searchEndpoint?: string;
   renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
@@ -69,6 +76,7 @@ type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
  * as custom agents. Read-only views MUST retain their search endpoint and expose no toggles.
  */
 function AgentsList({
+  isFilterLoading,
   readOnly = false,
   searchEndpoint,
   renderActions,
@@ -77,6 +85,14 @@ function AgentsList({
   permissionFiltering,
   onSelect,
 }: AgentsListProps) {
+  const tracking = useManageTracking();
+  const handleSelect = useCallback(
+    (agentId: string) => {
+      trackManageDetails(tracking, agentId);
+      onSelect(agentId);
+    },
+    [tracking, onSelect]
+  );
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   // Selected rows are kept by id across pages, with the item needed by batch actions.
@@ -127,6 +143,17 @@ function AgentsList({
     limit: AGENT_SEARCH_PAGE_SIZE,
     sortBy,
     sortOrder,
+  });
+
+  useTrackManageResults({
+    queryKey,
+    searchTerm,
+    total,
+    disabled:
+      isFilterLoading ||
+      isAgentsLoading ||
+      isAgentsError ||
+      tablePagination.pageIndex !== 0,
   });
 
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
@@ -184,7 +211,7 @@ function AgentsList({
           readOnly={readOnly}
           renderActions={renderActions}
           agents={agents}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           onRefresh={mutate}
           pagination={tablePagination}
           // The table reports its pagination on every render; storing an unchanged value would
@@ -376,8 +403,14 @@ export function ManageAgentsPage({
     </div>
   );
 
+  const tracking = useMemo(
+    () =>
+      readOnly ? null : { entity_type: "agent" as const, tab: selectedTab },
+    [readOnly, selectedTab]
+  );
+
   return (
-    <>
+    <ManageTrackingContext.Provider value={tracking}>
       <div className="flex w-full flex-col gap-6 pb-4">
         {showHeader && (
           <Page.Header
@@ -471,6 +504,7 @@ export function ManageAgentsPage({
             }}
           />
           <AgentsList
+            isFilterLoading={isSelectionLoading}
             readOnly={readOnly}
             searchEndpoint={searchEndpoint}
             renderActions={renderActions}
@@ -490,6 +524,6 @@ export function ManageAgentsPage({
           onClose={() => setDetailedAgentId(null)}
         />
       )}
-    </>
+    </ManageTrackingContext.Provider>
   );
 }

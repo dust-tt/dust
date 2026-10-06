@@ -1,8 +1,10 @@
-import { EXTENSION_MCP_TOOLS_LABEL } from "@app/components/workspace/ExtensionMcpToolsSection";
-import { DUST_MCP_SERVER_LABEL } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
-import { EMAIL_AGENTS_LABEL } from "@app/components/workspace/settings/EmailAgentsToggle";
-import { MESSAGING_APP_METADATA } from "@app/components/workspace/settings/MessagingAppToggles";
-import { SLACK_PERSONAL_FOOTER_REMOVAL_LABEL } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
+import { EXTENSION_MCP_TOOLS_LABEL } from "@app/components/workspace/extension_mcp_tools_metadata";
+import {
+  DUST_MCP_SERVER_LABEL,
+  EMAIL_AGENTS_LABEL,
+  MESSAGING_APP_METADATA,
+  SLACK_PERSONAL_FOOTER_REMOVAL_LABEL,
+} from "@app/components/workspace/settings/settings_metadata";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";

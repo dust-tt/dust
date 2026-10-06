@@ -1,15 +1,17 @@
 import { UserLocaleSync } from "@app/components/app/UserLocaleSync";
 import { formatNumber, setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
+import { setLocaleOverride } from "@app/lib/i18n/locale_override";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { SupportedLocale } from "@app/types/locale";
 import { Trans } from "@lingui/react/macro";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   hasLocalisation: false,
   userLocale: "en-US" as SupportedLocale,
+  isDevModeActive: true,
 }));
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
@@ -24,11 +26,22 @@ vi.mock("@app/hooks/useUserLocale", () => ({
   useUserLocale: () => ({ userLocale: state.userLocale }),
 }));
 
+vi.mock("@app/components/dev/devModeConstants", () => ({
+  get DEV_MODE_ACTIVE() {
+    return state.isDevModeActive;
+  },
+}));
+
 function renderUserLocaleSync(onReady?: () => void) {
   return render(
     <>
       <UserLocaleSync onReady={onReady} />
-      <Trans>Untranslated probe</Trans>
+      <span>
+        <Trans>Untranslated probe</Trans>
+      </span>
+      <span>
+        <Trans>Save</Trans>
+      </span>
     </>
   );
 }
@@ -37,6 +50,8 @@ describe("UserLocaleSync", () => {
   beforeEach(() => {
     document.documentElement.lang = "en";
     setFormatLocale(undefined);
+    state.isDevModeActive = true;
+    setLocaleOverride(null);
   });
 
   it("keeps the default locale when the flag is disabled", async () => {
@@ -109,5 +124,63 @@ describe("UserLocaleSync", () => {
     renderUserLocaleSync(() => localesAtReady.push(i18n.locale));
 
     await waitFor(() => expect(localesAtReady).toEqual(["fr-FR"]));
+  });
+
+  it("activates the locale override over the user locale", async () => {
+    state.hasLocalisation = true;
+    state.userLocale = "en-US";
+    setLocaleOverride("fr-FR");
+
+    renderUserLocaleSync();
+
+    await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
+    expect(formatNumber(1234.5)).toBe("1\u202f234,5");
+  });
+
+  it("activates the locale override when the flag is disabled", async () => {
+    state.hasLocalisation = false;
+    state.userLocale = "en-US";
+    setLocaleOverride("fr-FR");
+
+    renderUserLocaleSync();
+
+    await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
+  });
+
+  it("switches locale as soon as the override changes", async () => {
+    state.hasLocalisation = true;
+    state.userLocale = "en-GB";
+    renderUserLocaleSync();
+    await waitFor(() => expect(i18n.locale).toBe("en-GB"));
+
+    act(() => setLocaleOverride("fr-FR"));
+    await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
+
+    act(() => setLocaleOverride(null));
+    await waitFor(() => expect(i18n.locale).toBe("en-GB"));
+  });
+
+  it("ignores the locale override when the dev console is inactive", async () => {
+    state.isDevModeActive = false;
+    state.hasLocalisation = true;
+    state.userLocale = "en-GB";
+    setLocaleOverride("fr-FR");
+
+    renderUserLocaleSync();
+
+    await waitFor(() => expect(document.documentElement.lang).toBe("en-GB"));
+    expect(i18n.locale).toBe("en-GB");
+  });
+
+  it("activates the bracketed pseudo locale with default formatting", async () => {
+    state.hasLocalisation = true;
+    state.userLocale = "fr-FR";
+    setLocaleOverride("pseudo");
+
+    renderUserLocaleSync();
+
+    await waitFor(() => expect(i18n.locale).toBe("pseudo"));
+    expect(screen.getByText("[Śàvē]")).toBeDefined();
+    expect(formatNumber(1234.5)).toBe("1,234.5");
   });
 });

@@ -1,12 +1,12 @@
 import { editorVariants } from "@app/components/editor/editorStyles";
+import { buildCapabilitySlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   isSkillSlashCommand,
   isToolSlashCommand,
   SELECT_SKILL_SLASH_COMMAND_ACTION,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { buildCapabilitySlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,

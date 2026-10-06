@@ -485,37 +485,39 @@ describe("SharingGrantResource", () => {
     "https://example.com",
     "alice@example.com",
     `${"a".repeat(64)}.co`,
-  ])("returns an Err for invalid domain %s without writing grants", async (domain) => {
-    const { authenticator, file } = await setup();
-    const result = await SharingGrantResource.add(authenticator, file, {
-      emails: ["alice@example.com"],
-      domains: ["valid.co", domain],
-    });
-    assert(result.isErr());
-    expect(result.error.code).toBe("invalid_request_error");
-    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
-  });
+  ])(
+    "returns an Err for invalid domain %s without writing grants",
+    async (domain) => {
+      const { authenticator, file } = await setup();
+      const result = await SharingGrantResource.add(authenticator, file, {
+        emails: ["alice@example.com"],
+        domains: ["valid.co", domain],
+      });
+      assert(result.isErr());
+      expect(result.error.code).toBe("invalid_request_error");
+      expect(await SharingGrantResource.listForFile(file)).toEqual([]);
+    }
+  );
 
-  it.each([
-    "gmail.com",
-    " @GMAIL.COM ",
-    "mailinator.com",
-  ])("rejects non-business domain %s without writing any grants", async (domain) => {
-    const { authenticator, file } = await setup();
-    mockEmitAuditLogEvent.mockClear();
-    const result = await SharingGrantResource.add(authenticator, file, {
-      emails: ["alice@example.com"],
-      domains: ["example.com", domain],
-    });
+  it.each(["gmail.com", " @GMAIL.COM ", "mailinator.com"])(
+    "rejects non-business domain %s without writing any grants",
+    async (domain) => {
+      const { authenticator, file } = await setup();
+      mockEmitAuditLogEvent.mockClear();
+      const result = await SharingGrantResource.add(authenticator, file, {
+        emails: ["alice@example.com"],
+        domains: ["example.com", domain],
+      });
 
-    assert(result.isErr());
-    expect(result.error.code).toBe("invalid_request_error");
-    expect(result.error.message).toContain(
-      "Invite individual email addresses instead."
-    );
-    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
-    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
-  });
+      assert(result.isErr());
+      expect(result.error.code).toBe("invalid_request_error");
+      expect(result.error.message).toContain(
+        "Invite individual email addresses instead."
+      );
+      expect(await SharingGrantResource.listForFile(file)).toEqual([]);
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    }
+  );
 
   it("allows individual non-business emails alongside company domains", async () => {
     const { authenticator, file } = await setup();

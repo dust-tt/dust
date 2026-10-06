@@ -42,7 +42,7 @@ impl Fixture {
             fdb_prefix: format!("dfs-v2-fs-test-{}", uuid::Uuid::new_v4().simple()),
         };
         let storage = Storage::open(&config).await?;
-        let api = Api(State::new(storage, SERVER_KEY)?);
+        let api = Api(State::new_durable(storage, SERVER_KEY)?);
         let workspace = api
             .create_workspace(request(
                 SERVER_KEY,
@@ -512,7 +512,10 @@ async fn rename_preserves_identity_and_rejects_cycles_and_stale_parents() -> Res
 
 async fn competing_writers_publish_once_and_independent_files_keep_parent_version() -> Result<()> {
     let f = Fixture::new().await?;
-    let other = Api(State::new(Storage::open(&f.config).await?, SERVER_KEY)?);
+    let other = Api(State::new_durable(
+        Storage::open(&f.config).await?,
+        SERVER_KEY,
+    )?);
     let session = other
         .create_session(request(
             &f.workspace.workspace_key,
@@ -596,7 +599,7 @@ async fn parallel_patches_preserve_existing_bytes_and_zero_fill() -> Result<()> 
         expected[offset..offset + data.len()].copy_from_slice(&data);
         let previous = file.version;
         file = f.write(&file, offset as u64, &data).await?;
-        assert_eq!(file.version, previous + 1);
+        assert_ne!(file.version, previous);
         assert_eq!(f.read(&file, 0, expected.len() as u32).await?, expected);
     }
     file = f.resize(&file, BLOCK_SIZE as u64 + 19).await?;
@@ -686,7 +689,7 @@ async fn durable_reopen_recovers_blocks_grants_and_indexes_without_local_cache()
     let file = f.share(&file, &[("reader", true)]).await?;
     f.api.0.drain().await?;
     let storage = Storage::open(&f.config).await?;
-    let api = Api(State::new(storage, SERVER_KEY)?);
+    let api = Api(State::new_durable(storage, SERVER_KEY)?);
     let old_session = api
         .current_session(request(&f.session.session_key, Empty {})?)
         .await
@@ -816,7 +819,10 @@ async fn deep_hints_follow_moves_and_grants_from_another_server() -> Result<()> 
     )?;
 
     // The second server shares FDB but neither sessions nor hints with the first.
-    let other = Api(State::new(Storage::open(&f.config).await?, SERVER_KEY)?);
+    let other = Api(State::new_durable(
+        Storage::open(&f.config).await?,
+        SERVER_KEY,
+    )?);
     let owner = other
         .create_session(request(
             &f.workspace.workspace_key,

@@ -126,7 +126,9 @@ const ALL_RESOURCES_PREFIXES = Object.values<string>(RESOURCES_PREFIX);
 type ResourceNameType = keyof typeof RESOURCES_PREFIX;
 
 export type ResourceSId = {
-  [key in keyof typeof RESOURCES_PREFIX]: `${(typeof RESOURCES_PREFIX)[key]}_${string}`;
+  [
+    key in keyof typeof RESOURCES_PREFIX
+  ]: `${(typeof RESOURCES_PREFIX)[key]}_${string}`;
 }[keyof typeof RESOURCES_PREFIX];
 
 const sIdCache = new Map<string, string>();

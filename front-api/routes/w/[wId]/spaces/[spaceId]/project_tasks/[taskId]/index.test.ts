@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTaskFactory } from "@app/tests/utils/ProjectTaskFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -33,6 +34,15 @@ function deleteTask(
     `/api/w/${workspace.sId}/spaces/${spaceId}/project_tasks/${taskId}`,
     { method: "DELETE" }
   );
+}
+
+// An open Pod (the workspace global group is attached as a viewer) that the caller can read but is
+// not a member of.
+async function setupOpenPodWithoutCallerMembership() {
+  const { workspace, user, globalGroup } = await createPrivateApiMockRequest();
+  const pod = await SpaceFactory.project(workspace);
+  await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+  return { workspace, user, pod };
 }
 
 describe("PATCH /api/w/:wId/spaces/:spaceId/project_tasks/:taskId", () => {
@@ -210,6 +220,26 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_tasks/:taskId", () => {
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
+
+  it("rejects a non-member of an open Pod without modifying the todo", async () => {
+    const { workspace, user, pod } =
+      await setupOpenPodWithoutCallerMembership();
+    const todo = await ProjectTaskFactory.create(workspace, pod, {
+      userId: user.id,
+      text: "Original text",
+    });
+
+    const response = await patchTask(workspace, pod.sId, todo.sId, {
+      text: "Hijacked",
+      status: "done",
+    });
+
+    expect(response.status).toBe(404);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const refreshed = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+    expect(refreshed?.text).toBe("Original text");
+    expect(refreshed?.status).toBe("todo");
+  });
 });
 
 describe("DELETE /api/w/:wId/spaces/:spaceId/project_tasks/:taskId", () => {
@@ -223,5 +253,19 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/project_tasks/:taskId", () => {
     const response = await deleteTask(workspace, project.sId, todo.sId);
 
     expect(response.status).toBe(204);
+  });
+
+  it("rejects a non-member of an open Pod without deleting the todo", async () => {
+    const { workspace, user, pod } =
+      await setupOpenPodWithoutCallerMembership();
+    const todo = await ProjectTaskFactory.create(workspace, pod, {
+      userId: user.id,
+    });
+
+    const response = await deleteTask(workspace, pod.sId, todo.sId);
+
+    expect(response.status).toBe(404);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    expect(await ProjectTaskResource.fetchBySId(auth, todo.sId)).not.toBeNull();
   });
 });

@@ -1,6 +1,6 @@
+import { BookOpen01, Icon, Robot, Users01, Zap } from "@dust-tt/sparkle";
 import { H2, P } from "@marketing/components/home/ContentComponents";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { BookOpen01, Icon, Robot, Users01, Zap } from "@dust-tt/sparkle";
 
 type IconType = "robot" | "bolt" | "book" | "users";
 type IconColor = "green" | "orange" | "blue" | "red";

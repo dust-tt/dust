@@ -38,14 +38,14 @@ class MyDocument extends Document {
              })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
              '${
                process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""
-}' && window.DD_RUM.onReady(function() {
+             }' && window.DD_RUM.onReady(function() {
                window.DD_RUM.init({
                  clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
                  service: '${
                    process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"
-}-browser',
+                 }-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
                  version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
                  allowedTracingUrls: [

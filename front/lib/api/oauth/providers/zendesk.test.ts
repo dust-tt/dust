@@ -94,25 +94,25 @@ describe("ZendeskOAuthProvider.getUpdatedExtraConfig", () => {
     mocks.getWorkspaceOAuthConnectionForMCPServer.mockReset();
   });
 
-  it.each([
-    "personal_actions",
-    "platform_actions",
-  ] as const)("inherits the subdomain from the workspace connection for %s", async (useCase) => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    const provider = new ZendeskOAuthProvider();
+  it.each(["personal_actions", "platform_actions"] as const)(
+    "inherits the subdomain from the workspace connection for %s",
+    async (useCase) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const provider = new ZendeskOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
-      new Ok(makeConnection({ zendesk_subdomain: "admincompany" }))
-    );
+      mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+        new Ok(makeConnection({ zendesk_subdomain: "admincompany" }))
+      );
 
-    const updated = await provider.getUpdatedExtraConfig(authenticator, {
-      useCase,
-      extraConfig: { mcp_server_id: "srv_123" },
-    });
+      const updated = await provider.getUpdatedExtraConfig(authenticator, {
+        useCase,
+        extraConfig: { mcp_server_id: "srv_123" },
+      });
 
-    expect(updated.zendesk_subdomain).toBe("admincompany");
-    expect(updated.mcp_server_id).toBeUndefined();
-  });
+      expect(updated.zendesk_subdomain).toBe("admincompany");
+      expect(updated.mcp_server_id).toBeUndefined();
+    }
+  );
 
   it("throws when the workspace connection has no subdomain", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });

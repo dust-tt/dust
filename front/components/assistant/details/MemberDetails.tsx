@@ -1,4 +1,4 @@
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import { formatDate } from "@app/lib/i18n/format";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { RoleType, WorkspaceType } from "@app/types/user";
@@ -14,6 +14,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 type MemberDetailsProps = {
@@ -44,10 +45,13 @@ const getRoleBadgeColor = (
 };
 
 export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
+  const { t } = useLingui();
   const { userDetails, isMembersLoading, isMembersError } = useMemberDetails({
     workspaceId: owner.sId,
     userIds: userId ? [userId] : [],
   });
+  const leftDate = formatMembershipDate(userDetails?.endAt ?? null);
+  const joinedDate = formatMembershipDate(userDetails?.startAt ?? null);
 
   return (
     <Sheet open={!!userId} onOpenChange={onClose}>
@@ -60,8 +64,8 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
             <Spinner size="lg" />
           </div>
         ) : isMembersError ? (
-          <ContentMessage title="Not Available" icon={Lock01} size="md">
-            This user is not available.
+          <ContentMessage title={t`Not available`} icon={Lock01} size="md">
+            <Trans>This user is not available.</Trans>
           </ContentMessage>
         ) : (
           userDetails && (
@@ -71,7 +75,7 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
 
                 <div className="relative flex flex-col items-center gap-3">
                   <Avatar
-                    name={userDetails.fullName ?? "User avatar"}
+                    name={userDetails.fullName ?? t`User avatar`}
                     visual={userDetails.image ?? undefined}
                     size="xl"
                     isRounded
@@ -88,8 +92,8 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                     }
                     label={
                       userDetails.revoked
-                        ? "Former member"
-                        : displayRole(userDetails.role)
+                        ? t`Former member`
+                        : t(ROLE_LABELS[userDetails.role])
                     }
                     className="absolute -bottom-3 shadow-sm"
                   />
@@ -100,10 +104,10 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                   </h2>
                   {(userDetails.startAt ?? userDetails.endAt) && (
                     <p className="text-sm text-muted-foreground">
-                      {userDetails.revoked && userDetails.endAt
-                        ? `Left the workspace: ${formatMembershipDate(userDetails.endAt)}`
-                        : userDetails.startAt
-                          ? `Joined the workspace: ${formatMembershipDate(userDetails.startAt)}`
+                      {userDetails.revoked && leftDate
+                        ? t`Left the workspace: ${leftDate}`
+                        : joinedDate
+                          ? t`Joined the workspace: ${joinedDate}`
                           : null}
                     </p>
                   )}
@@ -112,24 +116,24 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                 <Separator />
                 <div className="grid w-full grid-cols-2 gap-4">
                   <div className="col-span-1">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Username
+                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
+                      <Trans>Username</Trans>
                     </div>
                     <div className="mt-1 text-sm text-foreground">
                       {userDetails.username}
                     </div>
                   </div>
                   <div className="col-span-1">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Full name
+                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
+                      <Trans>Full name</Trans>
                     </div>
                     <div className="mt-1 text-sm text-foreground">
                       {userDetails.fullName}
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Email
+                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
+                      <Trans>Email</Trans>
                     </div>
                     <div className="mt-1 text-sm text-foreground">
                       {userDetails.email}
@@ -142,7 +146,7 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
         )}
         <SheetFooter
           leftButtonProps={{
-            label: "Close",
+            label: t`Close`,
             variant: "outline",
           }}
         />

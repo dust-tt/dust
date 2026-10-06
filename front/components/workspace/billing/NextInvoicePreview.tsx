@@ -23,6 +23,8 @@ import {
   DataTable,
   Spinner,
 } from "@dust-tt/sparkle";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -30,6 +32,7 @@ import { useSubscriptionContext } from "./SubscriptionContext";
 
 interface InvoiceRow {
   name: string;
+  seatType?: string;
   period: string | null;
   quantity: string;
   cost: string;
@@ -44,7 +47,7 @@ interface InvoiceRow {
 }
 
 const CREDITS_CONVERSION_NAME = "Credits (AWU) conversion";
-const OVERAGE_NAME = "Credit overage";
+const OVERAGE_NAME = msg`Credit overage`;
 
 // Maps Metronome product names (monthly and yearly variants) to seat group type.
 const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, string> = {
@@ -55,47 +58,30 @@ const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, string> = {
   [MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "max",
   [WORKSPACE_SEAT_PRODUCT_NAME]: "workspace",
   [WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "workspace",
-  [OVERAGE_NAME]: "overage",
+  [CREDITS_CONVERSION_NAME]: "overage",
 };
 
 function formatLineItemPeriod(item: MetronomeInvoiceLineItem): string | null {
   if (item.periodStartMs == null || item.periodEndMs == null) {
     return null;
   }
-  const period = `${formatTimestampToFriendlyDate(item.periodStartMs, "compactWithDay")} → ${formatTimestampToFriendlyDate(item.periodEndMs, "compactWithDay")}`;
-  return item.isProrated ? `Prorated · ${period}` : period;
+  return `${formatTimestampToFriendlyDate(item.periodStartMs, "compactWithDay")} → ${formatTimestampToFriendlyDate(item.periodEndMs, "compactWithDay")}`;
 }
 
-function formatLineItem(
-  item: MetronomeInvoiceLineItem,
-  currency: string
-): Omit<InvoiceRow, "isGroup" | "isExpanded" | "isChild" | "onClick"> {
-  const isOverage = item.name === CREDITS_CONVERSION_NAME;
-  return {
-    name: isOverage ? OVERAGE_NAME : item.name,
-    period: formatLineItemPeriod(item),
-    quantity:
-      item.quantity !== null
-        ? `${formatNumber(item.quantity)}${isOverage ? " credits" : ""}`
-        : "—",
-    cost:
-      item.unitPriceCents !== null
-        ? `${formatAmount(item.unitPriceCents, currency)}${isOverage ? " / credit" : ""}`
-        : "—",
-    subtotal: formatAmount(item.totalCents, currency),
-  };
-}
-
-function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
+function buildColumns(headers: {
+  name: string;
+  quantity: string;
+  cost: string;
+  subtotal: string;
+}): ColumnDef<InvoiceRow>[] {
   return [
     {
       accessorKey: "name",
-      header: "Name",
+      header: headers.name,
       enableSorting: false,
       meta: { className: "w-1/2" },
       cell: ({ row }) => {
-        const { name, isGroup, isExpanded, isChild } = row.original;
-        const seatType = PRODUCT_NAME_TO_SEAT_TYPE[name];
+        const { name, seatType, isGroup, isExpanded, isChild } = row.original;
         const avatarColors = seatType ? seatTypeAvatarColors(seatType) : null;
 
         if (isGroup) {
@@ -150,7 +136,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
     },
     {
       accessorKey: "quantity",
-      header: "Quantity",
+      header: headers.quantity,
       enableSorting: false,
       meta: { headerAlign: "right", className: "w-[16%]" },
       cell: ({ row }) => (
@@ -161,7 +147,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
     },
     {
       accessorKey: "cost",
-      header: `Cost (${currency})`,
+      header: headers.cost,
       enableSorting: false,
       meta: { headerAlign: "right", className: "w-[17%]" },
       cell: ({ row }) => (
@@ -172,7 +158,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
     },
     {
       accessorKey: "subtotal",
-      header: "Subtotal",
+      header: headers.subtotal,
       enableSorting: false,
       meta: { headerAlign: "right", className: "w-[17%]" },
       cell: ({ row }) => (
@@ -190,6 +176,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
 }
 
 export function NextInvoicePreview() {
+  const { t } = useLingui();
   const { owner, subscription } = useSubscriptionContext();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -212,6 +199,36 @@ export function NextInvoicePreview() {
   }
 
   const currency = invoiceLines.currency?.toUpperCase() ?? "USD";
+
+  const formatLineItem = (
+    item: MetronomeInvoiceLineItem
+  ): Omit<InvoiceRow, "isGroup" | "isExpanded" | "isChild" | "onClick"> => {
+    const isOverage = item.name === CREDITS_CONVERSION_NAME;
+    const period = formatLineItemPeriod(item);
+    const quantity = item.quantity;
+    const unitPrice =
+      item.unitPriceCents !== null
+        ? formatAmount(item.unitPriceCents, currency)
+        : null;
+    return {
+      name: isOverage ? t(OVERAGE_NAME) : item.name,
+      seatType: PRODUCT_NAME_TO_SEAT_TYPE[item.name],
+      period: period && item.isProrated ? t`Prorated · ${period}` : period,
+      quantity:
+        quantity === null
+          ? "—"
+          : isOverage
+            ? t`${plural(quantity, { one: "# credit", other: "# credits" })}`
+            : formatNumber(quantity),
+      cost:
+        unitPrice === null
+          ? "—"
+          : isOverage
+            ? t`${unitPrice} / credit`
+            : unitPrice,
+      subtotal: formatAmount(item.totalCents, currency),
+    };
+  };
 
   const toggleGroup = (name: string) => {
     setExpandedGroups((prev) => {
@@ -249,14 +266,15 @@ export function NextInvoicePreview() {
   const rows: InvoiceRow[] = [];
   for (const [name, items] of groups) {
     if (items.length === 1) {
-      rows.push(formatLineItem(items[0], currency));
+      rows.push(formatLineItem(items[0]));
     } else {
       const subtotalCents = items.reduce((sum, i) => sum + i.totalCents, 0);
       const isExpanded = expandedGroups.has(name);
       const displayName =
-        name === CREDITS_CONVERSION_NAME ? OVERAGE_NAME : name;
+        name === CREDITS_CONVERSION_NAME ? t(OVERAGE_NAME) : name;
       rows.push({
         name: displayName,
+        seatType: PRODUCT_NAME_TO_SEAT_TYPE[name],
         period: null,
         quantity: "",
         cost: "",
@@ -267,7 +285,7 @@ export function NextInvoicePreview() {
       });
       if (isExpanded) {
         for (const item of items) {
-          rows.push({ ...formatLineItem(item, currency), isChild: true });
+          rows.push({ ...formatLineItem(item), isChild: true });
         }
       }
     }
@@ -284,19 +302,19 @@ export function NextInvoicePreview() {
 
   if (creditItems.length > 0) {
     rows.push({
-      name: "Subtotal",
+      name: t`Subtotal`,
       period: null,
       quantity: "",
       cost: "",
       subtotal: formatAmount(chargesTotalCents, currency),
     });
     for (const item of creditItems) {
-      rows.push(formatLineItem(item, currency));
+      rows.push(formatLineItem(item));
     }
   }
 
   rows.push({
-    name: "Total",
+    name: t`Total`,
     period: null,
     quantity: "",
     cost: "",
@@ -307,7 +325,12 @@ export function NextInvoicePreview() {
   return (
     <DataTable
       data={rows}
-      columns={buildColumns(currency)}
+      columns={buildColumns({
+        name: t`Name`,
+        quantity: t`Quantity`,
+        cost: t`Cost (${currency})`,
+        subtotal: t`Subtotal`,
+      })}
       hideRowDivider={false}
     />
   );

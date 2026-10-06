@@ -207,21 +207,21 @@ describe("Manage Skills detail loading", () => {
     expect(details).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    "active",
-    "archived",
-  ] as const)("resolves a deep link to an %s skill without requiring it in the listing", async (status) => {
-    const { details, mount } = await setup({
-      deepLink: true,
-      listed: false,
-      skillOverrides: { status },
-    });
-    mount();
-    expect(
-      await screen.findByRole("heading", { name: "Fetched skill" })
-    ).toBeInTheDocument();
-    expect(details).toHaveBeenCalledTimes(1);
-  });
+  it.each(["active", "archived"] as const)(
+    "resolves a deep link to an %s skill without requiring it in the listing",
+    async (status) => {
+      const { details, mount } = await setup({
+        deepLink: true,
+        listed: false,
+        skillOverrides: { status },
+      });
+      mount();
+      expect(
+        await screen.findByRole("heading", { name: "Fetched skill" })
+      ).toBeInTheDocument();
+      expect(details).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it("does not reuse the previous skill while resolving another selection", async () => {
     const { skill, details, mount } = await setup({ deepLink: true });
@@ -307,24 +307,24 @@ describe("Manage Skills detail loading", () => {
     { isAdmin: false, status: "active" },
     { isAdmin: true, status: "active" },
     { isAdmin: false, status: "suggested" },
-  ] as const)("opens readable editors-only skills for admin=$isAdmin / $status", async ({
-    isAdmin,
-    status,
-  }) => {
-    const { mount } = await setup({
-      deepLink: true,
-      isAdmin,
-      skillOverrides: {
-        status,
-        availability: "editors",
-        canRead: true,
-        canWrite: false,
-        canAdministrate: true,
-      },
-    });
-    mount();
-    expect(
-      await screen.findByRole("heading", { name: "Fetched skill" })
-    ).toBeInTheDocument();
-  });
+  ] as const)(
+    "opens readable editors-only skills for admin=$isAdmin / $status",
+    async ({ isAdmin, status }) => {
+      const { mount } = await setup({
+        deepLink: true,
+        isAdmin,
+        skillOverrides: {
+          status,
+          availability: "editors",
+          canRead: true,
+          canWrite: false,
+          canAdministrate: true,
+        },
+      });
+      mount();
+      expect(
+        await screen.findByRole("heading", { name: "Fetched skill" })
+      ).toBeInTheDocument();
+    }
+  );
 });

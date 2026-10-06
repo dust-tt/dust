@@ -1,9 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
-import {
-  CREATE_SECRET_LABEL,
-  DEVELOPER_SECRETS_PAGE_TITLE,
-} from "@app/components/pages/workspace/developers/secretsAdminSearchEntries";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -33,8 +29,9 @@ import {
   SearchInput,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 interface SecretRowData {
@@ -44,73 +41,15 @@ interface SecretRowData {
   onDelete?: () => void;
 }
 
-const columns: ColumnDef<SecretRowData>[] = [
-  {
-    id: "name",
-    accessorKey: "name",
-    header: "Name",
-    cell: (info: CellContext<SecretRowData, unknown>) => (
-      <DataTable.CellContent grow>
-        <DataTable.CellContentWithCopy
-          textToCopy={`env.secrets.${info.row.original.name}`}
-        >
-          <span className="font-mono">
-            env.secrets.{info.row.original.name}
-          </span>
-        </DataTable.CellContentWithCopy>
-      </DataTable.CellContent>
-    ),
-    meta: { className: "w-full" },
-  },
-  {
-    id: "actions",
-    header: "",
-    cell: (info: CellContext<SecretRowData, unknown>) => {
-      const { isActionDisabled, onClick, onDelete } = info.row.original;
-      if (!onClick || !onDelete) {
-        return null;
-      }
-
-      return (
-        <DataTable.CellContent>
-          <div className="flex gap-1 opacity-0 focus-within:opacity-100 group-hover/dt-row:opacity-100">
-            <Button
-              size="xs"
-              variant="ghost"
-              icon={Edit04}
-              tooltip="Edit"
-              disabled={isActionDisabled}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClick();
-              }}
-            />
-            <Button
-              size="xs"
-              variant="warning-ghost"
-              icon={Trash01}
-              tooltip="Delete"
-              disabled={isActionDisabled}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            />
-          </div>
-        </DataTable.CellContent>
-      );
-    },
-    meta: { className: "w-20" },
-  },
-];
-
 export function SecretsPage() {
+  const { t } = useLingui();
+
   return (
     <AdminPageContainer>
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title={DEVELOPER_SECRETS_PAGE_TITLE}
-          description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
+          title={t`Developer Secrets`}
+          description={t`Secrets usable in Dust apps or MCP servers to safely store sensitive data.`}
         />
         <SecretsPageContent />
       </Page.Vertical>
@@ -119,6 +58,7 @@ export function SecretsPage() {
 }
 
 export function SecretsPageContent() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
 
@@ -151,15 +91,15 @@ export function SecretsPageContent() {
         setNewDustAppSecret(defaultSecret);
         sendNotification({
           type: "success",
-          title: "Secret saved",
-          description: "Successfully saved the secret value securely.",
+          title: t`Secret saved`,
+          description: t`Successfully saved the secret value securely.`,
         });
       } else {
-        const msg = await r.text();
+        const errorMessage = await r.text();
         sendNotification({
           type: "error",
-          title: "Error saving secret",
-          description: `An error occurred while saving the secret value: ${msg}`,
+          title: t`Error saving secret`,
+          description: t`An error occurred while saving the secret value: ${errorMessage}`,
         });
       }
     });
@@ -177,10 +117,11 @@ export function SecretsPageContent() {
       );
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
       setSecretToRevoke(null);
+      const secretName = secret.name;
       sendNotification({
         type: "success",
-        title: "Secret deleted",
-        description: `Successfully deleted ${secret.name}.`,
+        title: t`Secret deleted`,
+        description: t`Successfully deleted ${secretName}.`,
       });
     }
   );
@@ -207,6 +148,8 @@ export function SecretsPageContent() {
       onDelete: isAdmin ? () => setSecretToRevoke(secret) : undefined,
     }));
 
+  const secretToRevokeName = secretToRevoke?.name;
+
   return (
     <>
       {secretToRevoke ? (
@@ -220,20 +163,24 @@ export function SecretsPageContent() {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete {secretToRevoke?.name}</DialogTitle>
+              <DialogTitle>
+                <Trans>Delete {secretToRevokeName}</Trans>
+              </DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              Are you sure you want to delete the secret{" "}
-              <strong>{secretToRevoke?.name}</strong>?
+              <Trans>
+                Are you sure you want to delete the secret{" "}
+                <strong>{secretToRevokeName}</strong>?
+              </Trans>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
                 onClick: () => setSecretToRevoke(null),
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: t`Delete`,
                 variant: "warning",
                 onClick: () => handleRevoke(secretToRevoke),
               }}
@@ -252,12 +199,16 @@ export function SecretsPageContent() {
         <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>
-              {isInputNameDisabled ? "Update" : "New"} Developer Secret
+              {isInputNameDisabled ? (
+                <Trans>Update Developer Secret</Trans>
+              ) : (
+                <Trans>New Developer Secret</Trans>
+              )}
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <Input
-              message="Secret names must be alphanumeric and underscore characters only."
+              message={t`Secret names must be alphanumeric and underscore characters only.`}
               name="Secret Name"
               placeholder="SECRET_NAME"
               value={newDustAppSecret.name}
@@ -272,9 +223,9 @@ export function SecretsPageContent() {
             <Input
               // prevent autocompletion of secrets
               autoComplete="off"
-              message="Secret values are encrypted and stored securely in our database."
+              message={t`Secret values are encrypted and stored securely in our database.`}
               name="Secret value"
-              placeholder="Type the secret value"
+              placeholder={t`Type the secret value`}
               value={newDustAppSecret.value}
               onChange={(e) =>
                 setNewDustAppSecret({
@@ -286,12 +237,12 @@ export function SecretsPageContent() {
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               onClick: () => setIsNewSecretPromptOpen(false),
             }}
             rightButtonProps={{
-              label: isInputNameDisabled ? "Update" : "Create",
+              label: isInputNameDisabled ? t`Update` : t`Create`,
               variant: "primary",
               onClick: () => handleGenerate(newDustAppSecret),
             }}
@@ -305,12 +256,12 @@ export function SecretsPageContent() {
             <SearchInput
               className="flex-grow"
               name="secrets-search"
-              placeholder="Search secrets"
+              placeholder={t`Search secrets`}
               value={searchQuery}
               onChange={setSearchQuery}
             />
             <Button
-              label="API Reference"
+              label={t`API Reference`}
               size="sm"
               variant="outline"
               icon={BookOpen01}
@@ -323,7 +274,7 @@ export function SecretsPageContent() {
             />
             {isAdmin && (
               <Button
-                label={CREATE_SECRET_LABEL}
+                label={t`Create Secret`}
                 variant="primary"
                 onClick={() => {
                   setNewDustAppSecret(defaultSecret);
@@ -386,6 +337,70 @@ function SecretsTable({
   rows,
   searchQuery,
 }: SecretsTableProps) {
+  const { t } = useLingui();
+  const columns = useMemo<ColumnDef<SecretRowData>[]>(
+    () => [
+      {
+        id: "name",
+        accessorKey: "name",
+        header: t`Name`,
+        cell: (info: CellContext<SecretRowData, unknown>) => (
+          <DataTable.CellContent grow>
+            <DataTable.CellContentWithCopy
+              textToCopy={`env.secrets.${info.row.original.name}`}
+            >
+              <span className="font-mono">
+                env.secrets.{info.row.original.name}
+              </span>
+            </DataTable.CellContentWithCopy>
+          </DataTable.CellContent>
+        ),
+        meta: { className: "w-full" },
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: (info: CellContext<SecretRowData, unknown>) => {
+          const { isActionDisabled, onClick, onDelete } = info.row.original;
+          if (!onClick || !onDelete) {
+            return null;
+          }
+
+          return (
+            <DataTable.CellContent>
+              <div className="flex gap-1 opacity-0 focus-within:opacity-100 group-hover/dt-row:opacity-100">
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  icon={Edit04}
+                  tooltip={t`Edit`}
+                  disabled={isActionDisabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                  }}
+                />
+                <Button
+                  size="xs"
+                  variant="warning-ghost"
+                  icon={Trash01}
+                  tooltip={t`Delete`}
+                  disabled={isActionDisabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                />
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+        meta: { className: "w-20" },
+      },
+    ],
+    [t]
+  );
+
   if (isLoading) {
     return (
       <DataTableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
@@ -395,7 +410,7 @@ function SecretsTable({
   if (isError) {
     return (
       <p className="py-8 text-center text-muted-foreground">
-        Failed to load secrets.
+        <Trans>Failed to load secrets.</Trans>
       </p>
     );
   }
@@ -403,7 +418,11 @@ function SecretsTable({
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-muted-foreground">
-        {searchQuery ? "No matching secrets found" : "No secrets created yet."}
+        {searchQuery ? (
+          <Trans>No matching secrets found</Trans>
+        ) : (
+          <Trans>No secrets created yet.</Trans>
+        )}
       </p>
     );
   }

@@ -1,7 +1,7 @@
-import { INBOX_ROW_BADGES } from "../data/rowBadges";
 import type { Trigger } from "../data/types";
-import { AgentBadgeAvatar } from "./AgentBadgeAvatar";
 import type { AvatarCounterSizeType } from "./AvatarCounter";
+import { INBOX_ROW_BADGES } from "../data/rowBadges";
+import { AgentBadgeAvatar } from "./AgentBadgeAvatar";
 
 interface TriggerRunAvatarProps {
   trigger: Trigger;

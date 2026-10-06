@@ -54,6 +54,7 @@ import {
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
   OnChangeFn,
@@ -140,11 +141,12 @@ function growthPercent(
 }
 
 function PercentageChangeCell({ percentage }: { percentage: number | null }) {
+  const { t } = useLingui();
   if (percentage === null) {
     return (
       <DataTable.CellContent className="w-full justify-end text-right">
         <Tooltip
-          label="Not enough data to compute"
+          label={t`Not enough data to compute`}
           tooltipTriggerAsChild
           trigger={<span className="text-sm text-muted-foreground">--</span>}
         />
@@ -183,11 +185,12 @@ function VsPrevCell({
 }
 
 function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
+  const { t } = useLingui();
   if (percentage === null) {
     return (
       <DataTable.CellContent className="w-full justify-end text-right">
         <Tooltip
-          label="Not enough data to compute"
+          label={t`Not enough data to compute`}
           tooltipTriggerAsChild
           trigger={<span className="text-sm text-muted-foreground">--</span>}
         />
@@ -245,6 +248,21 @@ function usageDifferenceFromAveragePercent({
 // mirrors the DataTable.Head and DataTable.Cell padding.
 const COLLAPSED_COLUMN_CLASSES = "w-0 max-w-0 overflow-hidden px-0";
 
+interface AttributionColumnLabels {
+  name: string;
+  activeMembers: string;
+  usageVsAverage: string;
+  costShare: string;
+  totalCredits: string;
+  vsPrev: string;
+  addToFilters: string;
+  removeFromFilters: string;
+  expandBreakdown: (name: string) => string;
+  collapseBreakdown: (name: string) => string;
+  addRowToFilters: (name: string) => string;
+  removeRowFromFilters: (name: string) => string;
+}
+
 function buildColumns({
   dimension,
   hasAvatar,
@@ -256,6 +274,7 @@ function buildColumns({
   isDark,
   expandedRowId,
   selectedIdSet,
+  labels,
 }: {
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
@@ -267,12 +286,13 @@ function buildColumns({
   isDark: boolean;
   expandedRowId: string | null;
   selectedIdSet: Set<string>;
+  labels: AttributionColumnLabels;
 }): ColumnDef<AttributionRowData>[] {
   return [
     {
       id: "name",
       accessorKey: "name",
-      header: "Name",
+      header: labels.name,
       enableSorting: false,
       meta: { headerAlign: "left" },
       cell: (info) => {
@@ -372,7 +392,7 @@ function buildColumns({
       ? ([
           {
             id: "activeMembers",
-            header: "Active / total members",
+            header: labels.activeMembers,
             enableSorting: false,
             meta: {
               className: cn(
@@ -395,7 +415,7 @@ function buildColumns({
           },
           {
             id: "usageVsAverage",
-            header: "Vs workspace avg",
+            header: labels.usageVsAverage,
             enableSorting: false,
             meta: {
               className: cn(
@@ -423,7 +443,7 @@ function buildColumns({
             // share is the same order as ranking by credits
             accessorFn: (row) =>
               totalCredits > 0 ? row.credits / totalCredits : 0,
-            header: "Consumption share",
+            header: labels.costShare,
             enableSorting: true,
             meta: {
               className: cn(
@@ -448,7 +468,7 @@ function buildColumns({
     {
       id: "credits",
       accessorKey: "credits",
-      header: "Total credits",
+      header: labels.totalCredits,
       meta: { headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
@@ -497,7 +517,7 @@ function buildColumns({
     },
     {
       id: "vsPrev",
-      header: "vs prev",
+      header: labels.vsPrev,
       enableSorting: false,
       meta: {
         className: cn(
@@ -527,7 +547,11 @@ function buildColumns({
               icon={isExpanded ? ChevronUp : ChevronDown}
               variant="ghost-secondary"
               size="xs"
-              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
+              aria-label={
+                isExpanded
+                  ? labels.collapseBreakdown(row.name)
+                  : labels.expandBreakdown(row.name)
+              }
               aria-expanded={isExpanded}
               onClick={(event) => {
                 event.stopPropagation();
@@ -553,12 +577,12 @@ function buildColumns({
             size="xs"
             className="h-12 w-full rounded-none"
             tooltip={
-              isFilterSelected ? "Remove from filters" : "Add to filters"
+              isFilterSelected ? labels.removeFromFilters : labels.addToFilters
             }
             aria-label={
               isFilterSelected
-                ? `Remove ${row.name} from filters`
-                : `Add ${row.name} to filters`
+                ? labels.removeRowFromFilters(row.name)
+                : labels.addRowToFilters(row.name)
             }
             onClick={(event) => {
               event.stopPropagation();
@@ -648,8 +672,7 @@ export function useConsumptionAttributionRowsQueryState(): ConsumptionAttributio
   };
 }
 
-interface ConsumptionAttributionRowsViewProps
-  extends ConsumptionAttributionRowsProps {
+interface ConsumptionAttributionRowsViewProps extends ConsumptionAttributionRowsProps {
   data: ConsumptionAttributionRowsData;
   emptyMessage: string;
   queryState: ConsumptionAttributionRowsQueryState;
@@ -682,6 +705,7 @@ export function ConsumptionAttributionRowsView({
   queryState: { pagination, setPagination, sorting, onSortingChange },
   RowsTableComponent,
 }: ConsumptionAttributionRowsViewProps) {
+  const { t } = useLingui();
   const { hasAvatar, countLabel, avgLabel } =
     CONSUMPTION_DIMENSION_CONFIG[dimension];
   const { isDark } = useTheme();
@@ -693,19 +717,38 @@ export function ConsumptionAttributionRowsView({
     [dimension, filter]
   );
 
+  const columnLabels = useMemo<AttributionColumnLabels>(
+    () => ({
+      name: t`Name`,
+      activeMembers: t`Active / total members`,
+      usageVsAverage: t`Vs workspace avg`,
+      costShare: t`Consumption share`,
+      totalCredits: t`Total credits`,
+      vsPrev: t`vs prev`,
+      addToFilters: t`Add to filters`,
+      removeFromFilters: t`Remove from filters`,
+      expandBreakdown: (name) => t`Expand breakdown for ${name}`,
+      collapseBreakdown: (name) => t`Collapse breakdown for ${name}`,
+      addRowToFilters: (name) => t`Add ${name} to filters`,
+      removeRowFromFilters: (name) => t`Remove ${name} from filters`,
+    }),
+    [t]
+  );
+
   const columns = useMemo(
     () =>
       buildColumns({
         dimension,
         hasAvatar,
         isAvatarRounded: dimension === "user",
-        countLabel,
-        avgLabel,
+        countLabel: t(countLabel),
+        avgLabel: t(avgLabel),
         totalCredits,
         totalActiveMembers,
         isDark,
         expandedRowId,
         selectedIdSet,
+        labels: columnLabels,
       }),
     [
       hasAvatar,
@@ -717,6 +760,8 @@ export function ConsumptionAttributionRowsView({
       isDark,
       expandedRowId,
       selectedIdSet,
+      columnLabels,
+      t,
     ]
   );
 
@@ -799,16 +844,17 @@ export function ConsumptionAttributionRowsView({
   } else if (isTopError) {
     content = (
       <div className="text-sm text-muted-foreground">
-        Failed to load attribution.
+        <Trans>Failed to load attribution.</Trans>
       </div>
     );
   } else {
+    const trimmedSearch = search.trim();
     content = (
       <div>
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            {search.trim()
-              ? `No results for "${search.trim()}". Only items with usage data appear here.`
+            {trimmedSearch
+              ? t`No results for "${trimmedSearch}". Only items with usage data appear here.`
               : emptyMessage}
           </div>
         ) : (
@@ -856,6 +902,7 @@ export function ConsumptionAttributionRowsView({
 function WorkspaceConsumptionAttributionRows(
   props: ConsumptionAttributionRowsProps
 ) {
+  const { t } = useLingui();
   const queryState = useConsumptionAttributionRowsQueryState();
   const {
     rows,
@@ -890,7 +937,7 @@ function WorkspaceConsumptionAttributionRows(
         isTopError: Boolean(isTopError),
         isTopValidating,
       }}
-      emptyMessage="No consumption over this period."
+      emptyMessage={t`No consumption over this period.`}
       queryState={queryState}
       RowsTableComponent={ConsumptionAttributionRowsTable}
     />
@@ -918,8 +965,7 @@ export interface ConsumptionAttributionTableProps {
   onConversationNavigate?: () => void;
 }
 
-interface ConsumptionAttributionTableViewProps
-  extends ConsumptionAttributionTableProps {
+interface ConsumptionAttributionTableViewProps extends ConsumptionAttributionTableProps {
   AttributionRowsComponent: ComponentType<ConsumptionAttributionRowsProps>;
 }
 
@@ -940,6 +986,7 @@ export function ConsumptionAttributionTableView({
   onConversationNavigate,
   AttributionRowsComponent,
 }: ConsumptionAttributionTableViewProps) {
+  const { t } = useLingui();
   const { inputValue, debouncedValue, setValue, flush } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
@@ -974,7 +1021,9 @@ export function ConsumptionAttributionTableView({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
-        <h3 className="text-base font-semibold text-foreground">Attribution</h3>
+        <h3 className="text-base font-semibold text-foreground">
+          <Trans>Attribution</Trans>
+        </h3>
         {showExport && analyticsScope.kind === "workspace" && (
           <ConsumptionExportPanel
             workspaceId={workspaceId}
@@ -1002,7 +1051,7 @@ export function ConsumptionAttributionTableView({
                 <TabsTrigger
                   key={tabDimension}
                   value={tabDimension}
-                  label={consumptionAttributionDimensionLabel(tabDimension)}
+                  label={t(consumptionAttributionDimensionLabel(tabDimension))}
                   className={
                     tabDimension === "conversation" ? "ml-auto" : undefined
                   }
@@ -1013,7 +1062,7 @@ export function ConsumptionAttributionTableView({
           {attributionDimension !== "conversation" && (
             <SearchInput
               name="consumption-attribution-search"
-              placeholder="Search…"
+              placeholder={t`Search…`}
               value={inputValue}
               onChange={setValue}
               className="w-full"

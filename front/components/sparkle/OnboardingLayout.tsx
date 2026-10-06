@@ -8,7 +8,7 @@ export default function OnboardingLayout({
   owner,
   children,
 }: {
-  owner: LightWorkspaceType;
+  owner: Pick<LightWorkspaceType, "name">;
   children: React.ReactNode;
 }) {
   useDocumentTitle(`Dust - ${owner.name || "Onboarding"}`);

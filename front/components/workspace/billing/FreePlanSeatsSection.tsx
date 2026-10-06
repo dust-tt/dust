@@ -2,6 +2,8 @@ import { useFreeSeatCounts } from "@app/lib/swr/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Icon, InfoSquare, ProgressBar, Spinner } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 interface FreePlanSeatsSectionProps {
   owner: LightWorkspaceType;
@@ -12,6 +14,7 @@ export function FreePlanSeatsSection({
   owner,
   subscription,
 }: FreePlanSeatsSectionProps) {
+  const { t } = useLingui();
   const { freeSeatCounts, isFreeSeatCountsLoading } = useFreeSeatCounts({
     workspaceId: owner.sId,
   });
@@ -34,12 +37,22 @@ export function FreePlanSeatsSection({
   const fillPercent = Math.min((lifetimeCount / maxLifetimeSeats) * 100, 100);
 
   const heading = isAtCapacity
-    ? `You've used all ${maxLifetimeSeats} free seats`
-    : `${lifetimeCount} of ${maxLifetimeSeats} free seats used`;
+    ? t`${plural(maxLifetimeSeats, {
+        one: "You've used your # free seat",
+        other: "You've used all # free seats",
+      })}`
+    : t`${plural(maxLifetimeSeats, {
+        one: `${lifetimeCount} of # free seat used`,
+        other: `${lifetimeCount} of # free seats used`,
+      })}`;
 
   const description = isAtCapacity
-    ? "Your workspace has reached its free seat limit. Upgrade a member to a Pro or Max seat on the Members page to add more, the cap lifts instantly."
-    : `Free workspaces include ${maxLifetimeSeats} free seats. Once used, free seats are permanent. Upgrade a member to a Pro or Max seat anytime to go beyond the cap.`;
+    ? t`Your workspace has reached its free seat limit. Upgrade a member to a Pro or Max seat on the Members page to add more, the cap lifts instantly.`
+    : t`${plural(maxLifetimeSeats, {
+        one: "Free workspaces include # free seat. Once used, free seats are permanent. Upgrade a member to a Pro or Max seat anytime to go beyond the cap.",
+        other:
+          "Free workspaces include # free seats. Once used, free seats are permanent. Upgrade a member to a Pro or Max seat anytime to go beyond the cap.",
+      })}`;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-muted-background p-4">

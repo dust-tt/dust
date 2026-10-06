@@ -16,18 +16,18 @@ function expectWarningsToContain(
 }
 
 describe("validateTailwindCode", () => {
-  it.each([
-    "a-".repeat(40_000) + "a",
-    "h-[".repeat(40_000),
-  ])("should scan long nonmatching input promptly %#", (className) => {
-    const startMs = performance.now();
-    const result = validateTailwindCode(`<div className="${className}" />`);
-    const elapsedMs = performance.now() - startMs;
+  it.each(["a-".repeat(40_000) + "a", "h-[".repeat(40_000)])(
+    "should scan long nonmatching input promptly %#",
+    (className) => {
+      const startMs = performance.now();
+      const result = validateTailwindCode(`<div className="${className}" />`);
+      const elapsedMs = performance.now() - startMs;
 
-    expect(result.isOk()).toBe(true);
-    // Linear scans take milliseconds; the old regex takes seconds on these inputs.
-    expect(elapsedMs).toBeLessThan(1_000);
-  });
+      expect(result.isOk()).toBe(true);
+      // Linear scans take milliseconds; the old regex takes seconds on these inputs.
+      expect(elapsedMs).toBeLessThan(1_000);
+    }
+  );
 
   it("should preserve variants, negative utilities, and bracket matching", () => {
     const code = `<div className="hover:bg-[#ff0000] -mt-[12px] grid-cols-[1fr_2fr] h-[] w-[2px] h-[w-[3px]" />`;

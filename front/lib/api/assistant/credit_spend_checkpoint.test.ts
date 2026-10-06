@@ -40,24 +40,27 @@ describe("isExemptFromCreditSpendCheckpoint", () => {
     "zendesk",
     "project_kickoff",
     "cli",
-  ] as const)("is exempt for %s: the author cannot resume the pause from a Dust client", async (origin) => {
-    const { authenticator: auth } = await createResourceTest({});
+  ] as const)(
+    "is exempt for %s: the author cannot resume the pause from a Dust client",
+    async (origin) => {
+      const { authenticator: auth } = await createResourceTest({});
 
-    expect(
-      isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: origin })
-    ).toBe(true);
-  });
+      expect(
+        isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: origin })
+      ).toBe(true);
+    }
+  );
 
-  it.each([
-    "web",
-    "extension",
-  ] as const)("is not exempt for %s: the author is in a Dust client UI", async (origin) => {
-    const { authenticator: auth } = await createResourceTest({});
+  it.each(["web", "extension"] as const)(
+    "is not exempt for %s: the author is in a Dust client UI",
+    async (origin) => {
+      const { authenticator: auth } = await createResourceTest({});
 
-    expect(
-      isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: origin })
-    ).toBe(false);
-  });
+      expect(
+        isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: origin })
+      ).toBe(false);
+    }
+  );
 });
 
 describe("hasReachedCreditSpendCheckpoint", () => {

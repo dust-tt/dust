@@ -16,6 +16,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Fragment, useMemo, useState } from "react";
 
+import type { Conversation, WakeUp } from "../data/types";
 import { getAgentById } from "../data/agents";
 import {
   FIRE_BUCKETS,
@@ -23,11 +24,10 @@ import {
   formatWakeUpFireLabel,
   getFireBucket,
 } from "../data/time";
-import type { Conversation, WakeUp } from "../data/types";
 import { getUserById } from "../data/users";
 import { getWakeUpDescription } from "../data/wakeups";
-import { EmptyState } from "./EmptyState";
 import { ConversationListItem } from "./ConversationListItem";
+import { EmptyState } from "./EmptyState";
 
 interface WakeUpsManageViewProps {
   wakeUps: WakeUp[];

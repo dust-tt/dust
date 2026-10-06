@@ -57,7 +57,7 @@ async function handleNotionWebhook(
       body = {
         signingSecret: req.body.verification_token,
       };
-      endpoint = `notion/${providerWorkspaceId}`;
+      endpoint = `notion/${encodeURIComponent(providerWorkspaceId)}`;
       rootUrlToken = "webhooks_router_entries";
     } else {
       // In all other cases, we forward the original body to connectors.

@@ -5,11 +5,14 @@ import type React from "react";
 interface ConversationSidePanelHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
+  /** Keeps the close button visible but inert, while leaving would lose work. */
+  closeDisabled?: boolean;
 }
 
 export function ConversationSidePanelHeader({
   children,
   onClose,
+  closeDisabled = false,
 }: ConversationSidePanelHeaderProps) {
   return (
     <AppLayoutTitle className="bg-panel-background @container">
@@ -20,6 +23,7 @@ export function ConversationSidePanelHeader({
             variant="ghost"
             onClick={onClose}
             icon={XClose}
+            disabled={closeDisabled}
             className="text-element-600 hover:text-element-900 ml-auto"
           />
         )}

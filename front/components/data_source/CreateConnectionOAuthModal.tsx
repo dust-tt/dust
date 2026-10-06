@@ -36,7 +36,6 @@ export function CreateConnectionOAuthModal({
       connectorProviderConfiguration.connectorProvider
     ];
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);

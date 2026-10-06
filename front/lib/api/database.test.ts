@@ -8,7 +8,7 @@ describe("SequelizeWithComments", () => {
     const [result] = await runWithTemporalActivityContext(
       "testActivity",
       () => {
-        // biome-ignore lint/plugin/noRawSql: current_query() verifies the comment received by PostgreSQL
+        // oxlint-disable-next-line dust/noRawSql -- current_query() verifies the comment received by PostgreSQL
         return frontSequelize.query<{ query: string }>(
           'SELECT current_query() AS "query"',
           { type: QueryTypes.SELECT }

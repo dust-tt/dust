@@ -55,7 +55,6 @@ export function KnowledgePageProvider({
     dispatch({ type: "SET_SHEET_CURRENT_PAGE", payload: { pageId } });
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(
     () => ({
       ...state,

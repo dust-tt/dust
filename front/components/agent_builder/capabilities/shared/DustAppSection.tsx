@@ -18,6 +18,7 @@ import {
   Terminal,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import { useEffect, useMemo, useState } from "react";
@@ -33,12 +34,13 @@ interface AppSelectionTableProps {
 }
 
 function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
+  const { t } = useLingui();
   const [searchQuery, setSearchQuery] = useState("");
   return (
     <div className="flex flex-col gap-2">
       <SearchInput
         name="search"
-        placeholder="Search"
+        placeholder={t`Search`}
         value={searchQuery}
         onChange={setSearchQuery}
       />
@@ -54,6 +56,7 @@ function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
 }
 
 export function DustAppSection() {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -137,7 +140,7 @@ export function DustAppSection() {
             <div className="heading-sm truncate">{row.original.name}</div>
             <div className="truncate text-xs text-muted-foreground">
               {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-              {row.original.description || "No description available"}
+              {row.original.description || t`No description available`}
             </div>
           </div>
         </DataTable.CellContent>
@@ -150,33 +153,39 @@ export function DustAppSection() {
 
   return (
     <ConfigurationSectionContainer
-      title="Select a Dust App"
+      title={t`Select a Dust app`}
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground">
-          The agent will execute a{" "}
-          <a
-            href="https://docs.dust.tt"
-            target="_blank"
-            rel="noreferrer"
-            className="font-bold"
-          >
-            Dust Application
-          </a>{" "}
-          of your design before replying. The output of the app (last block) is
-          injected in context for the model to generate an answer.
+          <Trans>
+            The agent will execute a{" "}
+            <a
+              href="https://docs.dust.tt"
+              target="_blank"
+              rel="noreferrer"
+              className="font-bold"
+            >
+              Dust Application
+            </a>{" "}
+            of your design before replying. The output of the app (last block)
+            is injected in context for the model to generate an answer.
+          </Trans>
         </div>
 
         <div className="flex flex-row items-center gap-2">
-          <span className="text-sm font-medium text-foreground">Space:</span>
+          <span className="text-sm font-medium text-foreground">
+            <Trans>Space:</Trans>
+          </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 size="xs"
                 variant="outline"
                 isSelect
-                label={selectedSpace ? selectedSpace.name : "Select a space..."}
+                label={
+                  selectedSpace ? selectedSpace.name : t`Select a space...`
+                }
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-full">
@@ -205,7 +214,7 @@ export function DustAppSection() {
                 </div>
                 <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
                   {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                  {field.value.description || "No description available"}
+                  {field.value.description || t`No description available`}
                 </div>
               </div>
               <div className="ml-4 self-start">
@@ -213,7 +222,7 @@ export function DustAppSection() {
                   variant="outline"
                   size="sm"
                   icon={PencilIcon}
-                  label="Edit selection"
+                  label={t`Edit selection`}
                   onClick={handleEditClick}
                 />
               </div>
@@ -225,10 +234,13 @@ export function DustAppSection() {
           <div className="flex flex-1 items-center justify-center">
             <div className="px-4 text-center">
               <div className="mb-2 text-lg font-medium text-foreground">
-                No Dust Apps available for this space
+                <Trans>No Dust apps available for this space</Trans>
               </div>
               <div className="max-w-sm text-muted-foreground">
-                Create one or ask your admin to install apps from other spaces.
+                <Trans>
+                  Create one or ask your admin to install apps from other
+                  spaces.
+                </Trans>
               </div>
             </div>
           </div>

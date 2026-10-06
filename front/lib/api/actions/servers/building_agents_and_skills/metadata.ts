@@ -1,4 +1,17 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  agentFeedbackSchema,
+  agentInsightsSchema,
+  GET_AGENT_FEEDBACK_DESCRIPTION,
+  GET_AGENT_FEEDBACK_TOOL_NAME,
+  GET_AGENT_INSIGHTS_DESCRIPTION,
+  GET_AGENT_INSIGHTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
+import {
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { SUGGESTION_REF_REGEX } from "@app/lib/skills/format";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
@@ -327,6 +340,22 @@ export const EditSkillSuggestionSchema = z.object({
     .array(z.string())
     .optional()
     .describe("Ids of the current editors to remove from the skill."),
+  files: z
+    .object({
+      addFilePaths: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Scoped paths of the files to attach to the skill, as returned by " +
+            `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\`.`
+        ),
+      removeFileIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the skill's attached files to remove from it."),
+    })
+    .optional()
+    .describe("Changes to the files attached to the skill."),
 });
 
 export type EditSkillSuggestion = z.infer<typeof EditSkillSuggestionSchema>;
@@ -400,8 +429,8 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     name: DESCRIBE_SKILL_TOOL_NAME,
     description:
       "Get a custom Skill's name, availability, self-improvement mode, user-facing and " +
-      "agent-facing descriptions, editors, and instructions as HTML whose blocks carry a " +
-      "data-block-id.",
+      "agent-facing descriptions, editors, attached files, and instructions as HTML whose " +
+      "blocks carry a data-block-id.",
     schema: {
       skillId: z.string().describe("The id of the custom skill to describe."),
     },
@@ -426,6 +455,40 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Describing agent",
       done: "Describe agent",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_AGENT_FEEDBACK_TOOL_NAME,
+    description: GET_AGENT_FEEDBACK_DESCRIPTION,
+    schema: {
+      agentId: z
+        .string()
+        .describe("The id of the agent to get the feedback of."),
+      ...agentFeedbackSchema,
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent feedback",
+      done: "List agent feedback",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_AGENT_INSIGHTS_TOOL_NAME,
+    description: GET_AGENT_INSIGHTS_DESCRIPTION,
+    schema: {
+      agentId: z
+        .string()
+        .describe("The id of the agent to get the insights of."),
+      ...agentInsightsSchema,
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent insights",
+      done: "List agent insights",
     },
     toolCostCategory: "basic",
     freeUsage: true,

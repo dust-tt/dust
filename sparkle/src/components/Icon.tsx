@@ -129,7 +129,8 @@ const SECONDARY_ICON_SIZE: Record<DoubleIconSize, IconProps["size"]> = {
 };
 
 export interface DoubleIconProps
-  extends VariantProps<typeof sizeVariants>,
+  extends
+    VariantProps<typeof sizeVariants>,
     VariantProps<typeof positionVariants>,
     VariantProps<typeof knockoutVariants> {
   /** The primary icon, rendered at the full size. */

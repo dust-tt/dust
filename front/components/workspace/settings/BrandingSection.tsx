@@ -14,6 +14,7 @@ import {
   Upload01,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useRef, useState } from "react";
 
 interface BrandingAssetUploaderProps {
@@ -35,6 +36,7 @@ function BrandingAssetUploader({
   owner,
   title,
 }: BrandingAssetUploaderProps) {
+  const { t } = useLingui();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isBusy, setIsBusy] = useState(false);
 
@@ -129,7 +131,7 @@ function BrandingAssetUploader({
           <Button
             disabled={busy}
             icon={XClose}
-            label="Remove"
+            label={t`Remove`}
             size="sm"
             variant="outline"
             onClick={() => void handleRemove()}
@@ -139,8 +141,8 @@ function BrandingAssetUploader({
         <EmptyCTA
           message={
             asset === "favicon"
-              ? "SVG, PNG, WebP or ICO — Square format"
-              : "SVG, PNG or WebP — Transparent background"
+              ? t`SVG, PNG, WebP or ICO — Square format`
+              : t`SVG, PNG or WebP — Transparent background`
           }
           action={
             busy ? (
@@ -148,7 +150,7 @@ function BrandingAssetUploader({
             ) : (
               <Button
                 icon={Upload01}
-                label="Upload"
+                label={t`Upload`}
                 onClick={() => fileInputRef.current?.click()}
               />
             )
@@ -164,6 +166,7 @@ interface BrandingSectionProps {
 }
 
 export function BrandingSection({ owner }: BrandingSectionProps) {
+  const { t } = useLingui();
   const { branding, mutateBranding } = useWorkspaceBranding({ owner });
 
   const handleSaved = useCallback(async () => {
@@ -175,18 +178,18 @@ export function BrandingSection({ owner }: BrandingSectionProps) {
       <BrandingAssetUploader
         asset="logo"
         currentVersion={branding?.assets.logo?.version ?? null}
-        description="Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best."
+        description={t`Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best.`}
         onSaved={handleSaved}
         owner={owner}
-        title="Logo"
+        title={t`Logo`}
       />
       <BrandingAssetUploader
         asset="favicon"
         currentVersion={branding?.assets.favicon?.version ?? null}
-        description="A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
+        description={t`A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio).`}
         onSaved={handleSaved}
         owner={owner}
-        title="Icon"
+        title={t`Icon`}
       />
     </div>
   );

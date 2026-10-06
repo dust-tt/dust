@@ -1,8 +1,9 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Button } from "@dust-tt/sparkle";
 import { H4 } from "@marketing/components/home/ContentComponents";
 import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import type { TrustedByLogoSet } from "@marketing/lib/logo_bars";
 import {
   fallbackTrustedByRegion,
@@ -11,8 +12,6 @@ import {
 } from "@marketing/lib/logo_bars";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
-import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
-import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";

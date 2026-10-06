@@ -39,6 +39,7 @@ export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
 export const GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite" as const;
 
 export const MISTRAL_LARGE = "mistral-large-latest" as const;
+export const MISTRAL_LARGE_4 = "mistral-large-4" as const;
 export const MISTRAL_MEDIUM_3_5 = "mistral-medium-3-5" as const;
 export const MISTRAL_SMALL = "mistral-small-latest" as const;
 export const MISTRAL_CODESTRAL = "codestral-latest" as const;
@@ -102,6 +103,7 @@ export const MODELS = [
   GEMINI_3_1_FLASH_LITE,
   GEMINI_3_5_FLASH_LITE,
   MISTRAL_LARGE,
+  MISTRAL_LARGE_4,
   MISTRAL_MEDIUM_3_5,
   MISTRAL_SMALL,
   MISTRAL_CODESTRAL,

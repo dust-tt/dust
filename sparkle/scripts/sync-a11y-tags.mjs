@@ -62,7 +62,7 @@ const failingFiles = new Set(
 
 // Locates the meta object (`const meta = {` or `export default {`) and, at
 // its top level, the `tags:` and `title:` lines. Depth-tracking is textual;
-// it relies on the stories' consistent 2-space formatting (biome-enforced).
+// it relies on the stories' consistent 2-space formatting (oxfmt-enforced).
 function locateMeta(lines) {
   const start = lines.findIndex((l) =>
     /^(const meta(:.*)? = \{|export default \{)/.test(l)

@@ -7,6 +7,14 @@ import {
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import {
+  agentFeedbackSchema,
+  agentInsightsSchema,
+  GET_AGENT_FEEDBACK_DESCRIPTION,
+  GET_AGENT_FEEDBACK_TOOL_NAME,
+  GET_AGENT_INSIGHTS_DESCRIPTION,
+  GET_AGENT_INSIGHTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
+import {
   DESCRIBE_MCP_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
 } from "@app/lib/reinforcement/types";
@@ -224,29 +232,9 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: "get_agent_feedback",
-    description: "Get user feedback for the agent.",
-    schema: {
-      limit: z
-        .number()
-        .optional()
-        .default(50)
-        .describe("Maximum number of feedback items to return (default: 50)"),
-      filter: z
-        .enum(["active", "all"])
-        .optional()
-        .default("active")
-        .describe(
-          "Filter type: 'active' for non-dismissed feedback only (default), 'all' for all feedback"
-        ),
-      latestVersionOnly: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe(
-          "When true (default), only return feedback for the latest version of the agent. When false, return feedback for all versions."
-        ),
-    },
+    name: GET_AGENT_FEEDBACK_TOOL_NAME,
+    description: GET_AGENT_FEEDBACK_DESCRIPTION,
+    schema: agentFeedbackSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
@@ -257,17 +245,9 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: "get_agent_insights",
-    description:
-      "Get insight and analytics data for the agent, including the number of active users, " +
-      "the conversation and message counts, and the feedback statistics.",
-    schema: {
-      days: z
-        .number()
-        .optional()
-        .default(30)
-        .describe("Number of days to include in the analysis (default: 30)"),
-    },
+    name: GET_AGENT_INSIGHTS_TOOL_NAME,
+    description: GET_AGENT_INSIGHTS_DESCRIPTION,
+    schema: agentInsightsSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {

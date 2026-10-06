@@ -83,7 +83,9 @@ const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
     }
 
     return () => {
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       if (resizeObserver.current && referentSize && referentSize.current) {
+        // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
         resizeObserver.current.unobserve(referentSize.current);
       }
     };

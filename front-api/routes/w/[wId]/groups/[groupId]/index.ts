@@ -1,9 +1,7 @@
 import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
-import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+  emitGroupManagerAuditLog,
+  emitGroupMemberAuditLogs,
+} from "@app/lib/api/groups/audit";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import {
   getGroupManagers,
@@ -236,31 +234,13 @@ app.patch(
                 : "invalid_request_error",
             message:
               assignment.kind === "unauthorized"
-                ? "Only workspace admins can appoint group managers."
+                ? "Only workspace admins and managers can appoint group managers."
                 : "All group managers must be active workspace members.",
           },
         });
       }
 
-      if (assignment.addedUsers.length || assignment.removedUsers.length) {
-        void emitAuditLogEvent({
-          auth,
-          action: "group.managers_updated",
-          targets: [
-            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-            buildAuditLogTarget("group", group),
-          ],
-          context: getAuditLogContext(auth),
-          metadata: {
-            added_manager_ids: assignment.addedUsers
-              .map((u) => u.sId)
-              .join(","),
-            removed_manager_ids: assignment.removedUsers
-              .map((u) => u.sId)
-              .join(","),
-          },
-        });
-      }
+      emitGroupManagerAuditLog(auth, group, assignment);
 
       const members = await group.getActiveMembers(auth);
       return ctx.json({

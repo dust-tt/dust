@@ -690,6 +690,7 @@ async function _checkRoleGrants(
         "SEQUENCE",
         "MODEL",
         "CORTEX_SEARCH_SERVICE",
+        "CORTEX_AGENT_SERVER",
       ].includes(grantOn)
     ) {
       if (!["USAGE", "READ"].includes(g.privilege)) {

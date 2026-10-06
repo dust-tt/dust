@@ -1,5 +1,5 @@
 import { escapeXml } from "@app/types/shared/utils/string_utils";
-import { unescape } from "html-escaper";
+import unescape from "lodash/unescape";
 
 export type ToolReference = {
   icon: string | null;

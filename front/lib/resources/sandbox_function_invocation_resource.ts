@@ -97,6 +97,7 @@ const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 // Workspaces whose expired invocations are deleted in parallel within one retention batch.
 const RETENTION_WORKSPACE_CONCURRENCY = 4;
+const WORKSPACE_DELETE_BATCH_SIZE = 1_000;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 const FUNCTION_WARM_ENABLED_ENV = "DUST_FUNCTION_WARM_ENABLED";
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
@@ -259,11 +260,8 @@ function getSandboxFunctionUserIdentity(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SandboxFunctionInvocationResource
-  extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
+export interface SandboxFunctionInvocationResource extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunctionInvocationModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel> =
     SandboxFunctionInvocationModel;
@@ -1530,6 +1528,42 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       transaction,
     });
 
+    return this.deleteInvocations(workspaceModelId, invocations, {
+      transaction,
+    });
+  }
+
+  /**
+   * @cc [owner:fontanierh,label:performance;backend] bounded-workspace-invocation-delete
+   * Every invocation of the workspace MUST be deleted, with its MCP actions and GCS payloads, and
+   * each batch MUST cover at most `WORKSPACE_DELETE_BATCH_SIZE` invocations.
+   */
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<number> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    let deletedCount = 0;
+
+    for (;;) {
+      const invocations = await this.model.findAll({
+        attributes: ["id", "gcsPath"],
+        where: { workspaceId: workspaceModelId },
+        limit: WORKSPACE_DELETE_BATCH_SIZE,
+      });
+      if (invocations.length === 0) {
+        return deletedCount;
+      }
+
+      deletedCount += await this.deleteInvocations(
+        workspaceModelId,
+        invocations
+      );
+    }
+  }
+
+  private static async deleteInvocations(
+    workspaceModelId: ModelId,
+    invocations: Pick<SandboxFunctionInvocationModel, "id" | "gcsPath">[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<number> {
     const { deletedInvocationCount } = await this.deleteRowsForWorkspace(
       {
         workspaceModelId,
@@ -1631,7 +1665,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     scannedCount: number;
   }> {
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       attributes: ["id", "workspaceId", "gcsPath", "createdAt"],
       where: afterModelId ? { id: { [Op.gt]: afterModelId } } : {},

@@ -16,6 +16,7 @@ import {
   SearchInput,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -90,8 +91,10 @@ function BooleanConfigurationInput({
   );
 }
 
-interface BooleanConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredBooleans"> {}
+interface BooleanConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredBooleans"
+> {}
 
 function BooleanConfigurationSection({
   requiredBooleans,
@@ -118,9 +121,11 @@ function NumberConfigurationInput({
   configKey,
   description,
 }: NumberConfigurationInputProps) {
+  const { t } = useLingui();
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
+  const keyLabel = formatKeyForDisplay(configKey);
 
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
@@ -148,7 +153,7 @@ function NumberConfigurationInput({
           {...field}
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           value={field.value || null}
-          placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+          placeholder={t`Enter value for ${keyLabel}`}
           isError={!!fieldState.error}
           message={fieldState.error?.message}
         />
@@ -157,8 +162,10 @@ function NumberConfigurationInput({
   );
 }
 
-interface NumberConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredNumbers"> {}
+interface NumberConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredNumbers"
+> {}
 
 function NumberConfigurationSection({
   requiredNumbers,
@@ -185,9 +192,11 @@ function StringConfigurationInput({
   configKey,
   description,
 }: StringConfigurationInputProps) {
+  const { t } = useLingui();
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
+  const keyLabel = formatKeyForDisplay(configKey);
 
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
@@ -215,7 +224,7 @@ function StringConfigurationInput({
           {...field}
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           value={field.value || null}
-          placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+          placeholder={t`Enter value for ${keyLabel}`}
           isError={!!fieldState.error}
           message={fieldState.error?.message}
         />
@@ -224,8 +233,10 @@ function StringConfigurationInput({
   );
 }
 
-interface StringConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredStrings"> {}
+interface StringConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredStrings"
+> {}
 
 function StringConfigurationSection({
   requiredStrings,
@@ -254,11 +265,13 @@ function EnumConfigurationInput({
   enumOptions,
   description,
 }: EnumConfigurationInputProps) {
+  const { t } = useLingui();
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
 
-  const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
+  const keyLabel = formatKeyForDisplay(configKey);
+  const displayLabel = t`Select ${keyLabel}`;
   const currentValue = field.value?.toString();
   const currentOption = currentValue
     ? enumOptions.find((option) => option.value === currentValue)
@@ -323,8 +336,10 @@ function EnumConfigurationInput({
   );
 }
 
-interface EnumConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredEnums"> {}
+interface EnumConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredEnums"
+> {}
 
 function EnumConfigurationSection({
   requiredEnums,
@@ -356,6 +371,7 @@ function ListConfigurationInput({
   listOptions,
   description,
 }: ListConfigurationInputProps) {
+  const { t } = useLingui();
   const [searchQuery, setSearchQuery] = useState("");
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
@@ -364,6 +380,8 @@ function ListConfigurationInput({
   const currentValue: string[] = useMemo(() => {
     return Array.isArray(field.value) ? field.value : [];
   }, [field.value]);
+
+  const keyLabel = formatKeyForDisplay(configKey).toLowerCase();
 
   const filteredOptions = useMemo(() => {
     if (searchQuery.trim() === "") {
@@ -385,7 +403,7 @@ function ListConfigurationInput({
       <div className="space-y-2">
         <SearchInput
           name={`search-${configKey}`}
-          placeholder={`Search ${formatKeyForDisplay(configKey).toLowerCase()}...`}
+          placeholder={t`Search ${keyLabel}...`}
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -393,8 +411,8 @@ function ListConfigurationInput({
           {filteredOptions.length === 0 ? (
             <div className="py-4 text-center text-sm text-muted-foreground">
               {searchQuery.trim() === ""
-                ? "No options available"
-                : `No options match "${searchQuery}"`}
+                ? t`No options available`
+                : t`No options match "${searchQuery}"`}
             </div>
           ) : (
             filteredOptions.map((option) => (
@@ -440,8 +458,10 @@ function ListConfigurationInput({
   );
 }
 
-interface ListConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredLists"> {}
+interface ListConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredLists"
+> {}
 
 function ListConfigurationSection({
   requiredLists,
@@ -462,15 +482,14 @@ function ListConfigurationSection({
   );
 }
 
-interface GroupedConfigurationSectionProps
-  extends Pick<
-    MCPServerRequirements,
-    | "requiredStrings"
-    | "requiredNumbers"
-    | "requiredBooleans"
-    | "requiredEnums"
-    | "requiredLists"
-  > {
+interface GroupedConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  | "requiredStrings"
+  | "requiredNumbers"
+  | "requiredBooleans"
+  | "requiredEnums"
+  | "requiredLists"
+> {
   prefix: string;
 }
 
@@ -511,15 +530,14 @@ function GroupedConfigurationSection({
   );
 }
 
-interface AdditionalConfigurationSectionProps
-  extends Pick<
-    MCPServerRequirements,
-    | "requiredStrings"
-    | "requiredNumbers"
-    | "requiredBooleans"
-    | "requiredEnums"
-    | "requiredLists"
-  > {}
+interface AdditionalConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  | "requiredStrings"
+  | "requiredNumbers"
+  | "requiredBooleans"
+  | "requiredEnums"
+  | "requiredLists"
+> {}
 
 export function AdditionalConfigurationSection({
   requiredStrings,
@@ -528,6 +546,7 @@ export function AdditionalConfigurationSection({
   requiredEnums,
   requiredLists,
 }: AdditionalConfigurationSectionProps) {
+  const { t } = useLingui();
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
     () => groupKeysByPrefix(requiredStrings),
@@ -601,8 +620,8 @@ export function AdditionalConfigurationSection({
 
   return (
     <ConfigurationSectionContainer
-      title="Additional configuration"
-      description="Configure additional parameters required by this action."
+      title={t`Additional configuration`}
+      description={t`Configure additional parameters required by this action.`}
     >
       {allPrefixes.map((prefix) => (
         <GroupedConfigurationSection

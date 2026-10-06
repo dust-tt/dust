@@ -1,9 +1,9 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import type {
   AgentBuilderFormData,
   AgentBuilderSkillsType,
 } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
@@ -17,8 +17,8 @@ import type {
 } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -43,6 +43,7 @@ import {
   ShapesPlus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -77,19 +78,20 @@ function ActionButtons({
   onClickKnowledge,
   onClickCapability,
 }: ActionButtonsProps) {
+  const { t } = useLingui();
   return (
     <div className="flex items-center gap-2">
       <Button
         type="button"
         onClick={onClickCapability}
-        label="Add capabilities"
+        label={t`Add capabilities`}
         icon={ShapesPlus}
         variant="primary"
       />
       <Button
         type="button"
         onClick={onClickKnowledge}
-        label="Add knowledge"
+        label={t`Add knowledge`}
         icon={BookOpen01}
         variant="outline"
       />
@@ -104,6 +106,7 @@ interface AgentBuilderCapabilitiesBlockProps {
 export function AgentBuilderCapabilitiesBlock({
   initialRequestedSpaceIds,
 }: AgentBuilderCapabilitiesBlockProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
   const { owner } = useAgentBuilderContext();
@@ -222,7 +225,7 @@ export function AgentBuilderCapabilitiesBlock({
 
           if (!validation.isValid) {
             sendNotification({
-              title: "Configuration validation failed",
+              title: t`Configuration validation failed`,
               description: validation.errorMessage!,
               type: "error",
             });
@@ -237,7 +240,7 @@ export function AgentBuilderCapabilitiesBlock({
       appendSkills(skills);
       appendActions(validatedActions);
     },
-    [appendSkills, appendActions, sendNotification]
+    [appendSkills, appendActions, sendNotification, t]
   );
 
   // Unpublished (editors-only) skills are only listed to their editors: a non-editor who removes
@@ -250,13 +253,13 @@ export function AgentBuilderCapabilitiesBlock({
           viewerCanWrite: skill.canWrite,
         })
       ) {
+        const skillName = skill.name;
         const confirmed = await confirm({
-          title: `Remove ${skill.name}?`,
-          message:
-            "You will not be able to add this skill back because it is only accessible to the skill editors and you are not an editor.",
-          validateLabel: "Remove",
+          title: t`Remove ${skillName}?`,
+          message: t`You will not be able to add this skill back because it is only accessible to the skill editors and you are not an editor.`,
+          validateLabel: t`Remove`,
           validateVariant: "warning",
-          cancelLabel: "Cancel",
+          cancelLabel: t`Cancel`,
         });
 
         if (!confirmed) {
@@ -266,7 +269,7 @@ export function AgentBuilderCapabilitiesBlock({
 
       removeSkill(index);
     },
-    [confirm, removeSkill]
+    [confirm, removeSkill, t]
   );
 
   const handleClickKnowledge = () => {
@@ -303,9 +306,9 @@ export function AgentBuilderCapabilitiesBlock({
 
   return (
     <AgentBuilderSectionContainer
-      title="Capabilities and knowledge"
+      title={t`Capabilities and knowledge`}
       description={
-        <>
+        <Trans>
           Add skills, tools, and knowledge to enhance your agent's abilities.
           Need help? Check our{" "}
           <Hoverable
@@ -316,7 +319,7 @@ export function AgentBuilderCapabilitiesBlock({
             guide
           </Hoverable>
           .
-        </>
+        </Trans>
       }
       headerActions={
         hasCapabilitiesConfigured && (

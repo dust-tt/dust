@@ -13,6 +13,7 @@ import {
   Icon,
   InfoCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface ConfigureButtonProps {
@@ -28,11 +29,13 @@ function ProviderConfigurationActions({
   openConfigurationSheet,
   openRemoveKeyDialog,
 }: ConfigureButtonProps) {
+  const { t } = useLingui();
+
   if (isLoading) {
     return null;
   }
 
-  const configureLabel = apiKey ? "Edit" : "Configure";
+  const configureLabel = apiKey ? t`Edit` : t`Configure`;
 
   return (
     <div className="flex items-center gap-2">
@@ -43,7 +46,7 @@ function ProviderConfigurationActions({
       />
       {apiKey && (
         <Button
-          label="Remove"
+          label={t({ message: "Remove", context: "remove the API key" })}
           variant="warning"
           onClick={openRemoveKeyDialog}
         />
@@ -66,6 +69,7 @@ export function ProviderConfigurationContextItem({
   isLoading,
   providerCredential,
 }: ProviderConfigurationContextItemProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const LogoComponent = getModelProviderLogo(providerId, isDark);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -97,11 +101,13 @@ export function ProviderConfigurationContextItem({
           <ContentMessage
             variant="warning"
             icon={InfoCircle}
-            title="Invalid API key"
+            title={t`Invalid API key`}
             size="lg"
             className="mt-4"
           >
-            This key is no longer valid. Update it to restore affected agents.
+            <Trans>
+              This key is no longer valid. Update it to restore affected agents.
+            </Trans>
           </ContentMessage>
         )}
 

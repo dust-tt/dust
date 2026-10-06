@@ -6,12 +6,41 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 export function buildAgentDefaultSort({
+  sortBy,
+  sortOrder,
+  favoriteAgentIds = [],
+}: {
+  sortBy?: AgentSearchSort;
+  sortOrder?: AgentSearchSortOrder;
+  favoriteAgentIds?: string[];
+} = {}): estypes.Sort {
+  const sort = buildSortBy({ sortBy, sortOrder });
+  if (favoriteAgentIds.length === 0) {
+    return sort;
+  }
+  return [
+    {
+      _script: {
+        type: "number",
+        order: "asc",
+        script: {
+          source:
+            "params.favoriteAgentIds.contains(doc['agent_id'].value) ? 0 : 1",
+          params: { favoriteAgentIds },
+        },
+      },
+    },
+    ...sort,
+  ];
+}
+
+function buildSortBy({
   sortBy = "relevance",
   sortOrder = sortBy === "name" ? "asc" : "desc",
 }: {
   sortBy?: AgentSearchSort;
   sortOrder?: AgentSearchSortOrder;
-} = {}): estypes.Sort {
+}): estypes.SortCombinations[] {
   switch (sortBy) {
     case "relevance":
       return [

@@ -12,8 +12,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface DustProjectConversationResource
-  extends ReadonlyAttributesType<DustProjectConversationModel> {}
+export interface DustProjectConversationResource extends ReadonlyAttributesType<DustProjectConversationModel> {}
 export class DustProjectConversationResource extends BaseResource<DustProjectConversationModel> {
   static model: ModelStatic<DustProjectConversationModel> =
     DustProjectConversationModel;

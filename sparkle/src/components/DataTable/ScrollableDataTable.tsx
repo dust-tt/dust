@@ -22,17 +22,16 @@ import {
 } from "./layout";
 import { Body, Head, Header, Root, Row } from "./parts";
 import { getDataTableColumnPresets } from "./presets";
-export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends Omit<
-    DataTableProps<TData>,
-    | "onLoadMore"
-    | "isLoadingMore"
-    | "isLoading"
-    | "emptyState"
-    | "stickyHeader"
-    | "maxHeight"
-    | "horizontalScroll"
-  > {
+export interface ScrollableDataTableProps<TData extends TBaseData> extends Omit<
+  DataTableProps<TData>,
+  | "onLoadMore"
+  | "isLoadingMore"
+  | "isLoading"
+  | "emptyState"
+  | "stickyHeader"
+  | "maxHeight"
+  | "horizontalScroll"
+> {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
   /** Called when the user scrolls near the bottom — use it for infinite loading. */
