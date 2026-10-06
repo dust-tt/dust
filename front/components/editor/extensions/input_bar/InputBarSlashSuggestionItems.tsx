@@ -101,7 +101,7 @@ export function getInputBarSlashCommandItems({
 }
 
 /**
- * @cc [owner:ulysse-lev,label:product] title-hits-rank-first
+ * @cc [owner:PopDaph,label:product] title-hits-rank-first
  * With a non-empty `query`, the matching items MUST be ordered by `compareForAutocompleteSort` on
  * their label, so items whose label matches come before items matching only on their description
  * or tooltip. With an empty query, `items` MUST be returned in their given order.
