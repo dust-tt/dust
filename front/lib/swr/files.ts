@@ -16,6 +16,7 @@ import {
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
 import {
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
 } from "@app/types/files";
@@ -231,7 +232,12 @@ export function useFileMetadataFromPath({
 }
 
 type FileContentByUrlData =
-  | { kind: "loaded"; content: string }
+  | {
+      kind: "loaded";
+      content: string;
+      /** False when the mount refuses writes for this user; absent when the route says nothing. */
+      canWrite?: boolean;
+    }
   | { kind: "not_found" };
 
 export function useFileContentByUrl({
@@ -257,7 +263,11 @@ export function useFileContentByUrl({
         const errorData = await getErrorFromResponse(response);
         throw new Error(errorData.message);
       }
-      return { kind: "loaded", content: await response.text() };
+      return {
+        kind: "loaded",
+        content: await response.text(),
+        canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) !== "false",
+      };
     },
     { disabled: isDisabled }
   );
@@ -266,6 +276,8 @@ export function useFileContentByUrl({
 
   return {
     fileContent: data?.kind === "loaded" ? data.content : null,
+    /** Whether the mount accepts writes from this user; true until the file is loaded. */
+    fileCanWrite: data?.kind === "loaded" ? (data.canWrite ?? true) : true,
     isNotFound,
     isFileContentLoading: !error && data === undefined && !isDisabled,
     fileContentError: error ? normalizeError(error) : null,

@@ -209,6 +209,8 @@ export interface FilePreviewContentData {
   isTooLarge: boolean;
   /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
   isTruncated: boolean;
+  /** The mount accepts writes from this user, per the content route. */
+  canWrite: boolean;
   sizeBytes: number;
 }
 
@@ -240,11 +242,16 @@ export function useFilePreviewContent({
     category === "markdown" ||
     category === "delimited";
 
-  const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
-    useFileContentByUrl({
-      url: fileUrl,
-      disabled: !enabled || !entry || !needsTextContent || isTooLarge,
-    });
+  const {
+    fileContent,
+    fileCanWrite,
+    isNotFound,
+    isFileContentLoading,
+    fileContentError,
+  } = useFileContentByUrl({
+    url: fileUrl,
+    disabled: !enabled || !entry || !needsTextContent || isTooLarge,
+  });
 
   const hasError = needsTextContent && (!!fileContentError || isNotFound);
   const isContentLoading =
@@ -273,6 +280,7 @@ export function useFilePreviewContent({
     isContentLoading,
     isTooLarge,
     isTruncated,
+    canWrite: fileCanWrite,
     sizeBytes,
   };
 }
