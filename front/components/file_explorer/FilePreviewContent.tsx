@@ -387,7 +387,7 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
-      if (markdownRichEditor) {
+      if (markdownRichEditor && owner) {
         return (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Document
@@ -401,17 +401,13 @@ export function FilePreviewContent({
                   : undefined
               }
               badge={<CoEditionBadge />}
-              renderCommentAuthorAvatar={
-                owner
-                  ? (author, size) => (
-                      <CommentAuthorAvatar
-                        owner={owner}
-                        author={author}
-                        size={size}
-                      />
-                    )
-                  : undefined
-              }
+              renderCommentAuthorAvatar={(author, size) => (
+                <CommentAuthorAvatar
+                  owner={owner}
+                  author={author}
+                  size={size}
+                />
+              )}
             />
           </div>
         );

@@ -58,8 +58,8 @@ browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Al
 opens the panel on a new comment card at the text's place among the open threads. Posting,
 replying, resolving and deleting stay out of text undo history. A message the codec cannot
 write, such as one with a line starting with `::`, is refused before it reaches the document.
-Message bodies show as plain text for now. Authors show with their initials unless the host
-renders avatars through `renderCommentAuthorAvatar`.
+Message bodies show as plain text for now. The host renders authors' avatars through
+`renderCommentAuthorAvatar`, which the panel calls only once it has been opened.
 
 ## Layout
 

@@ -9,7 +9,6 @@ import { formatDateTime } from "@app/lib/i18n/format";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import {
-  Avatar,
   Button,
   Check,
   Collapsible,
@@ -64,6 +63,8 @@ const PanelIconButton = ({
 
 type RenderAuthorAvatar = DocumentProps["renderCommentAuthorAvatar"];
 
+const renderNoAvatar: RenderAuthorAvatar = () => null;
+
 interface MessageBylineProps {
   message: DfmMessage;
   size: DocumentCommentAvatarSize;
@@ -76,13 +77,7 @@ const MessageByline = ({
   renderAuthorAvatar,
 }: MessageBylineProps) => (
   <div className="flex min-w-0 flex-1 items-center gap-2">
-    <span aria-hidden="true">
-      {renderAuthorAvatar ? (
-        renderAuthorAvatar(message.author, size)
-      ) : (
-        <Avatar size={size} isRounded name={message.author.name} />
-      )}
-    </span>
+    <span aria-hidden="true">{renderAuthorAvatar(message.author, size)}</span>
     <span className="min-w-0 truncate text-sm font-medium">
       {message.author.name}
     </span>
@@ -367,9 +362,9 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars
- * The host's `renderAuthorAvatar` MUST be called only while the panel is open, so avatars that
- * load data do not load it for a panel the user has not opened. A closed panel MUST show
- * initials.
+ * The host's `renderAuthorAvatar` MUST NOT be called before the panel first opens, so avatars
+ * that load data do not load it for a panel the user never opens; until then bylines MUST show
+ * no avatar. Once opened, avatars MUST stay rendered, so closing does not drop them mid-slide.
  */
 export const DocumentCommentsPanel = ({
   id,
@@ -397,8 +392,11 @@ export const DocumentCommentsPanel = ({
     submitDraft,
     cancelDraft,
   } = comments;
-  // Host avatars may fetch, so they mount only while the panel shows.
-  const renderVisibleAvatar = panelOpen ? renderAuthorAvatar : undefined;
+  const [hasOpened, setHasOpened] = useState(panelOpen);
+  if (panelOpen && !hasOpened) {
+    setHasOpened(true);
+  }
+  const renderVisibleAvatar = hasOpened ? renderAuthorAvatar : renderNoAvatar;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const threadElements = useRef(new Map<string, HTMLElement>());
   const order = new Map(

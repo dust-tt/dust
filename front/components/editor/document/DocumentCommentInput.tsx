@@ -1,6 +1,6 @@
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmAuthor } from "@app/lib/markdown/dfm";
-import { ArrowUp, Avatar, cn, Icon, TextArea } from "@dust-tt/sparkle";
+import { ArrowUp, cn, Icon, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 interface DocumentCommentInputProps {
@@ -13,7 +13,7 @@ interface DocumentCommentInputProps {
   /** Handles Escape inside the field. Without it Escape bubbles to the parent. */
   onCancel?: () => void;
   author?: DfmAuthor;
-  renderAuthorAvatar?: DocumentProps["renderCommentAuthorAvatar"];
+  renderAuthorAvatar: DocumentProps["renderCommentAuthorAvatar"];
   /** Why the last submission was refused, shown under the field. */
   error?: string | null;
   /** Focuses the field while true, once it is visible. */
@@ -69,11 +69,7 @@ export const DocumentCommentInput = ({
       <div className="flex items-start gap-2">
         {author && (
           <span aria-hidden="true" className="mt-1">
-            {renderAuthorAvatar ? (
-              renderAuthorAvatar(author, "xxs")
-            ) : (
-              <Avatar size="xxs" isRounded name={author.name} />
-            )}
+            {renderAuthorAvatar(author, "xxs")}
           </span>
         )}
         {/* TextArea's own wrapper does not grow, so give it a flex item to fill. */}

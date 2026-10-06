@@ -29,6 +29,7 @@ async function renderDocument(initialContent: string) {
       onSave={onSave}
       autosaveDebounceMs={60_000}
       commentAuthor={AUTHOR}
+      renderCommentAuthorAvatar={() => null}
     />
   );
   const dom = await waitFor(() => {
@@ -219,7 +220,7 @@ describe("Document comments", () => {
     expect(cards).toEqual(["Comment by U", "New comment", "Comment by U"]);
   });
 
-  it("shows comment authors with the host's avatars once the panel opens", async () => {
+  it("shows comment authors with the host's avatars once the panel has opened", async () => {
     render(
       <Document
         initialContent={SOURCE}
@@ -233,6 +234,10 @@ describe("Document comments", () => {
     expect(screen.queryByTestId("avatar:user:usr_daph:xxs")).toBeNull();
 
     fireEvent.click(toggle);
+
+    expect(screen.getByTestId("avatar:user:usr_daph:xxs")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close comments" }));
 
     expect(screen.getByTestId("avatar:user:usr_daph:xxs")).toBeDefined();
   });

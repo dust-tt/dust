@@ -29,8 +29,8 @@ export interface DocumentProps {
    * existing comments stay readable without one.
    */
   commentAuthor?: DfmAuthor;
-  /** Renders a comment author's avatar; without it, the author's initials. */
-  renderCommentAuthorAvatar?: (
+  /** Renders a comment author's avatar. */
+  renderCommentAuthorAvatar: (
     author: DfmAuthor,
     size: DocumentCommentAvatarSize
   ) => ReactNode;
