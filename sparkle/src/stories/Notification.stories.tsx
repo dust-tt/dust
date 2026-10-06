@@ -22,6 +22,7 @@ const meta: Meta<typeof Notification> = {
 **Guidelines**
 - Mount a single **Notification.Area** high in the tree, then call **useSendNotification** wherever an action resolves.
 - Match \`type\` to the outcome and keep \`title\`/\`description\` concise — long copy is line-clamped.
+- Put raw technical context (error code, untranslated server message) in \`details\`: it is shown under a collapsed **Details** toggle, and expanding it keeps the toast open until dismissed.
 - For persistent, inline status attached to a region, use a **ContentMessage** instead.`,
       },
     },
@@ -109,6 +110,55 @@ export const InlineLongText: StoryObj = {
       />
     </div>
   ),
+};
+
+/**
+ * Error notification with raw technical context under a collapsed "Details"
+ * toggle: the description stays user-facing, while `details` carries the error
+ * code and the untranslated server message. Click "Details" to expand it.
+ * @summary Error notification with collapsible details.
+ */
+export const ErrorWithDetails: StoryObj<typeof NotificationContent> = {
+  args: {
+    type: "error",
+    title: "Failed to update frame sharing",
+    description: "File not found.",
+    details:
+      "Code: file_not_found\nMessage: The file fil_7d1c9e0a2b was not found or you don't have access to it.",
+  },
+  render: (args) => <NotificationContent {...args} />,
+};
+
+/**
+ * Dispatching an error toast with `details`: expanding "Details" keeps the
+ * toast open until it is dismissed, instead of closing after the usual delay.
+ * @summary Error toast with details that stays open once expanded.
+ */
+export const ErrorWithDetailsToast: StoryObj = {
+  render: () => (
+    <Notification.Area>
+      <ErrorWithDetailsTrigger />
+    </Notification.Area>
+  ),
+};
+
+const ErrorWithDetailsTrigger = () => {
+  const sendNotification = useSendNotification();
+
+  return (
+    <Button
+      label="Show error with details"
+      onClick={() =>
+        sendNotification({
+          type: "error",
+          title: "Failed to import skills",
+          description: "The file is too large.",
+          details:
+            "Code: file_too_large\nMessage: File size 12.4MB exceeds the 10MB limit for skill imports.",
+        })
+      }
+    />
+  );
 };
 
 /**
