@@ -29,11 +29,6 @@ export type NotificationType = {
   };
   title?: string;
   description?: string;
-  /**
-   * Optional raw details (e.g. an error code and the untranslated server message) shown as
-   * preformatted text under a collapsed "Details" toggle. Expanding it keeps the toast open until
-   * it is dismissed.
-   */
   details?: string;
   /** Outcome variant driving the icon and its color. */
   type: "success" | "error" | "info" | "warning" | "hello";
