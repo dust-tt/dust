@@ -2728,6 +2728,20 @@ export type ValidateMemberResponseType = z.infer<
   typeof ValidateMemberResponseSchema
 >;
 
+export const GetMemberLocaleRequestSchema = z.object({
+  email: z.string().optional(),
+});
+
+export const GetMemberLocaleResponseSchema = z.object({
+  localisationEnabled: z.boolean(),
+  userLocale: z.string().nullable(),
+  workspaceLocale: z.string(),
+});
+
+export type GetMemberLocaleResponseType = z.infer<
+  typeof GetMemberLocaleResponseSchema
+>;
+
 export const GetAppsResponseSchema = z.object({
   apps: AppTypeSchema.array(),
 });

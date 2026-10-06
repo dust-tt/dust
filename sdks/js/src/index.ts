@@ -76,6 +76,7 @@ import {
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
+  GetMemberLocaleResponseSchema,
   GetMentionSuggestionsResponseBodySchema,
   GetProjectFilesResponseSchema,
   GetSpaceConversationIdsResponseSchema,
@@ -1782,6 +1783,20 @@ export class DustAPI {
     }
 
     return new Ok(r.value.emails);
+  }
+
+  /**
+   * Returns the locales the UI of the active workspace member with this email would use, or only
+   * the workspace ones without email. System API key only.
+   */
+  async getMemberLocale({ email }: { email?: string }) {
+    const res = await this.request({
+      method: "POST",
+      path: "members/locale",
+      body: { email },
+    });
+
+    return this._resultFromResponse(GetMemberLocaleResponseSchema, res);
   }
 
   /**

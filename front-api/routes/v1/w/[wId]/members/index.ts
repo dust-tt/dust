@@ -6,6 +6,7 @@ import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import emails from "./emails";
+import locale from "./locale";
 import validate from "./validate";
 
 // Mounted at /api/v1/w/:wId/members. publicApiAuth is applied by the parent
@@ -36,6 +37,7 @@ app.get(
 );
 
 app.route("/emails", emails);
+app.route("/locale", locale);
 app.route("/validate", validate);
 
 export default app;
