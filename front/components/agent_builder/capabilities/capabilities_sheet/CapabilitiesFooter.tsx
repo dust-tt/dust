@@ -6,6 +6,7 @@ import {
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { getSkillIcon } from "@app/lib/skill";
 import { Chip } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface CapabilitiesFooterProps {
   localSelectedTools: SelectedTool[];
@@ -27,7 +28,9 @@ export function CapabilitiesFooter({
     <>
       {hasCapabilities && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Selected capabilities</h2>
+          <h2 className="text-lg font-semibold">
+            <Trans>Selected capabilities</Trans>
+          </h2>
           <div className="flex flex-wrap gap-2">
             {localSelectedSkills.map((skill, index) => (
               <Chip

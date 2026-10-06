@@ -19,7 +19,7 @@ import {
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ContentMessage,
@@ -31,6 +31,7 @@ import {
   MessageChatSquare,
   Tree,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -191,6 +192,7 @@ function DataSourceTreeItem({
 }
 
 export function SelectedDataSources() {
+  const { t } = useLingui();
   const { setSheetPageId } = useKnowledgePageContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
@@ -233,24 +235,37 @@ export function SelectedDataSources() {
     return inclusionViews;
   }, [sources.in, sources.notIn]);
 
-  const hasDataSources = Object.values(dataSourceViews).length > 0;
+  const dataSourceCount = Object.values(dataSourceViews).length;
+  const hasDataSources = dataSourceCount > 0;
 
   if (!hasDataSources) {
+    const serverName = asDisplayName(mcpServerView?.server.name);
     return (
       <ContentMessage
-        title={`No ${isTableOrWarehouseServer ? "table" : "document"} detected`}
+        title={
+          isTableOrWarehouseServer
+            ? t`No table detected`
+            : t`No document detected`
+        }
         variant="info"
         size="lg"
       >
         <div className="flex w-full flex-row items-center justify-between">
           <span>
-            We couldn't find any{" "}
-            {isTableOrWarehouseServer ? "tables" : "documents"} in your
-            selection. Add {isTableOrWarehouseServer ? "tables" : "documents"}{" "}
-            to enable "{asDisplayName(mcpServerView?.server.name)}".
+            {isTableOrWarehouseServer ? (
+              <Trans>
+                We couldn't find any tables in your selection. Add tables to
+                enable "{serverName}".
+              </Trans>
+            ) : (
+              <Trans>
+                We couldn't find any documents in your selection. Add documents
+                to enable "{serverName}".
+              </Trans>
+            )}
           </span>
           <Button
-            label="Select data sources"
+            label={t`Select data sources`}
             variant="outline"
             size="xs"
             onClick={() =>
@@ -266,12 +281,16 @@ export function SelectedDataSources() {
     <div className="space-y-4">
       <div className="align-center flex flex-row justify-between">
         <h3 className="mb-2 text-lg font-semibold">
-          Selected data source{pluralize(Object.values(dataSourceViews).length)}
+          <Plural
+            value={dataSourceCount}
+            one="Selected data source"
+            other="Selected data sources"
+          />
         </h3>
 
         <div className="flex flex-row items-center space-x-2">
           <Button
-            label="Manage selection"
+            label={t`Manage selection`}
             onClick={() =>
               setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION)
             }
