@@ -22,6 +22,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface SpaceFolderModalProps {
@@ -39,6 +40,7 @@ export default function SpaceFolderModal({
   owner,
   space,
 }: SpaceFolderModalProps) {
+  const { t } = useLingui();
   const { dataSourceView, isDataSourceViewLoading, mutate } =
     useSpaceDataSourceView({
       owner,
@@ -87,9 +89,9 @@ export default function SpaceFolderModal({
     let nameError: string | null = null;
 
     if (!name) {
-      nameError = "Name is required.";
+      nameError = t`Name is required.`;
     } else if (isDataSourceNameValid(name).isErr()) {
-      nameError = "Name is invalid, must be multiple characters with no space.";
+      nameError = t`Name is invalid, must be multiple characters with no space.`;
     }
 
     if (nameError) {
@@ -140,7 +142,7 @@ export default function SpaceFolderModal({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            {!dataSourceView ? "Create Folder" : "Edit Folder"}
+            {!dataSourceView ? t`Create folder` : t`Edit folder`}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -148,7 +150,7 @@ export default function SpaceFolderModal({
             <Spinner />
           ) : (
             <div className="flex flex-col gap-4">
-              <Page.SectionHeader title="Name" />
+              <Page.SectionHeader title={t`Name`} />
               <Input
                 placeholder="folder_name"
                 name="name"
@@ -156,15 +158,15 @@ export default function SpaceFolderModal({
                 onChange={(e) => {
                   setName(e.target.value);
                 }}
-                message={error ?? "Folder name must be unique"}
+                message={error ?? t`Folder name must be unique`}
                 messageStatus={error ? "error" : "info"}
                 disabled={!!dataSourceView}
               />
 
               <Page.Separator />
-              <Page.SectionHeader title="Description" />
+              <Page.SectionHeader title={t`Description`} />
               <TextArea
-                placeholder="Folder description"
+                placeholder={t`Folder description`}
                 value={description ?? ""}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -185,7 +187,7 @@ export default function SpaceFolderModal({
                   />
                   <Button
                     size="sm"
-                    label="Delete Folder"
+                    label={t`Delete folder`}
                     variant="warning"
                     onClick={() => setShowDeleteConfirmDialog(true)}
                   />
@@ -196,11 +198,11 @@ export default function SpaceFolderModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();

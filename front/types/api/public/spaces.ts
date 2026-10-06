@@ -59,18 +59,6 @@ export function isValidDataSourceViewCategory(
   );
 }
 
-export const DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES: Record<
-  DataSourceViewCategory,
-  string
-> = {
-  managed: "Connections",
-  folder: "Folders",
-  website: "Websites",
-  apps: "Apps",
-  actions: "Tools",
-  triggers: "Triggers",
-};
-
 export type DataSourceViewCategoryWithoutApps = Exclude<
   DataSourceViewCategory,
   "apps" | "actions"

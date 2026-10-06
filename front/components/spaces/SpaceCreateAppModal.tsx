@@ -20,6 +20,7 @@ import {
   SheetTitle,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface SpaceCreateAppModalProps {
@@ -35,6 +36,7 @@ export const SpaceCreateAppModal = ({
   setIsOpen,
   space,
 }: SpaceCreateAppModalProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 
@@ -50,13 +52,13 @@ export const SpaceCreateAppModal = ({
       return null; // No error when empty
     }
     if (!value.match(APP_NAME_REGEXP)) {
-      return "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters.";
+      return t`Name must be only contain letters, numbers, and the characters \`_-\` and be less than 64 characters.`;
     }
     if (value.length > 64) {
-      return "Name must be less or equal to 64 characters.";
+      return t`Name must be less or equal to 64 characters.`;
     }
     if (apps.find((app) => app.name === value)) {
-      return "An App with this name already exists.";
+      return t`An app with this name already exists.`;
     }
     return null;
   };
@@ -89,15 +91,16 @@ export const SpaceCreateAppModal = ({
 
         sendNotification({
           type: "success",
-          title: "Successfully created app",
-          description: "App was successfully created.",
+          title: t`Successfully created app`,
+          description: t`App was successfully created.`,
         });
       } else {
         const err: { error: APIError } = await res.json();
+        const errorMessage = err.error.message;
         sendNotification({
-          title: "Error Saving App",
+          title: t`Error saving app`,
           type: "error",
-          description: `Error: ${err.error.message}`,
+          description: t`Error: ${errorMessage}`,
         });
       }
     }
@@ -114,12 +117,14 @@ export const SpaceCreateAppModal = ({
     >
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Create a new App</SheetTitle>
+          <SheetTitle>
+            <Trans>Create a new app</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4">
             <div>
-              <Page.SectionHeader title="Name" />
+              <Page.SectionHeader title={t`Name`} />
               <Input
                 placeholder="app_name"
                 name="name"
@@ -133,16 +138,17 @@ export const SpaceCreateAppModal = ({
                 messageStatus="error"
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                <AlertCircle /> Must be unique and only use alphanumeric, - or _
-                characters.
+                <AlertCircle />
+                <Trans>
+                  Must be unique and only use alphanumeric, - or _ characters.
+                </Trans>
               </p>
             </div>
             <Page.Separator />
             <div>
-              <Page.SectionHeader title="Description" />
+              <Page.SectionHeader title={t`Description`} />
               <TextArea
-                placeholder="This description guides agents in understanding how to use
-                your app effectively and determines its relevance in responding to user inquiries."
+                placeholder={t`This description guides agents in understanding how to use your app effectively and determines its relevance in responding to user inquiries.`}
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -153,11 +159,11 @@ export const SpaceCreateAppModal = ({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             onClick: onSave,
             disabled:
               name.trim() === "" ||

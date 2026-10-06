@@ -29,6 +29,7 @@ import {
   DataTableSkeleton,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
@@ -87,6 +88,7 @@ export const SpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { frontendListFilterQuery } = React.useContext(SpaceSearchContext);
   const { q: searchParam } = useQueryParams(["q"]);
@@ -174,7 +176,7 @@ export const SpaceActionsList = ({
               isAdmin
                 ? [
                     {
-                      label: "Remove tools from space",
+                      label: t`Remove tools from space`,
                       onClick: async () => onRemoveServer(info.row.original.id),
                       kind: "item",
                     },

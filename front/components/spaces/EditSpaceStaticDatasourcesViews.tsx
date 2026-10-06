@@ -5,6 +5,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Plus, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface EditSpaceStaticDatasourcesViewsProps {
   canWriteInSpace: boolean;
@@ -27,13 +28,14 @@ export function EditSpaceStaticDatasourcesViews({
   owner,
   space,
 }: EditSpaceStaticDatasourcesViewsProps) {
+  const { t } = useLingui();
   const { killSwitches } = useKillSwitches();
 
   const isSavingDisabled = killSwitches?.includes("save_data_source_views");
 
   const addToSpaceButton = (
     <Button
-      label={`Add ${category}`}
+      label={category === "folder" ? t`Add folder` : t`Add website`}
       onClick={onOpen}
       icon={Plus}
       disabled={!canWriteInSpace || isSavingDisabled}
@@ -63,7 +65,7 @@ export function EditSpaceStaticDatasourcesViews({
       {canWriteInSpace ? (
         isSavingDisabled ? (
           <Tooltip
-            label="Editing spaces is temporarily disabled and will be re-enabled shortly."
+            label={t`Editing spaces is temporarily disabled and will be re-enabled shortly.`}
             side="top"
             trigger={addToSpaceButton}
           />
@@ -74,8 +76,12 @@ export function EditSpaceStaticDatasourcesViews({
         <Tooltip
           label={
             space.kind === "global"
-              ? `You need write access to add a ${category} in the Company data space.`
-              : `Only members of the space can add a ${category}.`
+              ? category === "folder"
+                ? t`You need write access to add a folder in the Company data space.`
+                : t`You need write access to add a website in the Company data space.`
+              : category === "folder"
+                ? t`Only members of the space can add a folder.`
+                : t`Only members of the space can add a website.`
           }
           side="top"
           trigger={addToSpaceButton}

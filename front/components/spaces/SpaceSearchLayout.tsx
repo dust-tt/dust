@@ -38,7 +38,6 @@ import type {
   DataSourceViewCategory,
   LightContentNode,
 } from "@app/types/api/public/spaces";
-import { DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type {
@@ -52,6 +51,9 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { SortingState } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
@@ -97,17 +99,34 @@ function isBackendSearch(
   return props.useBackendSearch === true;
 }
 
+const CATEGORY_SEARCH_PLACEHOLDERS: Record<
+  DataSourceViewCategory,
+  MessageDescriptor
+> = {
+  managed: msg`Search in Connections`,
+  folder: msg`Search in Folders`,
+  website: msg`Search in Websites`,
+  apps: msg`Search in Apps`,
+  actions: msg`Search in Tools`,
+  triggers: msg`Search in Triggers`,
+};
+
 function getSearchInputPlaceholder(
+  t: (descriptor: MessageDescriptor) => string,
   space: SpaceType,
   category?: DataSourceViewCategory,
   dataSourceView?: DataSourceViewType
 ) {
   if (dataSourceView) {
-    return `Search in ${getDisplayNameForDataSource(dataSourceView.dataSource)}`;
+    const dataSourceName = getDisplayNameForDataSource(
+      dataSourceView.dataSource
+    );
+    return t(msg`Search in ${dataSourceName}`);
   } else if (category) {
-    return `Search in ${DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES[category]}`;
+    return t(CATEGORY_SEARCH_PLACEHOLDERS[category]);
   }
-  return `Search in ${space.name}`;
+  const spaceName = space.name;
+  return t(msg`Search in ${spaceName}`);
 }
 
 export function SpaceSearchInput(props: SpaceSearchInputProps) {
@@ -202,6 +221,7 @@ function BackendSearch({
   header,
   onNavigateToSearchResult,
 }: FullBackendSearchProps) {
+  const { t } = useLingui();
   const { q: searchParam } = useQueryParams(["q"]);
 
   const [searchResultDataSourceView, setSearchResultDataSourceView] =
@@ -418,11 +438,18 @@ function BackendSearch({
     }
   }, [isLoading, isSearchValidating, searchResults]);
 
+  const resultsCount = searchResults.length;
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
+        placeholder={getSearchInputPlaceholder(
+          t,
+          space,
+          category,
+          dataSourceView
+        )}
         value={searchTerm}
         onChange={handleSearchChange}
         disabled={isSearchDisabled}
@@ -464,7 +491,10 @@ function BackendSearch({
         {showSearch ? (
           <div className="flex w-full flex-col gap-2">
             <div className="text-end text-sm text-muted-foreground">
-              Showing {searchResults.length} of {searchHitCount} results
+              {t`${plural(searchHitCount, {
+                one: `Showing ${resultsCount} of # result`,
+                other: `Showing ${resultsCount} of # results`,
+              })}`}
             </div>
             <SearchResultsTable
               searchResultNodes={searchResults}
@@ -519,6 +549,7 @@ function FrontendSearch({
   parentId,
   header,
 }: FullFrontendSearchProps) {
+  const { t } = useLingui();
   const { q: searchParam } = useQueryParams(["q"]);
   // Keep input value in local debounce state so it does not lag behind shallow
   // router updates (useQueryParams syncs from router.query after each push).
@@ -547,7 +578,12 @@ function FrontendSearch({
     <SpaceSearchContext.Provider value={providerValue}>
       <SearchInput
         name="search"
-        placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
+        placeholder={getSearchInputPlaceholder(
+          t,
+          space,
+          category,
+          dataSourceView
+        )}
         value={searchTerm}
         onChange={handleSearchChange}
         disabled={isSearchDisabled}
@@ -619,6 +655,7 @@ function SearchResultsTable({
   onNavigateToSearchResult,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
 
   const { spaces } = useSpaces({
@@ -676,26 +713,27 @@ function SearchResultsTable({
         if (!res.ok) {
           const rawError: { error: APIError } = await res.json();
           sendNotification({
-            title: "Error while adding data to space",
+            title: t`Error while adding data to space`,
             description: rawError.error.message,
             type: "error",
           });
         } else {
           sendNotification({
-            title: "Data added to space",
+            title: t`Data added to space`,
             type: "success",
           });
           await mutateDataSourceViews();
         }
       } catch (e) {
+        const errorMessage = `${e}`;
         sendNotification({
-          title: "Error while adding data to space",
-          description: `An Unknown error ${e} occurred while adding data to space.`,
+          title: t`Error while adding data to space`,
+          description: t`An unknown error ${errorMessage} occurred while adding data to space.`,
           type: "error",
         });
       }
     },
-    [dataSourceViews, mutateDataSourceViews, owner.sId, sendNotification]
+    [dataSourceViews, mutateDataSourceViews, owner.sId, sendNotification, t]
   );
 
   // Transform search results into format for DataTable.
@@ -728,6 +766,7 @@ function SearchResultsTable({
         }),
         location: getLocationForDataSourceViewContentNode(node),
         menuItems: getMenuItems(
+          t,
           canReadInSpace,
           canWriteInSpace,
           dataSourceView,
@@ -756,6 +795,7 @@ function SearchResultsTable({
     searchResultNodes,
     setEffectiveContentNode,
     spaces,
+    t,
   ]);
 
   return (

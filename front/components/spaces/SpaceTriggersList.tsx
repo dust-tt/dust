@@ -7,6 +7,7 @@ import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DataTable, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
@@ -25,6 +26,7 @@ interface SpaceActionsListProps {
 }
 
 export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
+  const { t } = useLingui();
   const { webhookSourceViews, isWebhookSourceViewsLoading } =
     useWebhookSourceViews({
       owner,
@@ -59,7 +61,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
     },
     {
       id: "description",
-      header: "Description",
+      header: t`Description`,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.BasicCellContent label={info.row.original.description} />
       ),
@@ -69,7 +71,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
     },
     {
       id: "lastUpdated",
-      header: "Last updated",
+      header: t`Last updated`,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.BasicCellContent
           label={formatTimestampToFriendlyDate(
@@ -114,7 +116,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
     <>
       {isEmpty ? (
         <div className="text-center text-sm text-muted-foreground">
-          You don’t have any triggers yet.
+          <Trans>You don’t have any triggers yet.</Trans>
         </div>
       ) : (
         <DataTable

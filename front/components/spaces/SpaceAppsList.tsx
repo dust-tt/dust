@@ -12,6 +12,7 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DataTable, Plus, Spinner, Terminal } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import type { ParsedUrlQuery } from "querystring";
@@ -73,6 +74,7 @@ export const SpaceAppsList = ({
   space,
   onSelect,
 }: SpaceAppsListProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
@@ -133,7 +135,7 @@ export const SpaceAppsList = ({
     <>
       {canAdministrateApps && (
         <Button
-          label="New App"
+          label={t`New app`}
           variant="primary"
           icon={Plus}
           size="sm"
@@ -151,7 +153,7 @@ export const SpaceAppsList = ({
       {isEmpty ? (
         <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
           <Button
-            label="Create App"
+            label={t`Create app`}
             disabled={!canAdministrateApps}
             onClick={() => {
               setIsCreateAppModalOpened(true);

@@ -17,6 +17,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { SetStateAction } from "react";
 import {
   useCallback,
@@ -78,6 +79,7 @@ export default function SpaceManagedDataSourcesViewsModal({
   systemSpace,
   title,
 }: SpaceManagedDataSourcesViewsModalProps) {
+  const { t } = useLingui();
   const defaultSelectedDataSources = useStabilizedValue(
     initialSelectedDataSources,
     isOpen,
@@ -237,6 +239,8 @@ export default function SpaceManagedDataSourcesViewsModal({
     [setSelectionConfigurations]
   );
 
+  const spaceName = space.name;
+
   return (
     <Sheet
       open={isOpen}
@@ -252,7 +256,7 @@ export default function SpaceManagedDataSourcesViewsModal({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            {title ?? `Add connected data to space "${space.name}"`}
+            {title ?? t`Add connected data to space "${spaceName}"`}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer
@@ -283,12 +287,12 @@ export default function SpaceManagedDataSourcesViewsModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             onClick: () => {
               void (async () => {
                 const result = await onSave(selectionConfigurations);

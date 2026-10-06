@@ -29,11 +29,12 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const MEMBERSHIP_SOURCES_DESCRIPTION =
-  "Members are the people picked below, plus everyone in the groups given access to the space.";
+const MEMBERSHIP_SOURCES_DESCRIPTION = msg`Members are the people picked below, plus everyone in the groups given access to the space.`;
 
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
@@ -54,6 +55,7 @@ export function CreateOrEditSpaceModal({
   owner,
   space,
 }: CreateOrEditSpaceModalProps) {
+  const { t } = useLingui();
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
   // The member selection is held as ids, not as user objects: the ids are what the save sends, so
@@ -167,10 +169,9 @@ export function CreateOrEditSpaceModal({
     // Warn admin if they are modifying a space they don't belong to.
     if (space && spaceInfo && !spaceInfo.isMember) {
       const confirmed = await confirm({
-        title: "Security notice",
-        message:
-          "You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?",
-        validateLabel: "Proceed",
+        title: t`Security notice`,
+        message: t`You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?`,
+        validateLabel: t`Proceed`,
         validateVariant: "warning",
       });
 
@@ -224,6 +225,7 @@ export function CreateOrEditSpaceModal({
     selectedMemberIds,
     spaceName,
     selectedGroups,
+    t,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -278,7 +280,11 @@ export function CreateOrEditSpaceModal({
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
           <SheetTitle>
-            Space Settings{space ? ` - ${spaceName}` : ""}
+            {space ? (
+              <Trans>Space settings - {spaceName}</Trans>
+            ) : (
+              <Trans>Space settings</Trans>
+            )}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -302,9 +308,11 @@ export function CreateOrEditSpaceModal({
             ) : isAccessUnavailable ? (
               <ContentMessage
                 variant="warning"
-                title="Access settings unavailable"
+                title={t`Access settings unavailable`}
               >
-                Failed to load group members, please reload the page.
+                <Trans>
+                  Failed to load group members, please reload the page.
+                </Trans>
               </ContentMessage>
             ) : (
               <>
@@ -325,28 +333,38 @@ export function CreateOrEditSpaceModal({
                   }}
                   restrictedDescription={
                     <>
-                      <span>Restricted access is active.</span>
                       <span>
-                        Members can read the content of the space and write data
-                        into it (upload files, delete documents...).
+                        <Trans>Restricted access is active.</Trans>
                       </span>
-                      <span>{MEMBERSHIP_SOURCES_DESCRIPTION}</span>
+                      <span>
+                        <Trans>
+                          Members can read the content of the space and write
+                          data into it (upload files, delete documents...).
+                        </Trans>
+                      </span>
+                      <span>{t(MEMBERSHIP_SOURCES_DESCRIPTION)}</span>
                     </>
                   }
                   unrestrictedDescription={
                     <>
                       <span>
-                        Restricted access is disabled. The space is open.
+                        <Trans>
+                          Restricted access is disabled. The space is open.
+                        </Trans>
                       </span>
                       <span>
-                        Anyone in the workspace can read the data from this
-                        space.
+                        <Trans>
+                          Anyone in the workspace can read the data from this
+                          space.
+                        </Trans>
                       </span>
                       <span>
-                        Members of the space can also write data (upload files,
-                        delete documents...).
+                        <Trans>
+                          Members of the space can also write data (upload
+                          files, delete documents...).
+                        </Trans>
                       </span>
-                      <span>{MEMBERSHIP_SOURCES_DESCRIPTION}</span>
+                      <span>{t(MEMBERSHIP_SOURCES_DESCRIPTION)}</span>
                     </>
                   }
                 />
@@ -373,12 +391,12 @@ export function CreateOrEditSpaceModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: isSaving ? "Saving..." : space ? "Save" : "Create",
+            label: isSaving ? t`Saving...` : space ? t`Save` : t`Create`,
             onClick: onSave,
             disabled: disabled,
           }}
@@ -394,14 +412,16 @@ interface SpaceNameSectionProps {
 }
 
 function SpaceNameSection({ spaceName, onChange }: SpaceNameSectionProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex w-full flex-col gap-y-4">
-      <Page.SectionHeader title="Name" />
+      <Page.SectionHeader title={t`Name`} />
       <Input
-        placeholder="Space's name"
+        placeholder={t`Space's name`}
         value={spaceName}
         name="spaceName"
-        message="Space name must be unique"
+        message={t`Space name must be unique`}
         messageStatus="info"
         onChange={(e) => {
           onChange(e.target.value);

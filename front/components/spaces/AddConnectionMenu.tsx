@@ -54,6 +54,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 export type DataSourceIntegration = {
@@ -116,6 +117,7 @@ export const AddConnectionMenu = ({
   onCreated,
   integrations,
 }: AddConnectionMenuProps) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
@@ -294,7 +296,7 @@ export const AddConnectionMenu = ({
 
         sendNotification({
           type: "error",
-          title: `Failed to enable connection (${provider})`,
+          title: t`Failed to enable connection (${provider})`,
           description: errorMessage,
         });
       }
@@ -305,7 +307,7 @@ export const AddConnectionMenu = ({
       }));
       sendNotification({
         type: "error",
-        title: `Failed to enable connection (${provider})`,
+        title: t`Failed to enable connection (${provider})`,
       });
     } finally {
       setIsProviderLoading(provider, false);
@@ -354,6 +356,7 @@ export const AddConnectionMenu = ({
 
   const { integration, isOpen } = showConfirmConnection || {};
   const connectorProvider = integration?.connectorProvider;
+  const planName = plan.name;
 
   return (
     availableIntegrations.length > 0 && (
@@ -368,18 +371,22 @@ export const AddConnectionMenu = ({
         >
           <DialogContent size="md" isAlertDialog>
             <DialogHeader hideButton>
-              <DialogTitle>${plan.name} plan</DialogTitle>
+              <DialogTitle>
+                <Trans>{planName} plan</Trans>
+              </DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              Unlock this managed data source by upgrading your plan.
+              <Trans>
+                Unlock this managed data source by upgrading your plan.
+              </Trans>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Validate",
+                label: t`Validate`,
                 variant: "primary",
                 onClick: () => {
                   void router.push(`/w/${owner.sId}/subscription`);
@@ -492,14 +499,18 @@ export const AddConnectionMenu = ({
         >
           <DialogContent size="md">
             <DialogHeader>
-              <DialogTitle>Coming Soon!</DialogTitle>
+              <DialogTitle>
+                <Trans>Coming soon!</Trans>
+              </DialogTitle>
               <DialogDescription>
-                Please email us at support@dust.tt for early access.
+                <Trans>
+                  Please email us at support@dust.tt for early access.
+                </Trans>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
                 onClick: () => {
                   setShowPreviewPopupForProvider((prev) => ({
@@ -509,7 +520,7 @@ export const AddConnectionMenu = ({
                 },
               }}
               rightButtonProps={{
-                label: "Contact us",
+                label: t`Contact us`,
                 variant: "highlight",
                 onClick: () => {
                   window.open(
@@ -524,7 +535,7 @@ export const AddConnectionMenu = ({
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
-              label="Add Connections"
+              label={t`Add connections`}
               variant="primary"
               icon={CloudArrowLeftRight}
               size="sm"
