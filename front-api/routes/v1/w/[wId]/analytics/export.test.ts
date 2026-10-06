@@ -267,6 +267,22 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(400);
   });
 
+  it.each([
+    ["2024-03-31", 200],
+    ["2024-04-01", 400],
+  ])(
+    "caps messages exports at 90 days (endDate %s)",
+    async (endDate, status) => {
+      const { response } = await setupTest({
+        table: "messages",
+        startDate: "2024-01-01",
+        endDate,
+      });
+
+      expect(response.status).toBe(status);
+    }
+  );
+
   it("returns 405 for unsupported methods", async () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
       const { workspace, key } = await createPublicApiMockRequest({
