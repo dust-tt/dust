@@ -1139,7 +1139,8 @@ export function useUpdatePodMetadata({
           async (current) => {
             patched = await patchRequest();
             void mutatePodMetadata(
-              (current) => ({ ...current, projectMetadata: patched }),
+              (current) =>
+                current ? { ...current, projectMetadata: patched } : current,
               { revalidate: updates.defaultSkillIds !== undefined }
             );
             return applySpaceFromMetadata(current, patched);
@@ -1161,9 +1162,10 @@ export function useUpdatePodMetadata({
         void mutateSpaceInfoRegardlessOfQueryParams();
       } else {
         projectMetadata = await patchRequest();
-        void mutatePodMetadata((current) => ({ ...current, projectMetadata }), {
-          revalidate: updates.defaultSkillIds !== undefined,
-        });
+        void mutatePodMetadata(
+          (current) => (current ? { ...current, projectMetadata } : current),
+          { revalidate: updates.defaultSkillIds !== undefined }
+        );
         void mutateSpaceInfoRegardlessOfQueryParams();
       }
 
