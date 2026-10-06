@@ -1,0 +1,6 @@
+@cc [owner:PopDaph;tdraier,label:architecture] document-model-runs-without-dom
+Importing `dfm_persistence.ts`, which evaluates its transitive runtime dependencies, and calling
+`loadDfm` and `saveDfm` MUST NOT require `window`, `document` or any other DOM global, nor a
+polyfill for one. The live session server converts documents with them in Node. Code those calls
+never execute, such as plugin views, event handlers and browser helpers like
+`scrollToCommentHighlight`, may use the DOM.
