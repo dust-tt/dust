@@ -1,8 +1,8 @@
 import type { SVGProps } from "react";
-import { useId } from "react";
+import * as React from "react";
 
 const SvgGrafana = (props: SVGProps<SVGSVGElement>) => {
-  const gradientId = useId();
+  const gradientId = React.useId();
 
   return (
     <svg
