@@ -30,6 +30,11 @@ const ParamsSchema = z.object({
   cId: z.string(),
 });
 
+const GetConversationQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().optional(),
+  lastValue: z.coerce.number().int().optional(),
+});
+
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId.
 const app = publicApiApp();
 
@@ -144,22 +149,16 @@ const app = publicApiApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
+  validate("query", GetConversationQuerySchema),
   async (ctx): HandlerResult<GetConversationResponseType> => {
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
+    const { limit, lastValue } = ctx.req.valid("query");
 
     // Build optional message pagination from query params.
     // When omitted, all messages are returned (backward compatible).
-    const limit = ctx.req.query("limit");
-    const lastValue = ctx.req.query("lastValue");
     const messagePagination =
-      typeof limit === "string"
-        ? {
-            limit: parseInt(limit, 10),
-            lastRank:
-              typeof lastValue === "string" ? parseInt(lastValue, 10) : null,
-          }
-        : undefined;
+      limit !== undefined ? { limit, lastRank: lastValue ?? null } : undefined;
 
     // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
     const conversationRes = await getConversation(
