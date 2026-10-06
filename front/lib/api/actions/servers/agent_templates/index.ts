@@ -36,7 +36,7 @@ const handlers: ToolHandlers<typeof AGENT_TEMPLATES_TOOLS_METADATA> = {
 
   get_agent_template: async ({ templateId }) => {
     const template = await TemplateResource.fetchByExternalId(templateId);
-    if (!template || !template.isPublished()) {
+    if (!template) {
       return new Err(
         new MCPError(`Template not found: ${templateId}`, { tracked: false })
       );

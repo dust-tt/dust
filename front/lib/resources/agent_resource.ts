@@ -4136,7 +4136,9 @@ export class AgentResource
       let template: TemplateResource | null = null;
       let createdInitialEditorGrant = false;
       if (templateId) {
-        template = await TemplateResource.fetchByExternalId(templateId);
+        template = await TemplateResource.fetchByExternalId(templateId, {
+          includeUnpublished: true,
+        });
       }
       const performCreation = async (
         t: Transaction

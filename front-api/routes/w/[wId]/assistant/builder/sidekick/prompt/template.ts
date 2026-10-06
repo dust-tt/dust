@@ -20,7 +20,7 @@ app.get("/", async (ctx) => {
   }
 
   const template = await TemplateResource.fetchByExternalId(templateId);
-  if (!template || !template.isPublished() || !template.sidekickInstructions) {
+  if (!template || !template.sidekickInstructions) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
