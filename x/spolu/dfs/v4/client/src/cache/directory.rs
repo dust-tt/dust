@@ -120,7 +120,6 @@ impl Inner {
 
     pub(super) async fn list(self: &Arc<Self>, r: ListRequest) -> Result<Page> {
         let page = self.page(r.clone()).await?;
-        let page = self.pending.lock().overlay_page(&r, page);
         if let Some(after) = page.next_after.clone() {
             self.prefetch(ListRequest {
                 after: Some(after),
@@ -143,6 +142,8 @@ impl Inner {
     /// Reusing expired membership MUST require the page's snapshot revision to match fresh canonical
     /// directory authority. Every returned child attribute MUST retain its own validating deadline.
     /// Local generations MUST fence responses. Expired virtual projections MUST refresh by listing.
+    /// Projection MUST share the pending-state lock with validation, so publication cannot retire
+    /// an overlay between accepting a server snapshot and applying acknowledged namespace edits.
     async fn page(&self, r: ListRequest) -> Result<Page> {
         self.active()?;
         if !(1..=64).contains(&r.limit) {
@@ -150,14 +151,16 @@ impl Inner {
         }
         if self.pending.lock().local_directory(&r.directory_id) {
             self.stat(&r.directory_id).await?;
-            if self.pending.lock().local_directory(&r.directory_id) {
-                return Ok(Page::default());
+            let pending = self.pending.lock();
+            if pending.local_directory(&r.directory_id) {
+                return Ok(pending.overlay_page(&r, Page::default()));
             }
         }
         let gate = self.gate(&r.directory_id)?;
         let wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
         drop(wait);
+        let mut refresh = None;
         for _ in 0..4 {
             self.active()?;
             let generation = gate.generation.load(Ordering::Acquire);
@@ -167,7 +170,10 @@ impl Inner {
                 && Instant::now() < entry.expires
                 && let Value::Page(page) = &entry.value
             {
-                return Ok(page.clone());
+                let pending = self.pending.lock();
+                if gate.generation.load(Ordering::Acquire) == generation {
+                    return Ok(pending.overlay_page(&r, page.clone()));
+                }
             }
             let reused = if let Some(entry) = &cached
                 && let Value::Page(page) = &entry.value
@@ -199,13 +205,23 @@ impl Inner {
                 }
             };
             self.active()?;
-            let pending = self.pending.lock();
-            if gate.generation.load(Ordering::Acquire) != generation {
-                continue;
+            {
+                let pending = self.pending.lock();
+                if gate.generation.load(Ordering::Acquire) == generation {
+                    self.remember_page(&r, &page, started, received, expires, &pending);
+                    return Ok(pending.overlay_page(&r, page));
+                }
             }
-            self.remember_page(&r, &page, started, received, expires, &pending);
-            return Ok(page);
+            self.rpc.record("cache.page_raced", Duration::ZERO, false);
+            if refresh.is_none() {
+                refresh = Some(
+                    self.stabilize_directory(&r.directory_id, gate.clone())
+                        .await?,
+                );
+            }
         }
+        self.rpc
+            .record("cache.page_retry_exhausted", Duration::ZERO, true);
         Err(status(ErrorCode::Unavailable))
     }
 

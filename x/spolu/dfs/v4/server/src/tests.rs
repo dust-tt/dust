@@ -29,6 +29,16 @@ pub(super) async fn pause(pauses: &Pauses, changes: &[mutation::Change]) {
     }
 }
 
+pub(super) async fn pause_listing(pauses: &Pauses, directory: &str) {
+    let paused = pauses.lock().get(directory).cloned();
+    if let Some(paused) = paused {
+        paused.entered.notify_one();
+        if let Ok(permit) = paused.release.acquire().await {
+            permit.forget();
+        }
+    }
+}
+
 fn request<T>(key: &str, body: T) -> Result<Request<T>> {
     let mut request = Request::new(body);
     request
@@ -763,7 +773,7 @@ async fn client_cache_contracts() -> Result<()> {
         let observer = ::dfs_client::BlockingClient::connect(&endpoint, &key)?;
         directory_absence_contracts(&endpoint, &key, &tenant.root_id)?;
         client_refresh::contracts(&endpoint, &key, &tenant, &state)?;
-        client_directory::contracts(&endpoint, &key, &tenant)?;
+        client_directory::contracts(&endpoint, &key, &tenant, &state)?;
         let a = client
             .create(CreateRequest {
                 parent_id: directory.id.clone(),

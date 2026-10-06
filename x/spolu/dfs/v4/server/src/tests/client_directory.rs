@@ -52,7 +52,7 @@ fn wait_calls(client: &CachedClient, name: &str, count: u64) {
     }
 }
 
-pub(super) fn contracts(endpoint: &str, key: &str, tenant: &Tenant) -> Result<()> {
+pub(super) fn contracts(endpoint: &str, key: &str, tenant: &Tenant, state: &State) -> Result<()> {
     let observer = BlockingClient::connect(endpoint, key)?;
     let folder = observer
         .create(create(&tenant.root_id, "directory-cache", true))?
@@ -187,6 +187,103 @@ pub(super) fn contracts(endpoint: &str, key: &str, tenant: &Tenant) -> Result<()
     assert_eq!(calls(&client, "rpc.list"), 1);
     page_ahead(endpoint, key, &observer, &tenant.root_id)?;
     revoked_ancestor(endpoint, &observer, tenant)?;
+    listing_during_publication(endpoint, key, &observer, &tenant.root_id, state)?;
+    Ok(())
+}
+
+fn listing_during_publication(
+    endpoint: &str,
+    key: &str,
+    observer: &BlockingClient,
+    root: &str,
+    state: &State,
+) -> Result<()> {
+    let directory = observer
+        .create(create(root, "listing-publication", true))?
+        .object
+        .context("directory")?;
+    let mut files = Vec::new();
+    for name in ["a", "b", "c"] {
+        let file = observer
+            .create(create(&directory.id, name, false))?
+            .object
+            .context("file")?;
+        files.push((name, file.id));
+    }
+    let unrelated = observer
+        .create(create(root, "listing-unrelated", false))?
+        .object
+        .context("unrelated")?;
+    let client = CachedClient::connect(
+        endpoint,
+        key,
+        CacheConfig {
+            write_delay_ms: 1000,
+            ..Default::default()
+        },
+    )?;
+    for (name, id) in &files {
+        client.remove_at(
+            directory.id.clone(),
+            (*name).into(),
+            RemoveRequest {
+                object_id: id.clone(),
+                directory: false,
+            },
+        )?;
+    }
+    let pause = Arc::new(Pause {
+        entered: Default::default(),
+        release: Semaphore::new(0),
+    });
+    state
+        .list_reply_pauses
+        .lock()
+        .insert(directory.id.clone(), pause.clone());
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let entered = || -> Result<()> {
+        runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(3), pause.entered.notified()).await
+        })?;
+        Ok(())
+    };
+    std::thread::scope(|scope| -> Result<()> {
+        let reader = scope.spawn(|| client.list(listing(&directory.id)));
+        entered()?;
+        // Complete one unlink after the listing snapshot; its response must be discarded.
+        client.fsync(object(&files[0].1))?;
+        pause.release.add_permits(1);
+        entered()?;
+        // The retry must pause only this directory, leaving other objects free to publish.
+        let writer = scope.spawn(|| client.fsync(object(&files[1].1)));
+        client.write(WriteRequest {
+            object_id: unrelated.id.clone(),
+            data: b"independent".to_vec(),
+            ..Default::default()
+        })?;
+        let independent = client.fsync(object(&unrelated.id));
+        std::thread::sleep(Duration::from_millis(50));
+        let still_queued = !writer.is_finished();
+        let visible_on_server = observer.stat(object(&files[1].1));
+        state.list_reply_pauses.lock().remove(&directory.id);
+        pause.release.add_permits(16);
+        let page = reader
+            .join()
+            .map_err(|_| anyhow::anyhow!("list panicked"))??;
+        writer
+            .join()
+            .map_err(|_| anyhow::anyhow!("fsync panicked"))??;
+        independent?;
+        assert!(still_queued && visible_on_server.is_ok());
+        assert!(page.entries.is_empty(), "queued unlinks must remain hidden");
+        Ok(())
+    })?;
+    assert_eq!(calls(&client, "cache.page_raced"), 1);
+    assert_eq!(calls(&client, "cache.page_retry_exhausted"), 0);
+    client.drain()?;
+    assert!(observer.list(listing(&directory.id))?.entries.is_empty());
     Ok(())
 }
 

@@ -8,6 +8,36 @@ import time
 import support
 
 
+def cleanup_pending_unlinks(root):
+    """Recursive cleanup must tolerate its own successful background unlink completions."""
+    parent = root
+    for depth in range(13):
+        parent /= f'cleanup-{depth}'
+        parent.mkdir()
+    payload = b'x' * 32768
+    for _ in range(5):
+        with tempfile.TemporaryDirectory(dir=parent) as scratch:
+            files = [Path(scratch) / f'write-{i:03d}' for i in range(32)]
+            opened = []
+            try:
+                for path in files:
+                    file = path.open('wb', buffering=0)
+                    opened.append(file)
+                    file.write(payload)
+                for file in opened:
+                    os.fsync(file.fileno())
+            finally:
+                for file in opened:
+                    file.close()
+            assert all(path.read_bytes() == payload for path in files)
+            for path in files:
+                path.unlink()
+            assert all(not path.exists() for path in files)
+        # TemporaryDirectory uses scandir followed by rmdir, without first draining unlinks.
+        assert not Path(scratch).exists()
+    assert list(parent.iterdir()) == []
+
+
 def main():
     work = Path(tempfile.mkdtemp(prefix='dfs-v4-mounted-'))
     prefix, key, key_path = support.identity(work)
@@ -78,6 +108,7 @@ def main():
             peer = None
             target.unlink()
             assert not target.exists()
+            cleanup_pending_unlinks(root)
         support.stop(server)
         server = None
         support.shutdown(work / 'mounted-server.log')

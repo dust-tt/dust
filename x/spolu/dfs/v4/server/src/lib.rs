@@ -31,6 +31,8 @@ pub struct State {
     pauses: tests::Pauses,
     #[cfg(test)]
     reply_pauses: tests::Pauses,
+    #[cfg(test)]
+    list_reply_pauses: tests::Pauses,
 }
 impl State {
     pub fn new(storage: storage::Storage, server_key: &str) -> anyhow::Result<Arc<Self>> {
@@ -64,6 +66,8 @@ impl State {
             pauses: Default::default(),
             #[cfg(test)]
             reply_pauses: Default::default(),
+            #[cfg(test)]
+            list_reply_pauses: Default::default(),
         });
         Ok(state)
     }

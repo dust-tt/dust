@@ -23,6 +23,17 @@ impl Drop for Refresh<'_> {
     }
 }
 
+pub(in crate::cache) struct DirectoryRefresh<'a> {
+    inner: &'a Inner,
+    gate: Arc<Gate>,
+}
+impl Drop for DirectoryRefresh<'_> {
+    fn drop(&mut self) {
+        self.gate.refreshes.fetch_sub(1, Ordering::AcqRel);
+        self.inner.changed.notify_one();
+    }
+}
+
 impl Pending {
     pub(in crate::cache) fn expire(&mut self, id: &str) {
         if let Some(node) = self.objects.get_mut(id) {
@@ -52,6 +63,36 @@ impl Pending {
 }
 
 impl Inner {
+    /// @cc [owner:spolu,label:concurrency;performance] stabilize-directory-publication
+    /// A raced listing MAY pause dispatch for its directory and await only captured in-flight groups.
+    /// Queued edits MUST remain queued and visible through the overlay. The pause MUST survive until
+    /// the listing is installed/projected and MUST release on success, error or cancellation.
+    pub(in crate::cache) async fn stabilize_directory(
+        &self,
+        id: &str,
+        gate: Arc<Gate>,
+    ) -> Result<DirectoryRefresh<'_>> {
+        let (refresh, inflight) = {
+            let pending = self.pending.lock();
+            gate.refreshes.fetch_add(1, Ordering::AcqRel);
+            let inflight: Vec<_> = pending
+                .objects
+                .get(id)
+                .into_iter()
+                .flat_map(|node| &node.pending)
+                .filter_map(|id| pending.groups.get(id))
+                .filter(|group| group.inflight)
+                .map(|group| group.receipt.clone())
+                .collect();
+            (DirectoryRefresh { inner: self, gate }, inflight)
+        };
+        let _wait = self.rpc.measure("wait.directory_inflight");
+        for receipt in inflight {
+            receipt.wait().await?;
+        }
+        Ok(refresh)
+    }
+
     fn begin_refresh(&self, id: &str) -> Result<Option<Refresh<'_>>> {
         let pending = self.pending.lock();
         let Some(node) = pending.objects.get(id) else {

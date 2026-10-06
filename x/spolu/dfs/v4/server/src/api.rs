@@ -437,12 +437,18 @@ impl Dfs for Api {
     }
     async fn list(&self, r: Request<ListRequest>) -> Result<Response<Page>> {
         let _profile = Guard::new(Phase::List);
-        self.read_call(
-            r,
-            |r| (&r.directory_id, None),
-            |v, r| async move { v.list(&r.directory_id, r.after.as_deref(), r.limit).await },
-        )
-        .await
+        #[cfg(test)]
+        let directory = r.get_ref().directory_id.clone();
+        let response = self
+            .read_call(
+                r,
+                |r| (&r.directory_id, None),
+                |v, r| async move { v.list(&r.directory_id, r.after.as_deref(), r.limit).await },
+            )
+            .await?;
+        #[cfg(test)]
+        crate::tests::pause_listing(&self.0.list_reply_pauses, &directory).await;
+        Ok(response)
     }
     async fn read(&self, r: Request<ReadRequest>) -> Result<Response<ReadResponse>> {
         let _profile = Guard::new(Phase::Read);

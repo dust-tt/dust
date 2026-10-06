@@ -150,6 +150,11 @@ it need not represent a single new snapshot, but every object retains coherent m
 Missing children or changed membership fall back to List; oversized attributes re-list to repaginate.
 Hits, local edits and reused membership never extend child metadata or authorization deadlines.
 
+If local publication races a listing, pause further dispatch for that directory, await only its
+captured in-flight groups, then retry. Queued edits remain in RAM and overlay the result; unrelated
+objects keep publishing. Validate/cache the response and apply the overlay under one pending-state
+lock, then resume dispatch. Successful unlink completions must not exhaust listing retries into EIO.
+
 A fresh or revision-validated listing proves name absence only
 within its covered range: after its input cursor through its continuation, or EOF when complete.
 Keep one compact absence range per directory, excluding listed names and local namespace edits.
