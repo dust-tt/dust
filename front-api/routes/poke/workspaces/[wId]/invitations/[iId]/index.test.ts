@@ -3,15 +3,19 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { honoApp } from "@front-api/app";
-import sgMail from "@sendgrid/mail";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock SendGrid so no real emails are sent.
-vi.spyOn(sgMail, "setApiKey").mockImplementation(() => {});
-vi.spyOn(sgMail, "send").mockResolvedValue([
-  { statusCode: 202, headers: {}, body: {} },
-  {},
-] as never);
+// Mock Novu so no real emails are sent.
+vi.mock(
+  import("@app/lib/notifications/triggers/workspace-invitation"),
+  async (importOriginal) => {
+    const { Ok } = await import("@app/types/shared/result");
+    return {
+      ...(await importOriginal()),
+      notifyWorkspaceInvitation: vi.fn().mockResolvedValue(new Ok(undefined)),
+    };
+  }
+);
 
 function patchInvitation(workspace: { sId: string }, invitationId: string) {
   return honoApp.request(

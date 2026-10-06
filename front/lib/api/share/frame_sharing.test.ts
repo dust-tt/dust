@@ -1,10 +1,11 @@
-import { sendEmailWithTemplate } from "@app/lib/api/email";
 import {
   generateFrameOtpChallenge,
   getFrameFunctionSharingConflict,
   sendFrameOtpEmail,
   validateFrameOtpChallenge,
 } from "@app/lib/api/share/frame_sharing";
+import { isExternalSubscriberId } from "@app/lib/notifications/transactional_emails";
+import { notifyFrameLoginCode } from "@app/lib/notifications/triggers/frame-sharing";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
@@ -20,12 +21,11 @@ vi.mock("@app/lib/utils/rate_limiter", () => ({
   rateLimiter: vi.fn().mockResolvedValue(1),
 }));
 
-vi.mock("@app/lib/api/email", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@app/lib/api/email")>();
+vi.mock("@app/lib/notifications/triggers/frame-sharing", async () => {
   const { Ok } = await import("@app/types/shared/result");
   return {
-    ...mod,
-    sendEmailWithTemplate: vi.fn().mockResolvedValue(new Ok(undefined)),
+    notifyFrameLoginCode: vi.fn().mockResolvedValue(new Ok(undefined)),
+    notifyFrameShared: vi.fn().mockResolvedValue(new Ok(undefined)),
   };
 });
 
@@ -231,27 +231,26 @@ describe("validateFrameOtpChallenge", () => {
 });
 
 describe("sendFrameOtpEmail", () => {
-  it("calls sendEmailWithTemplate with correct params", async () => {
+  it("emails the code to an external recipient in the frame's workspace", async () => {
     const result = await sendFrameOtpEmail({
-      to: "user@example.com",
+      to: "outsider@example.com",
       code: "123456",
       sharedByName: "Alice",
+      workspace: { sId: "w_frame", name: "Acme" },
     });
 
     expect(result.isOk()).toBe(true);
-    expect(sendEmailWithTemplate).toHaveBeenCalledOnce();
-    expect(sendEmailWithTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "user@example.com",
-        from: { name: "Dust team", email: "support@dust.tt" },
-        subject: "Your Dust login code",
-      })
-    );
-
-    const call = vi.mocked(sendEmailWithTemplate).mock.calls[0][0];
-    expect(call.body).toContain("Alice");
-    expect(call.body).toContain("123456");
-    expect(call.body).toContain("15 minutes");
+    expect(notifyFrameLoginCode).toHaveBeenCalledOnce();
+    const call = vi.mocked(notifyFrameLoginCode).mock.calls[0][0];
+    expect(call).toMatchObject({
+      workspaceId: "w_frame",
+      workspaceName: "Acme",
+      sharedByName: "Alice",
+      code: "123456",
+      expiresInMinutes: 15,
+    });
+    expect(call.recipient.email).toBe("outsider@example.com");
+    expect(isExternalSubscriberId(call.recipient.subscriberId)).toBe(true);
   });
 });
 

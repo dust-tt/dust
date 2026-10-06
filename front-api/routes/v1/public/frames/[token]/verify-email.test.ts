@@ -9,15 +9,19 @@ import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/email", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@app/lib/api/email")>();
-  return {
-    ...mod,
-    sendEmailWithTemplate: vi.fn().mockResolvedValue({ isOk: () => true }),
-  };
-});
+vi.mock(
+  import("@app/lib/notifications/triggers/frame-sharing"),
+  async (importOriginal) => {
+    const { Ok } = await import("@app/types/shared/result");
+    return {
+      ...(await importOriginal()),
+      notifyFrameLoginCode: vi.fn().mockResolvedValue(new Ok(undefined)),
+      notifyFrameShared: vi.fn().mockResolvedValue(new Ok(undefined)),
+    };
+  }
+);
 
-import { sendEmailWithTemplate } from "@app/lib/api/email";
+import { notifyFrameLoginCode } from "@app/lib/notifications/triggers/frame-sharing";
 
 async function createFrameWithScope(
   auth: Authenticator,
@@ -46,7 +50,7 @@ describe("verify-email endpoint", () => {
   let auth: Authenticator;
 
   beforeEach(async () => {
-    vi.mocked(sendEmailWithTemplate).mockClear();
+    vi.mocked(notifyFrameLoginCode).mockClear();
 
     const resources = await createResourceTest({ role: "admin" });
     user = resources.user;
@@ -70,19 +74,22 @@ describe("verify-email endpoint", () => {
       kind: "domain",
       value: "example.com",
     });
-    expect(sendEmailWithTemplate).not.toHaveBeenCalled();
+    expect(notifyFrameLoginCode).not.toHaveBeenCalled();
     expect(
       (await postVerifyEmail(token, { email: "ALICE@EXAMPLE.COM" })).status
     ).toBe(200);
-    expect(sendEmailWithTemplate).toHaveBeenCalledOnce();
-    expect(sendEmailWithTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "alice@example.com" })
+    expect(notifyFrameLoginCode).toHaveBeenCalledOnce();
+    expect(notifyFrameLoginCode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipient: expect.objectContaining({ email: "alice@example.com" }),
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      })
     );
-    vi.mocked(sendEmailWithTemplate).mockClear();
+    vi.mocked(notifyFrameLoginCode).mockClear();
     expect(
       (await postVerifyEmail(token, { email: "alice@sub.example.com" })).status
     ).toBe(200);
-    expect(sendEmailWithTemplate).not.toHaveBeenCalled();
+    expect(notifyFrameLoginCode).not.toHaveBeenCalled();
   });
 
   it("returns 200 and sends email for valid email with active grant", async () => {
@@ -97,16 +104,13 @@ describe("verify-email endpoint", () => {
       value: "test@example.com",
     });
 
-    // Clear mock after grant creation (which fires a share notification email).
-    vi.mocked(sendEmailWithTemplate).mockClear();
-
     const response = await postVerifyEmail(token, {
       email: "test@example.com",
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
-    expect(vi.mocked(sendEmailWithTemplate)).toHaveBeenCalledOnce();
+    expect(vi.mocked(notifyFrameLoginCode)).toHaveBeenCalledOnce();
   });
 
   it("returns 200 but does NOT send email for email without active grant", async () => {
@@ -118,7 +122,7 @@ describe("verify-email endpoint", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
-    expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
+    expect(vi.mocked(notifyFrameLoginCode)).not.toHaveBeenCalled();
   });
 
   it("returns 200 for invalid/unknown share token (anti-enumeration)", async () => {
@@ -129,7 +133,7 @@ describe("verify-email endpoint", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
-    expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
+    expect(vi.mocked(notifyFrameLoginCode)).not.toHaveBeenCalled();
   });
 
   it("returns 200 for scope that does not require email verification (anti-enumeration)", async () => {
@@ -140,7 +144,7 @@ describe("verify-email endpoint", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
+    expect(vi.mocked(notifyFrameLoginCode)).not.toHaveBeenCalled();
   });
 
   it("returns 400 for missing email in request body", async () => {
@@ -177,14 +181,11 @@ describe("verify-email endpoint", () => {
       value: "test@example.com",
     });
 
-    // Clear mock after grant creation (which fires a share notification email).
-    vi.mocked(sendEmailWithTemplate).mockClear();
-
     const response = await postVerifyEmail(token, {
       email: "Test@Example.COM",
     });
 
     expect(response.status).toBe(200);
-    expect(vi.mocked(sendEmailWithTemplate)).toHaveBeenCalledOnce();
+    expect(vi.mocked(notifyFrameLoginCode)).toHaveBeenCalledOnce();
   });
 });
