@@ -5210,7 +5210,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon ?? null,
       editedBy: this.codeDefinedSkillId ? null : this.editedBy,
       ...(editors !== undefined
-        ? { authors: (editors ?? []).map((editor) => editor.fullName()) }
+        ? { editors: (editors ?? []).map((editor) => editor.fullName()) }
         : {}),
     };
   }

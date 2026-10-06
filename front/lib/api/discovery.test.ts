@@ -107,7 +107,7 @@ describe("discovery ranked sections", () => {
         type: "skill",
         target: {
           ...visibleSkill.toDiscoveryJSON(),
-          authors: [auth.getNonNullableUser().fullName()],
+          editors: [auth.getNonNullableUser().fullName()],
         },
       },
     ]);
@@ -142,7 +142,7 @@ describe("discovery ranked sections", () => {
         type: "skill",
         target: {
           ...visibleSkill.toDiscoveryJSON(),
-          authors: [auth.getNonNullableUser().fullName()],
+          editors: [auth.getNonNullableUser().fullName()],
         },
       },
       {
@@ -216,7 +216,7 @@ describe("discovery ranked sections", () => {
           name: definition.name,
           description: definition.userFacingDescription,
           icon: definition.icon,
-          authors: [],
+          editors: [],
           editedBy: null,
         },
       },

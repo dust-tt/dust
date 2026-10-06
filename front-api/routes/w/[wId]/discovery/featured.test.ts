@@ -44,7 +44,7 @@ describe("GET /api/w/:wId/discovery/featured", () => {
       ],
     });
   });
-  it("returns skill authors and omits unpublished skills outside the viewer's editor group", async () => {
+  it("returns skill editors and omits unpublished skills outside the viewer's editor group", async () => {
     const { auth, workspace, globalGroup } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -89,7 +89,7 @@ describe("GET /api/w/:wId/discovery/featured", () => {
             name: published.name,
             description: published.userFacingDescription,
             icon: published.icon,
-            authors: [auth.getNonNullableUser().fullName()],
+            editors: [auth.getNonNullableUser().fullName()],
             editedBy: published.editedBy,
           },
         },

@@ -80,7 +80,7 @@ function resolveCatalogItems(
             icon: target.icon,
             userFacingDescription: target.description,
           },
-          authors: target.authors ?? [],
+          authors: target.editors ?? [],
           isDustProvided: isDustProvidedSkill(target),
           activeUsersCount: null,
         });
