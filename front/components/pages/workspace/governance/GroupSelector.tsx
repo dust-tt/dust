@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
   Plus,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface GroupSelectorProps {
@@ -28,6 +29,7 @@ export const GroupSelector = ({
   disabled,
   onSelectionChange,
 }: GroupSelectorProps) => {
+  const { t } = useLingui();
   const getGroupKindChip = useGroupKindChip();
   const owner = useWorkspace();
   const [groupSearch, setGroupSearch] = useState("");
@@ -52,7 +54,7 @@ export const GroupSelector = ({
             className="animate-in fade-in duration-75"
             size="xs"
             icon={Plus}
-            label="Add a group"
+            label={t`Add a group`}
             isSelect
             disabled={disabled}
           />
@@ -60,7 +62,7 @@ export const GroupSelector = ({
         <DropdownMenuContent className="min-w-[320px]" collisionPadding={8}>
           <DropdownMenuSearchbar
             name="group-search"
-            placeholder="Search groups"
+            placeholder={t`Search groups`}
             value={groupSearch}
             onChange={setGroupSearch}
             autoFocus
@@ -80,14 +82,14 @@ export const GroupSelector = ({
           ))}
           {filteredGroups.length === 0 && (
             <DropdownMenuItem
-              label={groupSearch ? "No groups found" : "All groups added"}
+              label={groupSearch ? t`No groups found` : t`All groups added`}
               disabled
             />
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             icon={Plus}
-            label="Create a group"
+            label={t`Create a group`}
             disabled={disabled}
             onClick={() => setIsCreateDialogOpen(true)}
           />

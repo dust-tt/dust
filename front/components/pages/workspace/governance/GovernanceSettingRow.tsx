@@ -14,15 +14,18 @@ import {
   ButtonsSwitchList,
   ContentMessage,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState } from "react";
 
 const PERMISSION_SCOPE_OPTIONS: {
   value: PermissionConfigurationScope;
-  label: string;
+  label: MessageDescriptor;
 }[] = [
-  { value: "everyone", label: "Everyone" },
-  { value: "groups", label: "Groups" },
-  { value: "admins_only", label: "Admins only" },
+  { value: "everyone", label: msg`Everyone` },
+  { value: "groups", label: msg`Groups` },
+  { value: "admins_only", label: msg`Admins only` },
 ];
 
 function getGroupSelection(
@@ -63,6 +66,7 @@ export const GovernanceSettingRow = ({
   groups,
   onChange,
 }: GovernanceSettingRowProps) => {
+  const { t } = useLingui();
   const [configuration, setConfiguration] =
     useState<GovernancePermissionConfiguration>(
       governancePermission.configuration
@@ -128,12 +132,14 @@ export const GovernanceSettingRow = ({
     return (
       <div className="w-full p-4">
         <ContentMessage
-          title="Invalid configuration"
+          title={t`Invalid configuration`}
           variant="warning"
           size="lg"
         >
-          This setting references groups that have not been found. Please reload
-          the page.
+          <Trans>
+            This setting references groups that have not been found. Please
+            reload the page.
+          </Trans>
         </ContentMessage>
       </div>
     );
@@ -153,7 +159,7 @@ export const GovernanceSettingRow = ({
             }
           >
             {PERMISSION_SCOPE_OPTIONS.map(({ value, label }) => (
-              <ButtonsSwitch key={value} value={value} label={label} />
+              <ButtonsSwitch key={value} value={value} label={t(label)} />
             ))}
           </ButtonsSwitchList>
         ) : undefined
