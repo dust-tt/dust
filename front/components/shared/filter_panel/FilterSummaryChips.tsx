@@ -139,12 +139,12 @@ export function FilterSummaryChips<
                   >
                     <Chip
                       size="xs"
-                      color="highlight"
+                      color={chip.onApply ? "primary" : "highlight"}
                       className={cn(
                         "max-w-full outline-1 -outline-offset-1 outline-dashed",
                         "transition duration-200 motion-reduce:transition-none",
                         chip.onApply
-                          ? "opacity-50 outline-highlight-300 hover:opacity-80"
+                          ? "opacity-70 outline-primary-300 hover:opacity-100"
                           : "outline-transparent"
                       )}
                       icon={chip.onApply ? Plus : undefined}
