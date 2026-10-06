@@ -5,9 +5,11 @@ import {
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { Button } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 export function BillingUpgrade() {
+  const { t } = useLingui();
   const { owner, subscription } = useSubscriptionContext();
   const { code } = subscription.plan;
 
@@ -26,20 +28,20 @@ export function BillingUpgrade() {
 
   const planName = isFreePlan ? "Business" : "Enterprise";
   const features = isFreePlan
-    ? ["Up to 100 users", "Mix Pro and Max seats"]
+    ? [t`Up to 100 users`, t`Mix Pro and Max seats`]
     : [
-        "Unlimited number of users",
-        "Workspace-pooled credits & volume pricing",
-        "Customer support",
+        t`Unlimited number of users`,
+        t`Workspace-pooled credits & volume pricing`,
+        t`Customer support`,
       ];
   const buttonProps = isFreePlan
     ? {
-        label: "Add seats",
+        label: t`Add seats`,
         href: `/w/${owner.sId}/credits`,
         variant: "highlight" as const,
       }
     : {
-        label: "Contact sales",
+        label: t`Contact sales`,
         href: `${config.getStaticWebsiteUrl()}/home/contact`,
         target: "_blank",
         variant: "outline" as const,
@@ -48,7 +50,7 @@ export function BillingUpgrade() {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold text-foreground">
-        Upgrade your workspace
+        <Trans>Upgrade your workspace</Trans>
       </h2>
       <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4">
         <div className="flex items-center justify-between gap-4">

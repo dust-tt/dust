@@ -24,14 +24,11 @@ import {
   Lock01,
   Page,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { WorkspaceSection } from "../WorkspaceSection";
-
-export const SSO_SECTION_TITLE = "Authentication and access";
-export const SSO_HEADING_LABEL = "Single Sign-On (SSO)";
-export const ENFORCE_SSO_LABEL = "Enforce SSO login";
 
 interface WorkOSSSOConnectionProps {
   domains: Organization["domains"];
@@ -44,6 +41,7 @@ export default function WorkOSSSOConnection({
   owner,
   plan,
 }: WorkOSSSOConnectionProps) {
+  const { t } = useLingui();
   const [showUpgradePlanDialog, setShowUpgradePlanDialog] =
     React.useState(false);
   const [
@@ -61,17 +59,19 @@ export default function WorkOSSSOConnection({
 
   return (
     <WorkspaceSection
-      title={SSO_SECTION_TITLE}
+      title={t`Authentication and access`}
       icon={Lock01}
       sectionId={ADMIN_SECTION_IDS.identity.sso}
     >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <div className="flex flex-row items-center gap-2">
-            <Page.H variant="h5">{SSO_HEADING_LABEL}</Page.H>
+            <Page.H variant="h5">
+              <Trans>Single Sign-On (SSO)</Trans>
+            </Page.H>
             {isSSOConfigured && (
               <>
-                <Chip label="Enabled" color="success" size="xs" />
+                <Chip label={t`Enabled`} color="success" size="xs" />
                 <span className="text-base font-normal text-muted-foreground">
                   {ssoStatus.connection?.type}
                 </span>
@@ -79,8 +79,10 @@ export default function WorkOSSSOConnection({
             )}
           </div>
           <Page.P variant="secondary">
-            Manage your enterprise Identity Provider (IdP) settings and user
-            provisioning via WorkOS.
+            <Trans>
+              Manage your enterprise Identity Provider (IdP) settings and user
+              provisioning via WorkOS.
+            </Trans>
           </Page.P>
         </div>
         <div className="flex justify-end gap-2">
@@ -89,7 +91,7 @@ export default function WorkOSSSOConnection({
           ) : isSSOConfigured ? (
             <>
               <Button
-                label="Configure SSO"
+                label={t`Configure SSO`}
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -98,7 +100,7 @@ export default function WorkOSSSOConnection({
               />
 
               <Button
-                label="De-activate SSO"
+                label={t`De-activate SSO`}
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -108,11 +110,11 @@ export default function WorkOSSSOConnection({
             </>
           ) : (
             <Button
-              label="Activate SSO"
+              label={t`Activate SSO`}
               size="sm"
               variant="primary"
               tooltip={
-                domains.length === 0 ? "Add a domain to enable SSO" : undefined
+                domains.length === 0 ? t`Add a domain to enable SSO` : undefined
               }
               disabled={
                 isSSOConfigured || !domains.length || !ssoStatus?.setupLink
@@ -141,12 +143,14 @@ export default function WorkOSSSOConnection({
                 }}
               />
               <Label htmlFor="sso-enforced" className="text-md font-normal">
-                {ENFORCE_SSO_LABEL}
+                <Trans>Enforce SSO login</Trans>
               </Label>
             </div>
             <Page.P variant="secondary">
-              When SSO is enforced, users will no longer be able to use social
-              logins and will be redirected to the SSO portal.
+              <Trans>
+                When SSO is enforced, users will no longer be able to use social
+                logins and will be redirected to the SSO portal.
+              </Trans>
             </Page.P>
           </div>
         </div>
@@ -155,8 +159,8 @@ export default function WorkOSSSOConnection({
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
         workspaceId={owner.sId}
-        title="Free plan"
-        description="You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
+        title={t`Free plan`}
+        description={t`You cannot enable SSO with the free plan. Upgrade your plan to access SSO features.`}
       />
       <ToggleEnforceEnterpriseConnectionModal
         isOpen={isToggleEnforceEnterpriseConnectionModalOpened}
@@ -194,6 +198,7 @@ function DisableWorkOSSSOConnectionModal({
   owner,
   ssoStatus,
 }: DisableWorkOSSSOConnectionModalProps) {
+  const { t } = useLingui();
   const { doDisableWorkOSSSOConnection } = useDisableWorkOSSSOConnection({
     owner,
   });
@@ -201,6 +206,8 @@ function DisableWorkOSSSOConnectionModal({
   if (!ssoStatus?.connection) {
     return <></>;
   }
+
+  const connectionType = ssoStatus.connection.type;
 
   return (
     <Dialog
@@ -214,20 +221,22 @@ function DisableWorkOSSSOConnectionModal({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            Disable {ssoStatus.connection.type} Single Sign On
+            <Trans>Disable {connectionType} Single Sign On</Trans>
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          Anyone with an {ssoStatus.connection.type} account won't be able to
-          access your Dust workspace anymore.
+          <Trans>
+            Anyone with an {connectionType} account won't be able to access your
+            Dust workspace anymore.
+          </Trans>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: `Disable ${ssoStatus.connection.type} Single Sign On`,
+            label: t`Disable ${connectionType} Single Sign On`,
             variant: "warning",
             onClick: async () => {
               await doDisableWorkOSSSOConnection();

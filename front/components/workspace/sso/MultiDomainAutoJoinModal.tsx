@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface MultiDomainAutoJoinModalProps {
@@ -27,6 +28,7 @@ export function MultiDomainAutoJoinModal({
   onClose,
   owner,
 }: MultiDomainAutoJoinModalProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [domainOverrides, setDomainOverrides] = useState<
     Record<string, boolean>
@@ -90,8 +92,8 @@ export function MultiDomainAutoJoinModal({
       if (!res.ok) {
         sendNotification({
           type: "error",
-          title: "Update failed",
-          description: "Failed to update auto-join settings.",
+          title: t`Update failed`,
+          description: t`Failed to update auto-join settings.`,
         });
       }
 
@@ -114,13 +116,17 @@ export function MultiDomainAutoJoinModal({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Configure Auto-join</DialogTitle>
+          <DialogTitle>
+            <Trans>Configure Auto-join</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Select which domains should allow users to automatically join your
-              workspace when they sign up with a matching email address.
+              <Trans>
+                Select which domains should allow users to automatically join
+                your workspace when they sign up with a matching email address.
+              </Trans>
             </p>
             <div className="flex flex-col gap-3">
               {workspaceVerifiedDomains.map((d) => (
@@ -141,12 +147,12 @@ export function MultiDomainAutoJoinModal({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             disabled: isSubmitting,
           }}
           rightButtonProps={{
-            label: isSubmitting ? "Saving..." : "Save",
+            label: isSubmitting ? t`Saving...` : t`Save`,
             variant: "primary",
             onClick: handleSave,
             disabled: !hasChanges || isSubmitting,

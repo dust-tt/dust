@@ -9,10 +9,6 @@ import {
 } from "@app/components/workspace/AuditLogsSection";
 import { AUDIT_LOGS_EMIT_LABEL } from "@app/components/workspace/settings/AuditLogsToggle";
 import {
-  ENFORCE_SSO_LABEL,
-  SSO_HEADING_LABEL,
-} from "@app/components/workspace/sso/WorkOSSSOConnection";
-import {
   ADD_DOMAIN_LABEL,
   DOMAIN_VERIFICATION_TITLE,
 } from "@app/components/workspace/WorkspaceAccessPanel";
@@ -43,8 +39,11 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.sso,
     [
-      [SSO_HEADING_LABEL, "workos google oidc saml idp configure de-activate"],
-      [ENFORCE_SSO_LABEL, "disable social logins"],
+      [
+        "Single Sign-On (SSO)",
+        "workos google oidc saml idp configure de-activate",
+      ],
+      ["Enforce SSO login", "disable social logins"],
     ],
     "identity"
   ),

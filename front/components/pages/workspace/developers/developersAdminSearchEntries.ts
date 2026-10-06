@@ -4,7 +4,6 @@ import {
   HTTPS_SECRETS_LABEL,
   WRITE_ONLY_ENV_VALUES_LABEL,
 } from "@app/components/sandbox/SandboxEnvVarsSection";
-import { CREATE_API_KEY_LABEL } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -25,7 +24,7 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     K.keys,
     [
       [API_KEYS_PAGE_TITLE, "keys active credits used programmatic"],
-      [CREATE_API_KEY_LABEL, "new key scope spaces monthly cap"],
+      ["Create API Key", "new key scope spaces monthly cap"],
       ["API key list", "name scope key spaces credits last used status"],
       ["Revoke API key", "revoke"],
       ["Edit monthly cap", "per key credits cap"],
