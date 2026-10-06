@@ -51,13 +51,13 @@ impl Storage {
             .transact(|view| async move {
                 let mut batch = WriteBatch::new();
                 match view.get(b"\0format").await? {
-                    Some(v) if v.as_ref() == b"dfs-v4-fdb-1" => (),
+                    Some(v) if v.as_ref() == b"dfs-v4-fdb-2" => (),
                     Some(_) => return Err(status(ErrorCode::Unavailable)),
                     None => {
                         if !view.range(&[], &[255], 1).await?.0.is_empty() {
                             return Err(status(ErrorCode::Unavailable));
                         }
-                        batch.put(b"\0format", b"dfs-v4-fdb-1");
+                        batch.put(b"\0format", b"dfs-v4-fdb-2");
                     }
                 }
                 Ok((batch, ()))
@@ -104,7 +104,7 @@ impl Storage {
                         && attempt < 1023
                         && std::time::Instant::now() < deadline =>
                 {
-                    // Concurrent creates share a parent. Jitter avoids retrying their conflicts in lockstep.
+                    // Jitter avoids retrying genuinely conflicting writers in lockstep.
                     let jitter = 1 + (uuid::Uuid::new_v4().as_u128() % 8) as u64;
                     let _backoff = Guard::new(Phase::FdbRetry);
                     tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;

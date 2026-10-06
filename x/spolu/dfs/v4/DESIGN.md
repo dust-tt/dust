@@ -203,13 +203,16 @@ stale hints fall back to ordinary resolution and can never authorize or deny acc
 There is no authoritative server read cache or write buffer. Ordinary FDB retries apply
 only to known noncommits, respect the independent RPC deadline, and recompute against current state.
 
-Each process also schedules same-primary-object transactions fairly (the parent for creates, the
-target for file edits). This avoids self-contention when a batch contains sibling creates. These
-short-lived gates are only a scheduling optimization: different servers still coordinate solely
-through FDB, and every transaction reads current state after acquiring its gate. No tenant gate.
-`DFS_PRIMARY_CONCURRENCY` defaults to one; bounded experiments may allow 2–4 simultaneous transactions
-per local key without changing conflict checks or grouping independent operations.
-Parent waiters do not occupy the 64 active transaction slots. Up to 1,024 groups may hold mutation
+Directories use a stable core plus one mutable revision/mtime/ctime record. Parent membership edits
+blindly replace the latter in the same transaction as the child binding, leaving the core untouched.
+Authorization follows only fresh cores/grants. Metadata edits and complete responses assemble both
+records in one snapshot. See [directory records](DESIGN-DIRECTORY.md) for the layout and race tests.
+
+Each process schedules transactions by target object, including the newly allocated ID for creates.
+Sibling creates run concurrently. These gates only reduce same-object contention; different servers
+coordinate solely through FDB, and transactions read current state after admission. No tenant gate.
+`DFS_PRIMARY_CONCURRENCY` defaults to one, with 2–4 available for same-target experiments.
+Object waiters do not occupy the 64 active transaction slots. Up to 1,024 groups may hold mutation
 admission, with 32 accepted batch RPCs; all groups in a batch become eligible without a smaller worker
 window. Shutdown waits for accepted batches and queued mutations as well as active transactions.
 

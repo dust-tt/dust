@@ -40,7 +40,7 @@ phases! {
     Create => "rpc.create", Update => "rpc.update",
     Rename => "rpc.rename", Remove => "rpc.remove", Write => "rpc.write",
     Batch => "rpc.mutate_group",
-    BatchQueue => "wait.batch", Admission => "wait.admission", Parent => "wait.parent",
+    BatchQueue => "wait.batch", Admission => "wait.admission", Scheduling => "wait.object",
     MutationQueue => "wait.mutation_queue",
     BatchAdmission => "wait.batch_admission",
     Prefetch => "read.prefetch", Object => "read.object", Authorize => "read.authorize",

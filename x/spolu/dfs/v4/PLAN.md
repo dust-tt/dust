@@ -52,17 +52,23 @@ writeback, weaker durability or FDB consistency tuning in this work.
   tests cover a raced UUID and unauthorized collision. The single-parent diagnostic improved from
   10.475s to 9.276s; untar has no separately established gain from this small change.
 - [x] **Evaluate same-parent concurrency last.** Tested bounds 1/2/4 with the deep untar and one/many
-  parent diagnostics. Keep the default at one: two/four amplify retries and regress the many-parent
-  case. The bounded experiment setting remains available. The separate
-  [directory layout proposal](DESIGN-DIRECTORY.md) records the authority/membership split and race
-  obligations; no storage layout changed. Adoption requires deterministic two-server race tests.
+  parent diagnostics. The unsplit record favored
+  serialization: two/four amplified retries and regressed the many-parent case. This motivated the
+  directory split below.
 
 Run the same deep 10k untar after each step; retain only total-completion wins without correctness
 regressions. Validate concurrent clients, same-name collisions, moves, revocations and object fsync.
 
+## 5. Directory records
+
+- [x] Split directory core and mutable revision/timestamps; preserve wire API and file layout.
+- [x] Blindly replace parent state without rewriting authority cores.
+- [x] Schedule creates by new target ID; retain all transaction and admission bounds.
+- [x] Test independent and conflicting namespace/grant transactions across two server states.
+- [ ] Reset local v4 FDB, run mounted checks and compare the deep 10k untar at 512 MiB.
+
 ## Follow-up evaluation
 
-- [ ] Validate and benchmark the proposed directory authority/membership split before adoption.
 - [ ] 100k-file and multi-server contention benchmarks, then the separately authorized GCP evaluation.
 - [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
 - [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.

@@ -73,6 +73,9 @@ impl Keys {
     pub fn tenant(&self) -> Vec<u8> {
         self.family(6)
     }
+    pub fn directory_state(&self, id: &str) -> Result<Vec<u8>, Status> {
+        self.object_family(7, id)
+    }
 }
 fn string(key: &mut Vec<u8>, value: &str) -> Result<(), Status> {
     key.extend_from_slice(

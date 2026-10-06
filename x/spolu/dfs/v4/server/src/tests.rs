@@ -8,6 +8,7 @@ use dfs_protocol::{
 use futures::TryStreamExt;
 use tonic::Request;
 mod client_refresh;
+mod directory;
 
 // Deterministic network stalls; storage and authorization still use the real FDB fixture.
 pub(super) type Pauses = parking_lot::Mutex<std::collections::HashMap<String, Arc<Pause>>>;
@@ -517,6 +518,7 @@ fn real_fdb_contracts() -> Result<()> {
         independent_batch_scheduling().await?;
         prefetched_collision().await?;
         concurrent_parent_creates().await?;
+        directory::contracts().await?;
         Ok(())
     })
 }
@@ -715,7 +717,7 @@ async fn independent_batch_scheduling() -> Result<()> {
     let first = tokio::time::timeout(std::time::Duration::from_secs(2), results.try_next()).await;
     // Release the stalled parent before reporting failure so a regression cannot strand the fixture.
     f.api.0.pauses.lock().remove(&blocked.id);
-    pause.release.add_permits(1);
+    pause.release.add_permits(63);
     let first = first??.context("independent outcome")?;
     assert_eq!(
         first.id, 63,

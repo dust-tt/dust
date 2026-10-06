@@ -1,48 +1,48 @@
-# Directory contention — follow-up proposal
+# Directory records
 
-No storage change is implemented here. The current directory record combines authority and mutable
-membership metadata: sibling creates all read and replace it. Local scheduling reduces retries, but
-does not remove the cross-server conflict. Keep independent transactions and the existing API.
+Server-only change, storage format `dfs-v4-fdb-2`. The gRPC API, client and file-record encoding are
+unchanged. Directory membership changes no longer rewrite the core used to resolve authority.
 
-## Proposed storage split
+## Storage and transactions
 
-For directories only, separate:
+All keys remain tenant-scoped:
 
-| Keys | Contents | Sibling create behavior |
+| Record | Contents | Parent update during create/remove/rename |
 | --- | --- | --- |
-| Authority record | ID, kind, parent/name, mode, MIME, xattrs, atime | Conflict-tracked read; no write |
-| Revision, mtime, ctime | Separate scalar keys | Blind replacement with this transaction's token/time |
-| Child name index | Existing `(parent, name) → ID` | Conflict-tracked absence read, then insert |
-| Grants | Existing forward/reverse indexes | Fresh conflict-tracked authorization |
+| Object/core, existing family 1 | ID, kind, parent/name, mode, MIME, xattrs, atime | Conflict-tracked authorization read; no write |
+| Directory state, new family 7 | Revision, mtime, ctime in one compact value | Blind replacement with a fresh token/time |
+| Child index, existing family 2 | `(parent, name) → ID` | Conflict-tracked uniqueness/existence check and binding edit |
+| Grants, existing families 3/4 | Object/grant and grant/object indexes | Fresh conflict-tracked authorization |
 
-Creation still atomically writes the child, its blocks, the name index, and the parent's revision and
-times. Distinct names can commit concurrently. Directory authority reads must not consume membership
-revision/time keys. Keep the file layout unchanged. Every directory mutation must update its revision.
+One mutable-state value is sufficient: each membership change replaces all three fields together.
+The stored directory core has empty revision/mtime/ctime fields; it must never be sent to clients.
+`stat`, listings and mutation responses assemble complete metadata in one FDB snapshot. Mutation
+responses read each parent's mutable state only after writing it. Directory metadata/grant edits
+first read the complete record with conflicts, preserving untouched fields and coherent responses.
+Deletion clears both records; files retain their previous single-record representation.
 
-This is a proposed application of FDB's documented conflict rules: blind writes do not add read
-conflicts; reads used for decisions still must. It does not relax transaction isolation.
-[FoundationDB developer guide](https://apple.github.io/foundationdb/developer-guide.html#conflict-ranges).
+Sibling creates still use separate atomic transactions for child metadata/blocks, the name binding
+and parent state. They read the same stable core but do not read each other's mutable-state input.
+FDB checks read/write conflicts, so their blind state writes can both commit; the last commit sets
+the parent's token/time, while both independent child bindings survive.
+[FoundationDB conflict rules](https://apple.github.io/foundationdb/developer-guide.html#conflict-ranges).
 
-`stat` and directory pages assemble all fields from one FDB snapshot. Membership changes supply their
-own revision/mtime/ctime in the response. Other metadata operations may read those keys with conflicts
-to preserve fields and return coherent canonical state; occasional conflicts there are acceptable.
-Never copy stale times into an unrelated update. Explicit timestamp writes retain their existing
-semantics; do not introduce monotonic-time assumptions across servers.
+Creates now schedule by their **new object ID**, removing the local parent gate. Other mutations
+retain target-object scheduling; FDB provides all cross-server coordination. All admission, memory,
+request-size and independent-group limits are unchanged.
 
-## Required race arguments and tests before adoption
+## Verification
 
-| Race | Required dependency/result |
-| --- | --- |
-| Sibling creates, distinct names | Share authority reads but no authority writes; both names survive. |
-| Same name or UUID | Both track absence of the same index/object key; only one commits. |
-| Create versus parent removal | Create reads parent existence; removal reads the entire empty child range. Either ordering preserves reachability. |
-| Create versus directory move | Create tracks the directory's actual parent chain; move writes that link. A stale chain conflicts and authorization is reevaluated. |
-| Opposing moves / replacement | Retain source/destination bindings, ancestry cycle checks and replacement emptiness dependencies in one transaction. |
-| Grant revocation | Reads of the selected grant and every actual parent edge remain conflict-tracked. A later conflicting commit cannot use the old proof. |
-| Parent attributes versus membership | Attribute writes retain fresh field-preservation checks; membership writes never replace the authority record. |
-| Listing versus concurrent membership | Page contents and revision come from one snapshot; existing pagination and client TTL rules remain unchanged. |
+Real-FDB tests pin transactions from two server states before either commit and exercise:
 
-These arguments are not completed validation. Before changing the layout, add deterministic two-server
-tests for both commit orders, including missing/expired hints, nested moves, grant changes, and lost
-replies. Benchmark the same deep untar and one/many-parent diagnostics again. No exclusive writer,
-cross-file transaction batching, or API/client change is needed by this proposal.
+- Independent sibling creates, renames and removals, including canonical parent response reads.
+- A file write committing after a sibling create without invalidating its ancestry proof.
+- Duplicate names/UUIDs, and an older snapshot retaining matching directory metadata/listing.
+- Create versus parent deletion or replacement in both commit orders; no orphaned state survives.
+- Parent moves, stale ancestry hints, grant revocation and fresh authorization after moving.
+- Attribute preservation and opposing moves/cycle prevention in both commit orders.
+- Accepted batch completion after dropping replies; foreign-format rejection without erasing keys.
+
+The local database can be reset for this PoC, as authorized. There is no migration: opening an old
+format fails cleanly. Benchmark results are recorded in [bench/RESULTS.md](bench/RESULTS.md); the
+networked/multi-node performance evaluation remains separate work.

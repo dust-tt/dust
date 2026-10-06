@@ -133,10 +133,10 @@ async fn apply_group(
         .first()
         .ok_or_else(|| status(ErrorCode::InvalidInput))?;
     validate::id_ref(first.primary_id())?;
-    let scheduling = state.schedule(&session.info.tenant_id, first.primary_id());
-    let parent_wait = Guard::new(Phase::Parent);
+    let scheduling = state.schedule(&session.info.tenant_id, first.scheduling_id());
+    let scheduling_wait = Guard::new(Phase::Scheduling);
     let _scheduled = scheduling.acquire().await.map_err(failed)?;
-    drop(parent_wait);
+    drop(scheduling_wait);
     #[cfg(test)]
     crate::tests::pause(&state.pauses, &changes).await;
     let waiting = Guard::new(Phase::Admission);
@@ -177,25 +177,7 @@ async fn apply_group(
                 };
                 let (view, _) = tokio::join!(prefetch, collision);
                 let view = view?;
-                let mut result = Mutation::default();
-                let mut related = BTreeSet::new();
-                let mut bytes = 0;
-                for change in changes {
-                    let (edit, response) = change.clone().prepare(&view).await?;
-                    bytes += edit.batch.bytes();
-                    if bytes > dfs_protocol::MAX_IO {
-                        return Err(status(ErrorCode::Capacity));
-                    }
-                    edit.batch.apply(&snapshot)?;
-                    related.extend(response.related.iter().map(|v| v.id.clone()));
-                    result.object = response.object;
-                }
-                if let Some(object) = &mut result.object {
-                    *object = view.object(&object.id).await?.object;
-                }
-                for id in related {
-                    result.related.push(view.object(&id).await?.object);
-                }
+                let result = prepare_group(&view, changes).await?;
                 session.active()?;
                 Ok((crate::storage::WriteBatch::new(), result))
             }
@@ -204,6 +186,33 @@ async fn apply_group(
     #[cfg(test)]
     crate::tests::pause(&state.reply_pauses, &changes).await;
     result
+}
+
+/// @cc [owner:spolu,label:backend;concurrency] canonical-group-metadata
+/// Group edits MUST share this snapshot, and every returned object MUST have complete metadata
+/// reflecting all edits. Parent cores MUST be hydrated only after their mutable state is written.
+/// The caller MUST commit this snapshot before exposing the returned mutation to an RPC client.
+pub(crate) async fn prepare_group(view: &View, changes: &[Change]) -> Result<Mutation> {
+    let mut result = Mutation::default();
+    let mut related = BTreeSet::new();
+    let mut bytes = 0;
+    for change in changes {
+        let (edit, response) = change.clone().prepare(view).await?;
+        bytes += edit.batch.bytes();
+        if bytes > dfs_protocol::MAX_IO {
+            return Err(status(ErrorCode::Capacity));
+        }
+        edit.batch.apply(&view.snapshot)?;
+        related.extend(response.related.iter().map(|v| v.id.clone()));
+        result.object = response.object;
+    }
+    if let Some(object) = &mut result.object {
+        *object = view.object(&object.id).await?.object;
+    }
+    for id in related {
+        result.related.push(view.object(&id).await?.object);
+    }
+    Ok(result)
 }
 
 /// Only same-target file edits, or a create followed by edits of its new target, may coalesce.

@@ -1,6 +1,6 @@
 use crate::{
     keys::Keys,
-    model::{self, Parent, Record},
+    model::{self, DirectoryState, Parent, Record},
     read::View,
     storage::{WriteBatch, encode, failed, measured},
 };
@@ -49,11 +49,47 @@ impl Edit {
         self.batch.clear(start, end);
         Ok(())
     }
+    /// @cc [owner:spolu,label:backend;concurrency] complete-record-publication
+    /// Input MUST contain complete metadata. Directories MUST atomically write a normalized core
+    /// and separate mutable state; files retain their single-record encoding. Existing directory
+    /// metadata edits MUST first read the mutable state with conflicts to preserve untouched fields.
     pub fn record(&mut self, keys: &Keys, record: &Record) -> Result<()> {
         let mut record = record.clone();
         record.revision = uuid::Uuid::new_v4().into_bytes();
+        if record.object.directory {
+            let state = DirectoryState {
+                revision: record.revision,
+                mtime: record
+                    .object
+                    .mtime
+                    .take()
+                    .ok_or_else(|| status(ErrorCode::Internal))?,
+                ctime: record
+                    .object
+                    .ctime
+                    .take()
+                    .ok_or_else(|| status(ErrorCode::Internal))?,
+            };
+            self.put(keys.directory_state(&record.object.id)?, encode(&state)?)?;
+            record.revision = [0; 16];
+            record.object.revision.clear();
+        }
         self.put(keys.object(&record.object.id)?, encode(&record)?)?;
         Ok(())
+    }
+    /// @cc [owner:spolu,label:backend;concurrency] blind-membership-publication
+    /// The caller MUST have freshly authorized the directory core. This MUST change only its
+    /// mutable state, using a fresh token/time, without reading or replacing its authority record.
+    fn membership(&mut self, keys: &Keys, id: &str) -> Result<()> {
+        let time = model::now()?;
+        self.put(
+            keys.directory_state(id)?,
+            encode(&DirectoryState {
+                revision: uuid::Uuid::new_v4().into_bytes(),
+                mtime: time,
+                ctime: time,
+            })?,
+        )
     }
     pub fn grant(&mut self, keys: &Keys, id: &str, grant: &str, attached: bool) -> Result<()> {
         let forward = keys.grant(id, grant)?;
@@ -78,6 +114,12 @@ pub(crate) enum Change {
     Write(WriteRequest),
 }
 impl Change {
+    pub fn scheduling_id(&self) -> &str {
+        match self {
+            Self::Create(r) => &r.object_id,
+            _ => self.primary_id(),
+        }
+    }
     pub fn child_name(&self) -> Option<&str> {
         match self {
             Self::Create(r) => Some(&r.name),
@@ -119,14 +161,14 @@ impl View {
             Ok::<_, Status>(object)
         })();
         let (parent, child, collision) = tokio::join!(
-            self.directory(&parent_id),
+            self.directory_core(&parent_id),
             measured("child", self.child(&parent_id, &request.name)),
             measured("collision", async {
                 let object = object.as_ref().map_err(Clone::clone)?;
                 self.get(&self.keys.object(&object.id)?).await
             }),
         );
-        let mut parent = parent?;
+        let parent = parent?;
         if child?.is_some() {
             return Err(status(ErrorCode::AlreadyExists));
         }
@@ -148,9 +190,8 @@ impl View {
                 name: request.name.clone(),
             }),
         };
-        parent.object = model::bumped(parent.object, true)?;
         let mut edit = Edit::new();
-        edit.record(&self.keys, &parent)?;
+        edit.membership(&self.keys, &parent.object.id)?;
         edit.record(&self.keys, &child)?;
         edit.put(
             self.keys.child(&parent.object.id, &request.name)?,
@@ -388,6 +429,9 @@ impl View {
         self.empty_directory(record).await?;
         let mut edit = Edit::new();
         edit.delete(self.keys.object(&record.object.id)?)?;
+        if record.object.directory {
+            edit.delete(self.keys.directory_state(&record.object.id)?)?;
+        }
         let parent = record
             .parent
             .as_ref()
@@ -409,7 +453,7 @@ impl View {
             .parent
             .as_ref()
             .ok_or_else(|| status(ErrorCode::Forbidden))?;
-        let mut parent = self.directory(&link.id).await?;
+        let parent = self.directory_core(&link.id).await?;
         if request.directory != record.object.directory {
             return Err(status(if record.object.directory {
                 ErrorCode::IsDirectory
@@ -418,8 +462,7 @@ impl View {
             }));
         }
         let mut edit = self.erase(&record).await?;
-        parent.object = model::bumped(parent.object, true)?;
-        edit.record(&self.keys, &parent)?;
+        edit.membership(&self.keys, &parent.object.id)?;
         Ok((
             edit,
             Mutation {
@@ -435,8 +478,8 @@ impl View {
             .parent
             .clone()
             .ok_or_else(|| status(ErrorCode::Forbidden))?;
-        let source_parent = self.directory(&old.id).await?;
-        let destination_parent = self.directory(&request.parent_id).await?;
+        let source_parent = self.directory_core(&old.id).await?;
+        let destination_parent = self.directory_core(&request.parent_id).await?;
         let replacement = self
             .child(&destination_parent.object.id, &request.name)
             .await?;
@@ -474,7 +517,7 @@ impl View {
                 return Err(status(ErrorCode::Unavailable));
             }
             match ancestor.parent {
-                Some(parent) => ancestor = self.object(&parent.id).await?,
+                Some(parent) => ancestor = self.core(&parent.id).await?,
                 None => break,
             }
         }
@@ -499,9 +542,8 @@ impl View {
             (destination_parent.object.id.clone(), destination_parent),
         ]);
         let mut related = Vec::new();
-        for (_, mut parent) in parents {
-            parent.object = model::bumped(parent.object, true)?;
-            edit.record(&self.keys, &parent)?;
+        for (_, parent) in parents {
+            edit.membership(&self.keys, &parent.object.id)?;
             related.push(parent.object);
         }
         Ok((

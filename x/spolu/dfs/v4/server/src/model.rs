@@ -20,6 +20,16 @@ pub(crate) struct Record {
     pub parent: Option<Parent>,
     pub revision: [u8; 16],
 }
+/// @cc [owner:spolu,label:backend;concurrency] independent-directory-membership
+/// Directory revision and membership timestamps MUST live outside the authority record. Namespace
+/// edits of the parent's membership MUST replace this whole value atomically with their child-index
+/// edits, without reading it. Other metadata edits MUST preserve fields with conflict-tracked reads.
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct DirectoryState {
+    pub revision: [u8; 16],
+    pub mtime: Timestamp,
+    pub ctime: Timestamp,
+}
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct TenantRecord {
     pub root: String,

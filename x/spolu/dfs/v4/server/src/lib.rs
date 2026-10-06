@@ -70,6 +70,7 @@ impl State {
     /// @cc [owner:spolu,label:concurrency;performance] advisory-object-scheduling
     /// Local scheduling MAY serialize the same primary object to reduce self-conflicts. It MUST NOT
     /// replace fresh FDB conflict checks, coordinate whole tenants, or acknowledge a pending commit.
+    /// Creates MUST schedule by the new target ID so different children never share a parent gate.
     fn schedule(&self, tenant: &str, id: &str) -> Arc<Semaphore> {
         let mut scheduling = self.scheduling.lock();
         if scheduling.len() >= 4096 {

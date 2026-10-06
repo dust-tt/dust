@@ -42,10 +42,14 @@ fsync and subsequent edits. There is no client disk recovery, automatic replay a
 commits, server writeback, or kernel data cache. Directory prefetch fetches attributes only.
 
 Server `DFS_PRIMARY_CONCURRENCY` (default **1**, range 1–4) controls simultaneous transactions per
-local scheduling key. Creates use their parent as that key. This is an experiment knob: larger
+local scheduling key. Creates use the new target ID, so sibling creates run concurrently. This is an experiment knob: larger
 values can increase FDB conflicts; correctness and cross-server concurrency always rely on FDB.
 
 The fixture uses separate Docker volumes and host port 18084, preserving v1–v3 and GCP.
 The demo/benchmark choose ephemeral loopback gRPC ports inside the container; the published port
 is available for a manually started server on `0.0.0.0:8080` with `--allow-insecure`.
 Stopping preserves the database. This is a single-node local FDB evaluation, not an HA test.
+
+Storage format `dfs-v4-fdb-2` splits directory core/state. Older prefixes are rejected; this PoC has
+no migration. After an operator resets FDB, start the demo with a fresh `--work` directory because its
+saved tenant credentials refer to the erased fixture.

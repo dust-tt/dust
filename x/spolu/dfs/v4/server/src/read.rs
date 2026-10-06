@@ -1,7 +1,7 @@
 use crate::{
     ancestry::{Ancestry, WINDOW},
     keys::{Keys, prefix_end},
-    model::{Record, TenantRecord},
+    model::{DirectoryState, Record, TenantRecord},
     profile::{Guard, Phase},
     storage::{Scan, Snapshot, decode, failed, measured},
 };
@@ -120,6 +120,25 @@ impl View {
         self.snapshot.get(key).await
     }
     pub async fn object(&self, id: &str) -> Result<Record> {
+        let mut record = self.core(id).await?;
+        if record.object.directory {
+            let bytes = self
+                .get(&self.keys.directory_state(&record.object.id)?)
+                .await?
+                .ok_or_else(|| status(ErrorCode::Unavailable))?;
+            let state: DirectoryState = decode(&bytes)?;
+            record.revision = state.revision;
+            record.object.revision = state.revision.to_vec();
+            record.object.mtime = Some(state.mtime);
+            record.object.ctime = Some(state.ctime);
+        }
+        Ok(record)
+    }
+    /// @cc [owner:spolu,label:security;concurrency] directory-authority-core
+    /// Core reads MUST track existence/parent/attributes but MUST NOT read directory mutable state.
+    /// Directory cores have no public revision/mtime/ctime and MUST NOT be returned as RPC metadata;
+    /// object MUST assemble complete metadata from the same snapshot before publication to a client.
+    pub(crate) async fn core(&self, id: &str) -> Result<Record> {
         let id = validate::id(id)?;
         let bytes = self.get(&self.keys.object(&id)?).await?;
         self.object_record(&id, bytes)
@@ -133,7 +152,18 @@ impl View {
         if record.object.id != id {
             return Err(status(ErrorCode::Unavailable));
         }
-        record.object.revision = record.revision.to_vec();
+        if record.object.directory {
+            if record.revision != [0; 16]
+                || !record.object.revision.is_empty()
+                || record.object.mtime.is_some()
+                || record.object.ctime.is_some()
+                || record.object.size != 0
+            {
+                return Err(status(ErrorCode::Unavailable));
+            }
+        } else {
+            record.object.revision = record.revision.to_vec();
+        }
         if let (Some(hints), Some(parent)) = (&self.ancestry, &record.parent) {
             hints.remember(&self.keys, id, &parent.id);
         }
@@ -236,7 +266,7 @@ impl View {
             if current.parent.as_ref().is_none_or(|p| p.id != *id) {
                 return Ok(false);
             }
-            current = self.object(id).await?;
+            current = self.core(id).await?;
             if !current.object.directory {
                 return Ok(false);
             }
@@ -286,6 +316,16 @@ impl View {
     }
     pub async fn directory(&self, id: &str) -> Result<Record> {
         let record = self.stat(id).await?;
+        if !record.object.directory {
+            return Err(status(ErrorCode::NotDirectory));
+        }
+        Ok(record)
+    }
+    pub(crate) async fn directory_core(&self, id: &str) -> Result<Record> {
+        let record = measured("object", self.core(id)).await?;
+        if !measured("authorize", self.authorized(&record)).await? {
+            return Err(status(ErrorCode::NotFound));
+        }
         if !record.object.directory {
             return Err(status(ErrorCode::NotDirectory));
         }
