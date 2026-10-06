@@ -83,6 +83,7 @@ import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
 import OfficeLogo from "./Office";
 import OpenaiLogo from "./Openai";
+import PandaDocLogo from "./PandaDoc";
 import PdfLogo from "./Pdf";
 import PowerBiLogo from "./PowerBi";
 import PraizLogo from "./Praiz";
@@ -207,6 +208,7 @@ export const PLATFORM_LOGOS = {
   NotionLogo,
   OfficeLogo,
   OpenaiLogo,
+  PandaDocLogo,
   PdfLogo,
   PowerBiLogo,
   PraizLogo,

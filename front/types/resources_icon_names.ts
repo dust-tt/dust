@@ -242,6 +242,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "NetSuiteLogo",
   "NotionLogo",
   "OpenaiLogo",
+  "PandaDocLogo",
   "PowerBiLogo",
   "PraizLogo",
   "ProductboardLogo",
