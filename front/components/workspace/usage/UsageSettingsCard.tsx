@@ -13,14 +13,7 @@ import {
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
-
-export const SPENDING_POLICIES_SECTION_LABEL = "Spending policies";
-export const DEFAULT_PER_USER_POOL_LIMIT_LABEL =
-  "Default per-user workspace credit pool monthly limit";
-export const UPGRADE_REQUEST_LABEL = "Upgrade request";
-export const REQUIRE_UPGRADE_REQUEST_REASON_LABEL =
-  "Require a reason for upgrade requests";
-export const AUTO_UPGRADE_SEATS_LABEL = "Auto-upgrade seats";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
@@ -32,16 +25,12 @@ interface UsageSettingsCardProps {
   seatsHaveBuiltInAllowance: boolean;
 }
 
-function validateDefaultLimit(value: string) {
-  const parseResult = parseDefaultLimitInput(value);
-  return parseResult.ok ? null : parseResult.message;
-}
-
 export function UsageSettingsCard({
   workspaceId,
   hasPool,
   seatsHaveBuiltInAllowance,
 }: UsageSettingsCardProps) {
+  const { t } = useLingui();
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
@@ -73,6 +62,11 @@ export function UsageSettingsCard({
 
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
 
+  const validateDefaultLimit = (value: string) => {
+    const parseResult = parseDefaultLimitInput(value);
+    return parseResult.ok ? null : t(parseResult.message);
+  };
+
   const handleSaveDefaultLimit = async (newValue: string) => {
     const parseResult = parseDefaultLimitInput(newValue);
     if (!parseResult.ok || parseResult.awuCredits === currentDefaultLimit) {
@@ -86,28 +80,28 @@ export function UsageSettingsCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <span className="heading-base text-foreground">
-        {SPENDING_POLICIES_SECTION_LABEL}
+        <Trans>Spending policies</Trans>
       </span>
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
-            title={DEFAULT_PER_USER_POOL_LIMIT_LABEL}
+            title={t`Default per-user workspace credit pool monthly limit`}
             description={
               seatsHaveBuiltInAllowance ? (
-                <>
+                <Trans>
                   Define the workspace credit pool credit limit for users per
                   month in your workspace. This limit is added on top of each
                   seat&apos;s built-in allowance. Can be overridden per user in
                   the members table.{" "}
                   <strong>Set to 0 to remove pool access.</strong>
-                </>
+                </Trans>
               ) : (
-                <>
+                <Trans>
                   Define the total amount of credits each user can consume from
                   the workspace credit pool per month. Can be overridden per
                   user in the members table.{" "}
                   <strong>Set to 0 to remove pool access.</strong>
-                </>
+                </Trans>
               )
             }
             action={
@@ -121,7 +115,7 @@ export function UsageSettingsCard({
                       ? ""
                       : formatNumber(currentDefaultLimit)
                   }
-                  unit="credits/month"
+                  unit={t`credits/month`}
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                   formatValue={(value) =>
                     value ? formatNumber(Number(value)) : value
@@ -135,8 +129,8 @@ export function UsageSettingsCard({
           />
         </LockedSection>
         <SettingsList.Row
-          title={UPGRADE_REQUEST_LABEL}
-          description="Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on the this page."
+          title={t`Upgrade request`}
+          description={t`Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on this page.`}
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}
@@ -147,11 +141,11 @@ export function UsageSettingsCard({
         />
         <LockedSection
           locked={!usageSettings.allowUpgradeRequest}
-          tooltipContent="Enable upgrade requests to enable this setting"
+          tooltipContent={t`Enable upgrade requests to enable this setting`}
         >
           <SettingsList.Row
-            title={REQUIRE_UPGRADE_REQUEST_REASON_LABEL}
-            description="Members must explain why they need an upgrade before their request can be submitted."
+            title={t`Require a reason for upgrade requests`}
+            description={t`Members must explain why they need an upgrade before their request can be submitted.`}
             action={
               <SliderToggle
                 selected={
@@ -169,12 +163,12 @@ export function UsageSettingsCard({
           />
         </LockedSection>
         <SettingsList.Row
-          title={AUTO_UPGRADE_SEATS_LABEL}
+          title={t`Auto-upgrade seats`}
           description={
             usageSettings.autoSeatUpgradeAvailable ? (
-              "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+              t`When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost.`
             ) : (
-              <>
+              <Trans>
                 When a member reaches their credit limit, automatically move
                 them to the next seat tier available in your plan (free → pro,
                 pro → max) instead of blocking them.{" "}
@@ -182,7 +176,7 @@ export function UsageSettingsCard({
                   Auto-upgrade isn't available on your current plan. Upgrade to
                   a paid plan to enable it.
                 </strong>
-              </>
+              </Trans>
             )
           }
           action={

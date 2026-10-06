@@ -3404,7 +3404,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     }: {
       conversation: ConversationWithoutContentType | ConversationResource;
-      user: UserType;
+      user: UserResource;
       transaction?: Transaction;
     }
   ): Promise<boolean> {

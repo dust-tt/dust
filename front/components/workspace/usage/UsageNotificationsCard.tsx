@@ -9,12 +9,8 @@ import {
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
-
-export const USAGE_NOTIFICATIONS_SECTION_LABEL = "Notifications";
-export const WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL =
-  "Workspace credit pool threshold alert";
-export const UPGRADE_REQUEST_EMAILS_LABEL = "Upgrade request emails";
 
 interface UsageNotificationsCardProps {
   workspaceId: string;
@@ -23,6 +19,7 @@ interface UsageNotificationsCardProps {
 export function UsageNotificationsCard({
   workspaceId,
 }: UsageNotificationsCardProps) {
+  const { t } = useLingui();
   const { usageNotifications, isUsageNotificationsLoading } =
     useUsageNotifications({ workspaceId });
   const { doUpdateUsageNotifications } = useUpdateUsageNotifications({
@@ -68,35 +65,37 @@ export function UsageNotificationsCard({
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
         <span className="heading-base text-foreground">
-          {USAGE_NOTIFICATIONS_SECTION_LABEL}
+          <Trans>Notifications</Trans>
         </span>
         <Page.P variant="secondary">
-          Customize when and how you receive usage based notification
+          <Trans>
+            Customize when and how you receive usage-based notifications.
+          </Trans>
         </Page.P>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title={WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL}
+          title={t`Workspace credit pool threshold alert`}
           description={
-            <>
+            <Trans>
               Email all workspace admins when your remaining workspace credit
               pool balance drops below this amount.{" "}
               <strong>Set to 0 to disable.</strong>
-            </>
+            </Trans>
           }
           action={
             <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="Disabled"
+                placeholder={t`Disabled`}
                 value={
                   currentThreshold === 0 ? "" : formatNumber(currentThreshold)
                 }
                 unit={
                   currentThreshold === 0 && !isEditingThreshold
                     ? undefined
-                    : "credits"
+                    : t`credits`
                 }
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
@@ -111,8 +110,8 @@ export function UsageNotificationsCard({
           }
         />
         <SettingsList.Row
-          title={UPGRADE_REQUEST_EMAILS_LABEL}
-          description="Email all workspace admins and managers when a member requests a spend-limit upgrade."
+          title={t`Upgrade request emails`}
+          description={t`Email all workspace admins and managers when a member requests a spend-limit upgrade.`}
           action={
             <SliderToggle
               selected={usageNotifications.upgradeRequestEmail}

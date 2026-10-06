@@ -25,6 +25,7 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -74,6 +75,7 @@ function SlackWorkflowsOverview({
   period,
   workflowCount,
 }: SlackWorkflowsOverviewProps) {
+  const { t } = useLingui();
   const { overview, isOverviewLoading, isOverviewError } =
     useSlackWorkflowsOverview({ workspaceId: owner.sId, period });
 
@@ -91,20 +93,24 @@ function SlackWorkflowsOverview({
   }
 
   const { slackWorkflowCredits, workspaceTotalCredits } = overview;
+  const workspaceShare =
+    workspaceTotalCredits > 0
+      ? Math.round((slackWorkflowCredits / workspaceTotalCredits) * 100)
+      : null;
 
   return (
     <div className="flex items-stretch gap-6">
       <SummaryCard
-        label="Credits"
+        label={t`Credits`}
         value={formatCredits(slackWorkflowCredits)}
         hint={
-          workspaceTotalCredits > 0
-            ? `${Math.round((slackWorkflowCredits / workspaceTotalCredits) * 100)}% of workspace consumption`
+          workspaceShare !== null
+            ? t`${workspaceShare}% of workspace consumption`
             : null
         }
       />
       <SummaryCard
-        label="Workflows allowed"
+        label={t`Workflows allowed`}
         value={formatNumber(workflowCount)}
         hint={null}
       />
@@ -125,6 +131,7 @@ function SlackWorkflowsCard({
   isSlackBotConnected,
   isLoading,
 }: SlackWorkflowsCardProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const [isAllowDialogOpen, setIsAllowDialogOpen] = useState(false);
   const [revokingBotName, setRevokingBotName] = useState<string | null>(null);
@@ -138,9 +145,9 @@ function SlackWorkflowsCard({
   const handleRevoke = useCallback(
     async (botName: string) => {
       const confirmed = await confirm({
-        title: "Revoke this Slack workflow?",
-        message: `"${botName}" will no longer be able to summon agents from Slack.`,
-        validateLabel: "Revoke",
+        title: t`Revoke this Slack workflow?`,
+        message: t`"${botName}" will no longer be able to summon agents from Slack.`,
+        validateLabel: t`Revoke`,
         validateVariant: "warning",
       });
 
@@ -150,7 +157,7 @@ function SlackWorkflowsCard({
         setRevokingBotName(null);
       }
     },
-    [confirm, doRevokeSlackWorkflow]
+    [confirm, doRevokeSlackWorkflow, t]
   );
 
   const columns: ColumnDef<SlackWorkflowRowData>[] = useMemo(
@@ -158,7 +165,7 @@ function SlackWorkflowsCard({
       {
         id: "botName",
         accessorKey: "botName",
-        header: "Workflow",
+        header: t`Workflow`,
         enableSorting: true,
         meta: { className: "w-64 truncate", headerAlign: "left" },
         cell: (info) => (
@@ -172,7 +179,7 @@ function SlackWorkflowsCard({
       {
         id: "spaceNames",
         accessorKey: "spaceNames",
-        header: "Spaces",
+        header: t`Spaces`,
         enableSorting: false,
         meta: { className: "w-full truncate", headerAlign: "left" },
         cell: (info) => (
@@ -182,7 +189,7 @@ function SlackWorkflowsCard({
       {
         id: "createdAt",
         accessorKey: "createdAt",
-        header: "Added",
+        header: t`Added`,
         enableSorting: true,
         meta: { className: "w-28", headerAlign: "left" },
         cell: (info) => (
@@ -204,7 +211,7 @@ function SlackWorkflowsCard({
             <div className="transition-opacity duration-150 ease-out motion-reduce:transition-none pointer-fine:opacity-0 pointer-fine:group-hover/dt-row:opacity-100 pointer-fine:focus-within:opacity-100">
               <Button
                 icon={Trash01}
-                tooltip="Revoke workflow"
+                tooltip={t`Revoke workflow`}
                 size="xs"
                 variant="ghost-secondary"
                 disabled={revokingBotName === info.row.original.botName}
@@ -215,7 +222,7 @@ function SlackWorkflowsCard({
         ),
       },
     ],
-    [handleRevoke, revokingBotName]
+    [handleRevoke, revokingBotName, t]
   );
 
   const rows: SlackWorkflowRowData[] = useMemo(
@@ -233,13 +240,13 @@ function SlackWorkflowsCard({
       <div className="flex items-center gap-2">
         <SearchInput
           name="slack-workflows-search"
-          placeholder="Search…"
+          placeholder={t`Search…`}
           value={search}
           onChange={setSearch}
           className="flex-1"
         />
         <Button
-          label="Allow a workflow"
+          label={t`Allow a workflow`}
           variant="outline"
           size="sm"
           icon={Plus}
@@ -337,7 +344,9 @@ function SlackWorkflowsTableBody({
   if (!isSlackBotConnected) {
     return (
       <div className="text-sm text-muted-foreground">
-        Connect the Dust Slack bot to let Slack workflows summon agents.
+        <Trans>
+          Connect the Dust Slack bot to let Slack workflows summon agents.
+        </Trans>
       </div>
     );
   }
@@ -345,7 +354,7 @@ function SlackWorkflowsTableBody({
   if (rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        No Slack workflow can summon agents yet.
+        <Trans>No Slack workflow can summon agents yet.</Trans>
       </div>
     );
   }

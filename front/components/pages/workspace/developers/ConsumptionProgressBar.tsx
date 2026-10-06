@@ -1,4 +1,5 @@
 import { Page, ProgressBar } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface ConsumptionProgressBarProps {
   consumed: number;
@@ -40,7 +41,9 @@ export function ConsumptionProgressBarWithNumbers({
 }: ConsumptionProgressBarWithNumbersProps) {
   return (
     <Page.Vertical>
-      <Page.P variant="secondary">Total consumed</Page.P>
+      <Page.P variant="secondary">
+        <Trans>Total consumed</Trans>
+      </Page.P>
       <div className="flex items-baseline gap-2">
         <span className="text-5xl font-bold">{consumedFormatted}</span>
         <span className="text-2xl text-muted-foreground">

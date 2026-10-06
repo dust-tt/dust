@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface UpgradePlanDialogProps {
   isOpen: boolean;
@@ -21,9 +22,10 @@ export function UpgradePlanDialog({
   isOpen,
   onClose,
   workspaceId,
-  title = "Free plan",
-  description = "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members.",
+  title,
+  description,
 }: UpgradePlanDialogProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { hasPermission } = useWorkspacePermissions();
 
@@ -40,22 +42,25 @@ export function UpgradePlanDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title ?? t`Free plan`}</DialogTitle>
         </DialogHeader>
-        <DialogContainer>{description}</DialogContainer>
+        <DialogContainer>
+          {description ??
+            t`You cannot enable auto-join with the free plan. Upgrade your plan to invite other members.`}
+        </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Check Dust plans",
+            label: t`Check Dust plans`,
             variant: "primary",
             disabled: !canManageBilling,
             tooltip: canManageBilling
               ? undefined
-              : "You do not have permission to upgrade the plan.",
+              : t`You do not have permission to upgrade the plan.`,
             onClick: () => {
               void router.push(`/w/${workspaceId}/subscription`);
             },

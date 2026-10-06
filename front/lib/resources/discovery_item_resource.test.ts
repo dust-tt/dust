@@ -277,6 +277,19 @@ describe("DiscoveryItemResource", () => {
       auth.getNonNullableWorkspace().sId
     );
 
+    const { agentMetadataById } = await DiscoveryItemResource.loadTargets(
+      regularUserAuth,
+      [
+        { type: "agent", itemId: agentAId },
+        { type: "agent", itemId: restrictedAgent.sId },
+      ],
+      { bypassEditorVisibility: false }
+    );
+    expect(Array.from(agentMetadataById.keys())).toEqual([agentAId]);
+    expect(agentMetadataById.get(agentAId)?.lastAuthors).toEqual([
+      user.fullName(),
+    ]);
+
     const listedForAuth =
       await DiscoveryItemResource.listPinnedForAuth(regularUserAuth);
     const listedForGroup = await DiscoveryItemResource.listPinnedForGroup(

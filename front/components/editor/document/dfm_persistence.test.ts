@@ -1,6 +1,7 @@
 import {
   loadDfm,
   saveDfm,
+  isWritableThread,
 } from "@app/components/editor/document/dfm_persistence";
 import {
   getDocumentJSONComments,
@@ -8,7 +9,7 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
-import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
@@ -234,6 +235,15 @@ describe("saveDfm", () => {
     }
   );
 
+  it("keeps message signatures through load and save", () => {
+    const signed = FIXTURES.find(({ name }) => name === "signed_comments.md");
+    if (!signed) {
+      throw new Error("Missing signed_comments.md fixture.");
+    }
+
+    expect(roundTrip(signed.source)).toBe(signed.source);
+  });
+
   it("writes anchors inside formatting without splitting it", () => {
     const source = `Some **bo:comment-start{id=c1}ld** and *it:comment-end{id=c1}alic* text.\n\n${OPEN_THREAD}`;
 
@@ -435,5 +445,23 @@ describe("saveDfm", () => {
     if (saved.isOk()) {
       expect(saved.value).toBe(`Hi\n\n${OPEN_THREAD}`);
     }
+  });
+});
+
+describe("isWritableThread", () => {
+  it("accepts a thread the codec can write", () => {
+    expect(isWritableThread(COMMENT)).toBe(true);
+  });
+
+  it.each([
+    ["a directive line", "First line\n::message{author=user:x}"],
+    ["an unclosed code fence", "```\ncode"],
+  ])("refuses a message with %s", (_, body) => {
+    const thread: DfmComment = {
+      ...COMMENT,
+      messages: [{ ...COMMENT.messages[0], body }],
+    };
+
+    expect(isWritableThread(thread)).toBe(false);
   });
 });

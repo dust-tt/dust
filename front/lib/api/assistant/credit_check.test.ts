@@ -91,7 +91,12 @@ describe("checkPoolCreditGate", () => {
     expect(result).toEqual({ shouldStop: false, reason: null });
   });
 
-  it.each(["credits_exhausted", "user_cap_reached", "no_seat"] as const)(
+  it.each([
+    "credits_exhausted",
+    "user_cap_reached",
+    "group_limit_reached",
+    "no_seat",
+  ] as const)(
     "stops with reason %s when isUserBlocked returns it",
     async (blockedReason) => {
       mockIsUserBlocked.mockResolvedValue(blockedReason);

@@ -123,6 +123,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -137,6 +139,7 @@ function CreditPoolProgressBar({
   target,
   usedPercentage,
 }: CreditPoolProgressBarProps) {
+  const { t } = useLingui();
   const clampedUsedPercentage = Math.min(Math.max(usedPercentage, 0), 100);
   const clampedProjectedPercentage = Math.min(
     Math.max(projectedPercentage, clampedUsedPercentage),
@@ -148,7 +151,7 @@ function CreditPoolProgressBar({
 
   return (
     <ProgressBar
-      aria-label="Workspace credit usage"
+      aria-label={t`Workspace credit usage`}
       aria-valuenow={clampedUsedPercentage}
       className="h-2 w-full bg-background"
       values={[
@@ -180,6 +183,7 @@ const DEFAULT_PAGE_SIZE = 25;
 const TAB_CONTENT_CLASS = "block min-h-panel";
 
 export function UsagePage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
@@ -613,14 +617,15 @@ export function UsagePage() {
       // Free seats carry no renewing allowance to preserve, so removing one is
       // immediate; paid seats keep access until the end of the current billing
       // period.
+      const memberName = member.name;
       const message =
         member.seatType === "free"
-          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
-          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
+          ? t`Are you sure you want to remove ${memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : t`Are you sure you want to remove ${memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
       const confirmed = await confirm({
-        title: "Remove seat",
+        title: t`Remove seat`,
         message,
-        validateLabel: "Remove seat",
+        validateLabel: t`Remove seat`,
         validateVariant: "warning",
       });
       if (!confirmed) {
@@ -642,7 +647,13 @@ export function UsagePage() {
         handleSeatChangePendingChange(member.sId, false);
       }
     },
-    [confirm, doUpdateSeatType, handleSeatChangePendingChange, clearSelection]
+    [
+      confirm,
+      doUpdateSeatType,
+      handleSeatChangePendingChange,
+      clearSelection,
+      t,
+    ]
   );
 
   const handleSeatMutationSaved = useCallback(() => {
@@ -840,10 +851,16 @@ export function UsagePage() {
     creditsResetAt ??
     consumptionOverview?.period.endDate ??
     null;
+  const resetAtFormatted = resetAt
+    ? formatConsumptionDate(resetAt, getActiveLocale())
+    : null;
+  const initialTotalCreditsFormatted = formatCredits(initialTotalCredits);
+  const overageCreditsFormatted =
+    overageCredits !== null ? formatCredits(overageCredits) : null;
 
   const topUpButton = isWorkspaceAdmin ? (
     <Button
-      label="Add credits"
+      label={t`Add credits`}
       icon={Plus}
       size="sm"
       variant="outline"
@@ -859,10 +876,10 @@ export function UsagePage() {
           variant="outline"
           label={
             seatTypeFilter === "none"
-              ? "No seat"
+              ? t`No seat`
               : seatTypeFilter
                 ? seatTypeDisplayName(seatTypeFilter)
-                : "All seats"
+                : t`All seats`
           }
           size="sm"
           isSelect
@@ -870,11 +887,11 @@ export function UsagePage() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          label="All seats"
+          label={t`All seats`}
           onClick={() => handleSetSeatTypeFilter(null)}
         />
         <DropdownMenuItem
-          label="No seat"
+          label={t`No seat`}
           icon={
             <Icon
               visual={SEAT_TYPE_ICONS["none"]}
@@ -980,9 +997,11 @@ export function UsagePage() {
             <Page.Header
               title={
                 <div className="flex w-full items-center justify-between gap-4">
-                  <Page.H variant="h3">Credits</Page.H>
+                  <Page.H variant="h3">
+                    <Trans>Credits</Trans>
+                  </Page.H>
                   <Button
-                    label="Breakdown in analytics"
+                    label={t`Breakdown in analytics`}
                     iconRight={LinkExternal01}
                     size="xs"
                     variant="highlight-ghost"
@@ -990,16 +1009,18 @@ export function UsagePage() {
                   />
                 </div>
               }
-              description="Control credit consumption across your workspace."
+              description={t`Control credit consumption across your workspace.`}
             />
           ) : (
             <Page.Header
               title={
                 <div className="flex w-full items-center justify-between gap-4">
-                  <Page.H variant="h3">Credits</Page.H>
+                  <Page.H variant="h3">
+                    <Trans>Credits</Trans>
+                  </Page.H>
                   <div className="flex items-center gap-4">
                     <Button
-                      label="Breakdown in analytics"
+                      label={t`Breakdown in analytics`}
                       iconRight={LinkExternal01}
                       size="xs"
                       variant="highlight-ghost"
@@ -1015,7 +1036,7 @@ export function UsagePage() {
             <FreePlanUpgradeSection
               action={
                 <Button
-                  label="Change my seat"
+                  label={t`Change my seat`}
                   variant="highlight"
                   size="sm"
                   onClick={() => setChangeSeatMember(myUsage)}
@@ -1026,11 +1047,13 @@ export function UsagePage() {
 
           {isCreditPriced && showConsumptionAnalytics ? (
             <div className="flex flex-col gap-4">
-              <h2 className="heading-sm text-foreground">Credit Pool</h2>
+              <h2 className="heading-sm text-foreground">
+                <Trans>Credit Pool</Trans>
+              </h2>
               <div className="flex flex-col gap-2">
                 {isOverviewLoading ? (
                   <div
-                    aria-label="Loading Credit Pool"
+                    aria-label={t`Loading Credit Pool`}
                     className="flex flex-col gap-2"
                     role="status"
                   >
@@ -1049,13 +1072,15 @@ export function UsagePage() {
                   </div>
                 ) : isOverviewError ? (
                   <ContentMessage
-                    title="Failed to load Workspace Credit Pool"
+                    title={t`Failed to load Workspace Credit Pool`}
                     icon={AlertCircle}
                     variant="warning"
                   >
-                    An error occurred while loading your Workspace Credit Pool
-                    data. Please refresh the page or contact support if the
-                    issue persists.
+                    <Trans>
+                      An error occurred while loading your Workspace Credit Pool
+                      data. Please refresh the page or contact support if the
+                      issue persists.
+                    </Trans>
                   </ContentMessage>
                 ) : consumptionOverview !== null &&
                   (creditUsage !== null || hasPool) ? (
@@ -1066,7 +1091,7 @@ export function UsagePage() {
                           {formatCredits(totalConsumedCredits)}
                         </span>
                         <span className="copy-sm text-muted-foreground">
-                          /{formatCredits(initialTotalCredits)} credits
+                          <Trans>/{initialTotalCreditsFormatted} credits</Trans>
                         </span>
                       </div>
                       {creditUsage && (
@@ -1079,8 +1104,8 @@ export function UsagePage() {
                           }
                           label={
                             creditUsageDisplayTarget === "on_target"
-                              ? "On target"
-                              : "Off target"
+                              ? t`On target`
+                              : t`Off target`
                           }
                         />
                       )}
@@ -1091,11 +1116,12 @@ export function UsagePage() {
                       usedPercentage={usedPercentage}
                     />
                     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-                      <span>{usedPercentage}% used</span>
+                      <span>
+                        <Trans>{usedPercentage}% used</Trans>
+                      </span>
                       {resetAt && (
                         <span>
-                          Resets{" "}
-                          {formatConsumptionDate(resetAt, getActiveLocale())}
+                          <Trans>Resets {resetAtFormatted}</Trans>
                         </span>
                       )}
                     </div>
@@ -1111,25 +1137,29 @@ export function UsagePage() {
                       <>
                         {creditUsageDisplayTarget === "on_target" ? (
                           <span>
-                            At your current rate, you have enough credits to
-                            finish the cycle.
+                            <Trans>
+                              At your current rate, you have enough credits to
+                              finish the cycle.
+                            </Trans>
                           </span>
                         ) : resetAt ? (
                           <span>
-                            At this rate, you&apos;re expected to consume your
-                            full credits by{" "}
-                            <span className="font-semibold">
-                              {formatConsumptionDate(
-                                resetAt,
-                                getActiveLocale()
-                              )}
-                            </span>
-                            .
+                            <Trans>
+                              At this rate, you're expected to consume your full
+                              credits by{" "}
+                              <span className="font-semibold">
+                                {resetAtFormatted}
+                              </span>
+                              .
+                            </Trans>
                           </span>
                         ) : null}
                         {overageCredits !== null && overageCredits > 0 && (
                           <span className="text-muted-foreground">
-                            {formatCredits(overageCredits)} overage credits
+                            {t`${plural(overageCredits, {
+                              one: `${overageCreditsFormatted} overage credit`,
+                              other: `${overageCreditsFormatted} overage credits`,
+                            })}`}
                           </span>
                         )}
                       </>
@@ -1148,7 +1178,7 @@ export function UsagePage() {
                 ) : (
                   // Non–credit-priced plans still purchase on the legacy page.
                   <Button
-                    label="Add credits"
+                    label={t`Add credits`}
                     icon={Plus}
                     size="sm"
                     variant="outline"
@@ -1174,13 +1204,13 @@ export function UsagePage() {
             className="flex flex-col gap-4"
           >
             <TabsList>
-              <TabsTrigger value="members" label="Members" />
-              <TabsTrigger value="groups" label="Groups" />
+              <TabsTrigger value="members" label={t`Members`} />
+              <TabsTrigger value="groups" label={t`Groups`} />
               {isWorkspaceAdmin && isCreditPriced && (
-                <TabsTrigger value="top-ups" label="Top-ups history" />
+                <TabsTrigger value="top-ups" label={t`Top-ups history`} />
               )}
               {isWorkspaceAdmin && (
-                <TabsTrigger value="settings" label="Settings" />
+                <TabsTrigger value="settings" label={t`Settings`} />
               )}
             </TabsList>
 

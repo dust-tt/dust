@@ -81,7 +81,12 @@ app.get(
       willAutoUpgrade,
       requireReason,
     } = await getUpgradeRequestAvailabilityForUser(auth, {
-      isNearOrAtLimit: userNearCreditLimit || userBlockedReason !== null,
+      // A seat upgrade does not raise a group's limit, so a group block alone
+      // does not make the member eligible for an upgrade request.
+      isNearOrAtLimit:
+        userNearCreditLimit ||
+        (userBlockedReason !== null &&
+          userBlockedReason !== "group_limit_reached"),
     });
 
     return ctx.json({

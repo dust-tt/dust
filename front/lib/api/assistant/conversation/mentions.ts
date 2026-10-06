@@ -171,7 +171,7 @@ export async function resolveUserMentions(
       const isParticipant =
         await ConversationResource.isConversationParticipant(auth, {
           conversation,
-          user: user.toJSON(),
+          user,
         });
 
       // TODO: Alternative approach would be to always set pending_project_membership for
@@ -484,7 +484,7 @@ export async function validateUserMention(
     auth,
     {
       conversation,
-      user: user.toJSON(),
+      user,
     }
   );
 

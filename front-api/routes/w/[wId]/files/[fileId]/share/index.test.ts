@@ -79,6 +79,32 @@ describe("share scope endpoint", () => {
     vi.clearAllMocks();
   });
 
+  it("requires Pod access to read or change the share scope", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest();
+    const space = await SpaceFactory.project(workspace, user.id);
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "private-frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+
+    const memberResponse = await honoApp.request(url(workspace, file.sId));
+    expect(memberResponse.status).toBe(200);
+
+    const outsider = await createPrivateApiMockRequest({ workspace });
+    expect(outsider.auth.can("read", space)).toBe(false);
+
+    const readResponse = await honoApp.request(url(workspace, file.sId));
+    expect(readResponse.status).toBe(404);
+    const updateResponse = await postShare(workspace, file.sId, {
+      shareScope: "workspace_and_emails",
+    });
+    expect(updateResponse.status).toBe(404);
+  });
+
   describe("publish permission (public scope)", () => {
     it("blocks publishing a frame publicly without the publish permission", async () => {
       const { auth, user, workspace } = await createPrivateApiMockRequest({
@@ -265,14 +291,14 @@ describe("share scope endpoint", () => {
 
   describe("frames with functions", () => {
     it("refuses public scope for a frame whose active publication has functions", async () => {
-      const { auth, workspace } = await createPrivateApiMockRequest({
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
       // Opens both gates the refusal could otherwise be attributed to.
       await setSharingPolicy(workspace, "all_scopes");
       await grantPublishToEveryone(workspace);
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(workspace, user.id);
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postShare(workspace, frame.sId, {
@@ -309,12 +335,12 @@ describe("share scope endpoint", () => {
     });
 
     it("allows sharing a frame with functions to the workspace", async () => {
-      const { auth, workspace } = await createPrivateApiMockRequest({
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
       await setSharingPolicy(workspace, "all_scopes");
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(workspace, user.id);
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postShare(workspace, frame.sId, {
@@ -326,12 +352,12 @@ describe("share scope endpoint", () => {
     });
 
     it("allows narrowing a frame with functions to invite-only", async () => {
-      const { auth, workspace } = await createPrivateApiMockRequest({
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
         method: "POST",
         role: "user",
       });
       await setSharingPolicy(workspace, "all_scopes");
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(workspace, user.id);
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postShare(workspace, frame.sId, {

@@ -90,6 +90,11 @@ async function listSearchableGlobalAgents(
  * Return at most limit agents, and the exact number of matching agents as total.
  */
 /**
+ * @cc [owner:adrsimon,label:product] agent-search-favorites-first
+ * With favoritesFirst, the current user's favorites MUST rank before every other match, each group
+ * keeping the requested sort, across pages and without changing which agents match.
+ */
+/**
  * @cc [owner:tdraier,label:security] unrestricted-agent-search-requires-admin
  * Strict permission filtering is the default. Unrestricted filtering MUST fail with
  * `unrestricted_requires_admin`, without querying, unless the caller is a workspace admin.
@@ -119,6 +124,7 @@ export async function searchAgents(
     sortBy,
     sortOrder,
     facets = [],
+    favoritesFirst = false,
     ...options
   }: {
     searchTerm: string;
@@ -130,6 +136,7 @@ export async function searchAgents(
     offset?: number;
     sortBy?: AgentSearchSort;
     sortOrder?: AgentSearchSortOrder;
+    favoritesFirst?: boolean;
   }
 ) {
   if (options.permissionFiltering === "unrestricted" && !auth.isAdmin()) {
@@ -149,6 +156,9 @@ export async function searchAgents(
   );
   const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
+  const favoriteAgentIds = favoritesFirst
+    ? await AgentResource.listFavoriteIdsForCurrentUser(auth)
+    : [];
 
   const result = await withEs((client) =>
     client.search<AgentSearchDocument, AgentSearchAggregations>({
@@ -158,7 +168,7 @@ export async function searchAgents(
       from: offset,
       size: limit,
       track_total_hits: true,
-      sort: buildAgentDefaultSort({ sortBy, sortOrder }),
+      sort: buildAgentDefaultSort({ sortBy, sortOrder, favoriteAgentIds }),
       ...(facets.length > 0
         ? {
             aggs: Object.fromEntries(

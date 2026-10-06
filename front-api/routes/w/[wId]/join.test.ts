@@ -64,8 +64,28 @@ describe("GET /api/w/:wId/join", () => {
       signInUrl: string;
     };
     expect(data.onboardingType).toBe("email_invite");
-    expect(data.workspace.sId).toBe(workspace.sId);
+    expect(data.workspace).toEqual({
+      sId: workspace.sId,
+      name: workspace.name,
+    });
     expect(data.signInUrl).toBeDefined();
+  });
+
+  it("returns 404 for an invite token belonging to another workspace", async () => {
+    const invitingWorkspace = await WorkspaceFactory.basic();
+    const otherWorkspace = await WorkspaceFactory.basic();
+
+    const invitation = await MembershipInvitationFactory.create(
+      invitingWorkspace,
+      { inviteEmail: "test@example.com" }
+    );
+    const token = getMembershipInvitationToken(invitation.toJSON());
+
+    const response = await joinRequest(otherWorkspace.sId, { t: token });
+
+    expect(response.status).toBe(404);
+    const data = (await response.json()) as Record<string, unknown>;
+    expect(data.workspace).toBeUndefined();
   });
 
   it("returns 400 with redirectUrl for an invalid (mangled) token", async () => {

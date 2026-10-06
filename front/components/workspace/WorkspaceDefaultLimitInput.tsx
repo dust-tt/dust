@@ -1,5 +1,6 @@
 import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
 import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 // Fetched by the caller since the customer-facing app and poke reach the
@@ -22,6 +23,7 @@ export function useWorkspaceDefaultLimitField({
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   canEdit: boolean;
 }) {
+  const { t } = useLingui();
   const loadedAwuCredits =
     defaultUserSpendLimit.status === "ready"
       ? defaultUserSpendLimit.awuCredits
@@ -42,7 +44,7 @@ export function useWorkspaceDefaultLimitField({
     }
     const result = parseDefaultLimitInput(value);
     if (!result.ok) {
-      setValidationMessage(result.message);
+      setValidationMessage(t(result.message));
       return "invalid";
     }
     setValidationMessage(null);
@@ -75,16 +77,17 @@ export function WorkspaceDefaultLimitInput({
   readOnlyTooltip,
   isActive,
 }: WorkspaceDefaultLimitInputProps) {
+  const { t } = useLingui();
   return (
     <CreditLimitInput
-      label="Workspace default limit"
+      label={t`Workspace default limit`}
       value={field.value}
       readOnly={!field.canSubmit}
       readOnlyTooltip={readOnlyTooltip}
       isActive={isActive}
       validationMessage={
         field.defaultUserSpendLimit.status === "error"
-          ? "The workspace default limit could not be loaded."
+          ? t`The workspace default limit could not be loaded.`
           : field.validationMessage
       }
       onChange={field.onChange}

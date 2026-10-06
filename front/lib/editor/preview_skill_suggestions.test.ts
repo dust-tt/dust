@@ -23,12 +23,16 @@ const BASE_SUGGESTION: Omit<SkillSuggestionType, "kind" | "suggestion"> = {
 
 const SKILL = {
   name: "Current name",
-  availability: "editors",
+  availability: "editors" as const,
   agentFacingDescription: "Current agent description",
   userFacingDescription: "Current user description",
   instructions: null,
   instructionsHtml: null,
-} as const;
+  fileAttachments: [
+    { fileId: "fil_kept", fileName: "kept.csv" },
+    { fileId: "fil_removed", fileName: "removed.csv" },
+  ],
+};
 
 function blockIds(html: string): string[] {
   return [...html.matchAll(/data-block-id="([^"]+)"/g)].map((m) => m[1]);
@@ -81,6 +85,7 @@ describe("previewSkillSuggestions", () => {
         userFacingDescription: "New description",
         instructions: null,
         instructionsHtml: null,
+        fileAttachments: SKILL.fileAttachments,
       });
     }
   });
@@ -112,7 +117,29 @@ describe("previewSkillSuggestions", () => {
         userFacingDescription: "Shares a random quote.",
         instructions: null,
         instructionsHtml: "<p>Share one quote.</p>",
+        fileAttachments: SKILL.fileAttachments,
       });
+    }
+  });
+
+  it("drops the files a suggestion removes", () => {
+    const result = previewSkillSuggestions({
+      skill: SKILL,
+      suggestions: [
+        {
+          ...BASE_SUGGESTION,
+          kind: "files",
+          suggestion: { addFilePaths: [], removeFileIds: ["fil_removed"] },
+        },
+      ],
+      pipeline,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.fileAttachments).toEqual([
+        { fileId: "fil_kept", fileName: "kept.csv" },
+      ]);
     }
   });
 

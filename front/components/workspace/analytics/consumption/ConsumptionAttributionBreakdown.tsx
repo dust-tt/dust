@@ -6,6 +6,9 @@ import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consum
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
@@ -28,18 +31,11 @@ function getBreakdownDimensions(
     : breakdownDimensions;
 }
 
-const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
-  model: "By model",
-  reasoning_effort: "By reasoning effort",
-  tool: "By tools",
-  user: "By users",
-};
-
-const BREAKDOWN_VIEW_ALL_LABELS: Record<BreakdownDimension, string> = {
-  model: "models",
-  reasoning_effort: "reasoning effort",
-  tool: "tools",
-  user: "members",
+const BREAKDOWN_LABELS: Record<BreakdownDimension, MessageDescriptor> = {
+  model: msg`By model`,
+  reasoning_effort: msg`By reasoning effort`,
+  tool: msg`By tools`,
+  user: msg`By users`,
 };
 
 function BreakdownColumnSkeleton() {
@@ -100,18 +96,26 @@ export function ConsumptionAttributionBreakdownColumnView({
   isTopLoading,
   isTopError,
 }: ConsumptionAttributionBreakdownColumnViewProps) {
+  const { t } = useLingui();
+  const viewAllAriaLabels: Record<BreakdownDimension, string> = {
+    model: t`View all models for ${selectedRowName}`,
+    reasoning_effort: t`View all reasoning effort for ${selectedRowName}`,
+    tool: t`View all tools for ${selectedRowName}`,
+    user: t`View all members for ${selectedRowName}`,
+  };
+
   return (
     <div className="min-w-0">
       <div className="mb-2 flex h-6 items-center justify-between gap-2">
         <h4 className="text-sm font-medium text-muted-foreground">
-          {BREAKDOWN_LABELS[dimension]}
+          {t(BREAKDOWN_LABELS[dimension])}
         </h4>
         {onViewAll && (
           <Button
-            label="View all"
+            label={t`View all`}
             variant="highlight-ghost"
             size="xs"
-            aria-label={`View all ${BREAKDOWN_VIEW_ALL_LABELS[dimension]} for ${selectedRowName}`}
+            aria-label={viewAllAriaLabels[dimension]}
             onClick={onViewAll}
           />
         )}
@@ -120,11 +124,11 @@ export function ConsumptionAttributionBreakdownColumnView({
         <BreakdownColumnSkeleton />
       ) : isTopError ? (
         <div className="flex h-24 items-center text-xs text-muted-foreground">
-          Failed to load breakdown.
+          <Trans>Failed to load breakdown.</Trans>
         </div>
       ) : rows.length === 0 ? (
         <div className="flex h-24 items-center text-xs text-muted-foreground">
-          No attributed consumption.
+          <Trans>No attributed consumption.</Trans>
         </div>
       ) : (
         <div className="flex flex-col gap-2">

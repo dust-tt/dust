@@ -7,6 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 interface WorkspaceAnalyticsTimeRangeSelectorProps {
   period: ObservabilityTimeRangeType;
@@ -17,17 +19,23 @@ export function WorkspaceAnalyticsTimeRangeSelector({
   period,
   onPeriodChange,
 }: WorkspaceAnalyticsTimeRangeSelectorProps) {
+  const { t } = useLingui();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label={`${period} days`} size="xs" variant="outline" isSelect />
+        <Button
+          label={t`${period} ${plural(period, { one: "day", other: "days" })}`}
+          size="xs"
+          variant="outline"
+          isSelect
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {OBSERVABILITY_TIME_RANGE.map((p) => (
+        {OBSERVABILITY_TIME_RANGE.map((days) => (
           <DropdownMenuItem
-            key={p}
-            label={`${p} days`}
-            onClick={() => onPeriodChange(p)}
+            key={days}
+            label={t`${days} ${plural(days, { one: "day", other: "days" })}`}
+            onClick={() => onPeriodChange(days)}
           />
         ))}
       </DropdownMenuContent>

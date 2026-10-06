@@ -3,6 +3,7 @@ import {
   InputBarContextProvider,
 } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useUserFromSearchParam } from "@app/hooks/useUserFromSearchParam";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -85,16 +86,19 @@ export function ExtensionInputBarProvider({
       fileUploaderService={fileUploaderService}
       onBeforeSubmit={handleBeforeSubmit}
     >
-      <AgentQueryParamHandler workspaceId={workspace.sId} />
+      <QueryParamHandler workspaceId={workspace.sId} />
       {children}
     </InputBarContextProvider>
   );
 }
 
 /**
- * Reads the ?agent= query param and pre-selects the agent in the input bar.
+ * Reads the ?user= query param and pre-fills the composer with the user mention, then reads the
+ * ?agent= query param and pre-selects the agent in the input bar.
  */
-function AgentQueryParamHandler({ workspaceId }: { workspaceId: string }) {
+function QueryParamHandler({ workspaceId }: { workspaceId: string }) {
+  useUserFromSearchParam(workspaceId);
+
   const agent = useSearchParam("agent");
   const { setSelectedAgent } = useContext(InputBarContext);
 

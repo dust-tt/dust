@@ -70,6 +70,7 @@ struct VoiceInputView: View {
 
     private var statusText: String {
         if let error = speech.error { return error }
+        if speech.isReconnecting { return "Connection lost — reconnecting…" }
         if speech.isFinalizing { return "Finishing up…" }
         if speech.isRecording { return "Listening…" }
         return viewModel.messageText.isEmpty ? "Tap to speak" : "Paused — send or keep recording"
@@ -83,7 +84,7 @@ struct VoiceInputView: View {
                 icon: .arrowDown,
                 tint: Color.dustForeground,
                 fill: Color.primary100,
-                enabled: !isBusy
+                enabled: !isBusy || speech.isReconnecting
             ) { viewModel.exitVoiceInput() }
 
             Spacer()

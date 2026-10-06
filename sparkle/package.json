@@ -6,7 +6,8 @@
   },
   "scripts": {
     "prebuild": "npm run i18n:compile",
-    "build": "npm run clean:dist && npm run build:assets && npm run build:esm && npm run build:cjs",
+    "build": "npm run clean:dist && npm run build:assets && npm run build:esm",
+    "build:watch": "npm run build && touch dist/.build-complete",
     "clean:dist": "mkdir -p dist && find dist -mindepth 1 -delete",
     "build:assets": "npm run tailwind && npm run copy:esm",
     "tailwind": "npx @tailwindcss/cli -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -15,7 +16,6 @@
     "build:types": "tsgo --emitDeclarationOnly",
     "build:js": "babel src --out-dir dist/esm --extensions .ts,.tsx --ignore 'src/**/*.d.ts' --config-file ./babel.esm.json --source-maps",
     "build:aliases": "tsc-alias",
-    "build:cjs": "node scripts/build-cjs.mjs",
     "i18n:extract": "lingui extract --clean",
     "i18n:compile": "lingui compile",
     "i18n:check": "npm run i18n:extract && git diff --exit-code -- src/locales && npm run i18n:compile -- --strict",
@@ -29,7 +29,7 @@
     "watch": "npm-watch"
   },
   "watch": {
-    "build": {
+    "build:watch": {
       "patterns": ["src"],
       "extensions": "ts,tsx,css,po",
       "ignore": "src/locales/*/messages.ts"
@@ -38,14 +38,13 @@
   "nodemonConfig": {
     "signal": "SIGQUIT"
   },
-  "main": "dist/cjs/index.js",
+  "main": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
     },
     "./i18n": {
@@ -57,10 +56,6 @@
       "types": "./dist/esm/*.d.ts",
       "import": "./dist/esm/*.js",
       "default": "./dist/esm/*.js"
-    },
-    "./dist/cjs/*": {
-      "types": "./dist/esm/*.d.ts",
-      "require": "./dist/cjs/*.js"
     },
     "./dist/sparkle.css": "./dist/sparkle.css",
     "./styles/tailwind.css": "./src/styles/tailwind.css",
@@ -99,8 +94,6 @@
     "@vitest/browser-playwright": "4.0.18",
     "@vitest/coverage-v8": "4.0.18",
     "copyfiles": "^2.4.1",
-    "esbuild": "^0.27.3",
-    "esbuild-plugin-postcss2": "^0.1.2",
     "npm-watch": "^0.11.0",
     "playwright": "1.57.0",
     "react": "^18.3.1",

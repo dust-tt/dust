@@ -1,5 +1,6 @@
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import { SliderToggle } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface AllProvidersToggleProps {
@@ -20,7 +21,7 @@ export function AllProvidersToggle({
     <div className="mt-8 divide-y divide-primary-200 p-3">
       <div className="flex items-center justify-between">
         <span className="text-left font-semibold text-foreground">
-          Make all providers available
+          <Trans>Make all providers available</Trans>
         </span>
         <SliderToggle
           selected={selected}

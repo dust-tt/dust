@@ -23,6 +23,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate } from "@app/lib/i18n/format";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   ChevronLeft,
@@ -34,6 +35,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
@@ -84,24 +88,41 @@ type ChartDataPoint = {
 
 const GROUP_BY_TYPE_OPTIONS: {
   value: GroupByType;
-  label: string;
+  label: MessageDescriptor;
 }[] = [
-  { value: "agent", label: "By Agent" },
-  { value: "origin", label: "By Source" },
-  { value: "apiKey", label: "By API Key" },
+  { value: "agent", label: msg`By Agent` },
+  { value: "origin", label: msg`By Source` },
+  { value: "apiKey", label: msg`By API Key` },
 ];
 
 const GROUP_BY_OPTIONS: {
   value: "global" | GroupByType;
-  label: string;
-}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
+  label: MessageDescriptor;
+}[] = [{ value: "global", label: msg`Global` }, ...GROUP_BY_TYPE_OPTIONS];
+
+function getFilterChipLabel(
+  groupByType: GroupByType,
+  label: string,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  switch (groupByType) {
+    case "agent":
+      return t(msg`Agent: ${label}`);
+    case "origin":
+      return t(msg`Source: ${label}`);
+    case "apiKey":
+      return t(msg`API key: ${label}`);
+    default:
+      assertNever(groupByType);
+  }
+}
 
 const TOP_K_OPTIONS = [
-  { value: 5, label: "Top 5" },
-  { value: 10, label: "Top 10" },
-  { value: 15, label: "Top 15" },
-  { value: 20, label: "Top 20" },
-  { value: 30, label: "Top 30" },
+  { value: 5, label: msg`Top 5` },
+  { value: 10, label: msg`Top 10` },
+  { value: 15, label: msg`Top 15` },
+  { value: 20, label: msg`Top 20` },
+  { value: 30, label: msg`Top 30` },
 ];
 
 function getColorClassName(
@@ -124,7 +145,8 @@ function GroupedTooltip(
   groupBy: GroupByType | undefined,
   availableGroupsArray: { groupKey: string; groupLabel: string }[],
   displayMode: DisplayMode,
-  shouldShowTotalCredits: boolean
+  shouldShowTotalCredits: boolean,
+  t: (descriptor: MessageDescriptor) => string
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -172,7 +194,7 @@ function GroupedTooltip(
   // Add credits row only in cumulative mode
   if (shouldShowTotalCredits) {
     rows.push({
-      label: "Total credits",
+      label: t(msg`Total credits`),
       value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
       colorClassName: COST_PALETTE.totalCredits,
     });
@@ -205,10 +227,10 @@ export function formatPeriod(date: Date): string {
  */
 const DISPLAY_MODE_OPTIONS: {
   value: DisplayMode;
-  label: string;
+  label: MessageDescriptor;
 }[] = [
-  { value: "cumulative", label: "Cumulative" },
-  { value: "daily", label: "Daily" },
+  { value: "cumulative", label: msg`Cumulative` },
+  { value: "daily", label: msg`Daily` },
 ];
 
 export function BaseProgrammaticCostChart({
@@ -228,6 +250,7 @@ export function BaseProgrammaticCostChart({
   displayMode,
   setDisplayMode,
 }: BaseProgrammaticCostChartProps) {
+  const { t } = useLingui();
   // Cache labels for each groupBy type so they persist when switching modes
   const [labelCache, setLabelCache] = useState<
     Partial<Record<GroupByType, Record<string, string>>>
@@ -448,7 +471,7 @@ export function BaseProgrammaticCostChart({
   if (shouldShowTotalCredits) {
     legendItems.push({
       key: "totalCredits",
-      label: "Total credits",
+      label: t`Total credits`,
       colorClassName: COST_PALETTE.totalCredits,
       isActive: true,
     });
@@ -596,13 +619,15 @@ export function BaseProgrammaticCostChart({
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Usage cost graph</span>
+          <span>
+            <Trans>Usage cost graph</Trans>
+          </span>
           <Button
             icon={ChevronLeft}
             size="xs"
             variant="ghost"
             onClick={handlePreviousPeriod}
-            tooltip="Previous period"
+            tooltip={t`Previous period`}
           />
 
           <span className="text-sm text-muted-foreground">{periodLabel}</span>
@@ -612,7 +637,7 @@ export function BaseProgrammaticCostChart({
               size="xs"
               variant="ghost"
               onClick={handleNextPeriod}
-              tooltip="Next period"
+              tooltip={t`Next period`}
             />
           )}
           <Button
@@ -620,26 +645,26 @@ export function BaseProgrammaticCostChart({
             size="xs"
             variant="ghost"
             onClick={handleExportCsv}
-            tooltip="Export cost data from this period as CSV"
+            tooltip={t`Export cost data from this period as CSV`}
             disabled={isProgrammaticCostLoading || isProgrammaticCostError}
           />
         </div>
       }
-      description={groupBy ? "Filter by clicking on legend items." : undefined}
+      description={groupBy ? t`Filter by clicking on legend items.` : undefined}
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError
-          ? "Failed to load programmatic cost data."
+          ? t`Failed to load programmatic cost data.`
           : undefined
       }
       emptyMessage={
-        chartData.length === 0 ? "No cost data for this month." : undefined
+        chartData.length === 0 ? t`No cost data for this month.` : undefined
       }
       additionalControls={
         <div className="flex items-center gap-2">
           {hasFilters && (
             <Button
-              label="Clear filters"
+              label={t`Clear filters`}
               size="xs"
               variant="ghost"
               onClick={handleClearFilters}
@@ -648,10 +673,10 @@ export function BaseProgrammaticCostChart({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                label={
+                label={t(
                   DISPLAY_MODE_OPTIONS.find((opt) => opt.value === displayMode)
-                    ?.label ?? "Cumulative"
-                }
+                    ?.label ?? msg`Cumulative`
+                )}
                 size="xs"
                 variant="outline"
                 isSelect
@@ -661,7 +686,7 @@ export function BaseProgrammaticCostChart({
               {DISPLAY_MODE_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
-                  label={option.label}
+                  label={t(option.label)}
                   onClick={() => setDisplayMode(option.value)}
                 />
               ))}
@@ -670,12 +695,12 @@ export function BaseProgrammaticCostChart({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                label={
-                  groupBy
+                label={t(
+                  (groupBy
                     ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
                         ?.label
-                    : "Global"
-                }
+                    : undefined) ?? msg`Global`
+                )}
                 size="xs"
                 variant="outline"
                 isSelect
@@ -685,7 +710,7 @@ export function BaseProgrammaticCostChart({
               {GROUP_BY_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
-                  label={option.label}
+                  label={t(option.label)}
                   onClick={() =>
                     handleGroupByChange(
                       option.value === "global" ? undefined : option.value
@@ -699,10 +724,10 @@ export function BaseProgrammaticCostChart({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  label={
+                  label={t(
                     TOP_K_OPTIONS.find((opt) => opt.value === groupByCount)
-                      ?.label ?? "Top 5"
-                  }
+                      ?.label ?? msg`Top 5`
+                  )}
                   size="xs"
                   variant="outline"
                   isSelect
@@ -712,7 +737,7 @@ export function BaseProgrammaticCostChart({
                 {TOP_K_OPTIONS.map((option) => (
                   <DropdownMenuItem
                     key={option.value}
-                    label={option.label}
+                    label={t(option.label)}
                     onClick={() => setGroupByCount(option.value)}
                   />
                 ))}
@@ -727,12 +752,11 @@ export function BaseProgrammaticCostChart({
             {activeFilterChips.map((chip) => (
               <Chip
                 key={`${chip.groupByType}:${chip.filterKey}`}
-                label={`${chip.groupByType}: ${chip.label}`}
+                label={getFilterChipLabel(chip.groupByType, chip.label, t)}
                 size="xs"
                 onRemove={() =>
                   handleRemoveFilter(chip.groupByType, chip.filterKey)
                 }
-                className="capitalize"
               />
             ))}
           </div>
@@ -778,7 +802,8 @@ export function BaseProgrammaticCostChart({
               groupBy,
               availableGroupsArray,
               displayMode,
-              shouldShowTotalCredits
+              shouldShowTotalCredits,
+              t
             )
           }
           cursor={false}
@@ -839,7 +864,7 @@ export function BaseProgrammaticCostChart({
           <Line
             type="monotone"
             dataKey="totalCreditsMicroUsd"
-            name="Total credits"
+            name={t`Total credits`}
             stroke="currentColor"
             strokeWidth={2}
             className={COST_PALETTE.totalCredits}

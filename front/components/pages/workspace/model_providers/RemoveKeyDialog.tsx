@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface RemoveKeyDialogProps {
   owner: LightWorkspaceType;
@@ -24,6 +25,7 @@ export function RemoveKeyDialog({
   open,
   onOpenChange,
 }: RemoveKeyDialogProps) {
+  const { t } = useLingui();
   const { deleteProviderCredential, isDeleting } = useDeleteProviderCredential({
     owner,
   });
@@ -37,26 +39,28 @@ export function RemoveKeyDialog({
 
   const description =
     providerId === "openai"
-      ? "OpenAI powers your embedding model. Removing this key will not only disable all agents powered by OpenAI, but also search and data syncing across the entire workspace."
-      : "Agents relying on this provider will stop responding immediately.";
+      ? t`OpenAI powers your embedding model. Removing this key will not only disable all agents powered by OpenAI, but also search and data syncing across the entire workspace.`
+      : t`Agents relying on this provider will stop responding immediately.`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Remove this model provider API key?</DialogTitle>
+          <DialogTitle>
+            <Trans>Remove this model provider API key?</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <DialogDescription>{description}</DialogDescription>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             disabled: isDeleting,
           }}
           rightButtonProps={{
-            label: "Remove key",
+            label: t`Remove key`,
             variant: "warning",
             onClick: handleRemove,
             disabled: isDeleting,

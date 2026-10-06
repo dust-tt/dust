@@ -4,7 +4,6 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { ConsumptionProgressBarWithNumbers } from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
-import { SELF_IMPROVING_CONSUMPTION_SECTION_LABEL } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate } from "@app/lib/i18n/format";
@@ -417,7 +416,7 @@ export function SelfImprovingSkillsConsumptionSection({
 
   return (
     <Page.Vertical align="stretch" gap="md">
-      <Page.SectionHeader title={SELF_IMPROVING_CONSUMPTION_SECTION_LABEL} />
+      <Page.SectionHeader title="Current period consumption" />
       {isSpendLoading ? (
         <div className="flex justify-center py-4">
           <Spinner />

@@ -1,36 +1,80 @@
 import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
-import { Ok } from "@app/types/shared/result";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
+import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
+import { parseDfm } from "@app/lib/markdown/dfm";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Slice } from "@tiptap/pm/model";
 import { Decoration } from "@tiptap/pm/view";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+const AUTHOR: DfmAuthor = { kind: "user", id: "usr_tom", name: "Tom" };
 const AT = "2026-09-25T14:16:32.380Z";
 const SOURCE = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`;
 
 const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-async function renderCommentedEditor(initialContent: string) {
+async function renderCommentedEditor(
+  initialContent: string,
+  {
+    sign,
+    verify,
+  }: {
+    sign?: (
+      commentId: string,
+      thread: DfmMessage[],
+      body: string
+    ) => Promise<Result<DfmMessage, string>>;
+    verify?: DfmMessageVerifier;
+  } = {}
+) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
-  const rendered = renderHook(() => {
-    const document = useDocumentEditor({
-      initialContent,
-      readOnly: false,
-      autosaveDebounceMs: 60_000,
-      onSave,
-      onStateChange: undefined,
-    });
-    const comments = useDocumentComments({ editor: document.editor });
-    return { document, comments };
-  });
+  const rendered = renderHook(
+    ({ currentVerify }: { currentVerify?: DfmMessageVerifier }) => {
+      const document = useDocumentEditor({
+        initialContent,
+        readOnly: false,
+        autosaveDebounceMs: 60_000,
+        onSave,
+        onStateChange: undefined,
+      });
+      const comments = useDocumentComments({
+        editor: document.editor,
+        canComment: document.editable,
+        author: AUTHOR,
+        isSavable: document.isSavable,
+        sign,
+        verify: currentVerify,
+      });
+      return { document, comments };
+    },
+    { initialProps: { currentVerify: verify } }
+  );
   await waitFor(() =>
     expect(rendered.result.current.document.editor).not.toBeNull()
   );
   await act(nextTick);
   return { ...rendered, onSave };
 }
+
+/** Selects the first occurrence of `text` in the editor. */
+function select(
+  editor: NonNullable<ReturnType<typeof useDocumentEditor>["editor"]>,
+  text: string
+) {
+  let from = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (from === -1 && node.isText && node.text?.includes(text)) {
+      from = pos + node.text.indexOf(text);
+    }
+  });
+  editor.commands.setTextSelection({ from, to: from + text.length });
+}
+
+const SIGNED_AT = "2026-10-05T12:00:00.000Z";
 
 describe("useDocumentComments", () => {
   it("shows the file's threads with the text they cover", async () => {
@@ -86,6 +130,331 @@ describe("useDocumentComments", () => {
     expect(onSave.mock.calls[0][0]).toContain(
       "*Hi :comment-start{id=c1}there:comment-end{id=c1} friend*"
     );
+  });
+
+  it("saves a new comment as an anchor pair and a thread", async () => {
+    const { result, onSave } = await renderCommentedEditor(
+      "Hello brave world.\n"
+    );
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      select(editor, "brave");
+      result.current.comments.startDraft();
+    });
+    await act(async () => {
+      expect(
+        (await result.current.comments.submitDraft("Too bold?")).isOk()
+      ).toBe(true);
+    });
+    await act(() => result.current.document.save());
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const parsed = parseDfm(onSave.mock.calls[0][0]);
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      const [comment] = parsed.value.comments;
+      expect(parsed.value.body).toBe(
+        `Hello :comment-start{id=${comment.id}}brave:comment-end{id=${comment.id}} world.`
+      );
+      expect(comment.status).toBe("open");
+      expect(comment.messages).toEqual([
+        expect.objectContaining({ author: AUTHOR, body: "Too bold?" }),
+      ]);
+    }
+  });
+
+  it("refuses a draft whose text can no longer take a comment", async () => {
+    const { result } = await renderCommentedEditor("Hello brave world.\n");
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      select(editor, "brave");
+      result.current.comments.startDraft();
+    });
+    act(() => {
+      editor.commands.setCodeBlock();
+    });
+    const before = JSON.stringify(editor.getJSON());
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.submitDraft("Too bold?")).isErr()
+      ).toBe(true);
+    });
+    expect(result.current.comments.comments).toHaveLength(0);
+    expect(JSON.stringify(editor.getJSON())).toBe(before);
+  });
+
+  it("refuses a reply the document could not be saved with", async () => {
+    const { result } = await renderCommentedEditor(
+      `${"a".repeat(100_000)}\n\n${SOURCE}`
+    );
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "b".repeat(170_000))).isErr()
+      ).toBe(true);
+    });
+
+    expect(result.current.comments.comments[0].messages).toHaveLength(1);
+    expect(result.current.document.dirty).toBe(false);
+  });
+
+  it("replies, resolves and deletes through the thread in the file", async () => {
+    const { result, onSave } = await renderCommentedEditor(SOURCE);
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Not at all.")).isOk()
+      ).toBe(true);
+    });
+    act(() => {
+      result.current.comments.setResolved("c1", true, null);
+    });
+    await act(() => result.current.document.save());
+
+    const replied = parseDfm(onSave.mock.calls[0][0]);
+    expect(replied.isOk()).toBe(true);
+    if (replied.isOk()) {
+      expect(replied.value.comments[0].status).toBe("resolved");
+      expect(replied.value.comments[0].messages.map((m) => m.body)).toEqual([
+        "Note.",
+        "Not at all.",
+      ]);
+    }
+
+    act(() => {
+      result.current.comments.remove("c1", null);
+    });
+    await act(() => result.current.document.save());
+
+    expect(onSave.mock.calls[1][0]).toBe("Hi there\n");
+  });
+
+  it("saves text an undo restores after its comment was deleted, without the comment", async () => {
+    const { result, onSave } = await renderCommentedEditor(SOURCE);
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      editor
+        .chain()
+        .setTextSelection({ from: 4, to: 9 })
+        .deleteSelection()
+        .run();
+    });
+    act(() => {
+      result.current.comments.remove("c1", null);
+    });
+    act(() => {
+      editor.commands.undo();
+    });
+    await act(() => result.current.document.save());
+
+    expect(result.current.document.error).toBeNull();
+    expect(onSave.mock.calls[0][0]).toBe("Hi there\n");
+
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(editor.state.doc.textContent).toBe("Hi ");
+
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.state.doc.textContent).toBe("Hi there");
+    expect(editor.getHTML()).not.toContain("data-comment-id");
+  });
+
+  it("refuses a reply the codec cannot write, leaving the document unchanged", async () => {
+    const { result } = await renderCommentedEditor(SOURCE);
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "::message{}")).isErr()
+      ).toBe(true);
+    });
+
+    expect(result.current.comments.comments[0].messages).toHaveLength(1);
+    expect(result.current.document.dirty).toBe(false);
+  });
+
+  it("inserts the message the server signed, with the server's name and time", async () => {
+    const sign = vi.fn(
+      async (_commentId: string, _thread: DfmMessage[], body: string) =>
+        new Ok<DfmMessage>({
+          author: { ...AUTHOR, name: "Tom Draier" },
+          createdAt: SIGNED_AT,
+          body,
+          signature: "server-signature",
+        })
+    );
+    const { result, onSave } = await renderCommentedEditor(SOURCE, { sign });
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Agreed.")).isOk()
+      ).toBe(true);
+    });
+    await act(() => result.current.document.save());
+
+    expect(sign).toHaveBeenCalledWith(
+      "c1",
+      [expect.objectContaining({ body: "Note." })],
+      "Agreed."
+    );
+    expect(result.current.comments.comments[0].messages[1]).toEqual({
+      author: { ...AUTHOR, name: "Tom Draier" },
+      createdAt: SIGNED_AT,
+      body: "Agreed.",
+      signature: "server-signature",
+    });
+    expect(onSave.mock.calls[0][0]).toContain(
+      `name="Tom Draier" at=${SIGNED_AT} sig=server-signature}`
+    );
+  });
+
+  it("refuses a reply signed after a message that is no longer the thread's last", async () => {
+    let appendWhileSigning = () => undefined as unknown;
+    const sign = vi.fn(
+      async (_commentId: string, _thread: DfmMessage[], body: string) => {
+        appendWhileSigning();
+        return new Ok<DfmMessage>({
+          author: AUTHOR,
+          createdAt: SIGNED_AT,
+          body,
+          signature: "server-signature",
+        });
+      }
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { sign });
+    appendWhileSigning = () =>
+      result.current.document.editor?.commands.replyToComment("c1", {
+        author: AUTHOR,
+        createdAt: SIGNED_AT,
+        body: "Sent elsewhere.",
+      });
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Agreed.")).isErr()
+      ).toBe(true);
+    });
+
+    expect(
+      result.current.comments.comments[0].messages.map(({ body }) => body)
+    ).toEqual(["Note.", "Sent elsewhere."]);
+  });
+
+  it("leaves the document unchanged when the server refuses to sign", async () => {
+    const sign = vi.fn(
+      async () => new Err("Commenting is not available here.")
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { sign });
+
+    await act(async () => {
+      const replied = await result.current.comments.reply("c1", "Agreed.");
+      expect(replied.isErr() && replied.error).toBe(
+        "Commenting is not available here."
+      );
+    });
+
+    expect(result.current.comments.comments[0].messages).toHaveLength(1);
+    expect(result.current.document.dirty).toBe(false);
+  });
+
+  it("does not ask the server to sign a message the codec cannot write", async () => {
+    const sign = vi.fn();
+    const { result } = await renderCommentedEditor(SOURCE, { sign });
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "::message{}")).isErr()
+      ).toBe(true);
+    });
+
+    expect(sign).not.toHaveBeenCalled();
+  });
+
+  it("reads each message as verified or not from the verifier", async () => {
+    const signedSource = SOURCE.replace(
+      `at=${AT}}`,
+      `at=${AT} sig=good}`
+    ).replace(
+      "Note.\n:::",
+      `Note.\n\n::message{author=agent:dust name="@dust" at=${AT}}\n\nUnsigned.\n:::`
+    );
+    const verify = vi.fn(
+      async (_commentId: string, messages: DfmMessage[], index: number) =>
+        messages[index].signature === "good"
+    );
+    const { result } = await renderCommentedEditor(signedSource, { verify });
+
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 0)).toBe(true)
+    );
+    expect(result.current.comments.isVerified("c1", 1)).toBe(false);
+    expect(verify).toHaveBeenCalledWith(
+      "c1",
+      [
+        expect.objectContaining({ body: "Note." }),
+        expect.objectContaining({ body: "Unsigned." }),
+      ],
+      1
+    );
+  });
+
+  it("reads messages as unknown again while a new verifier checks them", async () => {
+    const { result, rerender } = await renderCommentedEditor(SOURCE, {
+      verify: async () => true,
+    });
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 0)).toBe(true)
+    );
+
+    rerender({ currentVerify: () => new Promise<boolean>(() => undefined) });
+
+    expect(result.current.comments.isVerified("c1", 0)).toBeNull();
+  });
+
+  it("refuses a reply when the document turns read-only while it is signed", async () => {
+    let turnReadOnly = () => undefined as unknown;
+    const sign = vi.fn(
+      async (_commentId: string, _thread: DfmMessage[], body: string) => {
+        turnReadOnly();
+        return new Ok<DfmMessage>({
+          author: AUTHOR,
+          createdAt: SIGNED_AT,
+          body,
+          signature: "server-signature",
+        });
+      }
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { sign });
+    turnReadOnly = () => result.current.document.editor?.setEditable(false);
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Agreed.")).isErr()
+      ).toBe(true);
+    });
+
+    expect(result.current.comments.comments[0].messages).toHaveLength(1);
+  });
+
+  it("reads every message as unknown without a verifier", async () => {
+    const { result } = await renderCommentedEditor(SOURCE);
+
+    expect(result.current.comments.isVerified("c1", 0)).toBeNull();
   });
 
   it("reuses the parsed threads across cursor moves", async () => {
@@ -157,6 +526,29 @@ describe("useDocumentComments", () => {
           ?.textContent
       ).toBe("frXXiend");
       built.mockRestore();
+    });
+
+    it("keep the draft highlight while typing in its paragraph", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        editor
+          .chain()
+          .setTextSelection({ from: 1, to: 3 })
+          .startCommentDraft()
+          .run();
+      });
+      act(() => {
+        editor.commands.insertContentAt(4, "X");
+      });
+
+      expect(
+        editor.view.dom.querySelector("[data-comment-draft]")?.textContent
+      ).toBe("Hi");
     });
 
     it("go away when the commented text is replaced", async () => {

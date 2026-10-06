@@ -37,7 +37,7 @@ export function useDiscoveryFeatured({ workspaceId }: UseDiscoveryOptions) {
   const { fetcher } = useFetcher();
   const featuredFetcher: Fetcher<GetFeaturedDiscoveryItemsResponseBody> =
     fetcher;
-  const { data, isLoading } = useSWRWithDefaults(
+  const { data, isLoading, isValidating } = useSWRWithDefaults(
     featuredUrl(workspaceId),
     featuredFetcher
   );
@@ -45,13 +45,14 @@ export function useDiscoveryFeatured({ workspaceId }: UseDiscoveryOptions) {
   return {
     featuredItems: data?.items ?? emptyArray(),
     isFeaturedLoading: isLoading,
+    isFeaturedRefreshing: isValidating && !isLoading,
   };
 }
 
 export function useDiscoveryForYou({ workspaceId }: UseDiscoveryOptions) {
   const { fetcher } = useFetcher();
   const forYouFetcher: Fetcher<GetDiscoveryForYouResponseBody> = fetcher;
-  const { data, isLoading } = useSWRWithDefaults(
+  const { data, isLoading, isValidating } = useSWRWithDefaults(
     `/api/w/${workspaceId}/discovery/for_you`,
     forYouFetcher,
     { revalidateOnFocus: false, refreshInterval: pollWhilePending }
@@ -60,13 +61,14 @@ export function useDiscoveryForYou({ workspaceId }: UseDiscoveryOptions) {
   return {
     forYouItems: data?.items ?? emptyArray(),
     isForYouLoading: isLoading || data?.items === null,
+    isForYouRefreshing: isValidating && !isLoading && data?.items !== null,
   };
 }
 
 export function useDiscoveryTrending({ workspaceId }: UseDiscoveryOptions) {
   const { fetcher } = useFetcher();
   const trendingFetcher: Fetcher<GetDiscoveryTrendingResponseBody> = fetcher;
-  const { data, isLoading } = useSWRWithDefaults(
+  const { data, isLoading, isValidating } = useSWRWithDefaults(
     `/api/w/${workspaceId}/discovery/trending`,
     trendingFetcher,
     { revalidateOnFocus: false, refreshInterval: pollWhilePending }
@@ -75,6 +77,7 @@ export function useDiscoveryTrending({ workspaceId }: UseDiscoveryOptions) {
   return {
     trendingItems: data?.items ?? emptyArray(),
     isTrendingLoading: isLoading || data?.items === null,
+    isTrendingRefreshing: isValidating && !isLoading && data?.items !== null,
   };
 }
 

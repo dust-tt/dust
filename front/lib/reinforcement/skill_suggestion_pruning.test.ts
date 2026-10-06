@@ -591,7 +591,23 @@ describe("pruneConflictingSkillFilesSuggestions", () => {
   ) => {
     const created = await SkillSuggestionFactory.create(authenticator, skill, {
       kind: "files",
-      suggestion: { removeFileIds },
+      suggestion: { addFilePaths: [], removeFileIds },
+      source: "conversational",
+    });
+    if (!isFilesSkillSuggestion(created)) {
+      throw new Error("The factory did not create a files suggestion.");
+    }
+
+    return created;
+  };
+
+  const createFileAddition = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    addFilePaths: string[]
+  ) => {
+    const created = await SkillSuggestionFactory.create(authenticator, skill, {
+      kind: "files",
+      suggestion: { addFilePaths, removeFileIds: [] },
       source: "conversational",
     });
     if (!isFilesSkillSuggestion(created)) {
@@ -603,6 +619,21 @@ describe("pruneConflictingSkillFilesSuggestions", () => {
 
   const stateOf = async (sId: string) =>
     (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
+
+  it("outdates a pending suggestion adding a file of the same name", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createFileAddition(skill, ["conversation-a/notes.txt"]);
+    const otherName = await createFileAddition(skill, [
+      "conversation-a/other.txt",
+    ]);
+    const newer = await createFileAddition(skill, ["pod-b/docs/notes.txt"]);
+
+    await pruneConflictingSkillFilesSuggestions(authenticator, skill, [newer]);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(otherName.sId)).toBe("pending");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
 
   it("outdates a pending suggestion removing one of the same files", async () => {
     const skill = await SkillFactory.create(authenticator);

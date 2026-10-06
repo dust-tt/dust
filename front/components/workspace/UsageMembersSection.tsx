@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 interface UsageMembersSectionProps {
@@ -35,19 +36,21 @@ export function UsageMembersSection({
   groups,
   groupId,
   onGroupChange,
-  allGroupsLabel = "All groups",
+  allGroupsLabel,
   extraFilters,
   membersTable,
   selectionBanner,
   requests,
 }: UsageMembersSectionProps) {
+  const { t } = useLingui();
+  const groupsLabel = allGroupsLabel ?? t`All groups`;
   const activeTab = requests?.activeTab ?? "members";
   const selectedGroupName = groups.find((group) => group.sId === groupId)?.name;
 
   return (
     <div className="flex flex-col items-stretch gap-4">
       <SearchInput
-        placeholder="Search members"
+        placeholder={t`Search members`}
         value={searchTerm}
         name="search"
         onChange={onSearchChange}
@@ -65,10 +68,10 @@ export function UsageMembersSection({
                 )
               }
             >
-              <ButtonsSwitch value="members" label="Members" />
+              <ButtonsSwitch value="members" label={t`Members`} />
               <ButtonsSwitch
                 value="requests"
-                label="Requests"
+                label={t`Requests`}
                 isCounter
                 counterValue={
                   requests.count > 0 ? String(requests.count) : undefined
@@ -82,14 +85,14 @@ export function UsageMembersSection({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    label={selectedGroupName ?? allGroupsLabel}
+                    label={selectedGroupName ?? groupsLabel}
                     size="sm"
                     isSelect
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    label={allGroupsLabel}
+                    label={groupsLabel}
                     onClick={() => onGroupChange(null)}
                   />
                   {groups.map((group) => (

@@ -304,7 +304,7 @@ export async function deleteOrLeaveConversation(
   // would also satisfy.
   const isParticipant = await ConversationResource.isConversationParticipant(
     auth,
-    { conversation, user: user.toJSON() }
+    { conversation, user }
   );
   if (!isParticipant) {
     return new Err(new ConversationError("conversation_access_restricted"));
@@ -1941,6 +1941,11 @@ export async function postNewContentFragment(
     }
   }
 
+  const cfBlobRes = await getContentFragmentBlob(auth, cf);
+  if (cfBlobRes.isErr()) {
+    return cfBlobRes;
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -1951,11 +1956,6 @@ export async function postNewContentFragment(
   }
 
   const messageId = generateRandomModelSId();
-
-  const cfBlobRes = await getContentFragmentBlob(auth, cf);
-  if (cfBlobRes.isErr()) {
-    return cfBlobRes;
-  }
 
   const supersededContentFragmentId = cf.supersededContentFragmentId;
   // If the request is superseding an existing content fragment, we need to validate that it exists
@@ -2482,6 +2482,16 @@ export async function checkMessagesLimit(
           api_error: {
             type: "user_cap_reached",
             message: "You have reached your personal usage cap.",
+          },
+        });
+      }
+      // No seat auto-upgrade: a seat does not raise a group's budget.
+      if (blockedReason === "group_limit_reached") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "group_limit_reached",
+            message: "Your group has reached its usage limit.",
           },
         });
       }

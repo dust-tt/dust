@@ -19,11 +19,23 @@ import {
   MARKETING_PARAMS,
 } from "@marketing/lib/utils/utm";
 import { isString } from "@marketing/types/shared/utils/general";
+import type { PostHogConfig } from "posthog-js";
 import posthog from "posthog-js";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+
+/**
+ * @cc [owner:rfrenoy,label:security] posthog-fetch-omits-credentials
+ * `posthog.init` MUST receive these `fetch_options`: posthog-js spreads them into every fetch
+ * init, so fetch-transport requests to the same-origin `/subtle1` proxy never carry the
+ * `workos_session` cookie, even if the proxy's header stripping regresses. This covers the fetch
+ * transport only: `sendBeacon` flushes and `<script>` loads still carry same-origin cookies, and
+ * the proxy's request-header allowlist is the control for those.
+ */
+const POSTHOG_FETCH_OPTIONS: NonNullable<PostHogConfig["fetch_options"]> &
+  Pick<RequestInit, "credentials"> = { credentials: "omit" };
 
 const EXCLUDED_PATHS = [
   "/poke",
@@ -134,9 +146,10 @@ export function PostHogTrackerEffects({
       : "localStorage";
 
     posthog.init(POSTHOG_KEY, {
-      // /subtle1 is rewritten to PostHog by marketing's own next.config.js.
+      // /subtle1 is proxied to PostHog by marketing's own pages/api route.
       // Use a relative path so requests hit marketing's origin (not front).
       api_host: "/subtle1",
+      fetch_options: POSTHOG_FETCH_OPTIONS,
       // Direct PostHog app URL (EU region). Required because api_host points
       // at our own /subtle1 reverse proxy: the toolbar (heatmaps, inspect mode)
       // authenticates against ui_host, and without it tries to reach the

@@ -9,6 +9,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatAvgCredits, formatCredits } from "@app/lib/client/credits";
 import { formatNumber } from "@app/lib/i18n/format";
 import { ArrowUpRight, Button, LoadingBlock } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export interface ConsumptionSummaryProps {
   workspaceId: string;
@@ -25,10 +26,11 @@ export function ConsumptionSummary({
   workspaceId,
   period: periodSelection,
   usageHref = `/w/${workspaceId}/credits`,
-  usageLinkLabel = "Manage in Credits",
+  usageLinkLabel,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
+  const { t } = useLingui();
   const { isManager } = useAuth();
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({
@@ -44,7 +46,7 @@ export function ConsumptionSummary({
       isOverviewLoading={isOverviewLoading}
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
-      usageLinkLabel={usageLinkLabel}
+      usageLinkLabel={usageLinkLabel ?? t`Manage in Credits`}
       analyticsScope={analyticsScope}
       showUsageLink={isManager}
     />
@@ -82,6 +84,7 @@ export function ConsumptionSummaryView({
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   showUsageLink = true,
 }: ConsumptionSummaryViewProps) {
+  const { t } = useLingui();
   if (analyticsScope.kind === "agent") {
     return (
       <AgentConsumptionSummaryView
@@ -123,6 +126,17 @@ export function ConsumptionSummaryView({
   const averageCostPerMessage = averageCreditsPerMessage(overview);
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
+  const formattedTotalCredits = formatCredits(totalCredits);
+  const usedPercentage = creditUsage?.status.usedPercentage;
+  const capCredits = creditUsage ? formatCredits(creditUsage.capCredits) : null;
+  const formattedAverageCost =
+    averageCostPerMessage === null
+      ? null
+      : formatAvgCredits(averageCostPerMessage);
+  const topAgentShare =
+    topAgent && totalCredits > 0
+      ? Math.round((topAgent.credits / totalCredits) * 100)
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -145,29 +159,25 @@ export function ConsumptionSummaryView({
         }
       >
         <SummaryCard
-          label="Used this period"
-          value={`${formatCredits(totalCredits)} credits`}
-          hint={
-            creditUsage
-              ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
-              : null
-          }
+          label={t`Used this period`}
+          value={t`${formattedTotalCredits} credits`}
+          hint={creditUsage ? t`${usedPercentage}% of ${capCredits} cap` : null}
         />
         <SummaryCard
           label={MESSAGE_COUNT_LABEL}
           value={formatNumber(messageCount)}
           hint={
-            averageCostPerMessage === null
+            formattedAverageCost === null
               ? null
-              : `${formatAvgCredits(averageCostPerMessage)} credits / message`
+              : t`${formattedAverageCost} credits / message`
           }
         />
         <SummaryCard
-          label="Top agent"
+          label={t`Top agent`}
           value={topAgent?.name ?? "—"}
           hint={
-            topAgent && totalCredits > 0
-              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
+            topAgentShare !== null
+              ? t`${topAgentShare}% of total consumption`
               : null
           }
         />
@@ -186,6 +196,7 @@ function AgentConsumptionSummaryView({
   isOverviewError,
   responsiveLayout,
 }: AgentConsumptionSummaryViewProps) {
+  const { t } = useLingui();
   const loadingCardClassName = responsiveLayout
     ? "h-20 rounded-xl"
     : "h-20 flex-1 rounded-xl";
@@ -226,6 +237,11 @@ function AgentConsumptionSummaryView({
       ? Math.round(overview.messageCount / overview.members.active)
       : 0;
   const averageCostPerMessage = averageCreditsPerMessage(overview);
+  const totalCost = formatCredits(overview.totalCredits);
+  const formattedAverageCost =
+    averageCostPerMessage === null
+      ? null
+      : formatAvgCredits(averageCostPerMessage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -238,13 +254,13 @@ function AgentConsumptionSummaryView({
       >
         <SummaryCard
           className="h-20"
-          label="Active Users"
+          label={t`Active Users`}
           value={formatNumber(overview.members.active)}
           hint={null}
         />
         <SummaryCard
           className="h-20"
-          label="Messages / active user"
+          label={t`Messages / active user`}
           value={formatNumber(messagesPerActiveUser)}
           hint={null}
         />
@@ -258,17 +274,17 @@ function AgentConsumptionSummaryView({
       >
         <SummaryCard
           className="h-20"
-          label="Total cost"
-          value={`${formatCredits(overview.totalCredits)} credits`}
+          label={t`Total cost`}
+          value={t`${totalCost} credits`}
           hint={null}
         />
         <SummaryCard
           className="h-20"
-          label="Avg. cost/msg"
+          label={t`Avg. cost/msg`}
           value={
-            averageCostPerMessage === null
+            formattedAverageCost === null
               ? "—"
-              : `${formatAvgCredits(averageCostPerMessage)} credits`
+              : t`${formattedAverageCost} credits`
           }
           hint={null}
         />

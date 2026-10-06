@@ -9,19 +9,21 @@ import type { UsageFilterOption } from "@app/components/workspace/analytics/usag
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, Icon, Lock01, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface UsageFilterOptionIconProps {
   option: UsageFilterOption;
 }
 
 export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
 
   switch (option.kind) {
     case "agent":
       return option.scope === "hidden" ? (
         <Tooltip
-          label="This agent is private"
+          label={t`This agent is private`}
           tooltipTriggerAsChild
           trigger={
             <span className="flex shrink-0">

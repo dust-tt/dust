@@ -8,7 +8,7 @@ import {
   withDocumentJSONComments,
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
-import type { DfmError } from "@app/lib/markdown/dfm";
+import type { DfmComment, DfmError } from "@app/lib/markdown/dfm";
 import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -118,4 +118,18 @@ export function saveDfm(
   }
 
   return new Ok(serialized.value);
+}
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-writable
+ * A thread MUST be accepted only when the codec can write it on its own and read it back
+ * unchanged. The document's comments attribute throws on a thread the codec refuses, so a
+ * thread MUST pass this check before any transaction carries it, even one only previewed.
+ */
+export function isWritableThread(comment: DfmComment): boolean {
+  return serializeDfm({
+    frontMatter: null,
+    body: "",
+    comments: [comment],
+  }).isOk();
 }

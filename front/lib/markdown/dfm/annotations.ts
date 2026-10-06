@@ -34,6 +34,7 @@ import { z } from "zod";
  */
 
 const AUTHOR_ID_PATTERN = /^[^\s"{}]+$/;
+const SIGNATURE_PATTERN = /^[A-Za-z0-9_-]+$/;
 const INVALID_NAME_PATTERN = /["}\r\n]/;
 const TIMESTAMP_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-](\d{2}):(\d{2}))$/;
@@ -106,6 +107,7 @@ export const dfmCommentSchema = z
             .strict(),
           createdAt: z.string(),
           body: z.string(),
+          signature: z.string().optional(),
         })
         .strict()
     ),
@@ -190,18 +192,27 @@ export const messageAttributesSchema = z
       isValidTimestamp,
       "Message without a valid timestamp."
     ),
+    sig: z
+      .string({ invalid_type_error: "Message with an invalid signature." })
+      .regex(SIGNATURE_PATTERN, "Message with an invalid signature.")
+      .optional(),
   })
   .strict();
 
 /** The attribute record a message writes, validated before serialization. */
-function messageAttributes(
-  author: DfmAuthor,
-  createdAt: string
-): Record<"author" | "name" | "at", string> {
+function messageAttributes({
+  author,
+  createdAt,
+  signature,
+}: Pick<DfmMessage, "author" | "createdAt" | "signature">): Record<
+  "author" | "name" | "at",
+  string
+> & { sig?: string } {
   return {
     author: `${author.kind}:${author.id}`,
     name: author.name,
     at: createdAt,
+    ...(signature === undefined ? {} : { sig: signature }),
   };
 }
 
@@ -210,13 +221,11 @@ function commentDirective(comment: Pick<DfmComment, "id" | "status">): string {
 }
 
 function messageDirective(
-  message: Pick<DfmMessage, "author" | "createdAt">
+  message: Pick<DfmMessage, "author" | "createdAt" | "signature">
 ): string {
-  const { author, name, at } = messageAttributes(
-    message.author,
-    message.createdAt
-  );
-  return `::message{author=${author} name="${name}" at=${at}}`;
+  const { author, name, at, sig } = messageAttributes(message);
+  const signature = sig === undefined ? "" : ` sig=${sig}`;
+  return `::message{author=${author} name="${name}" at=${at}${signature}}`;
 }
 
 function trimBlankLines(lines: string[]): string[] {
@@ -266,6 +275,7 @@ function parseDirectiveLine(
 interface PendingMessage {
   author: DfmAuthor;
   createdAt: string;
+  signature: string | undefined;
   bodyLines: string[];
 }
 
@@ -289,6 +299,9 @@ export function parseAnnotationsBlock(
         author: pending.author,
         createdAt: pending.createdAt,
         body: trimBlankLines(pending.bodyLines).join("\n"),
+        ...(pending.signature === undefined
+          ? {}
+          : { signature: pending.signature }),
       });
       pending = null;
     }
@@ -348,8 +361,13 @@ export function parseAnnotationsBlock(
       });
     }
     flush();
-    const { author, name, at } = directive.value.attributes;
-    pending = { author: { ...author, name }, createdAt: at, bodyLines: [] };
+    const { author, name, at, sig } = directive.value.attributes;
+    pending = {
+      author: { ...author, name },
+      createdAt: at,
+      signature: sig,
+      bodyLines: [],
+    };
   }
 
   flush();
@@ -385,9 +403,9 @@ function validateMessage(
   commentId: string,
   message: DfmMessage
 ): DfmError | null {
-  const { author, createdAt, body } = message;
+  const { body } = message;
   const attributes = validateAttributes(
-    messageAttributes(author, createdAt),
+    messageAttributes(message),
     messageAttributesSchema
   );
   if (attributes.isErr()) {

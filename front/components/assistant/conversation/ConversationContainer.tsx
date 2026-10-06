@@ -6,6 +6,7 @@ import {
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
+import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
 import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
@@ -259,6 +260,9 @@ export function ConversationContainerVirtuoso({
           case "user_cap_reached":
             limitCode = "user_credits_exhausted";
             break;
+          case "group_limit_reached":
+            limitCode = "group_limit_reached";
+            break;
           case "credits_exhausted":
             limitCode = "pool_credits_exhausted";
             break;
@@ -353,8 +357,10 @@ export function ConversationContainerVirtuoso({
     discoverRef,
     goToDiscover,
     goToHome,
+    inputBarRef,
     isOpeningDiscover,
     isScrollLocked,
+    pullProgress,
     scrollerRef,
   } = useDiscoverScroll({ isLockEnabled: isDiscoveryHomepage && !isMobile });
 
@@ -405,6 +411,7 @@ export function ConversationContainerVirtuoso({
           isDiscoveryHomepage ? "" : "sticky bottom-0 z-20"
         )}
         style={shouldReduceMotion ? undefined : composerEntranceStyle}
+        ref={inputBarRef}
       >
         <InputBar
           owner={owner}
@@ -480,10 +487,15 @@ export function ConversationContainerVirtuoso({
                   shouldReduceMotion ? undefined : discoverButtonEntranceStyle
                 }
               >
-                <DiscoverButton
-                  onClick={goToDiscover}
-                  isOpening={isOpeningDiscover}
-                />
+                <DiscoverButtonTeaser
+                  workspaceId={owner.sId}
+                  pullProgress={pullProgress}
+                >
+                  <DiscoverButton
+                    onClick={goToDiscover}
+                    isOpening={isOpeningDiscover}
+                  />
+                </DiscoverButtonTeaser>
               </div>
             </div>
           ) : (

@@ -1,10 +1,16 @@
 import { Document } from "@app/components/editor/document";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import {
+  useDfmMessageVerifier,
+  useSignDfmCommentMessage,
+} from "@app/hooks/useDfmCommentSignatures";
+import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -22,6 +28,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useContext } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -305,6 +312,40 @@ interface FilePreviewContentProps {
   processedContent: ProcessedContent | null;
 }
 
+interface RichMarkdownDocumentProps {
+  editor: MarkdownRichEditor;
+  owner: LightWorkspaceType;
+}
+
+function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
+  const user = useContext(AuthContext)?.user;
+  const signCommentMessage = useSignDfmCommentMessage({
+    owner,
+    filePath: editor.path,
+  });
+  const verifyCommentMessage = useDfmMessageVerifier({
+    owner,
+    filePath: editor.path,
+  });
+
+  return (
+    <Document
+      initialContent={editor.initialContent}
+      onSave={editor.onSave}
+      onStateChange={editor.onStateChange}
+      commentAuthor={
+        user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
+      }
+      signCommentMessage={signCommentMessage}
+      verifyCommentMessage={verifyCommentMessage ?? undefined}
+      badge={<CoEditionBadge />}
+      renderCommentAuthorAvatar={(author, size) => (
+        <CommentAuthorAvatar owner={owner} author={author} size={size} />
+      )}
+    />
+  );
+}
+
 export function FilePreviewContent({
   category,
   entry,
@@ -382,15 +423,13 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
-      if (markdownRichEditor) {
+      if (markdownRichEditor && owner) {
         return (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <Document
+            <RichMarkdownDocument
               key={markdownRichEditor.mountKey}
-              initialContent={markdownRichEditor.initialContent}
-              onSave={markdownRichEditor.onSave}
-              onStateChange={markdownRichEditor.onStateChange}
-              badge={<CoEditionBadge />}
+              editor={markdownRichEditor}
+              owner={owner}
             />
           </div>
         );

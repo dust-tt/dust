@@ -13,17 +13,13 @@ const S = ADMIN_SECTION_IDS.secrets;
 const C = ADMIN_SECTION_IDS.computer;
 const PAGE = "developers" as const;
 
-export const API_KEYS_PAGE_TITLE = "Dust API Keys";
-export const DEVELOPER_SECRETS_PAGE_TITLE = "Developer Secrets";
-export const CREATE_SECRET_LABEL = "Create Secret";
-
 /** Search entries for Developers (API keys, secrets, computer environment). */
 export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     K.keys,
     [
-      [API_KEYS_PAGE_TITLE, "keys active credits used programmatic"],
+      ["Dust API Keys", "keys active credits used programmatic"],
       ["Create API Key", "new key scope spaces monthly cap"],
       ["API key list", "name scope key spaces credits last used status"],
       ["Revoke API key", "revoke"],
@@ -36,8 +32,8 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     S.secrets,
     [
-      [DEVELOPER_SECRETS_PAGE_TITLE, "env.secrets dust apps mcp servers"],
-      [CREATE_SECRET_LABEL, "secret name value"],
+      ["Developer Secrets", "env.secrets dust apps mcp servers"],
+      ["Create Secret", "secret name value"],
       ["API Reference", "docs documentation secrets api reference"],
     ],
     "secrets"

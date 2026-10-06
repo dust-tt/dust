@@ -1,6 +1,6 @@
 import {
-  capUnitLabel,
   normalizeCapInput,
+  useCapUnitLabel,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits } from "@app/lib/client/credits";
 import { compareStrings } from "@app/lib/i18n/format";
@@ -72,6 +72,7 @@ type ColumnHeader = ColumnDef<RowData, unknown>["header"];
 
 function getColumns(
   unit: ReinforcementBillingUnit,
+  capUnit: string,
   headers: {
     name: string;
     editors: string;
@@ -167,7 +168,7 @@ function getColumns(
               inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
               value={savedCapValue}
               placeholder={capPlaceholder}
-              unit={capUnitLabel(unit)}
+              unit={capUnit}
               normalizeValue={(value) => normalizeCapInput(value, unit)}
               onSave={onCapSave}
             />
@@ -242,6 +243,7 @@ export function SelfImprovingSkillsListSection({
 }: SelfImprovingSkillsListSectionProps) {
   const { t } = useLingui();
   const unit = useReinforcementBillingUnit({ owner });
+  const capUnit = useCapUnitLabel(unit);
   const { skills, isSkillsLoading } = useSkillsReinforcementSettings({ owner });
   const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId } =
     useSkillsSelfImprovingSpend({ owner });
@@ -388,7 +390,7 @@ export function SelfImprovingSkillsListSection({
 
   const columns = useMemo(
     () =>
-      getColumns(unit, {
+      getColumns(unit, capUnit, {
         name: t`Name`,
         editors: t`Editors`,
         enabled: t`Enabled`,
@@ -416,7 +418,7 @@ export function SelfImprovingSkillsListSection({
             : t`Cap ($)`,
         lockState: t`Lock State`,
       }),
-    [t, unit]
+    [t, unit, capUnit]
   );
 
   const defaultCapValue = capInputValueFromSaved(defaultCapPerSkill, unit);

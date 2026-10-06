@@ -39,6 +39,8 @@ describe("GET /api/w/:wId/discovery/featured", () => {
             name: "Featured agent",
             description: expect.any(String),
             pictureUrl: expect.any(String),
+            scope: "visible",
+            lastAuthors: ["Me"],
           },
         },
       ],

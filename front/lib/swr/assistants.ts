@@ -1134,9 +1134,12 @@ function buildMemberDetailsSwrKey(
 export function useMemberDetails({
   workspaceId,
   userIds,
+  shouldRetryOnError,
 }: {
   workspaceId: string;
   userIds: string[];
+  /** False for lookups where a failure is final, such as a former member's 404. */
+  shouldRetryOnError?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const normalizedUserIds = useMemo(
@@ -1192,7 +1195,8 @@ export function useMemberDetails({
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     swrKey,
-    memberDetailsFetcher
+    memberDetailsFetcher,
+    shouldRetryOnError === undefined ? undefined : { shouldRetryOnError }
   );
 
   const userDetails = data?.kind === "single" ? data.member : undefined;

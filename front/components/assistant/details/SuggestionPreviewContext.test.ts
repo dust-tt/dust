@@ -98,6 +98,17 @@ describe("getEditedSkillSections", () => {
     ]);
     expect(sections).toEqual(new Set(["name", "availability"]));
   });
+
+  it("maps a files suggestion to the files section", () => {
+    const sections = getEditedSkillSections([
+      {
+        ...SKILL_SUGGESTION,
+        kind: "files",
+        suggestion: { addFilePaths: [], removeFileIds: ["fil_a"] },
+      },
+    ]);
+    expect(sections).toEqual(new Set(["files"]));
+  });
 });
 
 describe("getEditedAgentSections", () => {

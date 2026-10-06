@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { validateMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -78,6 +79,7 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
+ * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused.
  */
 const app = workspaceApp();
 
@@ -672,13 +674,33 @@ app.put(
       return putContentTooLargeError(ctx);
     }
 
+    const content = new Uint8Array(contentBuffer);
+    const comments = await validateMarkdownCommentsForWrite(
+      auth,
+      dustFs,
+      canonicalPath,
+      content,
+      ctx.req.header("content-type") ?? undefined
+    );
+    if (comments.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: comments.error.message,
+        },
+      });
+    }
+
+    // A Markdown write is conditional on the revision its comments were validated against.
     const writeResult = await writeCanonicalFileContent(
       auth,
       dustFs,
       canonicalPath,
-      new Uint8Array(contentBuffer),
+      content,
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["x-dust-if-revision-match"]
+      ctx.req.valid("header")["x-dust-if-revision-match"] ??
+        comments.value.revision
     );
 
     if (writeResult.isErr()) {

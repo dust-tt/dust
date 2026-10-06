@@ -5,12 +5,27 @@ import { skipRequestLog } from "@front-api/middlewares/request_instrumentation";
 import type { Context } from "hono";
 import { proxy } from "hono/proxy";
 
-// PostHog ingestion reverse proxy, mirroring the `/subtle1` rewrites in
-// front/next.config.js. The obfuscated path name keeps analytics requests
-// from being flagged by ad blockers (see PostHogTracker.tsx which points
-// the PostHog client's api_host at `<api base url>/subtle1`).
+// PostHog ingestion reverse proxy. The obfuscated path name keeps analytics
+// requests from being flagged by ad blockers (see PostHogTracker.tsx which
+// points the PostHog client's api_host at `<api base url>/subtle1`).
 const POSTHOG_INGESTION_URL = "https://eu.i.posthog.com";
 const POSTHOG_ASSETS_URL = "https://eu-assets.i.posthog.com";
+
+const FORWARDED_REQUEST_HEADERS = [
+  "accept",
+  "accept-language",
+  "cache-control",
+  "content-encoding",
+  "content-length",
+  "content-type",
+  "if-modified-since",
+  "if-none-match",
+  "origin",
+  "referer",
+  "user-agent",
+  "x-forwarded-for",
+  "x-forwarded-proto",
+];
 
 // Mounted at /subtle1 (root level, not under /api).
 const app = createHono();
@@ -18,19 +33,36 @@ const app = createHono();
 // High-volume PostHog analytics proxy; too noisy to log every request.
 app.use("*", skipRequestLog);
 
+/**
+ * @cc [owner:rfrenoy,label:security] posthog-proxy-no-credentials
+ * The headers relayed to PostHog MUST be limited to `FORWARDED_REQUEST_HEADERS`. `cookie` (which
+ * carries the HttpOnly `workos_session` credential on same-origin requests) and `authorization`
+ * MUST never be forwarded, whatever the client sent.
+ */
+function buildUpstreamHeaders(requestHeaders: Headers): Headers {
+  const headers = new Headers();
+  for (const name of FORWARDED_REQUEST_HEADERS) {
+    const value = requestHeaders.get(name);
+    if (value !== null) {
+      headers.set(name, value);
+    }
+  }
+  return headers;
+}
+
 const proxyToPostHog = (upstreamBaseUrl: string) => async (c: Context) => {
   const url = new URL(c.req.url);
   const upstreamPath = url.pathname.replace(/^\/subtle1/, "");
   const upstreamUrl = `${upstreamBaseUrl}${upstreamPath}${url.search}`;
-
-  // Drop the client's Host header so fetch derives it from the upstream URL;
-  // forwarding our own host would break PostHog's routing. Hop-by-hop headers
-  // (connection, keep-alive, ...) are stripped by the proxy helper itself.
-  const headers = new Headers(c.req.raw.headers);
-  headers.delete("host");
+  const headers = buildUpstreamHeaders(c.req.raw.headers);
 
   try {
-    return await proxy(upstreamUrl, new Request(c.req.raw, { headers }));
+    const response = await proxy(
+      upstreamUrl,
+      new Request(c.req.raw, { headers })
+    );
+    response.headers.delete("set-cookie");
+    return response;
   } catch (err) {
     // `proxy` rejects with `TypeError: fetch failed` only on a transport-level
     // failure reaching PostHog (DNS, connect refused, TLS, socket reset,

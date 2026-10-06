@@ -605,6 +605,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     return categories.map((category) => category.get().brandId);
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product;security] only-unselected-categories
+   * Returns only IDs of categories of the brand with `permission: "none"`. It MUST NOT return a
+   * category with `permission: "read"`: the garbage collector deletes every category returned.
+   */
   static async fetchCategoriesNotSelectedInBrand({
     connectorId,
     brandId,
@@ -616,7 +621,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
   }): Promise<number[]> {
     const categories = await ZendeskCategoryModel.findAll({
       attributes: ["categoryId"],
-      where: { connectorId, brandId, permission: "read" },
+      where: { connectorId, brandId, permission: "none" },
       ...(batchSize && { limit: batchSize }),
     });
     return categories.map((category) => category.get().categoryId);

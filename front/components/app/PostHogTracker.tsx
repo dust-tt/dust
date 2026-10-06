@@ -20,12 +20,24 @@ import {
 } from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
+import type { PostHogConfig } from "posthog-js";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+
+/**
+ * @cc [owner:rfrenoy,label:security] posthog-fetch-omits-credentials
+ * `posthog.init` MUST receive these `fetch_options`: posthog-js spreads them into every fetch
+ * init, so fetch-transport requests to the `/subtle1` proxy never carry cookies, whichever origin
+ * serves the SPA and even if the proxy's header stripping regresses. This covers the fetch
+ * transport only: `sendBeacon` flushes still carry same-origin cookies, and the proxy's
+ * request-header allowlist is the control for those.
+ */
+const POSTHOG_FETCH_OPTIONS: NonNullable<PostHogConfig["fetch_options"]> &
+  Pick<RequestInit, "credentials"> = { credentials: "omit" };
 
 const EXCLUDED_PATHS = [
   "/poke",
@@ -178,6 +190,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
+      fetch_options: POSTHOG_FETCH_OPTIONS,
       // Direct PostHog app URL (EU region). Required because api_host points
       // at our own /subtle1 reverse proxy: the toolbar (heatmaps, inspect mode)
       // authenticates against ui_host, and without it tries to reach the

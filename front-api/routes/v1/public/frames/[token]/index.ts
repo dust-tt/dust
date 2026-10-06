@@ -207,8 +207,8 @@ app.get(
     const isParticipant =
       user && conversation && auth
         ? await ConversationResource.isConversationParticipant(auth, {
-            conversation: conversation.toJSON(),
-            user: user.toJSON(),
+            conversation,
+            user,
           })
         : false;
 

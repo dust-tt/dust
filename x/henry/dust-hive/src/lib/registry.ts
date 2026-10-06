@@ -39,7 +39,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sparkle/dist/esm/index.js`,
+      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sparkle/dist/.build-complete`,
     },
   },
   sdk: {

@@ -71,6 +71,15 @@ that follows until the next directive, and may have several paragraphs. The firs
 the comment itself, the rest are replies. A thread may exist with no anchor in the body, for
 instance when the commented text was deleted; an anchor with no thread is an error.
 
+A message may also carry `sig`, the server's Ed25519 signature in base64url over
+`messageSignaturePayload` in `signatures.ts`: workspace, file path, comment id, the message's
+position in the thread and the message before it, author, name, timestamp and body, not the status. A copy into another
+file, a rename or a reordering therefore reads as unverified. The server writes and signs a
+message when a signed-in user posts it, and refuses a save through the file API that brings a
+new message it did not sign for the saving user at that place, or moves a verified one; a
+message without a valid `sig`, such as one written from a sandbox or by an agent, is unverified. The codec carries the attribute and never checks it, so nothing here proves who
+wrote a message. `tests/fixtures/signed_comments.md` shows one.
+
 **How an agent reads it.** Text first: the body reads as Markdown with a few directives. To
 find what a comment is about, follow the id from `::comment` to the anchors. To answer a
 comment, append a `::message` line and a body to its thread. To comment on new text, wrap the
@@ -102,15 +111,16 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 | `dfmCommentSchema` | The zod schema of a `DfmComment`, exactly, refusing unknown keys, for callers that keep threads outside the codec and read them back. |
 
 Every function above returns a `Result` from `@app/types/shared/result`; `dfmCommentSchema` is
-a schema, not a function. The editor's Markdown
-parser and serializer read and write anchors one at a time, with three helpers that keep the
-directive's spelling in this module:
+a schema, not a function. The editor's Markdown parser and serializer read and write anchors one
+at a time, with the first three helpers below, which keep the directive's spelling in this
+module; the last one is shared by message signing:
 
 | Function | Purpose |
 | --- | --- |
 | `readAnchorDirective(source)` | The well-formed anchor directive at the very start of `source` with its `kind`, `id` and `length`, or null. |
 | `findAnchorDirective(source)` | Index of the first anchor directive syntax in `source`, or -1. |
 | `anchorDirective(kind, id)` | The directive text for one end of an anchor pair. |
+| `messageSignaturePayload({ workspaceId, filePath, commentId, position, previous, message })` | The exact string a message signature covers, for the server that signs and the browser that checks. |
 
 Nothing here touches the network, the database or React: the module runs on the server and in
 the browser, next to the `:preview_file` directive codec in `lib/markdown/file_preview.ts`.
@@ -125,6 +135,7 @@ the browser, next to the `:preview_file` directive codec in `lib/markdown/file_p
 | `anchors.ts` | The `:comment-start` / `:comment-end` directives: pattern, schema, builder, and scanning and pairing them in the body. |
 | `annotations.ts` | The `::comment` and `::message` directives: value rules, schemas, builders, and parsing, validating and serializing the block. |
 | `operations.ts` | Editing operations on a body, such as `anchorComment`. New operations go here. |
+| `signatures.ts` | What a message signature covers. Signing and checking live with their callers. |
 | `document.ts` | The whole-file layout: front matter, body, block. Each parse rule has its mirror in the serializer's validation. |
 | `index.ts` | The public surface. |
 

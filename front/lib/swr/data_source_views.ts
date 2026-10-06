@@ -142,7 +142,7 @@ export function useMultipleDataSourceViewsContentNodes({
               params.append("cursor", pageCursor);
             }
 
-            const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`;
+            const url = `/api/w/${owner.sId}/spaces/${encodeURIComponent(dataSourceView.spaceId)}/data_source_views/${encodeURIComponent(dataSourceView.sId)}/content-nodes?${params}`;
 
             const body = {
               internalIds,
@@ -312,7 +312,7 @@ const makeURLDataSourceViewContentNodes: ContentNodesURLBuilder = (
   { owner, dataSourceView },
   searchParams
 ) => {
-  return `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`;
+  return `/api/w/${owner.sId}/spaces/${encodeURIComponent(dataSourceView.spaceId)}/data_source_views/${encodeURIComponent(dataSourceView.sId)}/content-nodes?${searchParams}`;
 };
 
 export function useDataSourceViewContentNodes({
@@ -478,7 +478,7 @@ export function useDataSourceViewConnectorConfiguration({
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      : `/api/w/${owner.sId}/spaces/${encodeURIComponent(dataSourceView.spaceId)}/data_sources/${encodeURIComponent(dataSourceView.dataSource.sId)}/configuration`,
     dataSourceViewDocumentFetcher
   );
 

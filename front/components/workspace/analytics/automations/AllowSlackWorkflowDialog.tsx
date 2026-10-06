@@ -22,6 +22,7 @@ import {
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface SelectedSpace {
@@ -40,6 +41,7 @@ export function AllowSlackWorkflowDialog({
   onClose,
   owner,
 }: AllowSlackWorkflowDialogProps) {
+  const { t } = useLingui();
   const [botName, setBotName] = useState("");
   const [selectedSpaces, setSelectedSpaces] = useState<SelectedSpace[]>([]);
   const [spaceSearch, setSpaceSearch] = useState("");
@@ -92,28 +94,38 @@ export function AllowSlackWorkflowDialog({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Allow a Slack workflow</DialogTitle>
+          <DialogTitle>
+            <Trans>Allow a Slack workflow</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Anyone who can run the workflow in Slack will be able to summon
-            agents through it, guests included.
+            <Trans>
+              Anyone who can run the workflow in Slack will be able to summon
+              agents through it, guests included.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <Label>Workflow name</Label>
+              <Label>
+                <Trans>Workflow name</Trans>
+              </Label>
               <Input
-                placeholder="e.g. Weekly report"
+                placeholder={t`e.g. Weekly report`}
                 value={botName}
                 onChange={(e) => setBotName(e.target.value)}
               />
               <span className="text-xs text-muted-foreground">
-                The sender name showed in Slack on the workflow's messages. It
-                has to match exactly, spelling and capitalization included.
+                <Trans>
+                  The sender name shown in Slack on the workflow's messages. It
+                  has to match exactly, spelling and capitalization included.
+                </Trans>
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <Label>Spaces it can reach</Label>
+              <Label>
+                <Trans>Spaces it can reach</Trans>
+              </Label>
               <div>
                 <DropdownMenu
                   open={isSpaceMenuOpen}
@@ -122,7 +134,7 @@ export function AllowSlackWorkflowDialog({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      label="Add spaces"
+                      label={t`Add spaces`}
                       size="sm"
                       isSelect
                     />
@@ -133,7 +145,7 @@ export function AllowSlackWorkflowDialog({
                     dropdownHeaders={
                       <DropdownMenuSearchbar
                         name="slackWorkflowSpaceSearch"
-                        placeholder="Search spaces"
+                        placeholder={t`Search spaces`}
                         value={spaceSearch}
                         onChange={setSpaceSearch}
                       />
@@ -146,7 +158,7 @@ export function AllowSlackWorkflowDialog({
                     )}
                     {!isSpacesLoading && searchedSpaces.length === 0 && (
                       <div className="flex items-center justify-center py-4 text-sm">
-                        No space found
+                        <Trans>No space found</Trans>
                       </div>
                     )}
                     {searchedSpaces.map((space) => (
@@ -190,18 +202,18 @@ export function AllowSlackWorkflowDialog({
                 ))}
               </div>
               <span className="text-xs text-muted-foreground">
-                {`The workflow always reaches agents shared in ${GLOBAL_SPACE_NAME}. Add spaces to let it summon their agents too.`}
+                {t`The workflow always reaches agents shared in ${GLOBAL_SPACE_NAME}. Add spaces to let it summon their agents too.`}
               </span>
             </div>
           </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Allow",
+            label: t`Allow`,
             variant: "primary",
             onClick: handleAllow,
             disabled: botName.trim().length === 0,

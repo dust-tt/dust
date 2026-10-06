@@ -1,4 +1,5 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
+import { OPEN_PODS_POLICIES } from "@app/components/workspace/settings/settings_metadata";
 import { useOpenPodsPolicy } from "@app/hooks/useOpenPodsPolicy";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -9,29 +10,32 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-
-export const OPEN_PODS_POLICIES = [
-  {
-    value: "private_and_open",
-    label: "Restricted and open Pods",
-    description: "Members can create either restricted or open Pods",
-    allowOpenProjects: true,
-  },
-  {
-    value: "private_only",
-    label: "Restricted Pods only",
-    description: "Members can only create restricted Pods",
-    allowOpenProjects: false,
-  },
-] as const;
-
-export const OPEN_PODS_LABEL = "Restricted and Open Pods";
-export const OPEN_PODS_DESCRIPTION =
-  "Whether members are allowed to create open pods";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 type OpenPodPolicy = (typeof OPEN_PODS_POLICIES)[number];
 
-export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
+const OPEN_PODS_POLICY_TEXTS: Record<
+  OpenPodPolicy["value"],
+  { label: MessageDescriptor; description: MessageDescriptor }
+> = {
+  private_and_open: {
+    label: msg`Restricted and open Pods`,
+    description: msg`Members can create either restricted or open Pods`,
+  },
+  private_only: {
+    label: msg`Restricted Pods only`,
+    description: msg`Members can only create restricted Pods`,
+  },
+};
+
+interface OpenPodPolicyProps {
+  owner: WorkspaceType;
+}
+
+export function OpenPodPolicy({ owner }: OpenPodPolicyProps) {
+  const { t } = useLingui();
   const { allowOpenPods, isChanging, doUpdateOpenPodsPolicy } =
     useOpenPodsPolicy({ owner });
 
@@ -41,8 +45,8 @@ export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <GovernanceSettingRowLayout
-      label={OPEN_PODS_LABEL}
-      description={OPEN_PODS_DESCRIPTION}
+      label={t`Restricted and open Pods`}
+      description={t`Whether members are allowed to create open Pods`}
       action={
         <OpenPodPolicyDropdown
           selectedPolicy={selectedPolicy}
@@ -65,6 +69,8 @@ const OpenPodPolicyDropdown = ({
   isChanging,
   doUpdateOpenPodsPolicy,
 }: OpenPodPolicyDropdownProps) => {
+  const { t } = useLingui();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -72,7 +78,11 @@ const OpenPodPolicyDropdown = ({
           variant="outline"
           size="sm"
           isSelect
-          label={selectedPolicy?.label}
+          label={
+            selectedPolicy
+              ? t(OPEN_PODS_POLICY_TEXTS[selectedPolicy.value].label)
+              : undefined
+          }
           disabled={isChanging}
           className="grid grid-cols-[auto_1fr_auto] truncate"
         />
@@ -83,8 +93,8 @@ const OpenPodPolicyDropdown = ({
             <DropdownMenuRadioItem
               key={policy.value}
               value={policy.value}
-              label={policy.label}
-              description={policy.description}
+              label={t(OPEN_PODS_POLICY_TEXTS[policy.value].label)}
+              description={t(OPEN_PODS_POLICY_TEXTS[policy.value].description)}
               onClick={() =>
                 void doUpdateOpenPodsPolicy(policy.allowOpenProjects)
               }

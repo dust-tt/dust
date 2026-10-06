@@ -8,6 +8,7 @@ import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDateTime, formatNumber } from "@app/lib/i18n/format";
 import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export interface ConsumptionOverviewProps {
   workspaceId: string;
@@ -60,6 +61,7 @@ export function ConsumptionOverviewView({
   showIndexingDetails = false,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionOverviewViewProps) {
+  const { t } = useLingui();
   if (isOverviewLoading) {
     return <LoadingBlock className="h-5 w-80" />;
   }
@@ -67,25 +69,32 @@ export function ConsumptionOverviewView({
   if (isOverviewError || !overview) {
     return showError ? (
       <Page.P variant="secondary">
-        Overview unavailable. Charts and attribution may still load.
+        <Trans>
+          Overview unavailable. Charts and attribution may still load.
+        </Trans>
       </Page.P>
     ) : null;
   }
 
   const { period, members, lastRecordAt } = overview;
+  const startDate = formatConsumptionDate(period.startDate, getActiveLocale());
+  const endDate = formatConsumptionDate(period.endDate, getActiveLocale());
+  const activeMembers = formatNumber(members.active);
+  const totalMembers = formatNumber(members.total);
+  const lastRecordTimeAgo = lastRecordAt
+    ? timeAgoFrom(new Date(lastRecordAt).getTime())
+    : null;
 
   const header = [
-    `${formatConsumptionDate(period.startDate, getActiveLocale())} to ${formatConsumptionDate(period.endDate, getActiveLocale())}`,
+    t`${startDate} to ${endDate}`,
     ...(analyticsScope.kind === "workspace"
-      ? [
-          `${formatNumber(members.active)} of ${formatNumber(members.total)} members active`,
-        ]
+      ? [t`${activeMembers} of ${totalMembers} members active`]
       : []),
-    ...(lastRecordAt
+    ...(lastRecordTimeAgo
       ? [
           showIndexingDetails
-            ? `Latest indexed record ${timeAgoFrom(new Date(lastRecordAt).getTime())}`
-            : `Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())}`,
+            ? t`Latest indexed record ${lastRecordTimeAgo}`
+            : t`Updated ${lastRecordTimeAgo}`,
         ]
       : []),
   ];
