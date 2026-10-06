@@ -390,7 +390,7 @@ impl Fs {
     fn read_whole(&self, id: Id, offset: u64) -> Result<Option<Arc<[u8]>>, Errno> {
         let mut state = self.state.lock();
         let size = loop {
-            let Some(attr) = state.attr(id).filter(|a| a.size <= WHOLE_FILE) else { return Ok(None) };
+            let Some(attr) = state.server_attr(id).filter(|a| a.size <= WHOLE_FILE) else { return Ok(None) };
             if let Some(bytes) = state.content.get(id, attr.rev) {
                 drop(state);
                 self.stats.local("read");
@@ -428,38 +428,6 @@ impl Fs {
         Ok(demanded)
     }
 
-    /// The whole content of `id` at one revision, with the attribute it was read under and the
-    /// instant that attribute was requested.
-    fn materialize(&self, id: Id) -> Result<(Attr, Vec<u8>, Instant), Errno> {
-        let (attr, fresh) = self.attr_stamped(id)?;
-        if attr.kind != Kind::File {
-            return Err(Errno::EISDIR);
-        }
-        if let Some(bytes) = self.state.lock().content.get(id, attr.rev) {
-            return Ok((attr, bytes.to_vec(), fresh));
-        }
-        'restart: for _ in 0..TRIES {
-            let mut bytes = Vec::new();
-            let mut rev = None;
-            loop {
-                let (reply, _) = self.call("read", Request::Read { id, offset: bytes.len() as u64, len: MAX_IO_BYTES })?;
-                let Response::Data { rev: at, size, bytes: chunk } = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
-                if *rev.get_or_insert(at) != at {
-                    continue 'restart;
-                }
-                let done = chunk.is_empty() || bytes.len() as u64 + chunk.len() as u64 >= size;
-                bytes.extend(chunk);
-                if done {
-                    let mut attr = attr.clone();
-                    attr.size = bytes.len() as u64;
-                    attr.rev = at;
-                    return Ok((attr, bytes, fresh));
-                }
-            }
-        }
-        Err(Errno::EAGAIN)
-    }
-
     /// Waits until a new mutation may be acknowledged (`State::backlogged`); the request then
     /// counts as having taken effect.
     fn admit(&self, state: &mut MutexGuard<'_, State>) -> Result<(), Errno> {
@@ -492,48 +460,65 @@ impl Fs {
         state.take_id().ok_or(Errno::EIO)
     }
 
-    /// Runs `change` on `id`'s `Local` with its content image present (fetched unless `fresh`,
-    /// which starts it empty), then accounts for what it buffered.
-    fn with_image(&self, id: Id, fresh: bool, change: impl Fn(&mut Local, Instant, i64)) -> Result<(), Errno> {
+    /// @cc [owner:fontanierh,label:product] overlay-over-fresh-base
+    /// While `id`'s `Local` has uncommitted content changes (or is unborn), a read MUST return the
+    /// server's content with those changes applied in order, clipped to the `Local`'s size. The
+    /// server bytes MUST come from a reply read at or above `id`'s floor: a base predating one of
+    /// this mount's commits would lose that commit's changes, whose layer is already dropped.
+    /// `None` when the `Local` does not change the content (read it from the server).
+    fn read_local(&self, id: Id, offset: u64, len: u32) -> Result<Option<Vec<u8>>, Errno> {
         for _ in 0..TRIES {
-            let present = {
-                let mut state = self.state.lock();
-                state.expire(id);
-                state.locals.get(&id).is_some_and(|l| l.image.is_some())
-            };
-            let fetched = match (present, fresh) {
-                (true, _) => None,
-                (false, true) => {
-                    let (attr, fresh) = self.attr_stamped(id)?;
-                    Some((attr, Vec::new(), fresh))
+            let (end, base) = {
+                let state = self.state.lock();
+                let Some(local) = state.visible(id).filter(|l| l.attr.kind == Kind::File && l.changing()) else { return Ok(None) };
+                let end = offset.saturating_add(u64::from(len.min(MAX_IO_BYTES))).min(local.attr.size);
+                if offset >= end {
+                    return Ok(Some(Vec::new()));
                 }
-                (false, false) => Some(self.materialize(id)?),
+                (end, !local.unborn && !local.covers(offset, end))
             };
-            let mut state = self.state.lock();
-            self.admit(&mut state)?;
-            let local = match (state.locals.contains_key(&id), fetched) {
-                (true, fetched) => {
-                    let local = state.locals.get_mut(&id).ok_or(Errno::EIO)?;
-                    if local.image.is_none() {
-                        let Some((attr, bytes, _)) = fetched else { continue };
-                        // Only metadata changes are buffered without an image: size and revision
-                        // come with the content.
-                        local.attr.size = attr.size;
-                        local.attr.rev = attr.rev;
-                        local.image = Some(bytes);
-                    }
-                    local
-                }
-                (false, Some((attr, bytes, fresh))) => {
-                    let local = state.local(attr, fresh);
-                    local.image = Some(bytes);
-                    local
-                }
-                (false, None) => continue,
+            let base = if base {
+                let (reply, _) = self.call("read", Request::Read { id, offset, len: (end - offset) as u32 })?;
+                let Response::Data { bytes, .. } = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
+                Some((bytes, reply.version))
+            } else {
+                None
             };
-            if local.attr.kind != Kind::File {
+            let state = self.state.lock();
+            if base.as_ref().is_some_and(|(_, version)| *version < state.floor(id)) {
+                continue;
+            }
+            let Some(local) = state.visible(id).filter(|l| l.attr.kind == Kind::File) else { continue };
+            // Without a base, the changes that covered the range must all still be uncommitted.
+            if base.is_none() && !(local.unborn || local.covers(offset, end)) {
+                continue;
+            }
+            let end = end.min(local.attr.size).max(offset);
+            let mut buf = base.map(|(bytes, _)| bytes).unwrap_or_default();
+            buf.resize((end - offset) as usize, 0);
+            local.apply(offset, &mut buf);
+            self.stats.local("read");
+            return Ok(Some(buf));
+        }
+        Err(Errno::EAGAIN)
+    }
+
+    /// Runs `change` on `id`'s `Local` (promoted from its live attribute when absent, without
+    /// reading any content), then accounts for what it buffered.
+    fn with_local(&self, id: Id, change: impl Fn(&mut Local, Instant, i64)) -> Result<(), Errno> {
+        for _ in 0..TRIES {
+            if self.attr(id)?.kind != Kind::File {
                 return Err(Errno::EISDIR);
             }
+            let mut state = self.state.lock();
+            self.admit(&mut state)?;
+            state.expire(id);
+            if !state.locals.contains_key(&id) {
+                // Promoted under the lock from a still-live attribute, keeping its freshness.
+                let Some((attr, fresh)) = state.attr_stamped(id) else { continue };
+                state.local(attr, fresh);
+            }
+            let local = state.locals.get_mut(&id).ok_or(Errno::EIO)?;
             let before = local.dirty_bytes;
             let had_dirty = !local.dirty.is_empty();
             change(local, Instant::now(), now_ns());
@@ -615,9 +600,6 @@ impl Fs {
         local.unborn = true;
         local.writers = writers;
         local.target = target.clone();
-        if kind == Kind::File {
-            local.image = Some(Vec::new());
-        }
         let op = Op::Create { parent, name: name.to_string(), id, kind, mode: mode & 0o7777, mtime_ns: now, target };
         state.push(op, Instant::now(), vec![(parent, name.to_string(), Some((id, kind)))]);
         state.places.insert(id, (parent, name.to_string()));
@@ -704,9 +686,9 @@ impl Fs {
         Ok(())
     }
 
-    /// Opens `id` for writing: counts the writer and loads (or, truncating, empties) its image.
+    /// Opens `id` for writing: counts the writer and, when `truncate`, empties it.
     fn open_writer(&self, id: Id, truncate: bool) -> Result<(), Errno> {
-        self.with_image(id, truncate, |local, now, now_ns| {
+        self.with_local(id, |local, now, now_ns| {
             local.writers += 1;
             if truncate && (local.attr.size > 0 || !local.dirty.is_empty()) {
                 local.truncate(0, now, now_ns);
@@ -905,7 +887,7 @@ impl Filesystem for Mount {
                     if size > dfs_proto::MAX_FILE_BYTES {
                         return Err(Errno::EFBIG);
                     }
-                    fs.with_image(id, size == 0, |local, now, now_ns| local.truncate(size, now, now_ns))?;
+                    fs.with_local(id, |local, now, now_ns| local.truncate(size, now, now_ns))?;
                 }
                 if mode.is_some() || mtime.is_some() {
                     fs.set_attr(id, mode.map(|m| m & 0o7777), mtime)?;
@@ -1043,7 +1025,7 @@ impl Filesystem for Mount {
                 bytes[start..start.saturating_add(size as usize).min(bytes.len())].to_vec()
             };
             let result = (|| {
-                if let Some(bytes) = fs.state.lock().visible(id).and_then(|l| l.image.as_deref().map(slice)) {
+                if let Some(bytes) = fs.read_local(id, offset, size)? {
                     return Ok(bytes);
                 }
                 if let Some(bytes) = fs.read_whole(id, offset)? {
@@ -1082,7 +1064,7 @@ impl Filesystem for Mount {
         }
         let data = data.to_vec();
         self.serve(reply, move |fs, reply| {
-            let result = fs.with_image(fs.id(ino), false, |local, now, now_ns| local.write(offset, &data, now, now_ns));
+            let result = fs.with_local(fs.id(ino), |local, now, now_ns| local.write(offset, &data, now, now_ns));
             answer(reply, result, |reply, ()| reply.written(data.len() as u32))
         });
     }

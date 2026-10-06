@@ -115,14 +115,19 @@ entries; the first page is capped there) with every child's attributes, so one R
 lookup in the directory for the TTL. A directory known to be larger falls back to per-name lookups.
 This took open+fstat+close (10k files) from 20.1 s to 2.0 s and read+SHA from 43.6 s to 2.2 s.
 
-**Overlay.** Every mutation is acknowledged locally: a `Local` per touched object (attributes, the
-whole content image for files, symlink target) and a pending name per `(dir, name)`; reads in this
-mount see them at once. A file opened for writing without `O_TRUNC` is materialized whole first. A
-`Local` with nothing pending is dropped (re-fetched on demand) once its TTL lapses, so an idle open
-writer does not freeze other mounts' updates out of view. A `Local` built from cached data keeps
-that data's request time, so promoting it does not extend its life (`local-keeps-freshness`). A
-read that returns a newer revision than the cached attribute drops that attribute, so `stat` does
-not keep reporting the old size.
+**Overlay.** Every mutation is acknowledged locally: a `Local` per touched object (attributes,
+symlink target, and for files the content changes not yet committed, one layer per op plus the
+unsealed ones) and a pending name per `(dir, name)`; reads in this mount see them at once. Opening a
+file for writing reads none of it. A read of a file with uncommitted changes fetches only the bytes
+the changes do not cover (none for an append read back or an unborn file), at or above the file's
+floor, and applies the changes in order (`overlay-over-fresh-base`). A layer is dropped when its op
+commits, so committed bytes come from the server and stop shadowing other mounts' writes. Appending
+a line to a 256 MiB file after its cache expired went from 3.07 s to 3.2 ms (peak mount RSS 353 to
+32 MiB; `bench/append.py`). A `Local` with nothing pending is dropped (re-fetched on demand) once
+its TTL lapses, so an idle open writer does not freeze other mounts' updates out of view. A `Local`
+built from cached data keeps that data's request time, so promoting it does not extend its life
+(`local-keeps-freshness`). A read that returns a newer revision than the cached attribute drops that
+attribute, so `stat` does not keep reporting the old size.
 
 **Log and committer.** Mutations become ops in an ordered log. A `SetAttr` folds into the latest
 queued op on the same object; a sealed `Write` merges into the latest queued `Write` while it stays
@@ -167,7 +172,9 @@ absent; `fsck` clean).
   counted; the next fsync reports them.
 * Any local uid acts as the session principal (mode bits are honoured for non-root callers).
 * No reconnect: on a lost connection pending ops fail (`EIO` at the barrier, counted as dropped).
-* Opening an existing file for writing without `O_TRUNC` reads it whole first.
+* A file's size in a mount with uncommitted changes to it comes from that mount's own view, so two
+  mounts writing one file at once may each report their own size until they go quiet.
+* Reading a file back while it still has uncommitted changes costs a `Read` per uncovered range.
 * A `read(2)` the kernel splits into several FUSE reads may span two revisions of a file being
   rewritten elsewhere; each FUSE read returns bytes of one revision.
 * `MAP_PRIVATE` mmap goes through the page cache (the kernel's direct-I/O path); shared mmap is
@@ -182,7 +189,7 @@ absent; `fsck` clean).
 Directory (`CONTRACTS`): `tenant-and-principal-from-session`, `store-trait-boundary`.
 Declarations: `write-stop-boundaries`, `read-version-reuse`, `auth-cache-epoch`, `fresh-reads`,
 `apply-batch`, `session-principal`, `ordered-commit`, `own-commit-floor`, `ttl-at-serve`,
-`local-permissions`, `serve-inline-or-defer`, `local-keeps-freshness`.
+`local-permissions`, `serve-inline-or-defer`, `local-keeps-freshness`, `overlay-over-fresh-base`.
 
 ## Checks (`local/`)
 
@@ -203,36 +210,43 @@ Our adapter of Spolu's `vfs.py` / `untar.py`: same corpus and manifest hash, jd'
 unchanged, same `tar --no-same-owner` command, new server + mount before every `first` row. One
 machine (OrbStack, 12 vCPU, Linux 7.0), FDB 7.3 `single ssd` with **FDB's default commit knobs**.
 
-Two Spolu references:
+References:
 
 * **Spolu pinned**: his v2 `90f9932` run by us on this machine against the same FDB settings
   (`bench/results/spolu-vfs-native.log`). Same FDB settings. Our untar time excludes the final
   drain, as his harness does; the drain is recorded separately (≈ 20–30 ms).
+* **Native**: jd's script run directly on the corpus on this machine's local disk
+  (`bench/results/native/`).
 * **Spolu latest**: his own `RESULTS.md` run (revision `2717953273`), on FDB tuned with four of
   his five knobs (commit batch intervals, server and client busy-wait). Same machine class, faster
   FDB settings than ours.
 
-## Results (2026-10-05)
+## Results (2026-10-06)
 
-10k-file untar (then drain): **1.98 s at 1 s, 1.94 s at 8 s**, vs Spolu pinned 65.6 s and Spolu
-latest 37.2 s. Deep-grant untar (1000 files): 0.155 s / 0.148 s (first build of this design: 1.73 s;
-lease design: 11.27 s).
+10k-file untar (then drain): **2.31 s at 1 s, 2.02 s at 8 s** (an A/B of three runs each, before
+and after the sparse overlay, spans 2.19 to 2.48 s), vs Spolu pinned 65.6 s and Spolu latest 37.2 s.
+Native tar of the same archive on this machine: 0.23 s. Deep-grant untar (1000 files): 0.160 s /
+0.173 s (first build of this design: 1.73 s; lease design: 11.27 s).
 
-jd's rows, ms, `first / warm`:
+jd's rows, ms, `first / warm`. Native is jd's script on the VM's local disk, with the corpus
+already in the page cache, so its `first` is not cold:
 
-| row | ours, 1 s | ours, 8 s | Spolu pinned | Spolu latest |
-| --- | ---: | ---: | ---: | ---: |
-| scandir + stat | 658 / 303 | 728 / 298 | 9,267 / 2,383 | 1,708 / 132 |
-| rg --files | 139 / 7.5 | 260 / 7.5 | 639 / 5.1 | 264 / 6.0 |
-| open + fstat + close | 581 / 232 | 725 / 216 | 34,487 / 776 | 6,053 / 852 |
-| stat missing | 359 / 8.5 | 356 / 7.9 | 644 / 4.5 | 184 / 1.8 |
-| rg no-match | 624 / 669 | 775 / 328 | 7,412 / 58 | 5,426 / 189 |
-| rg rare | 1,027 / 385 | 883 / 328 | 6,245 / 51 | 5,363 / 190 |
-| rg branch glob | 447 / 145 | 481 / 149 | 1,170 / 12 | 768 / 31 |
-| rg depth-10 | 87 / 36 | 91 / 39 | 263 / 4.4 | 129 / 6.9 |
-| open + read + SHA-256 | 1,962 / 1,032 | 1,823 / 416 | 47,275 / 11,481 | 12,313 / 1,212 |
-| open + pread tail | 796 / 42 | 810 / 12 | 1,379 / 7.3 | 359 / 16 |
-| create + write / fsync / close / unlink | 1.5 / 21 / 0.22 / 0.54 | 2.2 / 19 / 0.23 / 0.81 | 211 / 562 / 0.78 / 268 | 59 / 19 / 0.69 / 35 |
+| row | native | ours, 1 s | ours, 8 s | Spolu pinned | Spolu latest |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| scandir + stat | 168 / 150 | 665 / 316 | 914 / 302 | 9,267 / 2,383 | 1,708 / 132 |
+| rg --files | 5.2 / 5.1 | 144 / 7.5 | 246 / 7.5 | 639 / 5.1 | 264 / 6.0 |
+| open + fstat + close | 54 / 50 | 639 / 233 | 606 / 223 | 34,487 / 776 | 6,053 / 852 |
+| stat missing | 4.3 / 2.1 | 338 / 9.7 | 331 / 8.4 | 644 / 4.5 | 184 / 1.8 |
+| rg no-match | 45 / 35 | 826 / 415 | 863 / 395 | 7,412 / 58 | 5,426 / 189 |
+| rg rare | 17 / 14 | 1,277 / 424 | 1,356 / 331 | 6,245 / 51 | 5,363 / 190 |
+| rg branch glob | 8.4 / 7.8 | 469 / 153 | 394 / 150 | 1,170 / 12 | 768 / 31 |
+| rg depth-10 | 5.5 / 3.9 | 92 / 42 | 87 / 41 | 263 / 4.4 | 129 / 6.9 |
+| open + read + SHA-256 | 169 / 165 | 1,846 / 751 | 2,092 / 459 | 47,275 / 11,481 | 12,313 / 1,212 |
+| open + pread tail | 1.9 / 1.4 | 908 / 177 | 910 / 9.7 | 1,379 / 7.3 | 359 / 16 |
+| create + write / fsync / close / unlink | 1.8 / 54 / 0.06 / 0.32 | 6.2 / 11 / 0.18 / 0.42 | 2.4 / 22 / 0.28 / 0.56 | 211 / 562 / 0.78 / 268 | 59 / 19 / 0.69 / 35 |
+
+Warm rows at 1 s vary between runs (pread warm: 42 ms in the previous run, 177 ms here) because
+the `first` pass takes longer than the TTL, so whether the warm pass re-fetches depends on timing.
 
 fsync is durable: the first of the 32 drains the mount's log (one `Apply`), the rest find nothing
 left to commit.

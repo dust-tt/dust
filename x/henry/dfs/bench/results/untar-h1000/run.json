@@ -5,7 +5,7 @@
   "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
   "cpu_count": 12,
   "server_binary_sha256": "3676dbff4c04deb240eb0de179e78dabef4cf39590b6dce988f600f22465b29d",
-  "mount_binary_sha256": "32bad3a9bc5e31cea71e6b1119e365952cc56343a77c6c1dfe6caa6b01c25c1b",
+  "mount_binary_sha256": "9df7d217510412b61f5db62cf1dc9046d7369c5f79e51ce79333ba3a77f4e97d",
   "fdb_client_knobs": {},
   "max_delay_ms": 1000,
   "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
@@ -17,19 +17,19 @@
   "outer_depth": 6,
   "depth_below_grant": 6,
   "corpus_selection": "first manifest paths",
-  "untar_seconds": 0.15484732299955795,
-  "remaining_client_writeback_seconds": 0.023805077998986235,
+  "untar_seconds": 0.15977830600604648,
+  "remaining_client_writeback_seconds": 0.029714858996158,
   "mount": {
     "budget": {
       "ttl_ms": 750.0,
       "window_ms": 250.0
     },
     "commit": {
-      "apply_ms": 170.766391,
+      "apply_ms": 181.014478,
       "batches": 11,
       "dropped_ops": 0,
-      "max_apply_ms": 23.310161,
-      "max_lag_ms": 39.947145000000006,
+      "max_apply_ms": 20.336188,
+      "max_lag_ms": 40.328632000000006,
       "missed_windows": 0,
       "ops": 2021
     },
@@ -50,15 +50,15 @@
     "rpcs": {
       "alloc_ids": {
         "calls": 1,
-        "total_ms": 5.771
+        "total_ms": 6.008
       },
       "apply": {
         "calls": 11,
-        "total_ms": 170.755
+        "total_ms": 180.998
       },
       "readdir": {
         "calls": 7,
-        "total_ms": 22.037
+        "total_ms": 16.819
       }
     }
   },
@@ -66,11 +66,11 @@
     "calls": {
       "alloc_ids": {
         "calls": 2,
-        "total_ms": 8.81
+        "total_ms": 9.904
       },
       "apply": {
         "calls": 13,
-        "total_ms": 156.758
+        "total_ms": 167.292
       },
       "close": {
         "calls": 3,
@@ -78,11 +78,11 @@
       },
       "grant": {
         "calls": 1,
-        "total_ms": 9.089
+        "total_ms": 6.457
       },
       "readdir": {
         "calls": 8,
-        "total_ms": 22.096
+        "total_ms": 17.87
       }
     },
     "commits": 19,

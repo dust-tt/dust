@@ -76,12 +76,14 @@ impl Content {
     }
 }
 
-/// This mount's view of an object it changed: attributes and, for files open for writing, the
-/// whole content, plus the changes not yet sealed into an op.
+/// This mount's view of an object it changed: attributes, plus the content changes not yet
+/// committed. A file's content is the server's, with `layers` then `dirty` applied in order.
 pub struct Local {
     pub attr: Attr,
-    pub image: Option<Vec<u8>>,
     pub target: Option<String>,
+    /// Content changes sealed into queued or in-flight `Write` ops, by op seq, in log order.
+    pub layers: Vec<(u64, Vec<Change>)>,
+    /// Content changes not yet sealed into an op.
     pub dirty: Vec<Change>,
     pub dirty_blocks: BTreeSet<u64>,
     pub dirty_bytes: usize,
@@ -102,8 +104,8 @@ impl Local {
     pub fn new(attr: Attr, fresh: Instant) -> Self {
         Self {
             attr,
-            image: None,
             target: None,
+            layers: Vec::new(),
             dirty: Vec::new(),
             dirty_blocks: BTreeSet::new(),
             dirty_bytes: 0,
@@ -119,32 +121,76 @@ impl Local {
         self.pending == 0 && self.writers == 0 && self.dirty.is_empty()
     }
 
-    /// Writes `data` at `offset` into the image (which must be present).
-    pub fn write(&mut self, offset: u64, data: &[u8], now: Instant, now_ns: i64) {
-        let Some(image) = self.image.as_mut() else { return };
-        let end = offset as usize + data.len();
-        if image.len() < end {
-            image.resize(end, 0);
+    /// Content changes not yet committed, in order.
+    pub fn changes(&self) -> impl Iterator<Item = &Change> {
+        self.layers.iter().flat_map(|(_, changes)| changes).chain(&self.dirty)
+    }
+
+    /// Whether the content view depends on more than the server's content.
+    pub fn changing(&self) -> bool {
+        self.unborn || !self.layers.is_empty() || !self.dirty.is_empty()
+    }
+
+    /// Whether every byte of `start..end` is set by an uncommitted change (written, or past a
+    /// truncation), so the server's content is not needed to read it.
+    pub fn covers(&self, start: u64, end: u64) -> bool {
+        let mut known: Vec<(u64, u64)> = self
+            .changes()
+            .map(|change| match change {
+                Change::Write { offset, bytes } => (*offset, offset + bytes.len() as u64),
+                Change::Truncate(size) => (*size, u64::MAX),
+            })
+            .map(|(from, to)| (from.max(start), to.min(end)))
+            .filter(|(from, to)| from < to)
+            .collect();
+        known.sort_unstable();
+        let mut next = start;
+        for (from, to) in known {
+            if from > next {
+                return false;
+            }
+            next = next.max(to);
         }
-        image[offset as usize..end].copy_from_slice(data);
+        next >= end
+    }
+
+    /// Applies the uncommitted changes to `buf`, the content at `start` (zero-padded).
+    pub fn apply(&self, start: u64, buf: &mut [u8]) {
+        let end = start + buf.len() as u64;
+        for change in self.changes() {
+            match change {
+                Change::Write { offset, bytes } => {
+                    let (from, to) = ((*offset).max(start), (offset + bytes.len() as u64).min(end));
+                    if from < to {
+                        buf[(from - start) as usize..(to - start) as usize]
+                            .copy_from_slice(&bytes[(from - offset) as usize..(to - offset) as usize]);
+                    }
+                }
+                Change::Truncate(size) if *size < end => buf[((*size).max(start) - start) as usize..].fill(0),
+                Change::Truncate(_) => {}
+            }
+        }
+    }
+
+    /// Writes `data` at `offset`.
+    pub fn write(&mut self, offset: u64, data: &[u8], now: Instant, now_ns: i64) {
+        let end = offset + data.len() as u64;
         match self.dirty.last_mut() {
             Some(Change::Write { offset: at, bytes }) if *at + bytes.len() as u64 == offset => bytes.extend_from_slice(data),
             _ => self.dirty.push(Change::Write { offset, bytes: data.to_vec() }),
         }
         if !data.is_empty() {
-            self.dirty_blocks.extend(offset / BLOCK_BYTES..=(end as u64 - 1) / BLOCK_BYTES);
+            self.dirty_blocks.extend(offset / BLOCK_BYTES..=(end - 1) / BLOCK_BYTES);
         }
         self.dirty_bytes += data.len();
         self.dirty_since.get_or_insert(now);
         self.quiet_since = None;
-        self.attr.size = image.len() as u64;
+        self.attr.size = self.attr.size.max(end);
         self.attr.mtime_ns = now_ns;
         self.attr.ctime_ns = now_ns;
     }
 
     pub fn truncate(&mut self, size: u64, now: Instant, now_ns: i64) {
-        let Some(image) = self.image.as_mut() else { return };
-        image.resize(size as usize, 0);
         self.dirty.push(Change::Truncate(size));
         self.dirty_since.get_or_insert(now);
         self.quiet_since = None;
@@ -273,7 +319,7 @@ impl State {
     }
 
     fn admits(&self, id: Id, version: u64) -> bool {
-        version >= self.floor.get(&id).copied().unwrap_or(0)
+        version >= self.floor(id)
     }
 
     /// `id`'s `Local` unless it has been quiet for longer than the TTL.
@@ -281,7 +327,7 @@ impl State {
         self.locals.get(&id).filter(|l| l.quiet_since.is_none_or(|t| t.elapsed() < self.budget.ttl))
     }
 
-    /// Forgets `id`'s `Local` if it is no longer `visible` (its image is fetched again if needed).
+    /// Forgets `id`'s `Local` if it is no longer `visible` (its state is fetched again if needed).
     pub fn expire(&mut self, id: Id) {
         if self.locals.contains_key(&id) && self.visible(id).is_none() {
             self.locals.remove(&id);
@@ -290,6 +336,17 @@ impl State {
 
     pub fn attr(&self, id: Id) -> Option<Attr> {
         self.attr_stamped(id).map(|(attr, _)| attr)
+    }
+
+    /// The cached server attribute of `id`, ignoring this mount's `Local`.
+    pub fn server_attr(&self, id: Id) -> Option<Attr> {
+        self.attrs.get(&id).filter(|c| self.live(c)).map(|c| c.value.clone())
+    }
+
+    /// The lowest read version a server reply about `id` must have to include this mount's
+    /// committed ops on it.
+    pub fn floor(&self, id: Id) -> u64 {
+        self.floor.get(&id).copied().unwrap_or(0)
     }
 
     /// `attr` with the instant its data was requested (now for a `Local` with changes in flight).
@@ -485,8 +542,9 @@ impl State {
             return;
         }
         let changes = std::mem::take(&mut local.dirty);
+        let layer = changes.clone();
         let blocks = std::mem::take(&mut local.dirty_blocks);
-        let len = local.image.as_ref().map_or(0, Vec::len) as u64;
+        let len = local.attr.size;
         let acked = local.dirty_since.take().unwrap_or_else(Instant::now);
         let mtime = Some(local.attr.mtime_ns);
         self.log.dirty_bytes -= std::mem::take(&mut local.dirty_bytes);
@@ -501,15 +559,28 @@ impl State {
             pending.cost += cost;
             pending.blocks += blocks.len();
             pending.acked = pending.acked.min(acked);
+            let seq = pending.seq;
             self.log.cost += cost;
+            self.layer(id, seq, layer);
             return;
         }
-        self.push(Op::Write { id, changes, mtime_ns: mtime }, acked, Vec::new());
+        let seq = self.push(Op::Write { id, changes, mtime_ns: mtime }, acked, Vec::new());
         if let Some(pending) = self.log.queue.back_mut() {
             pending.cost = cost;
             pending.blocks = blocks.len();
         }
         self.log.cost += cost - OP_COST;
+        self.layer(id, seq, layer);
+    }
+
+    /// Records `changes`, sealed into op `seq`, as `id`'s latest layer (merged when `seq` already
+    /// has one: a seal only merges into the latest queued op of the object).
+    fn layer(&mut self, id: Id, seq: u64, changes: Vec<Change>) {
+        let Some(local) = self.locals.get_mut(&id) else { return };
+        match local.layers.last_mut() {
+            Some((last, layer)) if *last == seq => layer.extend(changes),
+            _ => local.layers.push((seq, changes)),
+        }
     }
 
     /// Queues a mode/mtime change of `id` (which must have a `Local`), folded into its latest
@@ -648,6 +719,8 @@ impl State {
             if let Some(id) = pending.local
                 && let Some(local) = self.locals.get_mut(&id)
             {
+                // Committed or dropped: the server's content now carries it, or never will.
+                local.layers.retain(|(seq, _)| *seq != pending.seq);
                 local.pending = local.pending.saturating_sub(1);
                 if local.pending == 0 && local.dirty.is_empty() {
                     local.quiet_since = Some(now);

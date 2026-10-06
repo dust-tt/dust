@@ -5,7 +5,7 @@
   "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
   "cpu_count": 12,
   "server_binary_sha256": "3676dbff4c04deb240eb0de179e78dabef4cf39590b6dce988f600f22465b29d",
-  "mount_binary_sha256": "32bad3a9bc5e31cea71e6b1119e365952cc56343a77c6c1dfe6caa6b01c25c1b",
+  "mount_binary_sha256": "9df7d217510412b61f5db62cf1dc9046d7369c5f79e51ce79333ba3a77f4e97d",
   "fdb_client_knobs": {},
   "max_delay_ms": 8000,
   "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
@@ -17,176 +17,176 @@
   "warm_runs": 1,
   "server_restarted_per_first_case": true,
   "cold_scope": "new dfs-server/session/mount; backend caches retained",
-  "untar_seconds": 1.9380850870002178,
-  "population_client_writeback_seconds": 0.030603839000832522,
-  "population_shutdown_seconds": 0.016732525997213088,
+  "untar_seconds": 2.0190372799988836,
+  "population_client_writeback_seconds": 0.0200640269977157,
+  "population_shutdown_seconds": 0.0046090039977571,
   "results": [
     [
       "metadata",
       "scandir + stat (100 dirs, 10,000 files)",
       "first",
-      "727.87",
+      "914.30",
       "OK"
     ],
     [
       "metadata",
       "scandir + stat (100 dirs, 10,000 files)",
       "warm",
-      "297.74",
+      "301.58",
       "OK"
     ],
     [
       "metadata",
       "rg --files (10,000 files)",
       "first",
-      "260.37",
+      "246.18",
       "OK"
     ],
     [
       "metadata",
       "rg --files (10,000 files)",
       "warm",
-      "7.52",
+      "7.54",
       "OK"
     ],
     [
       "metadata",
       "open + fstat + close (10,000 files)",
       "first",
-      "724.91",
+      "605.65",
       "OK"
     ],
     [
       "metadata",
       "open + fstat + close (10,000 files)",
       "warm",
-      "215.77",
+      "222.64",
       "OK"
     ],
     [
       "metadata",
       "stat missing (256 paths)",
       "first",
-      "356.00",
+      "330.87",
       "OK"
     ],
     [
       "metadata",
       "stat missing (256 paths)",
       "warm",
-      "7.91",
+      "8.42",
       "OK"
     ],
     [
       "page cache",
       "rg no-match scan (10,000 files, 177.5 MB)",
       "first",
-      "774.64",
+      "862.65",
       "OK"
     ],
     [
       "page cache",
       "rg no-match scan (10,000 files, 177.5 MB)",
       "warm",
-      "327.80",
+      "395.35",
       "OK"
     ],
     [
       "search",
       "rg rare literal (10,000 files, 4 matches)",
       "first",
-      "882.81",
+      "1,355.53",
       "OK"
     ],
     [
       "search",
       "rg rare literal (10,000 files, 4 matches)",
       "warm",
-      "327.98",
+      "330.72",
       "OK"
     ],
     [
       "path pruning",
       "rg branch glob (981 candidate files)",
       "first",
-      "481.22",
+      "394.33",
       "OK"
     ],
     [
       "path pruning",
       "rg branch glob (981 candidate files)",
       "warm",
-      "148.53",
+      "149.76",
       "OK"
     ],
     [
       "path pruning",
       "rg depth-10 subtree (136 files)",
       "first",
-      "91.47",
+      "86.98",
       "OK"
     ],
     [
       "path pruning",
       "rg depth-10 subtree (136 files)",
       "warm",
-      "39.43",
+      "41.32",
       "OK"
     ],
     [
       "page cache",
       "open + read + SHA-256 (10,000 files, 177.5 MB)",
       "first",
-      "1,822.65",
+      "2,091.85",
       "OK"
     ],
     [
       "page cache",
       "open + read + SHA-256 (10,000 files, 177.5 MB)",
       "warm",
-      "416.34",
+      "458.72",
       "OK"
     ],
     [
       "random I/O",
       "open + pread tail (256 files x 4 KiB)",
       "first",
-      "809.87",
+      "909.53",
       "OK"
     ],
     [
       "random I/O",
       "open + pread tail (256 files x 4 KiB)",
       "warm",
-      "12.22",
+      "9.66",
       "OK"
     ],
     [
       "write",
       "create + write (32 x 32 KiB files)",
       "once",
-      "2.18",
+      "2.42",
       "OK"
     ],
     [
       "file sync",
       "fsync (32 files)",
       "once",
-      "18.95",
+      "22.12",
       "OK"
     ],
     [
       "write",
       "close (32 files)",
       "once",
-      "0.23",
+      "0.28",
       "OK"
     ],
     [
       "write",
       "unlink (32 files)",
       "once",
-      "0.81",
+      "0.56",
       "OK"
     ]
   ],
@@ -194,31 +194,31 @@
   "server_lifetimes": [
     {
       "phase": "populate",
-      "shutdown_seconds": 0.016732525997213088,
+      "shutdown_seconds": 0.0046090039977571,
       "server": {
         "calls": {
           "alloc_ids": {
             "calls": 10,
-            "total_ms": 62.2
+            "total_ms": 54.4
           },
           "apply": {
-            "calls": 90,
-            "total_ms": 1754.801
+            "calls": 91,
+            "total_ms": 1793.279
           },
           "close": {
             "calls": 1,
-            "total_ms": 0.001
+            "total_ms": 0.0
           },
           "readdir": {
             "calls": 1,
-            "total_ms": 2.47
+            "total_ms": 0.304
           }
         },
-        "commits": 101,
+        "commits": 102,
         "failed_ops": 0,
         "fresh_versions": 14,
         "message": "server totals",
-        "ops": 20290,
+        "ops": 20292,
         "retries": 0
       },
       "mounts": {
@@ -228,17 +228,17 @@
             "window_ms": 1000.0
           },
           "commit": {
-            "apply_ms": 1953.071194,
-            "batches": 90,
+            "apply_ms": 2020.300884,
+            "batches": 91,
             "dropped_ops": 0,
-            "max_apply_ms": 29.700212999999998,
-            "max_lag_ms": 52.754957,
+            "max_apply_ms": 33.389961,
+            "max_lag_ms": 56.936843,
             "missed_windows": 0,
-            "ops": 20290
+            "ops": 20292
           },
           "local": {
-            "admission_waits": 87,
-            "deferred": 99,
+            "admission_waits": 88,
+            "deferred": 100,
             "op.create": 10001,
             "op.flush": 10001,
             "op.fsyncdir": 1,
@@ -253,15 +253,15 @@
           "rpcs": {
             "alloc_ids": {
               "calls": 10,
-              "total_ms": 64.435
+              "total_ms": 59.859
             },
             "apply": {
-              "calls": 90,
-              "total_ms": 1952.966
+              "calls": 91,
+              "total_ms": 2020.155
             },
             "readdir": {
               "calls": 1,
-              "total_ms": 2.555
+              "total_ms": 0.376
             }
           }
         }
@@ -269,7 +269,7 @@
     },
     {
       "phase": "case-1",
-      "shutdown_seconds": 0.017260360000364017,
+      "shutdown_seconds": 0.018985044996952638,
       "server": {
         "calls": {
           "close": {
@@ -278,11 +278,11 @@
           },
           "read": {
             "calls": 4,
-            "total_ms": 10.158
+            "total_ms": 21.778
           },
           "readdir": {
             "calls": 2,
-            "total_ms": 5.172
+            "total_ms": 2.005
           }
         },
         "commits": 1,
@@ -319,11 +319,11 @@
           "rpcs": {
             "read": {
               "calls": 4,
-              "total_ms": 14.357
+              "total_ms": 26.907
             },
             "readdir": {
               "calls": 2,
-              "total_ms": 5.258
+              "total_ms": 2.144
             }
           }
         }
@@ -331,7 +331,7 @@
     },
     {
       "phase": "case-2",
-      "shutdown_seconds": 0.004319298997870646,
+      "shutdown_seconds": 0.008572643004299607,
       "server": {
         "calls": {
           "close": {
@@ -340,7 +340,7 @@
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 380.115
+            "total_ms": 525.141
           }
         },
         "commits": 1,
@@ -376,7 +376,7 @@
           "rpcs": {
             "readdir": {
               "calls": 103,
-              "total_ms": 386.216
+              "total_ms": 533.037
             }
           }
         }
@@ -384,7 +384,7 @@
     },
     {
       "phase": "case-3",
-      "shutdown_seconds": 0.01844494599936297,
+      "shutdown_seconds": 0.019382746002520435,
       "server": {
         "calls": {
           "close": {
@@ -393,7 +393,7 @@
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 2419.659
+            "total_ms": 2247.116
           }
         },
         "commits": 1,
@@ -430,7 +430,7 @@
           "rpcs": {
             "readdir": {
               "calls": 103,
-              "total_ms": 2431.857
+              "total_ms": 2258.652
             }
           }
         }
@@ -438,16 +438,16 @@
     },
     {
       "phase": "case-4",
-      "shutdown_seconds": 0.008225305002270034,
+      "shutdown_seconds": 0.003379066001798492,
       "server": {
         "calls": {
           "close": {
             "calls": 1,
-            "total_ms": 0.001
+            "total_ms": 0.0
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 436.113
+            "total_ms": 331.638
           }
         },
         "commits": 1,
@@ -483,7 +483,7 @@
           "rpcs": {
             "readdir": {
               "calls": 103,
-              "total_ms": 442.412
+              "total_ms": 338.325
             }
           }
         }
@@ -491,7 +491,7 @@
     },
     {
       "phase": "case-5",
-      "shutdown_seconds": 0.018877903999964474,
+      "shutdown_seconds": 0.01750519600318512,
       "server": {
         "calls": {
           "close": {
@@ -500,7 +500,7 @@
           },
           "readdir": {
             "calls": 102,
-            "total_ms": 328.746
+            "total_ms": 305.463
           }
         },
         "commits": 1,
@@ -533,7 +533,7 @@
           "rpcs": {
             "readdir": {
               "calls": 102,
-              "total_ms": 335.977
+              "total_ms": 312.119
             }
           }
         }
@@ -541,7 +541,7 @@
     },
     {
       "phase": "case-6",
-      "shutdown_seconds": 0.007838304001779761,
+      "shutdown_seconds": 0.020378353998239618,
       "server": {
         "calls": {
           "close": {
@@ -550,11 +550,11 @@
           },
           "read_files": {
             "calls": 200,
-            "total_ms": 1749.114
+            "total_ms": 2930.386
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 2893.631
+            "total_ms": 2110.974
           }
         },
         "commits": 1,
@@ -580,7 +580,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 421,
+            "deferred": 397,
             "op.access": 2,
             "op.getattr": 208,
             "op.lookup": 129112,
@@ -595,11 +595,11 @@
           "rpcs": {
             "read_files": {
               "calls": 200,
-              "total_ms": 2145.725
+              "total_ms": 3377.082
             },
             "readdir": {
               "calls": 103,
-              "total_ms": 2911.489
+              "total_ms": 2133.165
             }
           }
         }
@@ -607,7 +607,7 @@
     },
     {
       "phase": "case-7",
-      "shutdown_seconds": 0.0035923389987146948,
+      "shutdown_seconds": 0.008826222001516726,
       "server": {
         "calls": {
           "close": {
@@ -616,11 +616,11 @@
           },
           "read_files": {
             "calls": 200,
-            "total_ms": 3272.617
+            "total_ms": 6092.153
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 3172.387
+            "total_ms": 4728.37
           }
         },
         "commits": 1,
@@ -646,7 +646,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 381,
+            "deferred": 398,
             "op.access": 2,
             "op.getattr": 208,
             "op.lookup": 129340,
@@ -661,11 +661,11 @@
           "rpcs": {
             "read_files": {
               "calls": 200,
-              "total_ms": 3687.013
+              "total_ms": 6619.709
             },
             "readdir": {
               "calls": 103,
-              "total_ms": 3197.109
+              "total_ms": 4754.989
             }
           }
         }
@@ -673,7 +673,7 @@
     },
     {
       "phase": "case-8",
-      "shutdown_seconds": 0.01857202899918775,
+      "shutdown_seconds": 0.01838472200324759,
       "server": {
         "calls": {
           "close": {
@@ -682,11 +682,11 @@
           },
           "read_files": {
             "calls": 20,
-            "total_ms": 328.911
+            "total_ms": 381.202
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 3254.027
+            "total_ms": 2822.622
           }
         },
         "commits": 1,
@@ -712,7 +712,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 152,
+            "deferred": 145,
             "op.access": 2,
             "op.getattr": 208,
             "op.lookup": 98668,
@@ -727,11 +727,11 @@
           "rpcs": {
             "read_files": {
               "calls": 20,
-              "total_ms": 359.331
+              "total_ms": 409.595
             },
             "readdir": {
               "calls": 103,
-              "total_ms": 3269.952
+              "total_ms": 2839.251
             }
           }
         }
@@ -739,7 +739,7 @@
     },
     {
       "phase": "case-9",
-      "shutdown_seconds": 0.018905528999312082,
+      "shutdown_seconds": 0.017821606998040807,
       "server": {
         "calls": {
           "close": {
@@ -748,11 +748,11 @@
           },
           "read_files": {
             "calls": 2,
-            "total_ms": 11.361
+            "total_ms": 10.055
           },
           "readdir": {
             "calls": 13,
-            "total_ms": 42.045
+            "total_ms": 35.831
           }
         },
         "commits": 1,
@@ -793,11 +793,11 @@
           "rpcs": {
             "read_files": {
               "calls": 2,
-              "total_ms": 15.337
+              "total_ms": 13.888
             },
             "readdir": {
               "calls": 13,
-              "total_ms": 42.959
+              "total_ms": 36.842
             }
           }
         }
@@ -805,20 +805,20 @@
     },
     {
       "phase": "case-10",
-      "shutdown_seconds": 0.0033749210015230346,
+      "shutdown_seconds": 0.004113012000743765,
       "server": {
         "calls": {
           "close": {
             "calls": 1,
-            "total_ms": 0.001
+            "total_ms": 0.0
           },
           "read_files": {
             "calls": 200,
-            "total_ms": 755.205
+            "total_ms": 788.813
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 333.557
+            "total_ms": 331.161
           }
         },
         "commits": 1,
@@ -856,11 +856,11 @@
           "rpcs": {
             "read_files": {
               "calls": 200,
-              "total_ms": 947.126
+              "total_ms": 1018.996
             },
             "readdir": {
               "calls": 103,
-              "total_ms": 339.891
+              "total_ms": 341.33
             }
           }
         }
@@ -868,28 +868,28 @@
     },
     {
       "phase": "case-11",
-      "shutdown_seconds": 0.016606359000434168,
+      "shutdown_seconds": 0.016788792003353592,
       "server": {
         "calls": {
           "alloc_ids": {
             "calls": 1,
-            "total_ms": 5.861
+            "total_ms": 6.316
           },
           "apply": {
             "calls": 4,
-            "total_ms": 32.503
+            "total_ms": 32.544
           },
           "close": {
             "calls": 1,
-            "total_ms": 0.0
+            "total_ms": 0.002
           },
           "read_files": {
             "calls": 258,
-            "total_ms": 336.286
+            "total_ms": 407.684
           },
           "readdir": {
             "calls": 102,
-            "total_ms": 411.1
+            "total_ms": 432.959
           }
         },
         "commits": 6,
@@ -906,11 +906,11 @@
             "window_ms": 1000.0
           },
           "commit": {
-            "apply_ms": 35.151388,
+            "apply_ms": 35.336053,
             "batches": 4,
             "dropped_ops": 0,
-            "max_apply_ms": 15.241982,
-            "max_lag_ms": 21.029533,
+            "max_apply_ms": 19.321998,
+            "max_lag_ms": 24.722904,
             "missed_windows": 0,
             "ops": 98
           },
@@ -936,19 +936,19 @@
           "rpcs": {
             "alloc_ids": {
               "calls": 1,
-              "total_ms": 5.962
+              "total_ms": 6.503
             },
             "apply": {
               "calls": 4,
-              "total_ms": 35.143
+              "total_ms": 35.328
             },
             "read_files": {
               "calls": 258,
-              "total_ms": 358.238
+              "total_ms": 430.361
             },
             "readdir": {
               "calls": 102,
-              "total_ms": 418.657
+              "total_ms": 440.975
             }
           }
         }
