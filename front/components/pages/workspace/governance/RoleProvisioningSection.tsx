@@ -1,7 +1,4 @@
-import {
-  displayRoleCapitalized,
-  getRoleDescription,
-} from "@app/components/members/Roles";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@app/components/members/Roles";
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
@@ -11,6 +8,7 @@ import type { GroupGrantableRole, GroupType } from "@app/types/groups";
 import { GROUP_GRANTABLE_ROLES } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ShieldTick } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 // One row per grantable role (admin, manager). Each row maps groups to that
 // role: adding a group to it grants the role to the group's members; removing
@@ -25,6 +23,7 @@ function RoleProvisioningRow({
   role: GroupGrantableRole;
   groups: GroupType[];
 }) {
+  const { t } = useLingui();
   const { doUpdateGroupGrantedRole, isUpdating } = useUpdateGroupGrantedRole({
     owner,
   });
@@ -69,8 +68,8 @@ function RoleProvisioningRow({
 
   return (
     <GovernanceSettingRowLayout
-      label={displayRoleCapitalized(role)}
-      description={getRoleDescription(role)}
+      label={t(ROLE_LABELS[role])}
+      description={t(ROLE_DESCRIPTIONS[role])}
     >
       <GroupSelector
         selectedGroups={selectedGroups}
@@ -91,10 +90,12 @@ export function RoleProvisioningSection({
   owner: LightWorkspaceType;
   groups: GroupType[];
 }) {
+  const { t } = useLingui();
+
   return (
     <GovernanceSettingSection
       sectionId={ADMIN_SECTION_IDS.governance.roles}
-      label="Roles"
+      label={t`Roles`}
       icon={ShieldTick}
     >
       {GROUP_GRANTABLE_ROLES.map((role) => (

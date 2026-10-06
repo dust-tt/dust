@@ -1,9 +1,10 @@
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { isFullUserType } from "@app/components/members/MemberSelectionTable";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { RoleType, UserType } from "@app/types/user";
 import {
   Chip,
@@ -12,8 +13,8 @@ import {
   LoadingBlock,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import { useMemo } from "react";
 import type { KeyedMutator } from "swr";
 
@@ -35,14 +36,48 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 function RoleCell({ role }: { role: RoleType }) {
+  const { t } = useLingui();
   return (
     <DataTable.CellContent>
       <Chip
-        label={capitalize(displayRole(role))}
+        label={t(ROLE_LABELS[role])}
         color={role !== "none" ? ROLES_DATA[role]["color"] : undefined}
       />
     </DataTable.CellContent>
   );
+}
+
+interface StatusCellProps {
+  status: RowData["status"];
+  origin: MembershipOriginType | undefined;
+}
+
+function StatusCell({ status, origin }: StatusCellProps) {
+  const { t } = useLingui();
+  const isActive = status === "Active";
+  let label: string;
+  switch (origin) {
+    case undefined:
+      label = isActive ? t`Active` : t`Unregistered`;
+      break;
+    case "provisioned":
+      label = isActive
+        ? t`Active (Provisioned)`
+        : t`Unregistered (Provisioned)`;
+      break;
+    case "invited":
+      label = isActive ? t`Active (Invited)` : t`Unregistered (Invited)`;
+      break;
+    case "auto-joined":
+      label = isActive
+        ? t`Active (Auto-joined)`
+        : t`Unregistered (Auto-joined)`;
+      break;
+    default:
+      assertNeverAndIgnore(origin);
+      label = isActive ? t`Active` : t`Unregistered`;
+  }
+  return <DataTable.CellContent>{label}</DataTable.CellContent>;
 }
 
 function getTableRows({
@@ -90,79 +125,6 @@ type MembersData = {
     | (() => void);
 };
 
-const memberColumns = [
-  {
-    id: "name" as const,
-    header: "Name",
-    cell: (info: Info) => (
-      <DataTable.CellContent avatarUrl={info.row.original.icon} roundedAvatar>
-        {info.row.original.name}
-        {info.row.original.isCurrentUser && (
-          <span className="ml-3 text-muted-foreground">(you)</span>
-        )}
-      </DataTable.CellContent>
-    ),
-    enableSorting: false,
-  },
-  {
-    id: "email" as const,
-    accessorKey: "email",
-    header: "Email",
-    cell: (info: Info) => (
-      <DataTable.CellContent>{info.row.original.email}</DataTable.CellContent>
-    ),
-  },
-  {
-    id: "role" as const,
-    header: "Role",
-    accessorFn: (row: RowData) => row.role,
-    cell: (info: Info) => <RoleCell role={info.row.original.role} />,
-    meta: {
-      className: "w-32",
-    },
-  },
-  {
-    id: "remove" as const,
-    header: "",
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        {info.row.original.canRemove && (
-          <IconButton
-            icon={XClose}
-            onClick={info.row.original.onRemoveMemberClick}
-          />
-        )}
-      </DataTable.CellContent>
-    ),
-    meta: {
-      className: "w-12",
-    },
-  },
-  {
-    id: "status" as const,
-    header: "Status",
-    cell: (info: Info) => {
-      return (
-        <DataTable.CellContent>
-          {info.row.original.status +
-            (info.row.original.origin
-              ? ` (${capitalize(info.row.original.origin)})`
-              : "")}
-        </DataTable.CellContent>
-      );
-    },
-  },
-  {
-    id: "groups" as const,
-    header: "Groups",
-    cell: (info: Info) => (
-      <DataTable.CellContent className="max-w-40 truncate capitalize">
-        {info.row.original.groups.join(", ")}
-      </DataTable.CellContent>
-    ),
-  },
-];
-
 interface MembersListProps {
   allowRemoveSelfAndProvisionedUsers?: boolean;
   currentUser: UserType | null;
@@ -184,12 +146,92 @@ export function MembersList({
   pagination,
   setPagination,
 }: MembersListProps) {
+  const { t } = useLingui();
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
     "onRemoveMemberClick is required if remove column is shown"
   );
 
   const { members, totalMembersCount, isLoading } = membersData;
+
+  const memberColumns = useMemo(
+    () => [
+      {
+        id: "name" as const,
+        header: t`Name`,
+        cell: (info: Info) => (
+          <DataTable.CellContent
+            avatarUrl={info.row.original.icon}
+            roundedAvatar
+          >
+            {info.row.original.name}
+            {info.row.original.isCurrentUser && (
+              <span className="ml-3 text-muted-foreground">
+                <Trans>(you)</Trans>
+              </span>
+            )}
+          </DataTable.CellContent>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "email" as const,
+        accessorKey: "email",
+        header: t`Email`,
+        cell: (info: Info) => (
+          <DataTable.CellContent>
+            {info.row.original.email}
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        id: "role" as const,
+        header: t`Role`,
+        accessorFn: (row: RowData) => row.role,
+        cell: (info: Info) => <RoleCell role={info.row.original.role} />,
+        meta: {
+          className: "w-32",
+        },
+      },
+      {
+        id: "remove" as const,
+        header: "",
+        cell: (info: Info) => (
+          <DataTable.CellContent>
+            {info.row.original.canRemove && (
+              <IconButton
+                icon={XClose}
+                onClick={info.row.original.onRemoveMemberClick}
+              />
+            )}
+          </DataTable.CellContent>
+        ),
+        meta: {
+          className: "w-12",
+        },
+      },
+      {
+        id: "status" as const,
+        header: t`Status`,
+        cell: (info: Info) => (
+          <StatusCell
+            status={info.row.original.status}
+            origin={info.row.original.origin}
+          />
+        ),
+      },
+      {
+        id: "groups" as const,
+        header: t`Groups`,
+        cell: (info: Info) => (
+          <DataTable.CellContent className="max-w-40 truncate capitalize">
+            {info.row.original.groups.join(", ")}
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    [t]
+  );
 
   const columns = memberColumns.filter((c) => showColumns.includes(c.id));
 

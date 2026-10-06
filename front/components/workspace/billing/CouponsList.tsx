@@ -15,8 +15,10 @@ import {
   DataTable,
   Spinner,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 interface CouponRow {
@@ -33,10 +35,13 @@ interface CouponRow {
   menuItems?: never[];
 }
 
-function nameColumn(): ColumnDef<CouponRow> {
+function nameColumn(
+  header: string,
+  revokedLabel: string
+): ColumnDef<CouponRow> {
   return {
     accessorKey: "name",
-    header: "Coupon",
+    header,
     enableSorting: false,
     meta: { className: "w-1/2" },
     cell: ({ row }) => {
@@ -60,7 +65,7 @@ function nameColumn(): ColumnDef<CouponRow> {
             {name}
           </span>
           {isRevoked ? (
-            <Chip label="Revoked" size="mini" color="warning" />
+            <Chip label={revokedLabel} size="mini" color="warning" />
           ) : null}
           {isGroup ? (
             isExpanded ? (
@@ -75,10 +80,10 @@ function nameColumn(): ColumnDef<CouponRow> {
   };
 }
 
-function redeemedOnColumn(): ColumnDef<CouponRow> {
+function redeemedOnColumn(header: string): ColumnDef<CouponRow> {
   return {
     accessorKey: "redeemedOn",
-    header: "Redeemed on",
+    header,
     enableSorting: false,
     meta: { className: "w-[18%]" },
     cell: ({ row }) => (
@@ -89,10 +94,10 @@ function redeemedOnColumn(): ColumnDef<CouponRow> {
   };
 }
 
-function amountColumn(): ColumnDef<CouponRow> {
+function amountColumn(header: string): ColumnDef<CouponRow> {
   return {
     accessorKey: "amount",
-    header: "Credits",
+    header,
     enableSorting: false,
     meta: { headerAlign: "right", className: "w-[16%]" },
     cell: ({ row }) => (
@@ -108,10 +113,10 @@ function amountColumn(): ColumnDef<CouponRow> {
   };
 }
 
-function remainingColumn(): ColumnDef<CouponRow> {
+function remainingColumn(header: string): ColumnDef<CouponRow> {
   return {
     accessorKey: "remaining",
-    header: "Remaining",
+    header,
     enableSorting: false,
     meta: { headerAlign: "right", className: "w-[16%]" },
     cell: ({ row }) => (
@@ -127,19 +132,6 @@ function remainingColumn(): ColumnDef<CouponRow> {
   };
 }
 
-const SEAT_COLUMNS: ColumnDef<CouponRow>[] = [
-  nameColumn(),
-  redeemedOnColumn(),
-  amountColumn(),
-  remainingColumn(),
-];
-
-const TOP_UP_COLUMNS: ColumnDef<CouponRow>[] = [
-  nameColumn(),
-  redeemedOnColumn(),
-  amountColumn(),
-];
-
 function formatRedeemedOn(redeemedAtMs: number): string {
   return formatTimestampToFriendlyDate(redeemedAtMs, "compactWithDay");
 }
@@ -147,7 +139,8 @@ function formatRedeemedOn(redeemedAtMs: number): string {
 function buildSeatRows(
   coupons: SeatCouponData[],
   expandedCoupons: Set<string>,
-  toggleCoupon: (redemptionId: string) => void
+  toggleCoupon: (redemptionId: string) => void,
+  totalLabel: string
 ): CouponRow[] {
   const rows: CouponRow[] = [];
   for (const coupon of coupons) {
@@ -209,7 +202,7 @@ function buildSeatRows(
   }
   for (const [currency, remainingCents] of remainingByCurrency) {
     rows.push({
-      name: "Total",
+      name: totalLabel,
       redeemedOn: "",
       amount: "",
       remaining: formatCurrencyAmountCents({
@@ -223,17 +216,21 @@ function buildSeatRows(
   return rows;
 }
 
-function buildTopUpRows(coupons: CreditPoolTopUpCouponData[]): CouponRow[] {
+function buildTopUpRows(
+  coupons: CreditPoolTopUpCouponData[],
+  formatCreditsAmount: (amountCredits: number) => string
+): CouponRow[] {
   return coupons.map((coupon) => ({
     name: coupon.code,
     redeemedOn: formatRedeemedOn(coupon.redeemedAtMs),
-    amount: `${formatCredits(coupon.amountCredits)} credits`,
+    amount: formatCreditsAmount(coupon.amountCredits),
     remaining: "",
     isRevoked: coupon.status === "revoked",
   }));
 }
 
 export function CouponsList() {
+  const { t } = useLingui();
   const { owner } = useSubscriptionContext();
   const [expandedCoupons, setExpandedCoupons] = useState<Set<string>>(
     new Set()
@@ -242,6 +239,25 @@ export function CouponsList() {
   const { coupons, isCouponsLoading } = useWorkspaceCoupons({
     workspaceId: owner.sId,
   });
+
+  const seatColumns = useMemo<ColumnDef<CouponRow>[]>(
+    () => [
+      nameColumn(t`Coupon`, t`Revoked`),
+      redeemedOnColumn(t`Redeemed on`),
+      amountColumn(t`Credits`),
+      remainingColumn(t`Remaining`),
+    ],
+    [t]
+  );
+
+  const topUpColumns = useMemo<ColumnDef<CouponRow>[]>(
+    () => [
+      nameColumn(t`Coupon`, t`Revoked`),
+      redeemedOnColumn(t`Redeemed on`),
+      amountColumn(t`Credits`),
+    ],
+    [t]
+  );
 
   if (isCouponsLoading) {
     return (
@@ -254,7 +270,7 @@ export function CouponsList() {
   if (coupons.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        No coupons have been redeemed on this workspace.
+        <Trans>No coupons have been redeemed on this workspace.</Trans>
       </div>
     );
   }
@@ -284,11 +300,16 @@ export function CouponsList() {
       {seatCoupons.length > 0 && (
         <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-foreground">
-            Seat coupons
+            <Trans>Seat coupons</Trans>
           </h2>
           <DataTable
-            data={buildSeatRows(seatCoupons, expandedCoupons, toggleCoupon)}
-            columns={SEAT_COLUMNS}
+            data={buildSeatRows(
+              seatCoupons,
+              expandedCoupons,
+              toggleCoupon,
+              t`Total`
+            )}
+            columns={seatColumns}
             hideRowDivider={false}
           />
         </div>
@@ -296,11 +317,17 @@ export function CouponsList() {
       {topUpCoupons.length > 0 && (
         <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-foreground">
-            Credit top-ups
+            <Trans>Credit top-ups</Trans>
           </h2>
           <DataTable
-            data={buildTopUpRows(topUpCoupons)}
-            columns={TOP_UP_COLUMNS}
+            data={buildTopUpRows(topUpCoupons, (amountCredits) => {
+              const credits = formatCredits(amountCredits);
+              return t`${plural(amountCredits, {
+                one: `${credits} credit`,
+                other: `${credits} credits`,
+              })}`;
+            })}
+            columns={topUpColumns}
             hideRowDivider={false}
           />
         </div>

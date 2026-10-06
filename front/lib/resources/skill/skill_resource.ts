@@ -65,6 +65,7 @@ import type {
   SkillHydrationOptions,
 } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { destroyAllForWorkspaceInBatches } from "@app/lib/resources/storage/destroy_in_batches";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -4922,12 +4923,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
-    await AgentMessageSkillModel.destroy({
-      where: { workspaceId },
+    await destroyAllForWorkspaceInBatches(AgentMessageSkillModel, {
+      workspaceModelId: workspaceId,
     });
 
-    await ConversationSkillModel.destroy({
-      where: { workspaceId },
+    await destroyAllForWorkspaceInBatches(ConversationSkillModel, {
+      workspaceModelId: workspaceId,
     });
 
     await SkillReferenceModel.destroy({
@@ -5193,12 +5194,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { sId: this.sId, name: this.name, icon: this.icon, count };
   }
 
-  toDiscoveryJSON(): DiscoverySkillType {
+  /**
+   * @cc [owner:aubin-tchoi,label:product] discovery-skill-attribution
+   * Discovery targets MUST serialize editedBy as null for code-defined skills
+   * and preserve the editing user id for custom skills, matching skill JSON.
+   * Editors MUST serialize as an array of display names, including an empty
+   * array for skills without editors.
+   */
+  toDiscoveryJSON({
+    editors,
+  }: {
+    editors: UserResource[];
+  }): DiscoverySkillType {
     return {
       sId: this.sId,
       name: this.name,
       description: this.userFacingDescription,
-      icon: this.icon ?? null,
+      icon: this.icon,
+      editedBy: this.codeDefinedSkillId ? null : this.editedBy,
+      editors: editors.map((editor) => editor.fullName()),
     };
   }
 

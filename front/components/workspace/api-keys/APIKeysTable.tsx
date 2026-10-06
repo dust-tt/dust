@@ -2,12 +2,11 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/client/relative_time";
-import { compareStrings, formatNumber } from "@app/lib/i18n/format";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { RoleType, WorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
@@ -34,12 +33,14 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -99,6 +100,12 @@ function APIKeySkeletonCell({
 
 type APIKeyStatus = "active" | "capped" | "revoked";
 
+const API_KEY_STATUS_LABELS: Record<APIKeyStatus, MessageDescriptor> = {
+  active: msg`Active`,
+  capped: msg`Capped`,
+  revoked: msg`Revoked`,
+};
+
 interface APIKeysTableProps {
   keys: KeyType[];
   workspaceId: WorkspaceType["sId"];
@@ -124,24 +131,24 @@ interface APIKeyRowData {
   secret: string;
   status: APIKeyStatus;
   credits: number | null;
-  monthlyCap: string;
+  monthlyCap: string | null;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
 }
 
-const formatKeyScope = (role: RoleType): string => {
+const getKeyScopeLabel = (role: RoleType): MessageDescriptor => {
   switch (role) {
     case "user":
-      return "Read-only";
+      return msg`Read-only`;
     case "manager":
-      return "Read & write";
+      return msg`Read & write`;
     case "admin":
-      return "Admin";
+      return msg`Admin`;
     case "none":
-      return "No access";
+      return msg`No access`;
     default:
       assertNeverAndIgnore(role);
-      return "Unknown";
+      return msg`Unknown`;
   }
 };
 
@@ -160,15 +167,15 @@ function formatMonthlyCap({
   key: KeyType;
   showLegacyUsdMonthlyCap: boolean;
   showCreditMonthlyCap: boolean;
-}): string {
+}): string | null {
   if (showCreditMonthlyCap) {
     return key.monthlyCapAwuCredits === null
-      ? "Unlimited"
+      ? null
       : formatCredits(key.monthlyCapAwuCredits);
   }
   if (showLegacyUsdMonthlyCap) {
     return key.monthlyCapMicroUsd === null
-      ? "Unlimited"
+      ? null
       : `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`;
   }
   return "—";
@@ -226,15 +233,142 @@ function ConsumptionCell({
   return <>{children}</>;
 }
 
+interface SpacesCellProps {
+  spaces: string[];
+  hasPrivateSpace: boolean;
+}
+
+function SpacesCell({ spaces, hasPrivateSpace }: SpacesCellProps) {
+  const { t } = useLingui();
+  const spaceLabels = spaces.length > 0 ? spaces : [t`No spaces`];
+  const spaceList = spaceLabels.join(", ");
+  const spaceIcon = hasPrivateSpace ? Lock01 : Building04;
+
+  return (
+    <DataTable.CellContent className="w-full justify-center">
+      <Tooltip
+        label={
+          <div className="flex flex-col">
+            {spaceLabels.map((space, index) => (
+              <span key={`${space}-${index}`}>{space}</span>
+            ))}
+          </div>
+        }
+        tooltipTriggerAsChild
+        trigger={
+          <span
+            className="inline-flex shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
+            tabIndex={0}
+            aria-label={t`Spaces: ${spaceList}`}
+          >
+            <Icon visual={spaceIcon} size="sm" />
+          </span>
+        }
+      />
+    </DataTable.CellContent>
+  );
+}
+
+interface CreditsCellContentProps {
+  credits: number | null;
+  monthlyCap: string | null;
+}
+
+function CreditsCellContent({ credits, monthlyCap }: CreditsCellContentProps) {
+  const { t } = useLingui();
+  const creditsLabel = credits === null ? "—" : formatCredits(credits);
+
+  return (
+    <DataTable.BasicCellContent
+      className="justify-start text-left tabular-nums"
+      label={
+        monthlyCap === null
+          ? t`${creditsLabel}/unlimited`
+          : `${creditsLabel}/${monthlyCap}`
+      }
+    />
+  );
+}
+
+interface MonthlyCapCellProps {
+  monthlyCap: string | null;
+}
+
+function MonthlyCapCell({ monthlyCap }: MonthlyCapCellProps) {
+  const { t } = useLingui();
+
+  return (
+    <DataTable.BasicCellContent
+      className="tabular-nums"
+      label={monthlyCap ?? t`Unlimited`}
+    />
+  );
+}
+
+interface LastUsedCellProps {
+  lastUsedAt: number | null;
+}
+
+function LastUsedCell({ lastUsedAt }: LastUsedCellProps) {
+  const { t } = useLingui();
+
+  return (
+    <DataTable.BasicCellContent
+      className="whitespace-nowrap"
+      label={
+        lastUsedAt
+          ? timeAgoFrom(lastUsedAt, {
+              useLongFormat: true,
+            })
+          : t`Never`
+      }
+    />
+  );
+}
+
+interface StatusCellProps {
+  status: APIKeyStatus;
+}
+
+function StatusCell({ status }: StatusCellProps) {
+  const { t } = useLingui();
+
+  return (
+    <DataTable.CellContent>
+      <Chip
+        size="xs"
+        color={
+          status === "active"
+            ? "success"
+            : status === "capped"
+              ? "warning"
+              : "primary"
+        }
+        label={t(API_KEY_STATUS_LABELS[status])}
+      />
+    </DataTable.CellContent>
+  );
+}
+
 function buildColumns({
   actionsDisabled,
-  capLabel,
+  labels,
   isConsumptionLoading,
   onRevoke,
   showAnalyticsConsumption,
 }: {
   actionsDisabled: boolean;
-  capLabel: string;
+  labels: {
+    name: string;
+    scope: string;
+    key: string;
+    spaces: string;
+    credits: string;
+    monthlyCap: string;
+    lastUsed: string;
+    status: string;
+    revoke: string;
+  };
   isConsumptionLoading: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
   showAnalyticsConsumption: boolean;
@@ -243,7 +377,7 @@ function buildColumns({
     {
       id: "name",
       accessorFn: (row) => row.name,
-      header: "Name",
+      header: labels.name,
       enableSorting: true,
       meta: {
         className: showAnalyticsConsumption ? "h-16 w-40" : "h-16 w-44",
@@ -263,7 +397,7 @@ function buildColumns({
     {
       id: "scope",
       accessorKey: "scope",
-      header: "Scope",
+      header: labels.scope,
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
@@ -275,7 +409,9 @@ function buildColumns({
         <DataTable.CellContent>
           <Chip
             size="xs"
-            color={info.row.original.scope === "Admin" ? "warning" : "primary"}
+            color={
+              info.row.original.key.role === "admin" ? "warning" : "primary"
+            }
             label={info.row.original.scope}
           />
         </DataTable.CellContent>
@@ -284,7 +420,7 @@ function buildColumns({
     {
       id: "key",
       accessorKey: "secret",
-      header: "Key",
+      header: labels.key,
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
@@ -307,7 +443,7 @@ function buildColumns({
     {
       id: "spaces",
       accessorFn: (row) => row.spaces.join(", "),
-      header: "Spaces",
+      header: labels.spaces,
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
@@ -315,54 +451,24 @@ function buildColumns({
           : "hidden h-16 w-12 @md-table:table-cell",
         headerAlign: "left",
       },
-      cell: (info) => {
-        const spaces = info.row.original.spaces;
-        const spaceLabels = spaces.length > 0 ? spaces : ["No spaces"];
-        const spaceIcon = info.row.original.hasPrivateSpace
-          ? Lock01
-          : Building04;
-
-        return (
-          <DataTable.CellContent className="w-full justify-center">
-            <Tooltip
-              label={
-                <div className="flex flex-col">
-                  {spaceLabels.map((space, index) => (
-                    <span key={`${space}-${index}`}>{space}</span>
-                  ))}
-                </div>
-              }
-              tooltipTriggerAsChild
-              trigger={
-                <span
-                  className="inline-flex shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
-                  tabIndex={0}
-                  aria-label={`Spaces: ${spaceLabels.join(", ")}`}
-                >
-                  <Icon visual={spaceIcon} size="sm" />
-                </span>
-              }
-            />
-          </DataTable.CellContent>
-        );
-      },
+      cell: (info) => (
+        <SpacesCell
+          spaces={info.row.original.spaces}
+          hasPrivateSpace={info.row.original.hasPrivateSpace}
+        />
+      ),
     },
     {
       id: "credits",
       accessorKey: "credits",
-      header: "Credits",
+      header: labels.credits,
       enableSorting: true,
       meta: { className: "h-16 w-32", headerAlign: "left" },
       cell: (info) => {
         const { credits, monthlyCap } = info.row.original;
         return (
           <ConsumptionCell isLoading={isConsumptionLoading} align="left">
-            <DataTable.BasicCellContent
-              className="justify-start text-left tabular-nums"
-              label={`${
-                credits === null ? "—" : formatCredits(credits)
-              }/${monthlyCap === "Unlimited" ? "unlimited" : monthlyCap}`}
-            />
+            <CreditsCellContent credits={credits} monthlyCap={monthlyCap} />
           </ConsumptionCell>
         );
       },
@@ -370,7 +476,7 @@ function buildColumns({
     {
       id: "monthlyCap",
       accessorKey: "monthlyCap",
-      header: capLabel,
+      header: labels.monthlyCap,
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
@@ -379,16 +485,13 @@ function buildColumns({
         headerAlign: "left",
       },
       cell: (info) => (
-        <DataTable.BasicCellContent
-          className="tabular-nums"
-          label={info.row.original.monthlyCap}
-        />
+        <MonthlyCapCell monthlyCap={info.row.original.monthlyCap} />
       ),
     },
     {
       id: "lastUsedAt",
       accessorKey: "lastUsedAt",
-      header: "Last used",
+      header: labels.lastUsed,
       enableSorting: true,
       meta: {
         className: showAnalyticsConsumption
@@ -397,45 +500,19 @@ function buildColumns({
         headerAlign: "left",
       },
       cell: (info) => (
-        <DataTable.BasicCellContent
-          className="whitespace-nowrap"
-          label={
-            info.row.original.lastUsedAt
-              ? timeAgoFrom(info.row.original.lastUsedAt, {
-                  useLongFormat: true,
-                })
-              : "Never"
-          }
-        />
+        <LastUsedCell lastUsedAt={info.row.original.lastUsedAt} />
       ),
     },
     {
       id: "status",
       accessorKey: "status",
-      header: "Status",
+      header: labels.status,
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption ? "h-16 w-16 px-1" : "h-16 w-18",
         headerAlign: "left",
       },
-      cell: (info) => {
-        const status = info.row.original.status;
-        return (
-          <DataTable.CellContent>
-            <Chip
-              size="xs"
-              color={
-                status === "active"
-                  ? "success"
-                  : status === "capped"
-                    ? "warning"
-                    : "primary"
-              }
-              label={capitalize(status)}
-            />
-          </DataTable.CellContent>
-        );
-      },
+      cell: (info) => <StatusCell status={info.row.original.status} />,
     },
     {
       id: "revoke",
@@ -451,7 +528,7 @@ function buildColumns({
             <div className="transition-opacity duration-150 ease-out motion-reduce:transition-none pointer-fine:opacity-0 pointer-fine:group-hover/dt-row:opacity-100 pointer-fine:focus-within:opacity-100">
               <Button
                 icon={Trash01}
-                tooltip="Revoke API key"
+                tooltip={labels.revoke}
                 size="sm"
                 variant="warning"
                 disabled={actionsDisabled}
@@ -501,6 +578,7 @@ export function APIKeysTable({
   showLegacyUsdMonthlyCap,
   showCreditMonthlyCap,
 }: APIKeysTableProps) {
+  const { t } = useLingui();
   const [search, setSearch] = useState("");
   const [statusFilters, setStatusFilters] = useState<ReadonlySet<APIKeyStatus>>(
     new Set()
@@ -561,9 +639,9 @@ export function APIKeysTable({
         // Only the spaces the key was scoped to (read and write); the open spaces every key
         // reads through the workspace global group are not listed.
         const spaces = key.spaces.map((space) => space.name);
-        const scope = formatKeyScope(key.role);
+        const scope = t(getKeyScopeLabel(key.role));
         const status = getKeyStatus(key);
-        const creator = key.creator ?? "Unknown creator";
+        const creator = key.creator ?? t`Unknown creator`;
         const consumption = consumptionByName.get(key.name);
         const isConsumptionKnown =
           showAnalyticsConsumption &&
@@ -575,7 +653,7 @@ export function APIKeysTable({
             ? [
                 {
                   kind: "item",
-                  label: "Edit monthly cap",
+                  label: t`Edit monthly cap`,
                   icon: Edit04,
                   onClick: () => onEditCap(key),
                 },
@@ -584,7 +662,7 @@ export function APIKeysTable({
 
         return {
           key,
-          name: key.name || "Unnamed",
+          name: key.name || t`Unnamed`,
           creator,
           spaces,
           hasPrivateSpace: key.spaces.some((space) =>
@@ -613,6 +691,7 @@ export function APIKeysTable({
       showAnalyticsConsumption,
       showCreditMonthlyCap,
       showLegacyUsdMonthlyCap,
+      t,
     ]
   );
 
@@ -624,7 +703,17 @@ export function APIKeysTable({
     () =>
       buildColumns({
         actionsDisabled,
-        capLabel: showCreditMonthlyCap ? "Credits cap" : "Monthly cap",
+        labels: {
+          name: t`Name`,
+          scope: t`Scope`,
+          key: t`Key`,
+          spaces: t`Spaces`,
+          credits: t`Credits`,
+          monthlyCap: showCreditMonthlyCap ? t`Credits cap` : t`Monthly cap`,
+          lastUsed: t`Last used`,
+          status: t`Status`,
+          revoke: t`Revoke API key`,
+        },
         isConsumptionLoading,
         onRevoke,
         showAnalyticsConsumption,
@@ -635,6 +724,7 @@ export function APIKeysTable({
       onRevoke,
       showAnalyticsConsumption,
       showCreditMonthlyCap,
+      t,
     ]
   );
   const filteredRows = useMemo(() => {
@@ -686,6 +776,8 @@ export function APIKeysTable({
     pageIndex * pagination.pageSize,
     (pageIndex + 1) * pagination.pageSize
   );
+  const pageNumber = pageIndex + 1;
+  const filteredKeyCount = filteredRows.length;
   const appliedFilterCount = statusFilters.size + scopeFilters.size;
 
   const resetPagination = () => {
@@ -700,7 +792,7 @@ export function APIKeysTable({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           name="api-keys-search"
-          placeholder="Search API Key"
+          placeholder={t`Search API Key`}
           value={search}
           onChange={(value) => {
             setSearch(value);
@@ -712,7 +804,7 @@ export function APIKeysTable({
           <DropdownMenuTrigger asChild>
             <Button
               icon={FilterFunnel01}
-              label="Filters"
+              label={t`Filters`}
               size="sm"
               variant="outline"
               isCounter={appliedFilterCount > 0}
@@ -720,11 +812,11 @@ export function APIKeysTable({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel label="Status" />
+            <DropdownMenuLabel label={t`Status`} />
             {(["active", "capped", "revoked"] as const).map((status) => (
               <DropdownMenuCheckboxItem
                 key={status}
-                label={capitalize(status)}
+                label={t(API_KEY_STATUS_LABELS[status])}
                 checked={statusFilters.has(status)}
                 onCheckedChange={() => {
                   setStatusFilters((current) =>
@@ -736,7 +828,7 @@ export function APIKeysTable({
               />
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuLabel label="Scope" />
+            <DropdownMenuLabel label={t`Scope`} />
             {scopeOptions.map((scope) => (
               <DropdownMenuCheckboxItem
                 key={scope}
@@ -773,17 +865,19 @@ export function APIKeysTable({
         </>
       ) : isError ? (
         <div className="py-8 text-center text-sm text-muted-foreground">
-          Failed to load API keys.
+          <Trans>Failed to load API keys.</Trans>
         </div>
       ) : (
         <>
           {keys.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              Create an API key to start using Dust programmatically.
+              <Trans>
+                Create an API key to start using Dust programmatically.
+              </Trans>
             </div>
           ) : filteredRows.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              No API keys match these filters.
+              <Trans>No API keys match these filters.</Trans>
             </div>
           ) : (
             <div className="dd-privacy-mask">
@@ -801,18 +895,23 @@ export function APIKeysTable({
           )}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              {formatNumber(filteredRows.length)} API key
-              {pluralize(filteredRows.length)}
+              <Plural
+                value={filteredKeyCount}
+                one="# API key"
+                other="# API keys"
+              />
             </span>
             {filteredRows.length > 0 && (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">
-                  Page {pageIndex + 1} of {pageCount}
+                  <Trans>
+                    Page {pageNumber} of {pageCount}
+                  </Trans>
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
                     icon={ChevronLeft}
-                    aria-label="Previous page"
+                    aria-label={t`Previous page`}
                     size="sm"
                     variant="outline"
                     disabled={pageIndex === 0}
@@ -825,7 +924,7 @@ export function APIKeysTable({
                   />
                   <Button
                     icon={ChevronRight}
-                    aria-label="Next page"
+                    aria-label={t`Next page`}
                     size="sm"
                     variant="outline"
                     disabled={pageIndex >= pageCount - 1}

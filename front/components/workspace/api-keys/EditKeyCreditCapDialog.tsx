@@ -1,8 +1,8 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import {
   creditsToString,
-  monthlyCapCreditsSchema,
   parseCreditsString,
+  useMonthlyCapCreditsSchema,
 } from "@app/components/workspace/api-keys/utils";
 import type { KeyType } from "@app/types/key";
 import {
@@ -15,15 +15,24 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useEffect, useMemo } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
-const formSchema = z.object({
-  capValueCredits: monthlyCapCreditsSchema,
-});
+function useFormSchema() {
+  const monthlyCapCreditsSchema = useMonthlyCapCreditsSchema();
 
-type FormValues = z.infer<typeof formSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        capValueCredits: monthlyCapCreditsSchema,
+      }),
+    [monthlyCapCreditsSchema]
+  );
+}
+
+type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
 
 interface EditKeyCreditCapDialogProps {
   keyData: KeyType;
@@ -40,6 +49,8 @@ export function EditKeyCreditCapDialog({
   onSave,
   isSaving,
 }: EditKeyCreditCapDialogProps) {
+  const { t } = useLingui();
+  const formSchema = useFormSchema();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
@@ -60,6 +71,8 @@ export function EditKeyCreditCapDialog({
     await onSave(parseCreditsString(data.capValueCredits));
   };
 
+  const keyName = keyData.name;
+
   return (
     <Sheet
       open={isOpen}
@@ -71,12 +84,14 @@ export function EditKeyCreditCapDialog({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Edit credit cap - {keyData.name}</SheetTitle>
+          <SheetTitle>
+            <Trans>Edit credit cap - {keyName}</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <FormProvider {...form}>
             <BaseFormFieldSection
-              title="Monthly credit cap"
+              title={t`Monthly credit cap`}
               fieldName="capValueCredits"
             >
               {({ registerRef, registerProps, onChange, errorMessage }) => (
@@ -84,7 +99,7 @@ export function EditKeyCreditCapDialog({
                   ref={registerRef}
                   {...registerProps}
                   onChange={onChange}
-                  placeholder="Leave empty for unlimited"
+                  placeholder={t`Leave empty for unlimited`}
                   isError={!!errorMessage}
                   message={errorMessage}
                   messageStatus="error"
@@ -95,12 +110,12 @@ export function EditKeyCreditCapDialog({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: handleSubmit(onSubmit),
             disabled: isSaving || !formState.isValid,

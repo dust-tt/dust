@@ -46,7 +46,6 @@ async function hubspotApiFetch<T>({
     }
   }
 
-  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(url.toString(), {
     method: "GET",
     headers: {
@@ -408,15 +407,11 @@ export const searchOwners = async (
   const query = searchQuery.toLowerCase();
 
   const filteredOwners = allOwners.filter((owner) => {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const emailMatch = owner.email?.toLowerCase().includes(query) || false;
     const firstNameMatch =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       owner.firstName?.toLowerCase().includes(query) || false;
     const lastNameMatch =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       owner.lastName?.toLowerCase().includes(query) || false;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const fullNameMatch = `${owner.firstName || ""} ${owner.lastName || ""}`
       .toLowerCase()
       .includes(query);
@@ -513,7 +508,6 @@ const getAssociationTypeId = async (
   fromObjectType: string,
   toObjectType: string
 ): Promise<number> => {
-  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(
     `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
     {
@@ -755,7 +749,6 @@ export const createNote = async ({
   }
 
   // Use Unix milliseconds for hs_timestamp to ensure proper timeline placement.
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!propertiesForApi.hs_timestamp) {
     propertiesForApi.hs_timestamp = Date.now().toString();
   } else {
@@ -1752,7 +1745,6 @@ export const updateCustomObject = async ({
 
 export const getUserDetails = async (accessToken: string) => {
   try {
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.hubapi.com/oauth/v1/access-tokens/${accessToken}`,
       {

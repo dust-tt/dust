@@ -173,7 +173,6 @@ const handlers: ToolHandlers<typeof GOOGLE_SHEETS_TOOLS_METADATA> = {
       try {
         const sheetsToCreate = sheetTitles?.map((sheetTitle) => ({
           properties: { title: sheetTitle },
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || [{ properties: { title: "Sheet1" } }];
 
         const res = await sheets.spreadsheets.create({

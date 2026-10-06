@@ -14,6 +14,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod, PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Hoverable, PriceTable, Rocket02 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -37,62 +38,68 @@ function getSeatBasedPlanItems(
 ): PriceTableItem[] {
   const allItems: SeatBasedPlanItem[] = [
     {
-      label: "From 1 user",
+      label: <Trans>From 1 user</Trans>,
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
     },
     {
-      label: "Multiple private spaces",
+      label: <Trans>Multiple private spaces</Trans>,
       variant: "check",
       display: ["landing"],
       plans: ["business"],
     },
     {
-      label: "Flexible payment options (SEPA, Credit Card)",
+      label: <Trans>Flexible payment options (SEPA, Credit Card)</Trans>,
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["business"],
     },
     {
-      label: "US / EU data hosting",
+      label: <Trans>US / EU data hosting</Trans>,
       variant: "check",
       display: ["landing"],
       plans: ["business"],
     },
     {
-      label: "Advanced models (GPT-5, Claude, Gemini, Mistral…)",
+      label: <Trans>Advanced models (GPT-5, Claude, Gemini, Mistral…)</Trans>,
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
     },
     {
-      label: "Custom agents which can execute actions",
+      label: <Trans>Custom agents which can execute actions</Trans>,
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
     },
     {
-      label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+      label: (
+        <Trans>Connections (GitHub, Google Drive, Notion, Slack, ...)</Trans>
+      ),
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
     },
     {
-      label: "Native integrations (Zendesk, Slack, Chrome Extension)",
+      label: (
+        <Trans>Native integrations (Zendesk, Slack, Chrome Extension)</Trans>
+      ),
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
     },
     {
-      label: "Privacy and Data Security (SOC2, Zero Data Retention)",
+      label: (
+        <Trans>Privacy and Data Security (SOC2, Zero Data Retention)</Trans>
+      ),
       variant: "check",
       display: ["landing"],
       plans: ["pro", "business"],
     },
     {
       label: (
-        <>
+        <Trans>
           Unlimited messages (
           <Hoverable
             className="cursor-pointer text-muted-foreground underline hover:text-muted-foreground"
@@ -101,7 +108,7 @@ function getSeatBasedPlanItems(
             Fair use limits apply*
           </Hoverable>
           )
-        </>
+        </Trans>
       ),
       variant: "check",
       display: ["landing", "subscribe"],
@@ -109,7 +116,7 @@ function getSeatBasedPlanItems(
     },
     {
       label: (
-        <>
+        <Trans>
           Free credits for programmatic usage (API, GSheet, Zapier,...) (
           <Hoverable
             className="cursor-pointer text-muted-foreground underline hover:text-muted-foreground"
@@ -119,26 +126,26 @@ function getSeatBasedPlanItems(
             Learn more
           </Hoverable>
           )
-        </>
+        </Trans>
       ),
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro"],
     },
     {
-      label: "Fixed price on additional programmatic usage",
+      label: <Trans>Fixed price on additional programmatic usage</Trans>,
       variant: "dash",
       display: ["landing", "subscribe"],
       plans: ["pro"],
     },
     {
-      label: "Up to 1GB/user of data sources",
+      label: <Trans>Up to 1GB/user of data sources</Trans>,
       variant: "dash",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
     },
     {
-      label: "One private space",
+      label: <Trans>One private space</Trans>,
       variant: "dash",
       display: ["landing"],
       plans: ["pro"],
@@ -171,6 +178,7 @@ function SeatBasedPriceTable({
   onClick,
   size,
 }: SeatBasedPriceTableProps) {
+  const { t } = useLingui();
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   const items = getSeatBasedPlanItems(plan, () =>
@@ -187,7 +195,7 @@ function SeatBasedPriceTable({
         title={title}
         price={price}
         color={color}
-        priceLabel="/ month / user, excl. tax."
+        priceLabel={t`/ month / user, excl. tax.`}
         size={size}
         magnified={false}
       >
@@ -197,7 +205,9 @@ function SeatBasedPriceTable({
               variant="highlight"
               size={biggerButtonSize}
               label={
-                display === "landing" ? "Start now, 14 days free" : "Start now"
+                display === "landing"
+                  ? t`Start now, 14 days free`
+                  : t`Start now`
               }
               icon={Rocket02}
               disabled={isProcessing}
@@ -280,11 +290,12 @@ export function BusinessPriceTable({
   plan,
   size,
 }: PriceTableProps) {
+  const { t } = useLingui();
   const price = usePriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY);
   return (
     <SeatBasedPriceTable
       plan="business"
-      title="Enterprise (Seat-based)"
+      title={t`Enterprise (Seat-based)`}
       color="blue"
       price={price}
       showButton={!plan || !isProPlan(plan)}

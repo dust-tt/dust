@@ -84,9 +84,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 ): Promise<Result<z.infer<T>, JiraErrorResult>> {
   try {
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       method: options.method || "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -172,7 +170,6 @@ export async function listUsers(
   let cursor = startAt;
   const results: z.infer<typeof JiraUsersSearchResultSchema> = [];
   const hasName = !!name && name.trim().length > 0;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const normalizedName = (name || "").trim().toLowerCase();
 
   while (results.length < maxResults) {
@@ -406,7 +403,6 @@ export async function createComment(
     body: {
       type: adfBody.type,
       version: adfBody.version,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: adfBody.content || [],
     },
   };
@@ -492,7 +488,6 @@ export async function searchIssues(
     nextPageToken,
     sortBy,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -555,7 +550,6 @@ export async function searchJiraIssuesUsingJql(
     nextPageToken,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
     fields = DEFAULT_ISSUE_FIELDS,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
@@ -748,7 +742,6 @@ async function getAllFields(
   > = {};
 
   for (const field of result.value) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const fieldKey = field.key || field.id;
     fieldsMetadata[fieldKey] = {
       schema: field.schema
@@ -1064,7 +1057,6 @@ export async function searchUsersByEmailExact(
     for (const u of page) {
       if (
         u.accountType === "atlassian" &&
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (u.emailAddress || "").toLowerCase() === normalized
       ) {
         matches.push(u);
@@ -1187,7 +1179,6 @@ export async function uploadAttachmentsToJira(
 
     const body = Buffer.concat(parts);
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `${baseUrl}/rest/api/2/issue/${issueKey}/attachments`,
       {
@@ -1279,7 +1270,6 @@ export async function downloadAttachmentContent({
   try {
     const url = `${baseUrl}/rest/api/3/attachment/content/${attachmentId}`;
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(url, {
       method: "GET",
       headers: {

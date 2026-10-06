@@ -61,7 +61,12 @@ const MOCK_ES_DOC: AgentMessageConsumptionAnalyticsData = {
   step_index: 0,
   trigger_id: null,
   usage_type: "user",
-  user: { id: "user-1", group_ids: [], seat_type: "pro" },
+  user: {
+    id: "user-1",
+    group_ids: [],
+    seat_type: "pro",
+    limit_group_id: null,
+  },
   consumption_type: "llm",
   gross_credit_micro: {
     system: 0,

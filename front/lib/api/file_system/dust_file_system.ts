@@ -64,7 +64,6 @@ export type { FileSystemEntry } from "@app/types/api/file_system/types";
 export type { FileSystemMount } from "@app/types/file_system";
 export { DustFileSystemError } from "@app/types/file_system";
 
-// eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;
 
 // Strip control characters, replace path separators, trim whitespace, and NFC-normalize.

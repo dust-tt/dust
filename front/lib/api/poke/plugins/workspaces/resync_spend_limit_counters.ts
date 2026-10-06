@@ -3,6 +3,7 @@ import {
   resyncProgrammaticSpendLimitCounterFromEsUsage,
   resyncSpendLimitCountersFromEsUsage,
 } from "@app/lib/api/credits/members_usage";
+import { resyncGroupLimitCountersFromEsUsage } from "@app/lib/api/groups/group_limit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -12,8 +13,9 @@ export const resyncSpendLimitCountersPlugin = createPlugin({
     name: "Resync Spend-Limit Counters from Usage",
     description:
       "Overwrite the Redis fixed-window spend-cap counters (each member's " +
-      "per-user counter, each capped API key's per-key counter, and the " +
-      "workspace programmatic counter) for the current cycle with their " +
+      "per-user counter, each capped API key's per-key counter, the " +
+      "workspace programmatic counter, and each group limit counter) for the " +
+      "current cycle with their " +
       "Elasticsearch-derived AWU consumption. Use to backfill the counters " +
       "after enabling the cap, or to repair drift (they otherwise only accrue " +
       "from live messages). Resyncs the cycle the workspace is enforced on: " +
@@ -41,12 +43,18 @@ export const resyncSpendLimitCountersPlugin = createPlugin({
       return new Err(new Error(programmaticResult.error.message));
     }
 
+    const groupLimitResult = await resyncGroupLimitCountersFromEsUsage(auth);
+    if (groupLimitResult.isErr()) {
+      return new Err(new Error(groupLimitResult.error.message));
+    }
+
     return new Ok({
       display: "text",
       value:
         `Resynced spend-limit counters from usage for ` +
         `${userResult.value.updatedUserCount} user(s), ` +
-        `${apiKeyResult.value.updatedKeyCount} API key(s), and the ` +
+        `${apiKeyResult.value.updatedKeyCount} API key(s), ` +
+        `${groupLimitResult.value.updatedGroupCount} group limit(s), and the ` +
         `workspace programmatic counter ` +
         `(${programmaticResult.value.programmaticCounterSeeded ? "seeded" : "no positive cap"}).`,
     });

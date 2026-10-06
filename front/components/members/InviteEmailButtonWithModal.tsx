@@ -1,5 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { displayRole, getRoleDescription } from "@app/components/members/Roles";
+import {
+  ROLE_DESCRIPTIONS,
+  ROLE_NAMES_IN_SENTENCE,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
@@ -30,6 +33,7 @@ import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
+import { isRoleType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -45,13 +49,15 @@ import {
   Plus,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import { plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
 const useGetEmailsListAndError = (
   inviteEmails: string
 ): { inviteEmailsList: string[] | null; emailError: string } => {
+  const { t } = useLingui();
   return useMemo(() => {
     const inviteEmailsList = inviteEmails
       .split(/[\n,]+/)
@@ -61,9 +67,10 @@ const useGetEmailsListAndError = (
 
     const invalidEmails = inviteEmailsList.filter((e) => !isEmailValid(e));
     if (invalidEmails.length > 0) {
+      const invalidEmailsList = invalidEmails.join(", ");
       return {
         inviteEmailsList: null,
-        emailError: `Invalid email addresses: ${invalidEmails.join(", ")}`,
+        emailError: t`Invalid email addresses: ${invalidEmailsList}`,
       };
     }
 
@@ -71,7 +78,7 @@ const useGetEmailsListAndError = (
       inviteEmailsList,
       emailError: "",
     };
-  }, [inviteEmails]);
+  }, [inviteEmails, t]);
 };
 
 function isSeatAtCapacity(
@@ -84,17 +91,29 @@ function isSeatAtCapacity(
   return info.maxSeats !== null && info.assignedCount >= info.maxSeats;
 }
 
-function seatBadge(
-  seatType: MembershipSeatType,
-  info: SeatTypeInfo
-): ReactNode {
+interface SeatBadgeProps {
+  seatType: MembershipSeatType;
+  info: SeatTypeInfo;
+}
+
+function SeatBadge({ seatType, info }: SeatBadgeProps) {
+  const { t } = useLingui();
   const openCount = includedSeatsOpen(info);
   if (toBaseSeatType(seatType) !== "workspace" && openCount > 0) {
-    return <Chip size="xs" color="primary" label={`${openCount} Available`} />;
+    return (
+      <Chip
+        size="xs"
+        color="primary"
+        label={t`${plural(openCount, {
+          one: "# Available",
+          other: "# Available",
+        })}`}
+      />
+    );
   }
 
   if (seatType === "free") {
-    return <Chip size="xs" color="primary" label="If eligible" />;
+    return <Chip size="xs" color="primary" label={t`If eligible`} />;
   }
 
   return (
@@ -121,6 +140,7 @@ export function InviteEmailButtonWithModal({
   disabled = false,
   isFreePlan = false,
 }: InviteEmailButtonWithModalProps) {
+  const { t } = useLingui();
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
     useGetEmailsListAndError(inviteEmails);
@@ -234,8 +254,8 @@ export function InviteEmailButtonWithModal({
     ) {
       sendNotification({
         type: "error",
-        title: "Too many invitations",
-        description: `Your cannot send more than ${MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day.`,
+        title: t`Too many invitations`,
+        description: t`Your cannot send more than ${MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day.`,
       });
       return;
     }
@@ -274,27 +294,52 @@ export function InviteEmailButtonWithModal({
     };
 
     const { notInWorkspace, activeDifferentRole } = invitesByCase;
+    const activeDifferentRoleCount = activeDifferentRole.length;
+    const newRole = t(ROLE_NAMES_IN_SENTENCE[invitationRole]);
 
     const ReinviteUsersMessage = (
       <div className="mt-6 flex flex-col gap-6 px-2">
         {activeDifferentRole.length > 0 && (
           <div>
             <div>
-              The user(s) below are already in your workspace with a different
-              role. Moving forward will change their role to{" "}
-              <span className="font-bold">{displayRole(invitationRole)}</span>.
+              <Plural
+                value={activeDifferentRoleCount}
+                one={
+                  <Trans>
+                    The user below is already in your workspace with a different
+                    role. Moving forward will change their role to{" "}
+                    <span className="font-bold">{newRole}</span>.
+                  </Trans>
+                }
+                other={
+                  <Trans>
+                    The users below are already in your workspace with a
+                    different role. Moving forward will change their role to{" "}
+                    <span className="font-bold">{newRole}</span>.
+                  </Trans>
+                }
+              />
             </div>
             <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
-              {activeDifferentRole.map((user) => (
-                <div key={user.email}>{`- ${
-                  user.fullName
-                } (current role: ${displayRole(user.workspace.role)})`}</div>
-              ))}
+              {activeDifferentRole.map((user) => {
+                const fullName = user.fullName;
+                const role = user.workspace.role;
+                const currentRole = isRoleType(role)
+                  ? t(ROLE_NAMES_IN_SENTENCE[role])
+                  : role;
+                return (
+                  <div
+                    key={user.email}
+                  >{t`- ${fullName} (current role: ${currentRole})`}</div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        <div>Do you want to proceed?</div>
+        <div>
+          <Trans>Do you want to proceed?</Trans>
+        </div>
       </div>
     );
 
@@ -303,9 +348,9 @@ export function InviteEmailButtonWithModal({
     const shouldProceedWithInvites =
       !hasExistingMembers ||
       (await confirm({
-        title: "Some users are already in the workspace",
+        title: t`Some users are already in the workspace`,
         message: ReinviteUsersMessage,
-        validateLabel: "Yes, proceed",
+        validateLabel: t`Yes, proceed`,
         validateVariant: "warning",
       }));
 
@@ -351,7 +396,7 @@ export function InviteEmailButtonWithModal({
       <DialogTrigger asChild>
         <Button
           icon={Plus}
-          label="Invite members"
+          label={t`Invite members`}
           variant="primary"
           onClick={onInviteClick}
           disabled={disabled}
@@ -360,9 +405,11 @@ export function InviteEmailButtonWithModal({
       <DialogContent size="lg">
         <DialogHeader>
           <div className="flex flex-col gap-1">
-            <DialogTitle>Invite new users</DialogTitle>
+            <DialogTitle>
+              <Trans>Invite new users</Trans>
+            </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Choose a new plan to continue
+              <Trans>Choose a new plan to continue</Trans>
             </p>
           </div>
         </DialogHeader>
@@ -373,11 +420,11 @@ export function InviteEmailButtonWithModal({
                 className="heading-base text-foreground"
                 htmlFor="email-addresses"
               >
-                Email addresses
+                <Trans>Email addresses</Trans>
               </label>
               <TextArea
                 id="email-addresses"
-                placeholder="Email addresses, comma separated"
+                placeholder={t`Email addresses, comma separated`}
                 minRows={3}
                 value={inviteEmails}
                 onChange={(e) => {
@@ -393,7 +440,7 @@ export function InviteEmailButtonWithModal({
                 />
               </div>
               <div className="text-muted-foreground">
-                {getRoleDescription(invitationRole)}
+                {t(ROLE_DESCRIPTIONS[invitationRole])}
               </div>
             </div>
             {hasSeatSelection && (
@@ -421,7 +468,7 @@ export function InviteEmailButtonWithModal({
                         seatType={seatType}
                         info={info}
                         isSelected={selectedSeatType === seatType}
-                        badge={seatBadge(seatType, info)}
+                        badge={<SeatBadge seatType={seatType} info={info} />}
                         onClick={() => setSelectedSeatType(seatType)}
                       />
                     );
@@ -438,11 +485,11 @@ export function InviteEmailButtonWithModal({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Validate",
+            label: t`Validate`,
             variant: "primary",
             disabled: !!shouldDisableButton,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -465,24 +512,38 @@ function ProPlanBillingNotice({
 }: {
   perSeatPricing: SubscriptionPerSeatPricing;
 }) {
+  const { t } = useLingui();
+  const price = getPriceAsString({
+    currency: perSeatPricing.seatCurrency,
+    priceInCents: perSeatPricing.seatPrice,
+  });
   return (
-    <ContentMessage size="md" title="Note" icon={InfoCircle}>
+    <ContentMessage size="md" title={t`Note`} icon={InfoCircle}>
       <p>
-        New users will be charged a{" "}
-        <span className="font-semibold">
-          {perSeatPricing.billingPeriod} fee of{" "}
-          {getPriceAsString({
-            currency: perSeatPricing.seatCurrency,
-            priceInCents: perSeatPricing.seatPrice,
-          })}{" "}
-          at the end of the trial period
-        </span>
-        .{" "}
+        {perSeatPricing.billingPeriod === "yearly" ? (
+          <Trans>
+            New users will be charged a{" "}
+            <span className="font-semibold">
+              yearly fee of {price} at the end of the trial period
+            </span>
+            .
+          </Trans>
+        ) : (
+          <Trans>
+            New users will be charged a{" "}
+            <span className="font-semibold">
+              monthly fee of {price} at the end of the trial period
+            </span>
+            .
+          </Trans>
+        )}
       </p>
       <br />
       <p>
-        Next bill will be adjusted proportionally based on the members' sign-up
-        date.
+        <Trans>
+          Next bill will be adjusted proportionally based on the members'
+          sign-up date.
+        </Trans>
       </p>
     </ContentMessage>
   );

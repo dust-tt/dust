@@ -180,6 +180,7 @@ async function setupSettledMessage({
   return {
     agent,
     agentMessage,
+    agentMessageModelId,
     auth,
     completedAt,
     conversation,
@@ -259,7 +260,41 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       id: testContext.authenticator.getNonNullableUser().sId,
       group_ids: [group.sId],
       seat_type: "workspace",
+      limit_group_id: null,
     });
+  });
+
+  it("tags the limit group stored on the message, even outside the user's current groups", async () => {
+    const context = await setupSettledMessage();
+    const engineering = await GroupFactory.regularManual(
+      context.workspace,
+      "Engineering"
+    );
+    await ConversationResource.setAgentMessageLimitGroup(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      limitGroupModelId: engineering.id,
+    });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.user).toMatchObject({
+      group_ids: [],
+      limit_group_id: engineering.sId,
+    });
+  });
+
+  it("leaves the limit group empty when none is stored on the message", async () => {
+    const context = await setupSettledMessage();
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.user?.limit_group_id).toBeNull();
   });
 
   it("lists the full agent chain from the root to the direct parent", async () => {

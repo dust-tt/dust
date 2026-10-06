@@ -43,6 +43,7 @@ const params = {
   isContentLoading: false,
   isTooLarge: false,
   isTruncated: false,
+  canWrite: true,
   owner,
   rawContent: "# Notes\n",
   processedContent: { text: "# Notes", format: "markdown" as const },
@@ -58,6 +59,17 @@ describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
     vi.mocked(writeFileContentByPath).mockResolvedValue(new Ok(undefined));
+  });
+
+  it("opens no editor when the mount refuses writes", () => {
+    flags.add("co_edition");
+
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, canWrite: false })
+    );
+
+    expect(result.current.canEdit).toBe(false);
+    expect(result.current.richEditor).toBeNull();
   });
 
   it("keeps the plain editor when co_edition is off", () => {

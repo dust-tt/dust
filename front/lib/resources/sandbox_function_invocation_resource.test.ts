@@ -1504,3 +1504,38 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     expect((await loadedPoke(result.value)).error?.message).toContain("boom");
   });
 });
+
+describe("SandboxFunctionInvocationResource.deleteAllForWorkspace", () => {
+  it("deletes every invocation of the workspace and leaves other workspaces alone", async () => {
+    const { authenticator, sandboxFunction } = await setupExecutionTest();
+    await SandboxFunctionInvocationResource.makeNew(authenticator, {
+      sandboxFunction,
+      input: { message: "second" },
+    });
+    const {
+      authenticator: otherAuthenticator,
+      sandboxFunction: otherSandboxFunction,
+      invocation: otherInvocation,
+    } = await setupExecutionTest();
+
+    const deletedCount =
+      await SandboxFunctionInvocationResource.deleteAllForWorkspace(
+        authenticator
+      );
+
+    expect(deletedCount).toBe(2);
+    expect(
+      await SandboxFunctionInvocationResource.listRecent(authenticator, {
+        sandboxFunction,
+        limit: 10,
+      })
+    ).toHaveLength(0);
+    const otherInvocations = await SandboxFunctionInvocationResource.listRecent(
+      otherAuthenticator,
+      { sandboxFunction: otherSandboxFunction, limit: 10 }
+    );
+    expect(otherInvocations.map((item) => item.sId)).toEqual([
+      otherInvocation.sId,
+    ]);
+  });
+});

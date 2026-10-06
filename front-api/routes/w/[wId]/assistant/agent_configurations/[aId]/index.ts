@@ -96,10 +96,7 @@ app.patch(
     const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
-    const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
-      auth,
-      aId
-    );
+    const agent = await AgentResource.fetchById(auth, aId);
     if (!agent) {
       return apiError(ctx, {
         status_code: 404,

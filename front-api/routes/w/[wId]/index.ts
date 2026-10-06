@@ -31,7 +31,7 @@ import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 import { z } from "zod";
 import activationPod from "./activation-pod";
 import analytics from "./analytics";

@@ -11,6 +11,7 @@ import {
   DataTable,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CellContext,
   ColumnDef,
@@ -68,6 +69,7 @@ export function MemberSelectionTable({
   initialMembers,
   disabled = false,
 }: MemberSelectionTableProps) {
+  const { t } = useLingui();
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -147,7 +149,7 @@ export function MemberSelectionTable({
       }),
       {
         accessorKey: "fullName",
-        header: "Name",
+        header: t`Name`,
         id: "fullName",
         sortingFn: "text",
         meta: {
@@ -179,7 +181,7 @@ export function MemberSelectionTable({
       },
       ...(extraColumns ?? []),
     ];
-  }, [extraColumns, rows.length, searchText]);
+  }, [extraColumns, rows.length, searchText, t]);
 
   return (
     <>
@@ -187,14 +189,14 @@ export function MemberSelectionTable({
         name="member-search"
         value={searchText}
         onChange={handleSearchChange}
-        placeholder="Search users..."
+        placeholder={t`Search users...`}
         className="mt-2"
       />
       <div className="flex min-h-0 flex-1 flex-col">
         {isLoading ? (
           <div className="flex items-center justify-center p-4">
             <span className="text-sm text-muted-foreground">
-              Loading users...
+              <Trans>Loading users...</Trans>
             </span>
           </div>
         ) : (

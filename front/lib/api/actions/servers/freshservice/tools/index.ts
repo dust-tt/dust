@@ -50,7 +50,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         `tickets?${params.toString()}`
       );
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const tickets: FreshserviceTicket[] = result?.tickets || [];
       const selectedFields: ReadonlyArray<string> =
         fields && fields.length > 0 ? fields : DEFAULT_TICKET_FIELDS_LIST;
@@ -158,7 +157,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         ticket_fields: FreshserviceTicketField[];
       }>("ticket_form_fields");
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const fields = result?.ticket_fields || [];
 
       let filteredFields = fields;
@@ -222,7 +220,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         fields: FreshserviceTicketField[];
       }>("ticket_form_fields");
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const fields = fieldsResult?.fields || [];
       const requiredFields = fields.filter(
         (field: FreshserviceTicketField) => field.required
@@ -427,7 +424,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         `tickets/${ticket_id}/requested_items`
       );
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const requestedItems = result?.requested_items || [];
 
       return new Ok([
@@ -464,12 +460,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.tasks?.length || 0} tasks for ticket ${ticket_id}`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.tasks || [], null, 2),
         },
       ]);
@@ -718,16 +712,13 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.approvals?.length || 0} approval(s) for ticket ${ticket_id}`,
         },
         {
           type: "text" as const,
           text: JSON.stringify(
             {
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               approvals: result?.approvals || [],
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               total_approvals: result?.approvals?.length || 0,
             },
             null,
@@ -799,7 +790,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.approval || result, null, 2),
         },
       ]);
@@ -832,12 +822,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.departments?.length || 0} departments`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.departments || [], null, 2),
         },
       ]);
@@ -870,12 +858,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.products?.length || 0} products`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.products || [], null, 2),
         },
       ]);
@@ -908,12 +894,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.oncall_schedules?.length || 0} on-call schedules`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.oncall_schedules || [], null, 2),
         },
       ]);
@@ -946,12 +930,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.service_categories?.length || 0} service categories`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.service_categories || [], null, 2),
         },
       ]);
@@ -988,12 +970,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.service_items?.length || 0} service items`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.service_items || [], null, 2),
         },
       ]);
@@ -1037,12 +1017,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Found ${result?.service_items?.length || 0} service items matching '${search_term}'`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.service_items || [], null, 2),
         },
       ]);
@@ -1101,7 +1079,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       }>(`service_catalog/items/${display_id}`);
 
       const serviceItem = itemResult?.service_item;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const fields = serviceItem?.custom_fields || [];
       const requiredFields = fields.filter(
         (field: FreshserviceServiceItemField) => field.required
@@ -1145,7 +1122,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       }>(`service_catalog/items/${display_id}`);
 
       const serviceItem = itemResult?.service_item;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const customFields = serviceItem?.custom_fields || [];
 
       const requiredFields = customFields.filter(
@@ -1237,12 +1213,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.categories?.length || 0} solution categories`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.categories || [], null, 2),
         },
       ]);
@@ -1282,12 +1256,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.folders?.length || 0} solution folders`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.folders || [], null, 2),
         },
       ]);
@@ -1334,7 +1306,6 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
         }>;
       }>(`solutions/articles?${params.toString()}`);
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const articles = result?.articles || [];
       const articlesMetadata = articles.map((article) => ({
         id: article.id,
@@ -1479,12 +1450,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.requesters?.length || 0} requesters`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.requesters || [], null, 2),
         },
       ]);
@@ -1548,12 +1517,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.purchase_orders?.length || 0} purchase orders`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.purchase_orders || [], null, 2),
         },
       ]);
@@ -1581,12 +1548,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.sla_policies?.length || 0} SLA policies`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.sla_policies || [], null, 2),
         },
       ]);
@@ -1635,12 +1600,10 @@ const handlers: ToolHandlers<typeof FRESHSERVICE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: `Retrieved ${result?.canned_responses?.length || 0} canned responses`,
         },
         {
           type: "text" as const,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           text: JSON.stringify(result?.canned_responses || [], null, 2),
         },
       ]);

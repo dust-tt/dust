@@ -57,7 +57,6 @@ export async function pushCouponToOtherCells(
   for (const cell of config.getOtherCells()) {
     const secret = config.getLookupApiSecret();
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${cell.url}/api/lookup/coupons/sync`, {
       method: "POST",
       headers: {

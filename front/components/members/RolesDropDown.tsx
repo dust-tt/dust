@@ -1,8 +1,4 @@
-import {
-  displayRole,
-  displayRoleCapitalized,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
 import { ASSIGNABLE_ROLES, isAdmin } from "@app/types/user";
@@ -15,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface RoleDropDownProps {
   onChange: (role: ActiveRoleType) => void;
@@ -27,6 +24,7 @@ export function RoleDropDown({
   selectedRole,
   disabled = false,
 }: RoleDropDownProps) {
+  const { t } = useLingui();
   const workspace = useWorkspace();
   const canManageAdminRole = isAdmin(workspace);
 
@@ -46,12 +44,8 @@ export function RoleDropDown({
 
   if (isLocked) {
     return (
-      <Chip
-        color={ROLES_DATA[selectedRole]["color"]}
-        size="sm"
-        className="capitalize"
-      >
-        {displayRole(selectedRole)}
+      <Chip color={ROLES_DATA[selectedRole]["color"]} size="sm">
+        {t(ROLE_LABELS[selectedRole])}
       </Chip>
     );
   }
@@ -62,7 +56,7 @@ export function RoleDropDown({
         <Button
           iconRight={ChevronDown}
           size="sm"
-          label={displayRoleCapitalized(selectedRole)}
+          label={t(ROLE_LABELS[selectedRole])}
           variant="ghost"
         />
       </DropdownMenuTrigger>
@@ -71,7 +65,7 @@ export function RoleDropDown({
           <DropdownMenuItem
             key={role}
             onClick={() => onChange(role)}
-            label={displayRoleCapitalized(role)}
+            label={t(ROLE_LABELS[role])}
           />
         ))}
       </DropdownMenuContent>
