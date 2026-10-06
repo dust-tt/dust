@@ -1,17 +1,17 @@
 use crate::keys::Keys;
 use dfs_protocol::validate;
 use parking_lot::RwLock;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 
 pub(crate) const WINDOW: usize = 16;
 const MAX_ENTRIES: usize = 16_384;
 const MAX_BYTES: usize = 8 * 1024 * 1024;
 
 /// @cc [owner:spolu,label:security;performance] advisory-parent-edges
-/// Store only tenant-scoped parent edges and name-to-object IDs, never grants or authorization.
+/// Store tenant-scoped parent edges, name-to-object IDs, and previously matching grant names.
 /// Hints MAY be stale or originate from aborted transactions. Consumers MUST read and validate all
-/// used parent links and grants in their current coherent view and validate publication dependencies.
-/// Cache misses MUST preserve access.
+/// used parent links and grant membership in their current FDB transaction. Hints MUST NOT establish
+/// authority or denial by themselves. They require no TTL or proactive invalidation.
 /// The cache MUST bound total entries/bytes across tenants and each returned chain's length.
 #[derive(Default)]
 pub(crate) struct Ancestry(RwLock<Edges>);
@@ -46,6 +46,23 @@ impl Ancestry {
         self.0.read().targets.get(&key).cloned()
     }
 
+    pub fn remember_grant(&self, keys: &Keys, object: &str, grant: &str) {
+        let (Ok(key), Ok(())) = (keys.grants(object), validate::grant(grant)) else {
+            return;
+        };
+        self.0.write().insert(key, grant);
+    }
+
+    pub fn grant(&self, keys: &Keys, object: &str, grants: &BTreeSet<String>) -> Option<String> {
+        let key = keys.grants(object).ok()?;
+        self.0
+            .read()
+            .targets
+            .get(&key)
+            .filter(|g| grants.contains(*g))
+            .cloned()
+    }
+
     pub fn chain(&self, keys: &Keys, first: &str) -> Vec<String> {
         let edges = self.0.read();
         let mut chain = Vec::with_capacity(WINDOW - 1);
@@ -70,9 +87,11 @@ impl Edges {
         2 * key.len() + target.len() + 128
     }
     fn insert(&mut self, key: Vec<u8>, target: &str) {
-        if let Some(previous) = self.targets.get_mut(&key) {
-            if previous != target {
-                target.clone_into(previous);
+        if let Some(previous) = self.targets.get(&key) {
+            let next_bytes = self.bytes - previous.len() + target.len();
+            if previous != target && next_bytes <= MAX_BYTES {
+                self.targets.insert(key, target.to_owned());
+                self.bytes = next_bytes;
             }
             return;
         }

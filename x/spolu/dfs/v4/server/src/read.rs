@@ -75,10 +75,18 @@ impl View {
         let warm = async {
             let mut keys_to_warm = Vec::new();
             if let Some(id) = &primary {
-                for node in ancestry.chain(&keys, id) {
+                let chain = ancestry.chain(&keys, id);
+                let has_grant_hint = chain
+                    .iter()
+                    .any(|node| ancestry.grant(&keys, node, &grants).is_some());
+                for node in chain {
                     keys_to_warm.push(keys.object(&node)?);
-                    for grant in &grants {
-                        keys_to_warm.push(keys.grant(&node, grant)?);
+                    if let Some(grant) = ancestry.grant(&keys, &node, &grants) {
+                        keys_to_warm.push(keys.grant(&node, &grant)?);
+                    } else if !has_grant_hint {
+                        for grant in &grants {
+                            keys_to_warm.push(keys.grant(&node, grant)?);
+                        }
                     }
                 }
                 if let Some(name) = child_name.filter(|name| validate::name(name).is_ok()) {
@@ -191,29 +199,61 @@ impl View {
         Ok(child)
     }
     pub(crate) async fn attached(&self, id: &str) -> Result<bool> {
-        Self::read_attached(&self.snapshot, &self.keys, &self.grants, id).await
-    }
-    async fn read_attached(
-        snapshot: &Snapshot,
-        keys: &Keys,
-        grants: &BTreeSet<String>,
-        id: &str,
-    ) -> Result<bool> {
-        if let Some(grant) = grants.first().filter(|_| grants.len() == 1) {
-            return Ok(snapshot.get(keys.grant(id, grant)?).await?.is_some());
-        }
-        stream::iter(grants.iter().cloned())
+        stream::iter(self.grants.iter().cloned())
             .map(|grant| async move {
-                Ok::<_, Status>(snapshot.get(keys.grant(id, &grant)?).await?.is_some())
+                let present = self
+                    .snapshot
+                    .get(self.keys.grant(id, &grant)?)
+                    .await?
+                    .is_some();
+                if present && let Some(hints) = &self.ancestry {
+                    hints.remember_grant(&self.keys, id, &grant);
+                }
+                Ok::<_, Status>(present)
             })
             .buffer_unordered(16)
             .try_any(|present| async move { present })
             .await
     }
+    /// @cc [owner:spolu,label:security;concurrency] revalidate-hinted-proof
+    /// A hinted grant MUST belong to this session and exist in this transaction. Every edge from
+    /// the target to that grant's object MUST match fresh parent records. A stale or missing hint
+    /// MUST fall back to full evaluation, never grant or deny access by itself.
+    async fn hinted_authority(&self, object: &Record) -> Result<bool> {
+        let Some(hints) = &self.ancestry else {
+            return Ok(false);
+        };
+        let chain = hints.chain(&self.keys, &object.object.id);
+        let Some((end, grant)) = chain.iter().enumerate().find_map(|(i, id)| {
+            hints
+                .grant(&self.keys, id, &self.grants)
+                .map(|grant| (i, grant))
+        }) else {
+            return Ok(false);
+        };
+        let mut current = object.clone();
+        for id in chain.iter().take(end + 1).skip(1) {
+            if current.parent.as_ref().is_none_or(|p| p.id != *id) {
+                return Ok(false);
+            }
+            current = self.object(id).await?;
+            if !current.object.directory {
+                return Ok(false);
+            }
+        }
+        Ok(self
+            .snapshot
+            .get(self.keys.grant(&current.object.id, &grant)?)
+            .await?
+            .is_some())
+    }
     /// @cc [owner:spolu,label:security;concurrency] validate-hinted-ancestry
     /// Authorization MUST follow parent links and grants in one coherent view. Publication MUST
     /// validate the consumed links and memberships, including moves/revocations.
     pub async fn authorized(&self, object: &Record) -> Result<bool> {
+        if self.hinted_authority(object).await? {
+            return Ok(true);
+        }
         let mut current = object.clone();
         let mut visited = HashSet::new();
         loop {

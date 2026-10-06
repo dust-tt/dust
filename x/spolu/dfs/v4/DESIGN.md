@@ -31,7 +31,8 @@ without suppressing entries accessible through the main tree. No exclusive tenan
 ## Freshness budget
 
 Call the client-side bound `D`. It covers content, metadata, xattrs, names, listings, negative results,
-moves, and authorization, including existing handles. The server has no write buffer or read cache:
+moves, and authorization, including existing handles. The server has no write buffer or authoritative
+read cache:
 server processing, FDB transactions/retries, and network delays are entirely outside `D`.
 
 | Budget | Initial value |
@@ -157,8 +158,11 @@ If a prerequisite fails, discard its dependent overlays and report their failure
 ## Server transactions
 
 The server validates the session, reads current FDB state, authorizes, applies edits, and commits.
-No authoritative RAM overlay or additional read cache. Existing parent-chain hints may batch FDB
-reads, but every authority decision is validated in the transaction. Ordinary FDB retries apply
+Keep a bounded RAM cache of parent links and previously matching grants **as hints only**, with no
+TTL or proactive invalidation. Use it to fetch likely ancestor records and grant memberships in
+parallel. Validate the actual parent chain and matching session grant in the current FDB transaction;
+stale hints fall back to ordinary resolution and can never authorize or deny access by themselves.
+There is no authoritative server read cache or write buffer. Ordinary FDB retries apply
 only to known noncommits, respect the independent RPC deadline, and recompute against current state.
 
 | Operation | Objects changed atomically |

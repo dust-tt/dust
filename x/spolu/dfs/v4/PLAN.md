@@ -9,6 +9,7 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 - [x] Batched mutation groups with independent streamed outcomes and transactional authorization.
 - [x] Conditional block reads, bounded metadata refresh and full-attribute directory pages.
 - [x] Real FDB tests for atomicity, isolation, grants, concurrency, and independent batch failures.
+- [x] Bounded server ancestry/grant hints without TTLs; fresh parallel FDB validation and stale fallback.
 
 ## 2. Client cache and writeback
 

@@ -12,6 +12,11 @@ Servers MUST acknowledge mutations only after FDB commits and MUST retain no aut
 or writeback overlay between requests. FDB conflicts MUST enforce correctness across server processes.
 Mutations with unknown commit outcomes MUST NOT be automatically replayed.
 
+@cc [owner:spolu,label:security;performance] v4-server-authority-hints
+Bounded tenant-scoped parent/grant hints MAY persist without TTL or proactive invalidation. They
+MUST only guide parallel reads; authority MUST follow fresh, conflict-tracked FDB parent links and
+grant membership. Stale/missing hints MUST fall back to resolution without changing access decisions.
+
 @cc [owner:spolu,label:concurrency] v4-object-fsync
 Ordinary client mutations MAY acknowledge bounded RAM acceptance. Fsync MUST dispatch and await only
 a finite prefix of the target object's edits and required namespace prerequisites, across handles.
