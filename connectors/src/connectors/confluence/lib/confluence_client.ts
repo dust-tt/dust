@@ -419,6 +419,7 @@ export class ConfluenceClient {
               url: `${this.apiUrl}${endpoint}`,
               message: e.message,
               error: e,
+              timeoutMs,
             },
           });
         }
