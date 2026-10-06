@@ -280,13 +280,16 @@ describe("Document comments", () => {
   it.each([
     [false, 1],
     [true, 0],
-  ])("marks a message as unverified only when its check fails (verified: %s)", async (verified, marks) => {
-    const { dom } = await renderDocument(SOURCE, async () => verified);
+  ])(
+    "marks a message as unverified only when its check fails (verified: %s)",
+    async (verified, marks) => {
+      const { dom } = await renderDocument(SOURCE, async () => verified);
 
-    fireEvent.click(highlight(dom, "c1"));
+      fireEvent.click(highlight(dom, "c1"));
 
-    await waitFor(() =>
-      expect(screen.queryAllByText("Unverified")).toHaveLength(marks)
-    );
-  });
+      await waitFor(() =>
+        expect(screen.queryAllByText("Unverified")).toHaveLength(marks)
+      );
+    }
+  );
 });

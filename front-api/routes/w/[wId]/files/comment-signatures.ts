@@ -21,10 +21,8 @@ const PostBodySchema = z.object({
 });
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  async (ctx): HandlerResult<GetDfmCommentSigningKeyResponseBody> =>
-    ctx.json({ publicKey: getDfmCommentPublicKey() })
+app.get("/", async (ctx): HandlerResult<GetDfmCommentSigningKeyResponseBody> =>
+  ctx.json({ publicKey: getDfmCommentPublicKey() })
 );
 
 /** @ignoreswagger */
