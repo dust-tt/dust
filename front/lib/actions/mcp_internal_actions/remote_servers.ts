@@ -4785,7 +4785,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
-    id: 10041,
+    id: 10044,
     name: "Paddle",
     description:
       "Manage Paddle pricing, billing, subscriptions, and integrations through Paddle's hosted MCP server.",
@@ -4812,6 +4812,9 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       report_missing_tool: {
         running: "Reporting a missing Paddle capability",
         done: "Reported a missing Paddle capability",
+      },
+    },
+  },
   {
     id: 10042,
     name: "Clay",
