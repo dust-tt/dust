@@ -21,6 +21,7 @@ import {
   MAX_AGENT_SEARCH_RESULTS,
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
+import { buildAgentDefaultSort } from "@app/lib/agent_search/ranking";
 import { resolveAgentIdByName, searchAgents } from "@app/lib/api/agents/search";
 import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
@@ -402,6 +403,33 @@ describe("searchAgents", () => {
     expect(
       await searchAgentIds(auth, { filters: { scope: ["global"] } })
     ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
+  });
+
+  it("ranks the user's favorites first only with favoritesFirst", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
+    assert(dust);
+    expect((await dust.setUserFavorite(auth, true)).isOk()).toBe(true);
+    mockHits([]);
+
+    await searchAgents(auth, { searchTerm: "", sortBy: "name" });
+    expect(mockSearch.mock.lastCall?.[0].sort).toEqual(
+      buildAgentDefaultSort({ sortBy: "name" })
+    );
+
+    await searchAgents(auth, {
+      searchTerm: "",
+      sortBy: "name",
+      favoritesFirst: true,
+    });
+    const [favoritesSort, ...sort] = mockSearch.mock.lastCall?.[0].sort;
+    expect(favoritesSort).toMatchObject({
+      _script: {
+        order: "asc",
+        script: { params: { favoriteAgentIds: [GLOBAL_AGENTS_SID.DUST] } },
+      },
+    });
+    expect(sort).toEqual(buildAgentDefaultSort({ sortBy: "name" }));
   });
 
   it("rejects offsets past the result window without querying", async () => {
