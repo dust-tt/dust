@@ -40,11 +40,13 @@ import {
   OPENAI_GLOBAL_BASE_URL,
 } from "@app/lib/model_constructors/providers/openai/base_url";
 import { isToolSearchEnabledForModel } from "@app/lib/model_constructors/types/tool_search";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import {
   getTemporalClientForAgentNamespace,
   getTemporalClientForFrontNamespace,
@@ -57,7 +59,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TiktokenTokenizerBase } from "@app/types/tokenizer";
 import { GoogleGenAI } from "@google/genai";
-import { tsToDate } from "@temporalio/common";
+import { decodeTimeoutType, tsToDate } from "@temporalio/common";
 import { z } from "zod";
 
 const TOKENIZER_BASES = [
@@ -424,68 +426,96 @@ async function printAgentLoopActivityAttempts({
 
   try {
     const client = await getTemporalClientForAgentNamespace();
-    const handle = client.workflow.getHandle(workflowId);
-    const history = await handle.fetchHistory();
-    const scheduledActivityByEventId = new Map<string, string>();
     const rows: Array<Record<string, unknown>> = [];
 
-    for (const event of history.events ?? []) {
-      const eventAt = event.eventTime
-        ? tsToDate(event.eventTime).toISOString()
-        : "n/a";
-      const scheduled = event.activityTaskScheduledEventAttributes;
-      if (scheduled) {
-        const activity = scheduled.activityType?.name ?? "unknown";
-        scheduledActivityByEventId.set(String(event.eventId), activity);
-        if (activity === "runModelAndCreateActionsActivity") {
-          rows.push({ eventAt, activity, event: "scheduled", attempt: "n/a" });
-        }
-      }
+    for await (const execution of client.workflow.list({
+      query: `WorkflowId = ${JSON.stringify(workflowId)}`,
+    })) {
+      const handle = client.workflow.getHandle(workflowId, execution.runId);
+      const history = await handle.fetchHistory();
+      const scheduledActivityByEventId = new Map<string, string>();
 
-      const started = event.activityTaskStartedEventAttributes;
-      if (started) {
-        const activity = scheduledActivityByEventId.get(
-          String(started.scheduledEventId)
-        );
-        if (activity === "runModelAndCreateActionsActivity") {
-          rows.push({
-            eventAt,
-            activity,
-            event: "started",
-            attempt: started.attempt,
-            worker: started.identity,
-          });
+      for (const event of history.events ?? []) {
+        const eventAt = event.eventTime
+          ? tsToDate(event.eventTime).toISOString()
+          : "n/a";
+        const scheduled = event.activityTaskScheduledEventAttributes;
+        if (scheduled) {
+          const activity = scheduled.activityType?.name ?? "unknown";
+          scheduledActivityByEventId.set(String(event.eventId), activity);
+          if (activity === "runModelAndCreateActionsActivity") {
+            rows.push({
+              runId: execution.runId,
+              eventAt,
+              activity,
+              event: "scheduled",
+              attempt: "n/a",
+            });
+          }
         }
-      }
 
-      const outcome =
-        event.activityTaskCompletedEventAttributes ??
-        event.activityTaskFailedEventAttributes ??
-        event.activityTaskTimedOutEventAttributes ??
-        event.activityTaskCanceledEventAttributes;
-      if (outcome) {
-        const activity = scheduledActivityByEventId.get(
-          String(outcome.scheduledEventId)
-        );
-        if (activity === "runModelAndCreateActionsActivity") {
-          rows.push({
-            eventAt,
-            activity,
-            event: event.activityTaskCompletedEventAttributes
-              ? "completed"
-              : event.activityTaskFailedEventAttributes
-                ? "failed"
-                : event.activityTaskTimedOutEventAttributes
-                  ? "timed_out"
-                  : "canceled",
-            attempt: "n/a",
-          });
+        const started = event.activityTaskStartedEventAttributes;
+        if (started) {
+          const activity = scheduledActivityByEventId.get(
+            String(started.scheduledEventId)
+          );
+          if (activity === "runModelAndCreateActionsActivity") {
+            const lastFailure = started.lastFailure;
+            rows.push({
+              runId: execution.runId,
+              eventAt,
+              activity,
+              event: "started",
+              attempt: started.attempt,
+              worker: started.identity,
+              previousAttemptFailure: lastFailure
+                ? (lastFailure.message ?? "unknown")
+                : "none",
+              previousAttemptFailureType: lastFailure
+                ? (decodeTimeoutType(
+                    lastFailure.timeoutFailureInfo?.timeoutType
+                  ) ??
+                  lastFailure.applicationFailureInfo?.type ??
+                  "unknown")
+                : "none",
+            });
+          }
+        }
+
+        const outcome =
+          event.activityTaskCompletedEventAttributes ??
+          event.activityTaskFailedEventAttributes ??
+          event.activityTaskTimedOutEventAttributes ??
+          event.activityTaskCanceledEventAttributes;
+        if (outcome) {
+          const activity = scheduledActivityByEventId.get(
+            String(outcome.scheduledEventId)
+          );
+          if (activity === "runModelAndCreateActionsActivity") {
+            rows.push({
+              runId: execution.runId,
+              eventAt,
+              activity,
+              event: event.activityTaskCompletedEventAttributes
+                ? "completed"
+                : event.activityTaskFailedEventAttributes
+                  ? "failed"
+                  : event.activityTaskTimedOutEventAttributes
+                    ? "timed_out"
+                    : "canceled",
+              attempt: "n/a",
+            });
+          }
         }
       }
     }
 
     console.log("\nAgent-loop model activity attempts");
-    console.table(rows);
+    console.table(
+      [...rows].sort((left, right) =>
+        String(left.eventAt).localeCompare(String(right.eventAt))
+      )
+    );
   } catch (error) {
     console.log("\nAgent-loop model activity history unavailable");
     console.table([
@@ -495,6 +525,137 @@ async function printAgentLoopActivityAttempts({
       },
     ]);
   }
+}
+
+async function printLlmCallAttempts({
+  auth,
+  agentMessageModelId,
+  runIds,
+}: {
+  auth: Authenticator;
+  agentMessageModelId: ModelId;
+  runIds: string[];
+}): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const agentMessage = await AgentMessageModel.findOne({
+    attributes: ["attemptedRunIds"],
+    where: { id: agentMessageModelId, workspaceId },
+  });
+  const attemptedRunIds = agentMessage?.attemptedRunIds ?? [];
+  if (attemptedRunIds.length === 0) {
+    console.log(
+      "\nLLM call attempts unavailable: the message has no attemptedRunIds."
+    );
+    return;
+  }
+
+  const keptRunIds = new Set(runIds);
+  const runs = await RunResource.listByDustRunIds(auth, {
+    dustRunIds: attemptedRunIds,
+  });
+  const runByDustRunId = new Map(runs.map((run) => [run.dustRunId, run]));
+  const usages = await RunUsageModel.findAll({
+    where: { runId: runs.map((run) => run.id), workspaceId },
+    order: [["id", "ASC"]],
+  });
+  const usagesByRunModelId = new Map<ModelId, RunUsageModel[]>();
+  for (const usage of usages) {
+    usagesByRunModelId.set(usage.runId, [
+      ...(usagesByRunModelId.get(usage.runId) ?? []),
+      usage,
+    ]);
+  }
+
+  const calls = attemptedRunIds.reduce<string[][]>(
+    (groups, dustRunId, index) => {
+      const lastGroup = groups.at(-1);
+      const previousDustRunId = attemptedRunIds[index - 1];
+      if (
+        lastGroup &&
+        previousDustRunId !== undefined &&
+        !keptRunIds.has(previousDustRunId)
+      ) {
+        return [...groups.slice(0, -1), [...lastGroup, dustRunId]];
+      }
+      return [...groups, [dustRunId]];
+    },
+    []
+  );
+
+  const rows = calls.flatMap((attempts, callIndex) => {
+    const keptDustRunId =
+      attempts.find((dustRunId) => keptRunIds.has(dustRunId)) ?? "none";
+    return attempts.map((dustRunId, attemptIndex) => {
+      const run = runByDustRunId.get(dustRunId);
+      const runUsages = run ? (usagesByRunModelId.get(run.id) ?? []) : [];
+      const reportedUsages = runUsages.filter(
+        (usage) => usage.usageState === "reported" || usage.usageState === null
+      );
+      const kept = keptRunIds.has(dustRunId);
+      return {
+        call: callIndex + 1,
+        attempt: `${attemptIndex + 1}/${attempts.length}`,
+        dustRunId,
+        outcome: kept ? "kept" : "lost",
+        keptDustRunId,
+        runCreatedAt: run?.createdAt.toISOString() ?? "missing_run",
+        runKey: run?.runKey ?? "none",
+        usageStates:
+          runUsages.length > 0
+            ? runUsages.map((usage) => usage.usageState ?? "null").join(",")
+            : "none",
+        promptTokens: reportedUsages.reduce(
+          (total, usage) => total + usage.promptTokens,
+          0
+        ),
+        cachedTokens: reportedUsages.reduce(
+          (total, usage) => total + (usage.cachedTokens ?? 0),
+          0
+        ),
+        completionTokens: reportedUsages.reduce(
+          (total, usage) => total + usage.completionTokens,
+          0
+        ),
+        providerCostMicroUsd:
+          reportedUsages.length > 0
+            ? reportedUsages.reduce(
+                (total, usage) => total + usage.costMicroUsd,
+                0
+              )
+            : "unknown",
+        billed: kept && reportedUsages.length > 0,
+      };
+    });
+  });
+  const lostRows = rows.filter((row) => row.outcome === "lost");
+
+  console.log("\nLLM call attempts");
+  console.table(rows);
+  console.log("\nLLM call retry summary");
+  console.table([
+    {
+      calls: calls.length,
+      retriedCalls: calls.filter((attempts) => attempts.length > 1).length,
+      callsWithoutKeptAttempt: calls.filter(
+        (attempts) => !attempts.some((dustRunId) => keptRunIds.has(dustRunId))
+      ).length,
+      lostAttempts: lostRows.length,
+      lostAttemptsWithReportedCost: lostRows.filter(
+        (row) => row.providerCostMicroUsd !== "unknown"
+      ).length,
+      lostAttemptsWithUnknownCost: lostRows.filter(
+        (row) => row.providerCostMicroUsd === "unknown"
+      ).length,
+      lostReportedCostMicroUsd: lostRows.reduce(
+        (total, row) =>
+          total +
+          (typeof row.providerCostMicroUsd === "number"
+            ? row.providerCostMicroUsd
+            : 0),
+        0
+      ),
+    },
+  ]);
 }
 
 /** Mirrors the cache-naive rates used by attribution_builder.ts. */
@@ -1769,6 +1930,12 @@ makeScript(
         archivedBytes: diagnostic.storedOutput.archivedBytes,
       }))
     );
+
+    await printLlmCallAttempts({
+      auth,
+      agentMessageModelId: creditContext.agentMessageModelId,
+      runIds: creditContext.runIds ?? [],
+    });
 
     await printAgentLoopActivityAttempts({
       agentMessageId,
