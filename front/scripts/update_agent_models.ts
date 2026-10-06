@@ -43,7 +43,7 @@ async function findMatchingWorkspaces(
     group: ["workspaceId"],
     // WORKSPACE_ISOLATION_BYPASS: Migration script needs to query across all workspaces
     // to identify which workspaces have agent configurations using the source model.
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 

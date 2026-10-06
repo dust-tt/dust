@@ -1,6 +1,6 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";

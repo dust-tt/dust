@@ -1274,8 +1274,12 @@ const avatarStackColumns: ColumnDef<Data>[] = [
         avatarStack={
           info.row.original.avatarStack
             ? {
-                items: info.row.original.avatarStack,
+                items: info.row.original.avatarStack.map((avatar) => ({
+                  ...avatar,
+                  isRounded: info.row.original.roundedAvatar,
+                })),
                 nbVisibleItems: 3,
+                hasMagnifier: false,
               }
             : undefined
         }
@@ -1698,20 +1702,18 @@ const wideColumns: ColumnDef<UsageRow>[] = [
       />
     ),
   },
-  ...MONTHS.map(
-    (month, monthIndex): ColumnDef<UsageRow> => ({
-      id: month.toLowerCase(),
-      header: month,
-      accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
-      meta: { type: "numeric" },
-      cell: (info) => (
-        <DataTable.NumericCellContent
-          value={info.getValue<number>()}
-          locale="en-US"
-        />
-      ),
-    })
-  ),
+  ...MONTHS.map((month, monthIndex): ColumnDef<UsageRow> => ({
+    id: month.toLowerCase(),
+    header: month,
+    accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
+    meta: { type: "numeric" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.getValue<number>()}
+        locale="en-US"
+      />
+    ),
+  })),
 ];
 
 /**

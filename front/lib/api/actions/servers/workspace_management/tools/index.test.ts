@@ -7,8 +7,8 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -156,7 +156,7 @@ describe("workspace_management tools", () => {
   });
 
   describe("search tools", () => {
-    it("registers search tools without exhaustive agent or skill listings", async () => {
+    it("registers search tools instead of the agent and skill listing tools", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const names = await toolNamesFor(authenticator);
 
@@ -164,12 +164,76 @@ describe("workspace_management tools", () => {
       expect(names).toContain("search_skills");
       expect(names).not.toContain("list_agents");
       expect(names).not.toContain("list_skills");
+    });
 
-      for (const name of ["search_agents", "search_skills"]) {
-        const schema = z.object(getToolByName(name).schema);
-        expect(schema.safeParse({}).success).toBe(false);
-        expect(schema.safeParse({ query: " " }).success).toBe(false);
-      }
+    it("returns the listed agents with an empty query", async () => {
+      const { authenticator, user } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Meeting Recap" }
+      );
+      const resource = await AgentResource.fetchById(authenticator, agent.sId);
+      expect(resource).not.toBeNull();
+      const document = resource!.toSearchDocument(authenticator, {
+        activeUsersCount: 0,
+        editors: [user],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: user,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      });
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [{ _source: document }],
+          total: { value: 1, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_agents",
+        { query: "" },
+        authenticator
+      );
+
+      expect(lines[0]).toContain(`Meeting Recap [${agent.sId}]`);
+      expect(lines[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0].query.bool.must).toEqual([
+        { match_all: {} },
+      ]);
+    });
+
+    it("returns the listed skills with an empty query", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Meeting Recap",
+      });
+      const [document] = await SkillFactory.createSearchDocuments(
+        authenticator,
+        [skill]
+      );
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [{ _source: document }],
+          total: { value: 1, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_skills",
+        { query: "" },
+        authenticator
+      );
+
+      expect(lines[0]).toContain(`Meeting Recap [${skill.sId}]`);
+      expect(lines[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0].query.bool.must).toEqual([
+        { match_all: {} },
+      ]);
     });
 
     it("supports skill search without an interactive user", async () => {
@@ -269,55 +333,55 @@ describe("workspace_management tools", () => {
       expect(lines.join("\n")).not.toContain(skill.instructions);
     });
 
-    it.each([
-      "search_agents",
-      "search_skills",
-    ])("%s distinguishes empty results, bad cursors and ES failures", async (toolName) => {
-      const { authenticator } = await createResourceTest({ role: "user" });
-      mockSearch.mockResolvedValue({
-        hits: { hits: [], total: { value: 0, relation: "eq" } },
-      });
-      expect(
-        await callTool(toolName, { query: "unknown" }, authenticator)
-      ).toBe("Showing 0 of 0.");
+    it.each(["search_agents", "search_skills"])(
+      "%s distinguishes empty results, bad cursors and ES failures",
+      async (toolName) => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        mockSearch.mockResolvedValue({
+          hits: { hits: [], total: { value: 0, relation: "eq" } },
+        });
+        expect(
+          await callTool(toolName, { query: "unknown" }, authenticator)
+        ).toBe("Showing 0 of 0.");
 
-      const invalidCursor = await runTool(
-        toolName,
-        { query: "unknown", cursor: 1 },
-        authenticator
-      );
-      expect(invalidCursor.isErr()).toBe(true);
-      if (invalidCursor.isErr()) {
-        expect(invalidCursor.error.message).toContain(
-          "cursor 1 is out of range"
+        const invalidCursor = await runTool(
+          toolName,
+          { query: "unknown", cursor: 1 },
+          authenticator
         );
-        expect(invalidCursor.error.tracked).toBe(false);
-      }
+        expect(invalidCursor.isErr()).toBe(true);
+        if (invalidCursor.isErr()) {
+          expect(invalidCursor.error.message).toContain(
+            "cursor 1 is out of range"
+          );
+          expect(invalidCursor.error.tracked).toBe(false);
+        }
 
-      mockSearch.mockClear();
-      const invalidWindow = await runTool(
-        toolName,
-        { query: "unknown", cursor: 10_000 },
-        authenticator
-      );
-      expect(invalidWindow.isErr()).toBe(true);
-      expect(mockSearch).not.toHaveBeenCalled();
+        mockSearch.mockClear();
+        const invalidWindow = await runTool(
+          toolName,
+          { query: "unknown", cursor: 10_000 },
+          authenticator
+        );
+        expect(invalidWindow.isErr()).toBe(true);
+        expect(mockSearch).not.toHaveBeenCalled();
 
-      const error = new ElasticsearchError(
-        "connection_error",
-        "ES unavailable"
-      );
-      mockWithEs.mockResolvedValueOnce(new Err(error));
-      const failure = await runTool(
-        toolName,
-        { query: "unknown" },
-        authenticator
-      );
-      expect(failure.isErr()).toBe(true);
-      if (failure.isErr()) {
-        expect(failure.error.cause).toBe(error);
+        const error = new ElasticsearchError(
+          "connection_error",
+          "ES unavailable"
+        );
+        mockWithEs.mockResolvedValueOnce(new Err(error));
+        const failure = await runTool(
+          toolName,
+          { query: "unknown" },
+          authenticator
+        );
+        expect(failure.isErr()).toBe(true);
+        if (failure.isErr()) {
+          expect(failure.error.cause).toBe(error);
+        }
       }
-    });
+    );
   });
 
   describe("get_agent_details", () => {

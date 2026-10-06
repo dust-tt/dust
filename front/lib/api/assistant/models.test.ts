@@ -259,6 +259,24 @@ describe("resolveModel", () => {
     );
   });
 
+  it("falls back to the highest allowed effort when the model default is above the member's tiers", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await setWorkspaceMaxAllowedTierName(auth, "balanced");
+
+    // GPT-5.5 defaults to `medium` (premium); only `none` is balanced.
+    const { resolvedModel } = await resolveModel(auth, {
+      agent: makeAgent(auth, {
+        providerId: GPT_5_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_5_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: [],
+    });
+
+    expect(resolvedModel.reasoningEffort).toBe("none");
+  });
+
   it("honors a supported reasoning effort from the selection", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);

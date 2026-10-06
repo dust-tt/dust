@@ -23,9 +23,8 @@ vi.mock("@app/components/app/FairUseCreditsUsage", () => ({
 }));
 
 vi.mock("@app/components/UserMenu", async () => {
-  const { CreditUsage, CreditUsageLearnMoreButton } = await import(
-    "@app/components/app/CreditUsage"
-  );
+  const { CreditUsage, CreditUsageLearnMoreButton } =
+    await import("@app/components/app/CreditUsage");
 
   return {
     UserMenu: ({

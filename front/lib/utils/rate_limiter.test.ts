@@ -109,6 +109,28 @@ describe("rateLimiter", () => {
     ).resolves.toBe(0);
   });
 
+  it("allows on a store error by default, and denies with onStoreError: deny", async () => {
+    const redisModule = await import("@app/lib/api/redis");
+    const spy = vi
+      .spyOn(redisModule, "getRedisStreamClient")
+      .mockRejectedValue(new Error("redis down"));
+    const args = {
+      key: `test:${crypto.randomUUID()}`,
+      maxPerTimeframe: 2,
+      timeframeSeconds: 60,
+      logger,
+    };
+
+    try {
+      await expect(rateLimiter(args)).resolves.toBe(1);
+      await expect(
+        rateLimiter({ ...args, onStoreError: "deny" })
+      ).resolves.toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("can consume more than one unit atomically", async () => {
     const key = `test:${crypto.randomUUID()}`;
     await expireTestKey(key);

@@ -292,46 +292,47 @@ describe("EditMemberSpendLimitModal", () => {
     expect(queryDefaultLimitInput()).toBeNull();
   });
 
-  it.each([
-    "free",
-    "none",
-  ] as const)("hides the workspace default limit for %s seats even when their source is default", (seatType) => {
-    render(
-      <EditMemberSpendLimitModal
-        isOpen
-        onClose={vi.fn()}
-        member={makeMember("default", seatType)}
-        owner={owner}
-        groups={groups}
-        readOnly={false}
-        canEditDefaultLimit
-        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
-      />
-    );
+  it.each(["free", "none"] as const)(
+    "hides the workspace default limit for %s seats even when their source is default",
+    (seatType) => {
+      render(
+        <EditMemberSpendLimitModal
+          isOpen
+          onClose={vi.fn()}
+          member={makeMember("default", seatType)}
+          owner={owner}
+          groups={groups}
+          readOnly={false}
+          canEditDefaultLimit
+          defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
+        />
+      );
 
-    expect(queryDefaultLimitInput()).toBeNull();
-    expect(screen.getByRole("button", { name: "Validate" })).not.toBeDisabled();
-  });
+      expect(queryDefaultLimitInput()).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Validate" })
+      ).not.toBeDisabled();
+    }
+  );
 
-  it.each([
-    "override",
-    "group",
-    "none",
-  ] as const)("hides the workspace default limit when the member's applicable source is %s", (spendLimitSource) => {
-    render(
-      <EditMemberSpendLimitModal
-        isOpen
-        onClose={vi.fn()}
-        member={makeMember(spendLimitSource)}
-        owner={owner}
-        groups={groups}
-        readOnly={false}
-        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
-      />
-    );
+  it.each(["override", "group", "none"] as const)(
+    "hides the workspace default limit when the member's applicable source is %s",
+    (spendLimitSource) => {
+      render(
+        <EditMemberSpendLimitModal
+          isOpen
+          onClose={vi.fn()}
+          member={makeMember(spendLimitSource)}
+          owner={owner}
+          groups={groups}
+          readOnly={false}
+          defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
+        />
+      );
 
-    expect(queryDefaultLimitInput()).toBeNull();
-  });
+      expect(queryDefaultLimitInput()).toBeNull();
+    }
+  );
 
   it("reports saving progress and calls onSaved once the personal limit is persisted", async () => {
     doUpdateSpendLimit.mockResolvedValueOnce({ ok: true });

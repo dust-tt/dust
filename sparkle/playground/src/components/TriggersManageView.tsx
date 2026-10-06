@@ -27,6 +27,7 @@ import {
 } from "@tanstack/react-table";
 import { Fragment, useCallback, useMemo, useState } from "react";
 
+import type { Trigger, TriggerPool } from "../data/types";
 import { getAgentById } from "../data/agents";
 import {
   formatCredits,
@@ -36,7 +37,6 @@ import {
   TRIGGER_KIND_LABELS,
   TRIGGER_POOL_LABELS,
 } from "../data/triggers";
-import type { Trigger, TriggerPool } from "../data/types";
 import { AgentBadgeAvatar } from "./AgentBadgeAvatar";
 import { EmptyState } from "./EmptyState";
 

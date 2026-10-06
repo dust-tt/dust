@@ -3,11 +3,11 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import logger from "@app/logger/logger";
 import { removeWorkspaceStaleOpenSpaceMembers } from "@app/migrations/20260917_remove_open_space_reader_auto_group_members";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 

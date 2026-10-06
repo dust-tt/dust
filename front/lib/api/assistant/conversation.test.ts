@@ -1,4 +1,5 @@
 import {
+  deleteOrLeaveConversation,
   editUserMessage,
   isConversationEventAllowedForAuth,
   postNewContentFragment,
@@ -902,9 +903,8 @@ describe("retryAgentMessage", () => {
 
       // Update the agent to use the other project space
       // Manually update the requestedSpaceIds in the database (using model IDs)
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {
@@ -984,9 +984,8 @@ describe("retryAgentMessage", () => {
         });
 
       // Update the agent to use the same project space
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [projectSpace.id] },
         {
@@ -1055,9 +1054,8 @@ describe("retryAgentMessage", () => {
         });
 
       // Update the agent to use empty requestedSpaceIds (which means global)
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [] },
         {
@@ -1278,6 +1276,87 @@ describe("softDeleteAgentMessage", () => {
       expect(result.error).toBeInstanceOf(ConversationError);
       expect(result.error.type).toBe("message_deletion_not_authorized");
     }
+  });
+});
+
+describe("deleteOrLeaveConversation", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let otherAuth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+  });
+
+  async function addParticipant(participantAuth: Authenticator) {
+    await ConversationResource.upsertParticipation(participantAuth, {
+      conversation,
+      action: "posted",
+      user: participantAuth.getNonNullableUser().toJSON(),
+    });
+  }
+
+  async function isDeleted() {
+    const resource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId,
+      { includeDeleted: true }
+    );
+    return resource?.visibility === "deleted";
+  }
+
+  it("soft-deletes when the last participant deletes", async () => {
+    await addParticipant(auth);
+
+    const result = await deleteOrLeaveConversation(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(await isDeleted()).toBe(true);
+  });
+
+  it("rejects a non-participant on a single-participant conversation", async () => {
+    await addParticipant(auth);
+
+    const result = await deleteOrLeaveConversation(otherAuth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(ConversationError);
+      expect(result.error).toHaveProperty(
+        "type",
+        "conversation_access_restricted"
+      );
+    }
+    expect(await isDeleted()).toBe(false);
+  });
+
+  it("rejects a non-participant on a conversation without participants", async () => {
+    const result = await deleteOrLeaveConversation(otherAuth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(await isDeleted()).toBe(false);
   });
 });
 
@@ -3153,9 +3232,8 @@ describe("postUserMessage", () => {
         }
       );
 
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {

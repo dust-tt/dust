@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import baseLogger from "@app/logger/logger";
 import {
@@ -6,7 +7,6 @@ import {
 } from "@app/migrations/20260924_migrate_reasoning_effort_to_router_vocabulary";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { Authenticator } from "@app/lib/auth";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
@@ -53,9 +53,12 @@ describe("getMigratedReasoningEffort", () => {
     ["mistral-small-latest", "low", "none"],
     ["gpt-5.4", "maximal", "xhigh"],
     ["gemini-3.1-pro-preview", "minimal", "low"],
-  ] as const)("moves %s at an unsupported %s to %s", (modelId, storedEffort, expected) => {
-    expect(getMigratedReasoningEffort(modelId, storedEffort)).toBe(expected);
-  });
+  ] as const)(
+    "moves %s at an unsupported %s to %s",
+    (modelId, storedEffort, expected) => {
+      expect(getMigratedReasoningEffort(modelId, storedEffort)).toBe(expected);
+    }
+  );
 
   it("leaves the efforts of auto meta-models alone", () => {
     expect(getMigratedReasoningEffort("auto", "medium")).toBeUndefined();

@@ -192,10 +192,7 @@ export type DustErrorCode = DustErrorType["code"];
 
 const errorTypeMapping: Record<
   string,
-  new (
-    message: string,
-    options?: BaseErrorOptions
-  ) => DustError
+  new (message: string, options?: BaseErrorOptions) => DustError
 > = {
   not_authenticated: DustAuthenticationError,
   invalid_api_key_error: DustAuthenticationError,
@@ -229,10 +226,7 @@ const errorTypeMapping: Record<
 
 const statusCodeMapping: Record<
   number,
-  new (
-    message: string,
-    options?: BaseErrorOptions
-  ) => DustError
+  new (message: string, options?: BaseErrorOptions) => DustError
 > = {
   401: DustAuthenticationError,
   403: DustPermissionError,

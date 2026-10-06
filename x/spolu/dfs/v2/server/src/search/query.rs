@@ -253,6 +253,7 @@ impl Search {
                     };
                     if record.object.directory
                         || record.object.version != version
+                        || state.writeback.dirty(workspace, id).await
                         || !cache.allowed(record.clone()).await?
                     {
                         return Ok(None);

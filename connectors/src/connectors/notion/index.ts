@@ -8,7 +8,7 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { validateNotionOAuthResponse } from "@connectors/connectors/notion/lib/utils";
 import {
   launchNotionSyncWorkflow,
@@ -37,7 +37,7 @@ import {
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import last from "lodash/last";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { getOrphanedCount, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });

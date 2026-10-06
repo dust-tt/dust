@@ -45,12 +45,13 @@ describe("buildContentSummaryForIssue", () => {
     setFormatLocale(undefined);
   });
 
-  it.each(
-    SUPPORTED_LOCALES
-  )("formats comment dates in en-US with %s as the format locale", (locale) => {
-    setFormatLocale(locale);
-    expect(buildContentSummaryForIssue(ISSUE)).toContain(
-      "**@bob** — Sep 23, 2025, 3:37 PM"
-    );
-  });
+  it.each(SUPPORTED_LOCALES)(
+    "formats comment dates in en-US with %s as the format locale",
+    (locale) => {
+      setFormatLocale(locale);
+      expect(buildContentSummaryForIssue(ISSUE)).toContain(
+        "**@bob** — Sep 23, 2025, 3:37 PM"
+      );
+    }
+  );
 });

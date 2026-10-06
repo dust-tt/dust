@@ -1,12 +1,12 @@
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { CapabilitySection } from "@marketing/components/home/content/Product/CapabilitySection";
 import { InteractiveFeaturesSection } from "@marketing/components/home/content/Product/InteractiveFeaturesSection";
 import { ProductIntroSection } from "@marketing/components/home/content/Product/ProductIntroSection";
 import { ProductVideoSection } from "@marketing/components/home/content/Product/ProductVideoSection";
 import { SecurityFeaturesSection } from "@marketing/components/home/content/Product/SecurityFeaturesSection";
 import type { SecurityFeature } from "@marketing/components/home/content/Product/SecurityFeaturesSection";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -134,7 +134,7 @@ export function Landing() {
   );
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Home() {
   return <Landing />;
 }

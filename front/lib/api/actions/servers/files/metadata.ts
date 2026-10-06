@@ -439,6 +439,20 @@ export const FILES_TOOLS_METADATA = [
   { name: FILES_MOVE_ACTION_NAME, ...MOVE_TOOL },
 ] as const;
 
+const FILES_WRITING_TOOL_NAMES: ReadonlySet<string> = new Set([
+  FILES_CREATE_ACTION_NAME,
+  FILES_EDIT_ACTION_NAME,
+  FILES_DELETE_ACTION_NAME,
+  FILES_COPY_ACTION_NAME,
+  FILES_MOVE_ACTION_NAME,
+  FILES_UPLOAD_FROM_URL_ACTION_NAME,
+]);
+
+/** Whether the tool changes a file on a mount, so a client showing it must refetch. */
+export function isFilesWritingTool(toolName: string): boolean {
+  return FILES_WRITING_TOOL_NAMES.has(toolName);
+}
+
 export const FILES_SERVER = {
   serverInfo: {
     name: FILES_SERVER_NAME,

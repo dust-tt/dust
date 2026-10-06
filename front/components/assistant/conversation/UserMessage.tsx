@@ -11,6 +11,7 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -57,7 +58,6 @@ import {
   Zap,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";
@@ -305,8 +305,7 @@ export function UserMessage({
   const hasReactions = (message.reactions ?? []).length > 0;
   // On mobile or when there are reactions, show the action menu below the message.
   // Otherwise, show it to the side of the message.
-  const showBottomActionMenu = !isDeleted && (hasReactions || isMobile);
-  const showSideActionMenu = !isDeleted && !hasReactions && !isMobile;
+  const showBottomActionMenu = hasReactions || isMobile;
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -436,9 +435,9 @@ export function UserMessage({
                   )}
                 </div>
               </ConversationMessageContent>
-              {showBottomActionMenu && (
+              {!isDeleted && (
                 <ActionMenu
-                  mode="bottom"
+                  mode={showBottomActionMenu ? "bottom" : "side"}
                   isCurrentUser={isCurrentUser}
                   isDeleted={isDeleted}
                   showActions={showActions}
@@ -455,24 +454,6 @@ export function UserMessage({
                 />
               )}
             </div>
-            {showSideActionMenu && (
-              <ActionMenu
-                mode="side"
-                isCurrentUser={isCurrentUser}
-                isDeleted={isDeleted}
-                showActions={showActions}
-                isUserMessageHovered={isUserMessageHovered}
-                message={message}
-                onReactionToggle={onReactionToggle}
-                disableReactions={disableReactions}
-                handleEditMessage={handleEditMessage}
-                handleDeleteMessage={handleDeleteMessage}
-                canDelete={canDelete}
-                canEdit={canEdit}
-                conversationId={conversationId}
-                owner={owner}
-              />
-            )}
           </ConversationMessageContainer>
         </div>
       )}
@@ -540,7 +521,8 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 const actionMenuContainerVariants = cva("flex items-center gap-1", {
   variants: {
     mode: {
-      side: "absolute left-0 bottom-0",
+      // Narrow containers have no room beside the bubble: side mode sits below it.
+      side: "@sm-conversation:absolute @sm-conversation:left-0 @sm-conversation:bottom-0",
       bottom: "",
     },
     isCurrentUser: {
@@ -552,12 +534,13 @@ const actionMenuContainerVariants = cva("flex items-center gap-1", {
     {
       mode: "side",
       isCurrentUser: true,
-      className: "-translate-x-full pr-2",
+      className: "@sm-conversation:-translate-x-full @sm-conversation:pr-2",
     },
     {
       mode: "side",
       isCurrentUser: false,
-      className: "left-auto right-0 translate-x-full pl-2",
+      className:
+        "@sm-conversation:left-auto @sm-conversation:right-0 @sm-conversation:translate-x-full @sm-conversation:pl-2",
     },
   ],
 });

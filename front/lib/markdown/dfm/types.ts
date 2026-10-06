@@ -40,6 +40,13 @@ export interface DfmAnchor {
   end: number;
 }
 
+/** An anchor directive read from the start of a string, `length` characters long. */
+export interface DfmAnchorDirective {
+  kind: "start" | "end";
+  id: string;
+  length: number;
+}
+
 export interface DfmError {
   message: string;
   /** 1-based line in the source when the error is located. */

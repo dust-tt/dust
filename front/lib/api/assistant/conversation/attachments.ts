@@ -43,7 +43,7 @@ import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 export function isFileAttachmentType(

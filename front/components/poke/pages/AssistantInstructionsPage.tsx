@@ -1,11 +1,12 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { Spinner } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
 
 export function AssistantInstructionsPage() {

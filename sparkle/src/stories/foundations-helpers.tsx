@@ -44,7 +44,7 @@ export function readCssVar(name: string): string {
 // Live value of a CSS custom property, re-read whenever the theme changes.
 export function useCssVar(name: string): string {
   const version = useThemeVersion();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` is an intentional re-read trigger when the theme toggles; readCssVar reads the DOM so biome can't infer the dependency.
+  // oxlint-disable-next-line react/exhaustive-deps -- `version` is an intentional re-read trigger when the theme toggles; readCssVar reads the DOM so the linter can't infer the dependency.
   return React.useMemo(() => readCssVar(name), [name, version]);
 }
 
@@ -56,7 +56,6 @@ export function useComputedStyle(
 ): Record<string, string> {
   const version = useThemeVersion();
   const [values, setValues] = React.useState<Record<string, string>>({});
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` is an intentional re-measure trigger when the theme toggles; getComputedStyle reads the DOM so biome can't infer the dependency.
   React.useEffect(() => {
     const el = ref.current;
     if (!el) {

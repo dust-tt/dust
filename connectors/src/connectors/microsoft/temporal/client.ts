@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { getRootNodesToSync } from "@connectors/connectors/microsoft/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";

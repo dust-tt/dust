@@ -1,20 +1,20 @@
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
+import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import {
   AgentMessageModel,
   ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const BATCH_SIZE = 1000;
 

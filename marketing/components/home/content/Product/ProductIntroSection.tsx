@@ -1,11 +1,10 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Button, Rocket02 } from "@dust-tt/sparkle";
 import { H1, P } from "@marketing/components/home/ContentComponents";
 import {
   HomeReveal,
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
 import { RotatingWord } from "@marketing/components/home/content/Product/RotatingWord";
-import { Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 export function ProductIntroSection() {

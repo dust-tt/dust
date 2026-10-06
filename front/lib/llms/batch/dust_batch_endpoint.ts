@@ -8,9 +8,7 @@ export type DustBatchEndpointConstructor<
   I = unknown,
   R = unknown,
   C extends InputConfig = InputConfig,
-> = (new (
-  credentials: Credentials
-) => BatchEndpoint<I, R>) &
+> = (new (credentials: Credentials) => BatchEndpoint<I, R>) &
   DustBatchEndpointConfiguration<C>;
 
 // Infers `C` from the class's `configSchema` so `defaultReasoningEffort` is

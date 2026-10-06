@@ -1,9 +1,10 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, ensure, Error, Result};
+use clap::Parser;
 use dust::data_sources::qdrant::{env_var_prefix_for_cluster, QdrantCluster};
 use regex::Regex;
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::io::Write;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::time::{Duration, Instant};
 use url::Url;
 
 #[derive(Debug, Deserialize)]
@@ -32,12 +33,23 @@ struct CollectionDescription {
 struct LocalShardInfo {
     shard_id: u32,
     points_count: u64,
+    state: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct RemoteShardInfo {
+    shard_id: u32,
+    peer_id: u64,
+    state: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct ClusterInfoResult {
     peer_id: u64,
     local_shards: Vec<LocalShardInfo>,
+    remote_shards: Vec<RemoteShardInfo>,
+    shard_transfers: Vec<serde_json::Value>,
+    resharding_operations: Option<Vec<serde_json::Value>>,
 }
 
 // Minimal structures for the /telemetry JSON response.
@@ -50,6 +62,17 @@ struct MemoryTelemetry {
 struct TelemetryResult {
     // Absent when the node build has no jemalloc stats.
     memory: Option<MemoryTelemetry>,
+    cluster: Option<ClusterTelemetry>,
+}
+
+#[derive(Deserialize, Debug)]
+struct ClusterTelemetry {
+    status: Option<ClusterStatusTelemetry>,
+}
+
+#[derive(Deserialize, Debug)]
+struct ClusterStatusTelemetry {
+    peer_id: Option<u64>,
 }
 
 // Generic wrapper for all Qdrant HTTP API responses
@@ -92,47 +115,51 @@ async fn get_json<T: serde::de::DeserializeOwned>(
 }
 
 #[derive(Debug, Clone)]
-pub struct PeerLoad {
+struct PeerLoad {
     peer_id: u64,
     shard_count: usize,
     point_count: u64,
 }
 
 #[derive(Debug, Clone)]
-pub struct ShardInfo {
+struct ShardInfo {
     collection: String,
     peer_id: u64,
     point_count: u64,
     shard_id: u32,
 }
 
-#[derive(Debug, Clone)]
-pub struct ShardMove {
+#[derive(Debug, Clone, PartialEq)]
+struct ShardMove {
     collection: String,
     shard_id: u32,
     from_peer: u64,
     to_peer: u64,
     point_count: u64,
+    estimated_memory_bytes: Option<f64>,
 }
 
 const QDRANT_HTTP_PORT: &str = ":6333";
 const QDRANT_GRPC_PORT: &str = ":6334";
 
-const MAX_MOVES: usize = 10; // Only allow up to 10 suggestions.
-const IMBALANCE_THRESHOLD: f64 = 0.10; // Allow up to 10% imbalance between peers.
-const DEBUG_MODE: bool = false; // Set to true to enable detailed logging.
+const MAX_MOVES: usize = 10;
 
-// Simple macro for debug logging
-macro_rules! debug {
-    ($($arg:tt)*) => {
-        if DEBUG_MODE {
-            println!($($arg)*);
-        }
-    }
+#[derive(Parser)]
+#[command(about = "Suggest Qdrant shard moves; never execute them")]
+struct Args {
+    /// Fit shared shard RAM to node totals and placement; suggest one move.
+    #[arg(long)]
+    estimate_memory: bool,
+
+    /// Greedily reduce maximum estimated node RAM; suggest up to ten moves.
+    #[arg(long, conflicts_with = "estimate_memory")]
+    minimize_max_memory: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+    let require_memory = args.estimate_memory || args.minimize_max_memory;
     // 1. Start from a seed peer that we know.
     //    We'll call GET /cluster, parse the JSON, discover the other peers' URIs.
     let url_var = format!(
@@ -155,15 +182,29 @@ async fn main() -> Result<()> {
     println!("Discovered peers: {:?}", peer_uris.keys());
 
     // Step 1: Gather cluster data.
+    let started_at = Instant::now();
     let (peers, shards) = gather_cluster_data(&peer_uris, &api_key).await?;
-    let memory_by_peer = gather_peer_memory(&peer_uris, &api_key).await?;
+    let memory_by_peer = gather_peer_memory(&peer_uris, &api_key, require_memory).await?;
+    if require_memory {
+        ensure!(
+            started_at.elapsed() <= Duration::from_secs(300),
+            "Snapshot took over five minutes; refresh before estimating memory moves"
+        );
+        println!("ESTIMATE: shared shard RAM fitted to node totals, including process overhead and temporary allocations.");
+        println!("This assumes replicas of the same shard have equal RAM; point counts guide ambiguous estimates.");
+        println!("Physical capacity and transfer headroom are not checked. Recheck live capacity before moving a shard.");
+    }
 
     // Step 2: Analyze current distribution.
     let (_, _, ideal_points_per_peer) = analyze_cluster_distribution(&peers, &memory_by_peer);
 
     // Step 3: Calculate suggested moves.
-    let (suggested_moves, updated_peers) =
-        calculate_suggested_moves(peers, &shards, ideal_points_per_peer);
+    let (suggested_moves, updated_peers) = calculate_suggested_moves(
+        peers,
+        &shards,
+        require_memory.then_some(&memory_by_peer),
+        args.minimize_max_memory,
+    )?;
 
     // Step 4: Display move suggestions.
     display_move_suggestions(&suggested_moves);
@@ -171,6 +212,7 @@ async fn main() -> Result<()> {
     // Step 5: Display expected distribution after moves.
     display_expected_distribution(&updated_peers, ideal_points_per_peer);
 
+    println!("Execute moves one at a time, wait for completion, then rerun with fresh state.");
     Ok(())
 }
 
@@ -227,18 +269,18 @@ async fn get_cluster_uris(seed_uri: &str, api_key: &str) -> Result<HashMap<u64, 
     }
 
     // Extract cluster information from the seed peer's URL.
-    let (cluster_id, _region, _cloud_provider) = extract_cluster_info(&seed_uri)?;
+    let (cluster_id, _region, _cloud_provider) = extract_cluster_info(seed_uri)?;
 
     let cluster_info = cluster_resp.result;
     println!("Current peer is peer {}", cluster_info.peer_id);
 
     println!("Found {} peers", cluster_info.peers.len());
 
-    Ok(cluster_info
+    cluster_info
         .peers
         .iter()
         .map(|(id, peer)| {
-            let peer_id = id.parse::<u64>().unwrap();
+            let peer_id = id.parse::<u64>()?;
 
             // Extract node number from the internal URI.
             let re = Regex::new(&format!(r"qdrant-{}-(\d+)\.qdrant-headless", cluster_id))?;
@@ -253,90 +295,145 @@ async fn get_cluster_uris(seed_uri: &str, api_key: &str) -> Result<HashMap<u64, 
 
             Err(anyhow::anyhow!("Failed to extract node number from URI"))
         })
-        .collect::<Result<HashMap<_, _>>>()?)
+        .collect::<Result<HashMap<_, _>>>()
 }
 
 async fn gather_cluster_data(
     peer_uris: &HashMap<u64, String>,
     api_key: &str,
-) -> Result<(Vec<PeerLoad>, Vec<ShardInfo>), Error> {
+) -> Result<(Vec<PeerLoad>, Vec<ShardInfo>)> {
+    ensure!(!peer_uris.is_empty(), "No peers discovered");
     let client = reqwest::Client::new();
-
-    // Initialize peer_load with all peers, even those with no shards
-    let mut peer_load: HashMap<u64, PeerLoad> = peer_uris
-        .keys()
-        .map(|&peer_id| {
-            (
-                peer_id,
-                PeerLoad {
-                    peer_id,
-                    shard_count: 0,
-                    point_count: 0,
-                },
-            )
-        })
-        .collect();
-
-    let mut all_shards: Vec<ShardInfo> = Vec::new();
-
-    for (_peer_id, peer_uri) in peer_uris {
-        // Make sure the URI has the correct format.
-        let base_uri = if peer_uri.ends_with('/') {
-            peer_uri.to_string()
+    let mut peers = Vec::new();
+    let mut shards = Vec::new();
+    let mut expected_collections = None;
+    let mut placements = HashMap::new();
+    for (&peer_id, peer_uri) in peer_uris {
+        let base_uri = peer_uri.trim_end_matches('/');
+        let response: QdrantResponse<CollectionsResult> =
+            get_json(&client, &format!("{}/collections", base_uri), api_key).await?;
+        ensure!(
+            response.status == "ok",
+            "Cannot list collections on peer {}",
+            peer_id
+        );
+        let collections: BTreeSet<_> = response
+            .result
+            .collections
+            .into_iter()
+            .map(|c| c.name)
+            .collect();
+        if let Some(expected) = &expected_collections {
+            ensure!(
+                *expected == collections,
+                "Collection inventories differ; refresh the snapshot"
+            );
         } else {
-            format!("{}/", peer_uri)
+            expected_collections = Some(collections.clone());
+        }
+        let mut peer = PeerLoad {
+            peer_id,
+            shard_count: 0,
+            point_count: 0,
         };
-
-        // Get list of collections for this peer. Errors are fatal (with the failing URL in the
-        // message): a peer skipped here would look empty and attract move suggestions.
-        let collections_url = format!("{}collections", base_uri);
-        let collections_response: QdrantResponse<CollectionsResult> =
-            get_json(&client, &collections_url, api_key).await?;
-
-        let collections = collections_response.result.collections;
-
-        // Collect peer loads and shard data.
         for collection in collections {
-            let cluster_info_url = format!("{}collections/{}/cluster", base_uri, collection.name);
-            let cluster_info: QdrantResponse<ClusterInfoResult> =
-                get_json(&client, &cluster_info_url, api_key).await?;
-
-            let peer_id_from_response = cluster_info.result.peer_id;
-
-            // Only local shards exposed points_count.
-            for shard in cluster_info.result.local_shards.iter() {
-                let points = shard.points_count;
-
-                // Aggregate peer stats.
-                peer_load
-                    .entry(peer_id_from_response)
-                    .and_modify(|n| {
-                        n.shard_count += 1;
-                        n.point_count += points;
-                    })
-                    .or_insert(PeerLoad {
-                        peer_id: peer_id_from_response,
-                        shard_count: 1,
-                        point_count: points,
-                    });
-
-                // Keep track of shard-level data.
-                all_shards.push(ShardInfo {
-                    collection: collection.name.clone(),
+            let response: QdrantResponse<ClusterInfoResult> = get_json(
+                &client,
+                &format!("{}/collections/{}/cluster", base_uri, collection),
+                api_key,
+            )
+            .await?;
+            ensure!(
+                response.status == "ok",
+                "Cannot read placement for {} on peer {}",
+                collection,
+                peer_id
+            );
+            let info = response.result;
+            validate_cluster_info(peer_id, &collection, &info)?;
+            let placement: BTreeSet<_> = info
+                .local_shards
+                .iter()
+                .map(|s| (s.shard_id, peer_id))
+                .chain(info.remote_shards.iter().map(|s| (s.shard_id, s.peer_id)))
+                .collect();
+            ensure!(
+                placement.len() == info.local_shards.len() + info.remote_shards.len(),
+                "Duplicate replica in {}",
+                collection
+            );
+            ensure!(
+                placement
+                    .iter()
+                    .all(|(_, peer)| peer_uris.contains_key(peer)),
+                "Unknown peer in {} placement",
+                collection
+            );
+            if let Some(previous) = placements.insert(collection.clone(), placement.clone()) {
+                ensure!(
+                    previous == placement,
+                    "Replica inventories differ for {}; refresh the snapshot",
+                    collection
+                );
+            }
+            for shard in info.local_shards {
+                peer.shard_count += 1;
+                peer.point_count = peer
+                    .point_count
+                    .checked_add(shard.points_count)
+                    .ok_or_else(|| anyhow!("Point count overflow on peer {}", peer_id))?;
+                shards.push(ShardInfo {
+                    collection: collection.clone(),
                     shard_id: shard.shard_id,
-                    peer_id: peer_id_from_response,
-                    point_count: points,
-                })
+                    peer_id,
+                    point_count: shard.points_count,
+                });
             }
         }
+        peers.push(peer);
     }
+    peers
+        .iter()
+        .try_fold(0_u64, |sum, p| sum.checked_add(p.point_count))
+        .ok_or_else(|| anyhow!("Cluster point count overflow"))?;
+    peers.sort_by_key(|p| std::cmp::Reverse(p.point_count));
+    Ok((peers, shards))
+}
 
-    // Turn HashMap into a vector for sorting.
-    let mut peers: Vec<PeerLoad> = peer_load.into_values().collect();
-    // Sort descending by point_count.
-    peers.sort_by_key(|n| std::cmp::Reverse(n.point_count));
-
-    Ok((peers, all_shards))
+fn validate_cluster_info(
+    expected_peer: u64,
+    collection: &str,
+    info: &ClusterInfoResult,
+) -> Result<()> {
+    ensure!(
+        info.peer_id == expected_peer,
+        "Expected peer {}, got {}",
+        expected_peer,
+        info.peer_id
+    );
+    let resharding_count = info.resharding_operations.as_ref().map_or(0, Vec::len);
+    if !info.shard_transfers.is_empty() || resharding_count > 0 {
+        eprintln!(
+            "Warning: collection {} on peer {} has ongoing transfers ({}) or resharding operations ({}). Suggestions do not account for incoming load.",
+            collection, expected_peer, info.shard_transfers.len(), resharding_count
+        );
+    }
+    if info.local_shards.iter().any(|s| s.state != "Active")
+        || info.remote_shards.iter().any(|s| s.state != "Active")
+    {
+        eprintln!(
+            "Warning: collection {} on peer {} has non-active replicas. Suggestions may include these replicas and use incomplete point counts.",
+            collection, expected_peer
+        );
+    }
+    ensure!(
+        info.remote_shards
+            .iter()
+            .all(|s| s.peer_id != expected_peer),
+        "Peer {} lists a local replica as remote",
+        expected_peer
+    );
+    Ok(())
 }
 
 // Fetch each peer's jemalloc resident memory from /telemetry. This is the qdrant process's
@@ -345,8 +442,11 @@ async fn gather_cluster_data(
 async fn gather_peer_memory(
     peer_uris: &HashMap<u64, String>,
     api_key: &str,
+    require_memory: bool,
 ) -> Result<HashMap<u64, Option<u64>>> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()?;
 
     let mut memory_by_peer = HashMap::new();
     for (peer_id, peer_uri) in peer_uris {
@@ -354,12 +454,32 @@ async fn gather_peer_memory(
             "{}/telemetry?details_level=1",
             peer_uri.trim_end_matches('/')
         );
-        // Memory is display-only (rendered as n/a when absent): an unreachable peer must not
-        // kill the whole run.
+        // Point mode tolerates missing display-only telemetry; memory mode requires every peer.
         let telemetry: Result<QdrantResponse<TelemetryResult>> =
             get_json(&client, &telemetry_url, api_key).await;
+        let telemetry = telemetry.and_then(|response| {
+            ensure!(
+                response.status == "ok",
+                "Telemetry failed for peer {}",
+                peer_id
+            );
+            if require_memory {
+                let actual_peer = response
+                    .result
+                    .cluster
+                    .and_then(|c| c.status)
+                    .and_then(|s| s.peer_id);
+                ensure!(
+                    actual_peer == Some(*peer_id),
+                    "Missing or mismatched telemetry identity for peer {}",
+                    peer_id
+                );
+            }
+            Ok(response.result.memory.map(|m| m.resident_bytes))
+        });
         let resident_bytes = match telemetry {
-            Ok(telemetry) => telemetry.result.memory.map(|m| m.resident_bytes),
+            Ok(memory) => memory,
+            Err(e) if require_memory => return Err(e),
             Err(e) => {
                 println!("WARNING: no telemetry for peer {}: {}", peer_id, e);
                 None
@@ -378,12 +498,16 @@ fn analyze_cluster_distribution(
 ) -> (u64, usize, f64) {
     let total_points: u64 = peers.iter().map(|n| n.point_count).sum();
     let peer_count = peers.len();
-    let ideal_points_per_peer = total_points as f64 / peer_count as f64;
+    let ideal_points_per_peer = total_points as f64 / peer_count.max(1) as f64;
 
     println!("Current cluster distribution (by points):");
     for peer in peers {
         let diff = (peer.point_count as f64) - ideal_points_per_peer;
-        let diff_pct = diff / ideal_points_per_peer * 100.0;
+        let diff_pct = if ideal_points_per_peer == 0.0 {
+            0.0
+        } else {
+            diff / ideal_points_per_peer * 100.0
+        };
         let ram_resident_gb = match memory_by_peer.get(&peer.peer_id).copied().flatten() {
             Some(resident_bytes) => format!("{:.1}", resident_bytes as f64 / 1e9),
             None => "n/a".to_string(),
@@ -397,314 +521,256 @@ fn analyze_cluster_distribution(
     (total_points, peer_count, ideal_points_per_peer)
 }
 
-fn calculate_standard_deviation(peers: &[PeerLoad], ideal_points_per_peer: f64) -> f64 {
-    // If there are no peers or only one peer, SD is 0.
-    if peers.len() <= 1 {
-        return 0.0;
+fn estimate_shard_memory<'a>(
+    peers: &[PeerLoad],
+    shards: &'a [ShardInfo],
+    measured_loads: &BTreeMap<u64, f64>,
+) -> HashMap<(&'a str, u32), f64> {
+    // Fit sum(hosted shard RAM) to each node's measured RAM. A weak penalty toward
+    // proportional estimates stabilizes shards that placement cannot distinguish.
+    const REGULARIZATION: f64 = 0.01;
+    const MAX_SWEEPS: usize = 10_000;
+    let points_by_peer: HashMap<_, _> = peers.iter().map(|p| (p.peer_id, p.point_count)).collect();
+    let mut ordered_shards: Vec<_> = shards.iter().collect();
+    ordered_shards.sort_by_key(|s| (s.collection.as_str(), s.shard_id, s.peer_id));
+    let mut estimates: BTreeMap<_, (f64, Vec<u64>)> = BTreeMap::new();
+    for shard in ordered_shards {
+        let estimate = measured_loads[&shard.peer_id] * shard.point_count as f64
+            / points_by_peer[&shard.peer_id] as f64;
+        let entry = estimates
+            .entry((shard.collection.as_str(), shard.shard_id))
+            .or_default();
+        entry.0 += estimate;
+        entry.1.push(shard.peer_id);
     }
-
-    // Calculate squared differences from ideal.
-    let sum_squared_diff: f64 = peers
+    for (prior, hosts) in estimates.values_mut() {
+        *prior /= hosts.len() as f64;
+    }
+    let mut weights: HashMap<_, _> = estimates
         .iter()
-        .map(|peer| {
-            let diff = (peer.point_count as f64) - ideal_points_per_peer;
-            diff * diff
-        })
-        .sum();
-
-    // Calculate variance (mean of squared differences).
-    let variance = sum_squared_diff / (peers.len() as f64);
-
-    // Return standard deviation (square root of variance).
-    variance.sqrt()
+        .map(|(&key, (prior, _))| (key, *prior))
+        .collect();
+    let mut residuals = measured_loads.clone();
+    for (prior, hosts) in estimates.values() {
+        for peer in hosts {
+            residuals.entry(*peer).and_modify(|r| *r -= prior);
+        }
+    }
+    let rms = |residuals: &BTreeMap<u64, f64>| {
+        (residuals.values().map(|r| r * r).sum::<f64>() / residuals.len().max(1) as f64).sqrt()
+    };
+    let initial_error = rms(&residuals);
+    let tolerance = measured_loads.values().copied().fold(1.0, f64::max) * 1e-8;
+    // Coordinate descent touches only a shard's hosts, about 140 replicas per sweep.
+    for sweep in 0..MAX_SWEEPS {
+        let mut max_change: f64 = 0.0;
+        for (key, (prior, hosts)) in &estimates {
+            let weight = weights[key];
+            let correction = (hosts.iter().map(|peer| residuals[peer]).sum::<f64>()
+                - REGULARIZATION * (weight - prior))
+                / (hosts.len() as f64 + REGULARIZATION);
+            let updated = (weight + correction).max(0.0);
+            let change = updated - weight;
+            weights.insert(*key, updated);
+            for peer in hosts {
+                residuals.entry(*peer).and_modify(|r| *r -= change);
+            }
+            max_change = max_change.max(change.abs());
+        }
+        if max_change <= tolerance {
+            break;
+        }
+        if sweep + 1 == MAX_SWEEPS {
+            eprintln!(
+                "Warning: shard RAM fit reached its iteration limit; using the current estimates."
+            );
+        }
+    }
+    println!(
+        "Shard RAM fit: node RMS error {:.3} -> {:.3} GB.",
+        initial_error / 1e9,
+        rms(&residuals) / 1e9
+    );
+    weights
 }
 
 fn calculate_suggested_moves(
     mut peers: Vec<PeerLoad>,
     all_shards: &[ShardInfo],
-    ideal_points_per_peer: f64,
-) -> (Vec<ShardMove>, Vec<PeerLoad>) {
-    // Strategy using standard deviation:
-    // 1. Only move shards from peers that are significantly overloaded (> 1 std dev from mean)
-    // 2. Only move to peers that won't become overloaded after the move
-    // 3. Verify each move improves the overall standard deviation.
-    let mut suggested_moves = Vec::new();
-    let mut moved_shards = std::collections::HashSet::new();
-
-    // Create a mutable copy of all_shards for tracking.
-    let mut updated_shards = all_shards.to_vec();
-
-    // Calculate initial stats.
-    let initial_sd = calculate_standard_deviation(&peers, ideal_points_per_peer);
-    println!("Initial standard deviation: {:.4}", initial_sd);
-
-    // Check for large single shards that make perfect balancing impossible.
-    let mut has_large_single_shards = false;
+    memory: Option<&HashMap<u64, Option<u64>>>,
+    minimize_max_memory: bool,
+) -> Result<(Vec<ShardMove>, Vec<PeerLoad>)> {
+    peers.sort_by_key(|p| p.peer_id);
+    let mut loads = BTreeMap::new();
     for peer in &peers {
-        if peer.shard_count == 1 && (peer.point_count as f64) > ideal_points_per_peer * 1.2 {
-            let oversize_pct =
-                (peer.point_count as f64 - ideal_points_per_peer) / ideal_points_per_peer * 100.0;
-            println!("\n\x1b[31;1mWARNING: Peer {} has a single shard with {} points, which is {:.1}% above ideal\x1b[0m",
-                     peer.peer_id, peer.point_count, oversize_pct);
-            has_large_single_shards = true;
-        }
-    }
-
-    if has_large_single_shards {
-        println!(
-            "\x1b[31;1mPerfect balancing is impossible with the current shard distribution\x1b[0m"
-        );
-        println!("\x1b[31;1mRecommendations:\x1b[0m");
-        println!("\x1b[31;1m  1. Vertically scale nodes hosting large shards (recommended)\x1b[0m");
-        println!("\x1b[31;1m  2. Change routing strategy for future data to distribute load more evenly\x1b[0m");
-        println!("\x1b[31;1m  3. As a last resort, reindex with a higher shard count\x1b[0m");
-        println!("\x1b[31;1mWill proceed with best-effort balancing for remaining shards\x1b[0m\n");
-    }
-
-    // Main rebalancing loop.
-    for iteration in 0..MAX_MOVES {
-        // Re-sort peers by load each iteration.
-        peers.sort_by_key(|n| std::cmp::Reverse(n.point_count));
-
-        // Calculate current standard deviation.
-        let current_sd = calculate_standard_deviation(&peers, ideal_points_per_peer);
-
-        // If standard deviation is small enough, we're sufficiently balanced.
-        if current_sd / ideal_points_per_peer < IMBALANCE_THRESHOLD {
-            println!(
-                "Balance within acceptable threshold (SD: {:.2}%)",
-                (current_sd / ideal_points_per_peer) * 100.0
-            );
-            break;
-        }
-
-        if DEBUG_MODE {
-            println!(
-                "Iteration {}: Current standard deviation: {:.4}",
-                iteration + 1,
-                current_sd
-            );
-        } else {
-            // In regular mode, just print a simple progress indicator
-            print!(".");
-            let _ = std::io::stdout().flush();
-        }
-
-        // Find significantly overloaded peers (> 1 std dev above mean).
-        let overloaded_threshold = ideal_points_per_peer + current_sd;
-        let underloaded_threshold = ideal_points_per_peer - current_sd;
-
-        debug!(
-            "Overloaded threshold: > {:.0} points, Underloaded threshold: < {:.0} points",
-            overloaded_threshold, underloaded_threshold
-        );
-
-        // Find the most overloaded peer with movable shards.
-        let mut found_beneficial_move = false;
-        let mut best_move: Option<ShardMove> = None;
-        let mut best_new_sd = current_sd;
-
-        // Make a copy of the peers we can iterate through.
-        let peers_snapshot = peers.clone();
-
-        // Try each overloaded peer as a source.
-        for source_peer in &peers_snapshot {
-            // Skip peers that aren't significantly overloaded.
-            if (source_peer.point_count as f64) <= overloaded_threshold {
-                continue;
+        let load = match memory {
+            Some(memory) => {
+                let bytes = memory
+                    .get(&peer.peer_id)
+                    .copied()
+                    .flatten()
+                    .filter(|bytes| *bytes > 0)
+                    .ok_or_else(|| anyhow!("Missing allocator memory for peer {}", peer.peer_id))?;
+                ensure!(
+                    peer.shard_count == 0 || peer.point_count > 0,
+                    "Cannot estimate memory for zero-point replicas on peer {}",
+                    peer.peer_id
+                );
+                bytes as f64
             }
-
-            debug!(
-                "Examining overloaded peer {}: {} points (threshold: {:.0})",
-                source_peer.peer_id, source_peer.point_count, overloaded_threshold
-            );
-
-            // Find movable shards from this peer.
-            let movable_shards: Vec<&ShardInfo> = updated_shards
-                .iter()
-                .filter(|s| {
-                    s.peer_id == source_peer.peer_id
-                        && !moved_shards.contains(&(s.collection.clone(), s.shard_id))
-                })
-                .collect();
-
-            if movable_shards.is_empty() {
-                debug!("No movable shards for peer {}", source_peer.peer_id);
-
-                // Mark all shards on this peer as "tried" to avoid infinite loops.
-                for shard in updated_shards
-                    .iter()
-                    .filter(|s| s.peer_id == source_peer.peer_id)
-                {
-                    moved_shards.insert((shard.collection.clone(), shard.shard_id));
-                }
-                continue;
-            }
-
-            // Try each underloaded peer as a destination.
-            for dest_peer in &peers_snapshot {
-                // Skip peers that aren't underloaded.
-                if dest_peer.peer_id == source_peer.peer_id
-                    || (dest_peer.point_count as f64) >= ideal_points_per_peer
-                {
+            None => peer.point_count as f64,
+        };
+        loads.insert(peer.peer_id, load);
+    }
+    let measured_loads = loads.clone();
+    let mut shard_weights = HashMap::new();
+    ensure!(
+        !minimize_max_memory || memory.is_some(),
+        "Minimax planning requires memory telemetry"
+    );
+    if memory.is_some() {
+        shard_weights = estimate_shard_memory(&peers, all_shards, &measured_loads);
+        loads.values_mut().for_each(|load| *load = 0.0);
+        for shard in all_shards {
+            let weight = shard_weights[&(shard.collection.as_str(), shard.shard_id)];
+            loads
+                .entry(shard.peer_id)
+                .and_modify(|load| *load += weight);
+        }
+        println!("Modeled loads can differ from measured RAM; memory on peers without replicas is not modeled.");
+    }
+    let initial_loads = loads.clone();
+    // Fitted weights can make equal-load swaps appear improving through roundoff.
+    let load_tolerance = if memory.is_some() {
+        loads.values().copied().fold(1.0, f64::max) * 1e-9
+    } else {
+        0.0
+    };
+    let mut shards = all_shards.to_vec();
+    let mut moves = Vec::new();
+    let limit = if memory.is_some() && !minimize_max_memory {
+        1
+    } else {
+        MAX_MOVES
+    };
+    for _ in 0..limit {
+        shards.sort_by(|a, b| {
+            (&a.collection, a.shard_id, a.peer_id).cmp(&(&b.collection, b.shard_id, b.peer_id))
+        });
+        let occupied: HashSet<_> = shards
+            .iter()
+            .map(|s| (s.collection.as_str(), s.shard_id, s.peer_id))
+            .collect();
+        let mut best = None;
+        let mut best_score = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+        // Removing the two affected peers leaves the maximum among the top three.
+        let mut highest_loads: Vec<_> = loads.iter().map(|(&peer, &load)| (peer, load)).collect();
+        highest_loads.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+        highest_loads.truncate(3);
+        // Roughly 140 replicas * 38 peers; score each candidate without cloning the placement.
+        for (index, shard) in shards.iter().enumerate() {
+            let source_load = loads[&shard.peer_id];
+            let weight = match memory {
+                Some(_) => shard_weights[&(shard.collection.as_str(), shard.shard_id)],
+                None => shard.point_count as f64,
+            };
+            for (&destination, &destination_load) in &loads {
+                if occupied.contains(&(shard.collection.as_str(), shard.shard_id, destination)) {
                     continue;
                 }
-
-                // Try each shard.
-                for shard in &movable_shards {
-                    // Don't move if it would make the destination overloaded.
-                    if (dest_peer.point_count + shard.point_count) as f64 > overloaded_threshold {
-                        continue;
-                    }
-
-                    // Simulate this move.
-                    let mut simulated_peers = peers.clone();
-
-                    // Update source peer in simulation.
-                    if let Some(sim_source) = simulated_peers
-                        .iter_mut()
-                        .find(|p| p.peer_id == source_peer.peer_id)
-                    {
-                        sim_source.shard_count -= 1;
-                        sim_source.point_count =
-                            sim_source.point_count.saturating_sub(shard.point_count);
-                    }
-
-                    // Update destination peer in simulation.
-                    if let Some(sim_dest) = simulated_peers
-                        .iter_mut()
-                        .find(|p| p.peer_id == dest_peer.peer_id)
-                    {
-                        sim_dest.shard_count += 1;
-                        sim_dest.point_count += shard.point_count;
-                    }
-
-                    // Calculate new standard deviation.
-                    let new_sd =
-                        calculate_standard_deviation(&simulated_peers, ideal_points_per_peer);
-
-                    // If this move improves the standard deviation, record it.
-                    if new_sd < current_sd && new_sd < best_new_sd {
-                        debug!(
-                            "Found beneficial move: shard {} ({}p) from peer {} to peer {} (SD: {:.4} → {:.4})",
-                            shard.shard_id, shard.point_count,
-                            source_peer.peer_id, dest_peer.peer_id,
-                            current_sd, new_sd
-                        );
-
-                        best_new_sd = new_sd;
-                        best_move = Some(ShardMove {
-                            collection: shard.collection.clone(),
-                            shard_id: shard.shard_id,
-                            from_peer: source_peer.peer_id,
-                            to_peer: dest_peer.peer_id,
-                            point_count: shard.point_count,
-                        });
-                        found_beneficial_move = true;
-                    }
+                // The squared-load sum decreases by 2*s*(A-B-s), requiring 0 < s < A-B.
+                let difference = source_load - destination_load;
+                if weight <= load_tolerance || difference - weight <= load_tolerance {
+                    continue;
+                }
+                let priority = if minimize_max_memory {
+                    let other_max = highest_loads
+                        .iter()
+                        .filter(|(peer, _)| *peer != shard.peer_id && *peer != destination)
+                        .map(|(_, load)| *load)
+                        .fold(0.0, f64::max);
+                    // Minimize the projected maximum first, then the squared-load sum.
+                    -other_max
+                        .max(source_load - weight)
+                        .max(destination_load + weight)
+                } else if memory.is_some() {
+                    source_load
+                } else {
+                    0.0
+                };
+                let score = (priority, weight * (difference - weight));
+                if score > best_score {
+                    best_score = score;
+                    best = Some((index, destination, weight));
                 }
             }
         }
-
-        // If we found a beneficial move, apply it.
-        if found_beneficial_move && best_move.is_some() {
-            let move_suggestion = best_move.unwrap();
-
-            // Apply the move to our tracking.
-            let mut updated_peers = peers.clone(); // Create a copy for updating.
-
-            // Update source peer.
-            if let Some(from_peer) = updated_peers
-                .iter_mut()
-                .find(|p| p.peer_id == move_suggestion.from_peer)
-            {
-                from_peer.shard_count -= 1;
-                from_peer.point_count = from_peer
-                    .point_count
-                    .saturating_sub(move_suggestion.point_count);
-            }
-
-            // Update destination peer.
-            if let Some(to_peer) = updated_peers
-                .iter_mut()
-                .find(|p| p.peer_id == move_suggestion.to_peer)
-            {
-                to_peer.shard_count += 1;
-                to_peer.point_count += move_suggestion.point_count;
-            }
-
-            // Replace the peers vector with the updated version.
-            peers = updated_peers;
-
-            // Update shard's peer assignment in updated_shards.
-            let mut updated_shards_copy = updated_shards.clone();
-            for shard in &mut updated_shards_copy {
-                if shard.shard_id == move_suggestion.shard_id
-                    && shard.peer_id == move_suggestion.from_peer
-                {
-                    shard.peer_id = move_suggestion.to_peer;
-                    break;
-                }
-            }
-            updated_shards = updated_shards_copy;
-
-            // Mark this shard as moved.
-            moved_shards.insert((move_suggestion.collection.clone(), move_suggestion.shard_id));
-            suggested_moves.push(move_suggestion);
-
-            debug!("Applied move! New standard deviation: {:.4}", best_new_sd);
-        } else {
-            // No beneficial moves found.
-            debug!("No more beneficial moves found");
+        let Some((index, destination, weight)) = best else {
+            println!("Stopped: no admissible single move improves the distribution.");
             break;
+        };
+        let shard = &mut shards[index];
+        loads
+            .entry(shard.peer_id)
+            .and_modify(|load| *load -= weight);
+        loads.entry(destination).and_modify(|load| *load += weight);
+        for peer in &mut peers {
+            if peer.peer_id == shard.peer_id {
+                peer.point_count -= shard.point_count;
+                peer.shard_count -= 1;
+            }
+            if peer.peer_id == destination {
+                peer.point_count += shard.point_count;
+                peer.shard_count += 1;
+            }
         }
-
-        // Exit if we've reached our move limit.
-        if suggested_moves.len() >= MAX_MOVES {
-            debug!("Reached maximum number of moves: {}", MAX_MOVES);
-            break;
+        moves.push(ShardMove {
+            collection: shard.collection.clone(),
+            shard_id: shard.shard_id,
+            from_peer: shard.peer_id,
+            to_peer: destination,
+            point_count: shard.point_count,
+            estimated_memory_bytes: memory.map(|_| weight),
+        });
+        if memory.is_some() {
+            println!(
+                "Estimated allocator RAM after the move: source {:.2} GB, destination {:.2} GB.",
+                loads[&shard.peer_id] / 1e9,
+                loads[&destination] / 1e9
+            );
         }
+        shard.peer_id = destination;
     }
-
-    // Print newline after progress dots
-    if !DEBUG_MODE && !suggested_moves.is_empty() {
-        println!();
-    }
-
-    // Final safety check - verify moves actually improve the distribution.
-    let final_sd = calculate_standard_deviation(&peers, ideal_points_per_peer);
-    println!("Final standard deviation: {:.4}", final_sd);
-
-    if final_sd > initial_sd {
-        println!("\n\x1b[31;1m⚠️  WARNING: The suggested moves would make the distribution WORSE!\x1b[0m");
+    if moves.len() == limit {
         println!(
-            "\x1b[31;1m   Initial SD: {:.4} → Final SD: {:.4}\x1b[0m",
-            initial_sd, final_sd
-        );
-        println!("\x1b[31;1m   Recommendation: DO NOT apply these moves. Keep the current distribution.\x1b[0m\n");
-
-        // Clear the moves if they make things worse.
-        suggested_moves.clear();
-    } else if suggested_moves.is_empty() {
-        println!("\nNo beneficial moves found. The current distribution is the best possible.");
-    } else {
-        println!("\nThe suggested moves should improve the cluster balance.");
-        println!(
-            "Standard deviation: {:.4} → {:.4} ({:.1}% reduction)",
-            initial_sd,
-            final_sd,
-            (1.0 - final_sd / initial_sd) * 100.0
+            "Stopped: suggestion limit reached ({}). Refresh state before planning more moves.",
+            limit
         );
     }
-
-    (suggested_moves, peers)
+    if minimize_max_memory {
+        let before = initial_loads.values().copied().fold(0.0, f64::max);
+        let after = loads.values().copied().fold(0.0, f64::max);
+        println!("Greedy minimax: modeled maximum RAM {:.3} -> {:.3} GB. Global optimality is not guaranteed.", before / 1e9, after / 1e9);
+    }
+    if memory.is_some() {
+        for peer in &peers {
+            println!(
+                "Peer {}: measured {:.3} GB, modeled {:.3} -> {:.3} GB.",
+                peer.peer_id,
+                measured_loads[&peer.peer_id] / 1e9,
+                initial_loads[&peer.peer_id] / 1e9,
+                loads[&peer.peer_id] / 1e9
+            );
+        }
+    }
+    Ok((moves, peers))
 }
 
 fn display_move_suggestions(suggested_moves: &[ShardMove]) {
     if suggested_moves.is_empty() {
-        println!("\nNo suggestions. The cluster is already in decent shape or no beneficial moves found.");
+        println!("\nNo moves suggested.");
     } else {
-        println!("\nSuggested partial set of moves (best effort approach):");
+        println!("\nSuggested moves:");
         for (i, mv) in suggested_moves.iter().enumerate() {
             println!(
                 "{}. Move shard {} from peer {} to peer {} (collection={}, points={})",
@@ -716,6 +782,12 @@ fn display_move_suggestions(suggested_moves: &[ShardMove]) {
                 mv.point_count
             );
 
+            if let Some(bytes) = mv.estimated_memory_bytes {
+                println!(
+                    "Estimated source relief / destination increase: {:.2} GB.",
+                    bytes / 1e9
+                );
+            }
             println!("--------------------------------");
             println!("COMMAND TO RUN FROM QDRANT CLOUD:");
             println!("POST /collections/{}/cluster", mv.collection);
@@ -740,7 +812,11 @@ fn display_expected_distribution(peers: &[PeerLoad], ideal_points_per_peer: f64)
 
     for peer in &sorted_peers {
         let diff = (peer.point_count as f64) - ideal_points_per_peer;
-        let diff_pct = diff / ideal_points_per_peer * 100.0;
+        let diff_pct = if ideal_points_per_peer == 0.0 {
+            0.0
+        } else {
+            diff / ideal_points_per_peer * 100.0
+        };
         println!(
             "peer {}: {} shards, {} points, diff_from_ideal={:+.1}%",
             peer.peer_id, peer.shard_count, peer.point_count, diff_pct

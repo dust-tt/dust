@@ -1,4 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getTieredDefaultReasoningEffort } from "@app/lib/model_tiers/enabled_models";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -13,6 +15,7 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
@@ -30,6 +33,8 @@ export class AgentConfigurationFactory {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
         temperature?: number;
+        // Null stores no effort, like agents saved before efforts were pinned.
+        reasoningEffort?: ReasoningEffort | null;
         responseFormat?: string;
       };
       requestedSpaceIds: ModelId[];
@@ -60,6 +65,19 @@ export class AgentConfigurationFactory {
       workspace.sId
     );
 
+    // Like a real save (`createOrUpgradeAgentConfiguration`), pin the effort the model resolves to.
+    const modelConfig = getSupportedModelConfig({ providerId, modelId });
+    const requestedEffort = overrides.model?.reasoningEffort;
+    const reasoningEffort =
+      requestedEffort === null
+        ? undefined
+        : (requestedEffort ??
+          (modelConfig
+            ? await getTieredDefaultReasoningEffort(auth, {
+                model: modelConfig,
+              })
+            : undefined));
+
     const result = await AgentResource.makeNew(internalAuth, {
       name,
       description,
@@ -72,6 +90,7 @@ export class AgentConfigurationFactory {
         providerId,
         modelId,
         temperature,
+        reasoningEffort,
         responseFormat: overrides.model?.responseFormat,
       },
       templateId: overrides.templateId ?? null,

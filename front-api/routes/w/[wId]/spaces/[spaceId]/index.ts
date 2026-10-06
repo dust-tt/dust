@@ -209,6 +209,7 @@ const app = workspaceApp();
  *             properties:
  *               name:
  *                 type: string
+ *                 maxLength: 256
  *               content:
  *                 type: array
  *                 items:

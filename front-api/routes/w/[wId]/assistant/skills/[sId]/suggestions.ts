@@ -161,8 +161,8 @@ app.patch(
     );
 
     return ctx.json({
-      suggestions: updatedSuggestions.map(
-        (s): SkillSuggestionType => s.toJSON()
+      suggestions: updatedSuggestions.map((s): SkillSuggestionType =>
+        s.toJSON()
       ),
     });
   }

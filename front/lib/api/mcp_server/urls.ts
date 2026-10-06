@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -7,20 +8,39 @@ const MCP_OAUTH_PROXY_ENABLED = true;
 
 /**
  * @cc [owner:tdraier,label:security;mcp] cimd-client-id-matches-document
- * `MCP_CLIENT_ID_METADATA_DOCUMENT_URL` must be byte-for-byte identical to the
- * `client_id` field of the document served at
- * `front/public/.well-known/oauth-client.json`, and that document must remain
- * reachable at this exact URL. Authorization servers fetch the URL and reject a
- * document whose `client_id` differs from the URL it was fetched from, so any
- * divergence silently breaks every CIMD-based MCP connection.
+ * The CIMD `client_id` is the document URL on the region's legacy OAuth redirect
+ * host, and the document served there must carry that exact `client_id`, a
+ * `client_uri` on the same origin and that region's MCP finalize callback.
+ * Authorization servers reject a document whose `client_id` differs from its URL,
+ * and some (e.g. Pendo) reject a `redirect_uri` whose origin matches neither
+ * `client_id` nor `client_uri`.
  *
- * The value is a single global constant (not derived from per-region config)
- * because CIMD requires one stable client identity across all regions and
- * cells; the redirect URI a given region sends is validated against the
- * document's `redirect_uris`, which lists every region's finalize callback.
+ * `front/public/.well-known/oauth-client.json` (served on app.dust.tt) is the
+ * identity of connections created before this split: their stored `client_id`
+ * points at it, so it must stay reachable and unchanged.
  */
-export const MCP_CLIENT_ID_METADATA_DOCUMENT_URL =
-  "https://app.dust.tt/.well-known/oauth-client.json";
+export function getMcpClientIdMetadataDocumentUrl(): string {
+  return `${config.getLegacyOAuthRedirectBaseUrl()}/.well-known/oauth-client.json`;
+}
+
+export function getMcpClientIdMetadataDocument() {
+  return {
+    client_id: getMcpClientIdMetadataDocumentUrl(),
+    client_name: "Dust",
+    client_uri: config.getLegacyOAuthRedirectBaseUrl(),
+    logo_uri: "https://dust.tt/static/AppIcon.png",
+    tos_uri: "https://dust.tt/terms",
+    policy_uri: "https://dust.tt/privacy",
+    contacts: ["support@dust.com"],
+    software_id: "dust",
+    redirect_uris: [
+      finalizeUriForProvider({ provider: "mcp", connection: null }),
+    ],
+    token_endpoint_auth_method: "none",
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+  } as const;
+}
 
 /**
  * Whether MCP OAuth metadata/token/registration should be proxied through the

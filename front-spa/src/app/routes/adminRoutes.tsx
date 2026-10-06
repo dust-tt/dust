@@ -11,30 +11,22 @@ import { Navigate, useParams } from "react-router-dom";
 
 const AnalyticsConsumptionPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/AnalyticsConsumptionPage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/AnalyticsConsumptionPage"),
   "AnalyticsConsumptionPage"
 );
 const AnalyticsAutomationsPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/AnalyticsAutomationsPage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/AnalyticsAutomationsPage"),
   "AnalyticsAutomationsPage"
 );
 const DevelopersPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/developers/DevelopersPage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/developers/DevelopersPage"),
   "DevelopersPage"
 );
 const CreditsUsagePage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/developers/CreditsUsagePage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/developers/CreditsUsagePage"),
   "CreditsUsagePage"
 );
 const MembersPage = withSuspense(
@@ -47,16 +39,12 @@ const SecurityPage = withSuspense(
 );
 const ManageSubscriptionPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/subscription/ManageSubscriptionPage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/subscription/ManageSubscriptionPage"),
   "ManageSubscriptionPage"
 );
 const SubscriptionPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/subscription/SubscriptionPage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/subscription/SubscriptionPage"),
   "SubscriptionPage"
 );
 const WorkspaceBrandingPage = withSuspense(
@@ -87,9 +75,7 @@ const BillingPage = withSuspense(
 );
 const GovernancePage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/governance/GovernancePage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/governance/GovernancePage"),
   "GovernancePage"
 );
 

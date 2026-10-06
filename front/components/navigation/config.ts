@@ -27,6 +27,10 @@ import {
   Toggle01Left,
   Users01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 /**
  * Check if an actual route path matches any of the given route patterns.
@@ -190,13 +194,14 @@ export const getTopNavigationTabs = (
   owner: WorkspaceType,
   spaceMenuButtonRef: React.RefObject<HTMLDivElement>,
   showAdminSection: boolean,
-  adminSectionHref: string | null
+  adminSectionHref: string | null,
+  t: Translate
 ) => {
   const nav: TabAppLayoutNavigation[] = [];
 
   nav.push({
     id: "conversations",
-    label: "Work",
+    label: t(msg`Work`),
     href: getConversationRoute(owner.sId),
     icon: IntersectDust,
     sizing: "hug",
@@ -211,7 +216,7 @@ export const getTopNavigationTabs = (
 
   nav.push({
     id: "data_sources",
-    label: "Spaces",
+    label: t(msg`Spaces`),
     icon: Planet,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
@@ -224,7 +229,7 @@ export const getTopNavigationTabs = (
   if (showAdminSection) {
     nav.push({
       id: "settings",
-      label: "Admin",
+      label: t(msg`Admin`),
       icon: Settings01,
       href: adminSectionHref ?? `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
@@ -267,6 +272,7 @@ export const subNavigationAdmin = ({
   subscription,
   hasPermission,
   hasManagedGroups = false,
+  t,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
@@ -277,6 +283,7 @@ export const subNavigationAdmin = ({
     verb: GrantVerb,
     resourceType: ConcreteResourceType
   ) => boolean;
+  t: Translate;
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
@@ -302,11 +309,11 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "organization",
-    label: "Organization",
+    label: t(msg`Organization`),
     menus: [
       {
         id: "members",
-        label: "Members",
+        label: t(msg`Members`),
         icon: Users01,
         href: `/w/${owner.sId}/members`,
         current: isCurrent("members"),
@@ -314,7 +321,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "security",
-        label: "Security",
+        label: t(msg`Security`),
         icon: ShieldTick,
         href: `/w/${owner.sId}/security`,
         current: isCurrent("security"),
@@ -322,7 +329,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "governance",
-        label: "Governance",
+        label: t(msg`Governance`),
         icon: Toggle01Left,
         href: `/w/${owner.sId}/governance`,
         current: isCurrent("governance"),
@@ -332,7 +339,7 @@ export const subNavigationAdmin = ({
         ? [
             {
               id: "workspace_branding" as const,
-              label: "Branding",
+              label: t(msg`Branding`),
               icon: Palette,
               href: `/w/${owner.sId}/branding`,
               current: isCurrent("workspace_branding"),
@@ -345,11 +352,11 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "spend",
-    label: "Spend",
+    label: t(msg`Spend`),
     menus: [
       {
         id: "credits" as const,
-        label: "Credits",
+        label: t(msg`Credits`),
         icon: CoinsStacked01,
         href: `/w/${owner.sId}/credits`,
         current: isCurrent("credits"),
@@ -358,7 +365,7 @@ export const subNavigationAdmin = ({
       isCreditPricedPlan(subscription.plan)
         ? {
             id: "billing" as const,
-            label: "Billing",
+            label: t(msg`Billing`),
             icon: CreditCard01,
             href: `/w/${owner.sId}/billing`,
             current: isCurrent("billing"),
@@ -366,7 +373,7 @@ export const subNavigationAdmin = ({
           }
         : {
             id: "subscription" as const,
-            label: "Subscription",
+            label: t(msg`Subscription`),
             icon: CreditCard01,
             href: `/w/${owner.sId}/subscription`,
             current: isCurrent("subscription"),
@@ -374,7 +381,7 @@ export const subNavigationAdmin = ({
           },
       {
         id: "analytics",
-        label: "Analytics",
+        label: t(msg`Analytics`),
         icon: BarChart01,
         href: `/w/${owner.sId}/analytics/consumption`,
         current: isCurrent("analytics"),
@@ -385,11 +392,11 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "platform",
-    label: "Platform",
+    label: t(msg`Platform`),
     menus: [
       {
         id: "models",
-        label: "Models",
+        label: t(msg`Models`),
         icon: Brain,
         href: `/w/${owner.sId}/models`,
         current: isCurrent("models"),
@@ -397,7 +404,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "integrations",
-        label: "Integrations",
+        label: t(msg`Integrations`),
         icon: PuzzlePiece01,
         href: `/w/${owner.sId}/integrations`,
         current: isCurrent("integrations"),
@@ -405,7 +412,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "automations" as const,
-        label: "Automations",
+        label: t(msg`Automations`),
         icon: Clock,
         href: `/w/${owner.sId}/automations`,
         current: isCurrent("automations"),
@@ -413,7 +420,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "developers",
-        label: "Developers",
+        label: t(msg`Developers`),
         icon: Terminal,
         href: `/w/${owner.sId}/developers`,
         current: isCurrent("developers"),
@@ -430,23 +437,25 @@ export const subNavigationApp = ({
   app,
   current,
   canAdministrateApps,
+  t,
 }: {
   owner: WorkspaceType;
   app: AppType;
   current: SubNavigationAppId;
   canAdministrateApps: boolean;
+  t: Translate;
 }) => {
   let nav = [
     {
       value: "specification",
-      label: "Specification",
+      label: t(msg`Specification`),
       icon: Terminal,
       href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
       current: current === "specification",
     },
     {
       value: "datasets",
-      label: "Datasets",
+      label: t(msg`Datasets`),
       icon: File04,
       href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
       current: current === "datasets",
@@ -457,14 +466,14 @@ export const subNavigationApp = ({
     nav = nav.concat([
       {
         value: "runs",
-        label: "Logs",
+        label: t(msg`Logs`),
         icon: FolderOpen,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },
       {
         value: "settings",
-        label: "Settings",
+        label: t(msg`Settings`),
         icon: Settings01,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/settings`,
         current: current === "settings",

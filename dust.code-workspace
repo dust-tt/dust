@@ -64,28 +64,24 @@
     },
     "files.autoSave": "onFocusChange",
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "biomejs.biome",
-    // Single-root layout: the Biome extension resolves the config against "/"
-    // instead of the workspace folder, so point it at the file explicitly.
-    "biome.configurationPath": "biome.editor.json",
+    "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit",
-      "source.organizeImports.biome": "explicit"
+      "source.fixAll.oxc": "explicit"
     },
     "[typescript]": {
-      "editor.defaultFormatter": "biomejs.biome"
+      "editor.defaultFormatter": "oxc.oxc-vscode"
     },
     "[typescriptreact]": {
-      "editor.defaultFormatter": "biomejs.biome"
+      "editor.defaultFormatter": "oxc.oxc-vscode"
     },
     "[javascript]": {
-      "editor.defaultFormatter": "biomejs.biome"
+      "editor.defaultFormatter": "oxc.oxc-vscode"
     },
     "[javascriptreact]": {
-      "editor.defaultFormatter": "biomejs.biome"
+      "editor.defaultFormatter": "oxc.oxc-vscode"
     },
     "[json]": {
-      "editor.defaultFormatter": "biomejs.biome"
+      "editor.defaultFormatter": "oxc.oxc-vscode"
     },
     "[rust]": {
       "editor.defaultFormatter": "rust-lang.rust-analyzer"

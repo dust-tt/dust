@@ -98,19 +98,19 @@ describe("useConversationMessages registry recovery", () => {
     { localIds: ["msg_1"], registryIds: [] },
     { localIds: [], registryIds: ["msg_1"] },
     { localIds: ["msg_1"], registryIds: ["msg_2"] },
-  ])("revalidates when local $localIds disagree with registry $registryIds", ({
-    localIds,
-    registryIds,
-  }) => {
-    const { params, mutateMessages } = setupRecovery(
-      localIds.map((id) => makeMessage(id)),
-      registryIds
-    );
+  ])(
+    "revalidates when local $localIds disagree with registry $registryIds",
+    ({ localIds, registryIds }) => {
+      const { params, mutateMessages } = setupRecovery(
+        localIds.map((id) => makeMessage(id)),
+        registryIds
+      );
 
-    renderHook(useMessagesWithSnapshot, { initialProps: params });
+      renderHook(useMessagesWithSnapshot, { initialProps: params });
 
-    expect(mutateMessages).toHaveBeenCalledTimes(1);
-  });
+      expect(mutateMessages).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it("allows a later registry response to retry a failed refresh", async () => {
     const { params, mutateMessages } = setupRecovery(

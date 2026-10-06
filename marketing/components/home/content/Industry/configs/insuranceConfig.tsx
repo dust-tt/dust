@@ -1,6 +1,6 @@
+import { MedicalCross } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@marketing/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@marketing/components/home/content/Industry/configs/utils";
-import { MedicalCross } from "@dust-tt/sparkle";
 
 export const insuranceConfig: IndustryPageConfig = {
   seo: {

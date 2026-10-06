@@ -175,7 +175,6 @@ export function PodConversationsTab({
   );
 
   const [greeting, setGreeting] = useState<string>("");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: force re-render when podInfo.name changes
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user.firstName, podInfo.name]);

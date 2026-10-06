@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import type {
   AllPlugins,
   InferPluginArgsAtExecution,
@@ -59,10 +56,9 @@ function trimPluginRunResultOrError(result: PluginResponse | string): string {
   return stringResult.slice(0, POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface PluginRunResource
-  extends ReadonlyAttributesType<PluginRunModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
+export interface PluginRunResource extends ReadonlyAttributesType<PluginRunModel> {}
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;
 

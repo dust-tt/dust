@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTaskFactory } from "@app/tests/utils/ProjectTaskFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";

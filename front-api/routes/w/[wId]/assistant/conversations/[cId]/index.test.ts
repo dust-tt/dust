@@ -341,4 +341,43 @@ describe("PATCH /api/w/:wId/assistant/conversations/:cId", () => {
     assert(secondState.isOk(), "Expected conversation to be fetched");
     expect(secondState.value.lastReadMs).toBe(firstLastReadMs);
   });
+
+  it("rejects a conversation title longer than 512 characters", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "PATCH",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    const response = await patchConversation(workspace, conversation.sId, {
+      title: "a".repeat(513),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("accepts a conversation title of 512 characters", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "PATCH",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    const title = "a".repeat(512);
+    const response = await patchConversation(workspace, conversation.sId, {
+      title,
+    });
+
+    expect(response.status).toBe(200);
+  });
 });

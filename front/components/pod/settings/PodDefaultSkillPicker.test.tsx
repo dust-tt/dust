@@ -1,6 +1,6 @@
 import { PodDefaultSkillPicker } from "@app/components/pod/settings/PodDefaultSkillPicker";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

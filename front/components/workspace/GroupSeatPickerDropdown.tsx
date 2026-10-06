@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
+import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { formatNumber } from "@app/lib/i18n/format";
 import {

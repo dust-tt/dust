@@ -145,6 +145,7 @@ export function PokeChangeSeatModal({
       setSelectedSeat(currentSeatType ?? seatTypes[0] ?? null);
       setActiveFrequency(initialFrequency);
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen, currentSeatType, seatTypes[0], initialFrequency]);
 
   const displayedFirstName =

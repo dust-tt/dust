@@ -1,4 +1,12 @@
-import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import {
+  anchorDirective,
+  extractAnchors,
+  findAnchorDirective,
+  parseDfm,
+  readAnchorDirective,
+  serializeDfm,
+} from "@app/lib/markdown/dfm";
+import { INPUT_LIMITS } from "@app/lib/markdown/dfm/parser";
 import {
   expectError,
   MESSAGE,
@@ -206,8 +214,9 @@ describe("extractAnchors", () => {
     expect(anchors).toEqual([{ id: "c1", start: 2, end: 3 }]);
   });
 
-  it("scans a body nested thousands of levels deep", () => {
-    const deep = `${">".repeat(10_000)} :comment-start{id=c1}deep:comment-end{id=c1}`;
+  it("scans a body nested as deep as the input bounds allow", () => {
+    // The space after the quotes counts in the leading run.
+    const deep = `${">".repeat(INPUT_LIMITS.linePrefix - 1)} :comment-start{id=c1}deep:comment-end{id=c1}`;
 
     expect(unwrap(extractAnchors(deep)).anchors).toHaveLength(1);
   });
@@ -294,5 +303,50 @@ describe("extractAnchors", () => {
     ],
   ])("refuses to serialize %s", (_, document, message) => {
     expectError(serializeDfm(document), message);
+  });
+});
+
+describe("readAnchorDirective", () => {
+  it("reads a directive at the start and reports its length", () => {
+    const source = ":comment-start{id=c1}text";
+    const directive = readAnchorDirective(source);
+
+    expect(directive).toEqual({ kind: "start", id: "c1", length: 21 });
+    expect(source.slice(directive?.length)).toBe("text");
+    expect(readAnchorDirective(':comment-end{id="c-2"} more')).toEqual({
+      kind: "end",
+      id: "c-2",
+      length: 22,
+    });
+  });
+
+  it("reads back what anchorDirective writes", () => {
+    const written = anchorDirective("end", "a_b-3");
+
+    expect(readAnchorDirective(written)).toEqual({
+      kind: "end",
+      id: "a_b-3",
+      length: written.length,
+    });
+  });
+
+  it.each([
+    ["text before", "a:comment-start{id=c1}"],
+    ["an escape", "\\:comment-start{id=c1}"],
+    ["missing braces", ":comment-start text"],
+    ["an invalid id", ":comment-start{id=a.b}"],
+    ["an unknown attribute", ":comment-start{id=c1 color=red}"],
+    ["a longer name", ":comment-starter{id=c1}"],
+  ])("returns null for %s", (_, source) => {
+    expect(readAnchorDirective(source)).toBeNull();
+  });
+});
+
+describe("findAnchorDirective", () => {
+  it("returns the index of the first directive syntax, or -1", () => {
+    expect(
+      findAnchorDirective("ab :comment-end{id=x} :comment-start{id=y}")
+    ).toBe(3);
+    expect(findAnchorDirective("no anchors: here")).toBe(-1);
   });
 });

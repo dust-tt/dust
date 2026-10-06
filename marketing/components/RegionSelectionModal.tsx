@@ -1,6 +1,6 @@
+import { LegacyButton as Button, Check, cn } from "@dust-tt/sparkle";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { LegacyButton as Button, Check, cn } from "@dust-tt/sparkle";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useState } from "react";
 

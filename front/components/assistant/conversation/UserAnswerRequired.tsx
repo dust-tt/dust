@@ -73,7 +73,6 @@ export function UserAnswerRequired({
   const isSubmitting = submission !== null;
 
   // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
   useEffect(() => {
     setActiveOptionIndex(0);
     setIsCustomResponseFocused(false);

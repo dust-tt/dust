@@ -1,10 +1,11 @@
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   isSkillSlashCommand,
   isToolSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
@@ -20,7 +21,7 @@ import type { Range } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 function useEditorService(editor: Editor | null) {
@@ -191,7 +192,6 @@ export function useSkillInstructionsEditor({
   onSkillDetailsRef.current = onSkillDetails;
   onToolDetailsRef.current = onToolDetails;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to re-run this memo when the skill references change
   const editableExtensions = useMemo(
     () =>
       buildSkillInstructionsEditableExtensions({
@@ -202,6 +202,7 @@ export function useSkillInstructionsEditor({
         onToolDetailsRef,
         owner,
       }),
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [currentSkillId, enableSlashCommands, owner]
   );
 

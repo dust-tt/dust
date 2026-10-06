@@ -82,29 +82,29 @@ async function setupTestAgents(workspace: WorkspaceType) {
 }
 
 describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
-  it.each([
-    "admin",
-    "user",
-  ] as const)("reports edit permissions for a %s key", async (role) => {
-    const { workspace, key } = await createPublicApiMockRequest({ role });
-    await setupTestAgents(workspace);
+  it.each(["admin", "user"] as const)(
+    "reports edit permissions for a %s key",
+    async (role) => {
+      const { workspace, key } = await createPublicApiMockRequest({ role });
+      await setupTestAgents(workspace);
 
-    const response = await listAgents(workspace, key, { view: "all" });
-    const {
-      agentConfigurations,
-    }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
-      await response.json();
+      const response = await listAgents(workspace, key, { view: "all" });
+      const {
+        agentConfigurations,
+      }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
+        await response.json();
 
-    expect(response.status).toBe(200);
-    expect(
-      agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
-    ).toBe(role === "admin");
-    expect(
-      agentConfigurations
-        .filter((a) => a.scope === "global")
-        .every((a) => !a.canEdit)
-    ).toBe(true);
-  });
+      expect(response.status).toBe(200);
+      expect(
+        agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
+      ).toBe(role === "admin");
+      expect(
+        agentConfigurations
+          .filter((a) => a.scope === "global")
+          .every((a) => !a.canEdit)
+      ).toBe(true);
+    }
+  );
 
   it("returns unpublished and restricted space agents with the all_unrestricted view", async () => {
     const { workspace, key } = await createPublicApiMockRequest({

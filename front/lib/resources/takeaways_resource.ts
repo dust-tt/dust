@@ -23,11 +23,8 @@ import { Op } from "sequelize";
  * Retained only for scrubbing leftover takeaways rows after automated task
  * generation was removed. Do not add new generation/write paths here.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface TakeawaysResource
-  extends ReadonlyAttributesType<TakeawaysModel> {}
+export interface TakeawaysResource extends ReadonlyAttributesType<TakeawaysModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   static model: ModelStaticWorkspaceAware<TakeawaysModel> = TakeawaysModel;
 

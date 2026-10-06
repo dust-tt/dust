@@ -1,6 +1,15 @@
+import type {
+  AnchorFormatting,
+  MarkedDocument,
+} from "@app/components/editor/document/DocumentCommentAnchor";
+import {
+  anchorsToMarks,
+  marksToAnchors,
+  substituteAnchorDirectives,
+} from "@app/components/editor/document/DocumentCommentAnchor";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import type {
   ExtendableConfig,
   JSONContent,
@@ -10,13 +19,11 @@ import { flattenExtensions, getExtensionField, getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import type { Node } from "@tiptap/pm/model";
 import { Fragment } from "@tiptap/pm/model";
-import { z } from "zod";
 
 const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });
-const documentEnvelope = z.object({ type: z.literal("doc") }).passthrough();
 
 /**
  * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
@@ -82,13 +89,39 @@ const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
   return { ...document, content: content.slice(0, end) };
 };
 
+/** Markdown for an editor document, comment marks written as anchor directives. */
+const serializeWithAnchors = (
+  document: JSONContent,
+  anchorOrder: string[],
+  formatting: AnchorFormatting
+): Result<string, string> => {
+  const { document: anchored, directives } = marksToAnchors(
+    document,
+    anchorOrder,
+    formatting
+  );
+  return substituteAnchorDirectives(
+    documentMarkdown.serialize(anchored),
+    directives
+  );
+};
+
+/** Compares in the editor's form, comment marks included, as the user would reopen it. */
 const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
-  const reopened = documentMarkdown.parse(markdown);
-  return normalizeTextNodes(
-    documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
-  ).eq(
+  const reopened = anchorsToMarks(
+    documentMarkdown.parse(markdown),
+    documentSchema
+  );
+  return (
+    reopened.isOk() &&
     normalizeTextNodes(
-      documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened))
+      documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
+    ).eq(
+      normalizeTextNodes(
+        documentSchema.nodeFromJSON(
+          withoutTrailingParagraphs(reopened.value.document)
+        )
+      )
     )
   );
 };
@@ -103,59 +136,57 @@ export const normalizeTextNodes = (node: Node): Node => {
  * @cc [owner:flvndvd,label:product] document-source-preservation
  * Markdown containing unsupported tokens or formatting that cannot survive serialization
  * MUST be rejected before editing. Callers MUST retain the original source for display.
- * JSON content MUST satisfy the document schema before editing.
  */
 export const parseDocumentContent = (
-  content: string,
-  contentType: "markdown" | "json"
-): Result<JSONContent, string> => {
-  if (contentType === "markdown") {
-    if (!hasSupportedMarkdown(content)) {
-      return new Err("The Markdown uses formatting the editor cannot keep.");
-    }
-
-    let parsed: JSONContent;
-    let serialized: string;
-
-    try {
-      parsed = documentMarkdown.parse(content);
-      serialized = documentMarkdown.serialize(parsed);
-    } catch {
-      return new Err("The Markdown could not be parsed.");
-    }
-
-    if (!canRoundTripMarkdown(parsed, serialized)) {
-      return new Err(
-        "The Markdown would not read back the same after editing."
-      );
-    }
-
-    return new Ok(parsed);
+  content: string
+): Result<MarkedDocument, string> => {
+  if (!hasSupportedMarkdown(content)) {
+    return new Err("The Markdown uses formatting the editor cannot keep.");
   }
 
-  let json: unknown;
-
+  let parsed: JSONContent;
   try {
-    json = JSON.parse(content);
+    parsed = documentMarkdown.parse(content);
   } catch {
-    return new Err("The content is not valid JSON.");
+    return new Err("The Markdown could not be parsed.");
   }
 
-  const parsed = documentEnvelope.safeParse(json);
-  if (!parsed.success) {
-    return new Err("The content does not match the document schema.");
+  const marked = anchorsToMarks(parsed, documentSchema);
+  if (marked.isErr()) {
+    return marked;
   }
 
-  let node: Node;
+  // Opening is only safe when saving the untouched document goes through.
+  if (
+    serializeDocumentMarkdown(
+      marked.value.document,
+      marked.value.anchorOrder
+    ).isErr()
+  ) {
+    return new Err("The Markdown would not read back the same after editing.");
+  }
 
+  return marked;
+};
+
+const serializeReadingBack = (
+  content: JSONContent,
+  anchorOrder: string[],
+  formatting: AnchorFormatting
+): Result<string, string> => {
+  // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    node = documentSchema.nodeFromJSON(parsed.data);
-    node.check();
+    const markdown = serializeWithAnchors(content, anchorOrder, formatting);
+    if (markdown.isErr()) {
+      return markdown;
+    }
+    return hasSupportedMarkdown(markdown.value) &&
+      canRoundTripMarkdown(content, markdown.value)
+      ? markdown
+      : new Err("The document would not read back the same as Markdown.");
   } catch {
-    return new Err("The content does not match the document schema.");
+    return new Err("The document could not be written as Markdown.");
   }
-
-  return new Ok(node.toJSON());
 };
 
 /**
@@ -163,20 +194,19 @@ export const parseDocumentContent = (
  * Markdown output MUST reopen with the same content and formatting, ignoring empty trailing
  * paragraphs. A failed conversion MUST NOT reach persistence or acknowledge the draft.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-anchors-in-formatting
+ * Comment anchors MUST be written inside the formatting of the text they comment, as agents
+ * anchoring a quote write them, whenever that Markdown reads back the same, and with the
+ * formatting shared by both sides otherwise.
+ */
 export const serializeDocumentMarkdown = (
-  document: JSONContent
+  document: JSONContent,
+  anchorOrder: string[] = []
 ): Result<string, string> => {
   const content = withoutTrailingParagraphs(document);
-  let markdown: string;
-
-  try {
-    markdown = documentMarkdown.serialize(content);
-  } catch {
-    return new Err("The document could not be written as Markdown.");
-  }
-
-  return hasSupportedMarkdown(markdown) &&
-    canRoundTripMarkdown(content, markdown)
-    ? new Ok(markdown)
-    : new Err("The document would not read back the same as Markdown.");
+  const commented = serializeReadingBack(content, anchorOrder, "commented");
+  return commented.isOk()
+    ? commented
+    : serializeReadingBack(content, anchorOrder, "shared");
 };

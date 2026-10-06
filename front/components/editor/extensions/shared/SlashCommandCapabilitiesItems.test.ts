@@ -1,5 +1,6 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { describe, expect, it } from "vitest";
+import { buildCapabilitySlashCommandItems } from "./slash_suggestion/buildSlashCommandItems";
 import type {
   SlashCommandSkillSuggestion,
   SlashCommandToolSuggestion,
@@ -11,7 +12,6 @@ import {
   matchesSlashCommandCapabilityQuery,
   searchCapabilityIndex,
 } from "./SlashCommandCapabilitiesItems";
-import { buildCapabilitySlashCommandItems } from "./slash_suggestion/buildSlashCommandItems";
 
 function toolSuggestion({
   description = "Search data.",

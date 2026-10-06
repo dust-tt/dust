@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for seed validation
+/* oxlint-disable dust/noRawSql -- test file uses raw SQL for seed validation */
 /**
  * Schema validation test for dust-hive SQL seed.
  *

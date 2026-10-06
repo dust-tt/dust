@@ -49,9 +49,7 @@ export type ClaudeSonnetFive = z.infer<typeof configSchema>;
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithAnthropicClaudeSonnetFiveConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class AnthropicClaudeSonnetFive extends Base {
     // Narrow `Client`'s `["constructor"]` to this model's precise config so the

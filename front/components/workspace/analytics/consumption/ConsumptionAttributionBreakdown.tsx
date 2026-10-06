@@ -199,8 +199,7 @@ export interface ConsumptionAttributionBreakdownProps {
   ) => void;
 }
 
-interface ConsumptionAttributionBreakdownViewProps
-  extends ConsumptionAttributionBreakdownProps {
+interface ConsumptionAttributionBreakdownViewProps extends ConsumptionAttributionBreakdownProps {
   BreakdownColumnComponent: ComponentType<ConsumptionAttributionBreakdownColumnProps>;
 }
 

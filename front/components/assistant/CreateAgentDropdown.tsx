@@ -1,4 +1,5 @@
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { getCreateFromConversationRoute } from "@app/lib/skills/conversational_building";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
@@ -13,13 +14,15 @@ import {
   DropdownMenuTrigger,
   File02,
   MagicWand02,
+  MessageChatCircle,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 
-interface CreateAgentDropdownContentProps
-  extends ComponentProps<typeof DropdownMenuContent> {
+interface CreateAgentDropdownContentProps extends ComponentProps<
+  typeof DropdownMenuContent
+> {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
   // Called when an item navigates away (e.g. to close the sidebar).
@@ -41,6 +44,18 @@ export function CreateAgentDropdownContent({
   return (
     <DropdownMenuContent align="start" {...contentProps}>
       <DropdownMenuLabel label="New agent" />
+      <DropdownMenuItem
+        href={getCreateFromConversationRoute(owner.sId, "agent")}
+        icon={MessageChatCircle}
+        label="From conversation"
+        data-gtm-label="assistantCreationButton"
+        data-gtm-location={dataGtmLocation}
+        onClick={withTracking(
+          TRACKING_AREAS.BUILDER,
+          "create_agent_from_conversation",
+          () => onNavigate?.()
+        )}
+      />
       <DropdownMenuItem
         href={getAgentBuilderRoute(owner.sId, "new")}
         icon={File02}
@@ -81,12 +96,14 @@ interface CreateAgentDropdownProps {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
   isCompact?: boolean;
+  label?: string;
 }
 
 export const CreateAgentDropdown = ({
   owner,
   dataGtmLocation,
   isCompact = false,
+  label = "Create agent",
 }: CreateAgentDropdownProps) => {
   const { hasPermission } = useWorkspacePermissions();
 
@@ -100,7 +117,7 @@ export const CreateAgentDropdown = ({
         <Button
           variant="primary"
           icon={Plus}
-          label={isCompact ? undefined : "Create agent"}
+          label={isCompact ? undefined : label}
           tooltip={isCompact ? "Create agent" : undefined}
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}

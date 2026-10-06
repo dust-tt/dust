@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";

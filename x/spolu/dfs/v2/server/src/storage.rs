@@ -7,13 +7,14 @@ use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::VecDeque,
     future::Future,
-    ops::{Bound, RangeBounds},
+    ops::{Bound, Range, RangeBounds},
     sync::{
         Arc,
-        atomic::{AtomicI32, Ordering},
+        atomic::{AtomicI32, AtomicU64, Ordering},
     },
     time::Duration,
 };
+use tokio::sync::Mutex;
 use tonic::Status;
 
 #[derive(Args, Clone, Debug)]
@@ -28,6 +29,31 @@ pub struct StorageConfig {
 pub struct Storage {
     db: Arc<Database>,
     prefix: Arc<[u8]>,
+    versions: Arc<Mutex<Range<u64>>>,
+    counters: Arc<Counters>,
+    #[cfg(test)]
+    unknown_commit_once: Arc<std::sync::atomic::AtomicBool>,
+}
+
+#[derive(Default)]
+struct Counters {
+    commit_attempts: AtomicU64,
+    commits: AtomicU64,
+    retries: AtomicU64,
+}
+
+/// A typed internal outcome; no backend details or retry advice cross the RPC boundary.
+pub(crate) struct TransactionFailure {
+    pub status: Status,
+    pub conflicted: bool,
+}
+impl From<Status> for TransactionFailure {
+    fn from(status: Status) -> Self {
+        Self {
+            status,
+            conflicted: false,
+        }
+    }
 }
 
 impl Storage {
@@ -45,24 +71,71 @@ impl Storage {
         let storage = Self {
             db: Arc::new(Database::from_path(&config.fdb_cluster_file)?),
             prefix: prefix.into(),
+            versions: Arc::new(Mutex::new(0..0)),
+            counters: Arc::new(Counters::default()),
+            #[cfg(test)]
+            unknown_commit_once: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         };
         storage
             .transact(|view| async move {
                 let mut batch = WriteBatch::new();
                 match view.get(b"\0format").await? {
-                    Some(value) if value.as_ref() == b"dfs-v2-fdb-1" => {}
+                    Some(value) if value.as_ref() == b"dfs-v2-fdb-2" => {}
                     Some(_) => return Err(status(ErrorCode::Unavailable)),
                     None => {
                         if view.scan(..).await?.next().await?.is_some() {
                             return Err(status(ErrorCode::Unavailable));
                         }
-                        batch.put(b"\0format", b"dfs-v2-fdb-1");
+                        batch.put(b"\0format", b"dfs-v2-fdb-2");
                     }
                 }
                 Ok((batch, ()))
             })
             .await?;
         Ok(storage)
+    }
+
+    /// Counts cover this process's filesystem, search, and version-reservation transactions.
+    pub(crate) fn log_counters(&self) {
+        tracing::info!(
+            commit_attempts = self.counters.commit_attempts.load(Ordering::Relaxed),
+            commits = self.counters.commits.load(Ordering::Relaxed),
+            retries = self.counters.retries.load(Ordering::Relaxed),
+            "FDB transaction totals"
+        );
+    }
+
+    /// @cc [owner:spolu,label:backend;concurrency] distinct-state-tokens
+    /// Issued tokens MUST never repeat within this application subspace, including across server
+    /// restarts and independent processes. Reserve ranges durably before using them; ambiguous
+    /// reservations MUST issue no tokens. Tokens are equality identifiers, not commit ordering or
+    /// workspace coherence versions. Unused tokens MAY be abandoned on crashes or failed attempts.
+    pub(crate) async fn version(&self) -> Result<u64, Status> {
+        let mut available = self.versions.lock().await;
+        if let Some(version) = available.next() {
+            return Ok(version);
+        }
+        let range = self
+            .transact(|snapshot| async move {
+                let start = match snapshot.get(b"\0versions").await? {
+                    Some(bytes) => decode::<u64>(&bytes)?,
+                    None => 2,
+                };
+                let end = start
+                    .checked_add(1_048_576)
+                    .ok_or_else(|| status(ErrorCode::Capacity))?;
+                let mut batch = WriteBatch::new();
+                batch.put(b"\0versions", encode(&end)?);
+                Ok((batch, start..end))
+            })
+            .await?;
+        *available = range;
+        available.next().ok_or_else(|| status(ErrorCode::Internal))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn lose_next_commit_reply(&self) {
+        self.unknown_commit_once.store(true, Ordering::Relaxed);
     }
 
     pub async fn snapshot(&self) -> Result<Arc<Snapshot>, Status> {
@@ -78,21 +151,39 @@ impl Storage {
             prefix: self.prefix.clone(),
             error: AtomicI32::new(0),
             started: std::time::Instant::now(),
+            storage: self.clone(),
         }))
     }
 
     /// @cc [owner:spolu,label:concurrency;error-handling] fdb-transaction-replay
     /// The closure MUST read all preconditions through the supplied view and MUST NOT have external
-    /// side effects. Advisory ancestry hints MAY be learned because each use is revalidated in its
-    /// own transaction. Only known-uncommitted attempts may repeat. Captured client versions MUST
-    /// remain unchanged. A definitive application rejection MUST NOT be retried because an unused
-    /// speculative read failed. Read views MUST NOT escape the closure's result.
+    /// side effects except reserving never-reused version tokens. Advisory ancestry hints MAY be
+    /// learned because each use is revalidated in its own transaction. Only known-uncommitted
+    /// attempts may repeat. Strict operations MUST retain captured client versions; buffered file
+    /// edits MAY reapply semantic changes to current state. A definitive application rejection MUST
+    /// NOT be retried because an unused speculative read failed. Read views MUST NOT escape the closure's result.
     /** @cc [owner:spolu,label:concurrency;security] fresh-transaction-versions
     Every attempt MUST obtain its read version normally from FDB. Commit versions MUST NOT be
     reused as read versions. Preconditions MUST retain conflict tracking; ambiguous commits MUST
     NOT repeat. Read-only results and application errors MUST use the same fresh transaction.
     */
-    pub async fn transact<T, F, Fut>(&self, mut operation: F) -> Result<T, Status>
+    pub async fn transact<T, F, Fut>(&self, operation: F) -> Result<T, Status>
+    where
+        F: FnMut(Arc<Snapshot>) -> Fut,
+        Fut: Future<Output = Result<(WriteBatch, T), Status>>,
+    {
+        self.transact_outcome(operation)
+            .await
+            .map_err(|error| error.status)
+    }
+
+    /// @cc [owner:spolu,label:concurrency;error-handling] definitive-conflict-outcome
+    /// Mark a terminal outcome as conflicted only for FDB not_committed (1020). Ambiguous commits,
+    /// timeouts, and unknown errors MUST NOT authorize splitting or replay outside this retry loop.
+    pub(crate) async fn transact_outcome<T, F, Fut>(
+        &self,
+        mut operation: F,
+    ) -> Result<T, TransactionFailure>
     where
         F: FnMut(Arc<Snapshot>) -> Fut,
         Fut: Future<Output = Result<(WriteBatch, T), Status>>,
@@ -101,7 +192,7 @@ impl Storage {
         for attempt in 0..8 {
             let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
             if remaining.is_zero() {
-                return Err(status(ErrorCode::Unavailable));
+                return Err(status(ErrorCode::Unavailable).into());
             }
             let snapshot = self.snapshot().await?;
             snapshot
@@ -139,19 +230,33 @@ impl Storage {
                     let snapshot =
                         Arc::try_unwrap(snapshot).map_err(|_| status(ErrorCode::Internal))?;
                     let started = std::time::Instant::now();
+                    self.counters
+                        .commit_attempts
+                        .fetch_add(1, Ordering::Relaxed);
                     match measured("commit", snapshot.transaction.commit()).await {
                         Ok(_) => {
-                            tracing::debug!(
-                                commit_us = started.elapsed().as_micros() as u64,
-                                retries = attempt,
-                                "FDB transaction committed"
-                            );
-                            return Ok(result);
+                            self.counters.commits.fetch_add(1, Ordering::Relaxed);
+                            // Tests can lose a real commit's reply and exercise normal retry policy.
+                            #[cfg(test)]
+                            let lost = self.unknown_commit_once.swap(false, Ordering::Relaxed);
+                            #[cfg(not(test))]
+                            let lost = false;
+                            if lost {
+                                let error = FdbError::from_code(1021);
+                                (error, failed(error))
+                            } else {
+                                tracing::debug!(
+                                    commit_us = started.elapsed().as_micros() as u64,
+                                    retries = attempt,
+                                    "FDB transaction committed"
+                                );
+                                return Ok(result);
+                            }
                         }
                         Err(error) => (*error, failed(*error)),
                     }
                 }
-                Err(error) if error.code() != tonic::Code::Unavailable => return Err(error),
+                Err(error) if error.code() != tonic::Code::Unavailable => return Err(error.into()),
                 Err(status) => (
                     FdbError::from_code(snapshot.error.load(Ordering::Relaxed)),
                     status,
@@ -161,16 +266,20 @@ impl Storage {
                 || attempt == 7
                 || tokio::time::Instant::now() >= deadline
             {
-                return Err(status);
+                return Err(TransactionFailure {
+                    status,
+                    conflicted: error.code() == 1020,
+                });
             }
             tracing::debug!(
                 code = error.code(),
                 attempt,
                 "retrying aborted FDB transaction"
             );
+            self.counters.retries.fetch_add(1, Ordering::Relaxed);
             tokio::time::sleep(Duration::from_millis(1 << attempt)).await;
         }
-        Err(status(ErrorCode::Unavailable))
+        Err(status(ErrorCode::Unavailable).into())
     }
 
     pub async fn get(&self, key: impl AsRef<[u8]>) -> Result<Option<Bytes>, Status> {
@@ -195,8 +304,12 @@ pub struct Snapshot {
     prefix: Arc<[u8]>,
     error: AtomicI32,
     started: std::time::Instant,
+    storage: Storage,
 }
 impl Snapshot {
+    pub(crate) async fn version(&self) -> Result<u64, Status> {
+        self.storage.version().await
+    }
     pub(crate) fn expiring(&self) -> bool {
         self.started.elapsed() >= Duration::from_millis(3500)
             || matches!(self.error.load(Ordering::Relaxed), 1007 | 1031)
@@ -315,7 +428,7 @@ impl WriteBatch {
     pub fn clear(&mut self, start: Vec<u8>, end: Vec<u8>) {
         self.0.push(Mutation::Clear(start, end));
     }
-    fn apply(self, view: &Snapshot) -> Result<(), Status> {
+    pub(crate) fn apply(self, view: &Snapshot) -> Result<(), Status> {
         for mutation in self.0 {
             match mutation {
                 Mutation::Put(key, value) => {
@@ -366,6 +479,49 @@ pub(crate) mod tests {
     use anyhow::Context;
     use dfs_protocol::error::code;
     use std::sync::atomic::AtomicUsize;
+
+    pub async fn version_tokens_survive_independent_writers_and_reopen() -> anyhow::Result<()> {
+        let config = StorageConfig {
+            fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
+            fdb_prefix: format!("dfs-v2-versions-{}", uuid::Uuid::new_v4().simple()),
+        };
+        let first = Storage::open(&config).await?;
+        let second = Storage::open(&config).await?;
+        let collect = |storage: Storage| async move {
+            let mut tokens = Vec::new();
+            for _ in 0..128 {
+                tokens.push(storage.version().await?);
+            }
+            Ok::<_, Status>(tokens)
+        };
+        let (a, b, clone) = tokio::try_join!(
+            collect(first.clone()),
+            collect(second.clone()),
+            collect(first.clone()),
+        )?;
+        drop(second);
+        let reopened = Storage::open(&config).await?;
+        let reopened_token = reopened.version().await?;
+        let still_running_token = first.version().await?;
+        let tokens: std::collections::BTreeSet<_> = a
+            .into_iter()
+            .chain(b)
+            .chain(clone)
+            .chain([reopened_token, still_running_token])
+            .collect();
+        assert_eq!(tokens.len(), 386);
+        assert!(tokens.first().is_some_and(|v| *v >= 2));
+        // A live older allocator can issue a smaller token than a restarted writer.
+        assert!(still_running_token < reopened_token);
+        first
+            .transact(|_| async {
+                let mut batch = WriteBatch::new();
+                batch.clear(Vec::new(), vec![255]);
+                Ok((batch, ()))
+            })
+            .await?;
+        Ok(())
+    }
 
     pub async fn speculative_failure_preserves_application_errors() -> anyhow::Result<()> {
         let store = Storage::open(&StorageConfig {

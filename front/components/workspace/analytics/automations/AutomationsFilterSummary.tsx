@@ -1,5 +1,5 @@
-import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import type {
   AutomationsFilter,
   AutomationsFilterCategory,

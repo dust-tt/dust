@@ -10,8 +10,10 @@ import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pi
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { DiscoveryItemType } from "@app/types/api/discovery";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { GroupPinnedItemType } from "@app/types/discovery";
 import { GROUP_PINNED_ITEM_TYPES } from "@app/types/discovery";
 import type { GrantType } from "@app/types/group_permissions";
@@ -85,7 +87,8 @@ function hasReadableDiscoveryTarget(
 function resolvedDiscoveryItem(
   pin: DiscoveryItemResource,
   agentsById: Map<string, AgentResource>,
-  skillsById: Map<string, SkillResource>
+  skillsById: Map<string, SkillResource>,
+  skillEditorsById: Map<string, UserResource[]>
 ): ResolvedDiscoveryItem | null {
   switch (pin.type) {
     case "agent": {
@@ -116,7 +119,9 @@ function resolvedDiscoveryItem(
         toJSON: () => ({
           type: "skill",
           pin: discoveryPinJSON(pin),
-          target: target.toDiscoveryJSON(),
+          target: target.toDiscoveryJSON({
+            editors: skillEditorsById.get(target.sId) ?? [],
+          }),
         }),
       };
     }
@@ -125,11 +130,8 @@ function resolvedDiscoveryItem(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DiscoveryItemResource
-  extends ReadonlyAttributesType<GroupPinnedItemModel> {}
+export interface DiscoveryItemResource extends ReadonlyAttributesType<GroupPinnedItemModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static model: ModelStaticWorkspaceAware<GroupPinnedItemModel> =
     GroupPinnedItemModel;
@@ -173,14 +175,28 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * For workspace admins, loaded targets MAY include agents or redacted skills the admin cannot
    * read. Callers MUST check `auth.can("read", target)` before exposing a target to a user, unless
    * a documented admin exception applies, such as [pinned-items-group-read].
+   * Skills MUST be readable and satisfy editor visibility unless a workspace admin sets
+   * bypassEditorVisibility for group pin management. Non-admin bypass requests MUST throw.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] discovery-target-authors
+   * Load editors in one batch only for fetched skills that are readable and
+   * satisfy editor visibility. Return the loaded editor resources for synchronous
+   * serialization, without fetching editors during serialization.
    */
   static async loadTargets(
     auth: Authenticator,
-    items: Array<{ type: GroupPinnedItemType; itemId: string }>
+    items: Array<{ type: GroupPinnedItemType; itemId: string }>,
+    { bypassEditorVisibility }: { bypassEditorVisibility: boolean }
   ): Promise<{
     agentsById: Map<string, AgentResource>;
     skillsById: Map<string, SkillResource>;
+    skillEditorsById: Map<string, UserResource[]>;
   }> {
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      throw new Error("Only admins can bypass editor visibility.");
+    }
+
     const agentIds = items
       .filter((item) => item.type === "agent")
       .map((item) => item.itemId);
@@ -199,6 +215,20 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       }),
     ]);
 
+    const visibleSkills = skills.filter(
+      (skill) =>
+        auth.can("read", skill) &&
+        isSkillVisibleToViewer({
+          availability: skill.availability,
+          viewerCanWrite: auth.can("write", skill),
+        })
+    );
+    const editorsBySkillId = await SkillResource.batchListEditors(
+      auth,
+      visibleSkills
+    );
+    const discoverySkills = bypassEditorVisibility ? skills : visibleSkills;
+
     return {
       agentsById: new Map(
         agents
@@ -209,17 +239,30 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           )
           .map((agent) => [agent.sId, agent])
       ),
-      skillsById: new Map(skills.map((skill) => [skill.sId, skill])),
+      skillsById: new Map(discoverySkills.map((skill) => [skill.sId, skill])),
+      skillEditorsById: new Map(
+        discoverySkills.map((skill) => [
+          skill.sId,
+          editorsBySkillId.get(skill.sId) ?? [],
+        ])
+      ),
     };
   }
 
   private static async resolveTargets(
     auth: Authenticator,
-    items: DiscoveryItemResource[]
+    items: DiscoveryItemResource[],
+    { bypassEditorVisibility }: { bypassEditorVisibility: boolean }
   ): Promise<ResolvedDiscoveryItem[]> {
-    const { agentsById, skillsById } = await this.loadTargets(auth, items);
+    const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
+      auth,
+      items,
+      { bypassEditorVisibility }
+    );
     return removeNulls(
-      items.map((pin) => resolvedDiscoveryItem(pin, agentsById, skillsById))
+      items.map((pin) =>
+        resolvedDiscoveryItem(pin, agentsById, skillsById, skillEditorsById)
+      )
     );
   }
 
@@ -245,11 +288,12 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
     ]);
+    const resolvedItems = await this.resolveTargets(auth, items, {
+      bypassEditorVisibility: false,
+    });
     const rows = await omitPinsTheGroupCannotRead(
       auth,
-      (await this.resolveTargets(auth, items)).filter((item) =>
-        auth.can("read", item.target)
-      )
+      resolvedItems.filter((item) => auth.can("read", item.target))
     );
     const orderedGroupModelIds = [
       ...(globalGroupModelId !== null &&
@@ -302,11 +346,12 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelIds: [groupModelId],
       transaction,
     });
+    const resolvedItems = await this.resolveTargets(auth, items, {
+      bypassEditorVisibility: auth.isAdmin(),
+    });
     return omitPinsTheGroupCannotRead(
       auth,
-      (await this.resolveTargets(auth, items)).filter((item) =>
-        auth.can("read", item.target)
-      )
+      resolvedItems.filter((item) => auth.can("read", item.target))
     );
   }
 
@@ -383,7 +428,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const { agentsById, skillsById } = await this.loadTargets(auth, [item]);
+    const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
+      auth,
+      [item],
+      { bypassEditorVisibility: auth.isAdmin() }
+    );
     const target =
       item.type === "agent"
         ? agentsById.get(item.itemId)
@@ -464,7 +513,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       const resolved = resolvedDiscoveryItem(
         new this(this.model, row.get()),
         agentsById,
-        skillsById
+        skillsById,
+        skillEditorsById
       );
       if (!resolved) {
         return new Err(

@@ -11,11 +11,8 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface CreditUsageConfigurationResource
-  extends ReadonlyAttributesType<CreditUsageConfigurationModel> {}
+export interface CreditUsageConfigurationResource extends ReadonlyAttributesType<CreditUsageConfigurationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class CreditUsageConfigurationResource extends BaseResource<CreditUsageConfigurationModel> {
   static model: ModelStaticWorkspaceAware<CreditUsageConfigurationModel> =
     CreditUsageConfigurationModel;

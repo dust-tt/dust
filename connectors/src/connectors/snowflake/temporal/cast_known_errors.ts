@@ -168,9 +168,7 @@ function isSnowflakeMfaRequiredError(err: unknown): boolean {
   );
 }
 
-export class SnowflakeCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class SnowflakeCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   /**
    * @cc [owner:aubin-tchoi,label:error-handling] snowflake-session-requires-relogin
    * Activity failures named `OperationFailedError` whose message contains

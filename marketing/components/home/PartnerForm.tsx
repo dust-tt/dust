@@ -1,3 +1,15 @@
+import {
+  Button,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Label,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
 import { PartnerFormThankYou } from "@marketing/components/home/PartnerFormThankYou";
 import { FormProvider } from "@marketing/components/sparkle/FormProvider";
 import type { TrackingParams } from "@marketing/lib/api/hubspot/contactFormSchema";
@@ -17,18 +29,6 @@ import { clientFetch } from "@marketing/lib/egress/client";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { getStoredUTMParams } from "@marketing/lib/utils/utm";
 import { normalizeError } from "@marketing/types/shared/utils/error_utils";
-import {
-  Button,
-  Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Input,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";

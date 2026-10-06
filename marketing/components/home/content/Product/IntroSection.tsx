@@ -1,6 +1,6 @@
 import { HeroOfficeSection } from "@marketing/components/home/content/Product/HeroOfficeSection";
-import { HomeAgentsImproveSection } from "@marketing/components/home/content/Product/HomeAgentsImproveSection";
 import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
+import { HomeAgentsImproveSection } from "@marketing/components/home/content/Product/HomeAgentsImproveSection";
 import { HomeCoordinatedSection } from "@marketing/components/home/content/Product/HomeCoordinatedSection";
 import { HomeNewsSection } from "@marketing/components/home/content/Product/HomeNewsSection";
 import { HomeQuotesSection } from "@marketing/components/home/content/Product/HomeQuotesSection";

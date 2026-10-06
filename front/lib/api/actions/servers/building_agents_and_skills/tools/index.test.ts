@@ -5,8 +5,14 @@ import {
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  GET_AGENT_FEEDBACK_TOOL_NAME,
+  GET_AGENT_INSIGHTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
 import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -16,6 +22,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -188,6 +195,57 @@ describe("building_agents_and_skills tools", () => {
       expect(result.value[0].text).toContain(
         `<editors>${authenticator.getNonNullableUser().sId}</editors>`
       );
+    });
+
+    it("lists the skill's attached files", async () => {
+      const { authenticator, user } = await createResourceTest({
+        role: "user",
+      });
+      const file = await FileFactory.create(authenticator, user, {
+        contentType: "text/csv",
+        fileName: "q3 & q4.csv",
+        fileSize: 10,
+        status: "ready",
+        useCase: "skill_attachment",
+      });
+      const skill = await seedSkill(authenticator, {
+        fileAttachments: [file],
+      });
+
+      const result = await getTool(DESCRIBE_SKILL_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).toContain(
+        `<files><file ID="${file.sId}" name="q3 &amp; q4.csv"/></files>`
+      );
+    });
+
+    it("omits the files block when the skill has no files", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {});
+
+      const result = await getTool(DESCRIBE_SKILL_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).not.toContain("<files>");
     });
 
     it("rejects non-custom skill ids", async () => {
@@ -368,6 +426,103 @@ describe("building_agents_and_skills tools", () => {
         "Instructions, skills and tools are private"
       );
       expect(result.value[0].text).not.toContain("Test Instructions");
+    });
+  });
+
+  describe(GET_AGENT_FEEDBACK_TOOL_NAME, () => {
+    it("returns the feedback of the agent passed by id", async () => {
+      const { authenticator, workspace, user } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      const conversationRes = await getConversation(
+        authenticator,
+        conversation.sId
+      );
+      if (conversationRes.isErr()) {
+        throw conversationRes.error;
+      }
+      const agentMessage = conversationRes.value.content
+        .flat()
+        .find((m) => m.type === "agent_message");
+      assert(agentMessage?.type === "agent_message");
+      await AgentMessageFeedbackResource.makeNew({
+        workspaceId: workspace.id,
+        agentConfigurationId: agent.sId,
+        agentConfigurationVersion: agent.version,
+        conversationId: conversation.id,
+        agentMessageId: agentMessage.agentMessageId,
+        userId: user.id,
+        thumbDirection: "down",
+        content: "Wrong answer",
+        isConversationShared: true,
+        dismissed: false,
+      });
+
+      const result = await getTool(GET_AGENT_FEEDBACK_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const parsed = JSON.parse(result.value[0].text);
+      expect(parsed.agentConfigurationId).toBe(agent.sId);
+      expect(parsed.summary).toEqual({ total: 1, positive: 0, negative: 1 });
+      expect(parsed.current_version_feedback[0].content).toBe("Wrong answer");
+    });
+
+    it("refuses an agent the member cannot read", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const owner = await addMember(workspace);
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
+        scope: "hidden",
+      });
+
+      const result = await getTool(GET_AGENT_FEEDBACK_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "not found");
+    });
+  });
+
+  describe(GET_AGENT_INSIGHTS_TOOL_NAME, () => {
+    it("refuses an agent the member cannot read", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const owner = await addMember(workspace);
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
+        scope: "hidden",
+      });
+
+      const result = await getTool(GET_AGENT_INSIGHTS_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "not found");
     });
   });
 
@@ -893,6 +1048,7 @@ describe("building_agents_and_skills tools", () => {
         placeholderId
       );
       expect(placeholder?.status).toBe("pending");
+      expect(placeholder?.name).toBe("Meeting Notes");
       const editors = await placeholder?.listEditors(authenticator);
       expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
     });

@@ -1,16 +1,14 @@
 import { PersonalUsageCard } from "@app/components/credits/PersonalUsageCard";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionChart } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import {
   ConsumptionGranularitySelector,
   ConsumptionPeriodSelector,
 } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
@@ -18,6 +16,8 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type {
   ConsumptionGranularity,
   ConsumptionPeriodSelection,

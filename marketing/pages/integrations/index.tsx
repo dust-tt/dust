@@ -1,27 +1,25 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-
-import {
-  FullWidthSection,
-  H1,
-  P,
-} from "@marketing/components/home/ContentComponents";
-import { FinalCTASection } from "@marketing/components/home/content/Competitor/FinalCTASection";
-import type {
-  IntegrationBase,
-  IntegrationCategory,
-} from "@marketing/components/home/content/Integration/types";
-import { getAllCategories } from "@marketing/components/home/content/Integration/utils/integrationRegistry";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
-import { fetchPublicIntegrations } from "@marketing/lib/api/integrations";
 import {
   Button,
   getPlatformLogo,
   PuzzlePiece01,
   SearchInput,
 } from "@dust-tt/sparkle";
+import {
+  FullWidthSection,
+  H1,
+  P,
+} from "@marketing/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { FinalCTASection } from "@marketing/components/home/content/Competitor/FinalCTASection";
+import type {
+  IntegrationBase,
+  IntegrationCategory,
+} from "@marketing/components/home/content/Integration/types";
+import { getAllCategories } from "@marketing/components/home/content/Integration/utils/integrationRegistry";
+import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
+import { fetchPublicIntegrations } from "@marketing/lib/api/integrations";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";

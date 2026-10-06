@@ -180,7 +180,6 @@ function WorkspaceMembersList({
   roleFilter,
   isProvisioningEnabled,
 }: WorkspaceMembersListProps) {
-  const { isManager } = useAuth();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -193,7 +192,6 @@ function WorkspaceMembersList({
 
   const membersData = useSearchMembers<SearchMemberWithWorkspaceType>({
     workspaceId: owner.sId,
-    managedOnly: !isManager,
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -207,7 +205,6 @@ function WorkspaceMembersList({
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
     setSelectedMember(null);
   }, [setSelectedMember]);

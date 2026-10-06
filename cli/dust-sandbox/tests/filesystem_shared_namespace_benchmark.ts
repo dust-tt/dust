@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { open, readFile, readdir, rename, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
+import { open, readFile, readdir, rename, unlink } from "node:fs/promises";
 
 function argument(name: string): string {
   const index = process.argv.indexOf(`--${name}`);

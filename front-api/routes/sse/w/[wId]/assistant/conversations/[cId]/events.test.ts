@@ -28,51 +28,51 @@ import {
   getConversationEventsBatch,
 } from "@app/lib/api/assistant/pubsub";
 
-describe.each([
-  "",
-  "/poll",
-])("GET /api/sse/w/[wId]/assistant/conversations/[cId]/events%s", (suffix) => {
-  function getEvents(workspaceId: string, conversationId: string) {
-    return honoApp.request(
-      `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/events${suffix}`
-    );
-  }
+describe.each(["", "/poll"])(
+  "GET /api/sse/w/[wId]/assistant/conversations/[cId]/events%s",
+  (suffix) => {
+    function getEvents(workspaceId: string, conversationId: string) {
+      return honoApp.request(
+        `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/events${suffix}`
+      );
+    }
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("returns 404 when the conversation does not exist", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-
-    const response = await getEvents(workspace.sId, "conv_unknown");
-
-    expect(response.status).toBe(404);
-  });
-
-  it("streams allowed events to the client", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
+    beforeEach(() => {
+      vi.clearAllMocks();
     });
 
-    const titleEvent: { eventId: string; data: ConversationEvents } = {
-      eventId: "title",
-      data: { type: "conversation_title", created: 0, title: "hello" },
-    };
-    vi.mocked(getConversationEvents).mockImplementation(
-      asyncIteratorFrom([titleEvent])
-    );
+    it("returns 404 when the conversation does not exist", async () => {
+      const { workspace } = await createPrivateApiMockRequest();
 
-    vi.mocked(getConversationEventsBatch).mockResolvedValue([titleEvent]);
+      const response = await getEvents(workspace.sId, "conv_unknown");
 
-    const response = await getEvents(workspace.sId, conversation.sId);
+      expect(response.status).toBe(404);
+    });
 
-    expect(response.status).toBe(200);
-    const payloads: string[] = suffix
-      ? (await response.json()).events
-      : parseSseDataPayloads(await response.text());
-    expect(payloads.map((p) => JSON.parse(p).data.title)).toEqual(["hello"]);
-  });
-});
+    it("streams allowed events to the client", async () => {
+      const { workspace, auth } = await createPrivateApiMockRequest();
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const titleEvent: { eventId: string; data: ConversationEvents } = {
+        eventId: "title",
+        data: { type: "conversation_title", created: 0, title: "hello" },
+      };
+      vi.mocked(getConversationEvents).mockImplementation(
+        asyncIteratorFrom([titleEvent])
+      );
+
+      vi.mocked(getConversationEventsBatch).mockResolvedValue([titleEvent]);
+
+      const response = await getEvents(workspace.sId, conversation.sId);
+
+      expect(response.status).toBe(200);
+      const payloads: string[] = suffix
+        ? (await response.json()).events
+        : parseSseDataPayloads(await response.text());
+      expect(payloads.map((p) => JSON.parse(p).data.title)).toEqual(["hello"]);
+    });
+  }
+);

@@ -14,9 +14,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class BigQueryConnectorStrategy
-  implements ConnectorProviderStrategy<"bigquery">
-{
+export class BigQueryConnectorStrategy implements ConnectorProviderStrategy<"bigquery"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<BigQueryConfigurationModel>,

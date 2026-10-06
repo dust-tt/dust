@@ -1,0 +1,44 @@
+{
+  "useTabs": false,
+  "tabWidth": 2,
+  "printWidth": 100,
+  "endOfLine": "lf",
+  "singleQuote": false,
+  "semi": true,
+  "trailingComma": "es5",
+  "sortImports": {
+    "customGroups": [
+      {
+        "groupName": "url",
+        "elementNamePattern": ["http://**", "https://**"]
+      },
+      {
+        "groupName": "protocol",
+        "elementNamePattern": ["bun:*", "bun:*/**", "node:*", "node:*/**", "npm:*", "jsr:*"]
+      },
+      {
+        "groupName": "alias",
+        "elementNamePattern": ["#*", "#*/**", "~/**", "@/**"]
+      }
+    ],
+    "groups": [
+      "url",
+      "protocol",
+      ["builtin", "external", "internal", "unknown"],
+      "alias",
+      ["parent", "sibling", "index", "style"]
+    ],
+    "newlinesBetween": false,
+    "ignoreCase": true,
+    "partitionByNewline": true
+  },
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "bun.lock",
+    "**/*.md",
+    "**/*.yml",
+    "**/*.yaml"
+  ]
+}

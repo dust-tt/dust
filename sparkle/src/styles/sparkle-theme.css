@@ -14,7 +14,8 @@
   --animate-ring-pulse-soft: ring-pulse-soft 3s cubic-bezier(0.4, 0, 0.6, 1)
     infinite;
   /* Used by ImageGenerationPlaceholder; skeletons use the shimmer below. */
-  --animate-opacity-pulse: opacity-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-opacity-pulse: opacity-pulse 2s cubic-bezier(0.4, 0, 0.6, 1)
+    infinite;
   /* Skeleton sweep: constant motion, so linear; the pause at the end keeps sweeps distinct. */
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-background-position-spin: background-position-spin 2000ms infinite
@@ -173,8 +174,8 @@
   opacity: 0.16;
 }
 .puzzle-spinner-water-cycle {
-  animation: puzzle-spinner-water-cycle 2.8s
-    cubic-bezier(0.2, 0.72, 0.2, 1) infinite;
+  animation: puzzle-spinner-water-cycle 2.8s cubic-bezier(0.2, 0.72, 0.2, 1)
+    infinite;
   will-change: transform, opacity;
 }
 .puzzle-spinner-back-wave {
@@ -291,21 +292,29 @@
 @keyframes sss-morph {
   0%,
   15% {
-    d: path("M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z");
+    d: path(
+      "M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z"
+    );
     animation-timing-function: ease-in-out;
   }
   33%,
   48% {
-    d: path("M 12,3 C 16.97,3 21,7.03 21,12 C 21,16.97 16.97,21 12,21 C 7.03,21 3,16.97 3,12 C 3,7.03 7.03,3 12,3 Z");
+    d: path(
+      "M 12,3 C 16.97,3 21,7.03 21,12 C 21,16.97 16.97,21 12,21 C 7.03,21 3,16.97 3,12 C 3,7.03 7.03,3 12,3 Z"
+    );
     animation-timing-function: ease-in-out;
   }
   67%,
   82% {
-    d: path("M 12,3 C 14.6,7.5 17.19,12 19.79,16.5 C 17.2,16.5 14.6,16.5 12,16.5 C 9.4,16.5 6.6,16.5 4.21,16.5 C 6.8,12 9.4,7.5 12,3 Z");
+    d: path(
+      "M 12,3 C 14.6,7.5 17.19,12 19.79,16.5 C 17.2,16.5 14.6,16.5 12,16.5 C 9.4,16.5 6.6,16.5 4.21,16.5 C 6.8,12 9.4,7.5 12,3 Z"
+    );
     animation-timing-function: ease-in-out;
   }
   100% {
-    d: path("M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z");
+    d: path(
+      "M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z"
+    );
   }
 }
 .sss-p {

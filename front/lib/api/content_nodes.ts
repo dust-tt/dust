@@ -7,7 +7,7 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const NON_EXPANDABLE_NODES_MIME_TYPES = [

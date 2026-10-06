@@ -3,9 +3,9 @@ import { Op } from "sequelize";
 
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 makeScript({}, async ({ execute }, logger) => {
   const dataSources: DataSourceModel[] = await DataSourceModel.findAll({

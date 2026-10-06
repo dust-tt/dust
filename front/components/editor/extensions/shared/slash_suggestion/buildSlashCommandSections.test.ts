@@ -1,9 +1,9 @@
-import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   buildSlashCommandSections,
   someSectionShowsOwnState,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { describe, expect, it } from "vitest";
 
 const row: SlashCommand = {

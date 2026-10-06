@@ -54,11 +54,11 @@ by the testers for changes that require signing in as the affected person.
 1. Record the current managers, memberships, and allowances of groups you will change. Coordinate
    shared groups between testers and restore your changes afterward.
 2. As admin, appoint RadjaTest manager of `hello` and `test-fabien`, initially without adding her
-   as a member. Her initial visible members should be the five unique people listed above.
+   as a member. Her initial visible Usage members should be the five unique people listed above.
    Remove any extra test assignments that would broaden that scope.
 3. Leave `Dev` and `team-france` unmanaged for the core tests. Appoint RadjaTest to them only during
    the provisioned-group phase, then revoke those assignments. Otherwise removing someone from a
-   manual group may leave them visible through a provisioned group.
+   manual group may leave them visible in Usage through a provisioned group.
 4. For a second delegated manager, use another tester's RadjaTest and appoint it to the same groups.
    Alternatively, temporarily make your own account an ordinary member; restore its role for admin operations.
 
@@ -67,15 +67,15 @@ by the testers for changes that require signing in as the affected person.
 - [ ] As admin, verify group managers beside group names and the manager/member counts in group dialogs. Appoint Fabien to `hello`: no non-member warning. Restore the original assignment afterward.
 - [ ] Appoint RadjaTest while she is outside `hello`. The blue **Not group member** badge and warning explain the access she can grant. Cancel: nothing saves. **Appoint anyway** saves the assignment without changing membership or workspace role.
 - [ ] Repeat with two outside accounts for the plural warning. An unsaved membership addition still counts as outside; a pending removal also triggers the warning. Restore the starting memberships.
-- [ ] As RadjaTest, open People and Usage from navigation and by URL. Only the two managed groups and their five unique members appear; Fabien appears once. Search, filters, and counts remain scoped when filters are cleared.
+- [ ] As RadjaTest, open People and Usage from navigation and by URL. People lists all workspace members and only the two managed groups. Usage lists only the managed groups and their five unique members; Fabien appears once. Usage search, filters, and counts remain scoped when filters are cleared.
 - [ ] Open Matteo's People member dialog. `test-fabien` appears; unmanaged `matteo-test` does not. His Usage limit editor can explain inherited allowances from unmanaged groups but cannot edit them.
-- [ ] Search for Mzero_test or Philippe R. in the member list: neither appears. The add-member picker can find them by identity, without exposing usage. Direct usage reads or edits for them fail.
+- [ ] Search for Mzero_test or Philippe R.: both appear in the People member list, but neither appears in Usage. The add-member picker can find them by identity, without exposing usage. Direct usage reads or edits for them fail.
 - [ ] Invitations, workspace removal, direct role/seat changes, group creation/rename/deletion, changes to group grants, and manager appointments are unavailable to RadjaTest. Direct requests fail too.
 
 ## Membership and provisioned groups
 
-- [ ] Add RadjaTest herself to `hello`. She appears in the scoped member list and can manage her own limit. Remove her from the group: her manager appointment remains, but usage authority over herself ends. Repeat an add/remove through a member's group controls using a tester-controlled member; removing group membership never removes workspace membership.
-- [ ] Remove Fabien from `hello`: he remains visible through `test-fabien`. Restore Fabien, then remove Yuka: she leaves RadjaTest's scope, even though she still belongs to unmanaged groups. A previously open edit fails. Restore Yuka before continuing.
+- [ ] Add RadjaTest herself to `hello`. She appears in the Usage member list and can manage her own limit. Remove her from the group: her manager appointment remains, but usage authority over herself ends. Repeat an add/remove through a member's group controls using a tester-controlled member; removing group membership never removes workspace membership.
+- [ ] Remove Fabien from `hello`: he remains visible in Usage through `test-fabien`. Restore Fabien, then remove Yuka: she leaves RadjaTest's Usage scope but remains in the People member directory. A previously open usage edit fails. Restore Yuka before continuing.
 - [ ] Temporarily appoint RadjaTest manager of `matteo-test`. Try removing its sole member, Matteo, through the member's group controls: it must fail and leave membership unchanged. Revoke this temporary assignment.
 - [ ] **[PREP: space]** Share existing `Test space` with `hello`. Verify RadjaTest cannot access it before joining, can after joining, and loses access after leaving. Remove the temporary sharing afterward. `Company Data` is not a substitute: everyone already has reader access, so leaving `test-scbe` cannot remove all access to it.
 - [ ] **[GAP: usage fixture]** Before adding a tester-controlled account to `hello`, confirm nonzero usage in the current cycle. After adding it, RadjaTest sees that earlier consumption too. If no suitable account has usage, generate some and leave this case open until it appears.
@@ -115,7 +115,7 @@ between scopes without needing another account.
 
 ## Revocation and existing roles
 
-- [ ] Keep a `hello` member edit open as RadjaTest, then revoke her `hello` appointment from the admin session. A stale edit fails; after reload, `hello` and members visible only through it disappear. Overlapping members remain visible through `test-fabien`. Earlier membership and limit changes remain saved.
+- [ ] Keep a `hello` member edit open as RadjaTest, then revoke her `hello` appointment from the admin session. A stale edit fails; after reload, `hello` disappears from People and Usage, and members visible only through it disappear from Usage. All workspace members remain visible in People. Earlier membership and limit changes remain saved.
 - [ ] Revoke all RadjaTest's assignments. Access gained only through group management disappears after reload. Restore her starting assignments afterward.
 - [ ] On your own account, repeat a membership change, limit edit, and request resolution as workspace Manager, then Admin. Existing workspace-wide access still works. Return RadjaTest to ordinary-member status before any further scoped checks.
 

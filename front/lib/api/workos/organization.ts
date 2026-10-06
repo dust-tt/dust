@@ -438,6 +438,34 @@ type CreateAuditLogEventParams = {
 // turns silent rejections into observable warnings.
 const PAYLOAD_SIZE_LIMIT_BYTES = 60_000;
 
+// Max characters allowed per target name before truncation. Resource names
+// (conversation titles, agent names, pod names, …) can still be oversized on
+// existing rows or on emit sites that skip request validation; truncating
+// here keeps the payload under the WorkOS limit instead of skipping the event.
+export const AUDIT_TARGET_NAME_MAX_CHARS = 512;
+const AUDIT_TRUNCATION_SUFFIX = "...[truncated]";
+
+function truncateAuditString(value: string, maxChars: number): string {
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return (
+    value.slice(0, maxChars - AUDIT_TRUNCATION_SUFFIX.length) +
+    AUDIT_TRUNCATION_SUFFIX
+  );
+}
+
+function truncateAuditTargetNames(targets: AuditLogTarget[]): AuditLogTarget[] {
+  return targets.map((target) =>
+    target.name === undefined
+      ? target
+      : {
+          ...target,
+          name: truncateAuditString(target.name, AUDIT_TARGET_NAME_MAX_CHARS),
+        }
+  );
+}
+
 // Maps each audit log action to the latest registered WorkOS schema version.
 // WorkOS validates an emitted event against the version we send; omitting it
 // (or sending a stale one) causes validation failures once a schema has been
@@ -460,13 +488,16 @@ export async function createAuditLogEvent({
     );
   }
 
-  const payloadSizeBytes = JSON.stringify(event).length;
+  const truncatedTargets = truncateAuditTargetNames(event.targets);
+  const truncatedEvent = { ...event, targets: truncatedTargets };
+
+  const payloadSizeBytes = JSON.stringify(truncatedEvent).length;
   if (payloadSizeBytes > PAYLOAD_SIZE_LIMIT_BYTES) {
     logger.warn(
       {
         workspaceId: workspace.sId,
         action: event.action,
-        targetTypes: event.targets.map((t) => t.type),
+        targetTypes: truncatedTargets.map((t) => t.type),
         payloadSizeBytes,
         limit: PAYLOAD_SIZE_LIMIT_BYTES,
       },
@@ -481,16 +512,16 @@ export async function createAuditLogEvent({
 
   try {
     await getWorkOS().auditLogs.createEvent(workspace.workOSOrganizationId, {
-      action: event.action,
-      version: SCHEMA_VERSIONS[event.action],
-      occurredAt: event.occurredAt ?? new Date(),
+      action: truncatedEvent.action,
+      version: SCHEMA_VERSIONS[truncatedEvent.action],
+      occurredAt: truncatedEvent.occurredAt ?? new Date(),
       actor: {
-        type: event.actor.type,
-        id: event.actor.id,
-        name: event.actor.name,
-        metadata: event.actor.metadata ?? {},
+        type: truncatedEvent.actor.type,
+        id: truncatedEvent.actor.id,
+        name: truncatedEvent.actor.name,
+        metadata: truncatedEvent.actor.metadata ?? {},
       },
-      targets: event.targets.map((target) => ({
+      targets: truncatedTargets.map((target) => ({
         type: target.type,
         id: target.id,
         name: target.name,

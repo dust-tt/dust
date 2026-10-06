@@ -1,5 +1,5 @@
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -126,7 +126,10 @@ export const SpaceActionsList = ({
   };
 
   const onRemoveServer = async (sId: string) => {
-    await removeFromSpace(serverViews.find((view) => view.sId === sId)!, space);
+    await removeFromSpace(
+      serverViews.find((view) => view.sId === sId)!,
+      space
+    );
     await mutateMCPServerViews();
     await mutateActivableMCPServerViews();
   };

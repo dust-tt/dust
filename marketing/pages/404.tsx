@@ -1,7 +1,7 @@
-import CustomErrorPage from "@marketing/components/pages/CustomErrorPage";
 import { LogIn01 } from "@dust-tt/sparkle";
+import CustomErrorPage from "@marketing/components/pages/CustomErrorPage";
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Custom404() {
   return (
     <CustomErrorPage

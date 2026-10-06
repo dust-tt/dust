@@ -1,3 +1,4 @@
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import {
   Grid,
   H1,
@@ -6,14 +7,13 @@ import {
   H4,
   P,
 } from "@marketing/components/home/ContentComponents";
-import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
-import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
+import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
+import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
 import { classNames } from "@marketing/lib/utils";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";
 
@@ -256,7 +256,7 @@ function InstallationSection() {
   );
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function SlackIntegration() {
   const router = useRouter();
 

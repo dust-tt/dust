@@ -1,4 +1,12 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  agentFeedbackSchema,
+  agentInsightsSchema,
+  GET_AGENT_FEEDBACK_DESCRIPTION,
+  GET_AGENT_FEEDBACK_TOOL_NAME,
+  GET_AGENT_INSIGHTS_DESCRIPTION,
+  GET_AGENT_INSIGHTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
 import { SUGGESTION_REF_REGEX } from "@app/lib/skills/format";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
@@ -370,12 +378,16 @@ export const SUGGEST_DESCRIPTION =
 // Bounded by the `batch_suggestions.analysis` column.
 const BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH = 255;
 
+const BATCH_SUGGESTION_TITLE_MAX_LENGTH = 40;
+// Advertised below the actual limit so models aiming at the limit don't overshoot it.
+export const BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH = 38;
+
 export const SUGGEST_INPUT_SCHEMA = z.object({
   title: z
     .string()
-    .max(25)
+    .max(BATCH_SUGGESTION_TITLE_MAX_LENGTH)
     .describe(
-      "A short, action-oriented user-facing title for these suggestions (at most 25 characters)."
+      `A short user-facing title clearly describing the action of these suggestions (at most ${BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH} characters).`
     ),
   analysis: z
     .string()
@@ -396,8 +408,8 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     name: DESCRIBE_SKILL_TOOL_NAME,
     description:
       "Get a custom Skill's name, availability, self-improvement mode, user-facing and " +
-      "agent-facing descriptions, editors, and instructions as HTML whose blocks carry a " +
-      "data-block-id.",
+      "agent-facing descriptions, editors, attached files, and instructions as HTML whose " +
+      "blocks carry a data-block-id.",
     schema: {
       skillId: z.string().describe("The id of the custom skill to describe."),
     },
@@ -422,6 +434,40 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Describing agent",
       done: "Describe agent",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_AGENT_FEEDBACK_TOOL_NAME,
+    description: GET_AGENT_FEEDBACK_DESCRIPTION,
+    schema: {
+      agentId: z
+        .string()
+        .describe("The id of the agent to get the feedback of."),
+      ...agentFeedbackSchema,
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent feedback",
+      done: "List agent feedback",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_AGENT_INSIGHTS_TOOL_NAME,
+    description: GET_AGENT_INSIGHTS_DESCRIPTION,
+    schema: {
+      agentId: z
+        .string()
+        .describe("The id of the agent to get the insights of."),
+      ...agentInsightsSchema,
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent insights",
+      done: "List agent insights",
     },
     toolCostCategory: "basic",
     freeUsage: true,

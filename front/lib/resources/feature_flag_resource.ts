@@ -33,10 +33,7 @@ type CachedFeatureFlagData = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface FeatureFlagResource
-  extends ReadonlyAttributesType<FeatureFlagModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface FeatureFlagResource extends ReadonlyAttributesType<FeatureFlagModel> {}
 export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   static model: ModelStatic<FeatureFlagModel> = FeatureFlagModel;
 
@@ -202,7 +199,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       where: { name },
       // WORKSPACE_ISOLATION_BYPASS: this maintenance operation intentionally disables one flag across all workspaces.
       // @ts-expect-error -- Cross-workspace query by design.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     const workspaceModelIds = Array.from(
@@ -213,7 +210,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       where: { name },
       // WORKSPACE_ISOLATION_BYPASS: this maintenance operation intentionally disables one flag across all workspaces.
       // @ts-expect-error -- Cross-workspace mutation by design.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -271,7 +268,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       limit,
       // WORKSPACE_ISOLATION_BYPASS: this maintenance query intentionally lists one flag across all workspaces.
       // @ts-expect-error -- Cross-workspace query by design.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -18,7 +19,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { storeAgentAnalytics } from "@app/temporal/analytics_queue/activities";
 import { LightWorkspaceType } from "@app/types/user";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 async function backfillAgentAnalytics(
   workspace: LightWorkspaceType,

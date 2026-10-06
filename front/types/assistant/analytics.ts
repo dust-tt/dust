@@ -228,8 +228,7 @@ export type AgentMessageConsumptionAnalyticsToolGrossCreditMicro =
     total: number;
   };
 
-interface AgentMessageConsumptionAnalyticsBaseData
-  extends ElasticsearchBaseDocument {
+interface AgentMessageConsumptionAnalyticsBaseData extends ElasticsearchBaseDocument {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agent_message_id: string;
   api_key_name: string | null;
@@ -264,16 +263,14 @@ interface AgentMessageConsumptionAnalyticsBaseData
   workspace_id: string;
 }
 
-export interface AgentMessageConsumptionAnalyticsLlmData
-  extends AgentMessageConsumptionAnalyticsBaseData {
+export interface AgentMessageConsumptionAnalyticsLlmData extends AgentMessageConsumptionAnalyticsBaseData {
   consumption_type: "llm";
   gross_credit_micro: AgentMessageConsumptionAnalyticsLlmGrossCreditMicro;
   tokens: AgentMessageConsumptionAnalyticsLlmTokens;
   tool: null;
 }
 
-export interface AgentMessageConsumptionAnalyticsToolData
-  extends AgentMessageConsumptionAnalyticsBaseData {
+export interface AgentMessageConsumptionAnalyticsToolData extends AgentMessageConsumptionAnalyticsBaseData {
   consumption_type: "tool";
   gross_credit_micro: AgentMessageConsumptionAnalyticsToolGrossCreditMicro;
   tokens: AgentMessageConsumptionAnalyticsToolTokens;
@@ -284,8 +281,7 @@ export type AgentMessageConsumptionAnalyticsData =
   | AgentMessageConsumptionAnalyticsLlmData
   | AgentMessageConsumptionAnalyticsToolData;
 
-export interface AgentRetrievalOutputAnalyticsData
-  extends ElasticsearchBaseDocument {
+export interface AgentRetrievalOutputAnalyticsData extends ElasticsearchBaseDocument {
   message_id: string;
   workspace_id: string;
   conversation_id: string;

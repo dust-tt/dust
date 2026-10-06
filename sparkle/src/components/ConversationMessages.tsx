@@ -32,8 +32,7 @@ const messageVariants = cva("flex rounded-2xl max-w-full", {
   },
 });
 
-interface ConversationMessageContainerProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Who the message belongs to relative to the viewer ("me", "user", or "agent"); drives horizontal alignment. */
   messageType: MessageType;
   /** Whether this is a "user" or "agent" message; drives bubble layout. */
@@ -65,8 +64,7 @@ export const ConversationMessageContainer = React.forwardRef<
 
 ConversationMessageContainer.displayName = "ConversationMessageContainer";
 
-interface ConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   /** Citation elements rendered in a CitationGrid — above the bubble for user messages, below the text for agent messages. */
   citations?: React.ReactElement[];
@@ -130,8 +128,7 @@ export const ConversationMessageContent = React.forwardRef<
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
-interface ConversationMessageAvatarProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Avatar image URL or custom visual node. */
   avatarUrl?: string | React.ReactNode;
   /** Shows the avatar in its busy (animated) state, e.g. while the agent is generating. */
@@ -172,8 +169,7 @@ export const ConversationMessageAvatar = React.forwardRef<
 
 ConversationMessageAvatar.displayName = "ConversationMessageAvatar";
 
-interface ConversationMessageTitleProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   name?: string;
   timestamp?: string;
   /** Chip displayed next to the name (e.g. a model or visibility indicator). */

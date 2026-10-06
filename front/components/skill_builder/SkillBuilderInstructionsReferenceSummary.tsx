@@ -198,24 +198,18 @@ export function SkillBuilderInstructionsReferenceSummary({
   const referenceItems = useMemo(
     () =>
       [
-        ...knowledgeReferences.map(
-          (item): ReferenceSummaryItem => ({
-            ...item,
-            kind: "knowledge",
-          })
-        ),
-        ...skillReferences.map(
-          (skill): ReferenceSummaryItem => ({
-            ...skill,
-            kind: "skill",
-          })
-        ),
-        ...toolReferences.map(
-          (tool): ReferenceSummaryItem => ({
-            ...tool,
-            kind: "tool",
-          })
-        ),
+        ...knowledgeReferences.map((item): ReferenceSummaryItem => ({
+          ...item,
+          kind: "knowledge",
+        })),
+        ...skillReferences.map((skill): ReferenceSummaryItem => ({
+          ...skill,
+          kind: "skill",
+        })),
+        ...toolReferences.map((tool): ReferenceSummaryItem => ({
+          ...tool,
+          kind: "tool",
+        })),
       ].toSorted(compareReferenceSummaryItems),
     [knowledgeReferences, skillReferences, toolReferences]
   );
@@ -231,7 +225,6 @@ export function SkillBuilderInstructionsReferenceSummary({
     }
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: referenceItems.length triggers re-measurement
   useEffect(() => {
     if (contentRef.current) {
       setIsOverflow(contentRef.current.scrollHeight > overflowThresholdHeight);

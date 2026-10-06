@@ -172,8 +172,10 @@ function isConsumptionTimeseriesPoint(
   );
 }
 
-interface ConsumptionDailyTooltipProps
-  extends TooltipContentProps<number, string> {
+interface ConsumptionDailyTooltipProps extends TooltipContentProps<
+  number,
+  string
+> {
   groups: ConsumptionTimeseriesGroup[];
   colorByGroupKey: Map<string, string>;
   partialTimestamp: number | undefined;
@@ -597,8 +599,10 @@ function WorkspaceConsumptionDailyChart({
   );
 }
 
-interface WorkspaceConsumptionBurnUpChartProps
-  extends Omit<ConsumptionChartProps, "dimension"> {}
+interface WorkspaceConsumptionBurnUpChartProps extends Omit<
+  ConsumptionChartProps,
+  "dimension"
+> {}
 
 function WorkspaceConsumptionBurnUpChart({
   workspaceId,

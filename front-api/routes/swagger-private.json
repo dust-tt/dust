@@ -1833,7 +1833,8 @@
                     ],
                     "properties": {
                       "title": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 512
                       }
                     }
                   }
@@ -7540,7 +7541,8 @@
                     ],
                     "properties": {
                       "title": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 512
                       }
                     }
                   },
@@ -10564,7 +10566,8 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 256
                   },
                   "content": {
                     "type": "array",
@@ -10971,7 +10974,8 @@
                     "type": "boolean"
                   },
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 256
                   },
                   "spaceKind": {
                     "type": "string",

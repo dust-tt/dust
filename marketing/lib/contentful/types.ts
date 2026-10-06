@@ -1,5 +1,5 @@
-import type { TocItem } from "@marketing/lib/contentful/tableOfContents";
 import type { Document } from "@contentful/rich-text-types";
+import type { TocItem } from "@marketing/lib/contentful/tableOfContents";
 import type { Asset, Entry, EntrySkeletonType } from "contentful";
 
 export interface AuthorFields {

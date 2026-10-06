@@ -50,6 +50,10 @@ COPY /scripts/db /app/scripts/db
 # Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
 RUN npm run build:migrate
 
+# Lingui config lives at the repo root; front-api's esbuild Lingui plugin resolves
+# it from there to compile macros and `.po` catalogs.
+COPY /lingui.config.ts /app/lingui.config.ts
+
 # Copy front-api source (server.ts, app.ts, routes/, middleware/)
 WORKDIR /app/front-api
 COPY /front-api .

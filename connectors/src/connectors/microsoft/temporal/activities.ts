@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
@@ -38,7 +38,7 @@ import {
   isMalformedDriveError,
   isSiteNotFoundError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import {
   computeDisallowedLabels,
@@ -50,7 +50,7 @@ import {
   shouldSyncFileBasedOnSensitivityLabels,
   syncOneFile,
   updateDescendantsParentsInCore,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
 import { syncOneList } from "@connectors/connectors/microsoft/temporal/lists";
 import {
@@ -93,12 +93,12 @@ import { GraphError } from "@microsoft/microsoft-graph-client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 import chunk from "lodash/chunk";
 import { Readable } from "stream";
-import { pipeline } from "stream/promises";
 import { parser } from "stream-json";
 import Assembler from "stream-json/Assembler";
 import Ignore from "stream-json/filters/Ignore";
 import Pick from "stream-json/filters/Pick";
 import StreamArray from "stream-json/streamers/StreamArray";
+import { pipeline } from "stream/promises";
 
 // Delta data stored in GCS for Microsoft incremental sync batch processing
 interface DeltaDataInGCS {
@@ -998,13 +998,11 @@ export async function syncFiles({
               // only create/update if resource unseen
               !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
           )
-          .map(
-            (item): MicrosoftNode => ({
-              ...itemToMicrosoftNode("folder", item),
-              // add parent information to new node resources
-              parentInternalId,
-            })
-          )
+          .map((item): MicrosoftNode => ({
+            ...itemToMicrosoftNode("folder", item),
+            // add parent information to new node resources
+            parentInternalId,
+          }))
       );
 
     const parentsOfParent = await getParents({

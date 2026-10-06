@@ -1,5 +1,8 @@
+import { FAQ } from "@marketing/components/home/FAQ";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { MultiProductComparisonTable } from "@marketing/components/home/content/Competitive/MultiProductComparisonTable";
-import { gleanLandingConfig } from "@marketing/components/home/content/Glean/config/gleanConfig";
 import { GleanDeepDive } from "@marketing/components/home/content/Glean/GleanDeepDive";
 import { GleanHeroSection } from "@marketing/components/home/content/Glean/GleanHeroSection";
 import { GleanLogoBar } from "@marketing/components/home/content/Glean/GleanLogoBar";
@@ -8,10 +11,7 @@ import {
   GleanWhatSection,
   GleanWhySection,
 } from "@marketing/components/home/content/Glean/GleanWhatSection";
-import { FAQ } from "@marketing/components/home/FAQ";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { gleanLandingConfig } from "@marketing/components/home/content/Glean/config/gleanConfig";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {
@@ -24,7 +24,7 @@ export async function getStaticProps() {
   };
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function GleanLandingPage() {
   return (
     <>

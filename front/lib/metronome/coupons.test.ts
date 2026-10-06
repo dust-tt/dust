@@ -96,7 +96,6 @@ vi.mock("@app/lib/metronome/constants", async () => {
   return {
     ...actual,
     getProductSeatSubscriptionCreditsId: () => "seat-subscription-credits-prod",
-    getProductWorkspaceSeatId: () => "workspace-seat-prod",
   };
 });
 

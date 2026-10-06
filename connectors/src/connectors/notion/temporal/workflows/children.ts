@@ -3,7 +3,7 @@ import {
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
 } from "@connectors/connectors/notion/temporal/config";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { upsertDatabaseInCore } from "@connectors/connectors/notion/temporal/workflows/upserts";
 import type { ModelId } from "@connectors/types";
 import {
@@ -75,6 +75,7 @@ export async function upsertPageChildWorkflow({
         currentIndexInParent: blockIndexInPage,
         loggerArgs,
         topLevelWorkflowId,
+        depth: 0,
       });
     cursor = nextCursor;
     blockIndexInPage += blocksCount;
@@ -85,7 +86,9 @@ export async function upsertPageChildWorkflow({
         searchAttributes: {
           connectorId: [connectorId],
         },
-        args: [{ connectorId, pageId, blockId: block, topLevelWorkflowId }],
+        args: [
+          { connectorId, pageId, blockId: block, topLevelWorkflowId, depth: 1 },
+        ],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
@@ -111,11 +114,14 @@ export async function notionProcessBlockChildrenChildWorkflow({
   pageId,
   blockId,
   topLevelWorkflowId,
+  depth,
 }: {
   connectorId: ModelId;
   pageId: string;
   blockId: string;
   topLevelWorkflowId: string;
+  // Nesting depth of `blockId`'s children. Undefined for workflows started before depth tracking.
+  depth?: number;
 }): Promise<void> {
   const loggerArgs = {
     connectorId,
@@ -138,6 +144,7 @@ export async function notionProcessBlockChildrenChildWorkflow({
         currentIndexInParent: blockIndexInParent,
         topLevelWorkflowId,
         loggerArgs,
+        depth,
       });
     cursor = nextCursor;
     blockIndexInParent += blocksCount;
@@ -148,7 +155,16 @@ export async function notionProcessBlockChildrenChildWorkflow({
         searchAttributes: {
           connectorId: [connectorId],
         },
-        args: [{ connectorId, pageId, blockId: block, topLevelWorkflowId }],
+        args: [
+          {
+            connectorId,
+            pageId,
+            blockId: block,
+            topLevelWorkflowId,
+            // A workflow started before depth tracking has no depth to propagate.
+            depth: depth === undefined ? undefined : depth + 1,
+          },
+        ],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });

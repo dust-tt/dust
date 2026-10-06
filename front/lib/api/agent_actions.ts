@@ -144,7 +144,7 @@ export async function getToolsUsage(
 
   const { clause, params } = await buildVisibilityFilter(auth);
 
-  // biome-ignore lint/plugin/noRawSql: Read-only analytics query on replica.
+  // oxlint-disable-next-line dust/noRawSql -- Read-only analytics query on replica.
   const rows = await replicaDb.query<MCPServerUsageRow>(
     `
     SELECT

@@ -1,5 +1,5 @@
-import { LinkWrapper } from "@marketing/lib/platform";
 import { ChevronLeft, ChevronRight } from "@dust-tt/sparkle";
+import { LinkWrapper } from "@marketing/lib/platform";
 
 type PageNumber = number | "ellipsis-start" | "ellipsis-end";
 

@@ -13,6 +13,7 @@ import type {
   SkillEditorsSuggestionData,
   SkillEditSuggestionData,
   SkillEditSuggestionType,
+  SkillFilesSuggestionData,
   SkillInstructionEditItemType,
   SkillSuggestionKind,
   SkillSuggestionSource,
@@ -20,6 +21,7 @@ import type {
 import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isFilesSkillSuggestion,
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
 
@@ -203,6 +205,37 @@ export async function pruneConflictingSkillEditorsSuggestions(
       editors.removeUserIds.some((id) => newRemoveUserIds.has(id))
     );
   });
+
+  await outdateSkillSuggestions(auth, toMarkOutdated);
+}
+
+export async function pruneConflictingSkillFilesSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource & SkillFilesSuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const newRemoveFileIds = new Set(
+    newSuggestions.flatMap((s) => s.suggestion.removeFileIds)
+  );
+
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["files"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isFilesSkillSuggestion)
+    .filter(
+      (s) =>
+        !excluded.has(s.sId) &&
+        s.suggestion.removeFileIds.some((id) => newRemoveFileIds.has(id))
+    );
 
   await outdateSkillSuggestions(auth, toMarkOutdated);
 }

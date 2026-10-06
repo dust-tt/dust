@@ -17,7 +17,7 @@ pub fn run(operation: impl Future<Output = anyhow::Result<()>>) -> anyhow::Resul
         (
             "DFS_FDB_CLIENT_BUSY_WAIT_SECONDS",
             "busy_wait_threshold",
-            0.0001,
+            0.0,
         ),
     ] {
         let seconds = match std::env::var(variable) {

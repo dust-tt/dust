@@ -4,10 +4,10 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const scrubWorkspaces = async (execute: boolean) => {
   const endedSubs = await SubscriptionModel.findAll({

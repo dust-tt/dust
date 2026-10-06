@@ -521,6 +521,7 @@ export function ConversationMenu({
                       icon={getSpaceIcon(pod)}
                       label={pod.name}
                       truncateText
+                      tooltip={pod.name}
                       onClick={async () => moveToPod(pod)}
                     />
                   ))
@@ -581,7 +582,7 @@ export function ConversationMenu({
                         isRounded
                       />
                     }
-                    // biome-ignore lint/plugin/noCssImportant: legacy [no-css-important]
+                    // oxlint-disable-next-line dust/noCssImportant -- legacy [no-css-important]
                     className="text-foreground!"
                   />
                 ))}

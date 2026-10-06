@@ -12,8 +12,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-interface PokeAssistantTemplatesResponse
-  extends FetchAssistantTemplatesResponse {
+interface PokeAssistantTemplatesResponse extends FetchAssistantTemplatesResponse {
   dustRegionSyncEnabled: boolean;
 }
 

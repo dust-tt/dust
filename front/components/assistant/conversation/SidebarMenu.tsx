@@ -1,4 +1,3 @@
-import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import {
   ConversationMenu,
@@ -18,6 +17,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
   groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
+import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
@@ -46,6 +46,7 @@ import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
+import { getCreateFromConversationRoute } from "@app/lib/skills/conversational_building";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -87,6 +88,7 @@ import {
   FolderOpen,
   Icon,
   Label,
+  MessageChatCircle,
   MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -531,13 +533,11 @@ export function AgentSidebarMenu({
 
   const sendNotification = useSendNotification();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
     setSelectedConversations([]);
   }, [setIsMultiSelect, setSelectedConversations]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleConversationSelection = useCallback(
     (c: ConversationListItemType) => {
       if (selectedConversations.includes(c)) {
@@ -751,7 +751,6 @@ export function AgentSidebarMenu({
     setStarredPodsSectionCollapsed,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
     const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
 
@@ -827,6 +826,7 @@ export function AgentSidebarMenu({
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     owner,
     summary,
@@ -938,6 +938,16 @@ export function AgentSidebarMenu({
                 >
                   <DropdownMenuLabel label="New skill" />
                   <DropdownMenuItem
+                    href={getCreateFromConversationRoute(owner.sId, "skill")}
+                    icon={MessageChatCircle}
+                    label="From conversation"
+                    onClick={withTracking(
+                      TRACKING_AREAS.BUILDER,
+                      "create_skill_from_conversation",
+                      () => setSidebarOpen(false)
+                    )}
+                  />
+                  <DropdownMenuItem
                     href={getSkillBuilderRoute(owner.sId, "new")}
                     icon={SKILL_ICON}
                     label="From scratch"
@@ -950,7 +960,11 @@ export function AgentSidebarMenu({
                   <DropdownMenuItem
                     icon={FolderOpen}
                     label="From existing"
-                    onClick={() => setIsImportSkillDialogOpen(true)}
+                    onClick={withTracking(
+                      TRACKING_AREAS.BUILDER,
+                      "import_skill",
+                      () => setIsImportSkillDialogOpen(true)
+                    )}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -961,7 +975,6 @@ export function AgentSidebarMenu({
     </NavigationList>
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
@@ -987,6 +1000,7 @@ export function AgentSidebarMenu({
         isLoadingMore={isLoadingMore}
       />
     );
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     filteredConversations,
     sidebarTitleFilter,
@@ -995,6 +1009,7 @@ export function AgentSidebarMenu({
     toggleConversationSelection,
     activeConversationId,
     owner,
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     navItemsSection,
     starredSection,
     podsSection,
@@ -1100,6 +1115,7 @@ export function AgentSidebarMenu({
                             icon={getSpaceIcon(pod)}
                             label={pod.name}
                             truncateText
+                            tooltip={pod.name}
                             onClick={() => moveSelectionToPod(pod)}
                           />
                         ))

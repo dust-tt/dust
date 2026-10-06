@@ -1,11 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
-import type { GroupWithAllowedActions } from "@app/types/api/groups";
+import type { GroupType } from "@app/types/groups";
 import { isRegularManualGroupKind } from "@app/types/groups";
 import { useContext } from "react";
 
 interface GroupManagerAppointmentReviewProps {
-  group: GroupWithAllowedActions | null;
+  group: Pick<GroupType, "name" | "kind" | "grantedRole"> | null;
   initialManagers: SearchMemberType[];
   selectedManagers: SearchMemberType[];
   initialMembers: SearchMemberType[];

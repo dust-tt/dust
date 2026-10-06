@@ -286,90 +286,93 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     { query: "", sortBy: "name" },
     { query: "   ", sortBy: "name" },
     { query: "sal mar", sortBy: "relevance" },
-  ])("uses $sortBy sorting and preserves search result order without feature flags (query: $query)", async ({
-    query,
-    sortBy,
-  }) => {
-    const { workspace, auth } = await setup();
+  ])(
+    "uses $sortBy sorting and preserves search result order without feature flags (query: $query)",
+    async ({ query, sortBy }) => {
+      const { workspace, auth } = await setup();
 
-    const first = await AgentConfigurationFactory.createTestAgent(auth, {
-      name:
-        sortBy === "relevance"
-          ? "Beta Marketing Sales"
-          : "Alpha Marketing Sales",
-    });
-    const second = await AgentConfigurationFactory.createTestAgent(auth, {
-      name:
-        sortBy === "relevance"
-          ? "Alpha Marketing Sales"
-          : "Beta Marketing Sales",
-    });
-    await mockAgentSearchResults(auth, [first.sId, second.sId]);
-
-    const response = await suggestions(workspace, { query, select: "agents" });
-    expect(response.status).toBe(200);
-    const body: { suggestions: RichMention[] } = await response.json();
-    expect(body.suggestions.map((agent) => agent.id)).toEqual([
-      first.sId,
-      second.sId,
-    ]);
-    expect(body.suggestions[0]).toMatchObject({
-      type: "agent",
-      label: first.name,
-      pictureUrl: first.pictureUrl,
-      description: first.description,
-    });
-    expect(mockSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        index: AGENT_SEARCH_ALIAS_NAME,
-        size: 20,
-        sort:
+      const first = await AgentConfigurationFactory.createTestAgent(auth, {
+        name:
           sortBy === "relevance"
-            ? [
-                { _score: { order: "desc" } },
-                { active_users_count: { order: "desc", missing: "_last" } },
-                { agent_id: { order: "asc" } },
-              ]
-            : [
-                { "name.keyword": { order: "asc", missing: "_last" } },
-                { agent_id: { order: "asc" } },
-              ],
-      })
-    );
+            ? "Beta Marketing Sales"
+            : "Alpha Marketing Sales",
+      });
+      const second = await AgentConfigurationFactory.createTestAgent(auth, {
+        name:
+          sortBy === "relevance"
+            ? "Alpha Marketing Sales"
+            : "Beta Marketing Sales",
+      });
+      await mockAgentSearchResults(auth, [first.sId, second.sId]);
 
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: second.sId,
-      messagesCreatedAt: [new Date()],
-    });
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: auth.user()!.toJSON(),
-    });
-    const conversationResponse = await honoApp.request(
-      `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?current=true`
-    );
-    expect(conversationResponse.status).toBe(200);
-    const conversationBody: { suggestions: RichMention[] } =
-      await conversationResponse.json();
-    expect(conversationBody.suggestions).toEqual([
-      expect.objectContaining({
-        type: "user",
-        id: auth.user()!.sId,
-        isParticipant: true,
-      }),
-      expect.objectContaining({
+      const response = await suggestions(workspace, {
+        query,
+        select: "agents",
+      });
+      expect(response.status).toBe(200);
+      const body: { suggestions: RichMention[] } = await response.json();
+      expect(body.suggestions.map((agent) => agent.id)).toEqual([
+        first.sId,
+        second.sId,
+      ]);
+      expect(body.suggestions[0]).toMatchObject({
         type: "agent",
-        id: second.sId,
-        isParticipant: true,
-      }),
-      expect.objectContaining({
-        type: "agent",
-        id: first.sId,
-        isParticipant: false,
-      }),
-    ]);
-  });
+        label: first.name,
+        pictureUrl: first.pictureUrl,
+        description: first.description,
+      });
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          index: AGENT_SEARCH_ALIAS_NAME,
+          size: 20,
+          sort:
+            sortBy === "relevance"
+              ? [
+                  { _score: { order: "desc" } },
+                  { active_users_count: { order: "desc", missing: "_last" } },
+                  { agent_id: { order: "asc" } },
+                ]
+              : [
+                  { "name.keyword": { order: "asc", missing: "_last" } },
+                  { agent_id: { order: "asc" } },
+                ],
+        })
+      );
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: second.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: auth.user()!.toJSON(),
+      });
+      const conversationResponse = await honoApp.request(
+        `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?current=true`
+      );
+      expect(conversationResponse.status).toBe(200);
+      const conversationBody: { suggestions: RichMention[] } =
+        await conversationResponse.json();
+      expect(conversationBody.suggestions).toEqual([
+        expect.objectContaining({
+          type: "user",
+          id: auth.user()!.sId,
+          isParticipant: true,
+        }),
+        expect.objectContaining({
+          type: "agent",
+          id: second.sId,
+          isParticipant: true,
+        }),
+        expect.objectContaining({
+          type: "agent",
+          id: first.sId,
+          isParticipant: false,
+        }),
+      ]);
+    }
+  );
 
   it("keeps successful empty search results without falling back to the full listing", async () => {
     const { workspace } = await setup();
@@ -383,124 +386,123 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     expect(mockSearch).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    "",
-    "agent",
-  ])("includes a last-mentioned participant beyond the first search page (query: %s)", async (query) => {
-    const { workspace, auth } = await setup();
+  it.each(["", "agent"])(
+    "includes a last-mentioned participant beyond the first search page (query: %s)",
+    async (query) => {
+      const { workspace, auth } = await setup();
 
-    const page = [];
-    for (let i = 0; i < 20; i++) {
-      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
-        name: `Agent ${i.toString().padStart(2, "0")}`,
+      const page = [];
+      for (let i = 0; i < 20; i++) {
+        const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+          name: `Agent ${i.toString().padStart(2, "0")}`,
+        });
+        page.push(agent);
+      }
+      const zebra = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Zebra Agent",
       });
-      page.push(agent);
-    }
-    const zebra = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Zebra Agent",
-    });
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: zebra.sId,
-      messagesCreatedAt: [new Date(Date.now() - 60_000)],
-    });
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: auth.getNonNullableUser().toJSON(),
-    });
-    await ConversationFactory.createAgentMessage(auth, {
-      workspace,
-      conversation,
-      agentConfig: page[0],
-      rank: 2,
-    });
-    const { messageRow } = await ConversationFactory.createUserMessage({
-      auth,
-      workspace,
-      conversation,
-      content: "@Zebra Agent",
-      rank: 3,
-    });
-    await MentionResource.makeNew({
-      workspaceId: workspace.id,
-      messageId: messageRow.id,
-      agentConfigurationId: zebra.sId,
-      status: "approved",
-    });
-    await mockAgentSearchResults(
-      auth,
-      page.map((agent) => agent.sId),
-      21
-    );
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: zebra.sId,
+        messagesCreatedAt: [new Date(Date.now() - 60_000)],
+      });
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: auth.getNonNullableUser().toJSON(),
+      });
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation,
+        agentConfig: page[0],
+        rank: 2,
+      });
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "@Zebra Agent",
+        rank: 3,
+      });
+      await MentionResource.makeNew({
+        workspaceId: workspace.id,
+        messageId: messageRow.id,
+        agentConfigurationId: zebra.sId,
+        status: "approved",
+      });
+      await mockAgentSearchResults(
+        auth,
+        page.map((agent) => agent.sId),
+        21
+      );
 
-    for (const select of ["agents", "agents&select=users"]) {
+      for (const select of ["agents", "agents&select=users"]) {
+        const response = await honoApp.request(
+          `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?current=true&select=${select}&query=${query}`
+        );
+        expect(response.status).toBe(200);
+        const body: { suggestions: RichMention[] } = await response.json();
+        expect(body.suggestions).toHaveLength(20);
+        expect(body.suggestions[0]).toMatchObject({
+          id: zebra.sId,
+          isParticipant: true,
+        });
+        const agentIds = body.suggestions
+          .filter((mention) => mention.type === "agent")
+          .map((mention) => mention.id);
+        expect(agentIds).toEqual([
+          zebra.sId,
+          ...page.slice(0, agentIds.length - 1).map((agent) => agent.sId),
+        ]);
+        expect(new Set(agentIds).size).toBe(agentIds.length);
+      }
+    }
+  );
+
+  it.each(["archived", "inaccessible", "nonmatching"] as const)(
+    "does not add a %s participant absent from search results",
+    async (condition) => {
+      const { workspace, auth, agentConfig } = await setup();
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: auth.getNonNullableUser().toJSON(),
+      });
+      const agent = await AgentResource.fetchById(auth, agentConfig.sId);
+      assert(agent);
+      switch (condition) {
+        case "archived": {
+          const result = await agent.archive(auth);
+          expect(result.isOk()).toBe(true);
+          break;
+        }
+        case "inaccessible": {
+          const space = await SpaceFactory.regular(workspace);
+          const result = await AgentResource.updateRequestedSpaceIdsInPlace(
+            auth,
+            {
+              agentConfigurationModelId: agentConfig.id,
+              newSpaceIds: [space.id],
+            }
+          );
+          expect(result.isOk()).toBe(true);
+          break;
+        }
+        case "nonmatching":
+          break;
+      }
+      const query = condition === "nonmatching" ? "unmatched" : "";
       const response = await honoApp.request(
-        `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?current=true&select=${select}&query=${query}`
+        `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?select=agents&query=${query}`
       );
       expect(response.status).toBe(200);
-      const body: { suggestions: RichMention[] } = await response.json();
-      expect(body.suggestions).toHaveLength(20);
-      expect(body.suggestions[0]).toMatchObject({
-        id: zebra.sId,
-        isParticipant: true,
-      });
-      const agentIds = body.suggestions
-        .filter((mention) => mention.type === "agent")
-        .map((mention) => mention.id);
-      expect(agentIds).toEqual([
-        zebra.sId,
-        ...page.slice(0, agentIds.length - 1).map((agent) => agent.sId),
-      ]);
-      expect(new Set(agentIds).size).toBe(agentIds.length);
+      expect((await response.json()).suggestions).toEqual([]);
     }
-  });
-
-  it.each([
-    "archived",
-    "inaccessible",
-    "nonmatching",
-  ] as const)("does not add a %s participant absent from search results", async (condition) => {
-    const { workspace, auth, agentConfig } = await setup();
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [new Date()],
-    });
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: auth.getNonNullableUser().toJSON(),
-    });
-    const agent = await AgentResource.fetchById(auth, agentConfig.sId);
-    assert(agent);
-    switch (condition) {
-      case "archived": {
-        const result = await agent.archive(auth);
-        expect(result.isOk()).toBe(true);
-        break;
-      }
-      case "inaccessible": {
-        const space = await SpaceFactory.regular(workspace);
-        const result = await AgentResource.updateRequestedSpaceIdsInPlace(
-          auth,
-          {
-            agentConfigurationModelId: agentConfig.id,
-            newSpaceIds: [space.id],
-          }
-        );
-        expect(result.isOk()).toBe(true);
-        break;
-      }
-      case "nonmatching":
-        break;
-    }
-    const query = condition === "nonmatching" ? "unmatched" : "";
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?select=agents&query=${query}`
-    );
-    expect(response.status).toBe(200);
-    expect((await response.json()).suggestions).toEqual([]);
-  });
+  );
 
   it("falls back to the legacy lookup when agent search fails", async () => {
     const { workspace, agentConfig } = await setup();

@@ -7,6 +7,7 @@ import { fn } from "storybook/test";
 import { Paint } from "@sparkle/icons";
 import { ActionIcons } from "@sparkle/icons";
 
+import { FaceSmile } from "@sparkle/icons/v2-stroke";
 import {
   Button,
   PopoverContent,
@@ -15,7 +16,6 @@ import {
 } from "../components";
 import { ColorPicker, IconPicker } from "../components/Picker";
 import { EmojiPicker } from "../index_with_tw_base";
-import { FaceSmile } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Forms & Inputs/Picker",

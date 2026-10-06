@@ -1,6 +1,8 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -47,45 +49,47 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     searchAgents.mockReset();
   });
 
-  it.each([
-    "user",
-    "admin",
-  ] as const)("only names visible skills in facets for a %s", async (role) => {
-    const { workspace, auth } = await setup(role);
-    const published = await SkillFactory.create(auth, {
-      name: "Published",
-      availability: "workspace_users",
-      addCurrentUserAsEditor: false,
-    });
-    const edited = await SkillFactory.create(auth, { name: "Edited" });
-    const unpublished = await SkillFactory.create(auth, {
-      name: "Unpublished",
-      addCurrentUserAsEditor: false,
-    });
-    searchAgents.mockResolvedValue(
-      new Ok({
-        agents: [],
-        total: 0,
-        hasMore: false,
-        facets: {
-          skills: [
-            { value: unpublished.sId, count: 3 },
-            { value: published.sId, count: 2 },
-            { value: edited.sId, count: 1 },
-            { value: "missing-skill", count: 4 },
-          ],
-        },
-      })
-    );
+  it.each(["user", "admin"] as const)(
+    "only names visible skills in facets for a %s",
+    async (role) => {
+      const { workspace, auth } = await setup(role);
+      const published = await SkillFactory.create(auth, {
+        name: "Published",
+        availability: "workspace_users",
+        addCurrentUserAsEditor: false,
+      });
+      const edited = await SkillFactory.create(auth, { name: "Edited" });
+      const unpublished = await SkillFactory.create(auth, {
+        name: "Unpublished",
+        addCurrentUserAsEditor: false,
+      });
+      searchAgents.mockResolvedValue(
+        new Ok({
+          agents: [],
+          total: 0,
+          hasMore: false,
+          facets: {
+            skills: [
+              { value: unpublished.sId, count: 3 },
+              { value: published.sId, count: 2 },
+              { value: edited.sId, count: 1 },
+              { value: "missing-skill", count: 4 },
+            ],
+          },
+        })
+      );
 
-    const response = await searchRequest(workspace.sId, { facets: ["skills"] });
+      const response = await searchRequest(workspace.sId, {
+        facets: ["skills"],
+      });
 
-    expect(response.status).toBe(200);
-    expect((await response.json()).facets.skills).toEqual([
-      edited.toSearchFacetJSON(1),
-      published.toSearchFacetJSON(2),
-    ]);
-  });
+      expect(response.status).toBe(200);
+      expect((await response.json()).facets.skills).toEqual([
+        edited.toSearchFacetJSON(1),
+        published.toSearchFacetJSON(2),
+      ]);
+    }
+  );
 
   it("routes search results with their deduplicated editors", async () => {
     const { workspace, user } = await setup();
@@ -181,24 +185,24 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
   });
 
-  it.each([
-    "autocomplete",
-    "name",
-  ] as const)("passes %s search through", async (searchType) => {
-    const { workspace } = await setup();
-    searchAgents.mockResolvedValue(
-      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
-    );
-    const response = await searchRequest(workspace.sId, {
-      query: "Write",
-      searchType,
-    });
-    expect(response.status).toBe(200);
-    expect(searchAgents).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ searchTerm: "Write", searchType })
-    );
-  });
+  it.each(["autocomplete", "name"] as const)(
+    "passes %s search through",
+    async (searchType) => {
+      const { workspace } = await setup();
+      searchAgents.mockResolvedValue(
+        new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
+      );
+      const response = await searchRequest(workspace.sId, {
+        query: "Write",
+        searchType,
+      });
+      expect(response.status).toBe(200);
+      expect(searchAgents).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ searchTerm: "Write", searchType })
+      );
+    }
+  );
 
   it.each([
     { limit: 101 },
@@ -265,6 +269,17 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("returns facet values with counts and editor and tag names", async () => {
     const { workspace, user, globalSpace } = await setup();
     const tag = await TagFactory.create(workspace, { name: "Sales" });
+    const view = await MCPServerViewFactory.internal(
+      workspace,
+      "web_search_&_browse",
+      globalSpace
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const hiddenView = await MCPServerViewFactory.create(
+      workspace,
+      view.mcpServerId,
+      restrictedSpace
+    );
     searchAgents.mockResolvedValue(
       new Ok({
         agents: [],
@@ -279,6 +294,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           tags: [{ value: tag.sId, count: 2 }],
           skills: [{ value: "missing-skill", count: 1 }],
           spaces: [{ value: globalSpace.sId, count: 5 }],
+          mcpServerViews: [
+            { value: view.sId, count: 2 },
+            { value: hiddenView.sId, count: 1 },
+            { value: "missing-view", count: 1 },
+          ],
           usage: { min: 0, max: 12 },
         },
       })
@@ -286,7 +306,15 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
 
     const response = await searchRequest(workspace.sId, {
       limit: 0,
-      facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
+      facets: [
+        "editors",
+        "models",
+        "tags",
+        "skills",
+        "spaces",
+        "mcpServerViews",
+        "usage",
+      ],
     });
 
     expect(response.status).toBe(200);
@@ -294,7 +322,15 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 0,
-        facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
+        facets: [
+          "editors",
+          "models",
+          "tags",
+          "skills",
+          "spaces",
+          "mcpServerViews",
+          "usage",
+        ],
       })
     );
     expect((await response.json()).facets).toEqual({
@@ -317,6 +353,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           count: 5,
         },
       ],
+      mcpServerViews: [view.toSearchFacetJSON(2)],
       usage: { min: 0, max: 12 },
     });
   });

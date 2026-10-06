@@ -88,7 +88,6 @@ import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
-import { PersonAgentView } from "../components/PersonAgentView";
 import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
@@ -96,6 +95,7 @@ import {
   PanelLayoutPanel,
   type PanelSizingType,
 } from "../components/PanelLayout";
+import { PersonAgentView } from "../components/PersonAgentView";
 import { ProfilePanel } from "../components/Profile";
 import {
   type Agent,
@@ -127,6 +127,7 @@ import {
   getDataSourcesBySpaceId,
 } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   buildPodTabOptions,
   type DynamicFileTab,
@@ -138,7 +139,6 @@ import {
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

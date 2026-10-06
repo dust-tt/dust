@@ -262,10 +262,9 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName;
 
-interface DropdownMenuSubContentProps
-  extends React.ComponentPropsWithoutRef<
-    typeof DropdownMenuPrimitive.SubContent
-  > {
+interface DropdownMenuSubContentProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.SubContent
+> {
   /** Sticky header content (e.g. a DropdownMenuSearchbar); also gives the submenu a fixed height. */
   dropdownHeaders?: React.ReactNode;
 }
@@ -365,8 +364,9 @@ function setDropdownSearchInputValue(
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-interface DropdownMenuContentProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+interface DropdownMenuContentProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Content
+> {
   /** Renders the menu in a portal (default true); set false to render inline. */
   mountPortal?: boolean;
   /** Custom DOM element to portal the menu into. */
@@ -748,8 +748,10 @@ const DropdownMenuRadioItem = React.forwardRef<
 );
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-interface DropdownMenuTagItemProps
-  extends Omit<DropdownMenuItemProps, "label" | "icon" | "onClick"> {
+interface DropdownMenuTagItemProps extends Omit<
+  DropdownMenuItemProps,
+  "label" | "icon" | "onClick"
+> {
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];

@@ -191,6 +191,19 @@ export function getHeaderFromRole(role: RoleType | undefined) {
   };
 }
 
+export function getHeadersFromRequestedGroupIds(
+  groupIds: string[],
+  role: RoleType
+): Record<string, string> | undefined {
+  if (groupIds.length === 0) {
+    return undefined;
+  }
+  return {
+    [DustGroupIdsHeader]: groupIds.join(","),
+    [DustRoleHeader]: role,
+  };
+}
+
 export const SPACE_GROUP_PREFIX = "Group for space";
 export const PROJECT_GROUP_PREFIX = "Group for Pod";
 export const PROJECT_EDITOR_GROUP_PREFIX = "Editors for Pod";

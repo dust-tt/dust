@@ -5,9 +5,7 @@ import {
 import { CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeFableFiveDotOneConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustClaudeFableFiveDotOne extends Base {
     static readonly displayName = "Claude Fable 5.1";

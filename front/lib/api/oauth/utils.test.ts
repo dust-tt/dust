@@ -42,19 +42,19 @@ describe("finalizeUriForProvider", () => {
     ).toBe("https://app.dust.tt/oauth/google_drive/finalize");
   });
 
-  it.each([
-    "https://dust.tt",
-    "https://eu.dust.tt",
-  ])("uses %s for a new data connector", (legacyBaseUrl) => {
-    config.getLegacyOAuthRedirectBaseUrl.mockReturnValue(legacyBaseUrl);
-    expect(
-      finalizeUriForProvider({
-        provider: "google_drive",
-        connection: null,
-        useCase: "connection",
-      })
-    ).toBe(`${legacyBaseUrl}/oauth/google_drive/finalize`);
-  });
+  it.each(["https://dust.tt", "https://eu.dust.tt"])(
+    "uses %s for a new data connector",
+    (legacyBaseUrl) => {
+      config.getLegacyOAuthRedirectBaseUrl.mockReturnValue(legacyBaseUrl);
+      expect(
+        finalizeUriForProvider({
+          provider: "google_drive",
+          connection: null,
+          useCase: "connection",
+        })
+      ).toBe(`${legacyBaseUrl}/oauth/google_drive/finalize`);
+    }
+  );
 
   it("uses the stored use case when a connector has no saved callback", () => {
     expect(
@@ -82,51 +82,59 @@ describe("finalizeUriForProvider", () => {
     ).toBe("https://app.dust.tt/oauth/github/finalize");
   });
 
-  it.each([
-    "mcp",
-    "mcp_static",
-  ] as const)("uses the legacy base for a new %s client", (provider) => {
-    expect(finalizeUriForProvider({ provider, connection: null })).toBe(
-      `https://eu.dust.tt/oauth/${provider}/finalize`
-    );
-  });
+  it.each(["mcp", "mcp_static"] as const)(
+    "uses the legacy base for a new %s client",
+    (provider) => {
+      expect(finalizeUriForProvider({ provider, connection: null })).toBe(
+        `https://eu.dust.tt/oauth/${provider}/finalize`
+      );
+    }
+  );
 
   it.each([
     undefined,
     "personal_actions",
     "platform_actions",
     "connection",
-  ] as const)("uses the legacy base for a new gong client with use case %s", (useCase) => {
-    expect(
-      finalizeUriForProvider({ provider: "gong", connection: null, useCase })
-    ).toBe("https://eu.dust.tt/oauth/gong/finalize");
-  });
+  ] as const)(
+    "uses the legacy base for a new gong client with use case %s",
+    (useCase) => {
+      expect(
+        finalizeUriForProvider({ provider: "gong", connection: null, useCase })
+      ).toBe("https://eu.dust.tt/oauth/gong/finalize");
+    }
+  );
 
   it.each([
     undefined,
     "personal_actions",
     "platform_actions",
     "connection",
-  ] as const)("uses the legacy base for a new notion client with use case %s", (useCase) => {
-    expect(
-      finalizeUriForProvider({ provider: "notion", connection: null, useCase })
-    ).toBe("https://eu.dust.tt/oauth/notion/finalize");
-  });
+  ] as const)(
+    "uses the legacy base for a new notion client with use case %s",
+    (useCase) => {
+      expect(
+        finalizeUriForProvider({
+          provider: "notion",
+          connection: null,
+          useCase,
+        })
+      ).toBe("https://eu.dust.tt/oauth/notion/finalize");
+    }
+  );
 
-  it.each([
-    "mcp",
-    "mcp_static",
-    "gong",
-    "notion",
-  ] as const)("preserves an app callback already registered for %s", (provider) => {
-    const redirectUri = `https://app.dust.tt/oauth/${provider}/finalize`;
-    expect(
-      finalizeUriForProvider({
-        provider,
-        connection: { ...connection(Date.now(), redirectUri), provider },
-      })
-    ).toBe(redirectUri);
-  });
+  it.each(["mcp", "mcp_static", "gong", "notion"] as const)(
+    "preserves an app callback already registered for %s",
+    (provider) => {
+      const redirectUri = `https://app.dust.tt/oauth/${provider}/finalize`;
+      expect(
+        finalizeUriForProvider({
+          provider,
+          connection: { ...connection(Date.now(), redirectUri), provider },
+        })
+      ).toBe(redirectUri);
+    }
+  );
 
   it("returns a connection's stored redirect URI verbatim", () => {
     expect(
@@ -164,21 +172,20 @@ describe("finalizeUriForProvider", () => {
     ).toBe("https://app.dust.tt/oauth/github/finalize");
   });
 
-  it.each([
-    "notion",
-    "mcp",
-    "mcp_static",
-  ] as const)("prefers the development base URL for %s in development", (provider) => {
-    vi.stubEnv("NODE_ENV", "development");
-    config.getDevOAuthRedirectBaseUrl.mockReturnValue("https://dev.example");
-    expect(
-      finalizeUriForProvider({
-        provider,
-        connection: null,
-        useCase: "connection",
-      })
-    ).toBe(`https://dev.example/oauth/${provider}/finalize`);
-  });
+  it.each(["notion", "mcp", "mcp_static"] as const)(
+    "prefers the development base URL for %s in development",
+    (provider) => {
+      vi.stubEnv("NODE_ENV", "development");
+      config.getDevOAuthRedirectBaseUrl.mockReturnValue("https://dev.example");
+      expect(
+        finalizeUriForProvider({
+          provider,
+          connection: null,
+          useCase: "connection",
+        })
+      ).toBe(`https://dev.example/oauth/${provider}/finalize`);
+    }
+  );
 
   it("does not use the development base URL outside development", () => {
     vi.stubEnv("NODE_ENV", "production");

@@ -1,7 +1,6 @@
 import type { WhitelistableFeature } from "../../shared/feature_flags";
 import {
-  CLAUDE_OPUS_4_8_MODEL_ID,
-  CLAUDE_OPUS_5_MODEL_ID,
+  CLAUDE_OPUS_5_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "./anthropic";
@@ -17,7 +16,7 @@ import {
 } from "./mistral";
 import {
   GPT_5_6_LUNA_MODEL_ID,
-  GPT_5_6_SOL_MODEL_ID,
+  GPT_6_1_SOL_MODEL_ID,
   GPT_6_LUNA_MODEL_ID,
 } from "./openai";
 import { SIMULATED_FAILURE_MODEL_ID } from "./simulated_failure_model";
@@ -152,21 +151,13 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
     [AUTO_COMPLEX_MODEL_ID]: [
       {
         providerId: "anthropic",
-        modelId: CLAUDE_OPUS_5_MODEL_ID,
-        reasoningEffort: "high",
-      },
-      // Opus 5 is global-only until Vertex EU quota is provisioned, so keep 4.8
-      // right behind it: without this, regional-only workspaces would fall all
-      // the way through to OpenAI.
-      {
-        providerId: "anthropic",
-        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
-        reasoningEffort: "high",
+        modelId: CLAUDE_OPUS_5_5_MODEL_ID,
+        reasoningEffort: "medium",
       },
       {
         providerId: "openai",
-        modelId: GPT_5_6_SOL_MODEL_ID,
-        reasoningEffort: "medium",
+        modelId: GPT_6_1_SOL_MODEL_ID,
+        reasoningEffort: "xhigh",
       },
       {
         providerId: "google_ai_studio",

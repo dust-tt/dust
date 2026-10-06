@@ -1,5 +1,6 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { MAX_CONVERSATION_TITLE_LENGTH } from "@app/lib/api/assistant/conversation/constants";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import {
   getSmallWhitelistedModel,
@@ -51,13 +52,15 @@ export async function updateConversationTitle(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  await conversation.updateTitle(auth, title);
+  const normalizedTitle = title.slice(0, MAX_CONVERSATION_TITLE_LENGTH);
+
+  await conversation.updateTitle(auth, normalizedTitle);
 
   await publishConversationEvent(
     {
       type: "conversation_title",
       created: Date.now(),
-      title,
+      title: normalizedTitle,
     },
     { conversationId }
   );
@@ -114,7 +117,7 @@ export async function ensureConversationTitle(
     return conversation.title;
   }
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationLightRes = await getLightConversation(
     auth,
     conversation.sId

@@ -5,6 +5,7 @@ import { InstructionsMenuBar } from "@app/components/agent_builder/instructions/
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/sidekick/SuggestionBubbleMenu";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
@@ -34,7 +35,7 @@ import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
@@ -192,7 +193,6 @@ export function AgentBuilderInstructionsEditor({
 
   const editorWrapperRef = useRef<HTMLDivElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: owner.sId is intentional — owner is a SWR-deserialized object that gets a new reference on every revalidation (revalidateOnFocus). Using owner.sId (a stable primitive) prevents extensions from changing identity and the editor from being needlessly recreated.
   const extensions = useMemo(() => {
     const extensions: Extensions = [
       ...buildAgentInstructionsReadOnlyExtensions(),
@@ -245,6 +245,7 @@ export function AgentBuilderInstructionsEditor({
     ];
 
     return extensions;
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [owner.sId, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
@@ -289,7 +290,6 @@ export function AgentBuilderInstructionsEditor({
 
   // Set initial content after editor is created, then focus
   // This is separated from useEditor() to avoid Safari race conditions
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
@@ -420,7 +420,6 @@ export function AgentBuilderInstructionsEditor({
     }
   }, [editor, field.value, instructionsHtmlField.value]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;

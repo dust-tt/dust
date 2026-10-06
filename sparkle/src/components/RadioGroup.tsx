@@ -49,11 +49,10 @@ const RadioGroup = React.forwardRef<
 });
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
-interface RadioGroupItemProps
-  extends Omit<
-    React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
-    "children"
-  > {
+interface RadioGroupItemProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+  "children"
+> {
   label: string;
   icon?: React.ComponentType;
 }
@@ -107,8 +106,9 @@ const RadioGroupItem = React.forwardRef<
 
 type IconPosition = "start" | "center" | "end";
 
-interface RadioGroupCustomItemProps
-  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item> {
+interface RadioGroupCustomItemProps extends React.ComponentPropsWithoutRef<
+  typeof RadioGroupPrimitive.Item
+> {
   /** Vertical alignment of the radio button relative to the custom content. */
   iconPosition?: IconPosition;
   /** Custom content rendered next to the radio button in place of a plain label. */

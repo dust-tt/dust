@@ -85,11 +85,8 @@ function parseOutputObject(
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SandboxFunctionMCPActionResource
-  extends ReadonlyAttributesType<SandboxFunctionMCPActionModel> {}
+export interface SandboxFunctionMCPActionResource extends ReadonlyAttributesType<SandboxFunctionMCPActionModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFunctionMCPActionModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionMCPActionModel> =
     SandboxFunctionMCPActionModel;

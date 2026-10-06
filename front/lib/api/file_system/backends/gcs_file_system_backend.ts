@@ -693,24 +693,20 @@ export class GCSFileSystemBackend implements FileSystemBackend {
           (mount): mount is FileSystemMount & { sandboxMountPoint: string } =>
             mount.sandboxMountPoint !== null
         )
-        .map(
-          (mount): GCSMountTarget => ({
-            gcsPrefix: this.mountRootGCSPrefix(mount),
-            sandboxMountPoint: mount.sandboxMountPoint,
-            legacySandboxMountPoint: mount.legacySandboxMountPoint,
-            readOnly: false,
-            mountProfile: "workload",
-          })
-        ),
-      ...sandboxOnlyMounts.map(
-        (mount): GCSMountTarget => ({
-          gcsPrefix: this.sandboxOnlyMountGCSPrefix(mount),
+        .map((mount): GCSMountTarget => ({
+          gcsPrefix: this.mountRootGCSPrefix(mount),
           sandboxMountPoint: mount.sandboxMountPoint,
-          legacySandboxMountPoint: null,
-          readOnly: mount.readOnly,
-          mountProfile: this.sandboxOnlyMountProfile(mount),
-        })
-      ),
+          legacySandboxMountPoint: mount.legacySandboxMountPoint,
+          readOnly: false,
+          mountProfile: "workload",
+        })),
+      ...sandboxOnlyMounts.map((mount): GCSMountTarget => ({
+        gcsPrefix: this.sandboxOnlyMountGCSPrefix(mount),
+        sandboxMountPoint: mount.sandboxMountPoint,
+        legacySandboxMountPoint: null,
+        readOnly: mount.readOnly,
+        mountProfile: this.sandboxOnlyMountProfile(mount),
+      })),
     ];
 
     return new GCSSandboxMountAdapter(bucket, targets);

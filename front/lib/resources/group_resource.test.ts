@@ -160,83 +160,86 @@ describe("GroupResource", () => {
     expect((await manual.updateName(auth, "Renamed")).isErr()).toBe(true);
   });
 
-  it.each([
-    "regular_manual",
-    "provisioned",
-  ] as const)("deleting a %s group removes its manager assignment and backing group", async (kind) => {
-    const delegate = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, delegate, { role: "user" });
-    const target = await GroupResource.makeNew({
-      name: "Team to delete",
-      workspaceId: workspace.id,
-      kind,
-      ...(kind === "provisioned" ? { workOSGroupId: "directory-team" } : {}),
-    });
-    const other = await GroupResource.makeNew({
-      name: "Other team",
-      workspaceId: workspace.id,
-      kind: "regular_manual",
-    });
-    for (const group of [target, other]) {
-      const result = await GroupPermissionResource.grantToUser(authenticator, {
-        user: delegate.toJSON(),
-        grantType: "group_manager",
-        resourceType: "group",
-        resourceId: group.id,
+  it.each(["regular_manual", "provisioned"] as const)(
+    "deleting a %s group removes its manager assignment and backing group",
+    async (kind) => {
+      const delegate = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, delegate, { role: "user" });
+      const target = await GroupResource.makeNew({
+        name: "Team to delete",
+        workspaceId: workspace.id,
+        kind,
+        ...(kind === "provisioned" ? { workOSGroupId: "directory-team" } : {}),
       });
-      expect(result.isOk()).toBe(true);
-    }
-    const backingGroup =
-      await GroupPermissionResource.findRegularAutoGroupForGrant(
-        authenticator,
-        {
-          grantType: "group_manager",
-          resourceType: "group",
-          resourceId: target.id,
-        }
+      const other = await GroupResource.makeNew({
+        name: "Other team",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      for (const group of [target, other]) {
+        const result = await GroupPermissionResource.grantToUser(
+          authenticator,
+          {
+            user: delegate.toJSON(),
+            grantType: "group_manager",
+            resourceType: "group",
+            resourceId: group.id,
+          }
+        );
+        expect(result.isOk()).toBe(true);
+      }
+      const backingGroup =
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          authenticator,
+          {
+            grantType: "group_manager",
+            resourceType: "group",
+            resourceId: target.id,
+          }
+        );
+      assert(backingGroup);
+
+      await GroupResource.dangerouslyListUserGroupsForAuth({
+        user: delegate,
+        workspace,
+      });
+      const cacheKey = getCacheKeyForUser(delegate.id, workspace.id);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const parentTransaction =
+        getNamespace("test-namespace")?.get("transaction");
+      const transaction = await frontSequelize.transaction({
+        transaction: parentTransaction,
+      });
+      const deleted = await target.delete(authenticator, { transaction });
+      expect(deleted.isOk()).toBe(true);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+      await transaction.commit();
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+      expect(
+        await GroupPermissionModel.count({
+          where: {
+            workspaceId: workspace.id,
+            resourceType: "group",
+            resourceId: target.id,
+          },
+        })
+      ).toBe(0);
+      expect(
+        await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+          target.id,
+          backingGroup.id,
+        ])
+      ).toEqual([]);
+      const delegateAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        delegate.sId,
+        workspace.sId
       );
-    assert(backingGroup);
-
-    await GroupResource.dangerouslyListUserGroupsForAuth({
-      user: delegate,
-      workspace,
-    });
-    const cacheKey = getCacheKeyForUser(delegate.id, workspace.id);
-    expect(inMemoryCache.has(cacheKey)).toBe(true);
-
-    const parentTransaction =
-      getNamespace("test-namespace")?.get("transaction");
-    const transaction = await frontSequelize.transaction({
-      transaction: parentTransaction,
-    });
-    const deleted = await target.delete(authenticator, { transaction });
-    expect(deleted.isOk()).toBe(true);
-    expect(inMemoryCache.has(cacheKey)).toBe(true);
-    await transaction.commit();
-
-    expect(inMemoryCache.has(cacheKey)).toBe(false);
-    expect(
-      await GroupPermissionModel.count({
-        where: {
-          workspaceId: workspace.id,
-          resourceType: "group",
-          resourceId: target.id,
-        },
-      })
-    ).toBe(0);
-    expect(
-      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
-        target.id,
-        backingGroup.id,
-      ])
-    ).toEqual([]);
-    const delegateAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      delegate.sId,
-      workspace.sId
-    );
-    expect(delegateAuth.can("set_usage_limits", target)).toBe(false);
-    expect(delegateAuth.can("set_usage_limits", other)).toBe(true);
-  });
+      expect(delegateAuth.can("set_usage_limits", target)).toBe(false);
+      expect(delegateAuth.can("set_usage_limits", other)).toBe(true);
+    }
+  );
 
   describe("getActiveMembershipsForGroups", () => {
     it("returns no memberships without querying for empty groups", async () => {
@@ -731,22 +734,25 @@ describe("GroupResource", () => {
         "a user outside the workspace",
         async () => (await UserFactory.basic()).sId,
       ],
-    ])("leaves no group behind when rejecting %s", async (_label, makeMemberId) => {
-      const res = await GroupResource.makeNewRegularManual(authenticator, {
-        name: "Sales",
-        memberIds: [await makeMemberId()],
-      });
+    ])(
+      "leaves no group behind when rejecting %s",
+      async (_label, makeMemberId) => {
+        const res = await GroupResource.makeNewRegularManual(authenticator, {
+          name: "Sales",
+          memberIds: [await makeMemberId()],
+        });
 
-      expect(res.isErr()).toBe(true);
-      if (res.isErr()) {
-        expect(res.error.code).toBe("user_not_found");
+        expect(res.isErr()).toBe(true);
+        if (res.isErr()) {
+          expect(res.error.code).toBe("user_not_found");
+        }
+        expect(
+          await GroupModel.findOne({
+            where: { workspaceId: workspace.id, name: "Sales" },
+          })
+        ).toBeNull();
       }
-      expect(
-        await GroupModel.findOne({
-          where: { workspaceId: workspace.id, name: "Sales" },
-        })
-      ).toBeNull();
-    });
+    );
   });
 
   describe("updateRegularManualGroupMembers", () => {

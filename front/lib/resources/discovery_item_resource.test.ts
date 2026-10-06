@@ -6,8 +6,8 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -48,6 +48,19 @@ describe("DiscoveryItemResource", () => {
     });
     skillId = skill.sId;
   });
+
+  it.each(["user", "manager"] as const)(
+    "rejects an editor-visibility bypass for a %s",
+    async (role) => {
+      const setup = await createResourceTest({ role });
+
+      await expect(
+        DiscoveryItemResource.loadTargets(setup.authenticator, [], {
+          bypassEditorVisibility: true,
+        })
+      ).rejects.toThrow("Only admins can bypass editor visibility.");
+    }
+  );
 
   it("sets pins independently and lists them by position", async () => {
     await DiscoveryItemResource.setPinnedForGroup(auth, {

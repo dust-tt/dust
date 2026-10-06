@@ -59,9 +59,9 @@ export function useFeatureFlags() {
     noopGetVersion
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: overrideVersion triggers recalculation when dev panel changes overrides
   const featureFlags = useMemo(
     () => (DEV_MODE_ACTIVE ? devFlagApply(serverFlags) : serverFlags),
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [serverFlags, overrideVersion]
   );
 

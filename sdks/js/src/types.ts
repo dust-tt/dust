@@ -2456,7 +2456,9 @@ export const PatchConversationRequestSchema = z.union([
     read: z.boolean(),
   }),
   z.object({
-    title: z.string(),
+    title: z
+      .string()
+      .max(512, "Conversation title must be at most 512 characters."),
   }),
 ]);
 
@@ -3626,6 +3628,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
+  | "AirtableLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"
   | "AsanaLogo"
@@ -3635,6 +3638,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ToolsIcon"
   | "CanvaLogo"
   | "ClariLogo"
+  | "ClayLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "ContentsquareLogo"
@@ -3646,6 +3650,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "FigmaLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
+  | "FullEnrichLogo"
   | "GammaLogo"
   | "GcalLogo"
   | "GithubLogo"
@@ -4181,8 +4186,17 @@ export interface GetSpaceMembersResponseBody {
   users: Pick<UserType, "sId" | "email">[];
 }
 
+// Seat type with `_yearly` variants collapsed onto their base tier.
+export const BaseSeatTypeSchema = FlexibleEnumSchema<
+  "none" | "free" | "workspace" | "pro" | "max"
+>();
+
+export type BaseSeatType = z.infer<typeof BaseSeatTypeSchema>;
+
 export interface GetWorkspaceMembersResponseBody {
-  users: Pick<UserType, "sId" | "id" | "email">[];
+  users: (Pick<UserType, "sId" | "id" | "email"> & {
+    seatType?: BaseSeatType;
+  })[];
 }
 
 const RichMentionSchema = z.object({

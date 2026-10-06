@@ -292,7 +292,6 @@ function KnowledgeConfigurationSheetContent({
   }, [currentPageId, setFocus]);
 
   // Prefill name field and set defaults when mcpServerView.id changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getKnowledgeLookupMethodLabel(

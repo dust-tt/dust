@@ -8,16 +8,17 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "lint": "oxlint . && oxfmt --check .",
+    "lint:fix": "oxlint --fix . && oxfmt .",
+    "format": "oxfmt .",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.0",
     "@types/bun": "latest",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {

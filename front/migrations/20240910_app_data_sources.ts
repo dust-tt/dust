@@ -1,5 +1,5 @@
-import * as fs from "fs";
 import type { Logger } from "@app/logger/logger";
+import * as fs from "fs";
 
 import { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -9,8 +9,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType } from "@app/types/user";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 function searchInJson(
   obj: any,
   targetKey: string,

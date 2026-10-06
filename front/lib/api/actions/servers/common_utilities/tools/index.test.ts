@@ -2,11 +2,11 @@ import { MARK_CONVERSATION_READ_TOOL_NAME } from "@app/lib/api/actions/servers/c
 import { TOOLS } from "@app/lib/api/actions/servers/common_utilities/tools";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import {
   makeExtra,
   setupPlainConversation,
 } from "@app/tests/utils/conversation_test_factories";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 

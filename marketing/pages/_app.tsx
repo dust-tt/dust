@@ -26,13 +26,13 @@ const PostHogTrackerEffects = dynamic(
     ),
   { ssr: false }
 );
+import { SparkleContext } from "@dust-tt/sparkle";
 import { RegionSelectionModal } from "@marketing/components/RegionSelectionModal";
 import { NextLinkWrapper } from "@marketing/components/platform/NextLinkWrapper";
 import { FetcherProvider } from "@marketing/components/swr/FetcherContext";
 import { SignUpModalProvider } from "@marketing/hooks/useSignUpModal";
 import { fetcher, fetcherWithBody } from "@marketing/lib/swr/fetcher";
 import { initDatadogLogs } from "@marketing/logger/datadogLogger";
-import { SparkleContext } from "@dust-tt/sparkle";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useMemo } from "react";
@@ -109,7 +109,7 @@ type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);

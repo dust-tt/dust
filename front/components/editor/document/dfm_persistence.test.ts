@@ -1,0 +1,439 @@
+import {
+  loadDfm,
+  saveDfm,
+} from "@app/components/editor/document/dfm_persistence";
+import {
+  getDocumentJSONComments,
+  withDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
+import type { DfmComment } from "@app/lib/markdown/dfm";
+import { parseDfm } from "@app/lib/markdown/dfm";
+import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import type { JSONContent } from "@tiptap/core";
+import { describe, expect, it } from "vitest";
+
+const AT = "2026-09-25T14:16:32.380Z";
+const THREAD = `:::annotations\n::comment{id=c1 status=resolved}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nKept as is.\n:::\n`;
+const OPEN_THREAD = THREAD.replace("resolved", "open");
+
+const COMMENT: DfmComment = {
+  id: "c1",
+  status: "open",
+  messages: [
+    {
+      author: { kind: "user", id: "usr_daph", name: "Daph" },
+      createdAt: AT,
+      body: "Kept as is.",
+    },
+  ],
+};
+
+function load(source: string) {
+  const loaded = loadDfm(source);
+  if (loaded.isErr()) {
+    throw new Error(loaded.error);
+  }
+  return loaded.value;
+}
+
+function roundTrip(source: string): string {
+  const { envelope, content } = load(source);
+  const saved = saveDfm(envelope, content);
+  if (saved.isErr()) {
+    throw new Error(saved.error);
+  }
+  return saved.value;
+}
+
+/** Comment ids on each text node, as `text[id,id]`. */
+function markedTexts(document: JSONContent): string[] {
+  const texts: string[] = [];
+  const visit = (node: JSONContent) => {
+    if (node.type === "text") {
+      const ids = (node.marks ?? [])
+        .filter((mark) => mark.type === "comment")
+        .map((mark) => mark.attrs?.id);
+      texts.push(
+        ids.length > 0 ? `${node.text}[${ids.join(",")}]` : `${node.text}`
+      );
+    }
+    node.content?.forEach(visit);
+  };
+  visit(document);
+  return texts;
+}
+
+/** Each text node with its marks, comment ids by id, as `text[mark,id]`. */
+function formattedTexts(document: JSONContent): string[] {
+  const texts: string[] = [];
+  const visit = (node: JSONContent) => {
+    if (node.type === "text") {
+      const marks = (node.marks ?? []).map((mark) =>
+        mark.type === "comment" ? mark.attrs?.id : mark.type
+      );
+      texts.push(
+        marks.length > 0 ? `${node.text}[${marks.join(",")}]` : `${node.text}`
+      );
+    }
+    node.content?.forEach(visit);
+  };
+  visit(document);
+  return texts;
+}
+
+describe("loadDfm", () => {
+  it("opens a plain Markdown file", () => {
+    const { envelope, content } = load("# Title\n\nSome **bold** text.\n");
+
+    expect(envelope).toEqual({ frontMatter: null, anchorOrder: [] });
+    expect(content.type).toBe("doc");
+    expect(getDocumentJSONComments(content)).toEqual([]);
+  });
+
+  it("keeps front matter in the envelope and threads in the document", () => {
+    const { envelope, content } = load(
+      `---\ntitle: x\n---\n\n# Title\n\n${THREAD}`
+    );
+
+    expect(envelope.frontMatter).toBe("title: x");
+    expect(getDocumentJSONComments(content).map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("turns anchors into comment marks, overlapping and across paragraphs", () => {
+    const thread = (id: string) =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n`;
+    const { content } = load(
+      `:comment-start{id=a}One :comment-start{id=b}two:comment-end{id=a} three\n\nfour:comment-end{id=b} five\n\n:::annotations\n${thread("a")}\n${thread("b")}:::\n`
+    );
+
+    expect(markedTexts(content)).toEqual([
+      "One [a]",
+      "two[a,b]",
+      " three[b]",
+      "four[b]",
+      " five",
+    ]);
+    expect(JSON.stringify(content)).not.toContain("commentAnchor");
+  });
+
+  it("does not mark inline code inside a commented range", () => {
+    const { content } = load(
+      `:comment-start{id=c1}Run \`npm test\` now:comment-end{id=c1}\n\n${OPEN_THREAD}`
+    );
+
+    expect(markedTexts(content)).toEqual(["Run [c1]", "npm test", " now[c1]"]);
+  });
+
+  it.each([
+    [
+      "anchors inside italic",
+      "*foo :comment-start{id=c1}bar:comment-end{id=c1} baz*",
+      ["foo [italic]", "bar[italic,c1]", " baz[italic]"],
+    ],
+    [
+      "anchors inside bold, ending at its edge",
+      "**foo :comment-start{id=c1}bar:comment-end{id=c1}** end",
+      ["foo [bold]", "bar[bold,c1]", " end"],
+    ],
+    [
+      "an anchor starting inside link text and ending after it",
+      "[see :comment-start{id=c1}the docs](https://example.com) and more:comment-end{id=c1} here",
+      ["see [link]", "the docs[link,c1]", " and more[c1]", " here"],
+    ],
+  ])("opens a file with %s", (_, body, texts) => {
+    const source = `${body}\n\n${OPEN_THREAD}`;
+    const { content } = load(source);
+
+    expect(formattedTexts(content)).toEqual(texts);
+    expect(load(roundTrip(source)).content).toEqual(content);
+  });
+
+  it.each([
+    [
+      "inline code at a comment's start",
+      `Hi :comment-start{id=c1}\`code\` there:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+    ],
+    [
+      "inline code at a comment's end",
+      `Hi :comment-start{id=c1}there \`code\`:comment-end{id=c1} now\n\n${OPEN_THREAD}`,
+    ],
+    [
+      "a code block at a comment's start",
+      `Intro :comment-start{id=c1}\n\n\`\`\`\ncode\n\`\`\`\n\nafter:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+    ],
+  ])("refuses %s, which a save would drop from the comment", (_, source) => {
+    const loaded = loadDfm(source);
+
+    expect(loaded.isErr() && loaded.error).toContain(
+      "starts or ends on text the editor cannot highlight"
+    );
+  });
+
+  it("opens a comment with inline code inside it", () => {
+    const source = `:comment-start{id=c1}Run \`npm test\` now:comment-end{id=c1}\n\n${OPEN_THREAD}`;
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  it.each([
+    [
+      "invalid DFM",
+      "Body\n\n:::annotations\n::comment{id=c1}\n:::\n",
+      "status",
+    ],
+    [
+      "Markdown the editor cannot reproduce",
+      "| a | b |\n|---|---|\n| 1 | 2 |\n",
+      "formatting the editor cannot keep",
+    ],
+    [
+      "a comment covering only code",
+      `Run :comment-start{id=c1}\`npm test\`:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+      "covers no text the editor can highlight",
+    ],
+    [
+      "an anchor inside a link destination",
+      `See [docs](https://example.com/:comment-start{id=c1}a:comment-end{id=c1})\n\n${OPEN_THREAD}`,
+      "cannot show it",
+    ],
+  ])("refuses %s with a reason", (_, source, reason) => {
+    const loaded = loadDfm(source);
+
+    expect(loaded.isErr()).toBe(true);
+    if (loaded.isErr()) {
+      expect(loaded.error).toContain(reason);
+    }
+  });
+});
+
+describe("saveDfm", () => {
+  it("round-trips a file through load and save", () => {
+    const source = `---\ntitle: x\n---\n\n# Title\n\nSome **bold** text.\n\n- one\n- two\n\n${THREAD}`;
+
+    const saved = roundTrip(source);
+
+    expect(saved).toBe(source);
+    expect(parseDfm(saved).isOk()).toBe(true);
+  });
+
+  it("round-trips the codec fixture, anchors and threads included", () => {
+    expect(roundTrip(FIXTURE)).toBe(FIXTURE);
+  });
+
+  it.each([
+    "**foo :comment-start{id=c1}bar:comment-end{id=c1}** end",
+    "*foo :comment-start{id=c1}bar:comment-end{id=c1}* end",
+    "**:comment-start{id=c1}bar:comment-end{id=c1}** end",
+    "[foo :comment-start{id=c1}bar:comment-end{id=c1}](https://example.com) end",
+  ])(
+    "keeps anchors inside the formatting of the text they comment: %s",
+    (body) => {
+      const source = `${body}\n\n${OPEN_THREAD}`;
+
+      expect(roundTrip(source)).toBe(source);
+    }
+  );
+
+  it("writes anchors inside formatting without splitting it", () => {
+    const source = `Some **bo:comment-start{id=c1}ld** and *it:comment-end{id=c1}alic* text.\n\n${OPEN_THREAD}`;
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  const commented = { type: "comment", attrs: { id: "c1" } };
+  it.each([
+    [
+      "italic running into the comment",
+      [
+        { type: "text", text: "foo ", marks: [{ type: "italic" }] },
+        { type: "text", text: "bar", marks: [{ type: "italic" }, commented] },
+        { type: "text", text: " baz" },
+      ],
+      "*foo :comment-start{id=c1}bar:comment-end{id=c1}* baz",
+    ],
+    [
+      "bold running out of the comment",
+      [
+        { type: "text", text: "foo " },
+        { type: "text", text: "bar", marks: [{ type: "bold" }, commented] },
+        { type: "text", text: " baz", marks: [{ type: "bold" }] },
+      ],
+      "foo **:comment-start{id=c1}bar:comment-end{id=c1} baz**",
+    ],
+    [
+      "bold right after a word, where an anchor inside it would not read back",
+      [
+        { type: "text", text: "foo" },
+        { type: "text", text: "bar", marks: [{ type: "bold" }, commented] },
+      ],
+      "foo:comment-start{id=c1}**bar**:comment-end{id=c1}",
+    ],
+    [
+      "a link across both edges",
+      [
+        {
+          type: "text",
+          text: "see the docs",
+          marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+        },
+        {
+          type: "text",
+          text: " here",
+          marks: [
+            { type: "link", attrs: { href: "https://example.com" } },
+            commented,
+          ],
+        },
+        {
+          type: "text",
+          text: " now",
+          marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+        },
+      ],
+      "[see the docs:comment-start{id=c1} here:comment-end{id=c1} now](https://example.com)",
+    ],
+  ])("saves %s and reopens it the same", (_, content, body) => {
+    const document = withDocumentJSONComments(
+      { type: "doc", content: [{ type: "paragraph", content }] },
+      [COMMENT]
+    );
+
+    const saved = saveDfm({ frontMatter: null, anchorOrder: [] }, document);
+
+    expect(saved.isOk() && saved.value).toBe(`${body}\n\n${OPEN_THREAD}`);
+    if (saved.isOk()) {
+      expect(markedTexts(load(saved.value).content)).toEqual(
+        markedTexts(document)
+      );
+    }
+  });
+
+  const twoThreads = (first: string, second: string) =>
+    `:::annotations\n::comment{id=${first} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nOne.\n\n::comment{id=${second} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nTwo.\n:::\n`;
+
+  it.each([
+    [
+      "nested ends",
+      "A :comment-start{id=c2}b :comment-start{id=c1}c:comment-end{id=c1}:comment-end{id=c2} d",
+    ],
+    [
+      "crossing ends",
+      "A :comment-start{id=c2}b :comment-start{id=c1}c:comment-end{id=c2}:comment-end{id=c1} d",
+    ],
+    [
+      "starts sharing a place",
+      "A :comment-start{id=c1}:comment-start{id=c2}b:comment-end{id=c1} c:comment-end{id=c2} d",
+    ],
+    [
+      "a start written before an end at the same place",
+      "A :comment-start{id=c1}b:comment-start{id=c2}:comment-end{id=c1}c:comment-end{id=c2} d",
+    ],
+  ])("keeps %s in the file's order", (_, body) => {
+    const source = `${body}\n\n${twoThreads("c1", "c2")}`;
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  it("nests the anchors of a new comment with the existing ones", () => {
+    const source = `A :comment-start{id=c1}b c:comment-end{id=c1} d\n\n${twoThreads("c1", "c2")}`;
+    const { envelope, content } = load(source);
+    const paragraph = content.content?.[0];
+    if (!paragraph?.content) {
+      throw new Error("No paragraph.");
+    }
+    // A second comment on exactly the same text, as the editor adds one.
+    paragraph.content = paragraph.content.map((node) =>
+      node.marks?.some((mark) => mark.type === "comment")
+        ? {
+            ...node,
+            marks: [...node.marks, { type: "comment", attrs: { id: "c2" } }],
+          }
+        : node
+    );
+
+    const saved = saveDfm(envelope, content);
+
+    expect(saved.isOk() && saved.value.split("\n")[0]).toBe(
+      "A :comment-start{id=c1}:comment-start{id=c2}b c:comment-end{id=c2}:comment-end{id=c1} d"
+    );
+  });
+
+  it("keeps front matter when the body is empty", () => {
+    const source = "---\ntitle: x\n---\n";
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  it("writes LF line endings for a CRLF file", () => {
+    expect(roundTrip("# Title\r\n\r\nText\r\n")).toBe("# Title\n\nText\n");
+  });
+
+  it("refuses content the editor cannot write as Markdown", () => {
+    const saved = saveDfm(
+      { frontMatter: null, anchorOrder: [] },
+      { type: "doc", content: [{ type: "table" }] }
+    );
+
+    expect(saved.isErr()).toBe(true);
+    if (saved.isErr()) {
+      expect(saved.error).toContain("cannot be saved as Markdown");
+    }
+  });
+
+  it("writes an edited body with the document's threads", () => {
+    const { envelope } = load("# Title\n");
+    const saved = saveDfm(
+      envelope,
+      withDocumentJSONComments(
+        {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: "Rewritten " },
+                {
+                  type: "text",
+                  text: "here",
+                  marks: [{ type: "comment", attrs: { id: "c1" } }],
+                },
+                { type: "text", text: "." },
+              ],
+            },
+          ],
+        },
+        [COMMENT]
+      )
+    );
+
+    expect(saved.isOk()).toBe(true);
+    if (saved.isOk()) {
+      expect(saved.value).toBe(
+        `Rewritten :comment-start{id=c1}here:comment-end{id=c1}.\n\n${OPEN_THREAD}`
+      );
+    }
+  });
+
+  it("keeps a thread whose text was deleted", () => {
+    const { envelope, content } = load(
+      `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n${OPEN_THREAD}`
+    );
+    const saved = saveDfm(
+      envelope,
+      withDocumentJSONComments(
+        {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Hi" }] },
+          ],
+        },
+        getDocumentJSONComments(content)
+      )
+    );
+
+    expect(saved.isOk()).toBe(true);
+    if (saved.isOk()) {
+      expect(saved.value).toBe(`Hi\n\n${OPEN_THREAD}`);
+    }
+  });
+});

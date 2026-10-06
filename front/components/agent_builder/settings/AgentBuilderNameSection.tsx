@@ -4,6 +4,7 @@ import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/cons
 import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import {
   Button,
   DropdownMenu,
@@ -147,6 +148,7 @@ export function AgentBuilderNameSection({
             ref={registerRef}
             placeholder="Enter agent name"
             className="pr-10"
+            maxLength={AGENT_NAME_MAX_LENGTH}
             onChange={(e) => {
               userSetNameRef.current = true;
               onChange(e);

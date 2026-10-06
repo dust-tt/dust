@@ -4,8 +4,8 @@ import { fn } from "storybook/test";
 
 import { AttachmentChip } from "@sparkle/components";
 
-import { DriveLogo, NotionLogo } from "@sparkle/logo";
 import { File02, File04, Folder, Image01 } from "@sparkle/icons/v2-stroke";
+import { DriveLogo, NotionLogo } from "@sparkle/logo";
 
 const meta = {
   title: "Product/Conversation/AttachmentChip",

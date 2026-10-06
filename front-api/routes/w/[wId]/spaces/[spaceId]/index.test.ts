@@ -1,8 +1,8 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -171,5 +171,18 @@ describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
       name: "Not Company Data",
     });
     expect(globalResponse.status).toBe(400);
+  });
+
+  it("rejects renaming a space to a name longer than 256 characters", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    const response = await patchSpace(workspace, regularSpace.sId, {
+      name: "p".repeat(257),
+    });
+
+    expect(response.status).toBe(400);
   });
 });

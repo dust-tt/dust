@@ -56,11 +56,14 @@ describe("assertValidGrant", () => {
       { grantType: "reader", resourceType: "space" },
       { grantType: "editor", resourceType: "agent" },
       { grantType: "use", resourceType: "models_tier" },
-    ] as const)("instance role $grantType on all $resourceType instances", (role) => {
-      expect(() =>
-        assertValidGrant({ ...role, resourceId: WHOLE_TYPE_RESOURCE_ID })
-      ).not.toThrow();
-    });
+    ] as const)(
+      "instance role $grantType on all $resourceType instances",
+      (role) => {
+        expect(() =>
+          assertValidGrant({ ...role, resourceId: WHOLE_TYPE_RESOURCE_ID })
+        ).not.toThrow();
+      }
+    );
 
     it("type-level capability (publish) with -1", () => {
       expect(() =>

@@ -1,8 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
-import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import SSOConnection from "@app/components/workspace/SSOConnection";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";

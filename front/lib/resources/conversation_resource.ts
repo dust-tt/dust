@@ -194,11 +194,8 @@ const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ConversationResource
-  extends ReadonlyAttributesType<ConversationModel> {}
+export interface ConversationResource extends ReadonlyAttributesType<ConversationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
   static model: ModelStaticWorkspaceAware<ConversationModel> =
     ConversationModel;
@@ -415,7 +412,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // The reaper needs to drive sandbox lifecycle transitions even for deleted
     // conversations, so we include every visibility here.
     const conversations = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         id: ids,
@@ -1131,7 +1128,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       FROM sub_agents
     `;
 
-    // biome-ignore lint/plugin/noRawSql: recursive CTE has no Sequelize equivalent.
+    // oxlint-disable-next-line dust/noRawSql -- recursive CTE has no Sequelize equivalent.
     const rows = await frontSequelize.query<{
       total_credits: number | null;
       max_depth: number | null;
@@ -1928,7 +1925,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       LIMIT :limit OFFSET :offset
     `;
 
-    // biome-ignore lint/plugin/noRawSql: no association from conversations to agent_messages.
+    // oxlint-disable-next-line dust/noRawSql -- no association from conversations to agent_messages.
     const rows = await frontSequelize.query<{
       id: ModelId;
       total_count: number;
@@ -3615,7 +3612,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             WHERE rn = 1
         `;
 
-    // biome-ignore lint/plugin/noRawSql: automatic suppress
+    // oxlint-disable-next-line dust/noRawSql -- automatic suppress
     const results = await frontSequelize.query<{
       rank: number;
       agentMessageId: number;
@@ -3669,7 +3666,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ) AS "exists"
     `;
 
-    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    // oxlint-disable-next-line dust/noRawSql -- EXISTS subquery with DISTINCT ON
     const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -3715,7 +3712,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ) AS "exists"
     `;
 
-    // biome-ignore lint/plugin/noRawSql: EXISTS subquery with DISTINCT ON
+    // oxlint-disable-next-line dust/noRawSql -- EXISTS subquery with DISTINCT ON
     const [result] = await frontSequelize.query<{ exists: boolean }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -3811,7 +3808,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       LIMIT 1
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON subquery with LIMIT 1
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON subquery with LIMIT 1
     const [result] = await frontSequelize.query<{
       clientSideMCPServerIds: string[] | null;
       requestedProviderId: string | null;
@@ -3863,7 +3860,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ORDER BY m.rank ASC, m.version DESC
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON for latest version per rank
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON for latest version per rank
     const latestPerRank = await frontSequelize.query<{
       id: ModelId;
       rank: number;
@@ -3951,7 +3948,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       LIMIT 1
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON latest version per rank
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON latest version per rank
     const [message] = await frontSequelize.query<{
       sId: string;
       rank: number;
@@ -4071,7 +4068,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       FROM latest
     `;
 
-    // biome-ignore lint/plugin/noRawSql: DISTINCT ON aggregate for branch creation
+    // oxlint-disable-next-line dust/noRawSql -- DISTINCT ON aggregate for branch creation
     const [stats] = await frontSequelize.query<{
       messageCount: number;
       nonContentFragmentCount: number;

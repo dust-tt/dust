@@ -246,39 +246,38 @@ describe("Frame comment conflict recovery", () => {
     );
   });
 
-  it.each([
-    "conflict",
-    "save_failed",
-    "rejection",
-  ] as const)("preserves a recovered draft after %s and pauses until explicit retry", async (code) => {
-    const dataAPI = makeCommentAPI();
-    dataAPI.writeFile.mockResolvedValueOnce(conflict);
-    if (code === "rejection") {
-      dataAPI.writeFile.mockRejectedValueOnce(new Error("Connection lost"));
-    } else {
-      dataAPI.writeFile.mockResolvedValueOnce({
-        success: false,
-        error: { code, message: "Retry failed" },
-      });
-    }
-    render(<TestFrame dataAPI={dataAPI} />);
-    await postReply();
+  it.each(["conflict", "save_failed", "rejection"] as const)(
+    "preserves a recovered draft after %s and pauses until explicit retry",
+    async (code) => {
+      const dataAPI = makeCommentAPI();
+      dataAPI.writeFile.mockResolvedValueOnce(conflict);
+      if (code === "rejection") {
+        dataAPI.writeFile.mockRejectedValueOnce(new Error("Connection lost"));
+      } else {
+        dataAPI.writeFile.mockResolvedValueOnce({
+          success: false,
+          error: { code, message: "Retry failed" },
+        });
+      }
+      render(<TestFrame dataAPI={dataAPI} />);
+      await postReply();
 
-    await screen.findByRole("alert");
-    await act(async () => {
-      await new Promise((resolve) =>
-        setTimeout(resolve, AUTOSAVE_DEBOUNCE_MS * 2)
-      );
-    });
-    expect(dataAPI.writeFile).toHaveBeenCalledTimes(2);
-    expect(dataAPI.fetchFile).toHaveBeenCalledTimes(2);
-    expect(screen.getByText("Local reply")).toBeTruthy();
-    expect(screen.getByText("Remote reply")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(dataAPI.writeFile).toHaveBeenCalledTimes(3));
-    expect(dataAPI.writeFile.mock.calls[2][0].revision).toBe("rev-2");
-    await screen.findByText("Saved");
-  });
+      await screen.findByRole("alert");
+      await act(async () => {
+        await new Promise((resolve) =>
+          setTimeout(resolve, AUTOSAVE_DEBOUNCE_MS * 2)
+        );
+      });
+      expect(dataAPI.writeFile).toHaveBeenCalledTimes(2);
+      expect(dataAPI.fetchFile).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("Local reply")).toBeTruthy();
+      expect(screen.getByText("Remote reply")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() => expect(dataAPI.writeFile).toHaveBeenCalledTimes(3));
+      expect(dataAPI.writeFile.mock.calls[2][0].revision).toBe("rev-2");
+      await screen.findByText("Saved");
+    }
+  );
 
   it("does not adopt a fetched snapshot after the local draft changes", async () => {
     const dataAPI = makeCommentAPI();
@@ -334,35 +333,37 @@ describe("Frame comment conflict recovery", () => {
     expect(dataAPI.writeFile.mock.calls[1][0].revision).toBe("rev-1");
   });
 
-  it.each([
-    "read-only",
-    "missing revision",
-  ])("disables editing and keeps the unsaved draft after a %s conflict read", async (change) => {
-    const dataAPI = makeCommentAPI();
-    dataAPI.fetchFile.mockResolvedValue({
-      ...jsonFile(commentedDocument([remoteReply])),
-      canWrite: change !== "read-only",
-      revision: change === "missing revision" ? null : "rev-2",
-    });
-    dataAPI.writeFile.mockResolvedValueOnce(conflict);
-    render(<TestFrame dataAPI={dataAPI} />);
-    await postReply();
+  it.each(["read-only", "missing revision"])(
+    "disables editing and keeps the unsaved draft after a %s conflict read",
+    async (change) => {
+      const dataAPI = makeCommentAPI();
+      dataAPI.fetchFile.mockResolvedValue({
+        ...jsonFile(commentedDocument([remoteReply])),
+        canWrite: change !== "read-only",
+        revision: change === "missing revision" ? null : "rev-2",
+      });
+      dataAPI.writeFile.mockResolvedValueOnce(conflict);
+      render(<TestFrame dataAPI={dataAPI} />);
+      await postReply();
 
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Your unsaved changes are still here");
-    const editor = screen.getByRole("textbox", { name: "Document content" });
-    expect(editor.getAttribute("contenteditable")).toBe("false");
-    expect(screen.getByText("Local reply")).toBeTruthy();
-    expect(screen.queryByText("Remote reply")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
-    fireEvent.keyDown(editor, { key: "s", ctrlKey: true });
-    await act(async () => {
-      await new Promise((resolve) =>
-        setTimeout(resolve, AUTOSAVE_DEBOUNCE_MS * 2)
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toContain(
+        "Your unsaved changes are still here"
       );
-    });
-    expect(dataAPI.writeFile).toHaveBeenCalledTimes(1);
-  });
+      const editor = screen.getByRole("textbox", { name: "Document content" });
+      expect(editor.getAttribute("contenteditable")).toBe("false");
+      expect(screen.getByText("Local reply")).toBeTruthy();
+      expect(screen.queryByText("Remote reply")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+      fireEvent.keyDown(editor, { key: "s", ctrlKey: true });
+      await act(async () => {
+        await new Promise((resolve) =>
+          setTimeout(resolve, AUTOSAVE_DEBOUNCE_MS * 2)
+        );
+      });
+      expect(dataAPI.writeFile).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it("preserves the draft when the latest content is invalid", async () => {
     const dataAPI = makeCommentAPI();
@@ -515,26 +516,28 @@ describe("Frame Document", () => {
       readOnly: false,
       isPdfMode: true,
     },
-  ])("disables editing for $label", async ({
-    revision,
-    canWrite,
-    readOnly,
-    isPdfMode,
-  }) => {
-    const dataAPI = makeAPI();
-    dataAPI.fetchFile.mockResolvedValue(
-      makeFile("Original text", revision, canWrite)
-    );
-    render(
-      <TestFrame dataAPI={dataAPI} readOnly={readOnly} isPdfMode={isPdfMode} />
-    );
-    const editor = await screen.findByRole("textbox", {
-      name: "Document content",
-    });
-    expect(editor.getAttribute("contenteditable")).toBe("false");
-    fireEvent.keyDown(editor, { key: "s", ctrlKey: true });
-    expect(dataAPI.writeFile).not.toHaveBeenCalled();
-  });
+  ])(
+    "disables editing for $label",
+    async ({ revision, canWrite, readOnly, isPdfMode }) => {
+      const dataAPI = makeAPI();
+      dataAPI.fetchFile.mockResolvedValue(
+        makeFile("Original text", revision, canWrite)
+      );
+      render(
+        <TestFrame
+          dataAPI={dataAPI}
+          readOnly={readOnly}
+          isPdfMode={isPdfMode}
+        />
+      );
+      const editor = await screen.findByRole("textbox", {
+        name: "Document content",
+      });
+      expect(editor.getAttribute("contenteditable")).toBe("false");
+      fireEvent.keyDown(editor, { key: "s", ctrlKey: true });
+      expect(dataAPI.writeFile).not.toHaveBeenCalled();
+    }
+  );
 
   it("cancels a pending autosave when the host revokes editing", async () => {
     const dataAPI = makeAPI();

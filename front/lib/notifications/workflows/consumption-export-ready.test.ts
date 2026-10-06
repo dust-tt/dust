@@ -1,5 +1,7 @@
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import * as novuClientModule from "@app/lib/notifications/novu-client";
-import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
+import { notifyConsumptionExportReady } from "@app/lib/notifications/triggers/consumption-export-ready";
+import { buildConsumptionExportReadyInAppCopy } from "@app/lib/notifications/workflows/consumption-export-ready";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { CONSUMPTION_EXPORT_READY_TRIGGER_ID } from "@app/types/notification_preferences";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,5 +99,19 @@ describe("notifyConsumptionExportReady", () => {
     await flush();
 
     expect(mockTriggerBulk).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("buildConsumptionExportReadyInAppCopy", () => {
+  it("renders the copy in the recipient's locale", async () => {
+    const en = buildConsumptionExportReadyInAppCopy(
+      await getNotificationI18n("en-US")
+    );
+    const fr = buildConsumptionExportReadyInAppCopy(
+      await getNotificationI18n("fr-FR")
+    );
+
+    expect(en.subject).toBe("Your consumption export is ready");
+    expect(fr.subject).toBe("Votre export de consommation est prêt");
   });
 });

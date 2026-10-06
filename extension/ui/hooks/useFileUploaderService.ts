@@ -1,6 +1,6 @@
 import { useFileUploaderService as useFrontFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useAuth } from "@app/lib/auth/AuthContext";
-// biome-ignore lint/plugin/noDirectSparkleNotification: existing usage
+// oxlint-disable-next-line dust/noDirectSparkleNotification -- existing usage
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   CaptureOptions,

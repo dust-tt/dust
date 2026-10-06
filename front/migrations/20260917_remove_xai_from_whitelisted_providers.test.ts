@@ -1,4 +1,3 @@
-import assert from "node:assert";
 import { Authenticator } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -11,6 +10,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "node:assert";
 import { describe, expect, it } from "vitest";
 
 const logger = baseLogger.child({}, { level: "silent" });

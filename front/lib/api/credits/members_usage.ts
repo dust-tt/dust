@@ -2150,8 +2150,8 @@ export async function getMembersUsage({
   // window (`isNonCreditPricedUserSpendLimitReached`).
   const isCreditPricedWorkspace = Boolean(
     metronomeCustomerId &&
-      subscription?.plan &&
-      isCreditPricedPlan(subscription.plan)
+    subscription?.plan &&
+    isCreditPricedPlan(subscription.plan)
   );
 
   // Fetch the reset date and authorized member scope together. Even empty

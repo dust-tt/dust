@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+import { execFile as execFileCallback } from "node:child_process";
+import { constants } from "node:fs";
 import {
   chmod,
   copyFile,
@@ -11,8 +13,6 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
-import { constants } from "node:fs";
-import { execFile as execFileCallback } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { promisify } from "node:util";
 

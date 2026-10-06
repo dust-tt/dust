@@ -104,8 +104,7 @@ export interface SkillEditorsSuggestionAsset extends BaseSkillSuggestionAsset {
   suggestion: SkillEditorsSuggestionType;
 }
 
-export interface SkillUserFacingDescriptionSuggestionAsset
-  extends BaseSkillSuggestionAsset {
+export interface SkillUserFacingDescriptionSuggestionAsset extends BaseSkillSuggestionAsset {
   kind: "user_facing_description";
   suggestion: SkillUserFacingDescriptionSuggestionType;
 }
@@ -120,8 +119,7 @@ export interface SkillDeleteSuggestionAsset extends BaseSkillSuggestionAsset {
   suggestion: SkillDeleteSuggestionType;
 }
 
-export interface SkillAvailabilitySuggestionAsset
-  extends BaseSkillSuggestionAsset {
+export interface SkillAvailabilitySuggestionAsset extends BaseSkillSuggestionAsset {
   kind: "availability";
   suggestion: SkillAvailabilitySuggestionType;
 }

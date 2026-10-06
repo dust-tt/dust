@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,

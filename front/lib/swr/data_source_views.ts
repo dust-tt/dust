@@ -81,9 +81,8 @@ export function useMultipleDataSourceViewsContentNodes({
   const fetcherWithBodyRef = useRef(fetcherWithBody);
   fetcherWithBodyRef.current = fetcherWithBody;
 
-  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
-    DataSourceViewsAndNodes[]
-  >(emptyArray());
+  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] =
+    useState<DataSourceViewsAndNodes[]>(emptyArray());
   const [isNodesLoading, setIsNodesLoading] = useState(false);
   const [isNodesError, setIsNodesError] = useState(false);
   const [fetchGeneration, setFetchGeneration] = useState(0);
@@ -103,7 +102,6 @@ export function useMultipleDataSourceViewsContentNodes({
     [dataSourceViewsAndInternalIds, owner.sId, viewType]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchRequestKey encodes owner, viewType, and selection identity
   useEffect(() => {
     const fetchData = async () => {
       setIsNodesLoading(true);
@@ -212,6 +210,7 @@ export function useMultipleDataSourceViewsContentNodes({
       setIsNodesLoading(false);
       setIsNodesError(false);
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [fetchRequestKey, dataSourceViewsAndInternalIds, fetchGeneration]);
 
   const refetch = useCallback(() => {

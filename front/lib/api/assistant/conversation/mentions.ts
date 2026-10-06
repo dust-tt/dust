@@ -15,8 +15,8 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
 import type { MentionStatusType } from "@app/lib/models/agent/conversation";
-import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/triggers/conversation-unread";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -257,7 +257,7 @@ export async function validateUserMention(
     approvalState: "approved" | "rejected";
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({
@@ -522,7 +522,7 @@ export async function dismissMention(
     id: string;
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({

@@ -1,6 +1,15 @@
 "use client";
 
 import {
+  ArrowLeft,
+  Button,
+  cn,
+  Menu01,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@dust-tt/sparkle";
+import {
   AcademySearch,
   ChapterStatusIcons,
 } from "@marketing/components/academy/AcademyComponents";
@@ -11,15 +20,6 @@ import type {
   SearchableItem,
 } from "@marketing/lib/contentful/types";
 import { LinkWrapper } from "@marketing/lib/platform";
-import {
-  ArrowLeft,
-  Button,
-  cn,
-  Menu01,
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ChapterSidebarProps {

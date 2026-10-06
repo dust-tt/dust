@@ -169,7 +169,6 @@ export function AgentBrowser({
   }, [selectedTab, agentsByTab]);
 
   // Initialize `selectedTag` from persisted selection (or default to Most popular).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (noTagsDefined || selectedTag) {
       return;

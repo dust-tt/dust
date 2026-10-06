@@ -1,5 +1,11 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isSseVerbose, setSseVerbose } from "@app/lib/client/sse_verbose";
+import {
+  isLocaleOverride,
+  LOCALE_OVERRIDES,
+  setLocaleOverride,
+  useLocaleOverride,
+} from "@app/lib/i18n/locale_override";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -33,6 +39,7 @@ export function ToolbarControls({
 }: ToolbarControlsProps) {
   const { theme, setTheme } = useTheme();
   const [sseVerbose, setSseVerboseState] = useState(isSseVerbose);
+  const localeOverride = useLocaleOverride();
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
   const fontFamilyOverrides = readFontFamilyOverrides();
@@ -95,6 +102,24 @@ export function ToolbarControls({
         >
           {compact ? "SSE" : "SSE Logs"}
         </button>
+        <span style={S.dockedSep} />
+        <select
+          style={S.dockedSelect(localeOverride !== null)}
+          aria-label="UI locale"
+          title="Override the UI locale for this browser tab"
+          value={localeOverride ?? ""}
+          onChange={(event) => {
+            const { value } = event.target;
+            setLocaleOverride(isLocaleOverride(value) ? value : null);
+          }}
+        >
+          <option value="">{compact ? "Locale" : "Account locale"}</option>
+          {LOCALE_OVERRIDES.map((locale) => (
+            <option key={locale} value={locale}>
+              {locale}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div style={S.dockedSection}>

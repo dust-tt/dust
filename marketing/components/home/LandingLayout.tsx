@@ -1,16 +1,17 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Button } from "@dust-tt/sparkle";
+import UTMButton from "@marketing/components/UTMButton";
 import type { CookieConsentChoices } from "@marketing/components/home/CookieBanner";
 import { CookieBanner } from "@marketing/components/home/CookieBanner";
 import { LogoListsProvider } from "@marketing/components/home/LogoListsContext";
-import { FooterNavigation } from "@marketing/components/home/menu/FooterNavigation";
-import { MainNavigation } from "@marketing/components/home/menu/MainNavigation";
-import { MobileNavigation } from "@marketing/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@marketing/components/home/OpenDustButton";
 import { PromoBanner } from "@marketing/components/home/PromoBanner";
 import { PublicWebsiteLogo } from "@marketing/components/home/PublicWebsiteLogo";
 import ScrollingHeader from "@marketing/components/home/ScrollingHeader";
 import { SkipLandingPrompt } from "@marketing/components/home/SkipLandingPrompt";
-import UTMButton from "@marketing/components/UTMButton";
+import { FooterNavigation } from "@marketing/components/home/menu/FooterNavigation";
+import { MainNavigation } from "@marketing/components/home/menu/MainNavigation";
+import { MobileNavigation } from "@marketing/components/home/menu/MobileNavigation";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { useStripUtmParams } from "@marketing/hooks/useStripUtmParams";
 import {
   CONSENT_COOKIE_OPTIONS,
@@ -30,11 +31,9 @@ import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames, getFaviconPath } from "@marketing/lib/utils";
 import { getOrCreateAnonymousId } from "@marketing/lib/utils/anonymous_id";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { Button } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 

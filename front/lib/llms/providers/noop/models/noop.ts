@@ -1,9 +1,7 @@
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 
 export function WithDustNoopConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustNoop extends Base {
     static readonly displayName = "Noop";

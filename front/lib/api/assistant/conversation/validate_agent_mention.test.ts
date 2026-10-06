@@ -131,9 +131,8 @@ describe("validateAgentMention", () => {
       }
     );
 
-    const { AgentConfigurationModel } = await import(
-      "@app/lib/models/agent/agent"
-    );
+    const { AgentConfigurationModel } =
+      await import("@app/lib/models/agent/agent");
     await AgentConfigurationModel.update(
       { requestedSpaceIds: [anotherProjectSpace.id] },
       {

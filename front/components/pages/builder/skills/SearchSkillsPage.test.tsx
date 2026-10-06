@@ -912,64 +912,62 @@ describe("search-backed Manage Skills", () => {
     tab: string;
     action: string;
     confirm: string;
-  }[])("refreshes $tab after $action from the confirmation dialog", async ({
-    status,
-    tab,
-    action,
-    confirm,
-  }) => {
-    const { fullSkill, context, search, mutation, mount } = await setup({
-      skillStatus: status,
-    });
-    mutation.mockImplementation(async () => {
-      search.mockResolvedValue({
-        skills: [],
-        total: 0,
-        hasMore: false,
-        facets: {},
+  }[])(
+    "refreshes $tab after $action from the confirmation dialog",
+    async ({ status, tab, action, confirm }) => {
+      const { fullSkill, context, search, mutation, mount } = await setup({
+        skillStatus: status,
       });
-    });
-    const ConfirmationDialog =
-      action === "Archive" ? ArchiveSkillDialog : RestoreSkillDialog;
+      mutation.mockImplementation(async () => {
+        search.mockResolvedValue({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          facets: {},
+        });
+      });
+      const ConfirmationDialog =
+        action === "Archive" ? ArchiveSkillDialog : RestoreSkillDialog;
 
-    // Test mutation-driven cache refresh without the nested menu/sheet focus traps.
-    function PageWithConfirmation() {
-      const [isOpen, setIsOpen] = useState(false);
+      // Test mutation-driven cache refresh without the nested menu/sheet focus traps.
+      function PageWithConfirmation() {
+        const [isOpen, setIsOpen] = useState(false);
 
-      return (
-        <>
-          <ManageSkillsPage />
-          <button onClick={() => setIsOpen(true)}>{action}</button>
-          <ConfirmationDialog
-            owner={context.workspace}
-            skill={fullSkill}
-            isOpen={isOpen}
-            onClose={() => setIsOpen(false)}
-          />
-        </>
+        return (
+          <>
+            <ManageSkillsPage />
+            <button onClick={() => setIsOpen(true)}>{action}</button>
+            <ConfirmationDialog
+              owner={context.workspace}
+              skill={fullSkill}
+              isOpen={isOpen}
+              onClose={() => setIsOpen(false)}
+            />
+          </>
+        );
+      }
+
+      mount(<PageWithConfirmation />);
+      await screen.findByRole("button", { name: /Weekly report/ });
+      if (tab === "Archived") {
+        await userEvent.click(screen.getByRole("tab", { name: tab }));
+      }
+      await userEvent.click(screen.getByRole("button", { name: action }));
+      const confirmation = await screen.findByRole("dialog", {
+        name:
+          action === "Archive" ? "Archiving the skill" : "Restoring the skill",
+      });
+      await userEvent.click(
+        within(confirmation).getByRole("button", { name: confirm })
       );
-    }
 
-    mount(<PageWithConfirmation />);
-    await screen.findByRole("button", { name: /Weekly report/ });
-    if (tab === "Archived") {
-      await userEvent.click(screen.getByRole("tab", { name: tab }));
+      await screen.findByText("No skills to show.");
+      expect(
+        screen.queryByRole("button", { name: /Weekly report/ })
+      ).not.toBeInTheDocument();
+      expect(mutation).toHaveBeenCalledOnce();
     }
-    await userEvent.click(screen.getByRole("button", { name: action }));
-    const confirmation = await screen.findByRole("dialog", {
-      name:
-        action === "Archive" ? "Archiving the skill" : "Restoring the skill",
-    });
-    await userEvent.click(
-      within(confirmation).getByRole("button", { name: confirm })
-    );
-
-    await screen.findByText("No skills to show.");
-    expect(
-      screen.queryByRole("button", { name: /Weekly report/ })
-    ).not.toBeInTheDocument();
-    expect(mutation).toHaveBeenCalledOnce();
-  });
+  );
 
   it("keeps the selection across pages and updates its availability in batch", async () => {
     const { skill, search, fetcher, mutation, mount } = await setup();

@@ -46,7 +46,6 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 vi.mock("@app/lib/api/regions/config", () => ({
-  SUPPORTED_REGIONS: ["europe-west1", "us-central1"],
   config: {
     getCurrentRegion: mockGetCurrentRegion,
   },
@@ -656,30 +655,33 @@ describe("sandbox egress helpers", () => {
     "nft_udp_drop_ok" as const,
     "nft_icmp_drop_ok" as const,
     "nft_ipv6_drop_ok" as const,
-  ])("fails closed when %s is false (broader nftables invariant)", async (missing) => {
-    const sandbox = {
-      providerId: "provider-sandbox-id",
-      sId: "sandbox-id",
-      execRoot: vi.fn().mockResolvedValueOnce(
-        new Ok({
-          exitCode: 0,
-          stdout: healthStdout({ [missing]: false }),
-          stderr: "",
-        })
-      ),
-    };
+  ])(
+    "fails closed when %s is false (broader nftables invariant)",
+    async (missing) => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        execRoot: vi.fn().mockResolvedValueOnce(
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ [missing]: false }),
+            stderr: "",
+          })
+        ),
+      };
 
-    const result = await ensure(sandbox, { wokeFromSleep: false });
+      const result = await ensure(sandbox, { wokeFromSleep: false });
 
-    expect(result.isErr()).toBe(true);
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: "egress.enforcement_health_fail",
-        nftablesOk: false,
-      }),
-      expect.any(String)
-    );
-  });
+      expect(result.isErr()).toBe(true);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "egress.enforcement_health_fail",
+          nftablesOk: false,
+        }),
+        expect.any(String)
+      );
+    }
+  );
 
   it("does a full restart when the port is not listening", async () => {
     const sandbox = {

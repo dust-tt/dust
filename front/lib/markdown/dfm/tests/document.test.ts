@@ -164,13 +164,14 @@ describe("parseDfm", () => {
 });
 
 describe("serializeDfm", () => {
-  it.each(
-    FIXTURES.map(({ name, source }) => [name, source])
-  )("reproduces fixture %s byte for byte", (_, source) => {
-    const document = unwrap(parseDfm(source));
+  it.each(FIXTURES.map(({ name, source }) => [name, source]))(
+    "reproduces fixture %s byte for byte",
+    (_, source) => {
+      const document = unwrap(parseDfm(source));
 
-    expect(unwrap(serializeDfm(document))).toBe(source);
-  });
+      expect(unwrap(serializeDfm(document))).toBe(source);
+    }
+  );
 
   it.each([
     ["an empty document", { frontMatter: null, body: "", comments: [] }, ""],
@@ -189,16 +190,15 @@ describe("serializeDfm", () => {
       { ...SIMPLE_DOCUMENT, body: "" },
       `:::annotations\n::comment{id=c1 status=open}\n\n${MESSAGE}\n\nHi\n:::\n`,
     ],
-  ] satisfies [
-    string,
-    DfmDocument,
-    string,
-  ][])("serializes %s and parses it back", (_, document, expected) => {
-    const source = unwrap(serializeDfm(document));
+  ] satisfies [string, DfmDocument, string][])(
+    "serializes %s and parses it back",
+    (_, document, expected) => {
+      const source = unwrap(serializeDfm(document));
 
-    expect(source).toBe(expected);
-    expect(unwrap(parseDfm(source))).toEqual(document);
-  });
+      expect(source).toBe(expected);
+      expect(unwrap(parseDfm(source))).toEqual(document);
+    }
+  );
 
   it("round-trips an empty message body", () => {
     const document: DfmDocument = {
@@ -302,11 +302,10 @@ describe("serializeDfm", () => {
       { ...SIMPLE_DOCUMENT, frontMatter: "a: b\r" },
       "Front matter cannot contain a carriage return",
     ],
-  ] satisfies [
-    string,
-    DfmDocument,
-    string,
-  ][])("rejects %s", (_, document, message) => {
-    expectError(serializeDfm(document), message);
-  });
+  ] satisfies [string, DfmDocument, string][])(
+    "rejects %s",
+    (_, document, message) => {
+      expectError(serializeDfm(document), message);
+    }
+  );
 });

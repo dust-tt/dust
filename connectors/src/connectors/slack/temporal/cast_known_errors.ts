@@ -6,9 +6,7 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-export class SlackCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class SlackCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

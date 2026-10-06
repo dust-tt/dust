@@ -2,8 +2,8 @@ import { createHash } from "crypto";
 import { createReadStream } from "fs";
 import { createInterface } from "readline";
 
-import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeScript } from "@app/scripts/helpers";
 import { Op } from "sequelize";

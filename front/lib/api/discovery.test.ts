@@ -2,6 +2,7 @@ import {
   listDiscoveryForYouItems,
   listDiscoveryTrendingItems,
 } from "@app/lib/api/discovery";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -47,6 +48,7 @@ describe("discovery ranked sections", () => {
     });
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible trending skill",
+      addCurrentUserAsEditor: true,
     });
 
     mockedFetchTrending.mockResolvedValue(
@@ -101,7 +103,17 @@ describe("discovery ranked sections", () => {
           pictureUrl: visibleAgent.pictureUrl,
         },
       },
-      { type: "skill", target: visibleSkill.toDiscoveryJSON() },
+      {
+        type: "skill",
+        target: {
+          sId: visibleSkill.sId,
+          name: visibleSkill.name,
+          description: visibleSkill.userFacingDescription,
+          icon: visibleSkill.icon,
+          editedBy: visibleSkill.editedBy,
+          editors: [auth.getNonNullableUser().fullName()],
+        },
+      },
     ]);
   });
 
@@ -112,6 +124,7 @@ describe("discovery ranked sections", () => {
     });
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible for-you skill",
+      addCurrentUserAsEditor: true,
     });
 
     mockedFetchForYou.mockResolvedValue(
@@ -129,7 +142,17 @@ describe("discovery ranked sections", () => {
       throw result.error;
     }
     expect(result.value).toEqual([
-      { type: "skill", target: visibleSkill.toDiscoveryJSON() },
+      {
+        type: "skill",
+        target: {
+          sId: visibleSkill.sId,
+          name: visibleSkill.name,
+          description: visibleSkill.userFacingDescription,
+          icon: visibleSkill.icon,
+          editedBy: visibleSkill.editedBy,
+          editors: [auth.getNonNullableUser().fullName()],
+        },
+      },
       {
         type: "agent",
         target: {
@@ -159,6 +182,53 @@ describe("discovery ranked sections", () => {
       throw result.error;
     }
     expect(result.value).toEqual([]);
+  });
+
+  it("omits editors-only skills for viewers outside their editor group", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "admin" });
+    const unpublished = await SkillFactory.create(auth, {
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+    expect(auth.can("read", unpublished)).toBe(true);
+    expect(auth.can("write", unpublished)).toBe(false);
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("skill", unpublished.sId)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([]);
+  });
+
+  it("returns code-defined skill targets without an editing user or editors", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const definition = GLOBAL_SKILLS_ARRAY[0];
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("skill", definition.sId)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "skill",
+        target: {
+          sId: definition.sId,
+          name: definition.name,
+          description: definition.userFacingDescription,
+          icon: definition.icon,
+          editors: [],
+          editedBy: null,
+        },
+      },
+    ]);
   });
 
   it("preserves a pending trending cache fill", async () => {

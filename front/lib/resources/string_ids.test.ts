@@ -14,13 +14,10 @@ describe("getIdsFromSId", () => {
     }
   });
 
-  it.each([
-    "vlt",
-    "vlt_",
-    "vlt_abc",
-    "nope_abcdefghij",
-    "",
-  ])("returns an Err for the malformed sId %j", (sId) => {
-    expect(getIdsFromSId(sId).isErr()).toBe(true);
-  });
+  it.each(["vlt", "vlt_", "vlt_abc", "nope_abcdefghij", ""])(
+    "returns an Err for the malformed sId %j",
+    (sId) => {
+      expect(getIdsFromSId(sId).isErr()).toBe(true);
+    }
+  );
 });

@@ -1,4 +1,5 @@
 use crate::inodes::Inodes;
+use crate::xattrs;
 use dfs_client::BlockingClient;
 use dfs_protocol::{
     MAX_IO,
@@ -41,6 +42,7 @@ const MODE_REGULAR: u32 = 0o100000;
 pub struct IoConfig {
     pub read_ahead_bytes: u32,
     pub max_background: u16,
+    pub xattr_cache_bytes: usize,
 }
 
 struct CachedObject {
@@ -157,6 +159,7 @@ pub struct Filesystem {
     notifications: Arc<Mutex<Option<Arc<Notifications>>>>,
     stopped: Arc<AtomicBool>,
     namespace: RwLock<()>,
+    xattrs: xattrs::Cache,
     io: IoConfig,
     next_handle: AtomicU64,
     uid: u32,
@@ -182,6 +185,7 @@ impl Filesystem {
             notifications,
             stopped,
             namespace: RwLock::new(()),
+            xattrs: xattrs::Cache::new(io.xattr_cache_bytes, TTL),
             io,
             next_handle: AtomicU64::new(1),
             uid: nix::unistd::getuid().as_raw(),
@@ -306,6 +310,7 @@ impl Filesystem {
         }
         let result = operation(expected);
         for (id, state) in ids.iter().zip(guards.iter_mut()) {
+            self.xattrs.invalidate(id);
             match &result {
                 Ok(response) => {
                     if let Some(object) = response
@@ -1127,28 +1132,21 @@ impl fuser::Filesystem for Filesystem {
     fn getxattr(&self, _req: &Request, ino: INodeNo, name: &OsStr, size: u32, reply: ReplyXattr) {
         self.client.record_fuse_call("fuse.getxattr");
         let result = (|| {
-            let object = self.stat_id(&self.object(ino)?)?;
             let name = name_str(name)?;
-            if !name.starts_with("user.") {
-                return Err(Errno::EOPNOTSUPP);
-            }
-            object.xattrs.get(name).cloned().ok_or(NO_XATTR)
+            self.client.record_fuse_call(xattr_metric(name));
+            get_xattr(name, || self.cached_xattrs(ino))
         })();
         xattr_reply(result, size, reply);
     }
     fn listxattr(&self, _req: &Request, ino: INodeNo, size: u32, reply: ReplyXattr) {
         self.client.record_fuse_call("fuse.listxattr");
         xattr_reply(
-            self.object(ino)
-                .and_then(|id| self.stat_id(&id))
-                .map(|object| {
-                    object
-                        .xattrs
-                        .keys()
-                        .filter(|name| name.starts_with("user."))
-                        .flat_map(|name| name.bytes().chain([0]))
-                        .collect()
-                }),
+            self.cached_xattrs(ino).map(|attributes| {
+                attributes
+                    .keys()
+                    .flat_map(|name| name.bytes().chain([0]))
+                    .collect()
+            }),
             size,
             reply,
         );
@@ -1272,6 +1270,20 @@ impl fuser::Filesystem for Filesystem {
     }
 }
 impl Filesystem {
+    /// @cc [owner:spolu,label:concurrency;security] xattr-fill-preserves-file-state
+    /// Fills MUST NOT adopt the server's object version or clear writeback errors. Hold the shared
+    /// object lock across cache lookup/fill so a local mutation cannot leave an obsolete cache entry.
+    fn cached_xattrs(&self, ino: INodeNo) -> Result<Arc<xattrs::Values>> {
+        let state = self.state(ino)?;
+        let state = state.lock();
+        if state.deleted {
+            return Err(Errno::ENOENT);
+        }
+        self.xattrs.get_or_load(&state.object.id, || {
+            self.stat_id(&state.object.id).map(|object| object.xattrs)
+        })
+    }
+
     fn xattr(&self, ino: INodeNo, name: &str, value: Option<Vec<u8>>, flags: i32) -> Result<()> {
         let id = self.parent(ino)?;
         if !name.starts_with("user.") {
@@ -1301,6 +1313,29 @@ impl Filesystem {
         Ok(())
     }
 }
+/// @cc [owner:spolu,label:performance] filter-xattrs-before-fetch
+/// Unsupported namespaces MUST return EOPNOTSUPP without fetching metadata or filling the cache.
+fn get_xattr(
+    name: &str,
+    attributes: impl FnOnce() -> Result<Arc<xattrs::Values>>,
+) -> Result<Vec<u8>> {
+    if !name.starts_with("user.") {
+        return Err(Errno::EOPNOTSUPP);
+    }
+    attributes()?.get(name).cloned().ok_or(NO_XATTR)
+}
+
+// Fixed names distinguish common kernel probes without logging user-provided attribute names.
+fn xattr_metric(name: &str) -> &'static str {
+    match name {
+        "security.capability" => "xattr.security_capability",
+        "system.posix_acl_access" => "xattr.posix_acl_access",
+        "system.posix_acl_default" => "xattr.posix_acl_default",
+        _ if name.starts_with("user.") => "xattr.user",
+        _ => "xattr.other",
+    }
+}
+
 // Same bounded basename rendering as the server's /shared projection.
 fn shared_name(name: &str, id: &str) -> String {
     let mut end = name.len().min(221);
@@ -1404,6 +1439,31 @@ mod tests {
             directory,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn unsupported_xattrs_skip_fetch_and_supported_errors_are_preserved() {
+        for name in [
+            "security.capability",
+            "system.posix_acl_access",
+            "trusted.private",
+        ] {
+            assert_eq!(get_xattr(name, || Err(Errno::EIO)), Err(Errno::EOPNOTSUPP));
+        }
+        assert_eq!(get_xattr("user.value", || Err(Errno::EIO)), Err(Errno::EIO));
+        assert_eq!(
+            get_xattr("user.absent", || Ok(Arc::new(xattrs::Values::new()))),
+            Err(NO_XATTR)
+        );
+        assert_eq!(
+            get_xattr("user.empty", || {
+                Ok(Arc::new(xattrs::Values::from([(
+                    "user.empty".into(),
+                    vec![],
+                )])))
+            }),
+            Ok(vec![])
+        );
     }
 
     #[test]

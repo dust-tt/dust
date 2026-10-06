@@ -21,7 +21,7 @@ import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/
 import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { DataSourceContentNode } from "@app/types/api/search";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import { cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
@@ -234,7 +234,6 @@ export function DataSourceSearchResults({
     return m;
   }, [searchResults]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const listItems: DataSourceListItem[] = useMemo(() => {
     return searchResults.map((node) => {
       const id = `${node.dataSourceView.sId}:${node.internalId}`;

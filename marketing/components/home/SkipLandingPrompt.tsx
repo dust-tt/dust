@@ -1,3 +1,4 @@
+import { ArrowRight, LegacyButton as Button, XClose } from "@dust-tt/sparkle";
 import { useOpenDustTarget } from "@marketing/hooks/useOpenDustTarget";
 import {
   DUST_SKIP_LANDING,
@@ -7,7 +8,6 @@ import {
   SKIP_LANDING_COOKIE_OPTIONS,
 } from "@marketing/lib/cookies";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { ArrowRight, LegacyButton as Button, XClose } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 

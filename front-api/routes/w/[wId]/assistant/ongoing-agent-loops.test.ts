@@ -8,9 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 describe("GET /api/w/[wId]/assistant/ongoing-agent-loops", () => {
   beforeEach(async () => {
     redisMock.reset();
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],

@@ -92,12 +92,10 @@ type CachedUserData = {
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
 export const ANONYMIZED_USER_EMAIL_DOMAIN = "anonymized.invalid";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserResource extends BaseResource<UserModel> {
   static model: ModelStatic<UserModel> = UserModel;
 
@@ -804,10 +802,10 @@ export class UserResource extends BaseResource<UserModel> {
    * `SUPPORTED_LOCALES`, and `workspace.locale` when there is no stored value or it is not a
    * supported locale.
    */
-  async getLocale(workspace: LightWorkspaceType): Promise<SupportedLocale> {
+  async getLocale(fallbackLocale: SupportedLocale): Promise<SupportedLocale> {
     const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
     const storedLocale = metadata?.value;
-    return isSupportedLocale(storedLocale) ? storedLocale : workspace.locale;
+    return isSupportedLocale(storedLocale) ? storedLocale : fallbackLocale;
   }
 
   /**
@@ -846,7 +844,7 @@ export class UserResource extends BaseResource<UserModel> {
     const encodedValue = value.replaceAll(",", USER_METADATA_COMMA_REPLACEMENT);
 
     await withTransaction(async (transaction) => {
-      // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+      // oxlint-disable-next-line dust/noRawSql -- advisory lock requires raw SQL
       await frontSequelize.query(
         "SELECT pg_advisory_xact_lock(hashtext(:lockKey))",
         {

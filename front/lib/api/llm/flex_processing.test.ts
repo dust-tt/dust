@@ -7,37 +7,34 @@ const CONFIG: InputConfig = { reasoning: { effort: "medium" } };
 const FLAGS = ["openai_flex_processing" as const];
 
 describe("withFlexProcessing", () => {
-  it.each<UserMessageOrigin>([
-    "triggered",
-    "triggered_programmatic",
-    "wakeup",
-  ])("requests flex processing for %s runs in flagged workspaces", (origin) => {
-    expect(
-      withFlexProcessing(CONFIG, {
-        featureFlags: FLAGS,
-        isRetry: false,
-        userMessageOrigin: origin,
-      })
-    ).toEqual({
-      ...CONFIG,
-      serviceTier: "flex",
-    });
-  });
+  it.each<UserMessageOrigin>(["triggered", "triggered_programmatic", "wakeup"])(
+    "requests flex processing for %s runs in flagged workspaces",
+    (origin) => {
+      expect(
+        withFlexProcessing(CONFIG, {
+          featureFlags: FLAGS,
+          isRetry: false,
+          userMessageOrigin: origin,
+        })
+      ).toEqual({
+        ...CONFIG,
+        serviceTier: "flex",
+      });
+    }
+  );
 
-  it.each<UserMessageOrigin | undefined>([
-    "web",
-    "slack",
-    "api",
-    undefined,
-  ])("keeps the provider default for %s runs", (origin) => {
-    expect(
-      withFlexProcessing(CONFIG, {
-        featureFlags: FLAGS,
-        isRetry: false,
-        userMessageOrigin: origin,
-      })
-    ).toEqual(CONFIG);
-  });
+  it.each<UserMessageOrigin | undefined>(["web", "slack", "api", undefined])(
+    "keeps the provider default for %s runs",
+    (origin) => {
+      expect(
+        withFlexProcessing(CONFIG, {
+          featureFlags: FLAGS,
+          isRetry: false,
+          userMessageOrigin: origin,
+        })
+      ).toEqual(CONFIG);
+    }
+  );
 
   it("keeps the provider default when the workspace is not flagged in", () => {
     expect(

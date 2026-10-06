@@ -1,21 +1,21 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useAgentBuilderFormHydration } from "@app/components/agent_builder/hooks/useAgentBuilderFormHydration";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
 } from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
-import { SidekickPanelProvider } from "@app/components/agent_builder/SidekickPanelContext";
 import {
   SidekickSuggestionsProvider,
   useSidekickSuggestions,
 } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/useMCPServer";
+import { SidekickPanelProvider } from "@app/components/agent_builder/SidekickPanelContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
@@ -217,7 +217,6 @@ function AgentBuilderForm({
     },
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the loading flags re-run the reset when a revalidation settles, as they did before the hydration moved out.
   useEffect(() => {
     const currentValues = form.getValues();
 

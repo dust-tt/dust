@@ -42,9 +42,7 @@ const HIDDEN_BY_DEFAULT_SOURCES: SkillSuggestionSource[] = [
   "conversational",
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillSuggestionResource
-  extends ReadonlyAttributesType<SkillSuggestionModel> {}
+export interface SkillSuggestionResource extends ReadonlyAttributesType<SkillSuggestionModel> {}
 
 /**
  * Resource for managing skill suggestions.
@@ -52,7 +50,6 @@ export interface SkillSuggestionResource
  * IMPORTANT: Creating, reading, updating and deleting a suggestion requires what its kind needs on
  * the associated skill, see `isAuthorizedForSkillSuggestion`.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> {
   static model: ModelStatic<SkillSuggestionModel> = SkillSuggestionModel;
 

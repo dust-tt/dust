@@ -1,6 +1,6 @@
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { H1, P } from "@marketing/components/home/ContentComponents";
 import { classNames } from "@marketing/lib/utils";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
 
 export function PlatformIntroSection() {
   return (

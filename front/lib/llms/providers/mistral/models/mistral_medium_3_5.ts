@@ -2,9 +2,7 @@ import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
 import { MISTRAL_MEDIUM_3_5_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 
 export function WithDustMistralMedium35Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustMistralMedium35 extends Base {
     static readonly displayName = "Mistral Medium 3.5";

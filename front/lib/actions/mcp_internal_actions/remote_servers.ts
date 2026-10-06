@@ -4012,6 +4012,230 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: 10041,
+    name: "Airtable",
+    description:
+      "Airtable tools for querying and managing bases, records, tables, interfaces, forms and automations.",
+    url: "https://mcp.airtable.com/mcp",
+    icon: "AirtableLogo",
+    documentationUrl:
+      "https://airtable.com/developers/agents/mcp/getting-started",
+    connectionInstructions:
+      "Airtable uses OAuth with dynamic client registration. You will be prompted to sign in with your Airtable account and choose the bases, apps and workspaces to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      create_automation: "low",
+      delete_automation: "high",
+      fetch_automation_input_data: "never_ask",
+      get_automation: "never_ask",
+      get_create_automation_instructions: "never_ask",
+      list_automations: "never_ask",
+      test_automation_webhook_trigger: "high",
+      update_automation: "low",
+
+      create_base: "high",
+      list_bases: "never_ask",
+      search_bases: "never_ask",
+
+      create_field: "high",
+      update_field: "high",
+
+      get_form_schema: "never_ask",
+      submit_form: "high",
+
+      create_interface: "high",
+      create_page: "high",
+      delete_interface: "high",
+      delete_page: "high",
+      list_records_for_page: "never_ask",
+      get_record_for_page: "never_ask",
+      describe_page_element: "never_ask",
+      describe_page_type: "never_ask",
+      list_pages_for_base: "never_ask",
+
+      create_records_for_table: "low",
+      delete_records_for_table: "high",
+      display_records_for_table: "never_ask",
+      list_records_for_table: "never_ask",
+      revert_action: "high",
+      search_candidate_linked_records: "never_ask",
+      search_records: "never_ask",
+      update_records_for_table: "low",
+
+      create_table: "high",
+      delete_table: "high",
+      get_table_schema: "never_ask",
+      list_views_for_table: "never_ask",
+      list_tables_for_base: "never_ask",
+      update_table: "high",
+
+      list_workspaces: "never_ask",
+      list_external_accounts: "never_ask",
+    },
+    toolDisplayLabels: {
+      create_automation: {
+        running: "Creating an automation on Airtable",
+        done: "Created an automation on Airtable",
+      },
+      delete_automation: {
+        running: "Deleting an automation on Airtable",
+        done: "Deleted an automation on Airtable",
+      },
+      fetch_automation_input_data: {
+        running: "Fetching automation options from Airtable",
+        done: "Fetched automation options from Airtable",
+      },
+      get_automation: {
+        running: "Getting automation details from Airtable",
+        done: "Got automation details from Airtable",
+      },
+      get_create_automation_instructions: {
+        running: "Getting automation instructions from Airtable",
+        done: "Got automation instructions from Airtable",
+      },
+      list_automations: {
+        running: "Listing automations on Airtable",
+        done: "Listed automations on Airtable",
+      },
+      test_automation_webhook_trigger: {
+        running: "Testing an automation webhook on Airtable",
+        done: "Tested an automation webhook on Airtable",
+      },
+      update_automation: {
+        running: "Updating an automation on Airtable",
+        done: "Updated an automation on Airtable",
+      },
+      create_base: {
+        running: "Creating a base on Airtable",
+        done: "Created a base on Airtable",
+      },
+      list_bases: {
+        running: "Listing bases on Airtable",
+        done: "Listed bases on Airtable",
+      },
+      search_bases: {
+        running: "Searching bases on Airtable",
+        done: "Searched bases on Airtable",
+      },
+      create_field: {
+        running: "Creating a field on Airtable",
+        done: "Created a field on Airtable",
+      },
+      update_field: {
+        running: "Updating a field on Airtable",
+        done: "Updated a field on Airtable",
+      },
+      get_form_schema: {
+        running: "Getting a form schema from Airtable",
+        done: "Got a form schema from Airtable",
+      },
+      submit_form: {
+        running: "Submitting a form on Airtable",
+        done: "Submitted a form on Airtable",
+      },
+      create_interface: {
+        running: "Creating an interface on Airtable",
+        done: "Created an interface on Airtable",
+      },
+      create_page: {
+        running: "Creating an interface page on Airtable",
+        done: "Created an interface page on Airtable",
+      },
+      delete_interface: {
+        running: "Deleting an interface on Airtable",
+        done: "Deleted an interface on Airtable",
+      },
+      delete_page: {
+        running: "Deleting an interface page on Airtable",
+        done: "Deleted an interface page on Airtable",
+      },
+      list_records_for_page: {
+        running: "Listing interface records on Airtable",
+        done: "Listed interface records on Airtable",
+      },
+      get_record_for_page: {
+        running: "Getting an interface record from Airtable",
+        done: "Got an interface record from Airtable",
+      },
+      describe_page_element: {
+        running: "Describing a page element on Airtable",
+        done: "Described a page element on Airtable",
+      },
+      describe_page_type: {
+        running: "Describing a page type on Airtable",
+        done: "Described a page type on Airtable",
+      },
+      list_pages_for_base: {
+        running: "Listing pages on Airtable",
+        done: "Listed pages on Airtable",
+      },
+      create_records_for_table: {
+        running: "Creating records on Airtable",
+        done: "Created records on Airtable",
+      },
+      delete_records_for_table: {
+        running: "Deleting records on Airtable",
+        done: "Deleted records on Airtable",
+      },
+      display_records_for_table: {
+        running: "Displaying records from Airtable",
+        done: "Displayed records from Airtable",
+      },
+      list_records_for_table: {
+        running: "Listing records from Airtable",
+        done: "Listed records from Airtable",
+      },
+      revert_action: {
+        running: "Reverting an Airtable action",
+        done: "Reverted an Airtable action",
+      },
+      search_candidate_linked_records: {
+        running: "Searching linked records on Airtable",
+        done: "Searched linked records on Airtable",
+      },
+      search_records: {
+        running: "Searching records on Airtable",
+        done: "Searched records on Airtable",
+      },
+      update_records_for_table: {
+        running: "Updating records on Airtable",
+        done: "Updated records on Airtable",
+      },
+      create_table: {
+        running: "Creating a table on Airtable",
+        done: "Created a table on Airtable",
+      },
+      delete_table: {
+        running: "Deleting a table on Airtable",
+        done: "Deleted a table on Airtable",
+      },
+      get_table_schema: {
+        running: "Getting a table schema from Airtable",
+        done: "Got a table schema from Airtable",
+      },
+      list_views_for_table: {
+        running: "Listing table views on Airtable",
+        done: "Listed table views on Airtable",
+      },
+      list_tables_for_base: {
+        running: "Listing tables on Airtable",
+        done: "Listed tables on Airtable",
+      },
+      update_table: {
+        running: "Updating a table on Airtable",
+        done: "Updated a table on Airtable",
+      },
+      list_workspaces: {
+        running: "Listing workspaces on Airtable",
+        done: "Listed workspaces on Airtable",
+      },
+      list_external_accounts: {
+        running: "Listing connected accounts on Airtable",
+        done: "Listed connected accounts on Airtable",
+      },
+    },
+  },
+  {
     id: 10039,
     name: "Qonto",
     description: "Qonto tools for reading and managing business banking data.",
@@ -4560,7 +4784,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
-
   {
     id: 10041,
     name: "Paddle",
@@ -4589,6 +4812,195 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       report_missing_tool: {
         running: "Reporting a missing Paddle capability",
         done: "Reported a missing Paddle capability",
+  {
+    id: 10042,
+    name: "Clay",
+    description:
+      "Clay tools for searching companies and contacts, enriching them with data points, and running Clay subroutines.",
+    url: "https://api.clay.com/v3/mcp",
+    icon: "ClayLogo",
+    documentationUrl: "https://university.clay.com/fr/docs/connect-to-clay-mcp",
+    connectionInstructions:
+      "Clay uses OAuth with dynamic client registration. Connect your Clay workspace to use its tools. Tools consume your workspace credits at the same rate as in Clay.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Read-only
+      get_credits_available: "never_ask",
+      get_current_workspace: "never_ask",
+      get_task: "never_ask",
+      get_task_context: "never_ask",
+      list_subroutines: "never_ask",
+      get_subroutine_input_options: "never_ask",
+      query_objects: "never_ask",
+      ask_question_about_accounts: "never_ask",
+      search_companies: "never_ask",
+      search_contacts: "never_ask",
+      load_more_search_results: "never_ask",
+      track_event: "never_ask",
+      // Enrich contacts by name
+      search_contacts_by_name: "low",
+      // Consume credits / run workflows
+      add_company_data_points: "high",
+      add_contact_data_points: "high",
+      run_subroutine: "high",
+      run_subroutine_direct: "high",
+      run_subroutine_no_mapping: "high",
+    },
+    toolDisplayLabels: {
+      add_company_data_points: {
+        running: "Enriching companies on Clay",
+        done: "Enriched companies on Clay",
+      },
+      add_contact_data_points: {
+        running: "Enriching contacts on Clay",
+        done: "Enriched contacts on Clay",
+      },
+      ask_question_about_accounts: {
+        running: "Asking a question about accounts on Clay",
+        done: "Asked a question about accounts on Clay",
+      },
+      get_credits_available: {
+        running: "Checking available credits on Clay",
+        done: "Checked available credits on Clay",
+      },
+      get_current_workspace: {
+        running: "Loading the current workspace from Clay",
+        done: "Loaded the current workspace from Clay",
+      },
+      get_subroutine_input_options: {
+        running: "Loading subroutine input options from Clay",
+        done: "Loaded subroutine input options from Clay",
+      },
+      get_task: {
+        running: "Fetching a task from Clay",
+        done: "Fetched a task from Clay",
+      },
+      get_task_context: {
+        running: "Fetching task details from Clay",
+        done: "Fetched task details from Clay",
+      },
+      list_subroutines: {
+        running: "Listing subroutines on Clay",
+        done: "Listed subroutines on Clay",
+      },
+      load_more_search_results: {
+        running: "Loading more search results from Clay",
+        done: "Loaded more search results from Clay",
+      },
+      query_objects: {
+        running: "Searching accounts, contacts and deals on Clay",
+        done: "Searched accounts, contacts and deals on Clay",
+      },
+      run_subroutine: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      run_subroutine_direct: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      run_subroutine_no_mapping: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      search_companies: {
+        running: "Searching companies on Clay",
+        done: "Searched companies on Clay",
+      },
+      search_contacts: {
+        running: "Searching contacts on Clay",
+        done: "Searched contacts on Clay",
+      },
+      search_contacts_by_name: {
+        running: "Searching contacts by name on Clay",
+        done: "Searched contacts by name on Clay",
+      },
+      track_event: {
+        running: "Tracking an event on Clay",
+        done: "Tracked an event on Clay",
+      },
+    },
+  },
+  {
+    id: 10043,
+    name: "FullEnrich",
+    description:
+      "FullEnrich tools for B2B contact and company search, contact enrichment (emails, phones) and CSV export.",
+    url: "https://mcp.fullenrich.com/mcp",
+    icon: "FullEnrichLogo",
+    documentationUrl: "https://help.fullenrich.com",
+    connectionInstructions:
+      "FullEnrich uses OAuth with dynamic client registration. Sign in with your FullEnrich account to connect. Enrichment and exports consume FullEnrich credits.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Free / read-only
+      get_credits: "never_ask",
+      list_industries: "never_ask",
+      list_seniorities: "never_ask",
+      list_functions_subfunctions: "never_ask",
+      search_people: "never_ask",
+      search_companies: "never_ask",
+      search_contact_by_email: "never_ask",
+      get_enrichment_results: "never_ask",
+      // Consume credits
+      enrich_search_contact: "high",
+      enrich_bulk: "high",
+      export_contacts: "high",
+      export_companies: "high",
+      export_enrichment_results: "low",
+    },
+    toolDisplayLabels: {
+      get_credits: {
+        running: "Checking credits on FullEnrich",
+        done: "Checked credits on FullEnrich",
+      },
+      list_industries: {
+        running: "Listing industries on FullEnrich",
+        done: "Listed industries on FullEnrich",
+      },
+      list_seniorities: {
+        running: "Listing seniorities on FullEnrich",
+        done: "Listed seniorities on FullEnrich",
+      },
+      list_functions_subfunctions: {
+        running: "Listing functions on FullEnrich",
+        done: "Listed functions on FullEnrich",
+      },
+      search_people: {
+        running: "Searching people on FullEnrich",
+        done: "Searched people on FullEnrich",
+      },
+      search_companies: {
+        running: "Searching companies on FullEnrich",
+        done: "Searched companies on FullEnrich",
+      },
+      search_contact_by_email: {
+        running: "Looking up a contact by email on FullEnrich",
+        done: "Looked up a contact by email on FullEnrich",
+      },
+      enrich_search_contact: {
+        running: "Enriching contacts on FullEnrich",
+        done: "Enriched contacts on FullEnrich",
+      },
+      enrich_bulk: {
+        running: "Enriching contacts in bulk on FullEnrich",
+        done: "Enriched contacts in bulk on FullEnrich",
+      },
+      get_enrichment_results: {
+        running: "Fetching enrichment results from FullEnrich",
+        done: "Fetched enrichment results from FullEnrich",
+      },
+      export_contacts: {
+        running: "Exporting contacts from FullEnrich",
+        done: "Exported contacts from FullEnrich",
+      },
+      export_companies: {
+        running: "Exporting companies from FullEnrich",
+        done: "Exported companies from FullEnrich",
+      },
+      export_enrichment_results: {
+        running: "Exporting enrichment results from FullEnrich",
+        done: "Exported enrichment results from FullEnrich",
       },
     },
   },

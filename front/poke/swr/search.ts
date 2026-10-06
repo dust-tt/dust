@@ -125,9 +125,8 @@ export function usePokeWorkspacesAllCells({
   offset?: number;
   cells: CellInfo[] | null;
 }) {
-  const [workspaces, setWorkspaces] = useState<PokeWorkspaceWithCell[]>(
-    emptyArray()
-  );
+  const [workspaces, setWorkspaces] =
+    useState<PokeWorkspaceWithCell[]>(emptyArray());
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [hasMore, setHasMore] = useState(false);

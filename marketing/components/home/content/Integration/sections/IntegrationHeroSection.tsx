@@ -1,17 +1,17 @@
 import {
-  FullWidthSection,
-  H1,
-  P,
-} from "@marketing/components/home/ContentComponents";
-import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
-import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import {
   Button,
   getPlatformLogo,
   LinkExternal01,
   PuzzlePiece01,
   Rocket02,
 } from "@dust-tt/sparkle";
+import {
+  FullWidthSection,
+  H1,
+  P,
+} from "@marketing/components/home/ContentComponents";
+import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
+import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 
 import type { IntegrationBase } from "../types";
 

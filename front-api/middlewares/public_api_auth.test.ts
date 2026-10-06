@@ -1,5 +1,5 @@
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";

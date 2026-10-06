@@ -53,7 +53,8 @@ export const createAgentSuite: TestSuite = {
   for new hires, redirecting compensation or contract questions to the manager, and a friendly,
   encouraging tone.
 - The instructions must not reference tools, skills or knowledge sources the agent did not
-  verify exist in the workspace (the workspace has no relevant ones).
+  verify exist in the workspace. The workspace has no relevant custom skills or knowledge;
+  built-in skills the agent looked up, such as Discover Knowledge, are fine.
 - Score 0-1 if the agent suggested a skill change instead of an agent creation, or asked a
   clarifying question instead of creating the agent after the user explicitly said to go ahead.
 - The closing message must surface the recorded suggestion directive to the user.

@@ -259,11 +259,8 @@ function getSandboxFunctionUserIdentity(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SandboxFunctionInvocationResource
-  extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
+export interface SandboxFunctionInvocationResource extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunctionInvocationModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel> =
     SandboxFunctionInvocationModel;
@@ -1631,7 +1628,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     scannedCount: number;
   }> {
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       attributes: ["id", "workspaceId", "gcsPath", "createdAt"],
       where: afterModelId ? { id: { [Op.gt]: afterModelId } } : {},

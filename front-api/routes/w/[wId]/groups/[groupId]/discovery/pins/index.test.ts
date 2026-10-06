@@ -1,6 +1,6 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

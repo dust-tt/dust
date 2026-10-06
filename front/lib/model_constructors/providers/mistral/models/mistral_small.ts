@@ -33,9 +33,7 @@ const configSchema = inputConfigSchema.extend({
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithMistralSmallConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class MistralSmall extends Base {
     static readonly model = MISTRAL_SMALL;

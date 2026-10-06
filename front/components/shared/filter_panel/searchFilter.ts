@@ -171,44 +171,38 @@ export function getSearchFilterOptions(
     }
     case "editor":
       return (facets?.editors ?? [])
-        .map(
-          (editor): SearchFilterOption => ({
-            category: "editor",
-            id: editor.sId,
-            name:
-              editor.sId === currentUserId
-                ? `${editor.fullName} (You)`
-                : editor.fullName,
-            image: editor.image,
-            disabled: false,
-          })
-        )
+        .map((editor): SearchFilterOption => ({
+          category: "editor",
+          id: editor.sId,
+          name:
+            editor.sId === currentUserId
+              ? `${editor.fullName} (You)`
+              : editor.fullName,
+          image: editor.image,
+          disabled: false,
+        }))
         .toSorted(
           (a, b) =>
             Number(b.id === currentUserId) - Number(a.id === currentUserId)
         );
     case "model":
       return (facets?.models ?? [])
-        .map(
-          ({ modelId }): SearchFilterOption => ({
-            category: "model",
-            id: modelId,
-            name: getModelFilterDisplayName(modelId),
-            disabled: false,
-          })
-        )
+        .map(({ modelId }): SearchFilterOption => ({
+          category: "model",
+          id: modelId,
+          name: getModelFilterDisplayName(modelId),
+          disabled: false,
+        }))
         .toSorted((a, b) => compareStrings(a.name, b.name));
     case "skill":
       return (facets?.skills ?? [])
-        .map(
-          (skill): SearchFilterOption => ({
-            category: "skill",
-            id: skill.sId,
-            name: skill.name,
-            icon: skill.icon,
-            disabled: false,
-          })
-        )
+        .map((skill): SearchFilterOption => ({
+          category: "skill",
+          id: skill.sId,
+          name: skill.name,
+          icon: skill.icon,
+          disabled: false,
+        }))
         .toSorted((a, b) => compareStrings(a.name, b.name));
     case "space":
       return (facets?.spaces ?? []).map((space) => ({

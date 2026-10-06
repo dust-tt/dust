@@ -33,7 +33,7 @@ async function main() {
     dangerouslyRequestAllGroups: true,
   });
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getLightConversation(auth, cId, includeDeleted);
   if (conversationRes.isErr()) {
     throw new Error(conversationRes.error.message);

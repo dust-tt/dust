@@ -41,23 +41,23 @@ describe("BigQueryCastKnownErrorsInterceptor", () => {
     { code: 403, reason: "accessDenied" },
     { code: 500, reason: "policyViolation" },
     { code: 503, reason: "backendError" },
-  ])("preserves $code $reason errors for existing retry handling", async ({
-    code,
-    reason,
-  }) => {
-    const error = Object.assign(new Error("BigQuery request failed"), {
-      name: "ApiError",
-      code,
-      errors: [{ reason }],
-    });
-    const next = vi.fn(async () => {
-      throw error;
-    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+  ])(
+    "preserves $code $reason errors for existing retry handling",
+    async ({ code, reason }) => {
+      const error = Object.assign(new Error("BigQuery request failed"), {
+        name: "ApiError",
+        code,
+        errors: [{ reason }],
+      });
+      const next = vi.fn(async () => {
+        throw error;
+      }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expect(
-      new BigQueryCastKnownErrorsInterceptor().execute(input, next)
-    ).rejects.toBe(error);
-  });
+      await expect(
+        new BigQueryCastKnownErrorsInterceptor().execute(input, next)
+      ).rejects.toBe(error);
+    }
+  );
 
   it("preserves errors without structured policy details", async () => {
     const error = Object.assign(new Error("Request is prohibited"), {

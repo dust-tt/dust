@@ -4,18 +4,25 @@ import {
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
+import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
 import { getEmailSummary } from "@app/lib/notifications/helpers";
-import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
   filterParticipantsByNotifyCondition,
-  getMessagePreviewSlack,
-  getMessagePreviewText,
   shouldSendNotificationForAgentAnswer,
   shouldSkipConversation,
   shouldSkipConversationExternalNotification,
   shouldSkipNewProjectConversation,
   triggerConversationUnreadNotifications,
+} from "@app/lib/notifications/triggers/conversation-unread";
+import {
+  buildConversationUnreadEmailSubject,
+  buildConversationUnreadInAppCopy,
+  buildConversationUnreadSlackMessage,
+  getMessagePreviewSlack,
+  getMessagePreviewText,
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -39,7 +46,8 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { areConversationExternalNotificationsEnabled } from "@app/types/user";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { I18n } from "@lingui/core";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Novu client for notification sending tests
 vi.mock(import("../../../lib/notifications"), async (importOriginal) => {
@@ -57,14 +65,8 @@ vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),
 }));
 
-// Mock renderConversationForModel to avoid tokenization issues in tests
-vi.mock("@app/lib/api/assistant/conversation_rendering", () => ({
-  renderConversationForModel: vi.fn(),
-}));
-
 // Import the mocked functions
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -102,13 +104,14 @@ describe("conversation-unread workflow business logic", () => {
     system_activation: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
-    it.each(
-      Object.entries(userMessageOriginRecord)
-    )('should for origin "%s" return %s', (origin, expected) => {
-      expect(
-        shouldSendNotificationForAgentAnswer(origin as UserMessageOrigin)
-      ).toBe(expected);
-    });
+    it.each(Object.entries(userMessageOriginRecord))(
+      'should for origin "%s" return %s',
+      (origin, expected) => {
+        expect(
+          shouldSendNotificationForAgentAnswer(origin as UserMessageOrigin)
+        ).toBe(expected);
+      }
+    );
   });
 
   describe("getUserNotificationDelay", () => {
@@ -623,9 +626,8 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should return false when action is required from user", async () => {
       // First ensure the participant record exists, then set actionRequired=true
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
 
       const conversation = await ConversationResource.fetchById(
         auth,
@@ -751,9 +753,8 @@ describe("conversation-unread workflow business logic", () => {
       }
 
       // Add user as participant
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       await ConversationParticipantModel.create({
         conversationId: conversationResource.id,
         userId: user.id,
@@ -894,9 +895,8 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should call getNovuClient when there are unread participants", async () => {
       // Make sure participants exist and have unread messages
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -973,9 +973,8 @@ describe("conversation-unread workflow business logic", () => {
       );
 
       // Make sure participants exist and have unread messages
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -1013,9 +1012,8 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should skip notifications for email-origin user messages", async () => {
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const agent = await AgentConfigurationFactory.createTestAgent(auth, {
         name: "Email Agent",
         description: "Test",
@@ -1058,9 +1056,8 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should skip notifications for agent replies to email-origin user messages", async () => {
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const agent = await AgentConfigurationFactory.createTestAgent(auth, {
         name: "Email Agent",
         description: "Test",
@@ -1202,6 +1199,11 @@ describe("conversation-unread workflow business logic", () => {
   });
 });
 
+let i18n: I18n;
+beforeAll(async () => {
+  i18n = await getNotificationI18n("en-US");
+});
+
 describe("getMessagePreviewText", () => {
   const mockConversationDetails: ConversationDetailsType = {
     projectName: "Test Project",
@@ -1228,7 +1230,7 @@ describe("getMessagePreviewText", () => {
       hasAgentRetentionPolicies: false,
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBe(
       "Preview not available due to data retention policy on conversations in this workspace."
@@ -1242,7 +1244,7 @@ describe("getMessagePreviewText", () => {
       hasAgentRetentionPolicies: true,
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBe(
       "Preview not available due to data retention policy on agents in this conversation."
@@ -1255,7 +1257,7 @@ describe("getMessagePreviewText", () => {
       newMessageContent: null,
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBeUndefined();
   });
@@ -1266,7 +1268,7 @@ describe("getMessagePreviewText", () => {
       newMessageContent: "Short message",
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBe("Short message");
   });
@@ -1278,7 +1280,7 @@ describe("getMessagePreviewText", () => {
       newMessageContent: longContent,
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBe("A".repeat(300) + "...");
   });
@@ -1289,7 +1291,7 @@ describe("getMessagePreviewText", () => {
       newMessageContent: "**Bold text** and _italic text_",
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBe("Bold text and italic text");
   });
@@ -1300,7 +1302,7 @@ describe("getMessagePreviewText", () => {
       newMessageContent: "   Content with   extra   spaces   ",
     };
 
-    const result = getMessagePreviewText(details);
+    const result = getMessagePreviewText(i18n, details);
 
     expect(result).toBe("Content with   extra   spaces");
   });
@@ -1331,7 +1333,7 @@ describe("getMessagePreviewSlack", () => {
       newMessageContent: "This content should be ignored",
     });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe(
       "> Preview not available due to data retention policy on conversations in this workspace."
@@ -1344,7 +1346,7 @@ describe("getMessagePreviewSlack", () => {
       newMessageContent: "This content should be ignored",
     });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe(
       "> Preview not available due to data retention policy on agents in this conversation."
@@ -1354,7 +1356,7 @@ describe("getMessagePreviewSlack", () => {
   it("should return undefined when newMessageContent is null", () => {
     const details = createMockDetails({ newMessageContent: null });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBeUndefined();
   });
@@ -1362,7 +1364,7 @@ describe("getMessagePreviewSlack", () => {
   it("should return undefined when newMessageContent is empty string", () => {
     const details = createMockDetails({ newMessageContent: "" });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBeUndefined();
   });
@@ -1370,7 +1372,7 @@ describe("getMessagePreviewSlack", () => {
   it("should format simple text content with blockquote", () => {
     const details = createMockDetails({ newMessageContent: "Hello world!" });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe("> Hello world!");
   });
@@ -1380,7 +1382,7 @@ describe("getMessagePreviewSlack", () => {
       newMessageContent: "**Bold** and *italic* text with [link](url)",
     });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe("> Bold and italic text with link");
   });
@@ -1390,7 +1392,7 @@ describe("getMessagePreviewSlack", () => {
       newMessageContent: "Line 1\nLine 2\nLine 3",
     });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe("> Line 1\n> Line 2\n> Line 3");
   });
@@ -1399,7 +1401,7 @@ describe("getMessagePreviewSlack", () => {
     const longContent = "a".repeat(350);
     const details = createMockDetails({ newMessageContent: longContent });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe(`> ${"a".repeat(300)}...`);
   });
@@ -1408,7 +1410,7 @@ describe("getMessagePreviewSlack", () => {
     const exactContent = "a".repeat(300);
     const details = createMockDetails({ newMessageContent: exactContent });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe(`> ${exactContent}`);
   });
@@ -1418,7 +1420,7 @@ describe("getMessagePreviewSlack", () => {
       newMessageContent: "   \n  Hello world!  \n   ",
     });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBe("> Hello world!");
   });
@@ -1427,7 +1429,7 @@ describe("getMessagePreviewSlack", () => {
     const complexContent = `**Important message**\n\nThis is a long paragraph with *formatting* and [links](url).\n${"word ".repeat(40)}More content here.`;
     const details = createMockDetails({ newMessageContent: complexContent });
 
-    const result = getMessagePreviewSlack(details);
+    const result = getMessagePreviewSlack(i18n, details);
 
     expect(result).toBeDefined();
     expect(result?.startsWith("> Important message")).toBe(true);
@@ -1502,25 +1504,6 @@ describe("getEmailSummary", () => {
       });
     }
 
-    // Set up consistent mock for renderConversationForModel
-    vi.mocked(renderConversationForModel).mockResolvedValue(
-      new Ok({
-        modelConversation: {
-          messages: [
-            {
-              role: "user",
-              name: "Test User",
-              content: [
-                { type: "text", text: "This is an unread message for testing" },
-              ],
-            },
-          ],
-        },
-        tokensUsed: 100,
-        prunedContext: false,
-      })
-    );
-
     vi.clearAllMocks();
   });
 
@@ -1537,6 +1520,7 @@ describe("getEmailSummary", () => {
     };
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1563,6 +1547,7 @@ describe("getEmailSummary", () => {
     };
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1602,6 +1587,7 @@ describe("getEmailSummary", () => {
     );
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1620,6 +1606,7 @@ describe("getEmailSummary", () => {
     expect(revokeResult.isOk()).toBe(true);
 
     const result = await getEmailSummary({
+      i18n,
       details: createMockDetails(),
       subscriberId: user.sId,
       payload: {
@@ -1648,6 +1635,7 @@ describe("getEmailSummary", () => {
     );
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1685,6 +1673,7 @@ describe("getEmailSummary", () => {
     );
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1742,5 +1731,84 @@ describe("shouldSkipConversationExternalNotification", () => {
     expect(
       await shouldSkipConversationExternalNotification(workspace.sId)
     ).toBe(true);
+  });
+});
+
+describe("conversation unread copy localization", () => {
+  const details: ConversationDetailsType = {
+    projectName: "Roadmap",
+    author: "Ada",
+    subject: "Q3 plan",
+    hasConversationRetentionPolicy: false,
+    hasAgentRetentionPolicies: false,
+    newMessageContent: "Hello",
+    authorIsAgent: false,
+    hasUnreadMentions: false,
+    hasUnreadMessages: true,
+    isFromTrigger: false,
+    workspaceName: "Acme",
+    isNewProjectConversation: false,
+    mentionedUserIds: [],
+    isFromEmailAgentConversation: false,
+    isFromSlackAgentConversation: false,
+  };
+
+  it("renders the in-app copy in English and French", async () => {
+    const en = buildConversationUnreadInAppCopy(i18n, details);
+    const fr = buildConversationUnreadInAppCopy(
+      await getNotificationI18n("fr-FR"),
+      details
+    );
+
+    expect(en.subject).toBe("New message from Ada");
+    expect(en.body).toBe(
+      'You have a new message from Ada in the conversation "Q3 plan".'
+    );
+    expect(fr.subject).toBe("Nouveau message de Ada");
+    expect(fr.actionLabel).toBe("Voir");
+  });
+
+  it("pluralizes the email subject", async () => {
+    const conversations = [
+      { title: "A", projectName: "Roadmap", isNewProjectConversation: true },
+      { title: "B", projectName: "Roadmap", isNewProjectConversation: true },
+    ];
+
+    expect(buildConversationUnreadEmailSubject(i18n, conversations)).toBe(
+      '[Dust] New conversations in "Roadmap"'
+    );
+    expect(
+      buildConversationUnreadEmailSubject(
+        await getNotificationI18n("fr-FR"),
+        conversations.slice(0, 1)
+      )
+    ).toBe("[Dust] Nouvelle conversation dans «\u00a0Roadmap\u00a0»");
+  });
+
+  it("translates only the fixed text of the Slack message", async () => {
+    const message = buildConversationUnreadSlackMessage(
+      await getNotificationI18n("fr-FR"),
+      details,
+      "https://dust.tt/c"
+    );
+
+    expect(message).toBe(
+      "Nouveau message de Ada dans «\u00a0Q3 plan\u00a0»\n> Hello\n<https://dust.tt/c|Voir la conversation>"
+    );
+  });
+
+  it("renders the email in French", async () => {
+    const html = await renderEmail({
+      i18n: await getNotificationI18n("fr-FR"),
+      name: "Grace",
+      workspace: { id: "w_1", name: "Acme" },
+      conversations: [
+        { id: "c_1", title: "Q3 plan", hasUnreadMentions: true, summary: null },
+      ],
+    });
+
+    expect(html).toContain(
+      "Vous avez été mentionné dans la conversation suivante"
+    );
   });
 });

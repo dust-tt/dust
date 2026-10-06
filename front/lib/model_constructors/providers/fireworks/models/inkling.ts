@@ -33,9 +33,7 @@ const configSchema = fireworksConfigSchema.extend({
 });
 
 export function WithThinkingMachinesInklingConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class ThinkingMachinesInkling extends Base {
     static readonly model = INKLING;

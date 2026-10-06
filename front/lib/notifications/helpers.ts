@@ -42,6 +42,8 @@ import {
   decodeHtmlEntities,
   stripMarkdown,
 } from "@app/types/shared/utils/markdown";
+import type { I18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 // When isNewProjectConversation is true, messageId is not required (the first
@@ -399,7 +401,7 @@ const generateUnreadMessagesSummary = async ({
     );
   }
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: message content is needed to compute unread messages.
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- message content is needed to compute unread messages.
   const conversationRes = await getLightConversation(
     auth,
     payload.conversationId
@@ -517,20 +519,26 @@ const generateUnreadMessagesSummary = async ({
 };
 
 export const getEmailSummary = async ({
+  i18n,
   details,
   subscriberId,
   payload,
 }: {
+  i18n: I18n;
   details: ConversationDetailsType;
   subscriberId: string;
   payload: ConversationDetailsPayload;
 }): Promise<string | null> => {
   if (details.hasConversationRetentionPolicy) {
-    return "Summary not generated due to data retention policy on conversations in this workspace.";
+    return i18n._(
+      msg`Summary not generated due to data retention policy on conversations in this workspace.`
+    );
   }
 
   if (details.hasAgentRetentionPolicies) {
-    return "Summary not generated due to data retention policy on agents in this conversation.";
+    return i18n._(
+      msg`Summary not generated due to data retention policy on agents in this conversation.`
+    );
   }
 
   // Generate summary of unread messages
