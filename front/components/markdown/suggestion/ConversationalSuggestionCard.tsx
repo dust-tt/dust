@@ -27,6 +27,7 @@ interface ConversationalSuggestionCardProps {
   analysis?: string | null;
   /** Overrides the default icon chip, e.g. to show the agent's picture. */
   visual?: React.ReactElement<ComponentProps<typeof Avatar>>;
+  targetList?: ReactNode;
   /** Extra detail revealed behind the chevron toggle at the bottom of the card. */
   collapsibleContent?: ReactNode;
   onCollapsibleOpen?: () => void;
@@ -46,6 +47,7 @@ export function ConversationalSuggestionCard({
   titleAside,
   analysis,
   visual = DEFAULT_SUGGESTION_VISUAL,
+  targetList,
   collapsibleContent,
   onCollapsibleOpen,
   onAccept,
@@ -81,6 +83,8 @@ export function ConversationalSuggestionCard({
         {analysis && (
           <p className="text-sm text-muted-foreground">{analysis}</p>
         )}
+
+        {targetList}
 
         {(hasActions || onPreview) && (
           <div className="flex items-center gap-2">

@@ -71,10 +71,11 @@ import {
   Icon,
   LinkExternal01,
   LoadingBlock,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import type { ReactElement, ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 
 function toBatchProperties(attributes: Record<string, string>) {
   return { batchId: attributes.sId };
@@ -95,17 +96,19 @@ interface SuggestionTargetSectionProps {
   visual: ReactElement;
   onOpen: () => void;
   isDeletion?: boolean;
+  defaultOpen: boolean;
   children: ReactNode;
 }
 
-// One collapsible block per agent or skill, open by default. A deleted target has no detail to
-// show: a chip flags it instead.
+// One collapsible block per agent or skill. A deleted target has no detail to show: a chip flags
+// it instead.
 function SuggestionTargetSection({
   targetLabel,
   name,
   visual,
   onOpen,
   isDeletion = false,
+  defaultOpen,
   children,
 }: SuggestionTargetSectionProps) {
   const header = (
@@ -134,7 +137,10 @@ function SuggestionTargetSection({
   }
 
   return (
-    <Collapsible defaultOpen className="rounded-xl bg-background p-3">
+    <Collapsible
+      defaultOpen={defaultOpen}
+      className="rounded-xl bg-background p-3"
+    >
       <div className="flex h-6 items-center justify-between gap-2">
         {header}
         <CollapsibleTrigger
@@ -206,28 +212,30 @@ const GROUPED_AGENT_SUGGESTION_LABELS: Record<string, string | undefined> = {
   sub_agent: "Sub-agents",
 };
 
-interface AgentSuggestionsDiffProps {
+interface SuggestionTarget {
+  name: string;
+  visual: ReactElement;
+  isDeletion: boolean;
+  onOpen: () => void;
+}
+
+interface AgentSuggestionTargetInput {
   owner: LightWorkspaceType;
   batchId: string;
   agentId: string;
   suggestions: AgentSuggestionType[];
-  pendingSkillNameById: Map<string, string>;
 }
 
-function AgentSuggestionsDiff({
+function useAgentSuggestionTarget({
   owner,
   batchId,
   agentId,
   suggestions,
-  pendingSkillNameById,
-}: AgentSuggestionsDiffProps) {
+}: AgentSuggestionTargetInput) {
   const { openPanel } = useConversationSidePanelContext();
   const displayable = sortAgentSuggestionsByBuilderOrder(
     suggestions.filter(isAgentActionCardSuggestion)
   );
-  // Each skill, tool and sub-agent is its own suggestion: they are listed together, under a
-  // single heading per kind. Grouping keeps the sorted order of the kinds.
-  const suggestionsByKind = groupBy(displayable, (s) => s.kind);
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -237,42 +245,114 @@ function AgentSuggestionsDiff({
       ),
     });
 
-  if (isAgentConfigurationLoading) {
-    return <LoadingBlock className="h-12 w-full" />;
-  }
-
   // A created agent is a pending placeholder: its name is the suggested one.
   const creation = displayable.find((s) => s.kind === "create");
-  const isDeletion = displayable.some((s) => s.kind === "delete");
-  const name =
-    creation?.kind === "create"
-      ? creation.suggestion.name
-      : (agentConfiguration?.name ?? "Agent");
+  const target: SuggestionTarget = {
+    name:
+      creation?.kind === "create"
+        ? creation.suggestion.name
+        : (agentConfiguration?.name ?? "Agent"),
+    visual:
+      agentConfiguration && !creation ? (
+        <Avatar visual={agentConfiguration.pictureUrl} size="3xs" />
+      ) : (
+        <Avatar icon={getIcon("ActionRobotIcon")} size="3xs" />
+      ),
+    isDeletion: displayable.some((s) => s.kind === "delete"),
+    onOpen: () => {
+      trackSuggestionTargetPreviewOpen({
+        batchId,
+        targetKind: "agent",
+        targetId: agentId,
+      });
+      openPanel({
+        type: AGENT_SIDE_PANEL_TYPE,
+        agentId,
+        previewBatchId: batchId,
+      });
+    },
+  };
+
+  return {
+    displayable,
+    agentConfiguration,
+    isLoading: isAgentConfigurationLoading,
+    target,
+  };
+}
+
+interface SkillSuggestionTargetInput {
+  owner: LightWorkspaceType;
+  batchId: string;
+  skillId: string;
+  suggestions: SkillSuggestionType[];
+}
+
+function useSkillSuggestionTarget({
+  owner,
+  batchId,
+  skillId,
+  suggestions,
+}: SkillSuggestionTargetInput) {
+  const { openPanel } = useConversationSidePanelContext();
+  // A created skill is a pending placeholder: its name is the suggested one.
+  const creation = suggestions.find(isCreateSkillSuggestion);
+  const { skill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    disabled: !!creation,
+  });
+  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
+
+  const target: SuggestionTarget = {
+    name: creation ? creation.suggestion.name : (skill?.name ?? "Skill"),
+    visual: <SkillAvatar size="3xs" />,
+    isDeletion: suggestions.some(isDeleteSkillSuggestion),
+    onOpen: () => {
+      trackSuggestionTargetPreviewOpen({
+        batchId,
+        targetKind: "skill",
+        targetId: skillId,
+      });
+      openPanel({
+        type: SKILL_SIDE_PANEL_TYPE,
+        skillId,
+        previewBatchId: batchId,
+      });
+    },
+  };
+
+  return { skill, isLoading: isSkillLoading, target };
+}
+
+interface AgentSuggestionsDiffProps extends AgentSuggestionTargetInput {
+  pendingSkillNameById: Map<string, string>;
+  defaultOpen: boolean;
+}
+
+function AgentSuggestionsDiff({
+  owner,
+  batchId,
+  agentId,
+  suggestions,
+  pendingSkillNameById,
+  defaultOpen,
+}: AgentSuggestionsDiffProps) {
+  const { displayable, agentConfiguration, isLoading, target } =
+    useAgentSuggestionTarget({ owner, batchId, agentId, suggestions });
+  // Each skill, tool and sub-agent is its own suggestion: they are listed together, under a
+  // single heading per kind. Grouping keeps the sorted order of the kinds.
+  const suggestionsByKind = groupBy(displayable, (s) => s.kind);
+
+  if (isLoading) {
+    return <LoadingBlock className="h-12 w-full" />;
+  }
 
   return (
     <SuggestionTargetSection
       targetLabel="Agent"
-      name={name}
-      visual={
-        agentConfiguration && !creation ? (
-          <Avatar visual={agentConfiguration.pictureUrl} size="3xs" />
-        ) : (
-          <Avatar icon={getIcon("ActionRobotIcon")} size="3xs" />
-        )
-      }
-      onOpen={() => {
-        trackSuggestionTargetPreviewOpen({
-          batchId,
-          targetKind: "agent",
-          targetId: agentId,
-        });
-        openPanel({
-          type: AGENT_SIDE_PANEL_TYPE,
-          agentId,
-          previewBatchId: batchId,
-        });
-      }}
-      isDeletion={isDeletion}
+      {...target}
+      defaultOpen={defaultOpen}
     >
       {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
         const groupLabel = GROUPED_AGENT_SUGGESTION_LABELS[kind];
@@ -301,11 +381,8 @@ function AgentSuggestionsDiff({
   );
 }
 
-interface SkillSuggestionsDiffProps {
-  owner: LightWorkspaceType;
-  batchId: string;
-  skillId: string;
-  suggestions: SkillSuggestionType[];
+interface SkillSuggestionsDiffProps extends SkillSuggestionTargetInput {
+  defaultOpen: boolean;
 }
 
 function SkillSuggestionsDiff({
@@ -313,15 +390,13 @@ function SkillSuggestionsDiff({
   batchId,
   skillId,
   suggestions,
+  defaultOpen,
 }: SkillSuggestionsDiffProps) {
-  const { openPanel } = useConversationSidePanelContext();
-  // A created skill is a pending placeholder: its name is the suggested one.
-  const creation = suggestions.find(isCreateSkillSuggestion);
-  const isDeletion = suggestions.some(isDeleteSkillSuggestion);
-  const { skill, isSkillLoading } = useSkill({
-    workspaceId: owner.sId,
+  const { skill, isLoading, target } = useSkillSuggestionTarget({
+    owner,
+    batchId,
     skillId,
-    disabled: !!creation,
+    suggestions,
   });
 
   const getSkillInstructionsHtml = useCallback(
@@ -332,30 +407,16 @@ function SkillSuggestionsDiff({
     () => skill?.agentFacingDescription ?? "",
     [skill]
   );
-  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
 
-  if (isSkillLoading) {
+  if (isLoading) {
     return <LoadingBlock className="h-12 w-full" />;
   }
 
   return (
     <SuggestionTargetSection
       targetLabel="Skill"
-      name={creation ? creation.suggestion.name : (skill?.name ?? "Skill")}
-      visual={<SkillAvatar size="3xs" />}
-      onOpen={() => {
-        trackSuggestionTargetPreviewOpen({
-          batchId,
-          targetKind: "skill",
-          targetId: skillId,
-        });
-        openPanel({
-          type: SKILL_SIDE_PANEL_TYPE,
-          skillId,
-          previewBatchId: batchId,
-        });
-      }}
-      isDeletion={isDeletion}
+      {...target}
+      defaultOpen={defaultOpen}
     >
       {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
         <PendingSkillSuggestionDetails
@@ -368,6 +429,97 @@ function SkillSuggestionsDiff({
         />
       ))}
     </SuggestionTargetSection>
+  );
+}
+
+function SuggestionTargetPill({
+  name,
+  visual,
+  isDeletion,
+  onOpen,
+}: SuggestionTarget) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex h-6 min-w-0 items-center gap-1 font-medium"
+    >
+      {visual}
+      <span className={cn("truncate", isDeletion && "line-through")}>
+        {name}
+      </span>
+    </button>
+  );
+}
+
+function AgentTargetPill(input: AgentSuggestionTargetInput) {
+  const { isLoading, target } = useAgentSuggestionTarget(input);
+
+  if (isLoading) {
+    return <LoadingBlock className="h-6 w-20" />;
+  }
+
+  return <SuggestionTargetPill {...target} />;
+}
+
+function SkillTargetPill(input: SkillSuggestionTargetInput) {
+  const { isLoading, target } = useSkillSuggestionTarget(input);
+
+  if (isLoading) {
+    return <LoadingBlock className="h-6 w-20" />;
+  }
+
+  return <SuggestionTargetPill {...target} />;
+}
+
+interface SuggestionTargetListProps {
+  pills: ReactElement[];
+}
+
+function SuggestionTargetList({ pills }: SuggestionTargetListProps) {
+  const hiddenPills = pills.slice(2);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-foreground">
+      {pills.slice(0, 2).map((pill, index) => (
+        <Fragment key={pill.key}>
+          {index > 0 && (
+            <svg
+              width="4"
+              height="4"
+              viewBox="0 0 4 4"
+              className="shrink-0 overflow-visible fill-primary-400"
+            >
+              <circle cx="2" cy="2" r="2" />
+            </svg>
+          )}
+          {pill}
+        </Fragment>
+      ))}
+      {hiddenPills.length > 0 && (
+        <>
+          <svg
+            width="4"
+            height="4"
+            viewBox="0 0 4 4"
+            className="shrink-0 overflow-visible fill-primary-400"
+          >
+            <circle cx="2" cy="2" r="2" />
+          </svg>
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={
+              <span className="cursor-default text-muted-foreground [text-box:trim-both_cap_alphabetic]">
+                +{hiddenPills.length}
+              </span>
+            }
+            label={
+              <div className="flex flex-col items-start">{hiddenPills}</div>
+            }
+          />
+        </>
+      )}
+    </div>
   );
 }
 
@@ -418,10 +570,38 @@ export function PendingBatchSuggestionCard({
       title={getBatchSuggestionTitle(batch)}
       titleAside={titleAside}
       analysis={batch.analysis}
+      targetList={
+        <SuggestionTargetList
+          pills={[
+            ...Object.entries(agentSuggestionsByAgentId).map(
+              ([agentId, suggestions]) => (
+                <AgentTargetPill
+                  key={agentId}
+                  owner={owner}
+                  batchId={batch.id}
+                  agentId={agentId}
+                  suggestions={suggestions}
+                />
+              )
+            ),
+            ...Object.entries(skillSuggestionsBySkillId).map(
+              ([skillId, suggestions]) => (
+                <SkillTargetPill
+                  key={skillId}
+                  owner={owner}
+                  batchId={batch.id}
+                  skillId={skillId}
+                  suggestions={suggestions}
+                />
+              )
+            ),
+          ]}
+        />
+      }
       collapsibleContent={
         <div className="flex flex-col gap-2">
           {Object.entries(agentSuggestionsByAgentId).map(
-            ([agentId, suggestions]) => (
+            ([agentId, suggestions], index) => (
               <AgentSuggestionsDiff
                 key={agentId}
                 owner={owner}
@@ -429,17 +609,19 @@ export function PendingBatchSuggestionCard({
                 agentId={agentId}
                 suggestions={suggestions}
                 pendingSkillNameById={pendingSkillNameById}
+                defaultOpen={index === 0}
               />
             )
           )}
           {Object.entries(skillSuggestionsBySkillId).map(
-            ([skillId, suggestions]) => (
+            ([skillId, suggestions], index) => (
               <SkillSuggestionsDiff
                 key={skillId}
                 owner={owner}
                 batchId={batch.id}
                 skillId={skillId}
                 suggestions={suggestions}
+                defaultOpen={batch.agentSuggestions.length === 0 && index === 0}
               />
             )
           )}
