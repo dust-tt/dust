@@ -82,22 +82,22 @@ describe("POST /api/w/:wId/skills/search", () => {
     }
   );
 
-  it.each(["only", "fallback", "none"] as const)(
-    "forwards favorites mode %s and reports the selected result",
-    async (favoritesMode) => {
+  it.each(["favorites_only", "favorites_or_all", "all"] as const)(
+    "forwards selection mode %s and reports the selected result",
+    async (selectionMode) => {
       const { workspace } = await setup();
       searchSkills.mockResolvedValue(
         new Ok({
           skills: [],
           total: 0,
           hasMore: false,
-          isFavoritesOnly: favoritesMode === "only",
+          isFavoritesOnly: selectionMode === "favorites_only",
           facets: {},
         })
       );
 
       const response = await searchRequest(workspace.sId, {
-        favoritesMode,
+        selectionMode,
         excludeSkillId: "current-skill",
       });
 
@@ -105,24 +105,24 @@ describe("POST /api/w/:wId/skills/search", () => {
       expect(searchSkills).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          favoritesMode,
+          selectionMode,
           excludeSkillId: "current-skill",
         })
       );
       expect((await response.json()).isFavoritesOnly).toBe(
-        favoritesMode === "only"
+        selectionMode === "favorites_only"
       );
     }
   );
 
   it.each([
-    { query: "", expected: "fallback" },
-    { query: "   ", expected: "fallback" },
-    { query: "research", expected: "none" },
-    { query: "", favoritesMode: "none", expected: "none" },
+    { query: "", expected: "favorites_or_all" },
+    { query: "   ", expected: "favorites_or_all" },
+    { query: "research", expected: "favorites_or_all" },
+    { query: "", selectionMode: "all", expected: "all" },
   ])(
     "accepts the legacy blank-query favorite option: %j",
-    async ({ query, favoritesMode, expected }) => {
+    async ({ query, selectionMode, expected }) => {
       const { workspace } = await setup();
       searchSkills.mockResolvedValue(
         new Ok({
@@ -137,21 +137,21 @@ describe("POST /api/w/:wId/skills/search", () => {
       const response = await searchRequest(workspace.sId, {
         query,
         defaultToFavorites: true,
-        favoritesMode,
+        selectionMode,
       });
 
       expect(response.status).toBe(200);
       expect(searchSkills).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ favoritesMode: expected })
+        expect.objectContaining({ selectionMode: expected })
       );
     }
   );
 
-  it("rejects unknown favorites modes", async () => {
+  it("rejects unknown selection modes", async () => {
     const { workspace } = await setup();
     const response = await searchRequest(workspace.sId, {
-      favoritesMode: "invalid",
+      selectionMode: "invalid",
     });
     expect(response.status).toBe(400);
     expect(searchSkills).not.toHaveBeenCalled();
@@ -222,7 +222,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         facets: undefined,
         sortBy: undefined,
         sortOrder: undefined,
-        favoritesMode: "none",
+        selectionMode: "all",
         excludeSkillId: undefined,
         filters: {
           status: undefined,
@@ -295,7 +295,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
-      favoritesMode: "none",
+      selectionMode: "all",
       excludeSkillId: undefined,
       filters: {
         status: undefined,
@@ -535,7 +535,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
-      favoritesMode: "none",
+      selectionMode: "all",
       excludeSkillId: undefined,
       filters: {
         status: undefined,

@@ -88,13 +88,13 @@ export type SkillSearchSort = (typeof SKILL_SEARCH_SORTS)[number];
 export const SKILL_SEARCH_SORT_ORDERS = ["asc", "desc"] as const;
 export type SkillSearchSortOrder = (typeof SKILL_SEARCH_SORT_ORDERS)[number];
 
-export const SKILL_SEARCH_FAVORITES_MODES = [
-  "only",
-  "fallback",
-  "none",
+export const SKILL_SEARCH_SELECTION_MODES = [
+  "favorites_only",
+  "favorites_or_all",
+  "all",
 ] as const;
-export type SkillSearchFavoritesMode =
-  (typeof SKILL_SEARCH_FAVORITES_MODES)[number];
+export type SkillSearchSelectionMode =
+  (typeof SKILL_SEARCH_SELECTION_MODES)[number];
 
 export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];

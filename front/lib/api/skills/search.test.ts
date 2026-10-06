@@ -43,17 +43,26 @@ describe("searchSkills pagination", () => {
   });
 
   it.each([
-    { searchTerm: "", favoritesMode: "fallback", hasFavorites: true },
-    { searchTerm: "   ", favoritesMode: "fallback", hasFavorites: true },
-    { searchTerm: "Zulu", favoritesMode: "none", hasFavorites: true },
-    { searchTerm: "", favoritesMode: "none", hasFavorites: true },
-    { searchTerm: "", favoritesMode: "fallback", hasFavorites: false },
-    { searchTerm: "", favoritesMode: "only", hasFavorites: true },
-    { searchTerm: "", favoritesMode: "only", hasFavorites: false },
-    { searchTerm: "Zulu", favoritesMode: "only", hasFavorites: true },
+    { searchTerm: "", selectionMode: "favorites_or_all", hasFavorites: true },
+    {
+      searchTerm: "   ",
+      selectionMode: "favorites_or_all",
+      hasFavorites: true,
+    },
+    {
+      searchTerm: "Zulu",
+      selectionMode: "favorites_or_all",
+      hasFavorites: true,
+    },
+    { searchTerm: "Zulu", selectionMode: "all", hasFavorites: true },
+    { searchTerm: "", selectionMode: "all", hasFavorites: true },
+    { searchTerm: "", selectionMode: "favorites_or_all", hasFavorites: false },
+    { searchTerm: "", selectionMode: "favorites_only", hasFavorites: true },
+    { searchTerm: "", selectionMode: "favorites_only", hasFavorites: false },
+    { searchTerm: "Zulu", selectionMode: "favorites_only", hasFavorites: true },
   ] as const)(
     "applies favorites selection and reports the selected mode: %j",
-    async ({ searchTerm, favoritesMode, hasFavorites }) => {
+    async ({ searchTerm, selectionMode, hasFavorites }) => {
       const { authenticator: auth } = await createResourceTest({
         role: "user",
       });
@@ -89,13 +98,15 @@ describe("searchSkills pagination", () => {
 
       const result = await searchSkills(auth, {
         searchTerm,
-        favoritesMode,
+        selectionMode,
         limit: 1,
       });
       assert(result.isOk());
       const favoritesOnly =
-        favoritesMode === "only" ||
-        (favoritesMode === "fallback" && hasFavorites);
+        selectionMode === "favorites_only" ||
+        (selectionMode === "favorites_or_all" &&
+          !searchTerm.trim() &&
+          hasFavorites);
       const expectedSkills = favoritesOnly
         ? hasFavorites
           ? [beta.sId]
@@ -112,16 +123,12 @@ describe("searchSkills pagination", () => {
       expect(
         result.value.skills.every((skill) => !("isFavorite" in skill))
       ).toBe(true);
+      expect(mockSearch.mock.lastCall![0].sort[0]).toEqual(
+        favoritesOnly && !searchTerm.trim()
+          ? { "name.keyword": { order: "asc", missing: "_last" } }
+          : { _score: { order: "desc" } }
+      );
       if (favoritesOnly) {
-        expect(mockSearch.mock.lastCall![0].sort[0]).toEqual(
-          searchTerm.trim()
-            ? {
-                _score: { order: "desc" },
-              }
-            : {
-                "name.keyword": { order: "asc", missing: "_last" },
-              }
-        );
         const codeDefinedSkillIds =
           await SkillResource.listAvailableCodeDefinedIds(auth);
         expect(mockSearch.mock.lastCall![0].query.bool.must).toEqual([
@@ -129,7 +136,7 @@ describe("searchSkills pagination", () => {
         ]);
         const next = await searchSkills(auth, {
           searchTerm,
-          favoritesMode,
+          selectionMode,
           limit: 1,
           offset: 1,
         });
@@ -142,7 +149,7 @@ describe("searchSkills pagination", () => {
 
         const exhausted = await searchSkills(auth, {
           searchTerm,
-          favoritesMode,
+          selectionMode,
           limit: 1,
           offset: 2,
         });
@@ -160,9 +167,33 @@ describe("searchSkills pagination", () => {
     }
   );
 
-  it.each(["only", "fallback"] as const)(
+  it.each(["", "Favorite"])(
+    "honors an explicit sort for favorites with query %j",
+    async (searchTerm) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "user",
+      });
+      mockSearch.mockResolvedValue({
+        hits: { hits: [], total: { value: 0, relation: "eq" } },
+      });
+
+      const result = await searchSkills(auth, {
+        searchTerm,
+        selectionMode: "favorites_only",
+        sortBy: "usage",
+        sortOrder: "asc",
+      });
+
+      assert(result.isOk());
+      expect(mockSearch.mock.lastCall![0].sort[0]).toEqual({
+        active_users_count: { order: "asc", missing: "_last" },
+      });
+    }
+  );
+
+  it.each(["favorites_only", "favorites_or_all"] as const)(
     "handles no matching favorites in %s mode",
-    async (favoritesMode) => {
+    async (selectionMode) => {
       const { authenticator: auth } = await createResourceTest({
         role: "user",
       });
@@ -194,17 +225,19 @@ describe("searchSkills pagination", () => {
 
       const result = await searchSkills(auth, {
         searchTerm: "",
-        favoritesMode,
+        selectionMode,
         filters: { availability: ["editors"] },
       });
 
       assert(result.isOk());
       expect(result.value.skills.map((item) => item.sId)).toEqual(
-        favoritesMode === "only" ? [] : [otherSkill.sId]
+        selectionMode === "favorites_only" ? [] : [otherSkill.sId]
       );
-      expect(result.value.isFavoritesOnly).toBe(favoritesMode === "only");
+      expect(result.value.isFavoritesOnly).toBe(
+        selectionMode === "favorites_only"
+      );
       expect(mockSearch).toHaveBeenCalledTimes(
-        favoritesMode === "only" ? 1 : 2
+        selectionMode === "favorites_only" ? 1 : 2
       );
     }
   );
@@ -220,7 +253,7 @@ describe("searchSkills pagination", () => {
 
     const result = await searchSkills(auth, {
       searchTerm: "",
-      favoritesMode: "fallback",
+      selectionMode: "favorites_or_all",
       excludeSkillId: skill.sId,
     });
 
