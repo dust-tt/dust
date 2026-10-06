@@ -41,6 +41,7 @@ import {
   Page,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
@@ -55,6 +56,7 @@ export function UserAnalyticsPopover({
   owner,
   onClose,
 }: UserAnalyticsPopoverProps) {
+  const { t } = useLingui();
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
@@ -84,7 +86,9 @@ export function UserAnalyticsPopover({
       <DialogHeader hideButton className="p-5 sm:p-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
           <div className="flex min-w-0 flex-col gap-1 overflow-hidden">
-            <DialogTitle className="heading-2xl">Analytics</DialogTitle>
+            <DialogTitle className="heading-2xl">
+              <Trans>Analytics</Trans>
+            </DialogTitle>
             <ConsumptionOverview
               workspaceId={owner.sId}
               period={period}
@@ -108,7 +112,7 @@ export function UserAnalyticsPopover({
               variant="ghost"
               size="mini"
               icon={XClose}
-              aria-label="Close analytics"
+              aria-label={t`Close analytics`}
             />
           </DialogClose>
         </div>
@@ -133,7 +137,7 @@ export function UserAnalyticsPopover({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Explore
+                  <Trans>Explore</Trans>
                 </h2>
                 <UsageFilterPanel
                   owner={owner}

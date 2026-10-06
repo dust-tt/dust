@@ -1,3 +1,4 @@
+import { getKnowledgeBrowserEntryLabel } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
 import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
 import {
@@ -36,6 +37,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Breadcrumbs } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
   forwardRef,
@@ -181,6 +183,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
 
     const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
@@ -224,8 +227,11 @@ export const AttachContextSubMenuDropdown = forwardRef<
       isLoading || isBrowsableSpacesLoading || browser.isLoading;
     const browseSections = useMemo(
       () =>
-        buildRootBrowseSections(browser.items, { isLoading: isBrowseLoading }),
-      [browser.items, isBrowseLoading]
+        buildRootBrowseSections(browser.items, {
+          isLoading: isBrowseLoading,
+          t,
+        }),
+      [browser.items, isBrowseLoading, t]
     );
     const attachNode = useCallback(
       (node: DataSourceViewContentNode) =>
@@ -238,8 +244,9 @@ export const AttachContextSubMenuDropdown = forwardRef<
           onAttachNode: attachNode,
           hasMore: browser.hasMore,
           isLoadingMore: browser.isLoadingMore,
+          t,
         }),
-      [attachNode, browser.items, browser.hasMore, browser.isLoadingMore]
+      [attachNode, browser.items, browser.hasMore, browser.isLoadingMore, t]
     );
     const searchCommands = useMemo(
       () => items.map(toSlashCommandItem),
@@ -281,13 +288,16 @@ export const AttachContextSubMenuDropdown = forwardRef<
               collapseIntermediates
               items={getKnowledgeBrowserBreadcrumbItems(
                 navigationHistory,
-                navigateTo
+                navigateTo,
+                {
+                  getLabel: (entry) => getKnowledgeBrowserEntryLabel(entry, t),
+                }
               )}
               size="xs"
             />
           </div>
         ) : undefined,
-      [canNavigateUp, navigateTo, navigationHistory]
+      [canNavigateUp, navigateTo, navigationHistory, t]
     );
 
     const handleSelect = (item: SlashCommand) => {

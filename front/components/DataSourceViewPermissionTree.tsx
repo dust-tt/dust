@@ -5,6 +5,7 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Tree } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 const getUseResourceHook =
@@ -56,6 +57,7 @@ export function DataSourceViewPermissionTree({
   showExpand,
   viewType,
 }: DataSourceViewPermissionTreeProps) {
+  const { t } = useLingui();
   const useResourcesHook = useCallback(
     (selectedParentId: string | null) =>
       getUseResourceHook(
@@ -77,11 +79,11 @@ export function DataSourceViewPermissionTree({
       setSelectedNodes={setSelectedNodes}
       emptyComponent={
         viewType === "table" ? (
-          <Tree.Empty label="No tables" />
+          <Tree.Empty label={t`No tables`} />
         ) : viewType === "document" ? (
-          <Tree.Empty label="No documents" />
+          <Tree.Empty label={t`No documents`} />
         ) : (
-          <Tree.Empty label="No data" />
+          <Tree.Empty label={t`No data`} />
         )
       }
     />

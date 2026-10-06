@@ -13,6 +13,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface DataSourceViewDocumentModalProps {
@@ -98,7 +99,7 @@ export default function DataSourceViewDocumentModal({
   ) : (
     <div className="flex flex-col items-center gap-4 py-8">
       <span className="text-sm text-muted-foreground">
-        PDF preview is not available for this document.
+        <Trans>PDF preview is not available for this document.</Trans>
       </span>
     </div>
   );
@@ -127,18 +128,24 @@ export default function DataSourceViewDocumentModal({
               {!isDocumentLoading && isDocumentError && (
                 <div className="flex flex-col gap-2 py-8">
                   <span className="text-sm text-muted-foreground">
-                    This document has no raw content available
+                    <Trans>This document has no raw content available</Trans>
                     <ul className="list-disc pl-4">
                       <li>
-                        if the document is a spreadsheet, this is expected.
-                        Spreadsheets do not expose raw contents. They are made
-                        available in Dust via the `Table Query` action in
-                        assistants.
+                        <Trans>
+                          If the document is a spreadsheet, this is expected.
+                        </Trans>{" "}
+                        <Trans>Spreadsheets do not expose raw contents.</Trans>{" "}
+                        <Trans>
+                          They are made available in Dust via the `Table Query`
+                          action in assistants.
+                        </Trans>
                       </li>
                       <li>
-                        Otherwise, this is unexpected. Please contact
-                        support@dust.tt for assistance on synchronizing the
-                        document.
+                        <Trans>Otherwise, this is unexpected.</Trans>{" "}
+                        <Trans>
+                          Please contact support@dust.tt for assistance on
+                          synchronizing the document.
+                        </Trans>
                       </li>
                     </ul>
                   </span>
@@ -148,7 +155,7 @@ export default function DataSourceViewDocumentModal({
               {!isDocumentLoading && document && !isPdf && (
                 <>
                   <div className="copy-sm mb-4 mt-8 text-foreground">
-                    Content of the document:
+                    <Trans>Content of the document:</Trans>
                   </div>
                   <pre className="whitespace-pre-wrap bg-background py-8 pl-4 pr-2 text-sm text-muted-foreground">
                     {text}

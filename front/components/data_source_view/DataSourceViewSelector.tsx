@@ -55,6 +55,7 @@ import {
   SheetViewportProvider,
   Tree,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import omit from "lodash/omit";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -267,6 +268,7 @@ export function DataSourceViewsSelector({
   fixedSearchLayout = false,
   focusSearchOnOpen = false,
 }: DataSourceViewsSelectorProps) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -417,11 +419,12 @@ export function DataSourceViewsSelector({
     };
   }, [focusSearchOnOpen, isMobile]);
 
+  const spaceName = space.name;
   const searchInput = (
     <SearchInput
       ref={searchInputRef}
       name="search-dsv"
-      placeholder={`Search in ${space.name}`}
+      placeholder={t`Search in ${spaceName}`}
       value={searchSpaceText}
       onChange={setSearchSpaceText}
     />
@@ -447,7 +450,7 @@ export function DataSourceViewsSelector({
       {displayManagedDsv && (
         <Tree.Item
           key="connected"
-          label="Connected Data"
+          label={t`Connected data`}
           visual={CloudArrowLeftRight}
           type="node"
           defaultCollapsed
@@ -493,7 +496,7 @@ export function DataSourceViewsSelector({
       {filteredGroups.folders.length > 0 && (
         <Tree.Item
           key="folders"
-          label="Folders"
+          label={t`Folders`}
           visual={Folder}
           type="node"
           defaultCollapsed
@@ -521,7 +524,7 @@ export function DataSourceViewsSelector({
         useCase !== "transcriptsProcessing" && (
           <Tree.Item
             key="websites"
-            label="Websites"
+            label={t`Websites`}
             visual={Globe01}
             type="node"
             defaultCollapsed
@@ -637,6 +640,7 @@ export function DataSourceViewSelector({
   selectionMode = "checkbox",
   useContentNodes = useInfiniteDataSourceViewContentNodes,
 }: DataSourceViewSelectorProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
 
@@ -865,10 +869,10 @@ export function DataSourceViewSelector({
               className="mr-4 text-xs"
               label={
                 selectAll.isLoading
-                  ? "Loading..."
+                  ? t`Loading...`
                   : hasActiveSelection
-                    ? "Unselect All"
-                    : "Select All"
+                    ? t`Unselect all`
+                    : t`Select all`
               }
               icon={CheckDone01}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -887,9 +891,9 @@ export function DataSourceViewSelector({
             useResourcesHook={useResourcesHook}
             emptyComponent={
               viewType === "table" || viewType === "data_warehouse" ? (
-                <Tree.Empty label="No tables" />
+                <Tree.Empty label={t`No tables`} />
               ) : (
-                <Tree.Empty label="No documents" />
+                <Tree.Empty label={t`No documents`} />
               )
             }
             getLabel={(n) =>

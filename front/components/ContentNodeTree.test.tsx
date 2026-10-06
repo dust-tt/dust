@@ -63,7 +63,7 @@ describe("ContentNodeTree", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
 
     await waitFor(() => {
       expect(setSelectedNodes).toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe("ContentNodeTree", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Unselect All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Unselect all" }));
 
     await waitFor(() => {
       expect(setSelectedNodes).toHaveBeenCalledTimes(2);
@@ -136,7 +136,7 @@ describe("ContentNodeTree", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
 
     await waitFor(() => {
       expect(fetchChildResources).toHaveBeenCalledWith("site");
@@ -196,7 +196,7 @@ describe("ContentNodeTree", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
 
     await waitFor(() => {
       expect(setSelectedNodes).toHaveBeenCalled();
@@ -211,7 +211,7 @@ describe("ContentNodeTree", () => {
       },
     });
     expect(
-      screen.getByRole("button", { name: "Unselect All" })
+      screen.getByRole("button", { name: "Unselect all" })
     ).toBeInTheDocument();
   });
 
@@ -252,7 +252,7 @@ describe("ContentNodeTree", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "No match" },
     });
@@ -266,6 +266,6 @@ describe("ContentNodeTree", () => {
     });
     expect(onSelectAllLoadingChange.mock.calls).toEqual([[true], [false]]);
     expect(setSelectedNodes).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Select All" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Select all" })).toBeDisabled();
   });
 });

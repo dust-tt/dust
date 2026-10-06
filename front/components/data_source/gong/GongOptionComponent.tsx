@@ -18,6 +18,7 @@ import {
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 // TODO(2025-03-17): share these variables between connectors and front.
@@ -75,6 +76,7 @@ function PermissionProfileSelector({
   dataSource,
   disabled,
 }: PermissionProfileSelectorProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
@@ -142,15 +144,16 @@ function PermissionProfileSelector({
       await mutatePermissionProfileIdConfig();
       sendNotification({
         type: "success",
-        title: "Gong configuration updated",
-        description: "Participant filter successfully updated.",
+        title: t`Gong configuration updated`,
+        description: t`Participant filter successfully updated.`,
       });
     } else {
       const err = await res.json();
       sendNotification({
         type: "error",
-        title: "Failed to update Gong configuration",
-        description: normalizeError(err).message || "An unknown error occurred",
+        title: t`Failed to update Gong configuration`,
+        description:
+          normalizeError(err).message || t`An unknown error occurred`,
       });
     }
     setLoading(false);
@@ -158,7 +161,7 @@ function PermissionProfileSelector({
 
   return (
     <ContextItem
-      title="Participant Filter"
+      title={t`Participant filter`}
       visual={<ContextItem.Visual visual={GongLogo} />}
       action={
         <div className="flex flex-row space-x-3">
@@ -172,7 +175,7 @@ function PermissionProfileSelector({
                     ? displayedProfile.name.length > PROFILE_NAME_MAX_LENGTH
                       ? `${displayedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH)}...`
                       : displayedProfile.name
-                    : "All participants"
+                    : t`All participants`
                 }
                 isSelect
                 disabled={disabled || loading}
@@ -182,7 +185,7 @@ function PermissionProfileSelector({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
               <DropdownMenuItem
-                label="All participants"
+                label={t`All participants`}
                 onClick={() => setLocalProfileId("")}
               />
               {permissionProfiles.map((profile) => {
@@ -213,16 +216,19 @@ function PermissionProfileSelector({
             size="sm"
             onClick={handleSave}
             disabled={disabled || loading || !hasUnsavedChanges}
-            label={loading ? "Saving..." : "Save"}
+            label={loading ? t`Saving...` : t`Save`}
           />
         </div>
       }
     >
       <ContextItem.Description>
         <div className="text-muted-foreground">
-          Filter calls by Gong permission profile. Only calls involving users
-          listed in the selected profile's "Specific Teams" section will be
-          synced. Changing the filter only affects future syncs.
+          <Trans>Filter calls by Gong permission profile.</Trans>{" "}
+          <Trans>
+            Only calls involving users listed in the selected profile's
+            "Specific Teams" section will be synced.
+          </Trans>{" "}
+          <Trans>Changing the filter only affects future syncs.</Trans>
         </div>
       </ContextItem.Description>
     </ContextItem>
@@ -242,6 +248,7 @@ export function GongOptionComponent({
   isAdmin,
   dataSource,
 }: GongOptionComponentProps) {
+  const { t } = useLingui();
   const {
     configValue: retentionPeriodConfigValue,
     mutateConfig: mutateRetentionPeriodConfig,
@@ -307,9 +314,8 @@ export function GongOptionComponent({
     ) {
       sendNotification({
         type: "error",
-        title: "Invalid retention period",
-        description:
-          "Retention period must be a positive integer or empty for no limit.",
+        title: t`Invalid retention period`,
+        description: t`Retention period must be a positive integer or empty for no limit.`,
       });
       return;
     }
@@ -328,27 +334,27 @@ export function GongOptionComponent({
       switch (configKey) {
         case GONG_RETENTION_PERIOD_CONFIG_KEY:
           await mutateRetentionPeriodConfig();
-          description = "Retention period successfully updated.";
+          description = t`Retention period successfully updated.`;
           break;
         case GONG_TRACKERS_CONFIG_KEY:
           await mutateTrackersConfig();
-          description = "Trackers synchronization successfully updated.";
+          description = t`Trackers synchronization successfully updated.`;
           break;
         case GONG_ACCOUNTS_CONFIG_KEY:
           await mutateAccountsConfig();
-          description = "Accounts synchronization successfully updated.";
+          description = t`Accounts synchronization successfully updated.`;
           break;
         case GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY:
           await mutateExcludeKeywords();
-          description = "Exclude keywords successfully updated.";
+          description = t`Exclude keywords successfully updated.`;
           break;
         default:
-          description = "Configuration successfully updated.";
+          description = t`Configuration successfully updated.`;
       }
       setLoading(false);
       sendNotification({
         type: "success",
-        title: "Gong configuration updated",
+        title: t`Gong configuration updated`,
         description,
       });
     } else {
@@ -356,18 +362,21 @@ export function GongOptionComponent({
       const err = await res.json();
       sendNotification({
         type: "error",
-        title: "Failed to update Gong configuration",
-
-        description: normalizeError(err).message || "An unknown error occurred",
+        title: t`Failed to update Gong configuration`,
+        description:
+          normalizeError(err).message || t`An unknown error occurred`,
       });
     }
   };
 
   return (
     <div className="flex flex-col space-y-4 py-2">
-      <ContentMessage title="All Gong data will sync automatically" size="lg">
-        All your Gong resources will sync automatically. Selecting items
-        individually is not available.
+      <ContentMessage
+        title={t`All Gong data will sync automatically`}
+        size="lg"
+      >
+        <Trans>All your Gong resources will sync automatically.</Trans>{" "}
+        <Trans>Selecting items individually is not available.</Trans>
       </ContentMessage>
 
       <ContextItem.List>
@@ -378,13 +387,13 @@ export function GongOptionComponent({
         />
 
         <ContextItem
-          title="Exclude calls by title keywords"
+          title={t`Exclude calls by title keywords`}
           visual={<ContextItem.Visual visual={GongLogo} />}
           action={
             <div className="flex flex-row space-x-3 pt-6">
               <Input
                 name="excludeTitleKeywords"
-                placeholder="e.g. internal, test, demo"
+                placeholder={t`e.g. internal, test, demo`}
                 value={excludeKeywords}
                 onChange={(e) => setExcludeKeywords(e.target.value)}
                 disabled={readOnly || !isAdmin || loading}
@@ -400,33 +409,42 @@ export function GongOptionComponent({
                   );
                 }}
                 disabled={readOnly || !isAdmin || loading}
-                label="Save"
+                label={t`Save`}
               />
             </div>
           }
         >
           <ContextItem.Description>
             <div className="text-muted-foreground">
-              Exclude calls whose title contains these keywords
-              (case-insensitive, comma-separated).
+              <Trans>
+                Exclude calls whose title contains these keywords
+                (case-insensitive, comma-separated).
+              </Trans>
               <br />
-              Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
-              {MAX_EXCLUDE_KEYWORD_LENGTH} characters each.
+              <Trans>
+                Max {MAX_EXCLUDE_KEYWORDS} keywords of{" "}
+                {MAX_EXCLUDE_KEYWORD_LENGTH} characters each.
+              </Trans>
               <br />
-              Adding keywords removes existing matching transcripts. Removing
-              keywords only affects future syncs.
+              <Trans>
+                Adding keywords removes existing matching transcripts.
+              </Trans>{" "}
+              <Trans>Removing keywords only affects future syncs.</Trans>
             </div>
           </ContextItem.Description>
         </ContextItem>
 
         <ContextItem
-          title="Retention Period"
+          title={t`Retention period`}
           visual={<ContextItem.Visual visual={GongLogo} />}
           action={
             <div className="flex flex-row space-x-3 pt-6">
               <Input
                 name="retentionPeriod"
-                placeholder="unlimited"
+                placeholder={t({
+                  message: "unlimited",
+                  context: "retention period input placeholder",
+                })}
                 value={retentionPeriod}
                 onChange={(e) => {
                   // Only allow positive integer values.
@@ -448,24 +466,26 @@ export function GongOptionComponent({
                   )
                 }
                 disabled={readOnly || !isAdmin || loading}
-                label="Save"
+                label={t`Save`}
               />
             </div>
           }
         >
           <ContextItem.Description>
             <div className="text-muted-foreground">
-              Set the number of days to retain Gong transcripts.
+              <Trans>Set the number of days to retain Gong transcripts.</Trans>
               <br />
-              Leave empty to disable retention (no limit).
+              <Trans>Leave empty to disable retention (no limit).</Trans>
               <br />
-              Outdated transcripts will be deleted on a daily basis.
+              <Trans>
+                Outdated transcripts will be deleted on a daily basis.
+              </Trans>
             </div>
           </ContextItem.Description>
         </ContextItem>
 
         <ContextItem
-          title="Enable Trackers (Keyword and Smart)"
+          title={t`Enable trackers (keyword and smart)`}
           visual={<ContextItem.Visual visual={GongLogo} />}
           action={
             <div className="relative">
@@ -484,18 +504,22 @@ export function GongOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground">
-              If activated, Dust will sync the list of keyword and smart
-              trackers associated to each call transcript.
+              <Trans>
+                If activated, Dust will sync the list of keyword and smart
+                trackers associated to each call transcript.
+              </Trans>
               <br />
               {/* The procedure to follow to backfill existing transcripts is a full sync. */}
-              Only new transcripts will be affected, please contact us at
-              support@dust.tt if you need to update the existing transcripts.
+              <Trans>
+                Only new transcripts will be affected, please contact us at
+                support@dust.tt if you need to update the existing transcripts.
+              </Trans>
             </div>
           </ContextItem.Description>
         </ContextItem>
 
         <ContextItem
-          title="Sync Account metadata"
+          title={t`Sync account metadata`}
           visual={<ContextItem.Visual visual={GongLogo} />}
           action={
             <div className="relative">
@@ -514,11 +538,15 @@ export function GongOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground">
-              If activated, Dust will sync the account names from CRM context
-              associated to each call transcript.
+              <Trans>
+                If activated, Dust will sync the account names from CRM context
+                associated to each call transcript.
+              </Trans>
               <br />
-              Only new transcripts will be affected, please contact us at
-              support@dust.tt if you need to update the existing transcripts.
+              <Trans>
+                Only new transcripts will be affected, please contact us at
+                support@dust.tt if you need to update the existing transcripts.
+              </Trans>
             </div>
           </ContextItem.Description>
         </ContextItem>

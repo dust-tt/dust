@@ -16,6 +16,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 const SCOPED_SEARCH_EMPTY_MESSAGE = "No matches here";
@@ -59,6 +60,7 @@ export function useAttachContextSearchSections({
   query,
   toCommand,
 }: UseAttachContextSearchSectionsParams): SlashCommandSection[] {
+  const { t } = useLingui();
   const scopedSearch = useKnowledgeBrowserSearch({
     owner,
     navigationHistory,
@@ -75,14 +77,16 @@ export function useAttachContextSearchSections({
           isTopLevelInView: false,
           excludeNonRemoteDatabaseTables,
           spaceName: findSpaceFromNavigationHistory(navigationHistory)?.name,
+          t,
         }),
-        { onAttachNode }
+        { onAttachNode, t }
       ),
     [
       excludeNonRemoteDatabaseTables,
       navigationHistory,
       onAttachNode,
       scopedSearch.results,
+      t,
     ]
   );
 
@@ -95,14 +99,14 @@ export function useAttachContextSearchSections({
     );
     return [
       {
-        label: getScopedSearchSectionLabel(scopedSearch.scopeLabel),
+        label: getScopedSearchSectionLabel(scopedSearch.scopeLabel, t),
         items: scopedCommands,
         isLoading: scopedSearch.isLoading,
         // Below the minimum query length the global section already shows the hint.
         emptyMessage: hasMinimalQuery ? SCOPED_SEARCH_EMPTY_MESSAGE : undefined,
       },
       {
-        label: ALL_KNOWLEDGE_SECTION_LABEL,
+        label: t(ALL_KNOWLEDGE_SECTION_LABEL),
         items: remainingItems.map(toCommand),
         isLoading: isGlobalLoading,
         emptyMessage,
@@ -117,6 +121,7 @@ export function useAttachContextSearchSections({
     scopedSearch.isLoading,
     scopedSearch.results,
     scopedSearch.scopeLabel,
+    t,
     toCommand,
   ]);
 }

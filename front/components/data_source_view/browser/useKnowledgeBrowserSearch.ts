@@ -14,6 +14,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 // The scoped search is a plain request per query, so it waits for typing to settle.
@@ -53,6 +54,7 @@ export function useKnowledgeBrowserSearch({
   viewType,
   enabled,
 }: UseKnowledgeBrowserSearchParams): UseKnowledgeBrowserSearchResult {
+  const { t } = useLingui();
   const entry = navigationHistory[navigationHistory.length - 1];
 
   const scope = useMemo(
@@ -104,7 +106,7 @@ export function useKnowledgeBrowserSearch({
 
   return {
     scope,
-    scopeLabel: getKnowledgeBrowserEntryLabel(entry),
+    scopeLabel: getKnowledgeBrowserEntryLabel(entry, t),
     results,
     isLoading:
       hasSearchableScope && hasQuery && (isDebouncing || isSearchLoading),
