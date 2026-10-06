@@ -35,6 +35,8 @@ msgstr "Open user menu"
 
 #: front/components/UserMenu.tsx
 #: front/components/me/PendingInvitationsTable.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
 msgid "Workspace"
 msgstr "Workspace"
 
@@ -96,6 +98,8 @@ msgstr "Personal Settings"
 
 #: front/components/UserMenu.tsx
 #: front/components/me/UserToolsDialog.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Tools"
 msgstr "Tools"
 
@@ -544,6 +548,7 @@ msgid "All"
 msgstr "All"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Conversations"
 msgstr "Conversations"
 
@@ -555,6 +560,9 @@ msgstr "Pods"
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Agents"
 msgstr "Agents"
 
@@ -568,12 +576,17 @@ msgstr "Agents"
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 #: front/components/workspace/UsageMembersSection.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Members"
 msgstr "Members"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Skills"
 msgstr "Skills"
@@ -626,6 +639,7 @@ msgid "Type to search settings."
 msgstr "Type to search settings."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 #: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 msgid "Search…"
@@ -716,6 +730,7 @@ msgstr "Group members ({selectedMemberCount})"
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 #: front/components/workspace/UpgradePlanDialog.tsx
 #: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 #: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
@@ -792,6 +807,7 @@ msgstr "Group managers can add members and set their usage and credit limits."
 #: front/components/members/MemberSelectionTable.tsx
 #: front/components/members/MembersList.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
@@ -849,6 +865,7 @@ msgstr "User provisioning is configured in <0>IT & Security → User provisionin
 #: front/components/groups/WorkspaceGroupsList.tsx
 #: front/components/pages/workspace/governance/GroupSelector.tsx
 #: front/components/workspace/MemberGroupsSection.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search groups"
 msgstr "Search groups"
 
@@ -1018,6 +1035,8 @@ msgstr "Play"
 
 #: front/components/me/UserAutomationsDialog.tsx
 #: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Triggers"
 msgstr "Triggers"
 
@@ -1030,10 +1049,12 @@ msgid "Disabled by a manager or admin, who can re-enable it."
 msgstr "Disabled by a manager or admin, who can re-enable it."
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 msgid "Disabled while the workspace is being relocated."
 msgstr "Disabled while the workspace is being relocated."
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 msgid "Disabled following a plan downgrade."
 msgstr "Disabled following a plan downgrade."
 
@@ -1068,6 +1089,7 @@ msgstr "An error occurred while deleting the automation."
 
 #: front/components/me/UserAutomationsTable.tsx
 #: front/components/workspace/DirectorySync.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
 msgid "Enabled"
@@ -1139,6 +1161,7 @@ msgid "Disconnect"
 msgstr "Disconnect"
 
 #: front/components/me/UserToolsTable.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search tools"
 msgstr "Search tools"
 
@@ -1186,6 +1209,8 @@ msgstr "None of your conversations has a scheduled wake-up. Agents schedule wake
 
 #: front/components/members/AddEditorsDropdown.tsx
 #: front/components/workspace/UsageMembersSection.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
 msgid "Search members"
 msgstr "Search members"
 
@@ -1402,6 +1427,8 @@ msgstr "Status"
 #: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
 #: front/components/workspace/MemberGroupsSection.tsx
 #: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
 msgid "Groups"
 msgstr "Groups"
@@ -1657,7 +1684,9 @@ msgstr "Spend"
 #: front/components/workspace/TopUpsHistoryTable.tsx
 #: front/components/workspace/analytics/automations/AutomationsOverview.tsx
 #: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 #: front/components/workspace/billing/CouponsList.tsx
 msgid "Credits"
@@ -1681,6 +1710,8 @@ msgstr "Platform"
 #: front/components/navigation/config.ts
 #: front/components/pages/workspace/ModelsPage.tsx
 #: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Models"
 msgstr "Models"
 
@@ -1715,6 +1746,7 @@ msgid "Slack workflows"
 msgstr "Slack workflows"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Consumption"
 msgstr "Consumption"
 
@@ -2091,6 +2123,8 @@ msgid "Active credits for programmatic usage. Credits invoices are sent by email
 msgstr "Active credits for programmatic usage. Credits invoices are sent by email at time of purchase."
 
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "API keys"
 msgstr "API keys"
 
@@ -2405,6 +2439,7 @@ msgid "Configure {providerName} API key"
 msgstr "Configure {providerName} API key"
 
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
 msgid "API key"
 msgstr "API key"
 
@@ -3389,6 +3424,8 @@ msgid "Never"
 msgstr "Never"
 
 #: front/components/workspace/CreditsList.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
 msgid "Type"
 msgstr "Type"
 
@@ -3597,6 +3634,7 @@ msgstr "No limit"
 
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
 msgid "Group"
 msgstr "Group"
 
@@ -3861,6 +3899,7 @@ msgid "Open {tierName} tier ({costLabel})"
 msgstr "Open {tierName} tier ({costLabel})"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
 msgid "Model"
 msgstr "Model"
 
@@ -3966,10 +4005,12 @@ msgid "Total credits"
 msgstr "Total credits"
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Cumulative"
 msgstr "Cumulative"
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
 msgid "Daily"
 msgstr "Daily"
 
@@ -4319,6 +4360,7 @@ msgid "Usage metrics"
 msgstr "Usage metrics"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Active users"
 msgstr "Active users"
 
@@ -4339,6 +4381,7 @@ msgid "Tool usage"
 msgstr "Tool usage"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Messages"
 msgstr "Messages"
 
@@ -4357,6 +4400,86 @@ msgstr "Download analytics for the selected period as a CSV file."
 #: front/components/workspace/analytics/CsvDownloadButton.tsx
 msgid "Download CSV"
 msgstr "Download CSV"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Sources"
+msgstr "Sources"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search agents"
+msgstr "Search agents"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search models"
+msgstr "Search models"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search skills"
+msgstr "Search skills"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search sources"
+msgstr "Search sources"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search triggers"
+msgstr "Search triggers"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search API keys"
+msgstr "Search API keys"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Filters"
+msgstr "Filters"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Clear"
+msgstr "Clear"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Failed to load filters."
+msgstr "Failed to load filters."
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Select all"
+msgstr "Select all"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Agent"
+msgstr "Agent"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Member"
+msgstr "Member"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Tool"
+msgstr "Tool"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Skill"
+msgstr "Skill"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Source"
+msgstr "Source"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Trigger"
+msgstr "Trigger"
 
 #: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
 msgid "{period} {period, plural, one {day} other {days}}"
@@ -4410,6 +4533,24 @@ msgstr "The workflow always reaches agents shared in {GLOBAL_SPACE_NAME}. Add sp
 #: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
 msgid "Allow"
 msgstr "Allow"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search type"
+msgstr "Search type"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search pool"
+msgstr "Search pool"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Schedule"
+msgstr "Schedule"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Webhook"
+msgstr "Webhook"
 
 #: front/components/workspace/analytics/automations/AutomationsOverview.tsx
 #: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
@@ -4502,6 +4643,39 @@ msgstr "What each run costs"
 msgid "<0>{formattedCostPerRun}</0> <1>credits</1>"
 msgstr "<0>{formattedCostPerRun}</0> <1>credits</1>"
 
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Owner"
+msgstr "Owner"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Disable this automation?"
+msgstr "Disable this automation?"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "\"{triggerName}\" will stop running for {ownerName}. A manager or admin will be able to re-enable it."
+msgstr "\"{triggerName}\" will stop running for {ownerName}. A manager or admin will be able to re-enable it."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Disable"
+msgstr "Disable"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Set pool"
+msgstr "Set pool"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Failed to load triggers."
+msgstr "Failed to load triggers."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "No results for \"{trimmedSearch}\". Only items with usage data appear here."
+msgstr "No results for \"{trimmedSearch}\". Only items with usage data appear here."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "No automation ran over this period."
+msgstr "No automation ran over this period."
+
 #: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
 msgid "Set the pool for {triggerCount, plural, one {# automation} other {# automations}}"
 msgstr "Set the pool for {triggerCount, plural, one {# automation} other {# automations}}"
@@ -4549,6 +4723,29 @@ msgstr "Connect the Dust Slack bot to let Slack workflows summon agents."
 #: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
 msgid "No Slack workflow can summon agents yet."
 msgstr "No Slack workflow can summon agents yet."
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "This webhook lives in a space you don't have access to."
+msgstr "This webhook lives in a space you don't have access to."
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "{webhookSourceName} webhook"
+msgstr "{webhookSourceName} webhook"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Collapse breakdown for {name}"
+msgstr "Collapse breakdown for {name}"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Expand breakdown for {name}"
+msgstr "Expand breakdown for {name}"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Pool"
+msgstr "Pool"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "By model"
@@ -4615,14 +4812,6 @@ msgid "Remove from filters"
 msgstr "Remove from filters"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
-msgid "Expand breakdown for {name}"
-msgstr "Expand breakdown for {name}"
-
-#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
-msgid "Collapse breakdown for {name}"
-msgstr "Collapse breakdown for {name}"
-
-#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 msgid "Add {name} to filters"
 msgstr "Add {name} to filters"
 
@@ -4636,10 +4825,7 @@ msgid "Failed to load attribution."
 msgstr "Failed to load attribution."
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
-msgid "No results for \"{trimmedSearch}\". Only items with usage data appear here."
-msgstr "No results for \"{trimmedSearch}\". Only items with usage data appear here."
-
-#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
 msgid "No consumption over this period."
 msgstr "No consumption over this period."
@@ -4665,8 +4851,37 @@ msgid "{deltaAmount} behind target"
 msgstr "{deltaAmount} behind target"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Failed to load consumption."
 msgstr "Failed to load consumption."
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Today (partial)"
+msgstr "Today (partial)"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "This week (partial)"
+msgstr "This week (partial)"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "This month (partial)"
+msgstr "This month (partial)"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} so far today"
+msgstr "{total} so far today"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} so far this week"
+msgstr "{total} so far this week"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} so far this month"
+msgstr "{total} so far this month"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} total"
+msgstr "{total} total"
 
 #: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
 msgid "Total Credits"
@@ -4732,6 +4947,22 @@ msgstr "Latest indexed record {lastRecordTimeAgo}"
 msgid "Updated {lastRecordTimeAgo}"
 msgstr "Updated {lastRecordTimeAgo}"
 
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Weekly"
+msgstr "Weekly"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Monthly"
+msgstr "Monthly"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "This cycle"
+msgstr "This cycle"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Last {days} days"
+msgstr "Last {days} days"
+
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Used this period"
 msgstr "Used this period"
@@ -4780,6 +5011,18 @@ msgstr "Avg. cost/msg"
 msgid "{formattedAverageCost} credits"
 msgstr "{formattedAverageCost} credits"
 
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Invocations"
+msgstr "Invocations"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Credits / message"
+msgstr "Credits / message"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Credits / invocation"
+msgstr "Credits / invocation"
+
 #: front/components/workspace/analytics/creditsTableCells.tsx
 msgid "{formattedCredits} credits"
 msgstr "{formattedCredits} credits"
@@ -4787,6 +5030,23 @@ msgstr "{formattedCredits} credits"
 #: front/components/workspace/analytics/creditsTableCells.tsx
 msgid "{averageCredits} credits / message"
 msgstr "{averageCredits} credits / message"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Company"
+msgstr "Company"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Shared"
+msgstr "Shared"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Private"
+msgstr "Private"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgctxt "agent scopes"
+msgid "All"
+msgstr "All"
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
 msgid "Scopes"
@@ -4898,10 +5158,6 @@ msgstr "Revoke API key"
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Search API Key"
 msgstr "Search API Key"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Filters"
-msgstr "Filters"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Failed to load API keys."

@@ -9,6 +9,7 @@ import {
   resolveUsageFilter,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
+  USAGE_FILTER_CATEGORY_SINGULAR_LABEL,
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import { describe, expect, it } from "vitest";
@@ -190,33 +191,36 @@ describe("setUsageFilterFromAttributionRow", () => {
 describe("getUsageFilterSummaries", () => {
   it("flattens selected options into ordered, human-readable categories", () => {
     expect(
-      getUsageFilterSummaries({
-        agent: [
-          {
-            id: "agent-1",
-            name: "@dust",
-            kind: "agent",
-            image: null,
-            disabled: false,
-          },
-        ],
-        member: [
-          {
-            id: "member-1",
-            name: "Nath",
-            kind: "member",
-            image: null,
-            disabled: false,
-          },
-          {
-            id: "member-2",
-            name: "Adrien",
-            kind: "member",
-            image: null,
-            disabled: false,
-          },
-        ],
-      })
+      getUsageFilterSummaries(
+        {
+          agent: [
+            {
+              id: "agent-1",
+              name: "@dust",
+              kind: "agent",
+              image: null,
+              disabled: false,
+            },
+          ],
+          member: [
+            {
+              id: "member-1",
+              name: "Nath",
+              kind: "member",
+              image: null,
+              disabled: false,
+            },
+            {
+              id: "member-2",
+              name: "Adrien",
+              kind: "member",
+              image: null,
+              disabled: false,
+            },
+          ],
+        },
+        USAGE_FILTER_CATEGORY_SINGULAR_LABEL
+      )
     ).toEqual([
       {
         category: "agent",
@@ -235,7 +239,12 @@ describe("getUsageFilterSummaries", () => {
   });
 
   it("omits empty categories", () => {
-    expect(getUsageFilterSummaries({ group: [] })).toEqual([]);
+    expect(
+      getUsageFilterSummaries(
+        { group: [] },
+        USAGE_FILTER_CATEGORY_SINGULAR_LABEL
+      )
+    ).toEqual([]);
   });
 });
 
