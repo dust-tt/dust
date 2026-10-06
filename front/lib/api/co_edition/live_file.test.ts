@@ -10,7 +10,12 @@ import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { describe, expect, it } from "vitest";
+import { Ok } from "@app/types/shared/result";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function writeUserFile(auth: Authenticator, name: string, text: string) {
   const path = `user-${auth.getNonNullableUser().sId}/${name}`;
@@ -89,6 +94,16 @@ describe("openLiveFile and loadLiveDocument", () => {
     const path = `user-${auth.getNonNullableUser().sId}/missing.md`;
     fileStorageMock.setFileExists(
       (filePath) => !filePath.endsWith("missing.md")
+    );
+
+    expect((await openLiveFile(auth, path)).isErr()).toBe(true);
+  });
+
+  it("refuse a directory named like a Markdown file", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    vi.spyOn(DustFileSystem.prototype, "stat").mockResolvedValue(
+      new Ok({ contentType: "application/x-directory", sizeBytes: 0 })
     );
 
     expect((await openLiveFile(auth, path)).isErr()).toBe(true);

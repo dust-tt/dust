@@ -8,6 +8,7 @@ import {
   openLiveFile,
   parseLiveDocumentName,
 } from "@app/lib/api/co_edition/live_file";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
@@ -25,21 +26,32 @@ import { healthzApp } from "./routes/healthz";
 /**
  * @cc [owner:PopDaph,label:security] collab-server-dev-only
  * Until connections are authenticated with tickets minted by front-api, the server MUST refuse
- * to start outside development: the dev token is a bare user id.
+ * to start outside development: the dev token is a bare user id. This runs before anything else
+ * at startup.
  */
-if (!isDevelopment()) {
-  throw new Error("The collab server only runs in development for now.");
+function assertDevelopmentOnly() {
+  if (!isDevelopment()) {
+    throw new Error("The collab server only runs in development for now.");
+  }
 }
 
+assertDevelopmentOnly();
 setupGlobalErrorHandler(logger);
 
-const port = parseInt(process.env.COLLAB_PORT ?? "3010", 10);
-const hostname = process.env.HOSTNAME ?? "localhost";
+const port = config.getCollabServerPort();
+const hostname = config.getCollabServerHostname();
 
 // Each document's Yjs state, kept across unloads so a reconnecting browser merges into the same
 // identities instead of a rebuilt copy. In memory only: durable storage comes with step 8.
 const storedStates = new Map<string, Uint8Array>();
 
+/**
+ * @cc [owner:PopDaph,label:error-handling] hocuspocus-hook-protocol
+ * These hooks follow Hocuspocus's protocol, an exception to `no-catching-own-errors` and
+ * `no-parameter-mutation` limited to them: a hook MUST reject a connection or a load by throwing,
+ * MUST make a connection read-only by setting `connectionConfig.readOnly`, and `onLoadDocument`
+ * MUST destroy the document it was handed when the load fails, since Hocuspocus does not.
+ */
 const hocuspocus = new Hocuspocus<LiveFile>({
   // Dev token: the user id. The document name carries the workspace and the file.
   async onAuthenticate({ documentName, token, connectionConfig }) {
@@ -70,16 +82,19 @@ const hocuspocus = new Hocuspocus<LiveFile>({
       return stored;
     }
 
-    // Hocuspocus does not destroy the document when this hook fails, which leaks its timers.
+    // Cleans up after an Err as well as an unexpected exception.
+    let loaded: Y.Doc | undefined;
     try {
       const live = await loadLiveDocument(context);
       if (live.isErr()) {
         throw new Error(live.error);
       }
-      return live.value.doc;
-    } catch (err) {
-      document.destroy();
-      throw err;
+      loaded = live.value.doc;
+      return loaded;
+    } finally {
+      if (loaded === undefined) {
+        document.destroy();
+      }
     }
   },
 

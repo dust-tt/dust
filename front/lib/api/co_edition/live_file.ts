@@ -10,6 +10,9 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const DOCUMENT_NAME_SEPARATOR = ":";
 
+// What both file system backends report as a directory's content type.
+const DIRECTORY_CONTENT_TYPE = "application/x-directory";
+
 /** A file the live session can open, with the caller's access to it. */
 export interface LiveFile {
   workspaceId: string;
@@ -41,10 +44,10 @@ export function parseLiveDocumentName(
 
 /**
  * @cc [owner:PopDaph,label:security] live-file-access
- * A live file MUST open only for a `.md` file that exists and that `auth` can read through the
- * file system, with the same mount permissions as the file API, and only under its normalized
- * path, so one file never has two live documents. `canWrite` MUST be the file system's write
- * check for that path.
+ * A live file MUST open only for a `.md` file, not a directory, that exists and that `auth` can
+ * read through the file system, with the same mount permissions as the file API, and only under
+ * its normalized path, so one file never has two live documents. `canWrite` MUST be the file
+ * system's write check for that path.
  */
 export async function openLiveFile(
   auth: Authenticator,
@@ -68,6 +71,9 @@ export async function openLiveFile(
   }
   if (stat.value === null) {
     return new Err("File not found.");
+  }
+  if (stat.value.contentType === DIRECTORY_CONTENT_TYPE) {
+    return new Err("A directory cannot open in a live session.");
   }
 
   return new Ok({
