@@ -68,8 +68,6 @@
     "@vitest/browser-playwright": "4.0.18",
     "@vitest/coverage-v8": "4.0.18",
     "copyfiles": "^2.4.1",
-    "esbuild": "^0.27.3",
-    "esbuild-plugin-postcss2": "^0.1.2",
     "npm-watch": "^0.11.0",
     "playwright": "1.57.0",
     "react": "^18.3.1",
