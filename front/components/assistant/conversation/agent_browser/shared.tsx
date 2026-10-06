@@ -5,7 +5,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { DecoratedLightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
@@ -36,10 +36,10 @@ export type TabId = (typeof AGENTS_TABS)[number]["id"];
 export type SortType = "popularity" | "alphabetical" | "updated";
 
 export type AgentsByTab = {
-  all: LightAgentConfigurationType[];
-  favorites: LightAgentConfigurationType[];
-  editable_by_me: LightAgentConfigurationType[];
-  most_popular: LightAgentConfigurationType[];
+  all: DecoratedLightAgentConfigurationType[];
+  favorites: DecoratedLightAgentConfigurationType[];
+  editable_by_me: DecoratedLightAgentConfigurationType[];
+  most_popular: DecoratedLightAgentConfigurationType[];
 };
 
 export const MOST_POPULAR_TAG: TagType = {
@@ -67,11 +67,11 @@ export function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
 export type AgentBrowserSharedProps = {
   owner: WorkspaceType;
   isLoading: boolean;
-  handleAgentClick: (agent: LightAgentConfigurationType) => void;
+  handleAgentClick: (agent: DecoratedLightAgentConfigurationType) => void;
   assistantSearch: string;
   setAssistantSearch: (v: string) => void;
   filteredTags: TagType[];
-  filteredAgents: LightAgentConfigurationType[];
+  filteredAgents: DecoratedLightAgentConfigurationType[];
   agentsByTab: AgentsByTab;
   viewTab: TabId | undefined;
   setSelectedTab: (tab: string) => void;
@@ -88,8 +88,8 @@ export type WebAgentBrowserProps = AgentBrowserSharedProps & {
 };
 
 type AgentGridProps = {
-  agentConfigurations: LightAgentConfigurationType[];
-  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+  agentConfigurations: DecoratedLightAgentConfigurationType[];
+  handleAssistantClick: (agent: DecoratedLightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
   owner: WorkspaceType;
   trackAgentBrowserEvents?: boolean;
@@ -120,7 +120,7 @@ function trackAgentBrowserEvent({
 }
 
 function getAgentTrackingExtra(
-  agent: LightAgentConfigurationType
+  agent: DecoratedLightAgentConfigurationType
 ): TrackingExtra {
   return {
     agent_id: agent.sId,
@@ -143,7 +143,7 @@ export const AgentGrid = ({
 }: AgentGridProps) => {
   // Context menu state
   const [contextMenuAgent, setContextMenuAgent] =
-    useState<LightAgentConfigurationType | null>(null);
+    useState<DecoratedLightAgentConfigurationType | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
     x: number;
     y: number;
@@ -259,10 +259,10 @@ export const AgentGrid = ({
 
 type SearchDropdownContentProps = {
   filteredTags: TagType[];
-  filteredAgents: LightAgentConfigurationType[];
+  filteredAgents: DecoratedLightAgentConfigurationType[];
   isLoading: boolean;
   onTagClick: (tagId: string) => void;
-  onAgentClick: (agent: LightAgentConfigurationType) => void;
+  onAgentClick: (agent: DecoratedLightAgentConfigurationType) => void;
   onAgentMoreClick?: (agentId: string) => void;
   trackAgentBrowserEvents?: boolean;
 };
@@ -383,7 +383,7 @@ type AllTabContentProps = {
   selectedTag: string | null;
   setSelectedTag: (tag: string) => void;
   agentsByTab: AgentsByTab;
-  handleAgentClick: (agent: LightAgentConfigurationType) => void;
+  handleAgentClick: (agent: DecoratedLightAgentConfigurationType) => void;
   setDisplayedAssistantId: (id: string) => void;
   owner: WorkspaceType;
   showTagHeadings: boolean;
@@ -473,10 +473,10 @@ export function AgentBrowserSearchDropdown({
   assistantSearch: string;
   setAssistantSearch: (v: string) => void;
   filteredTags: TagType[];
-  filteredAgents: LightAgentConfigurationType[];
+  filteredAgents: DecoratedLightAgentConfigurationType[];
   isLoading: boolean;
   onTagClick: (tagId: string) => void;
-  onAgentClick: (agent: LightAgentConfigurationType) => void;
+  onAgentClick: (agent: DecoratedLightAgentConfigurationType) => void;
   onAgentMoreClick?: (agentId: string) => void;
   trackAgentBrowserEvents?: boolean;
 }) {

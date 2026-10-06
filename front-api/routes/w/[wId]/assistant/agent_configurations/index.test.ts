@@ -17,6 +17,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -326,8 +327,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     });
 
     expect(response.status).toBe(200);
-    const data: { agentConfigurations: LightAgentConfigurationType[] } =
-      await response.json();
+    const data: GetAgentConfigurationsResponseBody = await response.json();
     const agentsById = new Map(
       data.agentConfigurations.map((agent) => [agent.sId, agent])
     );

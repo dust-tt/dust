@@ -1,8 +1,8 @@
 import { compareStrings } from "@app/lib/i18n/format";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { DecoratedLightAgentConfigurationType } from "@app/types/assistant/agent";
 
 export const rankAgentsByPopularity = (
-  agents: LightAgentConfigurationType[],
+  agents: DecoratedLightAgentConfigurationType[],
   limit: number = 12
 ) => {
   // Step 1: Get the latest versions only
@@ -22,7 +22,9 @@ export const rankAgentsByPopularity = (
   return sortedAgents.slice(0, limit);
 };
 
-const calculatePopularityScore = (agent: LightAgentConfigurationType) => {
+const calculatePopularityScore = (
+  agent: DecoratedLightAgentConfigurationType
+) => {
   const { messageCount, conversationCount, userCount, timePeriodSec } =
     agent.usage ?? {
       messageCount: 0,
@@ -65,8 +67,8 @@ const calculateFeedbackMultiplier = (feedback: {
 };
 
 const isNewer = (
-  agentA: LightAgentConfigurationType,
-  agentB: LightAgentConfigurationType
+  agentA: DecoratedLightAgentConfigurationType,
+  agentB: DecoratedLightAgentConfigurationType
 ) => {
   // For internal agents, try to parse version numbers
   if (
@@ -166,12 +168,13 @@ const compareSuffixes = (suffixA: string, suffixB: string) => {
   return compareStrings(suffixA, suffixB);
 };
 
-const isInternal = (agent: LightAgentConfigurationType) => {
+const isInternal = (agent: DecoratedLightAgentConfigurationType) => {
   return agent.id === -1;
 };
 
-const getLatestAgents = (agents: LightAgentConfigurationType[]) => {
-  const agentGroups: Record<string, LightAgentConfigurationType[]> = {};
+const getLatestAgents = (agents: DecoratedLightAgentConfigurationType[]) => {
+  const agentGroups: Record<string, DecoratedLightAgentConfigurationType[]> =
+    {};
 
   agents.forEach((agent) => {
     // Group by author (for internal agents like gpt-4, gpt-4o, etc.)

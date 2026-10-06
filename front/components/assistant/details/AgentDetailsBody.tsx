@@ -242,7 +242,7 @@ export function AgentDetailsBody({
   const editedSections = useEditedAgentSections();
 
   const DescriptionSection = () => {
-    const lastAuthor = agentConfiguration?.lastAuthors?.[0];
+    const lastAuthor = agentConfiguration?.lastAuthors[0];
     const editedDate =
       agentConfiguration?.versionCreatedAt &&
       formatDate(new Date(agentConfiguration.versionCreatedAt), {

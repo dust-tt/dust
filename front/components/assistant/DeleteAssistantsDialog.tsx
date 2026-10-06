@@ -1,5 +1,5 @@
 import { useBatchDeleteAgentConfigurations } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { DecoratedLightAgentConfigurationType } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -16,7 +16,10 @@ import {
 import { useState } from "react";
 
 interface DeleteAssistantsDialogProps {
-  agentConfigurations: Pick<LightAgentConfigurationType, "sId" | "usage">[];
+  agentConfigurations: Pick<
+    DecoratedLightAgentConfigurationType,
+    "sId" | "usage"
+  >[];
   disabled: boolean;
   owner: LightWorkspaceType;
   onSave: () => void;
