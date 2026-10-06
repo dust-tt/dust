@@ -24,6 +24,7 @@
     "pretest:unit": "npm run i18n:compile",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "a11y:sync": "node scripts/sync-a11y-tags.mjs",
+    "watch": "npm-watch"
   },
   "watch": {
     "build:watch": {
@@ -33,6 +34,9 @@
       "extensions": "ts,tsx,css,po",
       "ignore": "src/locales/*/messages.ts"
     }
+  },
+  "nodemonConfig": {
+    "signal": "SIGQUIT"
   },
   "main": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
