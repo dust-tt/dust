@@ -74,10 +74,9 @@ export function createPersonalConsumptionRoutes() {
 
 /**
  * @cc [owner:tdraier,label:security;product] agent-consumption-managers-or-editors
- * An agent's consumption analytics MUST be served to workspace managers and admins
- * (`auth.isManager()`) for every agent `AgentResource.fetchById` returns to them, hidden agents
- * they cannot read included, and to callers holding `write` on the agent. Any other caller who can
- * fetch the agent MUST get a 403, and a caller who cannot fetch it MUST get a 404.
+ * An agent's consumption analytics MUST be served to workspace managers and admins, hidden agents
+ * included, and to callers holding `write` on it. Other callers holding a verb on the agent MUST
+ * get a 403, the rest a 404.
  */
 export function createAgentConsumptionRoutes() {
   const app = consumptionAnalyticsApp();

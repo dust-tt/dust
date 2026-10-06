@@ -110,11 +110,9 @@ export async function getAgentFeedbackToolResult(
 
 /**
  * @cc [owner:tdraier,label:security;product] agent-insights-for-fetchable-agents
- * The insights (usage overview and feedback counts) MUST be returned to every caller
- * `AgentResource.fetchById` returns the agent to, including a workspace manager who only holds
- * `list` on a hidden agent, and MUST fail with an `MCPError` otherwise. They MUST NOT include
- * anything beyond these aggregates and the agent's core fields, such as feedback content or the
- * agent's instructions.
+ * The insights MUST be returned to any caller holding a verb on the agent, `list` alone included
+ * (see `agent-verbs`), and fail otherwise. Only aggregates and core fields: never feedback content
+ * or instructions.
  */
 export async function getAgentInsightsToolResult(
   auth: Authenticator,

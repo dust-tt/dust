@@ -1,6 +1,4 @@
 @cc [owner:tdraier,label:security;product] agent-observability-for-fetchable-agents
-These routes MUST serve an agent's observability aggregates (feedback counts and distribution,
-version markers) to every caller `AgentResource.fetchById` returns the agent to, including a
-workspace manager who only holds `list` on a hidden agent, and MUST return a 404 otherwise. They
-MUST NOT return anything beyond these aggregates, such as feedback content or the agent's
-configuration.
+An agent's observability aggregates MUST be served to any caller holding a verb on it, `list` alone
+included (see `agent-verbs`), and a 404 returned otherwise. Only aggregates: never feedback content
+or the agent's configuration.
