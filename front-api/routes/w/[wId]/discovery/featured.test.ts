@@ -41,7 +41,6 @@ describe("GET /api/w/:wId/discovery/featured", () => {
             pictureUrl: expect.any(String),
             scope: "visible",
             lastAuthors: ["Me"],
-            userFavorite: false,
           },
         },
       ],

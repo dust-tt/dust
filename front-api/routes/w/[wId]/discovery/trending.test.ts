@@ -62,7 +62,6 @@ describe("GET /api/w/:wId/discovery/trending", () => {
             pictureUrl: "https://example.com/agent.png",
             scope: "visible",
             lastAuthors: ["Alice"],
-            userFavorite: false,
           },
         },
       ],

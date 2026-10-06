@@ -166,7 +166,6 @@ async function resolveViewerVisibleItems(
                   target: agent.toDiscoveryJSON(
                     agentMetadataById.get(agent.sId) ?? {
                       lastAuthors: [],
-                      userFavorite: false,
                     }
                   ),
                 }

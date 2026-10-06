@@ -9,7 +9,6 @@ export type DiscoveryAgentType = {
   pictureUrl: string;
   scope: AgentConfigurationScope;
   lastAuthors: readonly string[];
-  userFavorite: boolean;
 };
 
 export type DiscoverySkillType = {

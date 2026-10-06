@@ -1,10 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import {
-  enrichWithFavorites,
-  enrichWithRecentAuthors,
-} from "@app/lib/resources/agent_resource_serialization";
+import { enrichWithRecentAuthors } from "@app/lib/resources/agent_resource_serialization";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { grantTypesForVerb } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -45,7 +42,6 @@ type LoadedDiscoveryTargets = {
     string,
     {
       lastAuthors: readonly string[];
-      userFavorite: boolean;
     }
   >;
 };
@@ -126,7 +122,6 @@ function resolvedDiscoveryItem(
           target: target.toDiscoveryJSON(
             agentMetadataById.get(target.sId) ?? {
               lastAuthors: [],
-              userFavorite: false,
             }
           ),
         }),
@@ -211,7 +206,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    */
   /**
    * @cc [owner:aubin-tchoi,label:security;performance] discovery-agent-metadata
-   * Recent authors and viewer favorites MUST be loaded only for readable discovery agents.
+   * Recent authors MUST be loaded only for readable discovery agents.
    * Serialization MUST use fetched metadata without extra fetches.
    */
   static async loadTargets(
@@ -257,24 +252,16 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           viewerCanWrite: auth.can("write", skill),
         })
     );
-    const [recentAuthors, favorites, editorsBySkillId] = await Promise.all([
-      enrichWithRecentAuthors(auth, readableAgents),
-      enrichWithFavorites(auth, readableAgents),
-      SkillResource.batchListEditors(auth, visibleSkills),
-    ]);
+    const recentAuthors = await enrichWithRecentAuthors(auth, readableAgents);
+    const editorsBySkillId = await SkillResource.batchListEditors(
+      auth,
+      visibleSkills
+    );
     const discoverySkills = bypassEditorVisibility ? skills : visibleSkills;
 
     return {
       agentsById: new Map(discoveryAgents.map((agent) => [agent.sId, agent])),
-      agentMetadataById: new Map(
-        readableAgents.map((agent) => [
-          agent.sId,
-          {
-            lastAuthors: recentAuthors.get(agent.sId)?.lastAuthors ?? [],
-            userFavorite: favorites.get(agent.sId)?.userFavorite ?? false,
-          },
-        ])
-      ),
+      agentMetadataById: recentAuthors,
       skillsById: new Map(discoverySkills.map((skill) => [skill.sId, skill])),
       skillEditorsById: new Map(
         discoverySkills.map((skill) => [

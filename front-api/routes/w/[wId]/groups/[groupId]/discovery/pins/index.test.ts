@@ -41,7 +41,6 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
           pictureUrl: expect.any(String),
           scope: "visible",
           lastAuthors: ["Me"],
-          userFavorite: false,
         },
       },
     });
@@ -65,7 +64,6 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
             pictureUrl: expect.any(String),
             scope: "visible",
             lastAuthors: ["Me"],
-            userFavorite: false,
           },
         },
       ],

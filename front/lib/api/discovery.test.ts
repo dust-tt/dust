@@ -2,7 +2,6 @@ import {
   listDiscoveryForYouItems,
   listDiscoveryTrendingItems,
 } from "@app/lib/api/discovery";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
@@ -108,7 +107,6 @@ describe("discovery ranked sections", () => {
           pictureUrl: visibleAgent.pictureUrl,
           scope: visibleAgent.scope,
           lastAuthors: ["Me"],
-          userFavorite: false,
         },
       },
       {
@@ -130,11 +128,6 @@ describe("discovery ranked sections", () => {
     const visibleAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Visible for-you agent",
     });
-    const resource = await AgentResource.fetchById(auth, visibleAgent.sId);
-    if (!resource) {
-      throw new Error("Agent not found");
-    }
-    await resource.setUserFavorite(auth, true);
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible for-you skill",
       addCurrentUserAsEditor: true,
@@ -175,7 +168,6 @@ describe("discovery ranked sections", () => {
           pictureUrl: visibleAgent.pictureUrl,
           scope: visibleAgent.scope,
           lastAuthors: ["Me"],
-          userFavorite: true,
         },
       },
     ]);
@@ -199,7 +191,6 @@ describe("discovery ranked sections", () => {
           sId: GLOBAL_AGENTS_SID.HELPER,
           scope: "global",
           lastAuthors: [getGlobalAgentAuthorName(GLOBAL_AGENTS_SID.HELPER)],
-          userFavorite: false,
         }),
       },
     ]);
