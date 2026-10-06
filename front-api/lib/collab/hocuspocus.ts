@@ -1,9 +1,9 @@
-import type { LiveFile } from "@app/lib/api/co_edition/live_file";
+import type { LiveFile } from "@app/lib/api/collab/live_file";
 import {
   loadLiveDocument,
   openLiveFile,
   parseLiveDocumentName,
-} from "@app/lib/api/co_edition/live_file";
+} from "@app/lib/api/collab/live_file";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

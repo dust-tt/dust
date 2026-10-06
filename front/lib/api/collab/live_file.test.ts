@@ -3,8 +3,8 @@ import {
   openLiveFile,
   parseLiveDocumentName,
   toLiveDocumentName,
-} from "@app/lib/api/co_edition/live_file";
-import { BODY_FRAGMENT_NAME } from "@app/lib/api/co_edition/ydoc";
+} from "@app/lib/api/collab/live_file";
+import { BODY_FRAGMENT_NAME } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,

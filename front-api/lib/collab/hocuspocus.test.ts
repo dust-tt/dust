@@ -1,11 +1,11 @@
-import { loadLiveDocument } from "@app/lib/api/co_edition/live_file";
-import { dfmToYDoc } from "@app/lib/api/co_edition/ydoc";
+import { loadLiveDocument } from "@app/lib/api/collab/live_file";
+import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-vi.mock("@app/lib/api/co_edition/live_file", async (importActual) => ({
-  ...(await importActual<typeof import("@app/lib/api/co_edition/live_file")>()),
+vi.mock("@app/lib/api/collab/live_file", async (importActual) => ({
+  ...(await importActual<typeof import("@app/lib/api/collab/live_file")>()),
   loadLiveDocument: vi.fn(),
 }));
 

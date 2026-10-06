@@ -8,7 +8,7 @@ import {
   dfmToYDoc,
   ENVELOPE_MAP_NAME,
   yDocToDfm,
-} from "@app/lib/api/co_edition/ydoc";
+} from "@app/lib/api/collab/ydoc";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";

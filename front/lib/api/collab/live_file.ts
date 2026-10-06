@@ -1,5 +1,5 @@
-import type { LiveDocument } from "@app/lib/api/co_edition/ydoc";
-import { dfmToYDoc } from "@app/lib/api/co_edition/ydoc";
+import type { LiveDocument } from "@app/lib/api/collab/ydoc";
+import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   readCanonicalFileContent,
