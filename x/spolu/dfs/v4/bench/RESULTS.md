@@ -2,7 +2,7 @@
 
 Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
 in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
-Later focused runs measure untar only, most recently [overlay-aware refresh](#overlay-aware-refresh).
+Later focused runs measure untar only, most recently [one shared memory budget](#one-shared-memory-budget).
 The full baseline table remains below.
 
 ## Configuration and method
@@ -12,7 +12,7 @@ The full baseline table remains below.
   Docker volume and 3 GiB FDB container limit. One DFS server. No ES or GCP.
 - Same jd corpus/workloads: **10,000 files, 100 directories, 177,499,149 bytes**, seed 42.
   Uncompressed untar runs 13 directories below the tenant root through `/shared` and an inherited grant.
-- Client: **D=2s, W=1s, C=1s**, 25ms coalescing, 1 GiB accounted cache, 256 MiB dirty cap,
+- Baseline client: **D=2s, W=1s, C=1s**, 25ms coalescing, 1 GiB accounted cache, 256 MiB dirty cap,
   eight FUSE workers. Bounded full-attribute directory prefetch; file content is demand-loaded.
   Revision-validated blocks survive metadata expiry. Direct I/O, zero kernel name/attribute TTLs,
   no kernel data cache or writeback. The cache budget is not a hard process RSS limit.
@@ -158,7 +158,7 @@ durable transactions. Unmount including drain took 8.738s. Zero application fsyn
 zero writeback failures. All 10,000 persisted file sizes/hashes and the manifest were verified after
 starting a new server/session/mount; Rust/FDB and mounted filesystem tests also passed.
 
-### Where the latest untar time is spent
+### Where the overlay-refresh untar time is spent
 
 | Client phase | Calls | Cumulative elapsed (s) |
 | --- | ---: | ---: |
@@ -185,6 +185,48 @@ and 1.260s system CPU. Timers are nested/concurrent and are not additive wall-ti
 Report: `/tmp/dfs-v4-85fc70805f-refresh/run.json` inside `dfs-v4-dev-1`; raw reports remain outside Git.
 FUSE binary SHA-256: `35f4e7b28db047edbbb0d5dbfa71e76abfe9bdb0205caf0de0946db822c8326f`.
 This is an untar-only comparison, not a rerun of the full filesystem table.
+
+## One shared memory budget
+
+2026-10-06, source `1110a3419b`. Removed the separate dirty cap: **one 1 GiB accounted budget** now
+covers clean cache, pending writes and bookkeeping, including the existing 96 MiB transient reserve.
+Writes evict clean entries before waiting for capacity. Payload-copy accounting, 25ms coalescing,
+TTL, transaction scheduling and server binary remain unchanged. Same deep 10k-file/177.5 MB corpus.
+
+| Measurement (s) | 256 MiB dirty cap `85fc70805f` | Shared budget `1110a3419b` |
+| --- | ---: | ---: |
+| Untar | 21.278 | **16.026** |
+| Remaining client drain | 8.598 | **13.955** |
+| Untar + remaining drain | 29.876 | **29.981** |
+| Dirty-budget admission wait | 15.085 | Removed |
+| Shared-memory admission | 0.005 | **0.004** |
+| Pending-group admission | 0.003 | **10.121** |
+
+Tar returns **25% sooner**; total completion is essentially unchanged in these single runs. More work
+is buffered, with the remaining foreground wait at the **4,096-group queue limit**. Every edit currently
+reserves a group slot before deciding whether it can coalesce, so this counter includes both new and
+merged edits. The scheduling/throughput work is proposed in [PLAN.md](../PLAN.md#4-transaction-throughput--proposed),
+not implemented in this measurement. Unmount including drain took 13.991s.
+
+There were 750 RPCs: 613 mutation batches carrying 10,114 independent groups, 81 Stat, 32 Lookup,
+23 List and one session RPC. FUSE CPU was 4.250s; DFS CPU including drain was 10.170s. Tar used 0.066s
+user and 1.194s system CPU. Zero fsync/fsyncdir calls, foreground errors or writeback failures.
+Timers include overlapping work and are not additive wall-time components.
+
+Rust/FDB tests, shared-memory eviction/backpressure tests and mounted filesystem checks passed.
+All 10,000 persisted file sizes/hashes and the manifest were checked after a new server/session/mount.
+Only untar was rebenchmarked; the historical full filesystem table above remains unchanged.
+
+With this source checked out:
+
+```sh
+v4/local/run exec cargo build --workspace --release
+v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=1110a3419b python3 /dfs/v4/bench/run.py --untar-only
+```
+
+Report: `/tmp/dfs-v4-1110a3419b-shared-memory/run.json` inside `dfs-v4-dev-1`.
+FUSE binary SHA-256: `d9bef5b9629a6c0b411da428024b03f307fe59b0ad5a3820fe75f680aa65dbb6`.
+The manifest and server hashes match the preceding overlay-refresh run. Raw reports remain outside Git.
 
 ## Comparison with v3
 

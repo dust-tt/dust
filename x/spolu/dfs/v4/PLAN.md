@@ -22,7 +22,7 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 - [x] Independent TTLs for tentative objects; overlay-aware expiry without forcing queued publication.
 - [x] Validate refresh races, transactional failures and postcommit response reuse; repeat the 10k untar.
 - [x] Share one 1 GiB budget across clean/dirty state; remove the dirty cap and validate memory pressure.
-- [ ] Repeat the 10k untar with shared memory; report foreground time, remaining drain and admission waits.
+- [x] Repeat the 10k untar with shared memory; report foreground time, remaining drain and admission waits.
 
 ## 3. Validation and measurements
 
@@ -44,7 +44,9 @@ writeback, weaker durability or FDB consistency tuning in this work.
 - [ ] **Keep independent work running.** Stop parent-lock waiters consuming transaction permits and
   filling each batch's 16-worker window. Schedule ready groups across parents fairly; refill client
   capacity as groups complete instead of letting slow envelope tails limit new work. Keep explicit
-  group/byte/RPC bounds. Sweep concurrency only after measuring actual occupancy.
+  group/byte/RPC bounds. The shared-memory run spends 10.121s at the 4,096-group queue limit: acquire
+  slots only for new groups (currently every edit reserves one before checking coalescing), and
+  distinguish queue-capacity changes from throughput wins. Sweep concurrency after measuring occupancy.
 - [ ] **Shorten each create transaction.** Start the new UUID collision read alongside the existing
   ancestry/name prefetch, and remove measured sequential/duplicate reads. Keep all authority and
   uniqueness checks in the same FDB transaction; no root-specific shortcuts.
