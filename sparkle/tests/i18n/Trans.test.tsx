@@ -22,11 +22,7 @@ function ItemCount({ count }: { count: number }) {
 }
 
 function Labelled({ children }: { children: React.ReactNode }) {
-  return (
-    <Trans id="test.labelled">
-      Label: {children}
-    </Trans>
-  );
+  return <Trans id="test.labelled">Label: {children}</Trans>;
 }
 
 describe("Trans", () => {
