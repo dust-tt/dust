@@ -392,6 +392,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
+  user_profile: {
+    description:
+      "User profile side panel (pronouns, job title, groups, agent memories) opened from user touchpoints",
+    stage: "dust_only",
+    owner: "radjakahoul",
+  },
   user_memory: {
     description:
       "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",

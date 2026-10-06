@@ -194,6 +194,31 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
+  /**
+   * @cc [owner:radjakahoul,label:security] memories-listed-for-current-user-only
+   * Lists every memory the authenticated user holds across agents. It MUST only return the
+   * caller's own memories: another user's memories are never exposed through this method.
+   */
+  static async listForCurrentUser(
+    auth: Authenticator
+  ): Promise<AgentMemoryResource[]> {
+    const userId = auth.user()?.id ?? null;
+    if (!userId) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId,
+      },
+      order: [
+        ["updatedAt", "DESC"],
+        ["id", "DESC"],
+      ],
+    });
+  }
+
   async updateContent(auth: Authenticator, content: string) {
     return this.update({ content });
   }

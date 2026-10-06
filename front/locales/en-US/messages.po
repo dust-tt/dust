@@ -163,6 +163,14 @@ msgid "Last name is required."
 msgstr "Last name is required."
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Pronouns must be {MAX_PRONOUNS_LENGTH} characters or fewer."
+msgstr "Pronouns must be {MAX_PRONOUNS_LENGTH} characters or fewer."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Job title must be {MAX_JOB_TITLE_LENGTH} characters or fewer."
+msgstr "Job title must be {MAX_JOB_TITLE_LENGTH} characters or fewer."
+
+#: front/components/UserSettingsPopover.tsx
 msgid "Personal Information"
 msgstr "Personal Information"
 
@@ -195,13 +203,48 @@ msgid "Last name"
 msgstr "Last name"
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Pronouns"
+msgstr "Pronouns"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Optional"
+msgstr "Optional"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "e.g. they/them"
+msgstr "e.g. they/them"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Job title"
+msgstr "Job title"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "e.g. Software Engineer"
+msgstr "e.g. Software Engineer"
+
+#: front/components/UserSettingsPopover.tsx
 #: front/components/me/NotificationPreferences.tsx
+#: front/components/user_profile/UserProfileSheet.tsx
 msgid "Email"
 msgstr "Email"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Used to sign in and receive notifications"
 msgstr "Used to sign in and receive notifications"
+
+#: front/components/UserSettingsPopover.tsx
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Defined in admin settings"
+msgstr "Defined in admin settings"
+
+#: front/components/UserSettingsPopover.tsx
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "Dust role"
+msgstr "Dust role"
 
 #: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
@@ -336,8 +379,13 @@ msgid "Workspaces you've been invited to join"
 msgstr "Workspaces you've been invited to join"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/user_profile/UserProfileSheet.tsx
 msgid "Memory"
 msgstr "Memory"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "What agents remember about you. Not visible to collaborators."
+msgstr "What agents remember about you. Not visible to collaborators."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Enable Memory"
@@ -398,6 +446,7 @@ msgid "View description and settings"
 msgstr "View description and settings"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/user_profile/UserProfileSheet.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -1113,6 +1162,54 @@ msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
 
+#: front/components/user_profile/AgentMemoryCards.tsx
+msgid "Agents haven't remembered anything about you yet."
+msgstr "Agents haven't remembered anything about you yet."
+
+#: front/components/user_profile/AgentMemoryCards.tsx
+msgid "{memoriesCount, plural, one {# memory} other {# memories}}"
+msgstr "{memoriesCount, plural, one {# memory} other {# memories}}"
+
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "Profile"
+msgstr "Profile"
+
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "Not available"
+msgstr "Not available"
+
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "This user is not available."
+msgstr "This user is not available."
+
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "Create Pod"
+msgstr "Create Pod"
+
+#: front/components/user_profile/UserProfileSheet.tsx
+msgid "Not visible to collaborators"
+msgstr "Not visible to collaborators"
+
+#: front/components/user_profile/roleLabels.ts
+msgctxt "workspace role"
+msgid "Admin"
+msgstr "Admin"
+
+#: front/components/user_profile/roleLabels.ts
+msgctxt "workspace role"
+msgid "Manager"
+msgstr "Manager"
+
+#: front/components/user_profile/roleLabels.ts
+msgctxt "workspace role"
+msgid "Member"
+msgstr "Member"
+
+#: front/components/user_profile/roleLabels.ts
+msgctxt "workspace role"
+msgid "Former member"
+msgstr "Former member"
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Could not save the language"
@@ -1521,3 +1618,7 @@ msgstr "Once you reach 100%, you won't be able to run agents until your limit is
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "Go to workspace"
 msgstr "Go to workspace"
+
+#: front/lib/swr/user_profile.ts
+msgid "Could not update your profile"
+msgstr "Could not update your profile"

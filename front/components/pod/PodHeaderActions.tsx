@@ -1,5 +1,6 @@
 import { LeavePodDialog } from "@app/components/pod/LeavePodDialog";
 import { useLeavePodDialog } from "@app/hooks/useLeaveProjectDialog";
+import { useOpenUserProfile } from "@app/hooks/useOpenUserProfile";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import type {
@@ -59,6 +60,8 @@ export function PodHeaderActions({
     onSuccess: handleLeaveSuccess,
   });
 
+  const openUserProfile = useOpenUserProfile("pod_header");
+
   const podEditors = members.filter((member) => member.isEditor);
   const isPodEditor = podEditors.some((member) => member.sId === user.sId);
   const canLeavePod =
@@ -74,6 +77,9 @@ export function PodHeaderActions({
                 name: member.fullName ?? member.username,
                 visual: member.image ?? undefined,
                 isRounded: true,
+                onClick: openUserProfile
+                  ? () => openUserProfile(member.sId)
+                  : undefined,
               }))}
               nbVisibleItems={5}
               size="sm"

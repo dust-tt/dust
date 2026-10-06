@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useOpenUserProfile } from "@app/hooks/useOpenUserProfile";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate } from "@app/lib/i18n/format";
 import { spaceMembershipProperties } from "@app/lib/spaces_utils";
@@ -39,7 +40,10 @@ type MemberRowData = {
 
 type MemberRowInfo = { row: { original: MemberRowData } };
 
-function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
+function getMemberTableRows(
+  allUsers: SpaceUserType[],
+  openUserProfile: ((userId: string) => void) | null
+): MemberRowData[] {
   return allUsers.map((user) => ({
     userId: user.sId,
     name: user.fullName,
@@ -47,6 +51,7 @@ function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
     avatarUrl: user.image ?? "",
     isEditor: user.isEditor ?? false,
     joinedAt: user.joinedAt ?? "",
+    onClick: openUserProfile ? () => openUserProfile(user.sId) : undefined,
   }));
 }
 
@@ -159,9 +164,10 @@ export function PodMembersTable({
     [doUpdate, mutatePodInfo, pod, selectedMembers, sendNotifications]
   );
 
+  const openUserProfile = useOpenUserProfile("pod_members_table");
   const rows = useMemo(
-    () => getMemberTableRows(selectedMembers),
-    [selectedMembers]
+    () => getMemberTableRows(selectedMembers, openUserProfile),
+    [selectedMembers, openUserProfile]
   );
 
   const columns: ColumnDef<MemberRowData>[] = useMemo(

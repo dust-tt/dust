@@ -37,6 +37,11 @@ import {
   isUserMenuModal,
   USER_MENU_MODAL_QUERY_PARAM,
 } from "@app/lib/user_menu";
+import type { UserSettingsSection } from "@app/lib/user_settings_events";
+import {
+  OPEN_USER_SETTINGS_EVENT,
+  OpenUserSettingsEvent,
+} from "@app/lib/user_settings_events";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -124,6 +129,8 @@ export function UserMenu({
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] =
+    useState<UserSettingsSection>("personal");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -139,6 +146,18 @@ export function UserMenu({
   const showExtensionMenu =
     !isExtensionLastUsedAtLoading &&
     shouldShowExtensionMenu(extensionLastUsedAt?.value);
+
+  useEffect(() => {
+    const openSettings = (event: Event) => {
+      if (event instanceof OpenUserSettingsEvent) {
+        setSettingsSection(event.detail.section);
+        setSettingsOpen(true);
+      }
+    };
+    window.addEventListener(OPEN_USER_SETTINGS_EVENT, openSettings);
+    return () =>
+      window.removeEventListener(OPEN_USER_SETTINGS_EVENT, openSettings);
+  }, []);
 
   useEffect(() => {
     const openAnalytics = () => setAnalyticsOpen(true);
@@ -324,6 +343,7 @@ export function UserMenu({
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         owner={owner}
+        initialSection={settingsSection}
       />
       <UserToolsDialog
         open={toolsOpen}
@@ -529,6 +549,7 @@ export function UserMenu({
                 icon={User01}
                 onSelect={() => {
                   trackUserMenuEvent("personal_settings");
+                  setSettingsSection("personal");
                   setSettingsOpen(true);
                 }}
               />

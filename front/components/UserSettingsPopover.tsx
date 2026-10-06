@@ -17,6 +17,8 @@ import {
 } from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { AgentMemoryCards } from "@app/components/user_profile/AgentMemoryCards";
+import { WORKSPACE_ROLE_LABELS } from "@app/components/user_profile/roleLabels";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
@@ -30,16 +32,26 @@ import {
   useUser,
   useUserMemory,
 } from "@app/lib/swr/user";
+import {
+  useMyAgentMemories,
+  usePatchMyProfile,
+  useUserProfile,
+} from "@app/lib/swr/user_profile";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
+import type { UserSettingsSection } from "@app/lib/user_settings_events";
 import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
+import {
+  MAX_JOB_TITLE_LENGTH,
+  MAX_PRONOUNS_LENGTH,
+} from "@app/types/api/user_profile";
 import type { SupportedLocale } from "@app/types/locale";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
@@ -96,17 +108,13 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
-type SettingsSection =
-  | "personal"
-  | "customization"
-  | "notifications"
-  | "memory"
-  | "invitations";
+type SettingsSection = UserSettingsSection;
 
 interface UserSettingsPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   owner: WorkspaceType;
+  initialSection?: SettingsSection;
 }
 
 // ─── Shared section wrapper ───────────────────────────────────────────────────
@@ -155,6 +163,18 @@ function usePersonalInfoSchema() {
         firstName: z.string().min(1, t`First name is required.`),
         lastName: z.string().min(1, t`Last name is required.`),
         profilePictureUrl: z.string().nullable(),
+        pronouns: z
+          .string()
+          .max(
+            MAX_PRONOUNS_LENGTH,
+            t`Pronouns must be ${MAX_PRONOUNS_LENGTH} characters or fewer.`
+          ),
+        jobTitle: z
+          .string()
+          .max(
+            MAX_JOB_TITLE_LENGTH,
+            t`Job title must be ${MAX_JOB_TITLE_LENGTH} characters or fewer.`
+          ),
       }),
     [t]
   );
@@ -167,6 +187,17 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   const personalInfoSchema = usePersonalInfoSchema();
   const { user, isUserLoading } = useUser();
   const { patchUser } = usePatchUser();
+  const { hasFeature } = useFeatureFlags();
+  const hasUserProfile = hasFeature("user_profile");
+  const { profile, isProfileLoading } = useUserProfile({
+    owner,
+    userId: user?.sId ?? null,
+    disabled: !hasUserProfile,
+  });
+  const { patchMyProfile } = usePatchMyProfile({
+    owner,
+    userId: user?.sId ?? "",
+  });
   const isProvisioned = user?.origin === "provisioned";
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -177,12 +208,18 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     useCase: "avatar",
   });
 
+  const isJobTitleManaged = profile?.isJobTitleManaged ?? false;
+  // A job title synced from the identity provider is read-only, so it stays out of the form.
+  const editableJobTitle = isJobTitleManaged ? "" : (profile?.jobTitle ?? "");
+
   const form = useForm<PersonalInfoType>({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
       firstName: user?.firstName ?? "",
       lastName: user?.lastName ?? "",
       profilePictureUrl: user?.image ?? null,
+      pronouns: profile?.pronouns ?? "",
+      jobTitle: editableJobTitle,
     },
   });
 
@@ -198,9 +235,11 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
         firstName: user.firstName,
         lastName: user.lastName ?? "",
         profilePictureUrl: user.image ?? null,
+        pronouns: profile?.pronouns ?? "",
+        jobTitle: editableJobTitle,
       });
     }
-  }, [user, form]);
+  }, [user, profile, editableJobTitle, form]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -216,16 +255,33 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   };
 
   const handleSave = async (data: PersonalInfoType) => {
-    await patchUser(
-      data.firstName,
-      data.lastName,
-      true,
-      undefined,
-      data.profilePictureUrl
-    );
+    const { dirtyFields } = form.formState;
+    if (
+      dirtyFields.firstName ||
+      dirtyFields.lastName ||
+      dirtyFields.profilePictureUrl
+    ) {
+      await patchUser(
+        data.firstName,
+        data.lastName,
+        true,
+        undefined,
+        data.profilePictureUrl
+      );
+    }
+    if (hasUserProfile && (dirtyFields.pronouns || dirtyFields.jobTitle)) {
+      await patchMyProfile({
+        pronouns: data.pronouns.trim() || null,
+        ...(isJobTitleManaged
+          ? {}
+          : { jobTitle: data.jobTitle.trim() || null }),
+      });
+    }
   };
 
-  if (isUserLoading) {
+  const groupNames = profile?.groups.map((g) => g.name).join(", ");
+
+  if (isUserLoading || (hasUserProfile && isProfileLoading)) {
     return (
       <SectionContent title={t`Personal Information`}>
         <div className="flex justify-center p-6">
@@ -329,6 +385,58 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
             }
           />
 
+          {hasUserProfile && (
+            <>
+              <SettingsList.Row
+                title={t`Pronouns`}
+                description={t`Optional`}
+                action={
+                  <div className="w-64">
+                    <Input
+                      {...form.register("pronouns")}
+                      placeholder={t`e.g. they/them`}
+                      isError={!!form.formState.errors.pronouns}
+                      message={form.formState.errors.pronouns?.message}
+                      messageStatus={
+                        form.formState.errors.pronouns ? "error" : undefined
+                      }
+                    />
+                  </div>
+                }
+              />
+
+              {isJobTitleManaged ? (
+                <SettingsList.Row
+                  title={t`Job title`}
+                  description={t`Managed by your identity provider`}
+                  action={
+                    <span className="copy-sm text-muted-foreground">
+                      {profile?.jobTitle}
+                    </span>
+                  }
+                />
+              ) : (
+                <SettingsList.Row
+                  title={t`Job title`}
+                  description={t`Optional`}
+                  action={
+                    <div className="w-64">
+                      <Input
+                        {...form.register("jobTitle")}
+                        placeholder={t`e.g. Software Engineer`}
+                        isError={!!form.formState.errors.jobTitle}
+                        message={form.formState.errors.jobTitle?.message}
+                        messageStatus={
+                          form.formState.errors.jobTitle ? "error" : undefined
+                        }
+                      />
+                    </div>
+                  }
+                />
+              )}
+            </>
+          )}
+
           <SettingsList.Row
             title={t`Email`}
             description={t`Used to sign in and receive notifications`}
@@ -338,6 +446,31 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
               </span>
             }
           />
+
+          {hasUserProfile && (
+            <>
+              {groupNames && (
+                <SettingsList.Row
+                  title={t`Groups`}
+                  description={t`Defined in admin settings`}
+                  action={
+                    <span className="copy-sm text-muted-foreground">
+                      {groupNames}
+                    </span>
+                  }
+                />
+              )}
+              <SettingsList.Row
+                title={t`Dust role`}
+                description={t`Defined in admin settings`}
+                action={
+                  <span className="copy-sm text-muted-foreground">
+                    {t(WORKSPACE_ROLE_LABELS[owner.role])}
+                  </span>
+                }
+              />
+            </>
+          )}
         </SettingsList>
       </FormProvider>
     </SectionContent>
@@ -754,10 +887,22 @@ function InvitationsSection({
 
 // ─── Memory ───────────────────────────────────────────────────────────────────
 
-function MemorySection({ owner }: { owner: WorkspaceType }) {
+function MemorySection({
+  owner,
+  hasUserMemory,
+  hasUserProfile,
+}: {
+  owner: WorkspaceType;
+  hasUserMemory: boolean;
+  hasUserProfile: boolean;
+}) {
   const { t } = useLingui();
   const { content, isMemoryEnabled, isMemoryLoading, setMemory } =
-    useUserMemory({ owner });
+    useUserMemory({ owner, disabled: !hasUserMemory });
+  const { agentMemories, isAgentMemoriesLoading } = useMyAgentMemories({
+    owner,
+    disabled: !hasUserProfile,
+  });
 
   const [draft, setDraft] = useState<string | null>(null);
   const [enabledDraft, setEnabledDraft] = useState<boolean | null>(null);
@@ -802,17 +947,30 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
   return (
     <SectionContent
       title={t`Memory`}
+      description={
+        hasUserProfile
+          ? t`What agents remember about you. Not visible to collaborators.`
+          : undefined
+      }
       footer={
-        <Button
-          label={t`Save`}
-          variant="primary"
-          type="button"
-          onClick={handleSave}
-          disabled={!isDirty || isOverLimit || isSaving}
-        />
+        hasUserMemory ? (
+          <Button
+            label={t`Save`}
+            variant="primary"
+            type="button"
+            onClick={handleSave}
+            disabled={!isDirty || isOverLimit || isSaving}
+          />
+        ) : undefined
       }
     >
-      {isMemoryLoading ? (
+      {hasUserProfile && (
+        <AgentMemoryCards
+          agentMemories={agentMemories}
+          isLoading={isAgentMemoriesLoading}
+        />
+      )}
+      {!hasUserMemory ? null : isMemoryLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
@@ -869,7 +1027,7 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
-// Order only. "Memory" (user_memory feature flag) and "Invitations" (pending
+// Order only. "Memory" (user_memory or user_profile feature flag) and "Invitations" (pending
 // invitations) keep their position here and are filtered out below when not
 // applicable.
 const NAV_ITEMS: Array<{
@@ -878,8 +1036,8 @@ const NAV_ITEMS: Array<{
   label: MessageDescriptor;
 }> = [
   { section: "personal", icon: User01, label: msg`Personal Information` },
-  { section: "customization", icon: Settings01, label: msg`Customization` },
   { section: "memory", icon: Brain, label: msg`Memory` },
+  { section: "customization", icon: Settings01, label: msg`Customization` },
   { section: "notifications", icon: Bell01, label: msg`Notifications` },
   { section: "invitations", icon: Mail01, label: msg`Invitations` },
 ];
@@ -888,6 +1046,7 @@ export function UserSettingsPopover({
   open,
   onOpenChange,
   owner,
+  initialSection = "personal",
 }: UserSettingsPopoverProps) {
   const { t } = useLingui();
   const [activeSection, setActiveSection] =
@@ -895,6 +1054,7 @@ export function UserSettingsPopover({
 
   const { hasFeature } = useFeatureFlags();
   const hasUserMemory = hasFeature("user_memory");
+  const hasUserProfile = hasFeature("user_profile");
 
   // Only fetch while the popover is open: it is always mounted in the user menu.
   const { pendingInvitations, isPendingInvitationsLoading } =
@@ -905,28 +1065,28 @@ export function UserSettingsPopover({
     disabled: true,
   });
 
-  // "Memory" is gated on the user_memory feature flag; "Invitations" only
+  // "Memory" is gated on the user_memory or user_profile feature flag; "Invitations" only
   // appears when the user has pending invitations.
   const navItems = useMemo(
     () =>
       NAV_ITEMS.filter((item) => {
         if (item.section === "memory") {
-          return hasUserMemory;
+          return hasUserMemory || hasUserProfile;
         }
         if (item.section === "invitations") {
           return hasPendingInvitations;
         }
         return true;
       }),
-    [hasUserMemory, hasPendingInvitations]
+    [hasUserMemory, hasUserProfile, hasPendingInvitations]
   );
 
   useEffect(() => {
     if (open) {
-      setActiveSection("personal");
+      setActiveSection(initialSection);
       void mutateAuthContext();
     }
-  }, [open, mutateAuthContext]);
+  }, [open, initialSection, mutateAuthContext]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -996,7 +1156,13 @@ export function UserSettingsPopover({
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />
             )}
-            {activeSection === "memory" && <MemorySection owner={owner} />}
+            {activeSection === "memory" && (
+              <MemorySection
+                owner={owner}
+                hasUserMemory={hasUserMemory}
+                hasUserProfile={hasUserProfile}
+              />
+            )}
             {activeSection === "invitations" && (
               <InvitationsSection
                 invitations={pendingInvitations}
