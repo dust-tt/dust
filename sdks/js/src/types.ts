@@ -3650,6 +3650,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "FigmaLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
+  | "FullEnrichLogo"
   | "GammaLogo"
   | "GcalLogo"
   | "GithubLogo"

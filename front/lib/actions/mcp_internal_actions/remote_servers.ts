@@ -4893,6 +4893,89 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10043,
+    name: "FullEnrich",
+    description:
+      "FullEnrich tools for B2B contact and company search, contact enrichment (emails, phones) and CSV export.",
+    url: "https://mcp.fullenrich.com/mcp",
+    icon: "FullEnrichLogo",
+    documentationUrl: "https://help.fullenrich.com",
+    connectionInstructions:
+      "FullEnrich uses OAuth with dynamic client registration. Sign in with your FullEnrich account to connect. Enrichment and exports consume FullEnrich credits.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Free / read-only
+      get_credits: "never_ask",
+      list_industries: "never_ask",
+      list_seniorities: "never_ask",
+      list_functions_subfunctions: "never_ask",
+      search_people: "never_ask",
+      search_companies: "never_ask",
+      search_contact_by_email: "never_ask",
+      get_enrichment_results: "never_ask",
+      // Consume credits
+      enrich_search_contact: "high",
+      enrich_bulk: "high",
+      export_contacts: "high",
+      export_companies: "high",
+      export_enrichment_results: "low",
+    },
+    toolDisplayLabels: {
+      get_credits: {
+        running: "Checking credits on FullEnrich",
+        done: "Checked credits on FullEnrich",
+      },
+      list_industries: {
+        running: "Listing industries on FullEnrich",
+        done: "Listed industries on FullEnrich",
+      },
+      list_seniorities: {
+        running: "Listing seniorities on FullEnrich",
+        done: "Listed seniorities on FullEnrich",
+      },
+      list_functions_subfunctions: {
+        running: "Listing functions on FullEnrich",
+        done: "Listed functions on FullEnrich",
+      },
+      search_people: {
+        running: "Searching people on FullEnrich",
+        done: "Searched people on FullEnrich",
+      },
+      search_companies: {
+        running: "Searching companies on FullEnrich",
+        done: "Searched companies on FullEnrich",
+      },
+      search_contact_by_email: {
+        running: "Looking up a contact by email on FullEnrich",
+        done: "Looked up a contact by email on FullEnrich",
+      },
+      enrich_search_contact: {
+        running: "Enriching contacts on FullEnrich",
+        done: "Enriched contacts on FullEnrich",
+      },
+      enrich_bulk: {
+        running: "Enriching contacts in bulk on FullEnrich",
+        done: "Enriched contacts in bulk on FullEnrich",
+      },
+      get_enrichment_results: {
+        running: "Fetching enrichment results from FullEnrich",
+        done: "Fetched enrichment results from FullEnrich",
+      },
+      export_contacts: {
+        running: "Exporting contacts from FullEnrich",
+        done: "Exported contacts from FullEnrich",
+      },
+      export_companies: {
+        running: "Exporting companies from FullEnrich",
+        done: "Exported companies from FullEnrich",
+      },
+      export_enrichment_results: {
+        running: "Exporting enrichment results from FullEnrich",
+        done: "Exported enrichment results from FullEnrich",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

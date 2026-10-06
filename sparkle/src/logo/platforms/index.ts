@@ -33,6 +33,7 @@ export { default as FrameLogo } from "./Frame";
 export { default as FreshdeskLogo } from "./Freshdesk";
 export { default as FreshserviceLogo } from "./Freshservice";
 export { default as FrontLogo } from "./Front";
+export { default as FullEnrichLogo } from "./FullEnrich";
 export { default as GammaLogo } from "./Gamma";
 export { default as GcalLogo } from "./Gcal";
 export { default as GeminiLogo } from "./Gemini";
