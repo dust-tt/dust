@@ -139,6 +139,7 @@ export async function getAgentConfigurationAsYAMLConfig(
         description: json.userFacingDescription,
         icon: json.icon,
         availability: json.availability,
+        requestedSpaceIds: json.requestedSpaceIds,
         canWrite: json.canWrite,
       };
     }),

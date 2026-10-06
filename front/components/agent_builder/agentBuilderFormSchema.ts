@@ -126,6 +126,7 @@ const skillsSchema = z.object({
   description: z.string(),
   icon: z.string().nullable(),
   availability: z.enum(SKILL_AVAILABILITIES),
+  requestedSpaceIds: z.array(z.string()),
   // Whether the current user is an editor of the skill.
   canWrite: z.boolean(),
 });
