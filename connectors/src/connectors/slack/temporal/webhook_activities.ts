@@ -2,6 +2,7 @@ import { onChannelCreation } from "@connectors/api/webhooks/slack/created_channe
 import { handleDeprecatedChatBot } from "@connectors/api/webhooks/slack/deprecated_bot";
 import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
+import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import {
   getSlackClient,
   reportSlackUsage,
@@ -30,6 +31,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
+import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import { assertNever, removeNulls } from "@dust-tt/client";
 import { Op } from "sequelize";
 import { fromError } from "zod-validation-error";
@@ -390,6 +392,7 @@ async function announceBotJoinedPrivateChannel(
   );
 
   if (channelInfo?.channel?.is_private) {
+    const i18n = await getSlackI18n(DEFAULT_LOCALE);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",
@@ -398,7 +401,9 @@ async function announceBotJoinedPrivateChannel(
     await withSlackErrorHandling(() =>
       slackClient.chat.postMessage({
         channel: channelId,
-        text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
+        text: i18n._(
+          "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel."
+        ),
       })
     );
   }

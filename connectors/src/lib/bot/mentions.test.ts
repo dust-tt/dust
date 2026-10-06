@@ -115,6 +115,23 @@ describe("processMentions", () => {
     expect(result.error.message).toBe(
       "Agent =support is not available to you. Check the name or ask your workspace administrator for access."
     );
+    expect(result.error.code).toBe("agent_not_available");
+    expect(result.error.mentionCandidate).toBe("=support");
+  });
+
+  it("returns agent_not_found when there is no agent to match", () => {
+    const result = processMentions({
+      message: "+support help me",
+      activeAgentConfigurations: [],
+      mentionCandidate: "+support",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected mention lookup to fail.");
+    }
+    expect(result.error.code).toBe("agent_not_found");
+    expect(result.error.mentionCandidate).toBe("+support");
   });
 
   it("keeps fuzzy matching for +mentions and ~mentions", () => {

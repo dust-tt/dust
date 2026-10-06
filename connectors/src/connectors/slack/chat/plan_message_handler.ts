@@ -1,9 +1,9 @@
 import {
-  AWAITING_TOOL_APPROVAL_LABEL,
   getActionDetails,
   getActionDoneLabel,
   getActionRunningLabel,
   getActionSources,
+  getAwaitingToolApprovalLabel,
 } from "@connectors/connectors/slack/chat/action_utils";
 import {
   makePlanMessage,
@@ -121,7 +121,7 @@ export class PlanMessageHandler {
   setTaskAwaitingToolApproval(taskId: string = "default"): void {
     this.taskCards.set(taskId, {
       taskId,
-      title: AWAITING_TOOL_APPROVAL_LABEL,
+      title: getAwaitingToolApprovalLabel(this.i18n),
       status: "pending",
     });
   }
@@ -133,7 +133,7 @@ export class PlanMessageHandler {
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        const label = getActionRunningLabel(event.action);
+        const label = getActionRunningLabel(this.i18n, event.action);
         this.taskCards.set(taskId, {
           taskId,
           title: label,
@@ -144,7 +144,7 @@ export class PlanMessageHandler {
         return "continue";
       }
       case "agent_action_success": {
-        const label = getActionDoneLabel(event.action);
+        const label = getActionDoneLabel(this.i18n, event.action);
         this.taskCards.set(taskId, {
           taskId,
           title: label,
@@ -157,7 +157,7 @@ export class PlanMessageHandler {
       }
       case "tool_approve_execution": {
         this.setTaskAwaitingToolApproval(taskId);
-        await this.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
+        await this.upsertPlanMessage(getAwaitingToolApprovalLabel(this.i18n));
         return "continue";
       }
       case "agent_message_success":

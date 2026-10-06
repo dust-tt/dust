@@ -17,9 +17,11 @@ import {
   getSlackClientForTeam,
   openFeedbackModal,
 } from "@connectors/connectors/slack/feedback_modal";
+import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -407,10 +409,6 @@ const _webhookSlackBotInteractionsAPIHandler = async (
 
         const { status: approved, toolName } = valueValidation.right;
 
-        const text = `The agent's request to use tool \`${toolName}\` was ${
-          approved === "approved" ? "✅ approved" : "❌ rejected"
-        }`;
-
         const validationRes = await botValidateToolExecution(
           {
             actionId,
@@ -418,7 +416,7 @@ const _webhookSlackBotInteractionsAPIHandler = async (
             conversationId,
             messageId,
             slackChatBotMessageId,
-            text,
+            toolName,
           },
           {
             responseUrl,
@@ -468,6 +466,7 @@ const _webhookSlackBotInteractionsAPIHandler = async (
           try {
             // Open the feedback modal
             await openFeedbackModal({
+              i18n: await getSlackI18n(DEFAULT_LOCALE),
               slackClient: await getSlackClientForTeam(payload.team.id),
               triggerId: payload.trigger_id,
               conversationId,

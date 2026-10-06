@@ -7,6 +7,19 @@ export type MentionMatch = {
   agentName: string;
 };
 
+/**
+ * `code` lets bots render their own text instead of the English `message`.
+ */
+export class AgentMentionError extends Error {
+  constructor(
+    readonly code: "agent_not_available" | "agent_not_found",
+    readonly mentionCandidate: string,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 const EXACT_MATCH_MENTION_PREFIX = "=";
 
 // Pattern to match @mention, +mention, ~mention, and =mention.
@@ -25,7 +38,7 @@ export function processMentions({
     mention: MentionMatch | undefined;
     processedMessage: string;
   },
-  Error
+  AgentMentionError
 > {
   if (!mentionCandidate) {
     return new Ok({
@@ -44,7 +57,9 @@ export function processMentions({
 
     if (!exactCandidate) {
       return new Err(
-        new Error(
+        new AgentMentionError(
+          "agent_not_available",
+          mentionCandidate,
           `Agent ${mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access.`
         )
       );
@@ -80,7 +95,13 @@ export function processMentions({
   }
 
   if (!bestCandidate) {
-    return new Err(new Error(`Agent ${mentionCandidate} has not been found.`));
+    return new Err(
+      new AgentMentionError(
+        "agent_not_found",
+        mentionCandidate,
+        `Agent ${mentionCandidate} has not been found.`
+      )
+    );
   }
 
   const mention = {

@@ -1,5 +1,6 @@
 import { makeAgentDetailsInConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import logger from "@connectors/logger/logger";
+import type { I18n } from "@lingui/core";
 
 const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
 const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
@@ -50,10 +51,13 @@ function replaceMentionsForSlack(
   );
 }
 
-function replaceProjectTasksForSlack(text: string): string {
+function replaceProjectTasksForSlack(i18n: I18n, text: string): string {
   return text.replaceAll(
     PROJECT_TASK_DIRECTIVE_REGEX,
-    (_, label: string) => `*Task:* ${normalizeInlineLabel(label)}`
+    (_, rawLabel: string) => {
+      const label = normalizeInlineLabel(rawLabel);
+      return i18n._("*Task:* {label}", { label });
+    }
   );
 }
 
@@ -111,16 +115,17 @@ function replacePastedAttachmentsForSlack(text: string): string {
   });
 }
 
-function replaceAgentSuggestionsForSlack(text: string): string {
+function replaceAgentSuggestionsForSlack(i18n: I18n, text: string): string {
+  const suggestion = `_${i18n._("Suggestion")}_`;
   return text
-    .replaceAll(/::agent_suggestion\[\]\{([^}]*)\}/g, () => "_Suggestion_")
-    .replaceAll(/:agent_suggestion\[\]\{([^}]*)\}/g, () => "_Suggestion_");
+    .replaceAll(/::agent_suggestion\[\]\{([^}]*)\}/g, () => suggestion)
+    .replaceAll(/:agent_suggestion\[\]\{([^}]*)\}/g, () => suggestion);
 }
 
-function replaceVisualizationBlocksForSlack(text: string): string {
+function replaceVisualizationBlocksForSlack(i18n: I18n, text: string): string {
   return text.replaceAll(
     VISUALIZATION_BLOCK_REGEX,
-    () => "_Visualization_\n\n"
+    () => `_${i18n._("Visualization")}_\n\n`
   );
 }
 
@@ -173,18 +178,19 @@ export type FormatAgentMarkdownForSlackOptions = {
  * (`:cite[…]`) are left intact for {@link annotateCitations}.
  */
 export function formatAgentMarkdownForSlack(
+  i18n: I18n,
   text: string,
   options?: FormatAgentMarkdownForSlackOptions
 ): string {
   let out = text;
-  out = replaceVisualizationBlocksForSlack(out);
+  out = replaceVisualizationBlocksForSlack(i18n, out);
   out = replaceInstructionBlocksForSlack(out);
   out = replaceToolSetupForSlack(out);
-  out = replaceProjectTasksForSlack(out);
+  out = replaceProjectTasksForSlack(i18n, out);
   out = replaceQuickRepliesForSlack(out);
   out = replaceContentNodeMentionsForSlack(out);
   out = replacePastedAttachmentsForSlack(out);
-  out = replaceAgentSuggestionsForSlack(out);
+  out = replaceAgentSuggestionsForSlack(i18n, out);
   out = replaceMentionsForSlack(out, options?.agentMentionLinkContext);
 
   if (options?.logUnsupportedDirectives) {

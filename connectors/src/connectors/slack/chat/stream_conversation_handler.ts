@@ -1,7 +1,7 @@
 import {
-  AWAITING_TOOL_APPROVAL_LABEL,
   getActionDoneLabel,
   getActionRunningLabel,
+  getAwaitingToolApprovalLabel,
   getRunAgentNotificationOutput,
 } from "@connectors/connectors/slack/chat/action_utils";
 import {
@@ -19,6 +19,7 @@ import {
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { PlanMessageHandler } from "@connectors/connectors/slack/chat/plan_message_handler";
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
+import { makeContinueOnDustSuffix } from "@connectors/connectors/slack/lib/continue_on_dust";
 import {
   isSlackUnknownUserGroupError,
   isSlackWebAPIPlatformError,
@@ -96,6 +97,7 @@ export function getAuthResponseUrlRedisKey(
  * Ephemerals can only be modified via response_url, not chat.delete.
  */
 async function cleanupAuthEphemeral(
+  i18n: I18n,
   pendingAuthEphemeral: { redisKey: string; serverName: string },
   slackClient: WebClient,
   slackChannelId: string,
@@ -114,10 +116,13 @@ async function cleanupAuthEphemeral(
     body: JSON.stringify({ delete_original: true }),
   });
   await redis.del(pendingAuthEphemeral.redisKey);
+  const { serverName } = pendingAuthEphemeral;
   await slackClient.chat.postEphemeral({
     channel: slackChannelId,
     user: slackUserId,
-    text: `Authentication for \`${pendingAuthEphemeral.serverName}\` successful ✅`,
+    text: i18n._("Authentication for `{serverName}` successful ✅", {
+      serverName,
+    }),
     thread_ts: slackMessageTs,
   });
 }
@@ -246,37 +251,72 @@ export const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4
 
 type SlackUserActionEvent = Extract<AgentEvent, { type: SlackUserActionType }>;
 
-function getUserActionLabel(actionType: SlackUserActionType): string {
+function getUserActionTimeoutText(
+  i18n: I18n,
+  actionType: SlackUserActionType
+): string {
   switch (actionType) {
     case "tool_approve_execution":
-      return "tool execution approval";
+      return i18n._(
+        "Streaming was interrupted after 5 mins waiting on a tool execution approval."
+      );
     case "tool_file_auth_required":
-      return "file access authorization";
+      return i18n._(
+        "Streaming was interrupted after 5 mins waiting on a file access authorization."
+      );
     case "tool_personal_auth_required":
-      return "tool authentication";
+      return i18n._(
+        "Streaming was interrupted after 5 mins waiting on a tool authentication."
+      );
     case "tool_ask_user_question":
-      return "response to a question";
+      return i18n._(
+        "Streaming was interrupted after 5 mins waiting on a response to a question."
+      );
     default:
       assertNever(actionType);
   }
 }
 
-function getContinueOnDustSuffix(conversationUrl: string | null): string {
-  return conversationUrl ? ` <${conversationUrl}|Continue on Dust>.` : "";
+function getUserActionPostFailureText(
+  i18n: I18n,
+  actionType: SlackUserActionType
+): string {
+  switch (actionType) {
+    case "tool_approve_execution":
+      return i18n._(
+        "Dust could not display the Slack controls for a tool execution approval."
+      );
+    case "tool_file_auth_required":
+      return i18n._(
+        "Dust could not display the Slack controls for a file access authorization."
+      );
+    case "tool_personal_auth_required":
+      return i18n._(
+        "Dust could not display the Slack controls for a tool authentication."
+      );
+    case "tool_ask_user_question":
+      return i18n._(
+        "Dust could not display the Slack controls for a response to a question."
+      );
+    default:
+      assertNever(actionType);
+  }
 }
 
 function getUserActionFallbackMessage(
+  i18n: I18n,
   actionType: SlackUserActionType,
   conversationUrl: string | null
 ): string {
-  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${getUserActionLabel(actionType)}.${getContinueOnDustSuffix(conversationUrl)}_`;
+  return `:hourglass_flowing_sand: _${getUserActionTimeoutText(i18n, actionType)}${makeContinueOnDustSuffix(i18n, conversationUrl)}_`;
 }
 
 function getUserActionPostFailureFallbackMessage(
+  i18n: I18n,
   actionType: SlackUserActionType,
   conversationUrl: string | null
 ): string {
-  return `:warning: _Dust could not display the Slack controls for a ${getUserActionLabel(actionType)}.${getContinueOnDustSuffix(conversationUrl)}_`;
+  return `:warning: _${getUserActionPostFailureText(i18n, actionType)}${makeContinueOnDustSuffix(i18n, conversationUrl)}_`;
 }
 
 async function streamAgentAnswerToSlack(
@@ -448,6 +488,7 @@ async function streamAgentAnswerToSlack(
       event.conversationId
     );
     const fallbackText = getUserActionPostFailureFallbackMessage(
+      i18n,
       event.type,
       conversationUrl
     );
@@ -509,7 +550,7 @@ async function streamAgentAnswerToSlack(
         }
 
         // For all other tools, rotate a single default task card.
-        const thinkingAction = getActionRunningLabel(event.action);
+        const thinkingAction = getActionRunningLabel(i18n, event.action);
 
         planHandler.setDefaultTask(thinkingAction, "in_progress", event.action);
         await planHandler.upsertPlanMessage(thinkingAction);
@@ -544,11 +585,12 @@ async function streamAgentAnswerToSlack(
         });
 
         planHandler.setTaskAwaitingToolApproval();
-        await planHandler.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
-        await streamHandler.setThinking(AWAITING_TOOL_APPROVAL_LABEL);
+        const awaitingToolApprovalLabel = getAwaitingToolApprovalLabel(i18n);
+        await planHandler.upsertPlanMessage(awaitingToolApprovalLabel);
+        await streamHandler.setThinking(awaitingToolApprovalLabel);
 
         const postResult = await postUserActionEphemeral({
-          text: "Approve tool execution",
+          text: i18n._("Approve tool execution"),
           blocks: makeToolValidationBlock({
             i18n,
             toolName: event.metadata.toolName,
@@ -571,7 +613,7 @@ async function streamAgentAnswerToSlack(
 
         if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
           const postResult = await postUserActionEphemeral({
-            text: "Personal authentication required",
+            text: i18n._("Personal authentication required"),
             blocks: makeToolAuthenticationBlock({
               i18n,
               serverName: event.metadata.mcpServerDisplayName,
@@ -595,8 +637,11 @@ async function streamAgentAnswerToSlack(
           };
         }
 
-        planHandler.setDefaultTask("Waiting for authentication…", "pending");
-        await planHandler.upsertPlanMessage("Waiting for authentication…");
+        const waitingForAuthenticationLabel = i18n._(
+          "Waiting for authentication…"
+        );
+        planHandler.setDefaultTask(waitingForAuthenticationLabel, "pending");
+        await planHandler.upsertPlanMessage(waitingForAuthenticationLabel);
         break;
       }
 
@@ -610,7 +655,7 @@ async function streamAgentAnswerToSlack(
 
         if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
           const postResult = await postUserActionEphemeral({
-            text: "File authorization required",
+            text: i18n._("File authorization required"),
             blocks: makeToolFileAuthorizationBlock({
               i18n,
               fileName: event.fileAuthError.fileName,
@@ -626,7 +671,9 @@ async function streamAgentAnswerToSlack(
           }
         }
 
-        await streamHandler.setThinking("Waiting for file authorization...");
+        await streamHandler.setThinking(
+          i18n._("Waiting for file authorization...")
+        );
         break;
       }
 
@@ -666,6 +713,7 @@ async function streamAgentAnswerToSlack(
 
         if (pendingPersonalAuth && slackUserId && !slackUserInfo.is_bot) {
           await cleanupAuthEphemeral(
+            i18n,
             pendingPersonalAuth,
             slackClient,
             slackChannelId,
@@ -677,7 +725,7 @@ async function streamAgentAnswerToSlack(
 
         // Mark default task complete (for non-run_agent tools).
         if (event.action.internalMCPServerName !== "run_agent") {
-          const doneLabel = getActionDoneLabel(event.action);
+          const doneLabel = getActionDoneLabel(i18n, event.action);
           planHandler.setDefaultTask(doneLabel, "complete", event.action);
           await planHandler.upsertPlanMessage(doneLabel);
         }
@@ -726,7 +774,7 @@ async function streamAgentAnswerToSlack(
         const { formattedContent, footnotes } = annotateCitations(
           // Do not log unsupported directives: `answer` may still be mid-generation
           // when we stop only because the Slack length cap was hit.
-          formatAgentMarkdownForSlack(answer, slackAgentMarkdownOptions),
+          formatAgentMarkdownForSlack(i18n, answer, slackAgentMarkdownOptions),
           actions
         );
 
@@ -764,7 +812,7 @@ async function streamAgentAnswerToSlack(
         const actions = event.message.actions;
         const messageId = event.message.sId; // Get the message ID
         const { formattedContent, footnotes } = annotateCitations(
-          formatAgentMarkdownForSlack(finalAnswer, {
+          formatAgentMarkdownForSlack(i18n, finalAnswer, {
             ...slackAgentMarkdownOptions,
             // Terminal agent payload from the API — safe to detect unknown directives.
             logUnsupportedDirectives: true,
@@ -892,14 +940,14 @@ async function streamAgentAnswerToSlack(
             await slackClient.chat.postEphemeral({
               channel: slackChannelId,
               user: slackUserId,
-              text: "Feedback and agent selection",
+              text: i18n._("Feedback and agent selection"),
               blocks: selectionBlocks,
               thread_ts: slackMessageTs,
             });
           } else {
             await slackClient.chat.postMessage({
               channel: slackChannelId,
-              text: "Feedback and agent selection",
+              text: i18n._("Feedback and agent selection"),
               blocks: selectionBlocks,
               thread_ts: slackMessageTs,
             });
@@ -916,13 +964,14 @@ async function streamAgentAnswerToSlack(
         await planHandler.deletePlanMessage();
         await streamHandler.stop();
 
-        const cancelledMessage = "_Message generation was cancelled._";
+        const cancelledMessage = `_${i18n._("Message generation was cancelled.")}_`;
         const {
           formattedContent: cancelledContent,
           footnotes: cancelledFootnotes,
         } = annotateCitations(
           // Do not log: `answer` is streaming buffer and may end mid-directive on cancel.
           formatAgentMarkdownForSlack(
+            i18n,
             answer || cancelledMessage,
             slackAgentMarkdownOptions
           ),
@@ -991,6 +1040,7 @@ async function streamAgentAnswerToSlack(
       conversation.sId
     );
     const fallbackText = getUserActionFallbackMessage(
+      i18n,
       timedOutUserActionType,
       conversationUrl
     );
@@ -1097,7 +1147,9 @@ async function deleteAndRepostMessageWithFiles({
 
     await slackClient.chat.postMessage({
       channel: slackChannelId,
-      text: ":warning: Slack couldn't upload the generated file(s), so they aren't attached.",
+      text: `:warning: ${i18n._(
+        "Slack couldn't upload the generated files, so they aren't attached."
+      )}`,
       thread_ts: slackMessageTs,
     });
 
