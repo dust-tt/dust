@@ -3,6 +3,7 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   DropdownMenu,
@@ -57,12 +58,10 @@ export function AnalyticsExportPanel({
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
   const [table, setTable] = useState<ExportTable>("usage_metrics");
 
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - period);
-
-  const start = toDateString(startDate);
-  const end = toDateString(endDate);
+  const end = toDateString(new Date());
+  // Subtracting whole UTC days keeps the dates exactly `period` days apart, as the server checks;
+  // local-time arithmetic gives one extra day around DST changes.
+  const start = toDateString(new Date(Date.parse(end) - period * ONE_DAY_MS));
 
   const csvDownload = useDownloadCsv({
     url: `/api/w/${workspaceId}/analytics/export?table=${table}&startDate=${start}&endDate=${end}`,
