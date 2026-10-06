@@ -26,6 +26,7 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useController } from "react-hook-form";
@@ -98,6 +99,7 @@ function SlackChannelsList({
   mergedChannels,
   onSelectionChange,
 }: SlackChannelsListProps) {
+  const { t } = useLingui();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredChannels = useMemo(() => {
@@ -147,7 +149,10 @@ function SlackChannelsList({
   if (isResourcesError) {
     return (
       <div className="text-sm text-warning">
-        Failed to retrieve Slack channels. Please check your Slack integration.
+        <Trans>
+          Failed to retrieve Slack channels. Please check your Slack
+          integration.
+        </Trans>
       </div>
     );
   }
@@ -156,7 +161,7 @@ function SlackChannelsList({
     <div className="space-y-4">
       <SearchInput
         name="slack-channel-search"
-        placeholder="Search channels..."
+        placeholder={t`Search channels...`}
         value={searchQuery}
         onChange={setSearchQuery}
       />
@@ -170,8 +175,8 @@ function SlackChannelsList({
           {filteredChannels.length === 0 ? (
             <div className="py-4 text-center text-sm text-muted-foreground">
               {searchQuery.trim() === ""
-                ? "No channels available"
-                : `No channels match "${searchQuery}"`}
+                ? t`No channels available`
+                : t`No channels match "${searchQuery}"`}
             </div>
           ) : (
             filteredChannels.map((channel) => (
@@ -230,6 +235,7 @@ export function SlackSettingsSheet({
   onOpenChange,
   slackDataSource,
 }: SlackSettingsSheetProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
 
   const {
@@ -360,33 +366,42 @@ export function SlackSettingsSheet({
           <SheetTitle>
             <div className="flex items-center gap-2">
               <Icon visual={SlackLogo} />
-              <span>Slack Channel Settings</span>
+              <span>
+                <Trans>Slack Channel Settings</Trans>
+              </span>
             </div>
           </SheetTitle>
           <SheetDescription>
-            Select channels in which this agent replies by default.
+            <Trans>
+              Select channels in which this agent replies by default.
+            </Trans>
           </SheetDescription>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4">
             <div className="text-sm font-normal text-foreground">
-              Set this agent as the default agent on one or several of your
-              Slack channels. It will answer by default when the{" "}
-              <span className="font-bold">@Dust</span> Slack bot is mentioned in
-              these channels. Private channels you belong to appear here after
-              you add the Slack tool, connect your personal Slack account, and
-              invite <span className="font-bold">@Dust</span> to the channel.
+              <Trans>
+                Set this agent as the default agent on one or several of your
+                Slack channels. It will answer by default when the{" "}
+                <span className="font-bold">@Dust</span> Slack bot is mentioned
+                in these channels. Private channels you belong to appear here
+                after you add the Slack tool, connect your personal Slack
+                account, and invite <span className="font-bold">@Dust</span> to
+                the channel.
+              </Trans>
             </div>
             {!isAdmin(owner) && (
               <ContentMessage
                 size="md"
                 variant="warning"
-                title="Admin Access Required"
+                title={t`Admin Access Required`}
                 icon={InfoCircle}
               >
                 <p>
-                  Only administrators can enable default agents for specific
-                  Slack channels.
+                  <Trans>
+                    Only administrators can enable default agents for specific
+                    Slack channels.
+                  </Trans>
                 </p>
               </ContentMessage>
             )}
@@ -404,12 +419,12 @@ export function SlackSettingsSheet({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Close",
+            label: t`Close`,
             variant: "outline",
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: onSave,
             disabled: !hasUnsavedChanges,
@@ -420,14 +435,14 @@ export function SlackSettingsSheet({
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-sm font-medium text-foreground">
-                    Respond to all messages in channel
+                    <Trans>Respond to all messages in channel</Trans>
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {hasPrivateSelected
                       ? canAutoRespond
-                        ? "Private channels only reply to @mentions. Auto-respond applies to public channels."
-                        : "Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned."
-                      : "Agent will automatically respond to messages in selected channels (not just @mentions)"}
+                        ? t`Private channels only reply to @mentions. Auto-respond applies to public channels.`
+                        : t`Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned.`
+                      : t`Agent will automatically respond to messages in selected channels (not just @mentions)`}
                   </span>
                 </div>
                 <SliderToggle
@@ -445,11 +460,13 @@ export function SlackSettingsSheet({
                   }`}
                 >
                   <span className="text-sm text-foreground">
-                    Top-level posts only
+                    <Trans>Top-level posts only</Trans>
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Only respond to new channel messages, not replies within
-                    threads
+                    <Trans>
+                      Only respond to new channel messages, not replies within
+                      threads
+                    </Trans>
                   </span>
                 </div>
                 <Checkbox

@@ -5,6 +5,7 @@ import { AgentBuilderDescriptionSection } from "@app/components/agent_builder/se
 import { AgentBuilderNameSection } from "@app/components/agent_builder/settings/AgentBuilderNameSection";
 import { CostManagementSection } from "@app/components/agent_builder/settings/CostManagementSection";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
+import { useLingui } from "@lingui/react/macro";
 
 interface AgentBuilderSettingsBlockProps {
   agentConfigurationId: string | null;
@@ -23,9 +24,10 @@ export function AgentBuilderSettingsBlock({
   isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AgentBuilderSettingsBlockProps) {
+  const { t } = useLingui();
   const isCreatingNew = !agentConfigurationId;
   return (
-    <AgentBuilderSectionContainer title="Settings">
+    <AgentBuilderSectionContainer title={t`Settings`}>
       <div className="space-y-5">
         <div className="flex items-end gap-8">
           <div className="flex-grow">

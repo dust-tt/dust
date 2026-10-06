@@ -18,6 +18,7 @@ import {
   TabsTrigger,
   Upload01,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
@@ -53,6 +54,7 @@ export function AvatarPicker({
   droidAvatarUrls: string[];
   spiritAvatarUrls: string[];
 }) {
+  const { t } = useLingui();
   const [currentTab, setCurrentTab] = useState<TabId>(DEFAULT_TAB);
   const [isStale, setIsStale] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -65,31 +67,31 @@ export function AvatarPicker({
   const tabs: TabConfig[] = useMemo(
     () => [
       {
-        label: "Droids",
+        label: t`Droids`,
         id: "droids",
         current: currentTab === "droids",
         icon: Image01,
       },
       {
-        label: "Spirits",
+        label: t`Spirits`,
         id: "spirits",
         current: currentTab === "spirits",
         icon: Image01,
       },
       {
-        label: "Emojis",
+        label: t`Emojis`,
         id: "emojis",
         current: currentTab === "emojis",
         icon: FaceSmile,
       },
       {
-        label: "Upload",
+        label: t`Upload`,
         id: "upload",
         current: currentTab === "upload",
         icon: Upload01,
       },
     ],
-    [currentTab]
+    [currentTab, t]
   );
 
   const onClose = () => {
@@ -206,12 +208,12 @@ export function AvatarPicker({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: isSaving ? "Saving..." : "Save",
+            label: isSaving ? t`Saving...` : t`Save`,
             onClick: () => handleSave(parentRef),
             disabled: !isStale || isSaving,
           }}
