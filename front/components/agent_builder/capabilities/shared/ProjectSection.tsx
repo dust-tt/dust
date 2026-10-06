@@ -17,6 +17,7 @@ import {
   InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -34,6 +35,7 @@ function ProjectMessage({ title, children }: ProjectMessageProps) {
 }
 
 export function ProjectSection() {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -99,7 +101,7 @@ export function ProjectSection() {
   if (isSpacesLoading) {
     return (
       <ConfigurationSectionContainer
-        title="Select Pod"
+        title={t`Select a Pod`}
         error={fieldState.error?.message}
       >
         <div className="flex h-32 w-full items-center justify-center">
@@ -112,12 +114,11 @@ export function ProjectSection() {
   if (allProjects.length === 0) {
     return (
       <ConfigurationSectionContainer
-        title="Select Pod"
+        title={t`Select a Pod`}
         error={fieldState.error?.message}
       >
-        <ProjectMessage title="No Pods available">
-          No Pods are available in your workspace. Create a Pod first to use
-          this feature.
+        <ProjectMessage title={t`No Pods available`}>
+          {t`No Pods are available in your workspace. Create a Pod first to use this feature.`}
         </ProjectMessage>
       </ConfigurationSectionContainer>
     );
@@ -125,20 +126,22 @@ export function ProjectSection() {
 
   return (
     <ConfigurationSectionContainer
-      title="Select Pod"
+      title={t`Select a Pod`}
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground">
-          Choose the Pod that the agent can access. The agent will have access
-          to Pod metadata and context from the selected Pod.
+          <Trans>
+            Choose the Pod that the agent can access. The agent will have access
+            to Pod metadata and context from the selected Pod.
+          </Trans>
         </div>
 
         <div className="inline-flex">
           <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
             <DropdownMenuTrigger asChild>
               <Button
-                label={selectedProject?.name ?? "Select Pod..."}
+                label={selectedProject?.name ?? t`Select a Pod...`}
                 icon={
                   selectedProject ? getSpaceIcon(selectedProject) : undefined
                 }
@@ -150,7 +153,7 @@ export function ProjectSection() {
               dropdownHeaders={
                 <DropdownMenuSearchbar
                   name="project-search"
-                  placeholder="Search..."
+                  placeholder={t`Search...`}
                   value={searchQuery}
                   onChange={setSearchQuery}
                   autoFocus
@@ -170,7 +173,7 @@ export function ProjectSection() {
                           ? project.description.length > 50
                             ? `${project.description.substring(0, 50)}...`
                             : project.description
-                          : "No description available."
+                          : t`No description available.`
                       }
                       icon={ProjectIcon}
                     />
@@ -178,7 +181,11 @@ export function ProjectSection() {
                 })
               ) : (
                 <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
-                  {searchQuery ? "No matches" : "No Pods"}
+                  {searchQuery ? (
+                    <Trans>No matches</Trans>
+                  ) : (
+                    <Trans>No Pods</Trans>
+                  )}
                 </div>
               )}
             </DropdownMenuContent>

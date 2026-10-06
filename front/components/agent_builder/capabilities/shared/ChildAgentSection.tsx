@@ -14,6 +14,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
+import { useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
@@ -35,11 +36,13 @@ function AgentSelectionTable({
   searchQuery,
   setSearchQuery,
 }: AgentSelectionTableProps) {
+  const { t } = useLingui();
+
   return (
     <>
       <SearchInput
         name="search"
-        placeholder="Search"
+        placeholder={t`Search`}
         value={searchQuery}
         onChange={setSearchQuery}
       />
@@ -69,6 +72,7 @@ function AgentMessage({ title, children }: AgentMessageProps) {
 }
 
 export function ChildAgentSection() {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -113,7 +117,7 @@ export function ChildAgentSection() {
                 {row.original.name}
               </div>
               <div className="truncate text-xs text-muted-foreground">
-                {row.original.description || "No description available"}
+                {row.original.description || t`No description available`}
               </div>
             </div>
           </DataTable.CellContent>
@@ -124,7 +128,7 @@ export function ChildAgentSection() {
         },
       },
     ],
-    []
+    [t]
   );
 
   const selectedAgent = agentConfigurations.find(
@@ -139,25 +143,25 @@ export function ChildAgentSection() {
   let messageProps: { title: string; children: string };
   if (isAgentConfigurationsError) {
     messageProps = {
-      title: "Error loading agents",
-      children: "Failed to load available agents. Please try again later.",
+      title: t`Error loading agents`,
+      children: t`Failed to load available agents. Please try again later.`,
     };
   } else if (agentConfigurations.length === 0) {
     messageProps = {
-      title: "No agents available",
-      children:
-        "There are no agents available to select. Please create an agent first.",
+      title: t`No agents available`,
+      children: t`There are no agents available to select. Please create an agent first.`,
     };
   } else {
+    const agentId = field.value;
     messageProps = {
-      title: "The agent selected is not available to you",
-      children: `The agent (${field.value}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent.`,
+      title: t`The agent selected is not available to you`,
+      children: t`The agent (${agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent.`,
     };
   }
 
   return (
     <ConfigurationSectionContainer
-      title="Select Agent"
+      title={t`Select an agent`}
       error={fieldState.error?.message}
     >
       {isAgentConfigurationsLoading && (
@@ -188,7 +192,7 @@ export function ChildAgentSection() {
                 <div className="text-md font-medium">{selectedAgent.name}</div>
               </div>
               <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
-                {selectedAgent.description || "No description available"}
+                {selectedAgent.description || t`No description available`}
               </div>
             </div>
             <div className="ml-4 self-start">
@@ -196,7 +200,7 @@ export function ChildAgentSection() {
                 variant="outline"
                 size="sm"
                 icon={PencilIcon}
-                label="Edit agent"
+                label={t`Edit agent`}
                 onClick={handleEditClick}
               />
             </div>

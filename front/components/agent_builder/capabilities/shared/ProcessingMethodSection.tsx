@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
   Hoverable,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useEffect, useMemo } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
@@ -63,6 +64,7 @@ function isNonTableDataItem(item: DataSourceBuilderTreeItemType): boolean {
 }
 
 export function ProcessingMethodSection() {
+  const { t } = useLingui();
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const {
@@ -87,6 +89,10 @@ export function ProcessingMethodSection() {
     let warning: React.ReactNode | null = null;
 
     if (mcpServerView) {
+      const methodLabel = getKnowledgeLookupMethodLabel(
+        mcpServerView.server.name,
+        getMcpServerViewDisplayName(mcpServerView)
+      );
       const isTableOrWarehouseServer =
         matchesInternalMCPServerName(
           mcpServerView.server.sId,
@@ -102,18 +108,18 @@ export function ProcessingMethodSection() {
         if (sources.in.some(isNonTableDataItem)) {
           warning = (
             <>
-              <span className="font-semibold">
-                {getKnowledgeLookupMethodLabel(
-                  mcpServerView.server.name,
-                  getMcpServerViewDisplayName(mcpServerView)
-                )}
-              </span>
-              &nbsp;will ignore text documents and files in your selection.
-              Create separate knowledge tools if you need both.
+              <Trans>
+                <span className="font-semibold">{methodLabel}</span>
+                &nbsp;will ignore text documents and files in your selection.
+                Create separate knowledge tools if you need both.
+              </Trans>
               <br />
-              <span className="font-semibold">Note:</span>&nbsp;When you select
-              a folder, only tables directly inside it will be included. Tables
-              in nested subfolders won't be automatically added.
+              <Trans>
+                <span className="font-semibold">Note:</span>&nbsp;When you
+                select a folder, only tables directly inside it will be
+                included. Tables in nested subfolders won't be automatically
+                added.
+              </Trans>
             </>
           );
         }
@@ -121,16 +127,11 @@ export function ProcessingMethodSection() {
         // Warning for non-table servers with only remote databases and/or tables
         if (sources.in.every(isRemoteDatabaseOrTableItem)) {
           warning = (
-            <>
-              <span className="font-semibold">
-                {getKnowledgeLookupMethodLabel(
-                  mcpServerView.server.name,
-                  getMcpServerViewDisplayName(mcpServerView)
-                )}
-              </span>
+            <Trans>
+              <span className="font-semibold">{methodLabel}</span>
               &nbsp;will ignore tables in your selection. Switch processing
               method if you want to use your structured data.
-            </>
+            </Trans>
           );
         }
       }
@@ -169,17 +170,21 @@ export function ProcessingMethodSection() {
   return (
     <div className="mt-2 flex flex-col space-y-4">
       <div>
-        <h3 className="mb-2 text-lg font-semibold">Knowledge lookup method</h3>
+        <h3 className="mb-2 text-lg font-semibold">
+          <Trans>Knowledge lookup method</Trans>
+        </h3>
         <span className="text-sm text-muted-foreground">
-          Sets the approach for finding and retrieving information from your
-          data sources. Need help? Check our{" "}
-          <Hoverable
-            variant="primary"
-            href="https://docs.dust.tt/docs/knowledge"
-            target="_blank"
-          >
-            guide.
-          </Hoverable>
+          <Trans>
+            Sets the approach for finding and retrieving information from your
+            data sources. Need help? Check our{" "}
+            <Hoverable
+              variant="primary"
+              href="https://docs.dust.tt/docs/knowledge"
+              target="_blank"
+            >
+              guide.
+            </Hoverable>
+          </Trans>
         </span>
       </div>
 
@@ -194,7 +199,7 @@ export function ProcessingMethodSection() {
                       mcpServerView.server.name,
                       getMcpServerViewDisplayName(mcpServerView)
                     )
-                  : "loading..."
+                  : t`Loading...`
               }
               icon={
                 mcpServerView != null &&

@@ -12,6 +12,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 
@@ -39,6 +40,7 @@ export function usePresetActionHandler({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
   const sendNotification = useSendNotification();
+  const { t } = useLingui();
   // Store preset object reference to prevent duplicate processing.
   const lastProcessedPresetRef = useRef<TemplateActionPreset | null>(null);
 
@@ -84,9 +86,10 @@ export function usePresetActionHandler({
         );
 
         if (toolAlreadyAdded) {
+          const toolName = getMcpServerViewDisplayName(mcpServerView);
           sendNotification({
-            title: "Tool already added",
-            description: `${getMcpServerViewDisplayName(mcpServerView)} is already in your agent`,
+            title: t`Tool already added`,
+            description: t`${toolName} is already in your agent`,
             type: "info",
           });
           setPresetActionToAdd(null);
@@ -108,9 +111,10 @@ export function usePresetActionHandler({
     } else {
       append(action);
 
+      const toolName = action.name;
       sendNotification({
-        title: "Tool added",
-        description: `${action.name} has been added to your agent`,
+        title: t`Tool added`,
+        description: t`${toolName} has been added to your agent`,
         type: "success",
       });
     }
@@ -126,5 +130,6 @@ export function usePresetActionHandler({
     sendNotification,
     fields,
     setKnowledgeAction,
+    t,
   ]);
 }

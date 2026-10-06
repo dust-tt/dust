@@ -9,6 +9,7 @@ import type { CapabilityFilterType } from "@app/components/shared/tools_picker/t
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface CapabilitiesSelectionPageProps {
@@ -49,6 +50,7 @@ export function CapabilitiesSelectionPageContent({
   handleToolInfoClick,
   onStateChange,
 }: CapabilitiesSelectionPageProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
 
@@ -84,7 +86,7 @@ export function CapabilitiesSelectionPageContent({
   return (
     <div className="flex flex-col gap-4 pt-1">
       <SearchInput
-        placeholder="Search capabilities..."
+        placeholder={t`Search capabilities...`}
         value={searchQuery}
         onChange={setSearchQuery}
         name="capability-search"
@@ -101,14 +103,20 @@ export function CapabilitiesSelectionPageContent({
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
-              {searchQuery
-                ? "No capability matches your search"
-                : "No capabilities available"}
+              {searchQuery ? (
+                <Trans>No capability matches your search</Trans>
+              ) : (
+                <Trans>No capabilities available</Trans>
+              )}
             </div>
             <div className="max-w-sm text-muted-foreground">
-              {searchQuery
-                ? "Try a different search term."
-                : "Add tools or create skills to enhance your agents."}
+              {searchQuery ? (
+                <Trans>Try a different search term.</Trans>
+              ) : (
+                <Trans>
+                  Add tools or create skills to enhance your agents.
+                </Trans>
+              )}
             </div>
           </div>
         </div>
@@ -117,10 +125,14 @@ export function CapabilitiesSelectionPageContent({
           {showSkillsSection && hasSkills && (
             <>
               <div>
-                <span className="text-lg font-semibold">Skills</span>
+                <span className="text-lg font-semibold">
+                  <Trans>Skills</Trans>
+                </span>
                 <p className="text-sm text-muted-foreground">
-                  Reusable packages of instructions and tools that enable agents
-                  to perform specialized tasks.
+                  <Trans>
+                    Reusable packages of instructions and tools that enable
+                    agents to perform specialized tasks.
+                  </Trans>
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -140,9 +152,13 @@ export function CapabilitiesSelectionPageContent({
           {showToolsSection && hasTools && (
             <>
               <div>
-                <span className="text-lg font-semibold">Tools</span>
+                <span className="text-lg font-semibold">
+                  <Trans>Tools</Trans>
+                </span>
                 <p className="text-sm text-muted-foreground">
-                  Tools that allow agents to retrieve data and take actions.
+                  <Trans>
+                    Tools that allow agents to retrieve data and take actions.
+                  </Trans>
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">

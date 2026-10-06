@@ -18,10 +18,12 @@ import {
   PopoverTrigger,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
 export function DataSourceViewTagsFilterDropdown() {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { updateSourcesTags, toggleInConversationFiltering } =
     useDataSourceBuilderContext();
@@ -96,7 +98,7 @@ export function DataSourceViewTagsFilterDropdown() {
             newTagsFilter = {
               ...newTagsFilter,
               [include]: newTagsFilter[include].filter(
-                (t: string) => t !== tag.tag
+                (existingTag: string) => existingTag !== tag.tag
               ),
             };
           }
@@ -187,7 +189,7 @@ export function DataSourceViewTagsFilterDropdown() {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button label="Filters" variant="outline" isSelect />
+        <Button label={t`Filters`} variant="outline" isSelect />
       </PopoverTrigger>
 
       <PopoverContent
@@ -200,13 +202,13 @@ export function DataSourceViewTagsFilterDropdown() {
             <>
               <div className="flex flex-col gap-2">
                 <Page.SectionHeader
-                  title="Filtering"
-                  description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
+                  title={t`Filtering`}
+                  description={t`Filter to only include content bearing must-have labels, and exclude content with must-not-have labels.`}
                 />
               </div>
 
               <TagSearchSection
-                label="Must-have labels"
+                label={t`Must-have labels`}
                 dataSourceViews={dataSourceViews}
                 owner={owner}
                 selectedTagsIn={tagsIn}
@@ -218,7 +220,7 @@ export function DataSourceViewTagsFilterDropdown() {
               />
 
               <TagSearchSection
-                label="Must-not-have labels"
+                label={t`Must-not-have labels`}
                 dataSourceViews={dataSourceViews}
                 owner={owner}
                 selectedTagsIn={tagsIn}
@@ -232,10 +234,14 @@ export function DataSourceViewTagsFilterDropdown() {
           )}
 
           <div className="text-sm">
-            <div className="mb-1 font-semibold">In-conversation filtering</div>
+            <div className="mb-1 font-semibold">
+              <Trans>In-conversation filtering</Trans>
+            </div>
             <div className="text-xs text-muted-foreground">
-              Allow agents to determine filters to apply based on conversation
-              context.
+              <Trans>
+                Allow agents to determine filters to apply based on conversation
+                context.
+              </Trans>
             </div>
             <div className="mt-2 flex flex-row items-center space-x-4">
               <SliderToggle
@@ -247,8 +253,11 @@ export function DataSourceViewTagsFilterDropdown() {
                 }
               />
               <div className="font-medium">
-                {mode === "custom" ? "Enable" : "Disable"} in conversation
-                filtering
+                {mode === "custom" ? (
+                  <Trans>Enable in-conversation filtering</Trans>
+                ) : (
+                  <Trans>Disable in-conversation filtering</Trans>
+                )}
               </div>
             </div>
           </div>
