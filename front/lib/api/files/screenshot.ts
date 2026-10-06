@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import { canAccessFrame } from "@app/lib/api/files/frame_access";
 import type { FrameExportError } from "@app/lib/api/files/pdf_export";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { isFrameContentType } from "@app/types/files";
@@ -41,15 +41,9 @@ export async function screenshotInteractiveContentFile(
     });
   }
 
-  if (file.useCaseMetadata?.conversationId) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-
-    if (!conversation) {
-      return new Err({ type: "file_not_found", message: "File not found." });
-    }
+  const canAccess = await canAccessFrame(auth, file);
+  if (!canAccess) {
+    return new Err({ type: "file_not_found", message: "File not found." });
   }
 
   if (file.isFrameV2) {

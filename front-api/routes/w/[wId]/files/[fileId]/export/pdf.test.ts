@@ -3,6 +3,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
@@ -120,6 +121,31 @@ describe("POST /api/w/:wId/files/:fileId/export/pdf", () => {
         message: "File not found.",
       },
     });
+  });
+
+  it("requires Pod access to export a Pod Frame", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    const space = await SpaceFactory.project(workspace, user.id);
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "private-frame.frame",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+
+    const memberResponse = await postPdf(workspace, file.sId);
+    expect(memberResponse.status).toBe(200);
+
+    const outsider = await createPrivateApiMockRequest({ workspace });
+    expect(outsider.auth.can("read", space)).toBe(false);
+
+    const outsiderResponse = await postPdf(workspace, file.sId);
+    expect(outsiderResponse.status).toBe(404);
   });
 
   it("should return 400 for invalid orientation value", async () => {
