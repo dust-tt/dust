@@ -74,7 +74,16 @@ export function WorkspaceFileSystem({
   const [currentFolderId, setCurrentFolderIdState] = useState<string | null>(
     null
   );
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  // The top level opens itself: it holds only the two drives, which say nothing
+  // about what the workspace keeps until you look inside one.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () =>
+      new Set(
+        (filesByParentId.get(null) ?? [])
+          .filter(isDataSourceFolder)
+          .map((folder) => folder.id)
+      )
+  );
   const [isTreeMenuOpen, setIsTreeMenuOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -274,7 +283,7 @@ export function WorkspaceFileSystem({
   return (
     <div ref={containerRef} className="flex h-full min-h-0 w-full">
       {!isCompact && (
-        <aside className="flex w-64 flex-none flex-col overflow-y-auto border-r border-separator p-2">
+        <aside className="flex w-64 flex-none flex-col overflow-y-auto border-r border-separator p-2 pt-4">
           {tree}
         </aside>
       )}

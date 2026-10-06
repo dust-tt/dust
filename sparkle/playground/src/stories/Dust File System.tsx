@@ -94,6 +94,7 @@ import {
   sidePanelSizing,
 } from "../components/ConversationSidePanels";
 import { ConversationView } from "../components/ConversationView";
+import type { PodDestination } from "../components/CreateRoomDialog";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxAltView } from "../components/InboxAltView";
@@ -958,11 +959,9 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  /** Every folder a Pod may be created in, as its full path. */
+  /** Every folder a Pod may be created in; the picker nests them itself. */
   const podDestinations = useMemo(() => {
-    const options: { id: string | null; label: string }[] = [
-      { id: null, label: "Files" },
-    ];
+    const options: PodDestination[] = [];
     for (const file of files) {
       if (!isDropTargetFolder(file) || isPodFolder(file)) {
         continue;
@@ -973,7 +972,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       }
       options.push({
         id: file.id,
-        label: path.map((folder) => folder.fileName).join(" / "),
+        name: file.fileName,
+        parentId: file.parentId,
+        path: path.map((folder) => folder.fileName).join(" / "),
+        icon: getDataSourceIcon(file),
       });
     }
     return options;

@@ -8,20 +8,32 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Folder,
   Input,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import type { ComponentType } from "react";
+import { useMemo, useState } from "react";
 
-/** A folder a Pod can be created in, named by its full path. */
+import { TreeDnd } from "./TreeDnd";
+
+/**
+ * A folder a Pod can be created in. The picker nests these the way the file
+ * system does, so each one carries where it sits as well as its own name; the
+ * path is for naming the choice once it is made, and for searching across it.
+ */
 export interface PodDestination {
-  id: string | null;
-  label: string;
+  id: string;
+  name: string;
+  parentId: string | null;
+  path: string;
+  icon?: ComponentType<{ className?: string }>;
 }
+
+/** What the top of the picker stands for: the file system itself. */
+const ROOT_DESTINATION_LABEL = "Files";
 
 interface CreateRoomDialogProps {
   isOpen: boolean;
@@ -35,6 +47,127 @@ interface CreateRoomDialogProps {
     isPublic: boolean,
     destinationId?: string | null
   ) => void;
+}
+
+/**
+ * The folders as a tree, the way Files shows them, so a destination is read in
+ * place rather than off a list of paths. Searching falls back to a flat list of
+ * matches: a tree pruned to its matching rows reads worse than the paths do.
+ */
+function DestinationTree({
+  destinations,
+  selectedId,
+  onSelect,
+  search,
+}: {
+  destinations: PodDestination[];
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  search: string;
+}) {
+  const childrenByParentId = useMemo(() => {
+    const index = new Map<string | null, PodDestination[]>();
+    for (const destination of destinations) {
+      const siblings = index.get(destination.parentId);
+      if (siblings) {
+        siblings.push(destination);
+      } else {
+        index.set(destination.parentId, [destination]);
+      }
+    }
+    return index;
+  }, [destinations]);
+
+  // The top level opens itself, the way the file system tree does.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set((childrenByParentId.get(null) ?? []).map((item) => item.id))
+  );
+
+  const toggleExpanded = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+
+  const searchLower = search.trim().toLowerCase();
+  if (searchLower) {
+    const matches = destinations.filter((item) =>
+      item.path.toLowerCase().includes(searchLower)
+    );
+    if (matches.length === 0) {
+      return (
+        <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+          No folder found
+        </div>
+      );
+    }
+    return (
+      <TreeDnd variant="navigator">
+        {matches.map((item) => (
+          <TreeDnd.Item
+            key={item.id}
+            type="leaf"
+            label={item.path}
+            visual={item.icon ?? Folder}
+            isSelected={selectedId === item.id}
+            onItemClick={() => onSelect(item.id)}
+          />
+        ))}
+      </TreeDnd>
+    );
+  }
+
+  const renderDestination = (item: PodDestination) => {
+    const children = childrenByParentId.get(item.id) ?? [];
+    const shared = {
+      label: item.name,
+      visual: item.icon ?? Folder,
+      isSelected: selectedId === item.id,
+      onItemClick: () => onSelect(item.id),
+    };
+
+    if (children.length === 0) {
+      return <TreeDnd.Item key={item.id} {...shared} type="leaf" />;
+    }
+
+    return (
+      <TreeDnd.Item
+        key={item.id}
+        {...shared}
+        type="node"
+        collapsed={!expandedIds.has(item.id)}
+        onChevronClick={() => toggleExpanded(item.id)}
+        renderTreeItems={() => (
+          <TreeDnd variant="navigator">
+            {children.map(renderDestination)}
+          </TreeDnd>
+        )}
+      />
+    );
+  };
+
+  return (
+    <TreeDnd variant="navigator">
+      <TreeDnd.Item
+        type="node"
+        label={ROOT_DESTINATION_LABEL}
+        visual={Folder}
+        isSelected={selectedId === null}
+        onItemClick={() => onSelect(null)}
+        collapsed={false}
+        renderTreeItems={() => (
+          <TreeDnd variant="navigator">
+            {(childrenByParentId.get(null) ?? []).map(renderDestination)}
+          </TreeDnd>
+        )}
+      />
+    </TreeDnd>
+  );
 }
 
 export function CreateRoomDialog({
@@ -64,10 +197,6 @@ export function CreateRoomDialog({
   }
 
   const destination = destinations?.find((item) => item.id === destinationId);
-  const searchLower = destinationSearch.trim().toLowerCase();
-  const visibleDestinations = (destinations ?? []).filter((item) =>
-    item.label.toLowerCase().includes(searchLower)
-  );
 
   const handleNext = () => {
     const trimmedName = roomName.trim();
@@ -122,14 +251,14 @@ export function CreateRoomDialog({
                     variant="outline"
                     size="sm"
                     isSelect
-                    icon={Folder}
+                    icon={destination?.icon ?? Folder}
                     className="self-start"
-                    label={destination?.label ?? "Files"}
+                    label={destination?.path ?? ROOT_DESTINATION_LABEL}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="start"
-                  className="max-h-80 w-80"
+                  className="max-h-80 w-80 overflow-y-auto p-2"
                   dropdownHeaders={
                     <DropdownMenuSearchbar
                       autoFocus
@@ -140,20 +269,12 @@ export function CreateRoomDialog({
                     />
                   }
                 >
-                  {visibleDestinations.length > 0 ? (
-                    visibleDestinations.map((item) => (
-                      <DropdownMenuItem
-                        key={item.id ?? "root"}
-                        label={item.label}
-                        icon={Folder}
-                        onClick={() => setDestinationId(item.id)}
-                      />
-                    ))
-                  ) : (
-                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                      No folder found
-                    </div>
-                  )}
+                  <DestinationTree
+                    destinations={destinations}
+                    selectedId={destinationId}
+                    onSelect={setDestinationId}
+                    search={destinationSearch}
+                  />
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

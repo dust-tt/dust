@@ -73,7 +73,9 @@ export function TreeDnd({
         className
       )}
     >
-      <div>{modifiedChildren}</div>
+      {/* The items carry the gap themselves: the one on the wrapper only ever
+          separated them from the spinner below. */}
+      <div className="flex flex-col gap-0.5">{modifiedChildren}</div>
       {isLoading && (
         <div className="flex justify-center py-2">
           <Spinner size="xs" />
