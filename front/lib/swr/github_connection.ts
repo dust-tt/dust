@@ -1,8 +1,10 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import type { GetGitHubConnectionResponseBody } from "@app/lib/skill_detection";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -37,6 +39,7 @@ export function useDisconnectWorkspaceGitHub({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const [isDisconnectingGitHub, setIsDisconnectingGitHub] = useState(false);
@@ -53,18 +56,15 @@ export function useDisconnectWorkspaceGitHub({
       });
       return true;
     } catch (err) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to disconnect GitHub",
-        description: isAPIErrorResponse(err)
-          ? err.error.message
-          : "Could not disconnect the GitHub connection.",
+        error: err,
       });
       return false;
     } finally {
       setIsDisconnectingGitHub(false);
     }
-  }, [fetcher, owner, sendNotification]);
+  }, [fetcher, owner, sendNotification, sendApiErrorNotification]);
 
   return { disconnectGitHub, isDisconnectingGitHub };
 }
@@ -74,6 +74,7 @@ export function useConnectWorkspaceGitHub({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const { cellInfo } = useCellContext();
   const sendNotification = useSendNotification();
@@ -107,12 +108,9 @@ export function useConnectWorkspaceGitHub({
           }),
         });
       } catch (err) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to connect GitHub",
-          description: isAPIErrorResponse(err)
-            ? err.error.message
-            : "Could not save the GitHub connection.",
+          error: err,
         });
         return false;
       }
@@ -126,7 +124,7 @@ export function useConnectWorkspaceGitHub({
     } finally {
       setIsConnectingGitHub(false);
     }
-  }, [fetcher, owner, cellInfo, sendNotification]);
+  }, [fetcher, owner, cellInfo, sendNotification, sendApiErrorNotification]);
 
   return { connectGitHub, isConnectingGitHub };
 }

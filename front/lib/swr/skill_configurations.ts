@@ -1,6 +1,11 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounce, useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
+import { formatError } from "@app/lib/api_error_messages";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import type {
   DetectedSkillSummary,
@@ -475,6 +480,7 @@ export function useUpdateSkillsAvailability({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -499,11 +505,7 @@ export function useUpdateSkillsAvailability({
       });
       return true;
     } catch (err) {
-      sendNotification({
-        type: "error",
-        title: "Error updating skills",
-        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
-      });
+      sendApiErrorNotification({ title: "Error updating skills", error: err });
       return false;
     }
   };
@@ -553,6 +555,7 @@ export function useArchiveSkill({
   owner: LightWorkspaceType;
   skill: SkillWithoutInstructionsAndToolsType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -575,10 +578,9 @@ export function useArchiveSkill({
       });
       return true;
     } catch (err) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error archiving ${skill.name}`,
-        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
+        error: err,
       });
       return false;
     }
@@ -594,6 +596,7 @@ export function useBatchArchiveSkills({
   owner: LightWorkspaceType;
   skillIds: string[];
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -619,11 +622,7 @@ export function useBatchArchiveSkills({
       });
       return true;
     } catch (err) {
-      sendNotification({
-        type: "error",
-        title: "Error archiving skills",
-        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
-      });
+      sendApiErrorNotification({ title: "Error archiving skills", error: err });
       return false;
     }
   };
@@ -636,6 +635,7 @@ export function useUpdateSkillFavorite({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -674,17 +674,21 @@ export function useUpdateSkillFavorite({
         }
         return true;
       } catch (err) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: `Failed to ${isFavorite ? "favorite" : "unfavorite"} ${skill.name}`,
-          description: isAPIErrorResponse(err)
-            ? err.error.message
-            : "An unexpected error occurred.",
+          error: err,
         });
         return false;
       }
     },
-    [fetcher, invalidateSkills, owner.sId, router, sendNotification]
+    [
+      fetcher,
+      invalidateSkills,
+      owner.sId,
+      router,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return { updateSkillFavorite };
@@ -707,8 +711,8 @@ export function useUpdateSkillReinforcement({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
-  const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
 
   const updateSkillReinforcement = useCallback(
@@ -722,17 +726,14 @@ export function useUpdateSkillReinforcement({
         void mutate(`/api/w/${owner.sId}/skills/reinforcement_settings`);
         return true;
       } catch (err) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update reinforcement settings",
-          description: isAPIErrorResponse(err)
-            ? err.error.message
-            : "An unexpected error occurred.",
+          error: err,
         });
         return false;
       }
     },
-    [owner.sId, fetcher, mutate, sendNotification]
+    [owner.sId, fetcher, mutate, sendApiErrorNotification]
   );
 
   return { updateSkillReinforcement };
@@ -745,6 +746,7 @@ export function useRestoreSkill({
   owner: LightWorkspaceType;
   skill: SkillWithoutInstructionsAndToolsType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -767,10 +769,9 @@ export function useRestoreSkill({
       });
       return true;
     } catch (err) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error restoring ${skill.name}`,
-        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
+        error: err,
       });
       return false;
     }
@@ -839,6 +840,8 @@ export function useDetectSkillsFromRepo({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
   const { fetcher } = useFetcher();
 
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
@@ -880,26 +883,23 @@ export function useDetectSkillsFromRepo({
             return;
           }
           setDetectedSkills([]);
-          if (isAPIErrorResponse(err)) {
-            setRepositoryNotFound(
-              err.error.type === "skill_github_repository_not_found"
-            );
-            // Detect errors are errors we want to expose to consumers: repository not found is singled out above.
-            setDetectError(
-              err.error.type === "skill_github_repository_not_found"
-                ? null
-                : err.error.message
-            );
-          } else {
-            setDetectError("Failed to detect skills from this repository.");
-          }
+          const repositoryNotFound =
+            isAPIErrorResponse(err) &&
+            err.error.type === "skill_github_repository_not_found";
+          setRepositoryNotFound(repositoryNotFound);
+          // Detect errors are errors we want to expose to consumers: repository not found is singled out above.
+          setDetectError(
+            repositoryNotFound
+              ? null
+              : formatError(err, { hasLocalisation }).description
+          );
         } finally {
           if (!signal.aborted) {
             setIsDetecting(false);
           }
         }
       },
-      [owner.sId, fetcher]
+      [owner.sId, fetcher, hasLocalisation]
     ),
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
@@ -953,6 +953,7 @@ function notifyImportResult(
 }
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -996,20 +997,19 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         return notifyImportResult(data, sendNotification);
       } catch (err) {
-        const message = isAPIErrorResponse(err)
-          ? err.error.message
-          : "Failed to import skills.";
-        sendNotification({
-          type: "error",
-          title: "Import failed",
-          description: message,
-        });
-        return { successCount: 0, errors: [message] };
+        sendApiErrorNotification({ title: "Import failed", error: err });
+        return { successCount: 0, skipped: [] };
       } finally {
         setIsImporting(false);
       }
     },
-    [owner.sId, sendNotification, fetcher, invalidateSkills]
+    [
+      owner.sId,
+      sendNotification,
+      fetcher,
+      invalidateSkills,
+      sendApiErrorNotification,
+    ]
   );
 
   return { importSkills, isImporting };
@@ -1020,6 +1020,8 @@ export function useDetectSkillsFromFiles({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
   const { fetcher } = useFetcher();
 
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
@@ -1049,16 +1051,12 @@ export function useDetectSkillsFromFiles({
         );
         setDetectedSkills(data.skills);
       } catch (err) {
-        setDetectError(
-          isAPIErrorResponse(err)
-            ? err.error.message
-            : "Failed to detect skills from the uploaded files."
-        );
+        setDetectError(formatError(err, { hasLocalisation }).description);
       } finally {
         setIsUploading(false);
       }
     },
-    [owner.sId, fetcher]
+    [owner.sId, fetcher, hasLocalisation]
   );
 
   return {

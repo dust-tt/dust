@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatNumber } from "@app/lib/i18n/format";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
@@ -69,7 +72,7 @@ function getCreditUsageConfigurationEndpoint(workspaceId: string): string {
 async function patchCreditUsageConfiguration(
   workspaceId: string,
   body: Record<string, unknown>
-): Promise<{ ok: true } | { ok: false; message: string }> {
+): Promise<{ ok: true } | { ok: false; error: unknown }> {
   try {
     const res = await clientFetch(
       getCreditUsageConfigurationEndpoint(workspaceId),
@@ -81,11 +84,11 @@ async function patchCreditUsageConfiguration(
     );
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      return { ok: false, message: errorData.message };
+      return { ok: false, error: errorData };
     }
     return { ok: true };
   } catch (e) {
-    return { ok: false, message: normalizeError(e).message };
+    return { ok: false, error: e };
   }
 }
 
@@ -134,6 +137,7 @@ export function useUpdateUsageSettings({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRWithDefaults(
     getCreditUsageConfigurationEndpoint(workspaceId),
@@ -165,10 +169,9 @@ export function useUpdateUsageSettings({
       try {
         const result = await patchCreditUsageConfiguration(workspaceId, body);
         if (!result.ok) {
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update usage settings",
-            description: result.message,
+            error: result.error,
           });
           return false;
         }
@@ -183,7 +186,7 @@ export function useUpdateUsageSettings({
         setIsUpdatingUsageSettings(false);
       }
     },
-    [workspaceId, sendNotification, mutate]
+    [workspaceId, sendNotification, mutate, sendApiErrorNotification]
   );
 
   return { doUpdateUsageSettings, isUpdatingUsageSettings };
@@ -225,6 +228,7 @@ export function useUpdateUsageNotifications({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRWithDefaults(
     getCreditUsageConfigurationEndpoint(workspaceId),
@@ -247,10 +251,9 @@ export function useUpdateUsageNotifications({
 
       const result = await patchCreditUsageConfiguration(workspaceId, body);
       if (!result.ok) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update notification settings",
-          description: result.message,
+          error: result.error,
         });
         return false;
       }
@@ -262,7 +265,7 @@ export function useUpdateUsageNotifications({
       });
       return true;
     },
-    [workspaceId, sendNotification, mutate]
+    [workspaceId, sendNotification, mutate, sendApiErrorNotification]
   );
 
   return { doUpdateUsageNotifications };
