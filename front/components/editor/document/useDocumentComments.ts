@@ -1,3 +1,4 @@
+import { validateCommentThread } from "@app/components/editor/document/dfm_persistence";
 import type { DocumentCommentDraft } from "@app/components/editor/document/DocumentComments";
 import {
   documentCommentsPluginKey,
@@ -7,7 +8,6 @@ import {
   getDocumentComments,
   scrollToCommentHighlight,
 } from "@app/components/editor/document/DocumentComments";
-import { validateCommentThread } from "@app/components/editor/document/dfm_persistence";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
