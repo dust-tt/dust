@@ -9,6 +9,7 @@ import {
   Label,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 type Header = { key: string; value: string };
 
@@ -22,6 +23,8 @@ export function AdvancedSettingsSection({
   headers,
   onHeadersChange,
 }: AdvancedSettingsProps) {
+  const { t } = useLingui();
+
   const updateHeaderField = (
     index: number,
     field: keyof Header,
@@ -42,18 +45,22 @@ export function AdvancedSettingsSection({
 
   return (
     <Collapsible>
-      <CollapsibleTrigger label="Advanced settings" variant="secondary" />
+      <CollapsibleTrigger label={t`Advanced settings`} variant="secondary" />
       <CollapsibleContent>
         <div className="flex w-full flex-col gap-6">
           <div className="flex w-full flex-col gap-3">
-            <Label>Custom Headers</Label>
-            <p>Add custom request headers for the web crawler.</p>
+            <Label>
+              <Trans>Custom headers</Trans>
+            </Label>
+            <p>
+              <Trans>Add custom request headers for the web crawler.</Trans>
+            </p>
             <div className="flex flex-col gap-4">
               {headers.map((header, index) => (
                 <div key={index} className="flex gap-2">
                   <div className="flex grow flex-col gap-1 px-1">
                     <Input
-                      placeholder="Header Name"
+                      placeholder={t`Header name`}
                       value={header.key}
                       name="headerName"
                       onChange={(e) =>
@@ -64,7 +71,7 @@ export function AdvancedSettingsSection({
                     />
                     <Input
                       name="headerValue"
-                      placeholder="Header Value"
+                      placeholder={t`Header value`}
                       value={header.value}
                       onChange={(e) =>
                         updateHeaderField(index, "value", e.target.value)
@@ -81,7 +88,11 @@ export function AdvancedSettingsSection({
                 </div>
               ))}
             </div>
-            <Button variant="outline" label="Add Header" onClick={addHeader} />
+            <Button
+              variant="outline"
+              label={t`Add header`}
+              onClick={addHeader}
+            />
           </div>
         </div>
       </CollapsibleContent>

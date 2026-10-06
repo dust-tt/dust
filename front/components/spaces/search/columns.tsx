@@ -2,6 +2,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { DataTable, Tooltip } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 type RowData = DataSourceViewContentNode & {
@@ -18,7 +19,7 @@ export const SORTING_KEYS: Record<string, string> = {
 export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
   return [
     {
-      header: "Name",
+      header: () => <Trans>Name</Trans>,
       accessorKey: "title",
       id: "title",
       cell: (info: CellContext<RowData, string>) => (
@@ -34,7 +35,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       },
     },
     {
-      header: "Location",
+      header: () => <Trans>Location</Trans>,
       accessorKey: "location",
       id: "location",
       enableSorting: false,
@@ -54,7 +55,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       },
     },
     {
-      header: "Last updated",
+      header: () => <Trans>Last updated</Trans>,
       id: "lastUpdatedAt",
       accessorKey: "lastUpdatedAt",
       cell: (info: CellContext<RowData, number>) => (
@@ -74,7 +75,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
     {
       id: "actions",
       accessorKey: "actions",
-      header: "Actions",
+      header: () => <Trans>Actions</Trans>,
       enableSorting: false,
       meta: {
         sizeRatio: 10,

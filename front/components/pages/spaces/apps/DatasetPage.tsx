@@ -11,9 +11,11 @@ import { useDataset } from "@app/lib/swr/datasets";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { Button, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 export function DatasetPage() {
+  const { t } = useLingui();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -158,7 +160,7 @@ export function DatasetPage() {
                   <Button
                     disabled={disable || loading}
                     onClick={() => handleSubmit()}
-                    label="Update"
+                    label={t`Update`}
                     variant="primary"
                   />
                 </div>

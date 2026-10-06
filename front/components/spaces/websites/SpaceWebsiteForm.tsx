@@ -1,5 +1,9 @@
 import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
-import type { WebCrawlerConfigurationType } from "@app/types/connectors/webcrawler";
+import type {
+  CrawlingFrequency,
+  DepthOption,
+  WebCrawlerConfigurationType,
+} from "@app/types/connectors/webcrawler";
 import {
   CrawlingFrequencies,
   DepthOptions,
@@ -7,7 +11,6 @@ import {
 } from "@app/types/connectors/webcrawler";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
-import { DEPTH_DISPLAY_TEXT, FREQUENCY_DISPLAY_TEXT } from "@app/types/website";
 import {
   AlertCircle,
   Button,
@@ -25,7 +28,17 @@ import {
   RadioGroupItem,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
+
+const FREQUENCY_LABELS: Record<CrawlingFrequency, MessageDescriptor> = {
+  never: msg({ message: "Never", context: "website refresh schedule" }),
+  daily: msg`Every day`,
+  weekly: msg`Every week`,
+  monthly: msg`Every month`,
+};
 
 type SpaceWebsiteFormProps = {
   state: WebsiteFormState;
@@ -42,6 +55,11 @@ export function SpaceWebsiteForm({
   webCrawlerConfiguration,
   owner,
 }: SpaceWebsiteFormProps) {
+  const { t } = useLingui();
+
+  const getDepthLabel = (depth: DepthOption) =>
+    t`${plural(depth, { one: "# level", other: "# levels" })}`;
+
   const handleHeadersChange = useCallback(
     (newHeaders: WebsiteFormState["headers"]) => {
       dispatch({
@@ -58,9 +76,11 @@ export function SpaceWebsiteForm({
   ) : (
     <Page.Layout direction="vertical" gap="xl">
       <Page.Layout direction="vertical" gap="md">
-        <Page.H variant="h3">Website Entry Point</Page.H>
+        <Page.H variant="h3">
+          <Trans>Website entry point</Trans>
+        </Page.H>
         <Label className="pl-1">
-          Enter the address of the website you'd like to index.
+          <Trans>Enter the address of the website you'd like to index.</Trans>
         </Label>
         <Input
           placeholder="https://example.com/articles"
@@ -73,24 +93,30 @@ export function SpaceWebsiteForm({
           name="dataSourceUrl"
         />
         <ContentMessage
-          title="Ensure the website is public"
+          title={t`Ensure the website is public`}
           icon={InfoCircle}
           variant="golden"
         >
-          Only public websites accessible without authentication will work.
+          <Trans>
+            Only public websites accessible without authentication will work.
+          </Trans>
         </ContentMessage>
       </Page.Layout>
       <Page.Layout direction="vertical" gap="md">
-        <Page.H variant="h3">Indexing settings</Page.H>
+        <Page.H variant="h3">
+          <Trans>Indexing settings</Trans>
+        </Page.H>
         <Page.P>
-          Adjust the settings to only index the data you are interested in.
+          <Trans>
+            Adjust the settings to only index the data you are interested in.
+          </Trans>
         </Page.P>
       </Page.Layout>
       <div className="mr-1 grid grid-cols-2 gap-x-6 gap-y-8">
         <Page.Layout direction="vertical" sizing="grow">
           <Page.SectionHeader
-            title="Crawling strategy"
-            description="Do you want to limit to child pages or not?"
+            title={t`Crawling strategy`}
+            description={t`Do you want to limit to child pages or not?`}
           />
           <RadioGroup
             value={state.crawlMode}
@@ -106,27 +132,27 @@ export function SpaceWebsiteForm({
             <RadioGroupItem
               value="child"
               className="gap-2"
-              label="Only child pages of the provided URL"
+              label={t`Only child pages of the provided URL`}
               id="child-pages"
             />
             <RadioGroupItem
               value="website"
               className="gap-2 text-sm"
-              label="Follow all the links within the domain"
+              label={t`Follow all the links within the domain`}
               id="all-pages"
             />
           </RadioGroup>
         </Page.Layout>
         <Page.Layout direction="vertical" sizing="grow">
           <Page.SectionHeader
-            title="Refresh schedule"
-            description="How often would you like to check for updates?"
+            title={t`Refresh schedule`}
+            description={t`How often would you like to check for updates?`}
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                label={FREQUENCY_DISPLAY_TEXT[state.crawlFrequency]}
+                label={t(FREQUENCY_LABELS[state.crawlFrequency])}
                 isSelect
               />
             </DropdownMenuTrigger>
@@ -139,7 +165,7 @@ export function SpaceWebsiteForm({
                   <DropdownMenuRadioItem
                     key={frequency}
                     value={frequency}
-                    label={FREQUENCY_DISPLAY_TEXT[frequency]}
+                    label={t(FREQUENCY_LABELS[frequency])}
                     disabled={frequency === "daily"}
                     onClick={() =>
                       dispatch({
@@ -156,14 +182,14 @@ export function SpaceWebsiteForm({
         </Page.Layout>
         <Page.Layout direction="vertical" sizing="grow">
           <Page.SectionHeader
-            title="Depth of Search"
-            description="How far from the initial page would you like to go?"
+            title={t`Depth of search`}
+            description={t`How far from the initial page would you like to go?`}
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                label={DEPTH_DISPLAY_TEXT[state.depth]}
+                label={getDepthLabel(state.depth)}
                 isSelect
               />
             </DropdownMenuTrigger>
@@ -173,7 +199,7 @@ export function SpaceWebsiteForm({
                   <DropdownMenuRadioItem
                     key={depthOption}
                     value={depthOption.toString()}
-                    label={DEPTH_DISPLAY_TEXT[depthOption]}
+                    label={getDepthLabel(depthOption)}
                     onClick={() =>
                       dispatch({
                         type: "SET_FIELD",
@@ -189,8 +215,8 @@ export function SpaceWebsiteForm({
         </Page.Layout>
         <Page.Layout direction="vertical" sizing="grow">
           <Page.SectionHeader
-            title="Page Limit"
-            description="What is the maximum number of pages you'd like to index?"
+            title={t`Page limit`}
+            description={t`What is the maximum number of pages you'd like to index?`}
           />
           <Input
             placeholder={WEBCRAWLER_MAX_PAGES.toString()}
@@ -211,7 +237,7 @@ export function SpaceWebsiteForm({
             message={
               state.maxPages &&
               (state.maxPages > WEBCRAWLER_MAX_PAGES || state.maxPages < 1)
-                ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
+                ? t`Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
                 : undefined
             }
             messageStatus="error"
@@ -220,14 +246,18 @@ export function SpaceWebsiteForm({
         </Page.Layout>
       </div>
       <Page.Layout direction="vertical" gap="md">
-        <Page.H variant="h3">Name</Page.H>
+        <Page.H variant="h3">
+          <Trans>Name</Trans>
+        </Page.H>
         {webCrawlerConfiguration ? (
           <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
             <AlertCircle />
-            Website name cannot be changed.
+            <Trans>Website name cannot be changed.</Trans>
           </p>
         ) : (
-          <Label className="pl-1">Give a name to this Data Source.</Label>
+          <Label className="pl-1">
+            <Trans>Give a name to this data source.</Trans>
+          </Label>
         )}
         <Input
           value={state.name}
@@ -241,7 +271,7 @@ export function SpaceWebsiteForm({
           message={state.errors?.name}
           messageStatus="error"
           name="dataSourceName"
-          placeholder="Articles"
+          placeholder={t`Articles`}
           disabled={webCrawlerConfiguration !== null}
         />
       </Page.Layout>

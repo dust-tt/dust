@@ -30,6 +30,7 @@ import {
   Spinner,
   Stop,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -96,6 +97,7 @@ const isRunnable = (
 };
 
 export function AppViewPage() {
+  const { t } = useLingui();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -339,13 +341,19 @@ export function AppViewPage() {
       } else {
         setRunError({
           code: "cancel_error",
-          message: "Failed to cancel the run",
+          message: t`Failed to cancel the run`,
         } as CoreAPIError);
       }
     } finally {
       setCancelRequested(false);
     }
   };
+
+  const runErrorMessage = runError?.message;
+  const runErrorLabel =
+    runError?.code === "invalid_specification_error"
+      ? t`Specification error: ${runErrorMessage}`
+      : t`Error: ${runErrorMessage}`;
 
   // Show 404 on error or if app not found after loading completes
   if (isAppError || (!isAppLoading && !app)) {
@@ -376,7 +384,7 @@ export function AppViewPage() {
             <Button
               variant="outline"
               disabled={cancelRequested}
-              label={cancelRequested ? "Canceling..." : "Cancel"}
+              label={cancelRequested ? t`Canceling...` : t`Cancel`}
               onClick={() => handleCancelRun()}
               icon={Stop}
             />
@@ -387,7 +395,9 @@ export function AppViewPage() {
                 !runnable || runRequested || run?.status.run == "running"
               }
               label={
-                runRequested || run?.status.run == "running" ? "Running" : "Run"
+                runRequested || run?.status.run == "running"
+                  ? t`Running`
+                  : t({ message: "Run", context: "button label, verb" })
               }
               onClick={() => handleRun()}
               icon={Play}
@@ -395,14 +405,7 @@ export function AppViewPage() {
           )}
           {runError ? (
             <div className="flex-initial px-2 text-sm font-bold text-warning">
-              {(() => {
-                switch (runError.code) {
-                  case "invalid_specification_error":
-                    return `Specification error: ${runError.message}`;
-                  default:
-                    return `Error: ${runError.message}`;
-                }
-              })()}
+              {runErrorLabel}
             </div>
           ) : null}
           <div className="flex-1"></div>
@@ -411,7 +414,7 @@ export function AppViewPage() {
               <Button
                 variant="outline"
                 icon={Brackets}
-                label="Secrets"
+                label={t`Secrets`}
                 onClick={() => {
                   void router.push(`/w/${owner.sId}/developers/dev-secrets`);
                 }}
@@ -419,7 +422,7 @@ export function AppViewPage() {
               <Button
                 variant="ghost"
                 icon={File04}
-                label="Documentation"
+                label={t`Documentation`}
                 onClick={() => {
                   window.open(
                     "https://docs.dust.tt/reference/introduction-to-dust-apps",
@@ -459,13 +462,17 @@ export function AppViewPage() {
 
         {spec.length == 0 ? (
           <div className="mx-auto mt-8 text-sm text-muted-foreground">
-            <p>Welcome to your new Dust app.</p>
-            <p className="mt-4">To get started, add your first block or:</p>
+            <p>
+              <Trans>Welcome to your new Dust app.</Trans>
+            </p>
+            <p className="mt-4">
+              <Trans>To get started, add your first block or:</Trans>
+            </p>
             <p className="mt-4">
               <Button
                 variant="ghost"
                 icon={File04}
-                label="Follow the QuickStart Guide"
+                label={t`Follow the quickstart guide`}
                 onClick={() => {
                   window.open(
                     "https://docs.dust.tt/reference/developer-platform-overview",
@@ -494,7 +501,7 @@ export function AppViewPage() {
                 <Button
                   variant="outline"
                   disabled={cancelRequested}
-                  label={cancelRequested ? "Canceling..." : "Cancel"}
+                  label={cancelRequested ? t`Canceling...` : t`Cancel`}
                   onClick={() => handleCancelRun()}
                   icon={Stop}
                 />
@@ -506,8 +513,8 @@ export function AppViewPage() {
                   }
                   label={
                     runRequested || run?.status.run == "running"
-                      ? "Running"
-                      : "Run"
+                      ? t`Running`
+                      : t({ message: "Run", context: "button label, verb" })
                   }
                   onClick={() => handleRun()}
                   icon={Play}
@@ -516,14 +523,7 @@ export function AppViewPage() {
             </div>
             {runError ? (
               <div className="flex px-2 text-sm font-bold text-warning">
-                {(() => {
-                  switch (runError.code) {
-                    case "invalid_specification_error":
-                      return `Specification error: ${runError.message}`;
-                    default:
-                      return `Error: ${runError.message}`;
-                  }
-                })()}
+                {runErrorLabel}
               </div>
             ) : null}
           </div>
