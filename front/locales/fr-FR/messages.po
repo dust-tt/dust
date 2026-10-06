@@ -3553,22 +3553,12 @@ msgid "No locations found - make sure you follow the instructions in the guide."
 msgstr "Aucun emplacement trouvé - vérifiez que vous avez suivi les instructions du guide."
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to create connection: cannot verify those credentials."
-msgstr "Impossible de créer la connexion : ces identifiants ne peuvent pas être vérifiés."
+msgid "Failed to create BigQuery connection"
+msgstr "Impossible de créer la connexion BigQuery"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-msgid "Failed to create BigQuery connection: {errorMessage}"
-msgstr "Impossible de créer la connexion BigQuery : {errorMessage}"
-
-#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to update connection: cannot verify those credentials."
-msgstr "Impossible de mettre à jour la connexion : ces identifiants ne peuvent pas être vérifiés."
-
-#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-msgid "Failed to update BigQuery connection: {errorMessage}"
-msgstr "Impossible de mettre à jour la connexion BigQuery : {errorMessage}"
+msgid "Failed to update BigQuery connection"
+msgstr "Impossible de mettre à jour la connexion BigQuery"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Connection error"
@@ -3595,16 +3585,16 @@ msgid "{tableCount, plural, one {# table} other {# tables}}"
 msgstr "{tableCount, plural, one {# table} other {# tables}}"
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Failed to create Snowflake connection"
+msgstr "Impossible de créer la connexion Snowflake"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
 msgstr "Identifiant de compte Snowflake invalide. Format attendu, par ex. abc123.us-east-1 ou myorg-myaccount (ne collez pas d’URL ni de nom d’hôte)."
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to create Snowflake connection: {errorMessage}"
-msgstr "Impossible de créer la connexion Snowflake : {errorMessage}"
-
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to update Snowflake connection: {errorMessage}"
-msgstr "Impossible de mettre à jour la connexion Snowflake : {errorMessage}"
+msgid "Failed to update Snowflake connection"
+msgstr "Impossible de mettre à jour la connexion Snowflake"
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Snowflake credentials"
@@ -4142,6 +4132,10 @@ msgid "Send"
 msgstr "Envoyer"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Failed to setup private integration"
+msgstr "Impossible de configurer l’intégration privée"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Failed to fetch webhook configuration"
 msgstr "Impossible de récupérer la configuration du webhook"
 
@@ -4151,24 +4145,12 @@ msgid "An error occurred"
 msgstr "Une erreur s’est produite"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "Failed to create credential"
-msgstr "Impossible de créer les identifiants"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "Failed to set connector configuration"
-msgstr "Impossible d’enregistrer la configuration du connecteur"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Private integration setup successfully"
 msgstr "Intégration privée configurée"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Your Notion connector will now use the private integration token."
 msgstr "Votre connecteur Notion utilisera désormais le jeton d’intégration privée."
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "Failed to setup private integration"
-msgstr "Impossible de configurer l’intégration privée"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Setup Notion private integration"
@@ -6232,12 +6214,12 @@ msgid "Are you sure you want to delete this app?"
 msgstr "Voulez-vous vraiment supprimer cette app ?"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
-msgid "Failed to delete the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
-msgstr "Impossible de supprimer l’app (contactez support@dust.tt pour obtenir de l’aide) (erreur interne : type={errorType} message={errorMessage})"
+msgid "Failed to delete the app"
+msgstr "Impossible de supprimer l’app"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
-msgid "Failed to update the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
-msgstr "Impossible de mettre à jour l’app (contactez support@dust.tt pour obtenir de l’aide) (erreur interne : type={errorType} message={errorMessage})"
+msgid "Failed to update the app"
+msgstr "Impossible de mettre à jour l’app"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "App name"
