@@ -32,3 +32,8 @@ RAM; remaining client drain waits for durable FDB responses. Fsync waits for its
 Each first read starts a new server/session/mount, retaining FDB and OS caches. Defaults are a
 512 MiB client cache, one-second read validity, 25ms coalescing, 128 in-flight groups, and no kernel
 data cache/writeback. Raw logs, JSON, credentials and generated corpora stay on the VM, outside Git.
+
+For cold-only RPC accounting, append `--workload-prefix 'open + fstat + close' --first-only`.
+The harness still populates a fresh isolated corpus, then runs only that read workload on a fresh
+server/session/mount. Its client counters exclude the population, manifest setup and warm pass;
+subtract the single `CurrentSession` mount-initialization RPC when counting workload RPCs.

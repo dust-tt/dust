@@ -25,6 +25,8 @@ def main():
     mount, retaining FDB/OS backend caches. Untar and subsequent client drain MUST be separate.
     The client MUST finish draining before the server stops. Server shutdown is not a persistence drain.
     Focused runs MUST record their workload selection and MUST NOT claim full-suite coverage.
+    First-only runs MUST omit warm passes and scratch writes, recording zero warm runs so that each
+    selected workload's fresh-client counters exclude warm repetitions and other workloads.
     Credentials and raw execution reports MUST remain outside the repository.
     """
     parser = argparse.ArgumentParser(description=__doc__)
@@ -33,9 +35,13 @@ def main():
     parser.add_argument('--untar-only', action='store_true', help='Stop after population and drain.')
     parser.add_argument('--workload-prefix', action='append', default=[],
                         help='Select read workloads by name prefix; omit scratch writes. Repeatable.')
+    parser.add_argument('--first-only', action='store_true',
+                        help='Omit warm passes for selected read workloads; requires --workload-prefix.')
     args = parser.parse_args()
     if args.untar_only and args.workload_prefix:
         parser.error('--untar-only cannot be combined with --workload-prefix')
+    if args.first_only and not args.workload_prefix:
+        parser.error('--first-only requires --workload-prefix')
     work = args.work or Path(tempfile.mkdtemp(prefix='dfs-v4-benchmark-'))
     work.mkdir(exist_ok=True, parents=True)
     print(f'Report directory: {work}', flush=True)
@@ -46,7 +52,8 @@ def main():
     data = work / 'corpus'
     corpus.generate(data, args.files)
     prefix, key, key_path = support.identity(work)
-    report = {'files': args.files, 'prefix': prefix, 'warm_runs': 1,
+    report = {'files': args.files, 'prefix': prefix, 'warm_runs': 0 if args.first_only else 1,
+        'first_only': args.first_only,
         'untar_only': args.untar_only, 'profile': os.environ.get('DFS_PROFILE') == '1',
         'workload_prefixes': args.workload_prefix,
         'revision': os.environ.get('DFS_BENCH_REVISION', 'uncommitted'),
@@ -163,6 +170,8 @@ def main():
                 if args.workload_prefix and not selected:
                     return
                 matched.update(selected)
+                if args.first_only:
+                    return self.measure(feature, workload, 'first', *a, **kw)
                 return super().pair(feature, workload, *a, **kw)
 
             def measure(self, feature, workload, phase, *a, **kw):
