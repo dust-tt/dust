@@ -5,6 +5,8 @@ Latest: [both full suites with untar timings](#latest-full-suites) and
 Separate optimization comparisons: [create-stat reuse](#create-stat-reuse) and
 [batched directory listings](#batched-directory-listings). Original results are preserved below.
 
+Networked measurements on the existing dust-dev cluster are in [gcp/RESULTS.md](../gcp/RESULTS.md).
+
 2026-10-05. First baselines, before revision-validated block retention. Both runs use revision
 `a090704e0f`, with identical server and FUSE binaries. All **24 checks per run passed**, including
 SHA-256 verification of every file; no background publication failures were recorded.

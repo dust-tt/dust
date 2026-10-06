@@ -66,6 +66,13 @@ Completed and verified before resuming the full benchmark suites below.
 - [x] Test pagination, namespace changes, and grants; benchmark listings at both bounds and decide.
 - [x] Record separate comparisons and retain only justified changes; commit and push each milestone.
 
+## 8. Networked GCP evaluation
+
+- [x] Reuse the existing dust-dev nodes and native FDB configuration; isolate v3 builds and reports.
+- [x] Build and test natively on the workload VM; validate mounts at both freshness bounds.
+- [x] Run the full 10k untar/filesystem benchmark sequentially at 1s and 8s.
+- [x] Record both tables, drain, profiles, and topology; restore the interactive v2 services.
+
 ## Local follow-up
 
 - [ ] Retain grant facts across refresh after validating their object revisions.
@@ -73,7 +80,3 @@ Completed and verified before resuming the full benchmark suites below.
 - [ ] Semantic rebase after a changed target precondition; currently reject the tentative branch.
 - [ ] Broader fault/race coverage: late commits, slow fills, FDB outage, remote open-directory moves.
 - [ ] 100,000-file corpus comparison.
-
-## Later
-
-- [ ] Networked GCP evaluation after local validation and benchmarking.

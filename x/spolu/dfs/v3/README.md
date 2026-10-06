@@ -1,7 +1,8 @@
 # dfs:// v3
 
 [Design](DESIGN.md), [implementation plan](PLAN.md), and [local measurements](bench/RESULTS.md).
-Linux FUSE and FoundationDB run in isolated Docker containers. No Elasticsearch or GCP.
+Linux FUSE and FoundationDB run in isolated Docker containers, without Elasticsearch.
+The [GCP fixture](gcp/README.md) reuses the existing dust-dev nodes for networked measurements.
 
 From the dfs directory:
 

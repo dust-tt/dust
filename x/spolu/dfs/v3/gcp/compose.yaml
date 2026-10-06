@@ -1,0 +1,29 @@
+name: dfs-v3-gcp
+services:
+  dev:
+    build:
+      context: ../local
+    network_mode: host
+    environment:
+      FDB_CLUSTER_FILE: /etc/dfs-fdb/fdb.cluster
+      DFS_FDB_CLUSTER_FILE: /etc/dfs-fdb/fdb.cluster
+      CARGO_TARGET_DIR: /target
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      RUSTC_WRAPPER: ""
+    volumes:
+      - /opt/dfs:/dfs
+      - /etc/dfs-fdb:/etc/dfs-fdb:ro
+      - /target/v3:/target
+      - /benchmark:/benchmark:ro
+      - /var/log/dfs-bench/v3:/reports
+      - cargo:/usr/local/cargo/registry
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add: [SYS_ADMIN]
+    security_opt: [apparmor:unconfined]
+    command: ["sleep", "infinity"]
+    init: true
+volumes:
+  cargo:
+    external: true
+    name: dfs-v2-gcp_cargo
