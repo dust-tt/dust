@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { validateExternalUrl } from "@app/lib/api/url_safety";
+import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import {
   getFileFormatCategory,
@@ -73,17 +74,16 @@ function limitReadableStream(
 }
 
 export async function uploadFileFromUrlToFileSystem(
+  auth: Authenticator,
   dustFs: DustFileSystem,
   {
     path,
     url,
     contentType: contentTypeOverride,
-    hasFramesV2,
   }: {
     path: string;
     url: string;
     contentType?: string;
-    hasFramesV2: boolean;
   }
 ): Promise<Result<UploadFromUrlResult, UploadFromUrlError>> {
   const validUrl = validateUrl(url);
@@ -131,7 +131,7 @@ export async function uploadFileFromUrlToFileSystem(
 
   if (isInteractiveContentType(finalContentType)) {
     return new Err({
-      message: frameFileCreateRejectedError({ hasFramesV2 }).message,
+      message: (await frameFileCreateRejectedError(auth)).message,
     });
   }
 
@@ -179,7 +179,7 @@ export async function uploadFileFromUrlToFileSystem(
     const existingMimeType = stripMimeParameters(statResult.value.contentType);
     if (isInteractiveContentType(existingMimeType)) {
       return new Err({
-        message: frameFileEditRejectedError({ hasFramesV2 }).message,
+        message: (await frameFileEditRejectedError(auth)).message,
       });
     }
   }

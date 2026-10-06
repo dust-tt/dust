@@ -357,11 +357,6 @@ const FILES_TOOLS_COMMON_METADATA = [
   },
 ] as const;
 
-/**
- * @cc [owner:avervaet,label:product] edit-description-names-no-frame-publisher
- * The description MUST NOT name a Frame publish tool or command: the available one depends on the
- * workspace's Frames version, while this description is shared by every workspace.
- */
 const EDIT_TOOL = {
   description:
     "Edit a text file by replacing an exact string match with new content. " +

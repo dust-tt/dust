@@ -4,7 +4,6 @@ import {
   frameFileEditRejectedError,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { isInteractiveContentType, normalizeMimeType } from "@app/types/files";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -59,10 +58,9 @@ export function registerFilesCreateTool(server: McpServer) {
       }
       const dustFs = fsResult.value;
 
-      const hasFramesV2 = await hasFeatureFlag(auth, "frames_v2");
       const normalizedContentType = normalizeMimeType(content_type);
       if (isInteractiveContentType(normalizedContentType)) {
-        return mcpError(frameFileCreateRejectedError({ hasFramesV2 }).message);
+        return mcpError((await frameFileCreateRejectedError(auth)).message);
       }
 
       const statResult = await dustFs.stat(path);
@@ -73,7 +71,7 @@ export function registerFilesCreateTool(server: McpServer) {
           statResult.value.contentType
         );
         if (isInteractiveContentType(existingMimeType)) {
-          return mcpError(frameFileEditRejectedError({ hasFramesV2 }).message);
+          return mcpError((await frameFileEditRejectedError(auth)).message);
         }
       }
 

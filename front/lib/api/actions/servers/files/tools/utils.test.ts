@@ -3,11 +3,14 @@ import {
   frameFileEditRejectedError,
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("frameFileCreateRejectedError", () => {
-  it("names the files create and interactive_content create tools", () => {
-    const { message } = frameFileCreateRejectedError({ hasFramesV2: false });
+  it("names the files create and interactive_content create tools", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { message } = await frameFileCreateRejectedError(auth);
     expect(message).toContain("files__create");
     expect(message).toContain(
       "interactive_content__create_interactive_content_file"
@@ -15,8 +18,10 @@ describe("frameFileCreateRejectedError", () => {
     expect(message).not.toContain("dsbx");
   });
 
-  it("points to the Computer under Frames v2", () => {
-    const { message } = frameFileCreateRejectedError({ hasFramesV2: true });
+  it("points to the Computer under Frames v2", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const { message } = await frameFileCreateRejectedError(auth);
     expect(message).toContain("files__create");
     expect(message).toContain("dsbx frame publish");
     expect(message).toContain("If the Computer is not available");
@@ -24,8 +29,9 @@ describe("frameFileCreateRejectedError", () => {
 });
 
 describe("frameFileEditRejectedError", () => {
-  it("names the files edit and interactive_content publish tools", () => {
-    const { message } = frameFileEditRejectedError({ hasFramesV2: false });
+  it("names the files edit and interactive_content publish tools", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { message } = await frameFileEditRejectedError(auth);
     expect(message).toContain("files__edit");
     expect(message).toContain(
       "interactive_content__publish_interactive_content_file"
@@ -33,8 +39,10 @@ describe("frameFileEditRejectedError", () => {
     expect(message).not.toContain("dsbx");
   });
 
-  it("points to dsbx frame publish under Frames v2", () => {
-    const { message } = frameFileEditRejectedError({ hasFramesV2: true });
+  it("points to dsbx frame publish under Frames v2", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const { message } = await frameFileEditRejectedError(auth);
     expect(message).toContain("files__edit");
     expect(message).toContain("dsbx frame publish");
     expect(message).toContain("If the Computer is not available");

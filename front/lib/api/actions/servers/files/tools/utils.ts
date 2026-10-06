@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -153,15 +154,9 @@ export async function resolveFile(
 const FRAMES_V2_NO_COMPUTER_FALLBACK =
   "If the Computer is not available, tell the user the Frame cannot be published here.";
 
-/**
- * @cc [owner:avervaet,label:product] frame-publish-hint-follows-frames-v2
- * When hasFramesV2 is true, the hint MUST point to `dsbx frame publish`, MUST tell the model to
- * report that publishing is unavailable when the Computer is missing, and MUST NOT name
- * `publish_interactive_content_file`, which Frames v2 does not expose. When hasFramesV2 is false,
- * the hint MUST NOT mention `dsbx`.
- */
-function framePublishHint({ hasFramesV2 }: { hasFramesV2: boolean }): string {
-  if (hasFramesV2) {
+// Frames v2 does not expose the legacy publish tool: Frames are published from the Computer.
+async function framePublishHint(auth: Authenticator): Promise<string> {
+  if (await hasFeatureFlag(auth, "frames_v2")) {
     return (
       "publish it from the Computer with `dsbx frame publish /files/<scoped path>`. " +
       FRAMES_V2_NO_COMPUTER_FALLBACK
@@ -171,12 +166,10 @@ function framePublishHint({ hasFramesV2 }: { hasFramesV2: boolean }): string {
   return `publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`;
 }
 
-export function frameFileCreateRejectedError({
-  hasFramesV2,
-}: {
-  hasFramesV2: boolean;
-}): MCPError {
-  const alternative = hasFramesV2
+export async function frameFileCreateRejectedError(
+  auth: Authenticator
+): Promise<MCPError> {
+  const alternative = (await hasFeatureFlag(auth, "frames_v2"))
     ? "Write new Frames with the Computer and publish them with `dsbx frame publish`. " +
       FRAMES_V2_NO_COMPUTER_FALLBACK
     : `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`;
@@ -188,15 +181,13 @@ export function frameFileCreateRejectedError({
   );
 }
 
-export function frameFileEditRejectedError({
-  hasFramesV2,
-}: {
-  hasFramesV2: boolean;
-}): MCPError {
+export async function frameFileEditRejectedError(
+  auth: Authenticator
+): Promise<MCPError> {
   return new MCPError(
     "Frame files cannot be edited with this tool. " +
       `Edit the Frame's source with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\`, ` +
-      `then ${framePublishHint({ hasFramesV2 })}`,
+      `then ${await framePublishHint(auth)}`,
     { tracked: false }
   );
 }
@@ -205,14 +196,12 @@ export function frameFileEditRejectedError({
  * Notice appended after a write to a Frame source file on the mount. The mount write never
  * changes the rendered Frame directly, the model must publish to rebuild it.
  */
-export function frameSourceUpdatedNotice({
-  hasFramesV2,
-}: {
-  hasFramesV2: boolean;
-}): string {
+export async function frameSourceUpdatedNotice(
+  auth: Authenticator
+): Promise<string> {
   return (
     "This updated the Frame's source only. The rendered Frame is unchanged until you " +
-    framePublishHint({ hasFramesV2 })
+    (await framePublishHint(auth))
   );
 }
 
