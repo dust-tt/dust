@@ -30,9 +30,15 @@ const ParamsSchema = z.object({
   cId: z.string(),
 });
 
+// Parsed like the former `parseInt` ("10.5" -> 10) so values accepted before keep working.
+const parseIntParam = (v: unknown) =>
+  typeof v === "string" ? parseInt(v, 10) : v;
+
 const GetConversationQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().optional(),
-  lastValue: z.coerce.number().int().optional(),
+  limit: z
+    .preprocess(parseIntParam, z.number().int().nonnegative().safe())
+    .optional(),
+  lastValue: z.preprocess(parseIntParam, z.number().int().safe()).optional(),
 });
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId.
@@ -72,7 +78,7 @@ const app = publicApiApp();
  *         required: false
  *         description: Cursor value (message rank) from a previous response to fetch the next page of messages.
  *         schema:
- *           type: string
+ *           type: integer
  *     responses:
  *       200:
  *         description: Conversation retrieved successfully.
