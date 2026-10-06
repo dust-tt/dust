@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import time
 
-from harness import Stack, metadata, syncfs
+from harness import Stack, metadata, peak_rss_mib, syncfs
 
 URL = 'https://github.com/dust-tt/dust'
 
@@ -81,6 +81,7 @@ def main():
         (mount / 'work').mkdir()
         run['dfs'] = clone(mount / 'work', args.url)
         run['dfs']['remaining_client_writeback_seconds'] = drain(mount / 'work')
+        run['dfs']['mount_peak_rss_mib'] = peak_rss_mib(stack.mounts[mount].pid)
         run['mount'] = stack.unmount(mount)
         run['server'] = stack.stop()
         stack.start('validate')
@@ -92,6 +93,7 @@ def main():
         run['files'] = len(expected)
         run['same_head'] = head == run['native']['head'] == run['dfs']['head']
         run['blobs_match'] = blobs_match(repo)
+        run['dfs']['validate_mount_peak_rss_mib'] = peak_rss_mib(stack.mounts[mount].pid)
         run['validated'] = (status == '' and head == run['dfs']['head'] and run['native']['clean'] and run['dfs']['clean']
                             and run['blobs_match'] and (not run['same_head'] or tree(repo) == expected))
         stack.stop()
@@ -105,6 +107,8 @@ def main():
         print(f"{side:6} clone {r['clone_seconds']:7.2f}s  status first {r['status_first_seconds']:6.3f}s  "
               f"warm {r['status_warm_seconds']:6.3f}s")
     print(f"dfs status after remount {run['dfs']['status_after_remount_seconds']:.3f}s")
+    print(f"mount peak RSS: clone + status {run['dfs']['mount_peak_rss_mib']:.0f} MiB, "
+          f"remount + status + re-hash {run['dfs']['validate_mount_peak_rss_mib']:.0f} MiB")
     print(f"{'Validated' if run['validated'] else 'FAILED'} {run['files']} work-tree files; report: {work}")
     return 0 if run['validated'] else 1
 

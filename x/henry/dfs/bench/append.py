@@ -12,18 +12,11 @@ import statistics
 import tempfile
 import time
 
-from harness import MAX_DELAY_MS, Stack, metadata, syncfs
+from harness import MAX_DELAY_MS, Stack, metadata, peak_rss_mib, syncfs
 
 MAX = MAX_DELAY_MS / 1000
 TTL = MAX - min(MAX / 4, 1.0)
 CHUNK = 1 << 20
-
-
-def peak_rss_mib(pid):
-    for line in Path(f'/proc/{pid}/status').read_text().splitlines():
-        if line.startswith('VmHWM:'):
-            return int(line.split()[1]) / 1024
-    return None
 
 
 def drain(directory):

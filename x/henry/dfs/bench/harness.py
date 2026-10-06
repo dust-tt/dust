@@ -42,6 +42,14 @@ def metadata():
             'revalidate_listings': os.environ.get('DFS_REVALIDATE') == '1'}
 
 
+def peak_rss_mib(pid):
+    """Peak resident set size of a live process (VmHWM)."""
+    for line in Path(f'/proc/{pid}/status').read_text().splitlines():
+        if line.startswith('VmHWM:'):
+            return int(line.split()[1]) / 1024
+    return None
+
+
 def totals(path, message):
     for line in reversed(path.read_text().splitlines()):
         try:
