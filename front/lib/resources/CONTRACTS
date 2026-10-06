@@ -10,3 +10,18 @@ A method that fetches or lists such resources MUST either:
 - carry `dangerously` in its name (`dangerouslyFetchByModelIds`), or take an option whose name or
   value carries it (`permissionFiltering: "dangerously_skip"`), and say in a comment which check is
   skipped and why.
+
+@cc [owner:fontanierh,label:performance;backend] batched-workspace-deletes
+Deleting every row of a workspace from a table listed below MUST issue DELETE statements whose row
+count is bounded independently of the workspace size (`destroyAllForWorkspaceInBatches`, fixed-size
+id batches, or per-parent deletes such as per conversation or per message chunk), and MUST NOT wrap
+the whole deletion in one transaction. Listed tables hold more than 100k rows for a single
+workspace in production (read replica, October 2026); a table crossing that threshold MUST be added.
+
+`agent_data_source_configurations`, `agent_mcp_action_output_items`, `agent_mcp_actions`,
+`agent_mcp_server_configurations`, `agent_message_consumption_items`, `agent_message_skills`,
+`agent_messages`, `agent_step_content_tool_executions`, `agent_step_contents`,
+`agent_tables_query_configuration_tables`, `content_fragments`, `conversation_participants`,
+`conversation_skills`, `conversations`, `data_source_views`, `data_sources`, `files`, `mentions`,
+`messages`, `run_usages`, `runs`, `sandbox_function_invocations`, `sandbox_owners`, `sandboxes`,
+`user_conversation_reads`, `user_messages`.

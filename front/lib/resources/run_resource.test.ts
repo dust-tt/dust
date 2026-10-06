@@ -1,4 +1,5 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import type { Authenticator } from "@app/lib/auth";
 import { USAGE_TYPE_FREE, USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -490,5 +491,50 @@ describe("RunResource.setRunKeyForDustRunIds", () => {
     });
     const overwritten = await RunResource.fetchByDustRunId(auth, { dustRunId });
     expect(overwritten?.runKey).toBe("key-b");
+  });
+});
+
+describe("RunResource.deleteAllForWorkspace", () => {
+  async function makeRunWithUsage(auth: Authenticator) {
+    const run = await RunResource.makeNew({
+      appId: null,
+      dustRunId: generateRandomModelSId(),
+      runType: "deploy",
+      useWorkspaceCredentials: false,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    });
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 1_000,
+        totalOutputTokens: 300,
+        totalTokens: 1_300,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      {
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+
+    return run;
+  }
+
+  it("deletes the workspace's runs and their usages, and leaves other workspaces alone", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { authenticator: otherAuth, workspace: otherWorkspace } =
+      await createResourceTest({});
+    const run = await makeRunWithUsage(auth);
+    await makeRunWithUsage(auth);
+    const otherRun = await makeRunWithUsage(otherAuth);
+
+    const deletedCount = await RunResource.deleteAllForWorkspace(auth);
+
+    expect(deletedCount).toBe(2);
+    expect(await RunResource.countByWorkspace(workspace)).toBe(0);
+    expect(await run.listRunUsages(auth)).toHaveLength(0);
+    expect(await RunResource.countByWorkspace(otherWorkspace)).toBe(1);
+    expect(await otherRun.listRunUsages(otherAuth)).toHaveLength(1);
   });
 });

@@ -53,6 +53,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { destroyAllForWorkspaceInBatches } from "@app/lib/resources/storage/destroy_in_batches";
 import {
   AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
@@ -143,9 +144,6 @@ const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
   frameSlideshowContentType,
 ]);
-
-const BATCH_DESTROY_SIZE = 10_000;
-const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
 
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
@@ -610,7 +608,11 @@ export class FileResource extends BaseResource<FileModel> {
 
     await deleteFileViewsForWorkspace(auth);
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
-    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
+    // Invocations FK their function, so they go first.
+    await SandboxFunctionInvocationResource.deleteAllForWorkspace(auth);
+    await destroyAllForWorkspaceInBatches(SandboxFunctionModel, {
+      workspaceModelId,
+    });
     await FramePublicationResource.deleteAllForWorkspace(auth);
     await getPrivateUploadBucket().deleteByPrefix(
       getFramesBasePath({ workspaceId: owner.sId })
@@ -638,44 +640,9 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId: workspaceModelId },
     });
 
-    return this.batchDestroyAllForWorkspace(auth);
-  }
-
-  // A workspace can hold millions of files. Deleting them in a single statement exceeds the
-  // Postgres statement timeout, and the aborted transaction rolls back after having written
-  // gigabytes of WAL, which stalls every other query on the instance. Batching keeps each
-  // statement short and lets the deletion make forward progress across retries.
-  private static async batchDestroyAllForWorkspace(auth: Authenticator) {
-    const owner = auth.getNonNullableWorkspace();
-    const localLogger = logger.child({ workspaceId: owner.id });
-    let deletedCount = 0;
-
-    for (;;) {
-      const batch = await this.model.findAll({
-        attributes: ["id"],
-        where: { workspaceId: owner.id },
-        limit: BATCH_DESTROY_SIZE,
-      });
-
-      if (batch.length === 0) {
-        break;
-      }
-
-      deletedCount += await this.model.destroy({
-        where: {
-          workspaceId: owner.id,
-          id: batch.map((file) => file.id),
-        },
-      });
-
-      localLogger.info({ deletedCount }, "Deleted a batch of workspace files");
-
-      if (batch.length < BATCH_DESTROY_SIZE) {
-        break;
-      }
-    }
-
-    return deletedCount;
+    return destroyAllForWorkspaceInBatches(this.model, {
+      workspaceModelId,
+    });
   }
 
   private static async deleteFrameFunctionModelIds(
@@ -696,26 +663,6 @@ export class FileResource extends BaseResource<FileModel> {
         workspaceId: workspaceModelId,
       },
     });
-  }
-
-  private static async deleteAllFrameFunctionsForWorkspace(
-    workspaceModelId: ModelId
-  ): Promise<void> {
-    for (;;) {
-      const sandboxFunctions = await SandboxFunctionModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId: workspaceModelId },
-        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
-      });
-      if (sandboxFunctions.length === 0) {
-        return;
-      }
-
-      await this.deleteFrameFunctionModelIds(
-        workspaceModelId,
-        sandboxFunctions.map(({ id }) => id)
-      );
-    }
   }
 
   private async deleteFrameFunctions(auth: Authenticator): Promise<void> {
