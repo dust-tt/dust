@@ -29,7 +29,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
-import { getScopeHeaders } from "@app/lib/api/actions/servers/agent_router/tools";
+import { getScopeHeaders } from "@app/lib/api/actions/servers/common/scope_headers";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
   getRunAgentToolDescription,
