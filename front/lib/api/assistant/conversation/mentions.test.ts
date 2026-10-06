@@ -1773,7 +1773,7 @@ describe("createUserMessage", () => {
     const isParticipantBefore =
       await ConversationResource.isConversationParticipant(auth, {
         conversation,
-        user: mentionedUser.toJSON(),
+        user: mentionedUser,
       });
     expect(isParticipantBefore).toBe(false);
 

@@ -304,7 +304,7 @@ export async function deleteOrLeaveConversation(
   // would also satisfy.
   const isParticipant = await ConversationResource.isConversationParticipant(
     auth,
-    { conversation, user: user.toJSON() }
+    { conversation, user }
   );
   if (!isParticipant) {
     return new Err(new ConversationError("conversation_access_restricted"));
