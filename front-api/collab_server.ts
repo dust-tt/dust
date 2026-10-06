@@ -11,7 +11,7 @@ import { serve } from "@hono/node-server";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
-import { createCollabHocuspocus } from "./lib/collab_hocuspocus";
+import { createCollabHocuspocus } from "./lib/collab/hocuspocus";
 import { createHono } from "./lib/hono";
 import { healthzApp } from "./routes/healthz";
 

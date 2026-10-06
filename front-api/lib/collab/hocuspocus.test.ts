@@ -1,6 +1,6 @@
 import { loadLiveDocument } from "@app/lib/api/co_edition/live_file";
 import { dfmToYDoc } from "@app/lib/api/co_edition/ydoc";
-import { createCollabHocuspocus } from "@front-api/lib/collab_hocuspocus";
+import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
