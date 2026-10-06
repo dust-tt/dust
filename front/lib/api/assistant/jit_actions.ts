@@ -104,7 +104,8 @@ async function getUnconditionalJITServers(
   );
   servers.push(filesServer);
 
-  servers.push(getDocumentsServer(conversation, autoInternalViews));
+  const documentsServer = getDocumentsServer(conversation, autoInternalViews);
+  servers.push(documentsServer);
 
   const askUserQuestionServer = getAskUserQuestionServer(
     agentConfiguration,
