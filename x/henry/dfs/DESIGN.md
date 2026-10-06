@@ -236,13 +236,21 @@ and after the sparse overlay, spans 2.19 to 2.48 s), vs Spolu pinned 65.6 s and 
 Native tar of the same archive on this machine: 0.23 s. Deep-grant untar (1000 files): 0.160 s /
 0.173 s (first build of this design: 1.73 s; lease design: 11.27 s).
 
-`git clone https://github.com/dust-tt/dust` (1.03 GB pack, 15,295 files; network included) then
-`git status` twice (`bench/git.py`; validated after a server restart against a native clone):
+`git clone https://github.com/dust-tt/dust` (1.03 GB pack, ~15.3k files; network included) then
+`git status` twice (`bench/git.py`), three runs per budget, each with its own native clone (six
+native samples); median [min to max]. Validated after a server restart: clean status and every
+tracked file re-hashed through the mount equal to its blob at HEAD.
 
 | | native | ours, 1 s | ours, 8 s |
 | --- | ---: | ---: | ---: |
-| clone | 43.2 s | 71.4 s | 70.4 s |
-| status, first / repeated | 0.37 / 0.023 s | 8.3 / 6.6 s | 9.4 / 1.0 s |
+| clone | 42.9 s [41.4 to 43.5] | 70.4 s [65.5 to 70.6] | 69.2 s [68.7 to 78.1] |
+| status, first | 0.26 s [0.12 to 0.49] | 10.1 s [8.5 to 11.3] | 2.3 s [1.8 to 9.8] |
+| status, repeated | 0.17 s [0.02 to 0.33] | 6.6 s [6.0 to 7.3] | 1.9 s [1.0 to 7.2] |
+| status after remount | | 6.3 s [6.2 to 6.4] | 1.6 s [1.5 to 2.4] |
+
+0 missed windows and 0 dropped ops in every run; worst commit lag 193 ms at 1 s, 180 ms at 8 s.
+At 8 s a status costs 1 to 2 s when the directory listings are still cached and about 7 to 10 s when
+they expired (2.5k listing fetches, one per directory, one at a time).
 
 Before the block cache and the projected admission: clone 496 s at 1 s (727k `Read` calls from
 `index-pack`, 828 missed windows); after: 8.9k `Read` calls, 0 missed windows, worst lag 164 ms.

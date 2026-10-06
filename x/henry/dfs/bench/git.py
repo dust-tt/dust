@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """`git clone` from GitHub then `git status` (first and repeated), natively and into a new mount
-root. Validates through a new server and mount: same HEAD, clean status, and every work-tree file
-identical to the native clone."""
+root. Validates through a new server and mount: clean status, and every tracked file's content
+(re-hashed through the mount) equal to its blob at HEAD; when both clones got the same HEAD, also
+every work-tree file identical to the native clone."""
 import argparse
 import hashlib
 import json
@@ -37,6 +38,15 @@ def tree(root):
     return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(root.rglob('*'))
             if '.git' not in path.relative_to(root).parts and path.is_file() and not path.is_symlink()}
+
+
+def blobs_match(repo):
+    """Every tracked regular file, read back and hashed, matches the blob its index entry names."""
+    staged = [line.split(None, 3) for line in timed('git', 'ls-files', '-s', '-z', cwd=repo)[1].split('\0') if line]
+    files = [(path, blob) for mode, blob, _, path in staged if mode in ('100644', '100755')]
+    hashed = subprocess.run(['git', 'hash-object', '--no-filters', '--stdin-paths'], cwd=repo, check=True,
+                            capture_output=True, text=True, input='\n'.join(path for path, _ in files)).stdout.split()
+    return len(files) > 0 and hashed == [blob for _, blob in files]
 
 
 def clone(parent, url):
@@ -80,8 +90,10 @@ def main():
         head = timed('git', 'rev-parse', 'HEAD', cwd=repo)[1].strip()
         expected = tree(native / 'dust')
         run['files'] = len(expected)
-        run['validated'] = (status == '' and head == run['native']['head'] == run['dfs']['head']
-                            and run['native']['clean'] and run['dfs']['clean'] and tree(repo) == expected)
+        run['same_head'] = head == run['native']['head'] == run['dfs']['head']
+        run['blobs_match'] = blobs_match(repo)
+        run['validated'] = (status == '' and head == run['dfs']['head'] and run['native']['clean'] and run['dfs']['clean']
+                            and run['blobs_match'] and (not run['same_head'] or tree(repo) == expected))
         stack.stop()
     finally:
         stack.stop()
