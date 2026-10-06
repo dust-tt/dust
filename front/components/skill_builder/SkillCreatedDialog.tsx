@@ -9,6 +9,7 @@ import {
   DialogTitle,
   MessageCircle01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface SkillCreatedDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function SkillCreatedDialog({
   skillId,
   owner,
 }: SkillCreatedDialogProps) {
+  const { t } = useLingui();
   const conversationRoute = getConversationRoute(
     owner.sId,
     "new",
@@ -35,22 +37,26 @@ export function SkillCreatedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Skill {skillName} created!</DialogTitle>
+          <DialogTitle>
+            <Trans>Skill {skillName} created!</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          You can now use {skillName}. Try it in a new conversation or keep
-          editing this skill.
+          <Trans>
+            You can now use {skillName}. Try it in a new conversation or keep
+            editing this skill.
+          </Trans>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Keep editing",
+            label: t`Keep editing`,
             variant: "outline",
             onClick: () => {
               onOpenChange(false);
             },
           }}
           rightButtonProps={{
-            label: "Start conversation",
+            label: t`Start conversation`,
             icon: MessageCircle01,
             href: conversationRoute,
           }}

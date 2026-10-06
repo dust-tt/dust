@@ -8,6 +8,7 @@ import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { Icon, LinkExternal01, LinkWrapper } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
@@ -32,21 +33,23 @@ export function SkillBuilderSettingsSection({
     <div className="space-y-4">
       <div className="space-y-1 pb-1">
         <h2 className="heading-lg font-semibold text-foreground">
-          Skill settings
+          <Trans>Skill settings</Trans>
         </h2>
         {githubSkillFolderUrl && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <span>This skill was originally imported from</span>
-            <LinkWrapper
-              href={githubSkillFolderUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
-            >
-              <span>GitHub</span>
-              <Icon visual={LinkExternal01} size="xs" />
-            </LinkWrapper>
-            <span>.</span>
+            <Trans>
+              This skill was originally imported from{" "}
+              <LinkWrapper
+                href={githubSkillFolderUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+              >
+                GitHub
+                <Icon visual={LinkExternal01} size="xs" />
+              </LinkWrapper>
+              .
+            </Trans>
           </div>
         )}
       </div>
@@ -68,7 +71,7 @@ export function SkillBuilderSettingsSection({
       {hasSelfImprovingSkills && (
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-foreground">
-            Self Improvement
+            <Trans>Self-improvement</Trans>
           </h3>
           <SkillBuilderEnableSuggestionsSection
             selfImprovementLock={skill?.selfImprovementLock ?? false}

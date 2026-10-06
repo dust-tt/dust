@@ -10,6 +10,7 @@ import {
   SearchInput,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
@@ -50,6 +51,7 @@ const ActionCell = ({
 export function WebhookSourceDetailsSharing({
   spaces,
 }: WebhookSourceDetailsSharingProps) {
+  const { t } = useLingui();
   const [filter, setFilter] = useState("");
   const form = useFormContext<WebhookSourceFormValues>();
   const sharingSettings = useWatch({
@@ -85,7 +87,7 @@ export function WebhookSourceDetailsSharing({
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
-      header: "Name",
+      header: t`Name`,
       accessorKey: "name",
     },
     {
@@ -108,7 +110,7 @@ export function WebhookSourceDetailsSharing({
     <div className="flex flex-col gap-2">
       <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
         <div className="flex w-full items-center justify-between overflow-visible">
-          <Page.SectionHeader title="Available to all workspace members" />
+          <Page.SectionHeader title={t`Available to all workspace members`} />
           <SliderToggle
             selected={!isRestricted}
             onClick={(e) => {
@@ -122,11 +124,13 @@ export function WebhookSourceDetailsSharing({
       </div>
       <div className="text-foreground">
         {isRestricted ? (
-          <>
+          <Trans>
             These tools are only available to the users of the selected spaces:
-          </>
+          </Trans>
         ) : (
-          <>These tools are accessible to everyone in the workspace.</>
+          <Trans>
+            These tools are accessible to everyone in the workspace.
+          </Trans>
         )}
       </div>
 
@@ -135,7 +139,7 @@ export function WebhookSourceDetailsSharing({
           <div className="flex w-full flex-row gap-2">
             <SearchInput
               name="filter"
-              placeholder="Search a space"
+              placeholder={t`Search a space`}
               value={filter}
               onChange={(e) => setFilter(e)}
               className="w-full"

@@ -2,9 +2,11 @@ import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDef
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { Button, ReverseLeft, Separator } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useFormContext, useFormState } from "react-hook-form";
 
 export function SkillBuilderVersionComparisonFooter() {
+  const { t } = useLingui();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
@@ -49,7 +51,7 @@ export function SkillBuilderVersionComparisonFooter() {
           size="sm"
           icon={ReverseLeft}
           onClick={restoreAll}
-          label="Restore all fields from this version"
+          label={t`Restore all fields from this version`}
           disabled={isReadOnly}
         />
       </div>

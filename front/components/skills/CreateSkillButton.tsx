@@ -13,6 +13,7 @@ import {
   MessageChatCircle,
   Plus,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface CreateSkillButtonProps {
   owner: LightWorkspaceType;
@@ -20,11 +21,12 @@ interface CreateSkillButtonProps {
 }
 
 export function CreateSkillButton({ owner, onImport }: CreateSkillButtonProps) {
+  const { t } = useLingui();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          label="Create skill"
+          label={t`Create skill`}
           icon={Plus}
           isSelect
           onClick={withTracking(TRACKING_AREAS.BUILDER, "create_skill_menu")}
@@ -32,7 +34,7 @@ export function CreateSkillButton({ owner, onImport }: CreateSkillButtonProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          label="From conversation"
+          label={t`From conversation`}
           icon={MessageChatCircle}
           href={getCreateFromConversationRoute(owner.sId, "skill")}
           onClick={withTracking(
@@ -41,13 +43,13 @@ export function CreateSkillButton({ owner, onImport }: CreateSkillButtonProps) {
           )}
         />
         <DropdownMenuItem
-          label="From scratch"
+          label={t`From scratch`}
           icon={SKILL_ICON}
           href={getSkillBuilderRoute(owner.sId, "new")}
           onClick={withTracking(TRACKING_AREAS.BUILDER, "create_skill")}
         />
         <DropdownMenuItem
-          label="From existing"
+          label={t`From existing`}
           icon={FolderOpen}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,

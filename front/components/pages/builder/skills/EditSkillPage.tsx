@@ -7,8 +7,10 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export function EditSkillPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user } = useAuth();
   const skillId = useRequiredPathParam("sId");
@@ -19,7 +21,7 @@ export function EditSkillPage() {
     withRelations: true,
   });
 
-  useDocumentTitle(skill ? `Dust - ${skill.name}` : "Dust - Skill");
+  useDocumentTitle(skill ? `Dust - ${skill.name}` : t`Dust - Skill`);
 
   const isNotFound =
     isSkillError ||

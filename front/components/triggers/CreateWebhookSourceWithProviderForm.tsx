@@ -8,6 +8,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, CloudArrowLeftRight, Label, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type CreateWebhookSourceWithProviderFormProps = {
@@ -31,6 +32,7 @@ export function CreateWebhookSourceWithProviderForm({
   onDataToCreateWebhookChange,
   onReadyToSubmitChange,
 }: CreateWebhookSourceWithProviderFormProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const cellContext = useCellContext();
   const [connection, setConnection] = useState<OAuthConnectionType | null>(
@@ -43,6 +45,7 @@ export function CreateWebhookSourceWithProviderForm({
   const preset = WEBHOOK_PRESETS[provider];
   const presetUI = CLIENT_SIDE_WEBHOOK_PRESETS[provider];
   const OAuthExtraConfigInput = presetUI.components.oauthExtraConfigInput;
+  const presetName = preset.name;
 
   const handleConnectToProvider = async () => {
     if (!owner) {
@@ -62,21 +65,21 @@ export function CreateWebhookSourceWithProviderForm({
       if (connectionRes.isErr()) {
         sendNotification({
           type: "error",
-          title: `Failed to connect to ${preset.name}`,
+          title: t`Failed to connect to ${presetName}`,
           description: connectionRes.error.message,
         });
       } else {
         setConnection(connectionRes.value);
         sendNotification({
           type: "success",
-          title: `Connected to ${preset.name}`,
-          description: "Fetching additional data for configuration...",
+          title: t`Connected to ${presetName}`,
+          description: t`Fetching additional data for configuration...`,
         });
       }
     } catch (error) {
       sendNotification({
         type: "error",
-        title: `Failed to connect to ${preset.name}`,
+        title: t`Failed to connect to ${presetName}`,
         description: normalizeError(error).message,
       });
     } finally {
@@ -86,16 +89,18 @@ export function CreateWebhookSourceWithProviderForm({
   const hasConnectionPage = !!preset.webhookPageUrl;
   const buttonLabel = connection
     ? hasConnectionPage
-      ? `Edit connection`
-      : `Connected`
-    : `Connect`;
+      ? t`Edit connection`
+      : t`Connected`
+    : t`Connect`;
 
   return (
     <div className="flex flex-col space-y-4">
       <div>
-        <Label>{preset.name} Connection</Label>
+        <Label>
+          <Trans>{presetName} connection</Trans>
+        </Label>
         <p className="text-sm text-muted-foreground">
-          {preset.name} connection is required
+          <Trans>{presetName} connection is required</Trans>
         </p>
         {OAuthExtraConfigInput && (
           <div className="mt-4">

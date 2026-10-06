@@ -17,6 +17,7 @@ import {
   cn,
   File02,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -129,6 +130,7 @@ export function SkillBuilderInstructionsReferenceSummary({
   onReferenceClick,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
+  const { t } = useLingui();
   const [isExpand, setIsExpand] = useState(false);
   const [overflowThresholdHeight, setOverflowThresholdHeight] = useState(
     DEFAULT_OVERFLOW_THRESHOLD_HEIGHT
@@ -250,7 +252,7 @@ export function SkillBuilderInstructionsReferenceSummary({
       {isOverflow && (
         <div className="flex justify-end">
           <Button
-            label={`See ${isExpand ? "less" : "more"}`}
+            label={isExpand ? t`See less` : t`See more`}
             onClick={() => setIsExpand((prev) => !prev)}
             icon={isExpand ? ChevronUp : ChevronDown}
             variant="ghost-secondary"

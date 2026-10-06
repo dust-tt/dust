@@ -1,5 +1,7 @@
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { useLingui } from "@lingui/react/macro";
+import { useMemo } from "react";
 import { z } from "zod";
 
 export type WebhookSourceFormValues = {
@@ -47,13 +49,19 @@ export function getWebhookSourceFormDefaults(
   };
 }
 
-export function getWebhookSourceFormSchema() {
-  return z.object({
-    name: z.string().min(1, "Name is required."),
-    description: z.string(),
-    icon: z.string(),
-    sharingSettings: z.record(z.boolean()),
-  });
+export function useWebhookSourceFormSchema() {
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t`Name is required.`),
+        description: z.string(),
+        icon: z.string(),
+        sharingSettings: z.record(z.boolean()),
+      }),
+    [t]
+  );
 }
 
 type FormDiffType = {

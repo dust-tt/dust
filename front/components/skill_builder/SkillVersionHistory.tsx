@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface SkillVersionHistoryProps {
@@ -38,6 +39,7 @@ export function SkillVersionHistory({
   selectedConfig,
   owner,
 }: SkillVersionHistoryProps) {
+  const { t } = useLingui();
   const editedByIdsToLookup = useMemo(() => {
     const ids = new Set<number>();
     history.forEach((config) => {
@@ -59,22 +61,23 @@ export function SkillVersionHistory({
   const editedByUserMap = useMemo(() => {
     const map: Record<string, string> = {};
     editedByLookupMembers.forEach((user) => {
-      map[user.id.toString()] = user.fullName || user.firstName || "Unknown";
+      map[user.id.toString()] = user.fullName || user.firstName || t`Unknown`;
     });
     return map;
-  }, [editedByLookupMembers]);
+  }, [editedByLookupMembers, t]);
 
   function formatVersionLabel(config: SkillWithVersionType): string {
+    const version = config.version;
     return config.updatedAt
       ? formatDateTime(config.updatedAt, NUMERIC_DATE_TIME_OPTIONS)
-      : `Version ${config.version}`;
+      : t`Version ${version}`;
   }
 
   function getEditedByName(config: SkillType): string {
     if (!config.editedBy) {
-      return "System";
+      return t({ message: "System", context: "author of a version" });
     }
-    return editedByUserMap[config.editedBy.toString()] || "Unknown";
+    return editedByUserMap[config.editedBy.toString()] || t`Unknown`;
   }
 
   // Collapse successive versions where all comparable fields are identical,
@@ -102,7 +105,7 @@ export function SkillVersionHistory({
 
   const triggerLabel = selectedConfig
     ? formatVersionLabel(selectedConfig)
-    : "History";
+    : t`History`;
 
   return (
     <DropdownMenu>
@@ -120,7 +123,7 @@ export function SkillVersionHistory({
         className="h-96 w-72"
         dropdownHeaders={
           <>
-            <DropdownMenuLabel label="Choose version to compare" />
+            <DropdownMenuLabel label={t`Choose version to compare`} />
             <DropdownMenuSeparator />
           </>
         }
@@ -141,21 +144,24 @@ export function SkillVersionHistory({
               }
             }}
           >
-            {deduplicatedHistory.map((config) => (
-              <DropdownMenuRadioItem
-                key={config.version}
-                value={config.version.toString()}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex flex-col">
-                    <span>{formatVersionLabel(config)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      by {getEditedByName(config)}
-                    </span>
+            {deduplicatedHistory.map((config) => {
+              const authorName = getEditedByName(config);
+              return (
+                <DropdownMenuRadioItem
+                  key={config.version}
+                  value={config.version.toString()}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex flex-col">
+                      <span>{formatVersionLabel(config)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        <Trans>by {authorName}</Trans>
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </DropdownMenuRadioItem>
-            ))}
+                </DropdownMenuRadioItem>
+              );
+            })}
           </DropdownMenuRadioGroup>
         )}
       </DropdownMenuContent>

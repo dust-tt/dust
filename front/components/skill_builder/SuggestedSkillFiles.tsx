@@ -2,6 +2,7 @@ import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SkillFilesSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Avatar, File02, LoadingBlock } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface SuggestedSkillFilesProps {
   suggestion: SkillFilesSuggestionType;
@@ -26,7 +27,9 @@ export function SuggestedSkillFiles({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">Files</span>
+      <span className="text-sm text-muted-foreground">
+        <Trans>Files</Trans>
+      </span>
       <div className="divide-y divide-border">
         {suggestion.addFilePaths.map((filePath) => (
           <SuggestedChangeRow

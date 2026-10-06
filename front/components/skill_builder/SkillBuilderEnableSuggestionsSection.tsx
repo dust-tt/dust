@@ -1,6 +1,7 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { InfoCircle, SliderToggle, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useFormContext, useFormState } from "react-hook-form";
 
 interface SkillBuilderEnableSuggestionsSectionProps {
@@ -10,6 +11,7 @@ interface SkillBuilderEnableSuggestionsSectionProps {
 export function SkillBuilderEnableSuggestionsSection({
   selfImprovementLock,
 }: SkillBuilderEnableSuggestionsSectionProps) {
+  const { t } = useLingui();
   const { owner } = useSkillBuilderContext();
   const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
   const isDisabled = !isAllowedByWorkspace || selfImprovementLock;
@@ -33,8 +35,8 @@ export function SkillBuilderEnableSuggestionsSection({
           <InfoCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             {!isAllowedByWorkspace
-              ? "Self-improving skills are disabled in your workspace. Ask your admin to enable this feature."
-              : "Admin has disabled self-improvement for this skill."}
+              ? t`Self-improving skills are disabled in your workspace. Ask your admin to enable this feature.`
+              : t`Admin has disabled self-improvement for this skill.`}
           </span>
         </div>
       )}
@@ -46,9 +48,11 @@ export function SkillBuilderEnableSuggestionsSection({
           selected={enabled && !isDisabled}
           onClick={handleToggle}
         />
-        <span className="text-sm text-foreground">Self-improve</span>
+        <span className="text-sm text-foreground">
+          <Trans>Self-improve</Trans>
+        </span>
         <Tooltip
-          label="Dust will analyze how this skill is used and suggest improvements to its instructions over time."
+          label={t`Dust will analyze how this skill is used and suggest improvements to its instructions over time.`}
           trigger={<InfoCircle className="text-muted-foreground h-4 w-4" />}
         />
       </div>

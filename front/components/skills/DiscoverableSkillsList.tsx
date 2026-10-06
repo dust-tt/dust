@@ -2,6 +2,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Spinner, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const DISCOVERABLE_SKILLS_PAGE_SIZE = 50;
@@ -11,6 +12,7 @@ interface DiscoverableSkillsListProps {
 }
 
 export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
+  const { t } = useLingui();
   const [pageIndex, setPageIndex] = useState(0);
 
   const {
@@ -27,7 +29,9 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="heading-lg text-foreground">Discoverable Skills</div>
+      <div className="heading-lg text-foreground">
+        <Trans>Discoverable skills</Trans>
+      </div>
       {/* Keep the current page visible while the next page loads. */}
       {isDiscoverableLoading && discoverableSkills.length === 0 ? (
         <div className="flex flex-row items-center gap-2">
@@ -56,14 +60,14 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
       {(pageIndex > 0 || hasMore) && (
         <div className="flex items-center gap-2">
           <Button
-            label="Previous"
+            label={t({ message: "Previous", context: "pagination button" })}
             variant="outline"
             size="sm"
             disabled={pageIndex === 0 || isDiscoverableLoading}
             onClick={() => setPageIndex((index) => index - 1)}
           />
           <Button
-            label="Next"
+            label={t({ message: "Next", context: "pagination button" })}
             variant="outline"
             size="sm"
             disabled={!hasMore || isDiscoverableLoading}

@@ -5,6 +5,7 @@ import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkil
 import { getSpaceName } from "@app/lib/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AlertCircle, Button, ContentMessage } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useController } from "react-hook-form";
 
 interface SkillEditorsAccessWarningProps {
@@ -43,6 +44,7 @@ function EditorAccessWarning({
   editorWithoutAccess,
   owner,
 }: EditorAccessWarningProps) {
+  const { t } = useLingui();
   const { editor, missingSpaces } = editorWithoutAccess;
 
   const { field: editorsField } = useController<
@@ -61,40 +63,58 @@ function EditorAccessWarning({
     );
   };
 
-  const isSingleSpace = missingSpaces.length === 1;
+  const editorName = editor.fullName;
+  const missingSpacesCount = missingSpaces.length;
+  const spaceLinks = <SpaceLinks owner={owner} spaces={missingSpaces} />;
 
   return (
     <ContentMessage
-      title="Invalid editors"
+      title={t`Invalid editors`}
       variant="golden"
       icon={AlertCircle}
       size="lg"
     >
       <p>
-        <strong>{editor.fullName}</strong> is an editor of this skill but is not
-        a member of <SpaceLinks owner={owner} spaces={missingSpaces} />, so they
-        cannot view or use it. Add them{" "}
-        {isSingleSpace ? "to that space" : "to those spaces"}, remove{" "}
-        {isSingleSpace ? "that space" : "those spaces"} restriction or remove
-        them from editors:
+        <Plural
+          value={missingSpacesCount}
+          one={
+            <Trans>
+              <strong>{editorName}</strong> is an editor of this skill but is
+              not a member of {spaceLinks}, so they cannot view or use it. Add
+              them to that space, remove that space restriction or remove them
+              from editors:
+            </Trans>
+          }
+          other={
+            <Trans>
+              <strong>{editorName}</strong> is an editor of this skill but is
+              not a member of {spaceLinks}, so they cannot view or use it. Add
+              them to those spaces, remove those spaces restriction or remove
+              them from editors:
+            </Trans>
+          }
+        />
       </p>
       <div className="mt-2 flex flex-row flex-wrap items-center gap-2">
-        {missingSpaces.map((space) => (
-          <Button
-            key={space.sId}
-            size="xs"
-            variant="outline"
-            label={`Remove ${getSpaceName(space)}`}
-            disabled={isRemovalDisabled}
-            onClick={() => {
-              void removeSpace(space);
-            }}
-          />
-        ))}
+        {missingSpaces.map((space) => {
+          const spaceName = getSpaceName(space);
+          return (
+            <Button
+              key={space.sId}
+              size="xs"
+              variant="outline"
+              label={t`Remove ${spaceName}`}
+              disabled={isRemovalDisabled}
+              onClick={() => {
+                void removeSpace(space);
+              }}
+            />
+          );
+        })}
         <Button
           size="xs"
           variant="outline"
-          label="Remove editor"
+          label={t`Remove editor`}
           disabled={editorsField.disabled}
           onClick={handleRemoveEditor}
         />

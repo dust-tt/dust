@@ -1,6 +1,6 @@
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/skillAvailabilityDisplay";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,
@@ -9,6 +9,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { UserType } from "@app/types/user";
 import { Chip, DataTable, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface SkillNameCellProps {
   skill: Pick<
@@ -47,13 +48,16 @@ interface SkillAvailabilityCellProps {
 export function SkillAvailabilityCell({
   availability,
 }: SkillAvailabilityCellProps) {
+  const { t } = useLingui();
   const display = SKILL_AVAILABILITY_DISPLAY[availability];
 
   return (
     <DataTable.CellContent>
       <Tooltip
-        label={display.tooltip}
-        trigger={<Chip size="xs" color={display.color} label={display.label} />}
+        label={t(display.tooltip)}
+        trigger={
+          <Chip size="xs" color={display.color} label={t(display.label)} />
+        }
       />
     </DataTable.CellContent>
   );

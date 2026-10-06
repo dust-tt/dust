@@ -35,6 +35,8 @@ msgstr "Open user menu"
 
 #: front/components/UserMenu.tsx
 #: front/components/me/PendingInvitationsTable.tsx
+#: front/components/skills/skillFilter.ts
+#: front/components/triggers/AdminTriggersList.tsx
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 #: front/components/workspace/analytics/automations/trigger_pool_options.ts
 msgid "Workspace"
@@ -99,6 +101,7 @@ msgstr "Personal Settings"
 #: front/components/UserMenu.tsx
 #: front/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage.tsx
 #: front/components/me/UserToolsDialog.tsx
+#: front/components/skills/SkillInfoTab.tsx
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 #: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Tools"
@@ -190,6 +193,9 @@ msgstr "How you appear to other members of the workspace"
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/skill_builder/SkillBuilder.tsx
+#: front/components/skills/SkillEditorsTab.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
@@ -390,6 +396,9 @@ msgid "Unable to load models"
 msgstr "Unable to load models"
 
 #: front/components/agent_builder/AgentBuilder.tsx
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+#: front/components/skills/SkillDetailsBody.tsx
 msgid "Retry"
 msgstr "Retry"
 
@@ -406,6 +415,7 @@ msgid "Wait until agent editors finish loading before saving."
 msgstr "Wait until agent editors finish loading before saving."
 
 #: front/components/agent_builder/AgentBuilder.tsx
+#: front/components/skill_builder/SkillBuilder.tsx
 msgid "Retry loading editors before saving changes."
 msgstr "Retry loading editors before saving changes."
 
@@ -464,6 +474,8 @@ msgstr "Agent creation failed."
 
 #: front/components/agent_builder/AgentBuilder.tsx
 #: front/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker.tsx
+#: front/components/skill_builder/SkillBuilder.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 #: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
@@ -524,6 +536,14 @@ msgstr "Go back"
 #: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
 #: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+#: front/components/skill_builder/SkillBuilder.tsx
+#: front/components/skills/ArchiveSkillDialog.tsx
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/RestoreSkillDialog.tsx
+#: front/components/skills/SkillEditorsTab.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/import/ImportSkillsDialog.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 #: front/components/workspace/BulkChangeSeatModal.tsx
 #: front/components/workspace/BulkEditSpendLimitModal.tsx
@@ -638,6 +658,7 @@ msgid "Similar agents found"
 msgstr "Similar agents found"
 
 #: front/components/agent_builder/AgentBuilderSpacesBlock.tsx
+#: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
 msgid "Data and access"
 msgstr "Data and access"
 
@@ -660,6 +681,7 @@ msgid "You can now use {agentName} in conversations. Start a chat or keep editin
 msgstr "You can now use {agentName} in conversations. Start a chat or keep editing this agent."
 
 #: front/components/agent_builder/AgentCreatedDialog.tsx
+#: front/components/skill_builder/SkillCreatedDialog.tsx
 msgid "Keep editing"
 msgstr "Keep editing"
 
@@ -728,11 +750,14 @@ msgstr "Personal tools uses credentials of the user running the agent. Other use
 
 #: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
 #: front/components/me/UserToolsTable.tsx
+#: front/components/skills/import/GitHubConnectionRow.tsx
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
 msgid "Connected"
 msgstr "Connected"
 
 #: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
 #: front/components/me/UserToolsTable.tsx
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
 msgid "Connect"
 msgstr "Connect"
 
@@ -778,6 +803,7 @@ msgid "No capabilities available"
 msgstr "No capabilities available"
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage.tsx
+#: front/components/triggers/AddTriggerDialog.tsx
 msgid "Try a different search term."
 msgstr "Try a different search term."
 
@@ -788,6 +814,7 @@ msgstr "Add tools or create skills to enhance your agents."
 #: front/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage.tsx
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/pages/workspace/governance/GovernancePage.tsx
+#: front/components/skills/SkillInfoTab.tsx
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 #: front/components/workspace/analytics/consumption/consumptionDimensions.ts
@@ -808,10 +835,16 @@ msgid "Skill details"
 msgstr "Skill details"
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage.tsx
+#: front/components/skills/SkillDetailsBody.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Info"
 msgstr "Info"
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage.tsx
+#: front/components/skill_builder/SkillBuilderEditorsSection.tsx
+#: front/components/skills/SkillDetailsBody.tsx
+#: front/components/skills/SkillEditorsTab.tsx
+#: front/components/skills/SkillSearchTable.tsx
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Editors"
 msgstr "Editors"
@@ -874,6 +907,7 @@ msgstr "Do you want to unselect all of \"{itemTitle}\"?"
 #: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
 #: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
 #: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+#: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Unselect all"
 msgstr "Unselect all"
 
@@ -892,6 +926,14 @@ msgstr "Unselect all"
 #: front/components/members/MemberSelectionTable.tsx
 #: front/components/members/MembersList.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/skill_builder/SkillBuilderNameSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+#: front/components/skill_builder/SuggestedSkillName.tsx
+#: front/components/skills/SkillSearchTable.tsx
+#: front/components/triggers/AdminTriggersList.tsx
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
@@ -972,14 +1014,17 @@ msgid "Location"
 msgstr "Location"
 
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Unsaved changes"
 msgstr "Unsaved changes"
 
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "You have unsaved changes. Are you sure you want to close without saving?"
 msgstr "You have unsaved changes. Are you sure you want to close without saving?"
 
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Discard changes"
 msgstr "Discard changes"
 
@@ -1565,6 +1610,8 @@ msgid "Will constrain the model to a specific JSON schema"
 msgstr "Will constrain the model to a specific JSON schema"
 
 #: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Instructions"
 msgstr "Instructions"
 
@@ -1577,6 +1624,7 @@ msgid "Comparing current version with {compareVersionDate}"
 msgstr "Comparing current version with {compareVersionDate}"
 
 #: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+#: front/components/skill_builder/SkillBuilderVersionComparisonBanner.tsx
 msgid "Leave comparison mode"
 msgstr "Leave comparison mode"
 
@@ -1593,6 +1641,7 @@ msgid "{count} / {maxCount} characters"
 msgstr "{count} / {maxCount} characters"
 
 #: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+#: front/components/skill_builder/SkillVersionHistory.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 #: front/components/workspace/billing/BillingInformation.tsx
 msgid "Unknown"
@@ -1604,6 +1653,7 @@ msgid "v{version}"
 msgstr "v{version}"
 
 #: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+#: front/components/skill_builder/SkillVersionHistory.tsx
 msgctxt "author of a version"
 msgid "System"
 msgstr "System"
@@ -1613,10 +1663,12 @@ msgid "Compare with previous versions"
 msgstr "Compare with previous versions"
 
 #: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+#: front/components/skill_builder/SkillVersionHistory.tsx
 msgid "Choose version to compare"
 msgstr "Choose version to compare"
 
 #: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+#: front/components/skill_builder/SkillVersionHistory.tsx
 msgid "by {authorName}"
 msgstr "by {authorName}"
 
@@ -1709,10 +1761,13 @@ msgid "Unpublished"
 msgstr "Unpublished"
 
 #: front/components/agent_builder/settings/AccessSection.tsx
+#: front/components/skill_builder/SkillEditorsSheetWithButton.tsx
+#: front/components/skills/SkillEditorsTab.tsx
 msgid "Add editors"
 msgstr "Add editors"
 
 #: front/components/agent_builder/settings/AccessSection.tsx
+#: front/components/skill_builder/SkillEditorsSheetWithButton.tsx
 msgid "{editorsCount, plural, one {# editor} other {# editors}}"
 msgstr "{editorsCount, plural, one {# editor} other {# editors}}"
 
@@ -1765,6 +1820,7 @@ msgid "Who is this agent available for?"
 msgstr "Who is this agent available for?"
 
 #: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
 msgid "Failed to generate description"
 msgstr "Failed to generate description"
 
@@ -1778,6 +1834,10 @@ msgid "Try adding more details to your instructions to get better suggestions."
 msgstr "Try adding more details to your instructions to get better suggestions."
 
 #: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+#: front/components/skill_builder/SuggestedSkillUserFacingDescription.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
 msgid "Description"
 msgstr "Description"
 
@@ -1786,6 +1846,7 @@ msgid "Enter agent description"
 msgstr "Enter agent description"
 
 #: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
 msgid "Generating description..."
 msgstr "Generating description..."
 
@@ -1794,6 +1855,7 @@ msgid "Add at least {MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the inst
 msgstr "Add at least {MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the instructions to get suggestions"
 
 #: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
 msgid "Generate description"
 msgstr "Generate description"
 
@@ -1992,6 +2054,7 @@ msgid "Accept suggestion"
 msgstr "Accept suggestion"
 
 #: front/components/agent_builder/sidekick/SuggestionBubbleMenu.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Accept"
 msgstr "Accept"
 
@@ -2012,6 +2075,7 @@ msgid "You will not be able to add this skill back because it is only accessible
 msgstr "You will not be able to add this skill back because it is only accessible to the skill editors and you are not an editor."
 
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/settings/BrandingSection.tsx
 msgid "Remove"
 msgstr "Remove"
@@ -2188,6 +2252,7 @@ msgstr "No triggers found matching your search"
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
 #: front/components/members/MembersList.tsx
+#: front/components/skills/import/DetectedSkillsList.tsx
 #: front/components/workspace/WorkspaceAccessPanel.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Status"
@@ -2318,6 +2383,7 @@ msgstr "You cannot edit this schedule. It is managed by <0>{editorName}</0>."
 
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 #: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+#: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Name is required"
 msgstr "Name is required"
 
@@ -2582,12 +2648,14 @@ msgid "Change instructions and settings"
 msgstr "Change instructions and settings"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
-msgid "Remove from favorites"
-msgstr "Remove from favorites"
-
-#: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/skills/SkillFavoriteButton.tsx
 msgid "Add to favorites"
 msgstr "Add to favorites"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/skills/SkillFavoriteButton.tsx
+msgid "Remove from favorites"
+msgstr "Remove from favorites"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Remove this agent from your favorites"
@@ -2677,6 +2745,9 @@ msgstr "Agents"
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 #: front/components/workspace/UsageMembersSection.tsx
@@ -2734,6 +2805,7 @@ msgid "Search…"
 msgstr "Search…"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/skill_builder/SkillBuilderSuggestionsPanel.tsx
 msgid "Suggestions"
 msgstr "Suggestions"
 
@@ -3111,6 +3183,7 @@ msgid "An error occurred while deleting the automation."
 msgstr "An error occurred while deleting the automation."
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/triggers/TriggerStatusChip.tsx
 #: front/components/workspace/DirectorySync.tsx
 #: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
@@ -3143,6 +3216,7 @@ msgid "Are you sure you want to delete \"{triggerToDeleteName}\"?"
 msgstr "Are you sure you want to delete \"{triggerToDeleteName}\"?"
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/WorkspaceAccessPanel.tsx
 msgid "This action cannot be undone."
 msgstr "This action cannot be undone."
@@ -3168,6 +3242,7 @@ msgid "Clear confirmation preferences"
 msgstr "Clear confirmation preferences"
 
 #: front/components/me/UserToolsTable.tsx
+#: front/components/skills/import/GitHubConnectionRow.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
 
@@ -3726,6 +3801,164 @@ msgstr "Datasets"
 msgid "Logs"
 msgstr "Logs"
 
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Create an agent"
+msgstr "Create an agent"
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Start with a template"
+msgstr "Start with a template"
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Explore different ways to use Dust. Find a setup that works for you and make it your own."
+msgstr "Explore different ways to use Dust. Find a setup that works for you and make it your own."
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Search templates"
+msgstr "Search templates"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Could not load agents. Please try again."
+msgstr "Could not load agents. Please try again."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "No agents match your search."
+msgstr "No agents match your search."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "No agents to show."
+msgstr "No agents to show."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Dust - Manage agents"
+msgstr "Dust - Manage agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search agents"
+msgstr "Search agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Search for agents"
+msgstr "Search for agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Manage agents"
+msgstr "Manage agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Build and manage agents that work with your team's knowledge and tools."
+msgstr "Build and manage agents that work with your team's knowledge and tools."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Hidden agents"
+msgstr "Hidden agents"
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Configure model providers"
+msgstr "Configure model providers"
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Providers must be configured in your workspace to use the agent builder."
+msgstr "Providers must be configured in your workspace to use the agent builder."
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Back to homepage"
+msgstr "Back to homepage"
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "No provider is configured in your workspace. Contact your administrator."
+msgstr "No provider is configured in your workspace. Contact your administrator."
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Agent builder is not available"
+msgstr "Agent builder is not available"
+
+#: front/components/pages/builder/skills/CreateSkillPage.tsx
+msgid "Dust - New skill"
+msgstr "Dust - New skill"
+
+#: front/components/pages/builder/skills/EditSkillPage.tsx
+msgid "Dust - Skill"
+msgstr "Dust - Skill"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Could not load skills. Please try again."
+msgstr "Could not load skills. Please try again."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "No skills match your search."
+msgstr "No skills match your search."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "No skills to show."
+msgstr "No skills to show."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Dust - Manage skills"
+msgstr "Dust - Manage skills"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search skills"
+msgstr "Search skills"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Search for skills"
+msgstr "Search for skills"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Manage skills"
+msgstr "Manage skills"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Reusable packages of instructions and tools that agents can share."
+msgstr "Reusable packages of instructions and tools that agents can share."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+#: front/components/skills/SkillFilterPanel.tsx
+msgid "Hidden skills"
+msgstr "Hidden skills"
+
+#: front/components/pages/builder/skills/utils.ts
+msgctxt "tab listing all skills"
+msgid "All"
+msgstr "All"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "All active skills"
+msgstr "All active skills"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "Editable by me"
+msgstr "Editable by me"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "Skills you can edit"
+msgstr "Skills you can edit"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "Favorites"
+msgstr "Favorites"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "Skills you favorited"
+msgstr "Skills you favorited"
+
+#: front/components/pages/builder/skills/utils.ts
+#: front/components/skills/skillFilter.ts
+msgid "Archived"
+msgstr "Archived"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "Archived skills"
+msgstr "Archived skills"
+
+#: front/components/pages/builder/skills/utils.ts
+msgid "All availabilities"
+msgstr "All availabilities"
+
 #: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
 msgid "Everything that runs on its own: who set it up, how often it runs, what it costs."
 msgstr "Everything that runs on its own: who set it up, how often it runs, what it costs."
@@ -4216,6 +4449,7 @@ msgid "Type the secret value"
 msgstr "Type the secret value"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
 msgid "Update"
 msgstr "Update"
 
@@ -4414,6 +4648,7 @@ msgid "Embedding models are used to create numerical representations of your dat
 msgstr "Embedding models are used to create numerical representations of your data powering the semantic search capabilities of your agents."
 
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/triggers/AdminTriggersList.tsx
 msgid "Provider"
 msgstr "Provider"
 
@@ -4499,6 +4734,9 @@ msgid "Your subscription will end at the end of your current billing period."
 msgstr "Your subscription will end at the end of your current billing period."
 
 #: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+#: front/components/skills/ArchiveSkillDialog.tsx
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/RestoreSkillDialog.tsx
 msgid "Are you sure you want to proceed?"
 msgstr "Are you sure you want to proceed?"
 
@@ -4755,6 +4993,866 @@ msgstr "based on active users"
 msgid "Contact sales"
 msgstr "Contact sales"
 
+#: front/components/skill_builder/SimilarSkillsDisplay.tsx
+msgid "Checking for similar skills..."
+msgstr "Checking for similar skills..."
+
+#: front/components/skill_builder/SimilarSkillsDisplay.tsx
+msgid "Similar skills found"
+msgstr "Similar skills found"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Error creating skill"
+msgstr "Error creating skill"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Error updating skill"
+msgstr "Error updating skill"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill created, but its editors were not saved"
+msgstr "Skill created, but its editors were not saved"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill updated, but its editors were not saved"
+msgstr "Skill updated, but its editors were not saved"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill created"
+msgstr "Skill created"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill updated"
+msgstr "Skill updated"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Your skill has been successfully created."
+msgstr "Your skill has been successfully created."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Your skill has been successfully updated."
+msgstr "Your skill has been successfully updated."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Unable to verify editor access"
+msgstr "Unable to verify editor access"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Verifying editor access"
+msgstr "Verifying editor access"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Wait until skill editors finish loading before saving."
+msgstr "Wait until skill editors finish loading before saving."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Cannot save skill"
+msgstr "Cannot save skill"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Only skill editors can save changes."
+msgstr "Only skill editors can save changes."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Edit skill {skillName}"
+msgstr "Edit skill {skillName}"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Create new skill"
+msgstr "Create new skill"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "This is a generated skill suggestion"
+msgstr "This is a generated skill suggestion"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "This skill was automatically generated based on your workspace's configuration. We recommend reviewing and editing it to match your specific needs before saving."
+msgstr "This skill was automatically generated based on your workspace's configuration. We recommend reviewing and editing it to match your specific needs before saving."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Some skill editors cannot access some of the restricted spaces"
+msgstr "Some skill editors cannot access some of the restricted spaces"
+
+#: front/components/skill_builder/SkillBuilderAgentFacingDescriptionSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+#: front/components/skills/SkillInfoTab.tsx
+msgid "When to use this skill"
+msgstr "When to use this skill"
+
+#: front/components/skill_builder/SkillBuilderAgentFacingDescriptionSection.tsx
+msgid "Tell the agent when it should use this skill."
+msgstr "Tell the agent when it should use this skill."
+
+#: front/components/skill_builder/SkillBuilderAgentFacingDescriptionSection.tsx
+msgid "Restore description"
+msgstr "Restore description"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Only editors can find it via the composer and agent builder"
+msgstr "Only editors can find it via the composer and agent builder"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "The skill remains available through agents and skills that use it"
+msgstr "The skill remains available through agents and skills that use it"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "They can all find it via the composer and agent builder."
+msgstr "They can all find it via the composer and agent builder."
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "All members can find it via the composer and agent builder"
+msgstr "All members can find it via the composer and agent builder"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Agents with Discover Skills can use it automatically"
+msgstr "Agents with Discover Skills can use it automatically"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Only members of all the following can view and use this skill: {spaceLinks}."
+msgstr "Only members of all the following can view and use this skill: {spaceLinks}."
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Only members of {spaceLinks} can view and use this skill."
+msgstr "Only members of {spaceLinks} can view and use this skill."
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Who is this skill available for?"
+msgstr "Who is this skill available for?"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Among them:"
+msgstr "Among them:"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Editors only"
+msgstr "Editors only"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Members and agents"
+msgstr "Members and agents"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Available to all members and agents with Discover Skills"
+msgstr "Available to all members and agents with Discover Skills"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "You don’t have permission to change this skill’s availability"
+msgstr "You don’t have permission to change this skill’s availability"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "You don’t have permission to change the availability of an auto-discoverable skill"
+msgstr "You don’t have permission to change the availability of an auto-discoverable skill"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skill_builder/SuggestedSkillAvailability.tsx
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Availability"
+msgstr "Availability"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "You don’t have permission to make skills auto-discoverable"
+msgstr "You don’t have permission to make skills auto-discoverable"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "This skill has workspace-wide effects"
+msgstr "This skill has workspace-wide effects"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "Any agent with Discover Skills, including Dust, can use it automatically. See other skills available to agents in <0>Manage skills<1/></0>"
+msgstr "Any agent with Discover Skills, including Dust, can use it automatically. See other skills available to agents in <0>Manage skills<1/></0>"
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Self-improving skills are disabled in your workspace. Ask your admin to enable this feature."
+msgstr "Self-improving skills are disabled in your workspace. Ask your admin to enable this feature."
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Admin has disabled self-improvement for this skill."
+msgstr "Admin has disabled self-improvement for this skill."
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Self-improve"
+msgstr "Self-improve"
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Dust will analyze how this skill is used and suggest improvements to its instructions over time."
+msgstr "Dust will analyze how this skill is used and suggest improvements to its instructions over time."
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Duplicate files skipped."
+msgstr "Duplicate files skipped."
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Already attached: {duplicateFileNames}"
+msgstr "Already attached: {duplicateFileNames}"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Upload files"
+msgstr "Upload files"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+#: front/components/skill_builder/SuggestedSkillFiles.tsx
+#: front/components/skills/SkillInfoTab.tsx
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Files"
+msgstr "Files"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Add files that will be available to the skill at runtime. Templates, schemas, scripts, or reference materials."
+msgstr "Add files that will be available to the skill at runtime. Templates, schemas, scripts, or reference materials."
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Restore files"
+msgstr "Restore files"
+
+#: front/components/skill_builder/SkillBuilderInstructionsReferenceSummary.tsx
+msgid "See less"
+msgstr "See less"
+
+#: front/components/skill_builder/SkillBuilderInstructionsReferenceSummary.tsx
+msgid "See more"
+msgstr "See more"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "Provide the guidelines the skill should follow when it runs. Type \"/\" to attach knowledge, tools, or another skill."
+msgstr "Provide the guidelines the skill should follow when it runs. Type \"/\" to attach knowledge, tools, or another skill."
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "Restore instructions"
+msgstr "Restore instructions"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgctxt "button, insert content in the instructions"
+msgid "Insert"
+msgstr "Insert"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "This skill is noticeably large"
+msgstr "This skill is noticeably large"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "Large skills consume a significant part of the context window on each use. Consider keeping your guidelines concise."
+msgstr "Large skills consume a significant part of the context window on each use. Consider keeping your guidelines concise."
+
+#: front/components/skill_builder/SkillBuilderNameSection.tsx
+msgid "Enter skill name"
+msgstr "Enter skill name"
+
+#: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the skill. Only members of all the spaces and pods listed will have access to the skill."
+msgstr "Adding spaces or pods will make the data from each of them available to the skill. Only members of all the spaces and pods listed will have access to the skill."
+
+#: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
+msgctxt "button, manage the spaces of a skill"
+msgid "Manage"
+msgstr "Manage"
+
+#: front/components/skill_builder/SkillBuilderSettingsSection.tsx
+msgid "Skill settings"
+msgstr "Skill settings"
+
+#: front/components/skill_builder/SkillBuilderSettingsSection.tsx
+msgid "This skill was originally imported from <0>GitHub<1/></0>."
+msgstr "This skill was originally imported from <0>GitHub<1/></0>."
+
+#: front/components/skill_builder/SkillBuilderSettingsSection.tsx
+msgid "Self-improvement"
+msgstr "Self-improvement"
+
+#: front/components/skill_builder/SkillBuilderSimilarDiscoverableSkills.tsx
+msgid "Checking for similar skills available to members and agents..."
+msgstr "Checking for similar skills available to members and agents..."
+
+#: front/components/skill_builder/SkillBuilderSimilarDiscoverableSkills.tsx
+msgid "Similar skills already available to members and agents"
+msgstr "Similar skills already available to members and agents"
+
+#: front/components/skill_builder/SkillBuilderSuggestionsPanel.tsx
+msgid "Dust continuously analyses conversations using this skill to suggest improvements."
+msgstr "Dust continuously analyses conversations using this skill to suggest improvements."
+
+#: front/components/skill_builder/SkillBuilderSuggestionsPanel.tsx
+msgid "No pending suggestions."
+msgstr "No pending suggestions."
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Add at least {MIN_INSTRUCTIONS_LENGTH} characters to instructions"
+msgstr "Add at least {MIN_INSTRUCTIONS_LENGTH} characters to instructions"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Add a description of when to use the skill"
+msgstr "Add a description of when to use the skill"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Enter skill description"
+msgstr "Enter skill description"
+
+#: front/components/skill_builder/SkillBuilderVersionComparisonFooter.tsx
+msgid "Restore all fields from this version"
+msgstr "Restore all fields from this version"
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "Skill {skillName} created!"
+msgstr "Skill {skillName} created!"
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "You can now use {skillName}. Try it in a new conversation or keep editing this skill."
+msgstr "You can now use {skillName}. Try it in a new conversation or keep editing this skill."
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "Start conversation"
+msgstr "Start conversation"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "Invalid editors"
+msgstr "Invalid editors"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "{missingSpacesCount, plural, one {<0>{editorName}</0> is an editor of this skill but is not a member of {spaceLinks}, so they cannot view or use it. Add them to that space, remove that space restriction or remove them from editors:} other {<1>{editorName}</1> is an editor of this skill but is not a member of {spaceLinks}, so they cannot view or use it. Add them to those spaces, remove those spaces restriction or remove them from editors:}}"
+msgstr "{missingSpacesCount, plural, one {<0>{editorName}</0> is an editor of this skill but is not a member of {spaceLinks}, so they cannot view or use it. Add them to that space, remove that space restriction or remove them from editors:} other {<1>{editorName}</1> is an editor of this skill but is not a member of {spaceLinks}, so they cannot view or use it. Add them to those spaces, remove those spaces restriction or remove them from editors:}}"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "Remove {spaceName}"
+msgstr "Remove {spaceName}"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "Remove editor"
+msgstr "Remove editor"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Accepted"
+msgstr "Accepted"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accepted by you {relativeTime}"
+msgstr "Accepted by you {relativeTime}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accepted by {reviewerName} {relativeTime}"
+msgstr "Accepted by {reviewerName} {relativeTime}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accepted {relativeTime}"
+msgstr "Accepted {relativeTime}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Declined"
+msgstr "Declined"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Declined by you {relativeTime}"
+msgstr "Declined by you {relativeTime}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Declined by {reviewerName} {relativeTime}"
+msgstr "Declined by {reviewerName} {relativeTime}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Declined {relativeTime}"
+msgstr "Declined {relativeTime}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Outdated"
+msgstr "Outdated"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Superseded by a later suggestion"
+msgstr "Superseded by a later suggestion"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "{sourceConversationsCount, plural, one {Based on # conversation} other {Based on # conversations}}"
+msgstr "{sourceConversationsCount, plural, one {Based on # conversation} other {Based on # conversations}}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "{remainingCount, plural, one {Based on conversations {links} and # other} other {Based on conversations {links} and # others}}"
+msgstr "{remainingCount, plural, one {Based on conversations {links} and # other} other {Based on conversations {links} and # others}}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Based on conversation {lastLink}"
+msgstr "Based on conversation {lastLink}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Based on conversations {links} and {lastLink}"
+msgstr "Based on conversations {links} and {lastLink}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Delete the <0>{skillName}</0> skill."
+msgstr "Delete the <0>{skillName}</0> skill."
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Suggestion"
+msgstr "Suggestion"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Decline"
+msgstr "Decline"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "Version {version}"
+msgstr "Version {version}"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "History"
+msgstr "History"
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Description must be {maxLength} characters or less"
+msgstr "Description must be {maxLength} characters or less"
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Skill name is required"
+msgstr "Skill name is required"
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Description of when to use the skill is required"
+msgstr "Description of when to use the skill is required"
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Skill description is required"
+msgstr "Skill description is required"
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Skill instructions are required"
+msgstr "Skill instructions are required"
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}} and {skillsUsageCount, plural, one {# skill} other {# skills}}."
+msgstr "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}} and {skillsUsageCount, plural, one {# skill} other {# skills}}."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}}."
+msgstr "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}}."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> used by {skillsUsageCount, plural, one {# skill} other {# skills}}."
+msgstr "This will archive the skill <0>{skillName}</0> used by {skillsUsageCount, plural, one {# skill} other {# skills}}."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> for everyone."
+msgstr "This will archive the skill <0>{skillName}</0> for everyone."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "Archiving the skill"
+msgstr "Archiving the skill"
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "Archive for everyone"
+msgstr "Archive for everyone"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Archive"
+msgstr "Archive"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{skillCount, plural, one {Archiving # skill} other {Archiving # skills}}"
+msgstr "{skillCount, plural, one {Archiving # skill} other {Archiving # skills}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{totalUsage, plural, one {This skill has been used # time.} other {This skill has been used # times.}}"
+msgstr "{totalUsage, plural, one {This skill has been used # time.} other {This skill has been used # times.}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{totalUsage, plural, one {These skills have been used # time.} other {These skills have been used # times.}}"
+msgstr "{totalUsage, plural, one {These skills have been used # time.} other {These skills have been used # times.}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{skillCount, plural, one {This will archive this skill for everyone.} other {This will archive these skills for everyone.}}"
+msgstr "{skillCount, plural, one {This will archive this skill for everyone.} other {This will archive these skills for everyone.}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{skillCount, plural, one {Archive the skill} other {Archive the skills}}"
+msgstr "{skillCount, plural, one {Archive the skill} other {Archive the skills}}"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "Create skill"
+msgstr "Create skill"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "From conversation"
+msgstr "From conversation"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "From scratch"
+msgstr "From scratch"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "From existing"
+msgstr "From existing"
+
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgid "Discoverable skills"
+msgstr "Discoverable skills"
+
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgctxt "pagination button"
+msgid "Previous"
+msgstr "Previous"
+
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgctxt "pagination button"
+msgid "Next"
+msgstr "Next"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Security notice"
+msgstr "Security notice"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "{missingSpaceCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+msgstr "{missingSpaceCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Proceed"
+msgstr "Proceed"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Joined {spaceName}"
+msgstr "Joined {spaceName}"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "You are now a member of {spaceName}."
+msgstr "You are now a member of {spaceName}."
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Restricted access"
+msgstr "Restricted access"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "You cannot see the guidelines of this skill."
+msgstr "You cannot see the guidelines of this skill."
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "The skill uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+msgstr "The skill uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Join space {firstMissingSpaceName}"
+msgstr "Join space {firstMissingSpaceName}"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Join all required spaces"
+msgstr "Join all required spaces"
+
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "Restoring the skill"
+msgstr "Restoring the skill"
+
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "This will restore the skill <0>{skillName}</0> for everyone."
+msgstr "This will restore the skill <0>{skillName}</0> for everyone."
+
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "Restore the skill"
+msgstr "Restore the skill"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Skill not found"
+msgstr "Skill not found"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "This skill may have been deleted, or the link may be incorrect."
+msgstr "This skill may have been deleted, or the link may be incorrect."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Skill not available"
+msgstr "Skill not available"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "This skill is currently visible only to its editors. An editor can publish it or share it with you."
+msgstr "This skill is currently visible only to its editors. An editor can publish it or share it with you."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Unable to load skill"
+msgstr "Unable to load skill"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "The skill could not be loaded. Please try again."
+msgstr "The skill could not be loaded. Please try again."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Skill avatar"
+msgstr "Skill avatar"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Last edited: {editedDate} by {editorName}"
+msgstr "Last edited: {editedDate} by {editorName}"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Last edited: {editedDate}"
+msgstr "Last edited: {editedDate}"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "This skill has been archived."
+msgstr "This skill has been archived."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "It is no longer active and cannot be used."
+msgstr "It is no longer active and cannot be used."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Restore"
+msgstr "Restore"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Try skill"
+msgstr "Try skill"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Edit skill"
+msgstr "Edit skill"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Copied!"
+msgstr "Copied!"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Copy link"
+msgstr "Copy link"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Skill options"
+msgstr "Skill options"
+
+#: front/components/skills/SkillFilterPanel.tsx
+msgid "Too many tools selected."
+msgstr "Too many tools selected."
+
+#: front/components/skills/SkillFilterPanel.tsx
+msgid "Shows skills you can access as an admin, even if you’re not an editor"
+msgstr "Shows skills you can access as an admin, even if you’re not an editor"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Guidelines"
+msgstr "Guidelines"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Knowledge"
+msgstr "Knowledge"
+
+#: front/components/skills/SkillSearchActionsMenu.tsx
+msgid "Could not load actions. Retry"
+msgstr "Could not load actions. Retry"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Clear selection"
+msgstr "Clear selection"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Select all on page"
+msgstr "Select all on page"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Deselect {skillName}"
+msgstr "Deselect {skillName}"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Select {skillName}"
+msgstr "Select {skillName}"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Usage"
+msgstr "Usage"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Usage is not available for this skill."
+msgstr "Usage is not available for this skill."
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Number of active users in the last 30 days."
+msgstr "Number of active users in the last 30 days."
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Last edited"
+msgstr "Last edited"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Loading skills"
+msgstr "Loading skills"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {Make # skill editors only} other {Make # skills editors only}}"
+msgstr "{count, plural, one {Make # skill editors only} other {Make # skills editors only}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {Only editors can find it via the composer and agent builder. The skill remains available through agents and skills that use it.} other {Only editors can find them via the composer and agent builder. The skills remain available through agents and skills that use them.}}"
+msgstr "{count, plural, one {Only editors can find it via the composer and agent builder. The skill remains available through agents and skills that use it.} other {Only editors can find them via the composer and agent builder. The skills remain available through agents and skills that use them.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {Make # skill available to all members} other {Make # skills available to all members}}"
+msgstr "{count, plural, one {Make # skill available to all members} other {Make # skills available to all members}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {All members can find it via the composer and agent builder.} other {All members can find them via the composer and agent builder.}}"
+msgstr "{count, plural, one {All members can find it via the composer and agent builder.} other {All members can find them via the composer and agent builder.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "This affects your entire workspace"
+msgstr "This affects your entire workspace"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
+msgstr "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Set availability"
+msgstr "Set availability"
+
+#: front/components/skills/import/ConnectWorkspaceGitHubMessage.tsx
+msgid "Connect GitHub to import from private repositories"
+msgstr "Connect GitHub to import from private repositories"
+
+#: front/components/skills/import/ConnectWorkspaceGitHubMessage.tsx
+msgid "Connect a GitHub account to grant access. All workspace members will share this connection."
+msgstr "Connect a GitHub account to grant access. All workspace members will share this connection."
+
+#: front/components/skills/import/ConnectWorkspaceGitHubMessage.tsx
+msgid "Connect GitHub"
+msgstr "Connect GitHub"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Skill name already in use"
+msgstr "Skill name already in use"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Override existing skill"
+msgstr "Override existing skill"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Invalid skill format"
+msgstr "Invalid skill format"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Skill name"
+msgstr "Skill name"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Detecting skills"
+msgstr "Detecting skills"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Detection failed"
+msgstr "Detection failed"
+
+#: front/components/skills/import/GitHubConnectionRow.tsx
+msgid "Access repository - Shared connection"
+msgstr "Access repository - Shared connection"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Only .zip or .skill files are accepted."
+msgstr "Only .zip or .skill files are accepted."
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Drop files here"
+msgstr "Drop files here"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Upload .zip or .skill files"
+msgstr "Upload .zip or .skill files"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Uploading files..."
+msgstr "Uploading files..."
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Drag and drop or click to upload"
+msgstr "Drag and drop or click to upload"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "File requirements"
+msgstr "File requirements"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "The imported .zip or .skill archive must include a SKILL.md file"
+msgstr "The imported .zip or .skill archive must include a SKILL.md file"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "This file must contain the skill name and description formatted in YAML"
+msgstr "This file must contain the skill name and description formatted in YAML"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Read more about importing skills <0>here</0>."
+msgstr "Read more about importing skills <0>here</0>."
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "GitHub connection can't access this repository"
+msgstr "GitHub connection can't access this repository"
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "The currently connected GitHub account can't access this repository. Check the URL or reconnect with an account that has access."
+msgstr "The currently connected GitHub account can't access this repository. Check the URL or reconnect with an account that has access."
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "The currently connected GitHub account can't access this repository. Check the URL or ask an admin to reconnect with an account that has access."
+msgstr "The currently connected GitHub account can't access this repository. Check the URL or ask an admin to reconnect with an account that has access."
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "Repository not found"
+msgstr "Repository not found"
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "Check the URL. For private repos, ask an admin to connect a GitHub account with access."
+msgstr "Check the URL. For private repos, ask an admin to connect a GitHub account with access."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Enter a GitHub repository URL to detect skills."
+msgstr "Enter a GitHub repository URL to detect skills."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Upload a .zip or .skill file with your skills."
+msgstr "Upload a .zip or .skill file with your skills."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Detecting skills..."
+msgstr "Detecting skills..."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "{detectedCount, plural, one {# skill detected. Select the ones to import.} other {# skills detected. Select the ones to import.}}"
+msgstr "{detectedCount, plural, one {# skill detected. Select the ones to import.} other {# skills detected. Select the ones to import.}}"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Import skills"
+msgstr "Import skills"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Repository"
+msgstr "Repository"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgctxt "verb, button label"
+msgid "Import"
+msgstr "Import"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Importing skills"
+msgstr "Importing skills"
+
+#: front/components/skills/import/formSchema.ts
+msgid "Select at least one skill to import"
+msgstr "Select at least one skill to import"
+
+#: front/components/skills/import/formSchema.ts
+msgid "A repository URL is required"
+msgstr "A repository URL is required"
+
+#: front/components/skills/skillFilter.ts
+msgctxt "tab of the skills provided by Dust"
+msgid "Dust"
+msgstr "Dust"
+
 #: front/components/sparkle/ConversationFontContext.tsx
 msgctxt "conversation font"
 msgid "Default"
@@ -4769,6 +5867,339 @@ msgstr "Lora"
 msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Add source"
+msgstr "Add source"
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "{presetName} (Preview)"
+msgstr "{presetName} (Preview)"
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Add a trigger"
+msgstr "Add a trigger"
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Search trigger sources..."
+msgstr "Search trigger sources..."
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Custom webhook"
+msgstr "Custom webhook"
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "No trigger source matches your search"
+msgstr "No trigger source matches your search"
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgctxt "webhook source provider"
+msgid "Custom"
+msgstr "Custom"
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Used by"
+msgstr "Used by"
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Access"
+msgstr "Access"
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgctxt "table header, user who last edited"
+msgid "By"
+msgstr "By"
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Last updated"
+msgstr "Last updated"
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "You don’t have any triggers yet."
+msgstr "You don’t have any triggers yet."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Subscribed events must not be empty."
+msgstr "Subscribed events must not be empty."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Secret is required"
+msgstr "Secret is required"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Name..."
+msgstr "Name..."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Description (optional)"
+msgstr "Description (optional)"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Help your team understand when to use this trigger."
+msgstr "Help your team understand when to use this trigger."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Select events"
+msgstr "Select events"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "All events ({selectedCount}) selected"
+msgstr "All events ({selectedCount}) selected"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "{selectedCount, plural, one {# event selected} other {# events selected}}"
+msgstr "{selectedCount, plural, one {# event selected} other {# events selected}}"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Events to watch"
+msgstr "Events to watch"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Choose which events will activate this trigger"
+msgstr "Choose which events will activate this trigger"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Select all"
+msgstr "Select all"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Advanced settings"
+msgstr "Advanced settings"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Secret"
+msgstr "Secret"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Note: You will be able to see and copy this secret for the first 10 minutes after creating the webhook."
+msgstr "Note: You will be able to see and copy this secret for the first 10 minutes after creating the webhook."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Auto-generate"
+msgstr "Auto-generate"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Secret for validation..."
+msgstr "Secret for validation..."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Signature header"
+msgstr "Signature header"
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Signature header..."
+msgstr "Signature header..."
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Signature algorithm"
+msgstr "Signature algorithm"
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Failed to connect to {presetName}"
+msgstr "Failed to connect to {presetName}"
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Connected to {presetName}"
+msgstr "Connected to {presetName}"
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Fetching additional data for configuration..."
+msgstr "Fetching additional data for configuration..."
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Edit connection"
+msgstr "Edit connection"
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "{presetName} connection"
+msgstr "{presetName} connection"
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "{presetName} connection is required"
+msgstr "{presetName} connection is required"
+
+#: front/components/triggers/TriggerStatusChip.tsx
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Disabled"
+msgstr "Disabled"
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgid "Disabled by manager"
+msgstr "Disabled by manager"
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgid "Relocating"
+msgstr "Relocating"
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgid "Downgraded"
+msgstr "Downgraded"
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "How to use this webhook"
+msgstr "How to use this webhook"
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Authentication"
+msgstr "Authentication"
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "To authenticate your webhook requests, you need to sign the payload using the configured secret and algorithm:"
+msgstr "To authenticate your webhook requests, you need to sign the payload using the configured secret and algorithm:"
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Hash the entire request payload using <0>{signatureAlgorithm}</0> with the secret shown above"
+msgstr "Hash the entire request payload using <0>{signatureAlgorithm}</0> with the secret shown above"
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Include the resulting hash in the <0>{signatureHeader}</0> header of your HTTP request, prefixed with <1>{signatureAlgorithm}=</1>"
+msgstr "Include the resulting hash in the <0>{signatureHeader}</0> header of your HTTP request, prefixed with <1>{signatureAlgorithm}=</1>"
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Send a POST request to the webhook URL with your payload as JSON"
+msgstr "Send a POST request to the webhook URL with your payload as JSON"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Edited by {editorName}"
+msgstr "Edited by {editorName}"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Edited on {editedAtDateString}"
+msgstr "Edited on {editedAtDateString}"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Edited by {editorName}, {editedAtDateString}"
+msgstr "Edited by {editorName}, {editedAtDateString}"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Name & icon"
+msgstr "Name & icon"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Webhook source details"
+msgstr "Webhook source details"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Webhook URL"
+msgstr "Webhook URL"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Webhook URL copied to clipboard"
+msgstr "Webhook URL copied to clipboard"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Subscribed events"
+msgstr "Subscribed events"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Secret copied to clipboard"
+msgstr "Secret copied to clipboard"
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "Available to all workspace members"
+msgstr "Available to all workspace members"
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "These tools are only available to the users of the selected spaces:"
+msgstr "These tools are only available to the users of the selected spaces:"
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "These tools are accessible to everyone in the workspace."
+msgstr "These tools are accessible to everyone in the workspace."
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "Search a space"
+msgstr "Search a space"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "{providerName} source"
+msgstr "{providerName} source"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Failed to add to space"
+msgstr "Failed to add to space"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Failed to remove from space"
+msgstr "Failed to remove from space"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Failed to update webhook source view"
+msgstr "Failed to update webhook source view"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "{webhookSourceName} updated"
+msgstr "{webhookSourceName} updated"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Your changes have been saved."
+msgstr "Your changes have been saved."
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Failed to save changes"
+msgstr "Failed to save changes"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "An error occurred while saving changes."
+msgstr "An error occurred while saving changes."
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "invalid"
+msgstr "invalid"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "{fieldName}: {errorMessage}"
+msgstr "{fieldName}: {errorMessage}"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Invalid: {errorDetails}"
+msgstr "Invalid: {errorDetails}"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Invalid form data"
+msgstr "Invalid form data"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Are you sure you want to remove {webhookSourceName}?"
+msgstr "Are you sure you want to remove {webhookSourceName}?"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "<0>{agentName}</0> is using this webhook source.<1/>The associated triggers will be automatically removed from it."
+msgstr "<0>{agentName}</0> is using this webhook source.<1/>The associated triggers will be automatically removed from it."
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "<0>{agentNames}</0> are using this webhook source.<1/>The associated triggers will be automatically removed from them."
+msgstr "<0>{agentNames}</0> are using this webhook source.<1/>The associated triggers will be automatically removed from them."
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "New {providerPresetName} trigger"
+msgstr "New {providerPresetName} trigger"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "New custom trigger"
+msgstr "New custom trigger"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Webhook source"
+msgstr "Webhook source"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Webhook source for triggering assistants."
+msgstr "Webhook source for triggering assistants."
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Sharing"
+msgstr "Sharing"
+
+#: front/components/triggers/forms/webhookSourceFormSchema.ts
+msgid "Name is required."
+msgstr "Name is required."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
@@ -6375,17 +7806,8 @@ msgid "Sources"
 msgstr "Sources"
 
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
-#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
-msgid "Search agents"
-msgstr "Search agents"
-
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search models"
 msgstr "Search models"
-
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
-msgid "Search skills"
-msgstr "Search skills"
 
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search sources"
@@ -6408,11 +7830,6 @@ msgstr "Clear"
 #: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
 msgid "Failed to load filters."
 msgstr "Failed to load filters."
-
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
-#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
-msgid "Select all"
-msgstr "Select all"
 
 #: front/components/workspace/analytics/UsageFilterSummary.tsx
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
@@ -8123,10 +9540,6 @@ msgstr "Workspace credit pool threshold alert"
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Email all workspace admins when your remaining workspace credit pool balance drops below this amount. <0>Set to 0 to disable.</0>"
 msgstr "Email all workspace admins when your remaining workspace credit pool balance drops below this amount. <0>Set to 0 to disable.</0>"
-
-#: front/components/workspace/usage/UsageNotificationsCard.tsx
-msgid "Disabled"
-msgstr "Disabled"
 
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Upgrade request emails"

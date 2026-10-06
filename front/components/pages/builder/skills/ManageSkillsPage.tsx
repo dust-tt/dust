@@ -58,6 +58,7 @@ import {
   Page,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -89,6 +90,7 @@ function SkillsList({
   permissionFiltering,
   onSelect,
 }: SkillsListProps) {
+  const { t } = useLingui();
   const tracking = useManageTracking();
   const handleSelect = useCallback(
     (skillId: string) => {
@@ -223,9 +225,11 @@ function SkillsList({
           role="alert"
           className="flex items-center justify-between gap-4 py-4"
         >
-          <span>Could not load skills. Please try again.</span>
+          <span>
+            <Trans>Could not load skills. Please try again.</Trans>
+          </span>
           <Button
-            label="Retry"
+            label={t`Retry`}
             variant="outline"
             onClick={() => void mutate()}
           />
@@ -279,8 +283,8 @@ function SkillsList({
         <EmptyCTA
           message={
             searchTerm.trim()
-              ? "No skills match your search."
-              : "No skills to show."
+              ? t`No skills match your search.`
+              : t`No skills to show.`
           }
           action={null}
         />
@@ -327,6 +331,7 @@ export function ManageSkillsPage({
   searchActions,
   onSelect,
 }: ManageSkillsPageProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -375,17 +380,17 @@ export function ManageSkillsPage({
   const filter = resolveFilter(toSkillSearchFilterFacets(selectionFacets));
   const searchFilters = toSkillSearchFilters(filter);
   useSetContentWidth("wide");
-  useSetPageTitle("Dust - Manage Skills");
+  useSetPageTitle(t`Dust - Manage skills`);
 
   const searchInput = (
     <div className="w-full md:w-1/2">
       <label htmlFor="skill-search" className="sr-only">
-        Search skills
+        <Trans>Search skills</Trans>
       </label>
       <SearchInput
         id="skill-search"
         name="skill-search"
-        placeholder="Search for skills"
+        placeholder={t`Search for skills`}
         value={searchTerm}
         onChange={setSearchTerm}
         className="w-full"
@@ -406,7 +411,9 @@ export function ManageSkillsPage({
           <Page.Header
             title={
               <div className="flex w-full flex-wrap items-center justify-between gap-4">
-                <Page.H>Manage Skills</Page.H>
+                <Page.H>
+                  <Trans>Manage skills</Trans>
+                </Page.H>
                 {!readOnly && hasPermission("create", "skill") && (
                   <CreateSkillButton
                     owner={owner}
@@ -415,7 +422,7 @@ export function ManageSkillsPage({
                 )}
               </div>
             }
-            description="Reusable packages of instructions and tools that agents can share."
+            description={t`Reusable packages of instructions and tools that agents can share.`}
             noTopPadding
           />
         )}
@@ -439,7 +446,11 @@ export function ManageSkillsPage({
               }}
             >
               {SKILL_SEARCH_TABS.map((tab) => (
-                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+                <ButtonsSwitch
+                  key={tab.id}
+                  value={tab.id}
+                  label={t(tab.label)}
+                />
               ))}
             </ButtonsSwitchList>
             <SkillFilterPanel
@@ -479,7 +490,7 @@ export function ManageSkillsPage({
                       key: "hidden-skills",
                       label: (
                         <span className="min-w-0 truncate text-xs font-bold">
-                          Hidden skills
+                          <Trans>Hidden skills</Trans>
                         </span>
                       ),
                       onRemove: () => setShowHiddenSkills(false),

@@ -9,6 +9,8 @@ import {
   SkillWithoutInstructionsAndToolsSchema,
 } from "@app/types/assistant/skill_configuration";
 import { editorUserSchema } from "@app/types/editors";
+import { useLingui } from "@lingui/react/macro";
+import { useMemo } from "react";
 import { z } from "zod";
 
 const attachedKnowledgeSchema = z.object({
@@ -39,36 +41,47 @@ const fileAttachmentSchema = z.object({
   fileName: z.string(),
 });
 
-export const skillBuilderFormSchema = z.object({
-  name: z
-    .string()
-    .transform((v) => v.trim())
-    .pipe(z.string().min(1, "Skill name is required")),
-  agentFacingDescription: z
-    .string()
-    .min(1, "Description of when to use the skill is required")
-    .max(
-      AGENT_FACING_DESCRIPTION_MAX_LENGTH,
-      `Description must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less`
-    ),
-  userFacingDescription: z
-    .string()
-    .min(1, "Skill description is required")
-    .max(
-      USER_FACING_DESCRIPTION_MAX_LENGTH,
-      `Description must be ${USER_FACING_DESCRIPTION_MAX_LENGTH} characters or less`
-    ),
-  instructions: z.string().min(1, "Skill instructions are required"),
-  instructionsHtml: z.string(),
-  editors: z.array(editorUserSchema),
-  tools: z.array(actionSchema),
-  icon: z.string().nullable(),
-  availability: z.enum(SKILL_AVAILABILITIES),
-  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
-  fileAttachments: z.array(fileAttachmentSchema),
-  attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
-  referencedSkills: z.array(referencedSkillSchema),
-  additionalSpaces: z.array(z.string()),
-});
+export function useSkillBuilderFormSchema() {
+  const { t } = useLingui();
 
-export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;
+  return useMemo(() => {
+    const getDescriptionTooLongMessage = (maxLength: number) =>
+      t`Description must be ${maxLength} characters or less`;
+
+    return z.object({
+      name: z
+        .string()
+        .transform((v) => v.trim())
+        .pipe(z.string().min(1, t`Skill name is required`)),
+      agentFacingDescription: z
+        .string()
+        .min(1, t`Description of when to use the skill is required`)
+        .max(
+          AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+          getDescriptionTooLongMessage(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
+        ),
+      userFacingDescription: z
+        .string()
+        .min(1, t`Skill description is required`)
+        .max(
+          USER_FACING_DESCRIPTION_MAX_LENGTH,
+          getDescriptionTooLongMessage(USER_FACING_DESCRIPTION_MAX_LENGTH)
+        ),
+      instructions: z.string().min(1, t`Skill instructions are required`),
+      instructionsHtml: z.string(),
+      editors: z.array(editorUserSchema),
+      tools: z.array(actionSchema),
+      icon: z.string().nullable(),
+      availability: z.enum(SKILL_AVAILABILITIES),
+      reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
+      fileAttachments: z.array(fileAttachmentSchema),
+      attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
+      referencedSkills: z.array(referencedSkillSchema),
+      additionalSpaces: z.array(z.string()),
+    });
+  }, [t]);
+}
+
+export type SkillBuilderFormData = z.infer<
+  ReturnType<typeof useSkillBuilderFormSchema>
+>;

@@ -4,6 +4,7 @@ import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface SkillSearchActionsMenuProps {
@@ -19,6 +20,7 @@ export function SkillSearchActionsMenu({
   onSelect,
   onRefresh,
 }: SkillSearchActionsMenuProps) {
+  const { t } = useLingui();
   const getSkillMenuItems = useSkillMenuItems({ owner });
   const [isOpen, setIsOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
@@ -34,7 +36,7 @@ export function SkillSearchActionsMenu({
   if (isSkillError) {
     statusItems.push({
       kind: "item",
-      label: "Could not load actions. Retry",
+      label: t`Could not load actions. Retry`,
       onClick: (event) => {
         event.preventDefault();
         event.stopPropagation();

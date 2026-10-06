@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface RestoreSkillDialogProps {
@@ -25,11 +26,13 @@ export function RestoreSkillDialog({
   onClose,
   owner,
 }: RestoreSkillDialogProps) {
+  const { t } = useLingui();
   const [isRestoring, setIsRestoring] = useState(false);
   const doRestore = useRestoreSkill({
     owner,
     skill: skill,
   });
+  const skillName = skill.name;
 
   return (
     <Dialog
@@ -42,25 +45,31 @@ export function RestoreSkillDialog({
     >
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
-          <DialogTitle>Restoring the skill</DialogTitle>
+          <DialogTitle>
+            <Trans>Restoring the skill</Trans>
+          </DialogTitle>
           <DialogDescription>
             <div>
-              This will restore the skill{" "}
-              <span className="font-bold">{skill.name}</span> for everyone.
+              <Trans>
+                This will restore the skill{" "}
+                <span className="font-bold">{skillName}</span> for everyone.
+              </Trans>
             </div>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="font-bold">
+            <Trans>Are you sure you want to proceed?</Trans>
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             disabled: isRestoring,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Restore the skill",
+            label: t`Restore the skill`,
             disabled: isRestoring,
             variant: "warning",
             onClick: async (e: React.MouseEvent) => {

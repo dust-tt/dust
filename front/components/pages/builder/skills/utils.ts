@@ -1,11 +1,13 @@
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/skillAvailabilityDisplay";
 import { compareStrings } from "@app/lib/i18n/format";
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
   SkillAvailability,
   SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export type SkillManagerTabType =
   | "active"
@@ -15,23 +17,27 @@ export type SkillManagerTabType =
 
 interface SkillManagerTab {
   id: SkillManagerTabType;
-  label: string;
-  description: string;
+  label: MessageDescriptor;
+  description: MessageDescriptor;
 }
 
 export const SKILL_MANAGER_TABS: SkillManagerTab[] = [
-  { id: "active", label: "All", description: "All active skills" },
+  {
+    id: "active",
+    label: msg({ message: "All", context: "tab listing all skills" }),
+    description: msg`All active skills`,
+  },
   {
     id: "editable_by_me",
-    label: "Editable by me",
-    description: "Skills you can edit",
+    label: msg`Editable by me`,
+    description: msg`Skills you can edit`,
   },
   {
     id: "favorites",
-    label: "Favorites",
-    description: "Skills you favorited",
+    label: msg`Favorites`,
+    description: msg`Skills you favorited`,
   },
-  { id: "archived", label: "Archived", description: "Archived skills" },
+  { id: "archived", label: msg`Archived`, description: msg`Archived skills` },
 ];
 
 export function isValidTab(tab: string): tab is SkillManagerTabType {
@@ -48,21 +54,30 @@ export function isAvailabilityFilter(
 
 export const AVAILABILITY_QUERY_PARAMS = ["availability"];
 
-export const AVAILABILITY_FILTER_OPTIONS: {
+const ALL_AVAILABILITIES_LABEL = msg`All availabilities`;
+
+export function getAvailabilityFilterOptions(
+  t: (descriptor: MessageDescriptor) => string
+): {
   value: AvailabilityFilter;
   label: string;
-}[] = [
-  { value: "all", label: "All availabilities" },
-  ...SKILL_AVAILABILITIES.map((availability) => ({
-    value: availability,
-    label: SKILL_AVAILABILITY_DISPLAY[availability].label,
-  })),
-];
+}[] {
+  return [
+    { value: "all", label: t(ALL_AVAILABILITIES_LABEL) },
+    ...SKILL_AVAILABILITIES.map((availability) => ({
+      value: availability,
+      label: t(SKILL_AVAILABILITY_DISPLAY[availability].label),
+    })),
+  ];
+}
 
-export function getAvailabilityFilterLabel(filter: AvailabilityFilter): string {
+export function getAvailabilityFilterLabel(
+  filter: AvailabilityFilter,
+  t: (descriptor: MessageDescriptor) => string
+): string {
   return (
-    AVAILABILITY_FILTER_OPTIONS.find((o) => o.value === filter)?.label ??
-    "All availabilities"
+    getAvailabilityFilterOptions(t).find((o) => o.value === filter)?.label ??
+    t(ALL_AVAILABILITIES_LABEL)
   );
 }
 
