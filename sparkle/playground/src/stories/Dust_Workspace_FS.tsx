@@ -13,9 +13,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Folder,
+  FolderPlus,
   Icon,
-  InfoCircle,
   Input,
   IntersectDust,
   LayersThree01,
@@ -37,32 +41,45 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import { type ComponentType, useMemo, useRef, useState } from "react";
 
+import { ConversationListItem } from "../components/ConversationListItem";
+import { ConversationView } from "../components/ConversationView";
+import { InputBar } from "../components/InputBar";
 import {
   PanelLayout,
   PanelLayoutNav,
   PanelLayoutPanel,
 } from "../components/PanelLayout";
-import { getAgentById } from "../data/agents";
+import { getAgentById, mockAgents } from "../data/agents";
+import type { Conversation } from "../data/types";
 import { getIconForFileType } from "../data/dataSources";
-import { getUserById } from "../data/users";
 import {
   buildWorkspaceFs,
   countFiles,
+  CURRENT_USER,
   CURRENT_USER_ID,
   MY_FILES_ID,
   type FsIndex,
   type FsNode,
   type FsSpaceAccess,
   getEnclosingPodId,
+  getFsUserById,
   getPath,
   getSpaceId,
   indexFs,
   isInside,
+  type ConversationDraft,
   type Pod,
   type PodConversation,
 } from "../data/workspaceFs";
 
 type IconType = ComponentType<{ className?: string }>;
+
+// What the main column shows: the selected folder, or a document opened on
+// top of it (a file from the tree, or a draft that lives in a conversation).
+type MainView =
+  | { kind: "folder" }
+  | { kind: "file"; nodeId: string; query: string | null }
+  | { kind: "draft"; draftId: string };
 
 function formatAgo(date: Date): string {
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
@@ -82,7 +99,10 @@ function pluralize(count: number, word: string): string {
 
 function DustWorkspaceFs() {
   const [initial] = useState(buildWorkspaceFs);
-  const { nodes, spaceAccess } = initial;
+  const { spaceAccess } = initial;
+  const [nodes, setNodes] = useState<FsNode[]>(initial.nodes);
+  const [drafts, setDrafts] = useState<ConversationDraft[]>(initial.drafts);
+  const [mainView, setMainView] = useState<MainView>({ kind: "folder" });
   const [pods, setPods] = useState<Pod[]>(initial.pods);
   const [conversations, setConversations] = useState<PodConversation[]>(
     initial.conversations
@@ -166,6 +186,16 @@ function DustWorkspaceFs() {
     return new Set(pod?.attachments.map((a) => a.nodeId) ?? []);
   }, [enclosingPodId, podById]);
 
+  const draftsByConversationId = useMemo(() => {
+    const byId = new Map<string, ConversationDraft[]>();
+    for (const draft of drafts) {
+      const list = byId.get(draft.conversationId) ?? [];
+      list.push(draft);
+      byId.set(draft.conversationId, list);
+    }
+    return byId;
+  }, [drafts]);
+
   const railConversations = useMemo(
     () => conversations.filter((c) => c.podFolderId === enclosingPodId),
     [conversations, enclosingPodId]
@@ -200,6 +230,7 @@ function DustWorkspaceFs() {
     const folderId =
       target.kind === "file" && target.parentId ? target.parentId : nodeId;
     setSelectedId(folderId);
+    setMainView({ kind: "folder" });
     setExpandedIds((prev) => {
       const next = new Set(prev);
       for (const n of getPath(index, folderId)) {
@@ -214,6 +245,71 @@ function DustWorkspaceFs() {
     }
     if (podIds.has(folderId)) {
       setIsRailOpen(true);
+    }
+  };
+
+  // Files open in the main column on top of the current folder; folders
+  // navigate.
+  const openNode = (nodeId: string, query: string | null = null) => {
+    const node = index.byId.get(nodeId);
+    if (node?.kind === "file") {
+      setMainView({ kind: "file", nodeId, query });
+    } else {
+      navigate(nodeId);
+    }
+  };
+
+  // ConversationView reports opened chips and citations by title: a draft
+  // of this conversation first, then any document in the tree.
+  const openByTitle = (conversation: PodConversation, title: string) => {
+    const draft = (draftsByConversationId.get(conversation.id) ?? []).find(
+      (d) => d.name === title
+    );
+    if (draft) {
+      openDraft(draft);
+      return;
+    }
+    const node = nodes.find((n) => n.name === title);
+    if (node) {
+      openNode(node.id, conversation.searchQuery);
+    }
+  };
+
+  const openDraft = (draft: ConversationDraft) => {
+    if (draft.savedNodeId) {
+      openNode(draft.savedNodeId);
+    } else {
+      setMainView({ kind: "draft", draftId: draft.id });
+    }
+    setIsRailOpen(true);
+    setOpenConversationId(draft.conversationId);
+  };
+
+  // Saving moves the draft itself into the folder: it becomes a file there
+  // and the conversation keeps pointing at it.
+  const saveDraft = (draftId: string, folderId: string) => {
+    const draft = drafts.find((d) => d.id === draftId);
+    if (!draft || draft.savedNodeId) {
+      return;
+    }
+    const nodeId = `file-${draft.id}`;
+    setNodes((prev) => [
+      ...prev,
+      {
+        id: nodeId,
+        parentId: folderId,
+        kind: "file",
+        name: draft.name,
+        fileType: draft.fileType,
+        updatedAt: new Date(),
+        updatedById: CURRENT_USER_ID,
+      },
+    ]);
+    setDrafts((prev) =>
+      prev.map((d) => (d.id === draftId ? { ...d, savedNodeId: nodeId } : d))
+    );
+    if (mainView.kind === "draft" && mainView.draftId === draftId) {
+      setMainView({ kind: "file", nodeId, query: null });
     }
   };
 
@@ -267,6 +363,7 @@ function DustWorkspaceFs() {
       updatedAt: new Date(),
       isUnread: false,
       citedNodeIds: [],
+      searchQuery: "",
     };
     setConversations((prev) => [conv, ...prev]);
     setIsRailOpen(true);
@@ -410,7 +507,51 @@ function DustWorkspaceFs() {
   );
 
   // ── Main panel ─────────────────────────────────────────────────────────────
-  const breadcrumbs = selected ? (
+  // No pod in a pod: a folder inside a pod, or holding one, can't be promoted.
+  const canPromote =
+    selected?.kind === "folder" &&
+    !enclosingPodId &&
+    ![...podIds].some((id) => isInside(index, id, selected.id));
+  const openedFile =
+    mainView.kind === "file" ? index.byId.get(mainView.nodeId) : undefined;
+  const openedDraft =
+    mainView.kind === "draft"
+      ? drafts.find((d) => d.id === mainView.draftId)
+      : undefined;
+  const openedDraftConversation = openedDraft
+    ? conversations.find((c) => c.id === openedDraft.conversationId)
+    : undefined;
+  const openedName = openedFile?.name ?? openedDraft?.name ?? null;
+
+  const breadcrumbs = openedFile ? (
+    <Breadcrumbs
+      size="sm"
+      hasLighterFont
+      items={getPath(index, openedFile.id).map((n) => ({
+        label: n.name,
+        icon: nodeVisual(n),
+        onClick: () => openNode(n.id),
+      }))}
+    />
+  ) : openedDraft && openedDraftConversation ? (
+    <Breadcrumbs
+      size="sm"
+      hasLighterFont
+      items={[
+        ...getPath(index, openedDraftConversation.podFolderId).map((n) => ({
+          label: n.name,
+          icon: nodeVisual(n),
+          onClick: () => navigate(n.id),
+        })),
+        {
+          label: openedDraftConversation.title,
+          icon: MessageCircle01,
+          onClick: () => openConversation(openedDraftConversation.id),
+        },
+        { label: openedDraft.name },
+      ]}
+    />
+  ) : selected ? (
     <Breadcrumbs
       size="sm"
       hasLighterFont
@@ -422,85 +563,112 @@ function DustWorkspaceFs() {
     />
   ) : null;
 
-  const mainContent = selected && (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
-      <NodeHeader
-        node={selected}
-        visual={nodeVisual(selected)}
-        access={spaceAccess[getSpaceId(index, selected.id)]}
-        pod={selectedPod}
-        actions={
-          selectedPod ? (
-            !isRailOpen && (
+  const documentContent = openedFile ? (
+    <DocumentView
+      name={openedFile.name}
+      visual={nodeVisual(openedFile)}
+      location={getPath(index, openedFile.id)
+        .slice(0, -1)
+        .map((n) => n.name)
+        .join(" / ")}
+      query={mainView.kind === "file" ? mainView.query : null}
+      onClose={() => setMainView({ kind: "folder" })}
+    />
+  ) : openedDraft && openedDraftConversation ? (
+    <DocumentView
+      name={openedDraft.name}
+      visual={getIconForFileType(openedDraft.fileType)}
+      location={`Draft in “${openedDraftConversation.title}” · not in a folder yet`}
+      query={null}
+      actions={
+        <SaveDraftMenu
+          index={index}
+          podFolderId={openedDraftConversation.podFolderId}
+          onSave={(folderId) => saveDraft(openedDraft.id, folderId)}
+        />
+      }
+      onClose={() => setMainView({ kind: "folder" })}
+    />
+  ) : null;
+
+  const podDrafts = railPodDrafts(
+    selectedPod?.folderId ?? null,
+    conversations,
+    draftsByConversationId
+  );
+
+  const mainContent =
+    documentContent ??
+    (selected && (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-8">
+        <NodeHeader
+          node={selected}
+          visual={nodeVisual(selected)}
+          access={spaceAccess[getSpaceId(index, selected.id)]}
+          pod={selectedPod}
+          actions={
+            selectedPod ? (
+              !isRailOpen && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={MessageCircle01}
+                  label={`Conversations (${railConversations.length})`}
+                  onClick={() => setIsRailOpen(true)}
+                />
+              )
+            ) : canPromote ? (
               <Button
                 variant="outline"
                 size="sm"
-                icon={MessageCircle01}
-                label={`Conversations (${railConversations.length})`}
-                onClick={() => setIsRailOpen(true)}
+                icon={Cube01}
+                label="Make it a pod"
+                onClick={() => setPromoteFolderId(selected.id)}
               />
-            )
-          ) : selected.kind === "folder" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              icon={Cube01}
-              label="Make it a pod"
-              onClick={() => setPromoteFolderId(selected.id)}
-            />
-          ) : null
-        }
-      />
-
-      {!selectedPod && enclosingPodId && (
-        <ContentMessage
-          variant="primary"
-          size="lg"
-          icon={Cube01}
-          title={`Part of the ${index.byId.get(enclosingPodId)?.name} pod`}
-          action={
-            <Button
-              size="xs"
-              variant="outline"
-              label="Open pod"
-              onClick={() => navigate(enclosingPodId)}
-            />
-          }
-        >
-          Conversations in that pod can read everything in this folder.
-        </ContentMessage>
-      )}
-
-      {selectedPod ? (
-        <PodContext
-          pod={selectedPod}
-          index={index}
-          spaceAccess={spaceAccess}
-          visualFor={nodeVisual}
-          citedIds={citedIds}
-          onNavigate={navigate}
-          onAttach={() => setAttachPodId(selectedPod.folderId)}
-          onDetach={(nodeId) =>
-            setAttachments(
-              selectedPod.folderId,
-              selectedPod.attachments
-                .map((a) => a.nodeId)
-                .filter((id) => id !== nodeId)
-            )
+            ) : null
           }
         />
-      ) : (
-        <NodeList
-          nodes={index.childrenById.get(selected.id) ?? []}
-          index={index}
-          visualFor={nodeVisual}
-          citedIds={citedIds}
-          onOpen={navigate}
-          emptyLabel="This folder is empty."
-        />
-      )}
-    </div>
-  );
+
+        {selectedPod ? (
+          <PodContext
+            pod={selectedPod}
+            index={index}
+            spaceAccess={spaceAccess}
+            visualFor={nodeVisual}
+            citedIds={citedIds}
+            onNavigate={openNode}
+            onAttach={() => setAttachPodId(selectedPod.folderId)}
+            onDetach={(nodeId) =>
+              setAttachments(
+                selectedPod.folderId,
+                selectedPod.attachments
+                  .map((a) => a.nodeId)
+                  .filter((id) => id !== nodeId)
+              )
+            }
+          />
+        ) : (
+          <NodeList
+            nodes={index.childrenById.get(selected.id) ?? []}
+            index={index}
+            visualFor={nodeVisual}
+            citedIds={citedIds}
+            onOpen={openNode}
+            emptyLabel="This folder is empty."
+          />
+        )}
+
+        {selectedPod && podDrafts.length > 0 && (
+          <DraftsSection
+            drafts={podDrafts}
+            conversations={conversations}
+            index={index}
+            onOpen={openDraft}
+            onSave={saveDraft}
+          />
+        )}
+      </div>
+    ));
 
   const railPod = enclosingPodId ? podById.get(enclosingPodId) : undefined;
   const railPodName = railPod ? index.byId.get(railPod.folderId)?.name : "";
@@ -570,7 +738,7 @@ function DustWorkspaceFs() {
                   )}
                   style={railWidth === null ? undefined : { width: railWidth }}
                 >
-                  <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-3">
+                  <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-4">
                     {railTopBarLeft}
                     <Button
                       size="xmini"
@@ -585,17 +753,29 @@ function DustWorkspaceFs() {
                   </div>
                   <div className="min-h-0 flex-1">
                     {openConversationData ? (
-                      <ConversationStub
-                        conversation={openConversationData}
-                        index={index}
-                        visualFor={nodeVisual}
-                        onNavigate={navigate}
+                      <ConversationView
+                        key={openConversationData.id}
+                        conversation={toViewConversation(
+                          openConversationData,
+                          draftsByConversationId.get(openConversationData.id) ??
+                            [],
+                          index
+                        )}
+                        locutor={CURRENT_USER}
+                        users={[CURRENT_USER]}
+                        agents={mockAgents}
+                        conversationsWithMessages={[]}
+                        onCitationOpen={({ title }) =>
+                          openByTitle(openConversationData, title)
+                        }
                       />
                     ) : (
                       <ConversationRail
                         pod={railPod}
                         podName={railPodName ?? ""}
                         conversations={railConversations}
+                        draftsByConversationId={draftsByConversationId}
+                        openedName={openedName}
                         onStart={() => startConversation(railPod.folderId)}
                         onOpen={openConversation}
                       />
@@ -612,11 +792,6 @@ function DustWorkspaceFs() {
         folderId={promoteFolderId}
         index={index}
         spaceAccess={spaceAccess}
-        enclosingPodId={
-          promoteFolderId
-            ? getEnclosingPodId(index, podIds, promoteFolderId)
-            : null
-        }
         onClose={() => setPromoteFolderId(null)}
         onConfirm={promoteFolder}
       />
@@ -667,7 +842,7 @@ function NodeHeader({
   actions: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-start justify-between gap-4 px-3">
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex items-center gap-2">
           <Icon visual={visual} size="md" className="text-foreground" />
@@ -702,7 +877,8 @@ function NodeRow({
   visual,
   onOpen,
   meta,
-  trailing,
+  badges,
+  action,
   isCited = false,
 }: {
   node: FsNode;
@@ -710,10 +886,11 @@ function NodeRow({
   visual: IconType;
   onOpen: () => void;
   meta?: React.ReactNode;
-  trailing?: React.ReactNode;
+  badges?: React.ReactNode;
+  action?: React.ReactNode;
   isCited?: boolean;
 }) {
-  const author = getUserById(node.updatedById);
+  const author = getFsUserById(node.updatedById);
   return (
     <div
       className={cn(
@@ -732,18 +909,21 @@ function NodeRow({
         )}
       </div>
       {isCited && <Chip size="mini" color="highlight" label="Cited" />}
-      {node.kind !== "file" && (
-        <span className="text-xs text-muted-foreground">
-          {pluralize(countFiles(index, node.id), "file")}
-        </span>
-      )}
-      {author && (
-        <Avatar size="xs" name={author.fullName} visual={author.portrait} />
-      )}
-      <span className="w-20 text-right text-xs text-muted-foreground">
+      {badges}
+      {/* Fixed-width columns keep counts, avatars and dates aligned across
+          sections, whether or not a row has an action. */}
+      <span className="w-14 shrink-0 text-right text-xs text-muted-foreground">
+        {node.kind !== "file" && pluralize(countFiles(index, node.id), "file")}
+      </span>
+      <span className="flex w-6 shrink-0 justify-center">
+        {author && (
+          <Avatar size="xs" name={author.fullName} visual={author.portrait} />
+        )}
+      </span>
+      <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
         {formatAgo(node.updatedAt)}
       </span>
-      {trailing}
+      <span className="flex w-6 shrink-0 justify-center">{action}</span>
     </div>
   );
 }
@@ -849,14 +1029,10 @@ function PodContext({
   onAttach: () => void;
   onDetach: (nodeId: string) => void;
 }) {
-  const ownFiles = countFiles(index, pod.folderId);
   return (
     <>
       <div className="flex flex-col gap-2">
-        <SectionHeader
-          title="In this folder"
-          description={`Available by default · ${pluralize(ownFiles, "file")}`}
-        />
+        <SectionHeader title="In this folder" />
         <NodeList
           nodes={index.childrenById.get(pod.folderId) ?? []}
           index={index}
@@ -912,29 +1088,29 @@ function PodContext({
                   onOpen={() => onNavigate(node.id)}
                   isCited={containsCited(index, citedIds, node.id)}
                   meta={`From ${location} · Added by ${
-                    getUserById(a.addedById)?.firstName ?? "someone"
+                    getFsUserById(a.addedById)?.firstName ?? "someone"
                   }`}
-                  trailing={
-                    <div className="flex items-center gap-1">
-                      {hidden > 0 && (
-                        <Chip
-                          size="mini"
-                          color="info"
-                          icon={Lock01}
-                          label={`${total - hidden}/${total} can see`}
-                        />
-                      )}
-                      <Button
-                        size="xmini"
-                        variant="ghost-secondary"
-                        icon={XClose}
-                        tooltip="Remove"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDetach(node.id);
-                        }}
+                  badges={
+                    hidden > 0 && (
+                      <Chip
+                        size="mini"
+                        color="info"
+                        icon={Lock01}
+                        label={`${total - hidden}/${total} can see`}
                       />
-                    </div>
+                    )
+                  }
+                  action={
+                    <Button
+                      size="xmini"
+                      variant="ghost-secondary"
+                      icon={XClose}
+                      tooltip="Remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDetach(node.id);
+                      }}
+                    />
                   }
                 />
               );
@@ -946,28 +1122,246 @@ function PodContext({
   );
 }
 
+/** Unsaved drafts across the conversations of a pod, newest first. */
+function railPodDrafts(
+  podFolderId: string | null,
+  conversations: PodConversation[],
+  draftsByConversationId: Map<string, ConversationDraft[]>
+): ConversationDraft[] {
+  if (!podFolderId) {
+    return [];
+  }
+  return conversations
+    .filter((c) => c.podFolderId === podFolderId)
+    .flatMap((c) => draftsByConversationId.get(c.id) ?? [])
+    .filter((d) => d.savedNodeId === null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+/** Folders a draft can be saved to: the pod folder and its subfolders. */
+function saveTargets(index: FsIndex, podFolderId: string): FsNode[] {
+  const collect = (id: string): FsNode[] => {
+    const node = index.byId.get(id);
+    if (!node) {
+      return [];
+    }
+    return [
+      node,
+      ...(index.childrenById.get(id) ?? [])
+        .filter((c) => c.kind === "folder")
+        .flatMap((c) => collect(c.id)),
+    ];
+  };
+  return collect(podFolderId);
+}
+
+function SaveDraftMenu({
+  index,
+  podFolderId,
+  onSave,
+  size = "sm",
+}: {
+  index: FsIndex;
+  podFolderId: string;
+  onSave: (folderId: string) => void;
+  size?: "xs" | "sm";
+}) {
+  const podName = index.byId.get(podFolderId)?.name;
+  const targets = saveTargets(index, podFolderId);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size={size}
+          variant="outline"
+          icon={FolderPlus}
+          label={`Save to ${podName}`}
+          isSelect
+          onClick={(e) => e.stopPropagation()}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {targets.map((folder) => (
+          <DropdownMenuItem
+            key={folder.id}
+            icon={folder.id === podFolderId ? Cube01 : Folder}
+            label={getPath(index, folder.id)
+              .slice(getPath(index, podFolderId).length - 1)
+              .map((n) => n.name)
+              .join(" / ")}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave(folder.id);
+            }}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function DocumentView({
+  name,
+  visual,
+  location,
+  query,
+  actions,
+  onClose,
+}: {
+  name: string;
+  visual: IconType;
+  location: string;
+  query: string | null;
+  actions?: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Icon visual={visual} size="md" />
+            <h1 className="heading-2xl truncate text-foreground">{name}</h1>
+          </div>
+          <span className="text-xs text-muted-foreground">{location}</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {actions}
+          <Button
+            size="sm"
+            variant="ghost-secondary"
+            icon={XClose}
+            tooltip="Back to the folder"
+            onClick={onClose}
+          />
+        </div>
+      </div>
+      {/* Placeholder body: the editor is out of scope for this prototype. */}
+      <div className="flex flex-col gap-4 text-sm text-foreground">
+        <div className="h-3 w-2/3 rounded bg-muted-foreground/15" />
+        <div className="h-3 w-full rounded bg-muted-foreground/15" />
+        <div className="h-3 w-5/6 rounded bg-muted-foreground/15" />
+        {query && (
+          <div className="flex flex-col gap-2 rounded-xl bg-highlight-50 p-3">
+            <span className="text-xs font-medium text-highlight-500">
+              Matches “{query}”
+            </span>
+            <div className="h-3 w-full rounded bg-highlight-200" />
+            <div className="h-3 w-3/4 rounded bg-highlight-200" />
+          </div>
+        )}
+        <div className="h-3 w-full rounded bg-muted-foreground/15" />
+        <div className="h-3 w-4/5 rounded bg-muted-foreground/15" />
+        <div className="h-3 w-2/3 rounded bg-muted-foreground/15" />
+      </div>
+    </div>
+  );
+}
+
+function DraftsSection({
+  drafts,
+  conversations,
+  index,
+  onOpen,
+  onSave,
+}: {
+  drafts: ConversationDraft[];
+  conversations: PodConversation[];
+  index: FsIndex;
+  onOpen: (draft: ConversationDraft) => void;
+  onSave: (draftId: string, folderId: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const conversationById = useMemo(
+    () => new Map(conversations.map((c) => [c.id, c])),
+    [conversations]
+  );
+  return (
+    <div className="flex flex-col gap-2">
+      <SectionHeader
+        title="Drafts in conversations"
+        description={`${pluralize(drafts.length, "draft")} not saved to a folder. Agents only read them inside their conversation.`}
+        action={
+          <Button
+            size="sm"
+            variant="ghost-secondary"
+            label={isOpen ? "Hide" : "Show"}
+            onClick={() => setIsOpen((v) => !v)}
+          />
+        }
+      />
+      {isOpen && (
+        <div className="flex flex-col">
+          {drafts.map((d) => {
+            const conv = conversationById.get(d.conversationId);
+            return (
+              <div
+                key={d.id}
+                className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 hover:bg-hover"
+                onClick={() => onOpen(d)}
+              >
+                <Icon
+                  visual={getIconForFileType(d.fileType)}
+                  size="sm"
+                  className="text-muted-foreground"
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {d.name}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    In “{conv?.title}” · {formatAgo(d.createdAt)}
+                  </span>
+                </div>
+                {conv && (
+                  <SaveDraftMenu
+                    size="xs"
+                    index={index}
+                    podFolderId={conv.podFolderId}
+                    onSave={(folderId) => onSave(d.id, folderId)}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConversationRail({
   pod,
   podName,
   conversations,
+  draftsByConversationId,
+  openedName,
   onStart,
   onOpen,
 }: {
   pod: Pod;
   podName: string;
   conversations: PodConversation[];
+  draftsByConversationId: Map<string, ConversationDraft[]>;
+  openedName: string | null;
   onStart: () => void;
   onOpen: (id: string) => void;
 }) {
   const linkedCount = pod.attachments.length;
+  const placeholder = openedName
+    ? `Ask about ${openedName}`
+    : `Ask in ${podName}`;
   return (
     <div className="flex h-full flex-col gap-4 overflow-auto px-4 py-4">
-      <div
-        className="flex cursor-text flex-col gap-2 rounded-2xl border border-border bg-background px-4 py-3"
-        onClick={onStart}
-      >
-        <span className="text-sm text-muted-foreground">Ask in {podName}…</span>
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-2">
+        <InputBar
+          // InputBar reads its placeholder on mount only.
+          key={placeholder}
+          isFloating={false}
+          placeholder={placeholder}
+          onSend={onStart}
+        />
+        <div className="flex flex-wrap items-center gap-1.5 px-1">
           <Chip size="mini" icon={Cube01} label={podName} />
           {linkedCount > 0 && (
             <Chip
@@ -986,35 +1380,37 @@ function ConversationRail({
         <div className="flex flex-col">
           {conversations.map((c) => {
             const agent = getAgentById(c.agentId);
-            const author = getUserById(c.authorId);
+            const author = getFsUserById(c.authorId);
+            const unsaved = (draftsByConversationId.get(c.id) ?? []).filter(
+              (d) => d.savedNodeId === null
+            ).length;
             return (
-              <div
+              <ConversationListItem
                 key={c.id}
-                className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 hover:bg-hover"
+                conversation={{
+                  id: c.id,
+                  title: c.title,
+                  description: [
+                    author?.firstName,
+                    `@${agent?.name}`,
+                    unsaved > 0 ? pluralize(unsaved, "draft") : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
+                  updatedAt: c.updatedAt,
+                }}
+                // An avatar instead of `creator` keeps the name off the
+                // title line, which the narrow column needs for the title.
+                avatar={{
+                  name: author?.fullName,
+                  visual: author?.portrait,
+                  isRounded: true,
+                }}
+                className="rounded-2xl border-b-0 border-t-0 hover:bg-hover"
+                time={formatAgo(c.updatedAt)}
+                unread={c.isUnread}
                 onClick={() => onOpen(c.id)}
-              >
-                <Avatar
-                  size="sm"
-                  emoji={agent?.emoji}
-                  backgroundColor={agent?.backgroundColor}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span
-                    className={cn(
-                      "truncate text-sm text-foreground",
-                      c.isUnread ? "font-semibold" : "font-medium"
-                    )}
-                  >
-                    {c.title}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {author?.firstName} · {formatAgo(c.updatedAt)}
-                  </span>
-                </div>
-                {c.isUnread && (
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-highlight-500" />
-                )}
-              </div>
+              />
             );
           })}
         </div>
@@ -1023,73 +1419,103 @@ function ConversationRail({
   );
 }
 
-function ConversationStub({
-  conversation,
-  index,
-  visualFor,
-  onNavigate,
-}: {
-  conversation: PodConversation;
-  index: FsIndex;
-  visualFor: (n: FsNode) => IconType;
-  onNavigate: (id: string) => void;
-}) {
-  const agent = getAgentById(conversation.agentId);
-  const author = getUserById(conversation.authorId);
-  const cited = conversation.citedNodeIds.flatMap((id) => {
+/**
+ * Builds the messages ConversationView renders: the question, then the
+ * agent's answer citing its search results and listing the drafts it wrote
+ * as file chips. A conversation started in the prototype has no messages.
+ */
+function toViewConversation(
+  conversation: PodConversation,
+  drafts: ConversationDraft[],
+  index: FsIndex
+): Conversation {
+  const base: Conversation = {
+    id: conversation.id,
+    title: conversation.title,
+    createdAt: conversation.updatedAt,
+    updatedAt: conversation.updatedAt,
+    userParticipants: [conversation.authorId],
+    agentParticipants: [conversation.agentId],
+  };
+  const results = conversation.citedNodeIds.flatMap((id) => {
     const n = index.byId.get(id);
     return n ? [n] : [];
   });
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-1 flex-col gap-6 overflow-auto px-4 py-6">
-        {cited.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Ask a question to get started.
-          </p>
-        ) : (
-          <>
-            <div className="flex gap-3">
-              <Avatar
-                size="sm"
-                name={author?.fullName}
-                visual={author?.portrait}
-              />
-              <p className="text-sm text-foreground">{conversation.title}</p>
-            </div>
-            <div className="flex gap-3">
-              <Avatar
-                size="sm"
-                emoji={agent?.emoji}
-                backgroundColor={agent?.backgroundColor}
-              />
-              <div className="flex min-w-0 flex-col gap-2">
-                <p className="text-sm text-foreground">
-                  Here's a first pass, based on the documents below.
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {cited.map((n) => (
-                    <Chip
-                      key={n.id}
-                      size="mini"
-                      icon={visualFor(n)}
-                      label={n.name}
-                      onClick={() => onNavigate(n.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-      <div className="px-4 py-4">
-        <div className="rounded-2xl border border-border bg-background px-4 py-3 text-sm text-muted-foreground">
-          Reply to @{agent?.name}…
-        </div>
-      </div>
-    </div>
-  );
+  if (results.length === 0 && drafts.length === 0) {
+    return { ...base, messages: [] };
+  }
+
+  const agent = getAgentById(conversation.agentId);
+  const isMine = conversation.authorId === CURRENT_USER_ID;
+  const author = getFsUserById(conversation.authorId);
+  const draftLines = drafts.map((d) => {
+    const saved = d.savedNodeId
+      ? ` (saved to ${getPath(index, d.savedNodeId)
+          .slice(0, -1)
+          .map((n) => n.name)
+          .pop()})`
+      : "";
+    return `- :file[${d.name}]{type=${d.fileType} id=${d.id}}${saved}`;
+  });
+  const markdown = [
+    results.length > 0
+      ? `I searched for “${conversation.searchQuery}” and used ${pluralize(results.length, "document")}.`
+      : "",
+    drafts.length > 0
+      ? `Here ${drafts.length === 1 ? "is a draft" : `are ${drafts.length} drafts`}:\n\n${draftLines.join("\n")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    ...base,
+    messages: [
+      {
+        kind: "message",
+        id: `${conversation.id}-question`,
+        content: conversation.title,
+        timestamp: conversation.updatedAt,
+        ownerId: conversation.authorId,
+        ownerType: "user",
+        type: "user",
+        group: {
+          id: `${conversation.id}-group-user`,
+          type: isMine ? "locutor" : "interlocutor",
+          name: isMine ? undefined : author?.fullName,
+          avatar: { visual: author?.portrait, isRounded: true },
+        },
+      },
+      {
+        kind: "message",
+        id: `${conversation.id}-answer`,
+        markdown,
+        citations: results.map((n) => ({
+          id: n.id,
+          title: n.name,
+          icon:
+            n.kind === "folder"
+              ? "document"
+              : n.fileType === "xlsx" || n.fileType === "csv"
+                ? "table"
+                : "document",
+        })),
+        timestamp: conversation.updatedAt,
+        ownerId: conversation.agentId,
+        ownerType: "agent",
+        type: "agent",
+        group: {
+          id: `${conversation.id}-group-agent`,
+          type: "agent",
+          name: agent?.name,
+          avatar: {
+            emoji: agent?.emoji,
+            backgroundColor: agent?.backgroundColor,
+          },
+        },
+      },
+    ],
+  };
 }
 
 function SearchResults({
@@ -1125,14 +1551,12 @@ function PromoteDialog({
   folderId,
   index,
   spaceAccess,
-  enclosingPodId,
   onClose,
   onConfirm,
 }: {
   folderId: string | null;
   index: FsIndex;
   spaceAccess: Record<string, FsSpaceAccess>;
-  enclosingPodId: string | null;
   onClose: () => void;
   onConfirm: (folderId: string, description: string) => void;
 }) {
@@ -1175,13 +1599,6 @@ function PromoteDialog({
               Access: same as {space?.name} ({accessLabel(access)})
             </div>
           </div>
-          {enclosingPodId && enclosingPodId !== folderId && (
-            <ContentMessage variant="blue" size="lg" icon={InfoCircle}>
-              This folder is inside the {index.byId.get(enclosingPodId)?.name}{" "}
-              pod. It becomes its own pod, and{" "}
-              {index.byId.get(enclosingPodId)?.name} keeps reading it.
-            </ContentMessage>
-          )}
           <Input
             label="Description (optional)"
             placeholder="What is this pod for?"

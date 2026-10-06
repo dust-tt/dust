@@ -1,5 +1,5 @@
-import { mockUsers } from "./users";
-import type { DataSourceFileType } from "./types";
+import type { DataSourceFileType, User } from "./types";
+import { getUserById, mockUsers } from "./users";
 
 // A single workspace tree. Spaces are the roots and own access; folders and
 // files inherit it. Any folder can be promoted to a pod (a working directory).
@@ -44,6 +44,21 @@ export interface PodConversation {
   isUnread: boolean;
   /** Documents the agent used in its answers. */
   citedNodeIds: string[];
+  /** Query of the search the agent ran; its results are `citedNodeIds`. */
+  searchQuery: string;
+}
+
+/**
+ * A document created in a conversation. It lives with the conversation until
+ * someone saves it to a folder; saving moves the file itself, not a copy.
+ */
+export interface ConversationDraft {
+  id: string;
+  conversationId: string;
+  name: string;
+  fileType: DataSourceFileType;
+  createdAt: Date;
+  savedNodeId: string | null;
 }
 
 export interface WorkspaceFs {
@@ -51,9 +66,23 @@ export interface WorkspaceFs {
   spaceAccess: Record<string, FsSpaceAccess>;
   pods: Pod[];
   conversations: PodConversation[];
+  drafts: ConversationDraft[];
 }
 
 export const CURRENT_USER_ID = "1";
+
+// The person using the prototype, standing in for mock user "1".
+export const CURRENT_USER: User = {
+  id: CURRENT_USER_ID,
+  firstName: "Daphné",
+  lastName: "Popin",
+  fullName: "Daphné Popin",
+  email: "daph@dust.tt",
+};
+
+export function getFsUserById(id: string): User | undefined {
+  return id === CURRENT_USER_ID ? CURRENT_USER : getUserById(id);
+}
 export const MY_FILES_ID = "space-my-files";
 export const WORKSPACE_MEMBER_IDS = mockUsers.slice(0, 24).map((u) => u.id);
 
@@ -103,11 +132,7 @@ const SPACES: {
     pod: "",
     children: [
       { name: "Drafts", children: ["Ideas.md", "Offsite agenda.docx"] },
-      {
-        name: "Side project",
-        pod: "Exploring a CLI for the workspace FS.",
-        children: ["Notes.md"],
-      },
+      { name: "Side project", children: ["Notes.md"] },
       "Weekly review.md",
     ],
   },
@@ -135,6 +160,10 @@ const SPACES: {
         children: ["System overview.md", "Data model.md"],
       },
       { name: "Runbooks", children: ["Incident response.md", "On-call.md"] },
+      {
+        name: "Guidelines",
+        children: ["Coding rules.md", "Code review checklist.md"],
+      },
       {
         name: "RFCs",
         children: ["RFC-042 Workspace FS.md", "RFC-043 Pod context.md"],
@@ -263,17 +292,31 @@ const CONVERSATION_SEEDS: Record<
       authorId: CURRENT_USER_ID,
     },
   ],
-  "Side project": [
-    {
-      title: "CLI command naming",
-      agentId: "agent-2",
-      authorId: CURRENT_USER_ID,
-    },
+};
+
+// Drafts created in seeded conversations, by conversation title. A leading
+// "saved:" marks a draft already saved to the pod folder.
+const DRAFT_SEEDS: Record<string, string[]> = {
+  "Draft the launch announcement": [
+    "Launch announcement v1.md",
+    "Launch announcement v2.md",
+    "Launch announcement v3.md",
+    "Tweet thread.md",
+    "Customer email.docx",
+    "saved:Launch FAQ.md",
   ],
+  "Summarize weekly sync": ["Weekly sync summary.md"],
+  "Prep the QBR deck": ["QBR outline.md", "QBR talking points.md"],
+  "Plan my week": ["Week plan.md"],
 };
 
 // Seeded attachments, by pod name, as paths from the space root.
 const ATTACHMENT_SEEDS: Record<string, string[]> = {
+  "My files": [
+    "Engineering/Guidelines/Coding rules.md",
+    "Engineering/Runbooks",
+    "Engineering/Architecture/System overview.md",
+  ],
   "Q4 Launch": [
     "Company Data/Product/Roadmap 2026.pptx",
     "Engineering/RFCs",
@@ -309,6 +352,7 @@ export function buildWorkspaceFs(): WorkspaceFs {
         updatedAt: minutesAgo(15 + i * 180),
         isUnread: c.unread ?? false,
         citedNodeIds: [],
+        searchQuery: c.title.toLowerCase(),
       });
     });
   };
@@ -379,7 +423,14 @@ export function buildWorkspaceFs(): WorkspaceFs {
     pod.attachments = (ATTACHMENT_SEEDS[name] ?? []).flatMap((path) => {
       const nodeId = idByPath.get(path);
       return nodeId
-        ? [{ nodeId, addedById: "7", addedAt: minutesAgo(60 * 24 * 3) }]
+        ? [
+            {
+              nodeId,
+              // Only you can add to My files.
+              addedById: pod.folderId === MY_FILES_ID ? CURRENT_USER_ID : "7",
+              addedAt: minutesAgo(60 * 24 * 3),
+            },
+          ]
         : [];
     });
   }
@@ -401,7 +452,37 @@ export function buildWorkspaceFs(): WorkspaceFs {
     ];
   }
 
-  return { nodes, spaceAccess, pods, conversations };
+  const drafts: ConversationDraft[] = [];
+  for (const conv of conversations) {
+    (DRAFT_SEEDS[conv.title] ?? []).forEach((seed, i) => {
+      const isSaved = seed.startsWith("saved:");
+      const name = seed.replace("saved:", "");
+      const id = `draft-${conv.id}-${i}`;
+      let savedNodeId: string | null = null;
+      if (isSaved) {
+        savedNodeId = `file-${id}`;
+        nodes.push({
+          id: savedNodeId,
+          parentId: conv.podFolderId,
+          kind: "file",
+          name,
+          fileType: fileTypeOf(name),
+          updatedAt: minutesAgo(30),
+          updatedById: conv.authorId,
+        });
+      }
+      drafts.push({
+        id,
+        conversationId: conv.id,
+        name,
+        fileType: fileTypeOf(name),
+        createdAt: minutesAgo(20 + i * 7),
+        savedNodeId,
+      });
+    });
+  }
+
+  return { nodes, spaceAccess, pods, conversations, drafts };
 }
 
 // ── Tree helpers ────────────────────────────────────────────────────────────
