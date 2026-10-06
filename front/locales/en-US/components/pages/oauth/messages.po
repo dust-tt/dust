@@ -23,5 +23,9 @@ msgid "Invalid OAuth use case."
 msgstr "Invalid OAuth use case."
 
 #: front/components/pages/oauth/OAuthSetupRedirectPage.tsx
+msgid "This tool has no workspace connection. Ask a workspace admin to connect it before setting up your personal connection."
+msgstr "This tool has no workspace connection. Ask a workspace admin to connect it before setting up your personal connection."
+
+#: front/components/pages/oauth/OAuthSetupRedirectPage.tsx
 msgid "Failed to initialize OAuth connection."
 msgstr "Failed to initialize OAuth connection."

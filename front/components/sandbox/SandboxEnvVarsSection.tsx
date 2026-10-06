@@ -163,6 +163,7 @@ function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
             ctx.addIssue({
               code: "custom",
               path: ["allowedDomainsText"],
+              // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
               message: normalizedDomains.error.message,
             });
           }
@@ -330,6 +331,7 @@ export function SandboxEnvVarsSection({
     const normalizedDomains =
       normalizeHttpsSecretAllowedDomains(allowedDomains);
     if (normalizedDomains.isErr()) {
+      // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
       return { message: normalizedDomains.error.message, isError: true };
     }
 
@@ -358,7 +360,8 @@ export function SandboxEnvVarsSection({
       : null;
   const domainsDialogMessage =
     domainsDialogNormalized?.isErr() === true
-      ? domainsDialogNormalized.error.message
+      ? // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
+        domainsDialogNormalized.error.message
       : domainsDialogSavedDomains !== null
         ? savedAsMessage(domainsDialogSavedDomains)
         : allowedDomainsHelperText;

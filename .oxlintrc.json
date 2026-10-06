@@ -250,6 +250,7 @@
     {
       "files": [
         "front/components/poke/**",
+        "front/hooks/usePoke*.ts",
         "front/**/*.test.{ts,tsx}",
         "front/**/*.stories.tsx"
       ],
@@ -259,28 +260,15 @@
     },
     {
       "files": [
-        "front/components/actions/mcp/MCPServerDetails.tsx",
         "front/components/actions/mcp/MCPServerSettings.tsx",
         "front/components/actions/mcp/create/ConnectMCPServerDialog.tsx",
-        "front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx",
         "front/components/actions/mcp/forms/submitCreateMCPServerDialogForm.ts",
         "front/components/agent_builder/SidekickPanelContext.tsx",
-        "front/components/agent_builder/submitAgentBuilderForm.ts",
-        "front/components/agent_builder/triggers/TriggerFilterRenderer.tsx",
         "front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx",
-        "front/components/agent_builder/types.ts",
-        "front/components/assistant/conversation/actions/VisualizationActionIframe.tsx",
         "front/components/data_source/ConnectorPermissionsModal.tsx",
         "front/components/pages/oauth/OAuthFinalizePage.tsx",
-        "front/components/pages/oauth/OAuthSetupRedirectPage.tsx",
         "front/components/pages/onboarding/VerifyPage.tsx",
-        "front/components/sandbox/DomainInputForm.tsx",
-        "front/components/sandbox/SandboxEnvVarsSection.tsx",
-        "front/components/spaces/AdvancedNotionManagement.tsx",
         "front/components/triggers/CreateWebhookSourceWithProviderForm.tsx",
-        "front/components/workspace/DustMcpServerSettingsSheet.tsx",
-        "front/hooks/usePokeProductionChecks.ts",
-        "front/lib/swr/agent_triggers.ts",
         "front/lib/swr/github_connection.ts",
         "front/lib/swr/mcp_servers.ts",
         "front/lib/swr/notifications.ts"

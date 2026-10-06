@@ -256,8 +256,7 @@ export function AdvancedNotionManagement({
         );
 
         if (!r.ok) {
-          const error: { error: { message: string } } = await r.json();
-          throw new Error(error.error.message);
+          throw new Error("Failed to sync Notion URLs.");
         }
         const response = GetPostNotionSyncResponseBodySchema.safeParse(
           await r.json()

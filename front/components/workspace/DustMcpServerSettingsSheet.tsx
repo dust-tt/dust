@@ -66,7 +66,8 @@ export function DustMcpServerSettingsSheet({
     draftSettings.allowedRedirectUris.includes(normalizedRedirectUri);
   const redirectUriInputMessage =
     redirectUriValidation?.isErr() === true
-      ? redirectUriValidation.error.message
+      ? // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
+        redirectUriValidation.error.message
       : isDuplicateRedirectUri
         ? t`This redirect URI is already in the list.`
         : normalizedRedirectUri
