@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   loadDfm,
   saveDfm,
@@ -81,6 +82,12 @@ function formattedTexts(document: JSONContent): string[] {
   visit(document);
   return texts;
 }
+
+// The live session server runs these functions in Node: see `document-model-runs-without-dom`.
+it("runs without a DOM", () => {
+  expect(typeof window).toBe("undefined");
+  expect(typeof document).toBe("undefined");
+});
 
 describe("loadDfm", () => {
   it("opens a plain Markdown file", () => {
