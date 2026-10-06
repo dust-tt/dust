@@ -18,6 +18,7 @@ const UserAuthorAvatar = ({ owner, author, size }: AuthorAvatarProps) => {
   const { userDetails, isMembersLoading } = useMemberDetails({
     workspaceId: owner.sId,
     userIds: [author.id],
+    shouldRetryOnError: false,
   });
 
   return (
@@ -70,7 +71,8 @@ const AgentAuthorAvatar = ({ owner, author, size }: AuthorAvatarProps) => {
  * A user author MUST show their workspace profile picture and an agent author the picture of
  * an agent the viewer can list. An author whose picture cannot be resolved, such as a former
  * member or an agent hidden from the viewer, MUST show their initials from the comment's name.
- * While the picture is still loading, the avatar MUST show as busy.
+ * While the picture is still loading, the avatar MUST show as busy. A failed member lookup MUST
+ * NOT be retried.
  */
 export const CommentAuthorAvatar = (props: AuthorAvatarProps) =>
   props.author.kind === "user" ? (

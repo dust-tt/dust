@@ -49,6 +49,14 @@ describe("CommentAuthorAvatar", () => {
     expect(avatar(container).className).toContain("animate-breathing");
   });
 
+  it("does not retry a failed member lookup", () => {
+    render(<CommentAuthorAvatar owner={owner} author={USER} size="xxs" />);
+
+    expect(useMemberDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ shouldRetryOnError: false })
+    );
+  });
+
   it("shows a user's profile picture", () => {
     vi.mocked(useMemberDetails).mockReturnValue({
       userDetails: { image: "https://example.com/daph.png" },
