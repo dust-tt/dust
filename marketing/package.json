@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@contentful/rich-text-react-renderer": "^16.1.6",
-    "@contentful/rich-text-types": "^17.2.5",
+    "@contentful/rich-text-types": "^17.2.7",
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/sparkle": "^0.7.7",
     "@hookform/resolvers": "^3.3.4",

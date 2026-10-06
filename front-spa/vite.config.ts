@@ -367,23 +367,14 @@ export default defineConfig(({ mode }) => {
           find: /^zod(\/.*)?$/,
           replacement: path.dirname(require.resolve("zod/package.json")) + "$1",
         },
-        // Bundle a single @lingui/core: front's copy. Front, sparkle and @lingui/react each install
-        // their own v6 copy, because the repo root holds a v5 one (for Contentful's
-        // rich-text-types), so `dedupe` would switch them all to v5.
-        {
-          find: /^@lingui\/core$/,
-          replacement: path.dirname(
-            createRequire(
-              path.resolve(__dirname, "../front/package.json")
-            ).resolve("@lingui/core/package.json")
-          ),
-        },
       ],
       // dedupe makes every import of these packages resolve from this app's root, so the bundle
       // contains a single copy of each.
       // - @lingui/react: sparkle's components must read the same LinguiContext that front's
       //   I18nProvider fills, otherwise they silently stay in English.
-      dedupe: ["react", "react-dom", "@lingui/react"],
+      // - @lingui/core: the `i18n` singleton that front activates must be the one sparkle's
+      //   components translate with.
+      dedupe: ["react", "react-dom", "@lingui/react", "@lingui/core"],
     },
     build: {
       outDir: path.resolve(__dirname, `dist/${appName}`),
