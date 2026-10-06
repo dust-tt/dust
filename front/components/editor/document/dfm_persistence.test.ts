@@ -1,6 +1,7 @@
 import {
   loadDfm,
   saveDfm,
+  validateCommentThread,
 } from "@app/components/editor/document/dfm_persistence";
 import {
   getDocumentJSONComments,
@@ -435,5 +436,23 @@ describe("saveDfm", () => {
     if (saved.isOk()) {
       expect(saved.value).toBe(`Hi\n\n${OPEN_THREAD}`);
     }
+  });
+});
+
+describe("validateCommentThread", () => {
+  it("accepts a thread the codec can write", () => {
+    expect(validateCommentThread(COMMENT).isOk()).toBe(true);
+  });
+
+  it.each([
+    ["a directive line", "First line\n::message{author=user:x}"],
+    ["an unclosed code fence", "```\ncode"],
+  ])("refuses a message with %s", (_, body) => {
+    const thread: DfmComment = {
+      ...COMMENT,
+      messages: [{ ...COMMENT.messages[0], body }],
+    };
+
+    expect(validateCommentThread(thread).isErr()).toBe(true);
   });
 });

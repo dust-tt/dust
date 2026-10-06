@@ -8,7 +8,7 @@ import {
   withDocumentJSONComments,
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
-import type { DfmError } from "@app/lib/markdown/dfm";
+import type { DfmComment, DfmError } from "@app/lib/markdown/dfm";
 import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -118,4 +118,24 @@ export function saveDfm(
   }
 
   return new Ok(serialized.value);
+}
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-writable
+ * A thread MUST be accepted only when the codec can write it on its own and read it back
+ * unchanged.
+ */
+export function validateCommentThread(
+  comment: DfmComment
+): Result<void, string> {
+  const serialized = serializeDfm({
+    frontMatter: null,
+    body: "",
+    comments: [comment],
+  });
+  return serialized.isErr()
+    ? new Err(
+        'This comment cannot be saved as written. Check for lines starting with "::" or an unclosed code block.'
+      )
+    : new Ok(undefined);
 }
