@@ -2,15 +2,14 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { buildJITServerConfiguration } from "@app/lib/api/assistant/jit/utils";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import logger from "@app/logger/logger";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the files MCP server for conversation file system access.
+ * Get the documents MCP server for commenting on Markdown documents. Its view is created only
+ * in workspaces with `co_edition`, so a missing view is expected and not logged. Disabling the
+ * flag does not delete the view, so the tool itself refuses to sign outside `co_edition`.
  */
-export function getFilesServer(
-  agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
+export function getDocumentsServer(
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): ServerSideMCPServerConfigurationType | null {
@@ -18,21 +17,13 @@ export function getFilesServer(
     return null;
   }
 
-  const filesView = autoInternalViews.get("files") ?? null;
-
-  if (!filesView) {
-    logger.warn(
-      {
-        agentConfigurationId: agentConfiguration.sId,
-        conversationId: conversation.sId,
-      },
-      "MCP server view not found for files. Ensure auto tools are created."
-    );
+  const documentsView = autoInternalViews.get("documents") ?? null;
+  if (!documentsView) {
     return null;
   }
 
-  return buildJITServerConfiguration(filesView, {
-    name: "files",
-    description: "File system interface scoped to the current conversation.",
+  return buildJITServerConfiguration(documentsView, {
+    name: "documents",
+    description: "Collaborate on Markdown documents in the file system.",
   });
 }

@@ -7,6 +7,7 @@ import {
   getConversationFilesServer,
   getConversationMCPServers,
 } from "@app/lib/api/assistant/jit/conversation";
+import { getDocumentsServer } from "@app/lib/api/assistant/jit/documents";
 import { getFilesServer } from "@app/lib/api/assistant/jit/files";
 import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
 import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2";
@@ -23,6 +24,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
   "ask_user_question",
   "common_utilities",
+  "documents",
   "files",
   "triggers_management",
   "skill_management",
@@ -101,6 +103,9 @@ async function getUnconditionalJITServers(
     autoInternalViews
   );
   servers.push(filesServer);
+
+  const documentsServer = getDocumentsServer(conversation, autoInternalViews);
+  servers.push(documentsServer);
 
   const askUserQuestionServer = getAskUserQuestionServer(
     agentConfiguration,
