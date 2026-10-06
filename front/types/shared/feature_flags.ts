@@ -472,7 +472,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   discovery_homepage: {
     description: "New homepage optimized for skill and agents discovery",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "adrsimon",
   },
   localisation: {
