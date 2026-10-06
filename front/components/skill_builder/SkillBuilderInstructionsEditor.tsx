@@ -20,6 +20,7 @@ import type {
 import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { useSkillBuilderReferences } from "@app/hooks/useSkillBuilderReferences";
 import {
   useAreSkillSuggestionsEnabled,
   useSkillSuggestions,
@@ -33,8 +34,6 @@ import {
   SKILL_TAG_NAME,
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
-import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -258,17 +257,18 @@ export function SkillBuilderInstructionsEditor({
     () => new Map(mcpServerViews.map((view) => [view.sId, view])),
     [mcpServerViews]
   );
-  // Preloaded by SkillBuilderProvider; needed to resolve inline skill
-  // references the user did not insert through the slash command (e.g. one
-  // added by accepting a suggestion) into `referencedSkills`.
-  const { skills: activeSkills } = useSkills({
+  const [unresolvedSkillIds, setUnresolvedSkillIds] = useState<string[]>([]);
+  const {
+    references: inlineSkills,
+    isReferencesLoading,
+    isReferencesError,
+  } = useSkillBuilderReferences({
     owner,
-    status: "active",
-    swrOptions: CAPABILITIES_SWR_OPTIONS,
+    skillIds: unresolvedSkillIds,
   });
-  const activeSkillsById = useMemo(
-    () => new Map(activeSkills.map((skill) => [skill.sId, skill])),
-    [activeSkills]
+  const inlineSkillsById = useMemo(
+    () => new Map(inlineSkills.map((skill) => [skill.sId, skill])),
+    [inlineSkills]
   );
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
@@ -383,11 +383,24 @@ export function SkillBuilderInstructionsEditor({
       const referencedSkillIds = new Set(
         remainingSkills.map((skill) => skill.id)
       );
+      // Loaded skills and slash selections already carry reference metadata.
+      // Only resolve references introduced without it, such as pasted tags.
+      const unresolvedIds = [...currentInlineSkillIds]
+        .filter(
+          (id) => !referencedSkillIds.has(id) && !inlineSkillsById.has(id)
+        )
+        .sort();
+      setUnresolvedSkillIds((previous) =>
+        previous.length === unresolvedIds.length &&
+        previous.every((id, index) => id === unresolvedIds[index])
+          ? previous
+          : unresolvedIds
+      );
       const addedSkills = removeNulls(
         [...currentInlineSkillIds]
           .filter((skillId) => !referencedSkillIds.has(skillId))
           .map((skillId) => {
-            const skill = activeSkillsById.get(skillId);
+            const skill = inlineSkillsById.get(skillId);
             return skill ? toReferencedSkill(skill) : null;
           })
       );
@@ -399,7 +412,7 @@ export function SkillBuilderInstructionsEditor({
         ? [...remainingSkills, ...addedSkills]
         : null;
     },
-    [activeSkillsById]
+    [inlineSkillsById]
   );
 
   const syncInlineReferencesFromEditor = useCallback(
@@ -702,6 +715,23 @@ export function SkillBuilderInstructionsEditor({
     setValue,
   ]);
 
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || !isContentReady || isDiffMode) {
+      return;
+    }
+
+    // A lookup can finish after the document changes. Reconcile against the
+    // current editor content so removed references are not added back.
+    const nextSkills = reconcileInlineSkills(editor);
+    if (nextSkills) {
+      referencedSkillsRef.current = nextSkills;
+      setValue(REFERENCED_SKILLS_FIELD_NAME, nextSkills, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [editor, isContentReady, isDiffMode, reconcileInlineSkills, setValue]);
+
   // Apply pending instruction suggestions as inline diff decorations.
   // "Reject all + re-apply current" on every change so that accepts and
   // rejects from the suggestions panel are immediately reflected.
@@ -896,6 +926,17 @@ export function SkillBuilderInstructionsEditor({
             isReadOnly={isInstructionsReadOnly}
           />
         </div>
+
+        {isReferencesLoading && (
+          <div role="status" className="ml-2 text-xs text-muted-foreground">
+            Loading skill references…
+          </div>
+        )}
+        {isReferencesError && (
+          <div role="alert" className="ml-2 text-xs text-warning">
+            Could not load skill references.
+          </div>
+        )}
 
         {instructionsFieldState.error && (
           <div className="ml-2 text-xs text-warning">
