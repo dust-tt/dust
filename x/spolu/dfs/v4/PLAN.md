@@ -83,7 +83,8 @@ regressions. Validate concurrent clients, same-name collisions, moves, revocatio
 - [x] Fix recursive scratch cleanup `EIO`: stabilize directory publication after a raced listing,
   preserve queued overlays and atomically project the response. Real FDB race tests and deep mounted
   cleanup checks pass; the old local/GCP benchmark failures remain recorded as historical results.
-- [ ] Repeat the full local suite with the cleanup fix to confirm a successful final cleanup.
+- [x] Repeat the full local suite with the cleanup fix: all 24 timed checks and final cleanup pass,
+  exit 0; 6.523s untar + 0.450s drain. Full table and diagnosis in [bench/RESULTS.md](bench/RESULTS.md).
 - [ ] 100k-file and multi-server contention benchmarks.
 - [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
 - [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.

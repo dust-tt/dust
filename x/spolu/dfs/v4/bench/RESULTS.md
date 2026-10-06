@@ -1,10 +1,9 @@
 # Benchmark results — dfs v4 localhost
 
-Latest full-suite measurements: **2026-10-06**, source `7d10f75eae`, directory cache and page-ahead
-prefetch with the **512 MiB** client budget. All 24 timed checks passed; final scratch cleanup still
-failed with `EIO`. The [new full table](#latest-full-table--directory-cache-and-page-ahead-prefetch)
-includes untar, remaining drain, every first/warm workload and the enlarged local fixture settings.
-All previous tables remain below. Replicated-backend measurements are in [GCP results](../gcp/RESULTS.md).
+Latest full-suite measurements: **2026-10-06**, source `133f09dac5`. All **24 timed checks and final
+cleanup passed**. The [new full table and EIO diagnosis](#latest-full-table--directory-cleanup-fix)
+record the directory-publication race fix. Client budget remains 512 MiB; previous tables and failures
+are preserved below. Replicated-backend measurements are in [GCP results](../gcp/RESULTS.md).
 
 ## Configuration and method
 
@@ -31,12 +30,81 @@ The existing `page cache` and `search` labels name benchmark categories; search 
 limit. Docker was increased to 16 GiB and FDB to 8 GiB, retaining the native 2 GiB page cache.
 A separate 2 GiB streamed write then completed in 40.207s plus 0.233s fsync; a fresh server/mount
 read and verified its SHA-256 in 11.612s. Peak FDB cgroup memory was 3.44 GiB, with zero OOM events
-or restarts. This was a large-file recovery check, not a Git clone or suite rerun. All benchmark
-tables except the new directory-cache full table retain their original **3 GiB FDB / 7.65 GiB Docker**
-configuration and timings.
+or restarts. This was a large-file recovery check, not a Git clone or suite rerun. Benchmark
+tables before the directory-cache work retain their original **3 GiB FDB / 7.65 GiB Docker**
+configuration and timings; the directory-cache and cleanup-fix tables use the enlarged fixture.
 Diagnostic report: `/tmp/dfs-v4-large-write-omfo6v36/result.json` inside `dfs-v4-dev-1`.
 
-## Latest full table — directory cache and page-ahead prefetch
+## Latest full table — directory cleanup fix
+
+2026-10-06, source `133f09dac5`. Same 10k corpus and directory-cache configuration as the preceding
+run: 512 MiB client budget, 1s read TTL, 25ms coalescing, 16 GiB Docker / 8 GiB FDB limit.
+Each first read uses a new server/session/mount with FDB/OS caches retained. Full suite, one warm
+repeat, profiling enabled, no concurrent builds/tests, fresh isolated prefix; existing data retained.
+
+**Clean suite pass: all 24 timed checks, both full-content hash passes, and final recursive scratch
+cleanup succeeded.** Harness exit **0**. Untar: **6.523s + 0.450s drain =
+6.973s**. Unmount including drain: 0.477s.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| population   | untar (10,000 files, 177.5 MB)                 | once  |  6,522.83 | OK     |
+| writeback    | remaining client drain after untar             | once  |    450.00 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 11,662.99 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 19,134.11 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |    368.43 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |     42.80 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 10,659.91 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 12,998.09 | OK     |
+| metadata     | stat missing (256 paths)                       | first |  1,316.02 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |    810.64 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first |  4,217.59 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |  2,294.41 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |  4,465.94 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |  1,617.82 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |  1,951.71 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |  2,415.43 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |    431.22 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |    405.97 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 64,338.39 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 14,982.72 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |  2,144.31 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |  4,010.82 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |     25.74 | OK     |
+| file sync    | fsync (32 files)                               | once  |    142.64 | OK     |
+| write        | close (32 files)                               | once  |      0.58 | OK     |
+| write        | unlink (32 files)                              | once  |     22.53 | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+### Scratch cleanup EIO diagnosis
+
+Successful unlink completions changed the client directory generation while a List RPC was in flight.
+After four discarded snapshots, the client returned `Unavailable`, which FUSE translated to `EIO`.
+Python's recursive cleanup failed in `scandir`, before reaching `rmdir`. The isolated deep-directory
+reproduction recorded **eight races, two exhausted retry loops, zero failed List RPCs**.
+
+The retry now pauses dispatch only for the affected directory, waits for its captured in-flight
+groups, then lists and applies queued namespace edits. Queued edits are not forced to persist;
+unrelated objects keep publishing. Snapshot validation and overlay projection share one lock,
+preventing a completion from retiring a deletion marker between those steps. The pause releases
+on success, error or cancellation; server transaction semantics and freshness limits are unchanged.
+
+The full rerun encountered **one listing race**, waited **1.730ms** for an in-flight completion,
+and completed `rmdir` with **zero retry exhaustion or writeback errors**. Regression coverage includes
+a deterministic real-FDB publication race, unrelated-object progress, queued unlink visibility,
+five deep mounted cleanup cycles, and ten repetitions of jd's isolated write/cleanup workload.
+Workspace tests, clippy and mounted release checks passed before timing. FDB stayed available with
+no restart or OOM kill. This validates the fix locally; earlier GCP measurements predate it.
+
+Report: `/tmp/dfs-v4-133f09dac5-full/run.json` inside `dfs-v4-dev-1`.
+Server SHA-256: `016b7ac67daa7f6c8e4cee045ff798d090052f23c7df905c4f79199e17b4920a`.
+FUSE SHA-256: `545039110bbb3bbcc4ec87d07765dddba258f92125e98f9778ad5ac6e6631766`.
+Manifest SHA-256 is unchanged. Raw reports/logs remain outside Git; earlier failed runs remain below.
+
+## Previous full table — directory cache and page-ahead prefetch
 
 2026-10-06, source `7d10f75eae` (runtime implementation `3e481abc97`). Full 10k suite with directory
 revision validation, independent child-attribute refresh and demand-driven one-page-ahead prefetch.

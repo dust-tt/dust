@@ -2,6 +2,9 @@
 
 Latest focused result: [directory revision reuse and page-ahead prefetch](#directory-revision-reuse-and-page-ahead-prefetch)
 reduce cold 10k open/fstat/close from **35.921s to 10.348s**. The earlier full table remains below.
+The cleanup failure has since been reproduced and fixed in the client, with a
+[clean local full-suite run](../bench/RESULTS.md#latest-full-table--directory-cleanup-fix).
+The GCP measurements below predate that fix.
 
 2026-10-06, source `a44ae816c9`, directory-record split and the **512 MiB** client cache.
 All **24 timed checks passed**, including both full-content SHA-256 passes, but final recursive
