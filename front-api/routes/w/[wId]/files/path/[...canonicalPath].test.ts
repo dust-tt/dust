@@ -1286,7 +1286,7 @@ describe("comment signatures on Markdown saves", () => {
         method: "PUT",
         headers: {
           "Content-Type": "text/markdown",
-          [DUST_IF_REVISION_MATCH_HEADER]: "not-the-current-revision",
+          [DUST_IF_REVISION_MATCH_HEADER]: "999999",
         },
         body: file(author, signatureFor(workspace.sId, path, author)),
       });
