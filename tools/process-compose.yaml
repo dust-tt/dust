@@ -123,7 +123,7 @@ processes:
     namespace: 40-sdk
     readiness_probe:
       exec:
-        command: "test -f ${DUST_DEV_ROOT}/sparkle/dist/esm/index.js"
+        command: "test -f ${DUST_DEV_ROOT}/sparkle/dist/.build-complete"
       period_seconds: 1
       failure_threshold: 600
 
