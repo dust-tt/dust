@@ -191,28 +191,26 @@ export function DiscoverButtonTeaser({
       }}
       onPointerLeave={() => pointerXPx.set(POINTER_AWAY)}
     >
-      {!isLoading && (
-        <div
-          aria-hidden
-          className={classNames(
-            "pointer-events-none absolute inset-0 [clip-path:inset(-100vh_-100vw_0_-100vw)]",
-            "transition-[scale] duration-[160ms] ease-emphasized",
-            "group-active/teaser:scale-[0.92] motion-reduce:group-active/teaser:scale-100"
-          )}
-        >
-          <LazyMotion features={domAnimation}>
-            {items.map((item, index) => (
-              <TeaserDisc
-                key={item.id}
-                item={item}
-                index={index}
-                pointerXPx={pointerXPx}
-                pullProgress={pullProgress}
-              />
-            ))}
-          </LazyMotion>
-        </div>
-      )}
+      <div
+        aria-hidden
+        className={classNames(
+          "pointer-events-none absolute inset-0 [clip-path:inset(-100vh_-100vw_0_-100vw)]",
+          "transition-[scale] duration-[160ms] ease-emphasized",
+          "group-active/teaser:scale-[0.92] motion-reduce:group-active/teaser:scale-100"
+        )}
+      >
+        <LazyMotion features={domAnimation}>
+          {items.map((item, index) => (
+            <TeaserDisc
+              key={item.id}
+              item={item}
+              index={index}
+              pointerXPx={pointerXPx}
+              pullProgress={pullProgress}
+            />
+          ))}
+        </LazyMotion>
+      </div>
       <div className="relative">{children}</div>
     </div>
   );

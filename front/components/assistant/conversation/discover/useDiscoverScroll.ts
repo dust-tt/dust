@@ -12,6 +12,8 @@ const TRANSITION_FALLBACK_MS = 800;
 const PULL_DISTANCE_PX = 250;
 const PULL_RELEASE_DELAY_MS = 300;
 const PULL_RELEASE_SECONDS = 0.25;
+const PULL_COMPLETE_TOLERANCE = 1e-6;
+const WHEEL_LINE_HEIGHT_PX = 16;
 
 type DiscoverStage = "home" | "transition" | "discover";
 
@@ -24,6 +26,17 @@ function releasePull(pullProgress: MotionValue<number>) {
     duration: PULL_RELEASE_SECONDS,
     ease: MOTION_EASINGS.enter,
   });
+}
+
+function wheelDeltaPx(event: WheelEvent, pageHeightPx: number): number {
+  switch (event.deltaMode) {
+    case WheelEvent.DOM_DELTA_LINE:
+      return event.deltaY * WHEEL_LINE_HEIGHT_PX;
+    case WheelEvent.DOM_DELTA_PAGE:
+      return event.deltaY * pageHeightPx;
+    default:
+      return event.deltaY;
+  }
 }
 
 function onScrollSettled(
@@ -165,12 +178,14 @@ export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
       }
       release.stop();
       window.clearTimeout(releaseTimer);
-      const progress = Math.min(
-        1,
-        Math.max(0, pullProgress.get() + event.deltaY / PULL_DISTANCE_PX)
+      const progress = Math.max(
+        0,
+        pullProgress.get() +
+          wheelDeltaPx(event, scroller.clientHeight) / PULL_DISTANCE_PX
       );
-      pullProgress.set(progress);
-      if (progress === 1) {
+      const isComplete = progress >= 1 - PULL_COMPLETE_TOLERANCE;
+      pullProgress.set(isComplete ? 1 : progress);
+      if (isComplete) {
         trackDiscoverScrollPullOpen();
         goToDiscover();
         return;
