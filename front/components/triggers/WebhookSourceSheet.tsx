@@ -17,9 +17,13 @@ import {
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import {
   useCreateWebhookSource,
   useDeleteWebhookSource,
@@ -30,6 +34,7 @@ import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_s
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type {
   WebhookProvider,
@@ -172,6 +177,7 @@ function WebhookSourceSheetContent({
   const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification(true);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [currentPageId, setCurrentPageId] = useState<
     WebhookSourceSheetMode["type"]
   >(mode.type);
@@ -326,8 +332,7 @@ function WebhookSourceSheetContent({
             }
           );
           if (!response.ok) {
-            const body = await response.json();
-            throw new Error(body.error?.message ?? t`Failed to add to space`);
+            throw await getErrorFromResponse(response);
           }
         } else {
           const view = webhookSourceWithViews?.views.find(
@@ -341,16 +346,13 @@ function WebhookSourceSheetContent({
               }
             );
             if (!response.ok) {
-              const body = await response.json();
-              throw new Error(
-                body.error?.message ?? t`Failed to remove from space`
-              );
+              throw await getErrorFromResponse(response);
             }
           }
         }
       }
     },
-    [webhookSource, spaces, owner.sId, webhookSourceWithViews, t]
+    [webhookSource, spaces, owner.sId, webhookSourceWithViews]
   );
 
   const onEditSave = useCallback(async (): Promise<boolean> => {
@@ -374,10 +376,7 @@ function WebhookSourceSheetContent({
               }
             );
             if (!response.ok) {
-              const body = await response.json();
-              throw new Error(
-                body.error?.message ?? t`Failed to update webhook source view`
-              );
+              throw await getErrorFromResponse(response);
             }
           }
 
@@ -397,17 +396,10 @@ function WebhookSourceSheetContent({
           editForm.reset(values);
           success = true;
         } catch (error) {
-          sendNotification({
-            type: "error",
-            title: t`Failed to save changes`,
-            description:
-              error instanceof Error
-                ? error.message
-                : t`An error occurred while saving changes.`,
-          });
+          sendApiErrorNotification({ title: t`Failed to save changes`, error });
           datadogLogger.error(
             {
-              error: error instanceof Error ? error.message : String(error),
+              error: normalizeError(error).message,
               webhookSourceViewId: systemView.sId,
             },
             "[Webhook Details] - Save error"
@@ -452,6 +444,7 @@ function WebhookSourceSheetContent({
     owner.sId,
     applySharingChanges,
     mutateWebhookSourcesWithViews,
+    sendApiErrorNotification,
     sendNotification,
     t,
   ]);

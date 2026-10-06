@@ -16,8 +16,12 @@ import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
 type SendErrorNotification = (title: string, description: string) => void;
 
+type SendApiErrorNotification = (args: {
+  title: string;
+  error: unknown;
+}) => void;
+
 interface ErrorContext {
-  remoteServerUrl: string;
   provider: OAuthProvider | null;
 }
 
@@ -30,7 +34,10 @@ interface LoadingControls {
 interface HandleCreateMCPServerDialogSubmitErrorParams {
   error: Error;
   context: ErrorContext;
+  // For client-side and OAuth setup messages.
   sendNotification: SendErrorNotification;
+  // For errors returned by the API, carried as the `cause` of the submit error.
+  sendApiErrorNotification: SendApiErrorNotification;
   loading: LoadingControls;
 }
 
@@ -78,6 +85,7 @@ export function handleCreateMCPServerDialogSubmitError({
   error,
   context,
   sendNotification,
+  sendApiErrorNotification,
   loading,
 }: HandleCreateMCPServerDialogSubmitErrorParams): void {
   const {
@@ -87,7 +95,7 @@ export function handleCreateMCPServerDialogSubmitError({
   } = loading;
 
   if (!(error instanceof CreateMCPServerDialogSubmitError)) {
-    sendNotification("Failed to create MCP server", error.message);
+    sendApiErrorNotification({ title: "Failed to create MCP server", error });
     setExternalIsLoading(false);
     setIsLoading(false);
     return;
@@ -97,10 +105,10 @@ export function handleCreateMCPServerDialogSubmitError({
 
   switch (error.kind) {
     case "discover_oauth_metadata": {
-      sendNotification(
-        "Failed to discover OAuth metadata for MCP server",
-        `${error.message} (${context.remoteServerUrl})`
-      );
+      sendApiErrorNotification({
+        title: "Failed to discover OAuth metadata for MCP server",
+        error: error.cause,
+      });
       setIsLoading(false);
       return;
     }
@@ -121,7 +129,10 @@ export function handleCreateMCPServerDialogSubmitError({
     }
 
     case "create_server": {
-      sendNotification("Failed to create MCP server", error.message);
+      sendApiErrorNotification({
+        title: "Failed to create MCP server",
+        error: error.cause,
+      });
       setExternalIsLoading(false);
       setIsLoading(false);
       return;

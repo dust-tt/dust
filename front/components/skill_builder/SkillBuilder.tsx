@@ -30,7 +30,10 @@ import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkil
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useBuilderTracking } from "@app/hooks/useBuilderTracking";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   useAreSkillSuggestionsEnabled,
   useSkillSuggestions,
@@ -74,6 +77,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
@@ -201,12 +205,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     });
 
     if (result.isErr()) {
-      sendNotification({
+      sendApiErrorNotification({
         title: isCreatingNew
           ? t`Error creating skill`
           : t`Error updating skill`,
-        description: result.error.message,
-        type: "error",
+        error: result.error,
       });
       setIsSaving(false);
       return;
@@ -229,12 +232,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
     if (editorsError) {
       // The skill itself was saved, so we keep going: only the editors list is out of date.
-      sendNotification({
+      sendApiErrorNotification({
         title: isCreatingNew
           ? t`Skill created, but its editors were not saved`
           : t`Skill updated, but its editors were not saved`,
-        description: editorsError.message,
-        type: "error",
+        error: editorsError,
       });
       await mutateEditors();
     } else {

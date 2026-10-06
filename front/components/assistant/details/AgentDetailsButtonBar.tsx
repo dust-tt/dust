@@ -5,7 +5,10 @@ import {
   trackManageItemAction,
   useManageTracking,
 } from "@app/components/pages/builder/manageTracking";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -166,6 +169,7 @@ export function AgentDetailsDropdownMenu({
   contextMenuPosition,
 }: AgentDetailsDropdownMenuProps) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
 
   const { providersHealth } = useAuth();
@@ -192,13 +196,7 @@ export function AgentDetailsDropdownMenu({
 
     if (!response.ok) {
       const errorData = await response.json();
-      sendNotification({
-        title: "Export failed",
-        description:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          errorData.error?.message || "An error occurred while exporting",
-        type: "error",
-      });
+      sendApiErrorNotification({ title: "Export failed", error: errorData });
       setIsExporting(false);
       return;
     }

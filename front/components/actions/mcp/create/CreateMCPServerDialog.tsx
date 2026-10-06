@@ -20,7 +20,10 @@ import type {
 import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
   requiresBearerTokenConfiguration,
@@ -33,6 +36,8 @@ import type {
   MCPServerType,
   MCPServerViewNameConflictDetails,
 } from "@app/lib/api/mcp";
+import { formatError } from "@app/lib/api_error_messages";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   useCreateInternalMCPServer,
@@ -145,6 +150,9 @@ export function CreateMCPServerDialog({
   existingViewNames = [],
 }: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
   const cellContext = useCellContext();
 
   // Determine if this is a multi-instance server that already has an existing instance.
@@ -339,7 +347,7 @@ export function CreateMCPServerDialog({
           err.remoteMCPServerOAuthDiscoveryDone
         );
         setServerError({
-          message: err.message,
+          message: formatError(err.cause, { hasLocalisation }).description,
           domain: getServerErrorDomain(
             values,
             defaultServerConfig?.hostDerivedOAuth
@@ -351,11 +359,11 @@ export function CreateMCPServerDialog({
       handleCreateMCPServerDialogSubmitError({
         error: err,
         context: {
-          remoteServerUrl: values.remoteServerUrl,
           provider: authorization?.provider ?? null,
         },
         sendNotification: (title, description) =>
           sendNotification({ type: "error", title, description }),
+        sendApiErrorNotification,
         loading: {
           setIsLoading,
           setExternalIsLoading,
@@ -514,10 +522,9 @@ export function CreateMCPServerDialog({
       });
 
       if (createRes.isErr()) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to create server",
-          description: createRes.error.message,
+          error: createRes.error,
         });
         return;
       }

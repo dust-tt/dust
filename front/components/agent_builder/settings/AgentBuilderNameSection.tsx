@@ -3,7 +3,10 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBu
 import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/constants";
 import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import {
   Button,
@@ -33,6 +36,7 @@ export function AgentBuilderNameSection({
   const { owner } = useAgentBuilderContext();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -67,10 +71,9 @@ export function AgentBuilderNameSection({
     });
 
     if (result.isErr()) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to generate name suggestions`,
-        description: result.error.message,
+        error: result.error,
       });
       setIsGenerating(false);
       return;

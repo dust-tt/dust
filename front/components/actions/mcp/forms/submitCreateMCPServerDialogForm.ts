@@ -13,6 +13,7 @@ import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import { isMCPCreateServerError } from "@app/lib/swr/mcp_servers";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import type { CellInfo } from "@app/types/cell";
+import type { APIError } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
@@ -50,6 +51,8 @@ type CreateMCPServerDialogSubmitErrorKind =
   | "oauth_connection"
   | "create_server";
 
+// `cause` holds the underlying error (an API error when the server returned one), to display
+// through `formatError`.
 export class CreateMCPServerDialogSubmitError extends Error {
   readonly kind: CreateMCPServerDialogSubmitErrorKind;
   readonly remoteMCPServerOAuthDiscoveryDone: boolean;
@@ -58,15 +61,17 @@ export class CreateMCPServerDialogSubmitError extends Error {
   constructor({
     kind,
     message,
+    cause,
     remoteMCPServerOAuthDiscoveryDone,
     isRemoteServerError = false,
   }: {
     kind: CreateMCPServerDialogSubmitErrorKind;
     message: string;
+    cause?: unknown;
     remoteMCPServerOAuthDiscoveryDone: boolean;
     isRemoteServerError?: boolean;
   }) {
-    super(message);
+    super(message, { cause });
     this.kind = kind;
     this.remoteMCPServerOAuthDiscoveryDone = remoteMCPServerOAuthDiscoveryDone;
     this.isRemoteServerError = isRemoteServerError;
@@ -85,7 +90,7 @@ export function isCreateServerError(
 type DiscoverOAuthMetadataFn = (
   url: string,
   customHeaders?: { key: string; value: string }[]
-) => Promise<Result<DiscoverOAuthMetadataResponseBody, Error>>;
+) => Promise<Result<DiscoverOAuthMetadataResponseBody, APIError | Error>>;
 
 type CreateRemoteMCPServerFn = (args: {
   url: string;
@@ -112,7 +117,7 @@ type CreateInternalMCPServerFn = (
     | { oauthConnection?: never; useCase: MCPOAuthUseCase }
     | { oauthConnection?: never; useCase?: never }
   )
-) => Promise<Result<CreateMCPServerResponseBody, Error>>;
+) => Promise<Result<CreateMCPServerResponseBody, APIError | Error>>;
 
 interface SubmitCreateMCPServerDialogFormParams {
   owner: WorkspaceType;
@@ -184,6 +189,7 @@ export async function submitCreateMCPServerDialogForm({
           new CreateMCPServerDialogSubmitError({
             kind: "discover_oauth_metadata",
             message: discoverOAuthMetadataRes.error.message,
+            cause: discoverOAuthMetadataRes.error,
             remoteMCPServerOAuthDiscoveryDone:
               nextRemoteMCPServerOAuthDiscoveryDone,
           })
@@ -333,6 +339,7 @@ export async function submitCreateMCPServerDialogForm({
         new CreateMCPServerDialogSubmitError({
           kind: "create_server",
           message: createRes.error.message,
+          cause: createRes.error,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,
         })
@@ -373,6 +380,7 @@ export async function submitCreateMCPServerDialogForm({
         new CreateMCPServerDialogSubmitError({
           kind: "create_server",
           message: err.message,
+          cause: isMCPCreateServerError(err) ? err.cause : err,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,
           isRemoteServerError:

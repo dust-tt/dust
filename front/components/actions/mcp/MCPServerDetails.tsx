@@ -8,7 +8,10 @@ import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDeta
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getMcpServerViewDisplayName,
   isRemoteMCPServerType,
@@ -26,8 +29,10 @@ import {
   useUpdateMCPToolsSettings,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   hasRedactedHeaderValue,
   REDACTED_HEADER_VALUES_ERROR_MESSAGE,
@@ -46,8 +51,7 @@ async function patchServer(serverUrl: string, body: object) {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const res = await response.json();
-    throw new Error(res.error?.message ?? "Failed to update server");
+    throw await getErrorFromResponse(response);
   }
 }
 
@@ -121,6 +125,7 @@ export function MCPServerDetails({
     serverId: mcpServerView?.server.sId ?? "",
   });
   const sendNotification = useSendNotification(true);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const confirm = useContext(ConfirmContext);
 
   const defaults = useMemo<MCPServerFormValues>(() => {
@@ -236,8 +241,7 @@ export function MCPServerDetails({
           }
         );
         if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error?.message ?? "Failed to add to space");
+          throw await getErrorFromResponse(response);
         }
       } else {
         const view = mcpServerWithViews?.views.find(
@@ -251,10 +255,7 @@ export function MCPServerDetails({
             }
           );
           if (!response.ok) {
-            const body = await response.json();
-            throw new Error(
-              body.error?.message ?? "Failed to remove from space"
-            );
+            throw await getErrorFromResponse(response);
           }
         }
       }
@@ -293,8 +294,7 @@ export function MCPServerDetails({
         }
       );
       if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "Failed to update server view");
+        throw await getErrorFromResponse(response);
       }
     }
 
@@ -310,8 +310,7 @@ export function MCPServerDetails({
         }
       );
       if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "Failed to update server view");
+        throw await getErrorFromResponse(response);
       }
     }
 
@@ -459,17 +458,10 @@ export function MCPServerDetails({
           form.reset(values);
           success = true;
         } catch (error) {
-          sendNotification({
-            type: "error",
-            title: "Failed to save changes",
-            description:
-              error instanceof Error
-                ? error.message
-                : "An error occurred while saving changes.",
-          });
+          sendApiErrorNotification({ title: "Failed to save changes", error });
           datadogLogger.error(
             {
-              error: error instanceof Error ? error.message : String(error),
+              error: normalizeError(error).message,
               serverViewId: mcpServerView.sId,
             },
             "[MCP Details] - Save error"

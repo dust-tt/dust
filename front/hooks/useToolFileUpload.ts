@@ -1,8 +1,9 @@
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ToolUploadRequestBody } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { FileUseCaseMetadata } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -21,7 +22,7 @@ export function useToolFileUpload({
   const [uploadingFileKeys, setUploadingFileKeys] = useState<Set<string>>(
     new Set()
   );
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const getFileKey = useCallback(
     (file: ToolSearchResult) => `${file.serverViewId}-${file.externalId}`,
@@ -71,8 +72,7 @@ export function useToolFileUpload({
         );
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error?.message ?? "Failed to upload file");
+          throw await getErrorFromResponse(response);
         }
 
         const { file } = await response.json();
@@ -89,12 +89,7 @@ export function useToolFileUpload({
         });
         onUploadSuccess(file);
       } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to attach file",
-          description:
-            error instanceof Error ? error.message : "Unknown error occurred",
-        });
+        sendApiErrorNotification({ title: "Failed to attach file", error });
       } finally {
         setUploadingFileKeys((prev) => {
           const next = new Set(prev);
@@ -106,7 +101,7 @@ export function useToolFileUpload({
     [
       owner.sId,
       fileUploaderService,
-      sendNotification,
+      sendApiErrorNotification,
       getFileKey,
       useCaseMetadata,
       onUploadSuccess,

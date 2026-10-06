@@ -1,5 +1,8 @@
 import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { PostCredentialsResponseBody } from "@app/types/api/oauth";
@@ -40,6 +43,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   SnowflakeKeypairCredentialFormProps
 >(function SnowflakeKeypairCredentialForm({ owner, onValidityChange }, ref) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const lastReportedValidity = useRef<boolean | null>(null);
 
@@ -125,13 +129,9 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
       }
 
       if (!response.ok || isAPIErrorResponse(result)) {
-        const description = isAPIErrorResponse(result)
-          ? result.error.message
-          : "An error occurred.";
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to save Snowflake credentials",
-          description,
+          error: result,
         });
         datadogLogger.error(
           {
