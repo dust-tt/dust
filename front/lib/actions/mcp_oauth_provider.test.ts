@@ -1,7 +1,7 @@
 import {
   MCPOAuthProvider,
   MCPOAuthProviderError,
-  resolveMCPAuthFailure,
+  decideMCPAuthFailureAction,
 } from "@app/lib/actions/mcp_oauth_provider";
 import config from "@app/lib/api/config";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -109,12 +109,12 @@ describe("re-authentication after a tool call rejected with 403 insufficient_sco
       error: "insufficient_scope",
       scope: WRITE_SCOPE,
     });
-    const first = resolveMCPAuthFailure(firstError, READ_SCOPE);
+    const first = decideMCPAuthFailureAction(firstError, READ_SCOPE);
     assert(first.kind === "reauthenticate", "expected a re-auth prompt");
     expect(first.scope).toBe(`${READ_SCOPE} ${WRITE_SCOPE}`);
 
     const secondError = await callToolWithTokenScope(first.scope ?? "");
-    expect(resolveMCPAuthFailure(secondError, READ_SCOPE)).toEqual({
+    expect(decideMCPAuthFailureAction(secondError, READ_SCOPE)).toEqual({
       kind: "refused",
     });
   });
@@ -124,7 +124,7 @@ describe("re-authentication after a tool call rejected with 403 insufficient_sco
       status: 401,
       wwwAuthenticate: "Bearer",
     });
-    expect(resolveMCPAuthFailure(error, READ_SCOPE)).toEqual({
+    expect(decideMCPAuthFailureAction(error, READ_SCOPE)).toEqual({
       kind: "reauthenticate",
       scope: READ_SCOPE,
     });

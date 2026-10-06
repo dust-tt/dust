@@ -30,7 +30,7 @@ export class MCPOAuthProviderError extends Error {
   }
 }
 
-export type MCPAuthFailureResolution =
+export type MCPAuthFailureAction =
   | { kind: "reauthenticate"; scope: string | undefined }
   | { kind: "refused" };
 
@@ -40,15 +40,15 @@ function splitScope(scope: string | undefined): string[] {
 
 /**
  * @cc [owner:pmilliotte,label:product] reauth-only-when-it-can-help
- * A 403 MUST resolve to `reauthenticate` only when it is `insufficient_scope` and names a scope
+ * A 403 MUST lead to `reauthenticate` only when it is `insufficient_scope` and names a scope
  * the current token does not hold; the requested scope is then the union of both. Any other 403
- * MUST resolve to `refused`. A 401 or an unknown status MUST reauthenticate with
+ * MUST lead to `refused`. A 401 or an unknown status MUST reauthenticate with
  * `configuredScope`.
  */
-export function resolveMCPAuthFailure(
+export function decideMCPAuthFailureAction(
   error: MCPOAuthProviderError,
   configuredScope: string | undefined
-): MCPAuthFailureResolution {
+): MCPAuthFailureAction {
   const { challenge } = error;
   if (challenge?.status !== 403) {
     return { kind: "reauthenticate", scope: configuredScope };
