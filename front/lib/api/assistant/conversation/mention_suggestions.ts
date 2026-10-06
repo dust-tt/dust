@@ -170,7 +170,7 @@ export function parseMentionSelectParam(
  * readable favorites in alphabetical order when any exist, without searching. No favorites
  * or a nonblank query MUST retain the existing suggestions behavior.
  */
-export const suggestionsOfMentions = async (
+export async function suggestionsOfMentions(
   auth: Authenticator,
   {
     query,
@@ -191,7 +191,7 @@ export const suggestionsOfMentions = async (
     };
     current?: boolean; // Include current user in suggestions
   }
-): Promise<RichMention[]> => {
+): Promise<RichMention[]> {
   const normalizedQuery = query.toLowerCase();
   // can be called from the public API, so user may be null
   const currentUser = auth.user();
@@ -417,4 +417,4 @@ export const suggestionsOfMentions = async (
     lastMentionedId,
     conversationId
   );
-};
+}
