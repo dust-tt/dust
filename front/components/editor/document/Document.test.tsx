@@ -219,7 +219,7 @@ describe("Document comments", () => {
     expect(cards).toEqual(["Comment by U", "New comment", "Comment by U"]);
   });
 
-  it("shows comment authors with the host's avatars", async () => {
+  it("shows comment authors with the host's avatars once the panel opens", async () => {
     render(
       <Document
         initialContent={SOURCE}
@@ -228,8 +228,13 @@ describe("Document comments", () => {
         )}
       />
     );
+    const toggle = await screen.findByRole("button", { name: /^Comments/ });
 
-    expect(await screen.findByTestId("avatar:user:usr_daph:xxs")).toBeDefined();
+    expect(screen.queryByTestId("avatar:user:usr_daph:xxs")).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByTestId("avatar:user:usr_daph:xxs")).toBeDefined();
   });
 
   it("shows the commenting user with the host's avatar in a new comment", async () => {

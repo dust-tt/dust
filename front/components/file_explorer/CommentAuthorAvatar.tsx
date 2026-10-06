@@ -4,6 +4,7 @@ import {
   useMemberDetails,
   useUnifiedAgentConfigurations,
 } from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar } from "@dust-tt/sparkle";
 
@@ -14,7 +15,7 @@ interface AuthorAvatarProps {
 }
 
 const UserAuthorAvatar = ({ owner, author, size }: AuthorAvatarProps) => {
-  const { userDetails } = useMemberDetails({
+  const { userDetails, isMembersLoading } = useMemberDetails({
     workspaceId: owner.sId,
     userIds: [author.id],
   });
@@ -25,17 +26,43 @@ const UserAuthorAvatar = ({ owner, author, size }: AuthorAvatarProps) => {
       isRounded
       name={author.name}
       visual={userDetails?.image ?? undefined}
+      busy={isMembersLoading}
     />
   );
 };
 
+// One index per fetched agent list, shared by every avatar rendering from it.
+const agentPictureIndexes = new WeakMap<
+  LightAgentConfigurationType[],
+  Map<string, string>
+>();
+
+const agentPictureUrl = (
+  agents: LightAgentConfigurationType[],
+  agentId: string
+) => {
+  let index = agentPictureIndexes.get(agents);
+  if (!index) {
+    index = new Map(agents.map(({ sId, pictureUrl }) => [sId, pictureUrl]));
+    agentPictureIndexes.set(agents, index);
+  }
+  return index.get(agentId);
+};
+
 const AgentAuthorAvatar = ({ owner, author, size }: AuthorAvatarProps) => {
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
+  const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
-  const agent = agentConfigurations.find(({ sId }) => sId === author.id);
+  const pictureUrl = agentPictureUrl(agentConfigurations, author.id);
 
-  return <Avatar size={size} name={author.name} visual={agent?.pictureUrl} />;
+  return (
+    <Avatar
+      size={size}
+      name={author.name}
+      visual={pictureUrl}
+      busy={isLoading && pictureUrl === undefined}
+    />
+  );
 };
 
 /**
@@ -43,6 +70,7 @@ const AgentAuthorAvatar = ({ owner, author, size }: AuthorAvatarProps) => {
  * A user author MUST show their workspace profile picture and an agent author the picture of
  * an agent the viewer can list. An author whose picture cannot be resolved, such as a former
  * member or an agent hidden from the viewer, MUST show their initials from the comment's name.
+ * While the picture is still loading, the avatar MUST show as busy.
  */
 export const CommentAuthorAvatar = (props: AuthorAvatarProps) =>
   props.author.kind === "user" ? (

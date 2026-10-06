@@ -365,6 +365,12 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * move to a neighbouring thread or to the panel heading. Opening or closing the panel MUST NOT
  * change the document.
  */
+/**
+ * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars
+ * The host's `renderAuthorAvatar` MUST be called only while the panel is open, so avatars that
+ * load data do not load it for a panel the user has not opened. A closed panel MUST show
+ * initials.
+ */
 export const DocumentCommentsPanel = ({
   id,
   comments,
@@ -391,6 +397,8 @@ export const DocumentCommentsPanel = ({
     submitDraft,
     cancelDraft,
   } = comments;
+  // Host avatars may fetch, so they mount only while the panel shows.
+  const renderVisibleAvatar = panelOpen ? renderAuthorAvatar : undefined;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const threadElements = useRef(new Map<string, HTMLElement>());
   const order = new Map(
@@ -444,7 +452,7 @@ export const DocumentCommentsPanel = ({
             threadElements.current.delete(comment.id);
           }
         }}
-        renderAuthorAvatar={renderAuthorAvatar}
+        renderAuthorAvatar={renderVisibleAvatar}
         mountPortalContainer={mountPortalContainer}
       />
     );
@@ -513,7 +521,7 @@ export const DocumentCommentsPanel = ({
         {draft && author && (
           <DraftCard
             author={author}
-            renderAuthorAvatar={renderAuthorAvatar}
+            renderAuthorAvatar={renderVisibleAvatar}
             quote={draftQuote}
             visible={panelOpen}
             onSubmit={submitDraft}
