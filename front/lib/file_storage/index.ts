@@ -69,7 +69,7 @@ function isRetryableGCSError(err: unknown): boolean {
  * Retry an operation that fails with a transient GCS error ("socket hang up"
  * and other errors the SDK considers retryable).
  *
- * Needed for streamed uploads, which bypass the SDK's built-in retryOptions.
+ * Needed for non-resumable streamed uploads, which bypass the SDK's built-in retryOptions.
  * Only use when the operation can safely be re-run from scratch (e.g. the
  * source stream can be re-created on each attempt).
  */
@@ -113,8 +113,9 @@ export async function withRetryOnTransientGCSError<T>(
 /**
  * @cc [owner:philipperolet,label:performance] sdk-retries-reads
  * A transient GCS error (e.g. "socket hang up") that occurs before GCS responds to a read
- * (download, metadata, read stream) MUST be retried by the SDK, including when the read happens
- * during or after a write without a precondition on the same `Storage` client.
+ * (download, metadata, read stream) MUST be retried by the SDK (up to `GCS_MAX_RETRIES` times),
+ * including when the read happens during or after a write without a precondition on this class's
+ * `Storage` client.
  */
 export class FileStorage {
   private readonly bucket: Bucket;
