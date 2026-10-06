@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.122";
+const DUST_BASE_IMAGE_VERSION = "0.8.123";
 const DSBX_CLI_VERSION = "0.1.67";
 // SHA-256 of dsbx-linux-x86_64 at DSBX_CLI_VERSION, printed in the release body.
 // Bump it with the version.
