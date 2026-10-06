@@ -1,4 +1,4 @@
-import { validateCommentThread } from "@app/components/editor/document/dfm_persistence";
+import { isWritableThread } from "@app/components/editor/document/dfm_persistence";
 import type { DocumentCommentDraft } from "@app/components/editor/document/DocumentComments";
 import {
   documentCommentsPluginKey,
@@ -65,7 +65,7 @@ const UNAVAILABLE_MESSAGE = "Commenting is unavailable.";
 const UNANCHORED_MESSAGE =
   "The selected text can no longer take a comment. Select other text to comment.";
 const UNSAVABLE_MESSAGE =
-  "The document could not be saved with this comment. Try a shorter one.";
+  "This comment can't be saved in this document. Try shortening or simplifying it.";
 
 const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
   a?.author.kind === b?.author.kind &&
@@ -217,7 +217,7 @@ export const useDocumentComments = ({
 
   /**
    * The message to add to `thread`, or to a new thread `commentId`: checked against the codec
-   * locally first, then written by the server when a signer is set.
+   * locally first, then written by the server when a signer is set and checked again as written.
    */
   const writeMessage = async (
     writer: DfmAuthor,
@@ -225,22 +225,26 @@ export const useDocumentComments = ({
     thread: DfmComment | undefined,
     body: string
   ): Promise<Result<DfmMessage, string>> => {
+    const withMessage = (added: DfmMessage): DfmComment =>
+      thread
+        ? { ...thread, messages: [...thread.messages, added] }
+        : { id: commentId, status: "open", messages: [added] };
     const local: DfmMessage = {
       author: writer,
       createdAt: new Date().toISOString(),
       body,
     };
-    const writable = validateCommentThread(
-      thread
-        ? { ...thread, messages: [...thread.messages, local] }
-        : { id: commentId, status: "open", messages: [local] }
-    );
-    if (writable.isErr()) {
-      return writable;
+    if (!isWritableThread(withMessage(local))) {
+      return new Err(UNSAVABLE_MESSAGE);
     }
-    return sign
-      ? sign(commentId, thread?.messages.at(-1) ?? null, body)
-      : new Ok(local);
+    if (!sign) {
+      return new Ok(local);
+    }
+    const signed = await sign(commentId, thread?.messages.at(-1) ?? null, body);
+    if (signed.isOk() && !isWritableThread(withMessage(signed.value))) {
+      return new Err(UNSAVABLE_MESSAGE);
+    }
+    return signed;
   };
 
   return {

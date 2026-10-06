@@ -1,7 +1,7 @@
 import {
   loadDfm,
   saveDfm,
-  validateCommentThread,
+  isWritableThread,
 } from "@app/components/editor/document/dfm_persistence";
 import {
   getDocumentJSONComments,
@@ -448,9 +448,9 @@ describe("saveDfm", () => {
   });
 });
 
-describe("validateCommentThread", () => {
+describe("isWritableThread", () => {
   it("accepts a thread the codec can write", () => {
-    expect(validateCommentThread(COMMENT).isOk()).toBe(true);
+    expect(isWritableThread(COMMENT)).toBe(true);
   });
 
   it.each([
@@ -462,6 +462,6 @@ describe("validateCommentThread", () => {
       messages: [{ ...COMMENT.messages[0], body }],
     };
 
-    expect(validateCommentThread(thread).isErr()).toBe(true);
+    expect(isWritableThread(thread)).toBe(false);
   });
 });
