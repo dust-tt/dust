@@ -133,6 +133,7 @@
     "archiver": "^8.0.0",
     "cheerio": "^1.0.0-rc.12",
     "class-variance-authority": "^0.7.0",
+    "cldr-core": "^48.2.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "contentful": "^11.9.0",

@@ -35,6 +35,7 @@
     "@lingui/react": "6.4.0",
     "@novu/framework": "^2.11.1",
     "archiver": "^8.0.0",
+    "cldr-core": "^48.2.0",
     "date-fns": "^4.1.0",
     "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.0",

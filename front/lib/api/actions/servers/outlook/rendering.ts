@@ -2,15 +2,35 @@ import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_
 import { isValidTimezone } from "@app/lib/api/timezone";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { tz } from "@date-fns/tz";
+import windowsZones from "cldr-core/supplemental/windowsZones.json";
 import { format, parseISO } from "date-fns";
 
-// Falls back to UTC rather than throwing, so one malformed timezone from an
-// external source doesn't fail the whole event render. Outlook mailbox
-// settings commonly return non-IANA (Windows-style) names, so this is an
-// expected, high-frequency case, not worth logging per event.
+// CLDR's "001" territory row holds the default IANA zone for each Windows zone.
+const IANA_TIME_ZONE_BY_WINDOWS_NAME = new Map(
+  windowsZones.supplemental.windowsZones.mapTimezones
+    .filter(({ mapZone }) => mapZone._territory === "001")
+    .map(({ mapZone }) => [mapZone._other, mapZone._type])
+);
+
+// Outlook mailbox settings and the events fetched with them use Windows names,
+// which Intl (and so date-fns) does not understand.
+/**
+ * @cc [owner:avervaet,label:product] windows-zones-resolve-to-iana
+ * A Windows time zone name (e.g. "Romance Standard Time") MUST resolve to its
+ * CLDR default IANA zone (e.g. "Europe/Paris"), never to UTC.
+ */
+/**
+ * @cc [owner:avervaet,label:error-handling] unknown-zones-fall-back-to-utc
+ * A time zone that is neither a valid IANA name nor a known Windows name MUST
+ * resolve to "UTC" rather than throw.
+ */
 function resolveTimeZone(timeZone: string): string {
   if (isValidTimezone(timeZone)) {
     return timeZone;
+  }
+  const ianaTimeZone = IANA_TIME_ZONE_BY_WINDOWS_NAME.get(timeZone);
+  if (ianaTimeZone && isValidTimezone(ianaTimeZone)) {
+    return ianaTimeZone;
   }
   return "UTC";
 }
