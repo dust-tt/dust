@@ -60,7 +60,10 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
-import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  MCPOAuthProviderError,
+  decideMCPAuthFailureAction,
+} from "@app/lib/actions/mcp_oauth_provider";
 import {
   classifyToolAbortSignal,
   isToolInterruptionError,
@@ -374,6 +377,74 @@ export async function runToolCallWithDetachedSignal<T>(
   } finally {
     compositeSignal.removeEventListener("abort", onAbort);
   }
+}
+
+type HandleMCPToolCallAuthErrorParams = {
+  error: MCPOAuthProviderError;
+  toolConfiguration: ServerSideMCPToolConfigurationType;
+  toolLogContext: Record<string, unknown>;
+};
+
+/**
+ * Turns a 401/403 from a tool call into an upscope request or a refusal. Returns null when the
+ * server view has no OAuth authorization, so the caller falls back to the generic tool error.
+ */
+async function handleMCPToolCallAuthError(
+  auth: Authenticator,
+  { error, toolConfiguration, toolLogContext }: HandleMCPToolCallAuthErrorParams
+): Promise<CallToolResult | null> {
+  const mcpServerView = await MCPServerViewResource.fetchById(
+    auth,
+    toolConfiguration.mcpServerViewId,
+    { includeHeavyAttributes: ["authorization"] }
+  );
+  const authorization = mcpServerView?.getAuthorization();
+  if (!mcpServerView || !authorization) {
+    return null;
+  }
+
+  const action = decideMCPAuthFailureAction(error, authorization.scope);
+  if (action.kind === "refused") {
+    logger.warn(
+      { ...toolLogContext, authChallenge: error.challenge },
+      "MCP tool call refused with 403, not asking for re-authentication"
+    );
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text:
+            `The server refused ${toolConfiguration.originalName} (403 Forbidden): the ` +
+            "connected account is missing a required scope or lacks permission for this " +
+            "action. Re-authenticating will not fix this.",
+        },
+      ],
+    };
+  }
+
+  // Invalidate the cached access token so the next connection attempt
+  // fetches a fresh token after the user re-authenticates.
+  const connectionType =
+    mcpServerView.oAuthUseCase === "personal_actions"
+      ? "personal"
+      : "workspace";
+  const connection = await MCPServerConnectionResource.findByMCPServer(auth, {
+    mcpServerId: mcpServerView.mcpServerId,
+    connectionType,
+  });
+  if (connection.isOk() && connection.value.connectionId) {
+    invalidateOAuthConnectionAccessTokenCache(connection.value.connectionId);
+  }
+
+  return {
+    // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
+    isError: false,
+    content: makePersonalAuthenticationError(
+      authorization.provider,
+      action.scope
+    ).content,
+  };
 }
 
 /**
@@ -750,56 +821,28 @@ export async function* tryCallMCPTool(
       }
     }
 
+    const isOAuthError = error instanceof MCPOAuthProviderError;
     logger.error(
-      { error, ...toolLogContext },
+      {
+        error,
+        ...toolLogContext,
+        authChallenge: isOAuthError ? error.challenge : undefined,
+      },
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    // When the MCP SDK receives a 401/403 from the remote server during a
-    // tool call (e.g., StreamableHTTP where each call is a separate HTTP
-    // request), it calls unimplemented methods on MCPOAuthProvider which
-    // throw MCPOAuthProviderError. Trigger re-authentication.
-    if (
-      error instanceof MCPOAuthProviderError &&
-      isServerSideMCPToolConfiguration(toolConfiguration)
-    ) {
-      const mcpServerView = await MCPServerViewResource.fetchById(
-        auth,
-        toolConfiguration.mcpServerViewId,
-        { includeHeavyAttributes: ["authorization"] }
-      );
-      if (mcpServerView) {
-        const authorization = mcpServerView.getAuthorization();
-        if (authorization) {
-          // Invalidate the cached access token so the next connection attempt
-          // fetches a fresh token after the user re-authenticates.
-          const connectionType =
-            mcpServerView.oAuthUseCase === "personal_actions"
-              ? "personal"
-              : "workspace";
-          const connection = await MCPServerConnectionResource.findByMCPServer(
-            auth,
-            {
-              mcpServerId: mcpServerView.mcpServerId,
-              connectionType,
-            }
-          );
-          if (connection.isOk() && connection.value.connectionId) {
-            invalidateOAuthConnectionAccessTokenCache(
-              connection.value.connectionId
-            );
-          }
-
-          return {
-            // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
-            isError: false,
-            content: makePersonalAuthenticationError(
-              authorization.provider,
-              authorization.scope
-            ).content,
-          };
-        }
-      }
+    // On a 401/403 during a tool call, the MCP SDK calls unimplemented
+    // MCPOAuthProvider methods, which throw MCPOAuthProviderError.
+    const authErrorResult =
+      isOAuthError && isServerSideMCPToolConfiguration(toolConfiguration)
+        ? await handleMCPToolCallAuthError(auth, {
+            error,
+            toolConfiguration,
+            toolLogContext,
+          })
+        : null;
+    if (authErrorResult) {
+      return authErrorResult;
     }
 
     return {
