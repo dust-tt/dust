@@ -6,7 +6,10 @@ import {
 } from "@app/lib/api/co_edition/live_file";
 import { BODY_FRAGMENT_NAME } from "@app/lib/api/co_edition/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
+import {
+  WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  writeCanonicalFileContent,
+} from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -127,6 +130,19 @@ describe("openLiveFile and loadLiveDocument", () => {
     const path = await writeUserFile(auth, "notes.md", "# Notes\n");
     vi.spyOn(DustFileSystem.prototype, "stat").mockResolvedValue(
       new Ok({ contentType: "application/x-directory", sizeBytes: 0 })
+    );
+
+    expect((await openLiveFile(auth, path)).isErr()).toBe(true);
+  });
+
+  it("refuse a file larger than the file API can write", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    vi.spyOn(DustFileSystem.prototype, "stat").mockResolvedValue(
+      new Ok({
+        contentType: "text/markdown",
+        sizeBytes: WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES + 1,
+      })
     );
 
     expect((await openLiveFile(auth, path)).isErr()).toBe(true);
