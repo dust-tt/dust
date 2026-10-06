@@ -1,6 +1,22 @@
 {
   "babelrc": false,
-  "presets": ["@babel/preset-typescript"],
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "chrome": "85",
+          "edge": "85",
+          "firefox": "79",
+          "safari": "14",
+          "ios": "14"
+        },
+        "modules": false,
+        "bugfixes": true
+      }
+    ],
+    "@babel/preset-typescript"
+  ],
   "plugins": [
     [
       "@babel/plugin-transform-react-jsx",
