@@ -12,7 +12,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  withSpace({ requireCanRead: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", BulkActionsBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

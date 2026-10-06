@@ -60,7 +60,7 @@ const app = workspaceApp();
 app.patch(
   "/",
   validate("param", ParamsSchema),
-  withSpace({ requireCanRead: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", PatchProjectTaskBodySchema),
   async (ctx): HandlerResult<PatchProjectTaskResponseBody> => {
     const auth = ctx.get("auth");
@@ -163,7 +163,7 @@ app.patch(
 app.delete(
   "/",
   validate("param", ParamsSchema),
-  withSpace({ requireCanRead: true }),
+  withSpace({ requireCanWrite: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

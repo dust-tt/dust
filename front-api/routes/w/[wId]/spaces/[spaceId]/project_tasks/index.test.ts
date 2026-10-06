@@ -8,6 +8,7 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 }));
 
 import { Authenticator } from "@app/lib/auth";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -17,6 +18,36 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 import { honoApp } from "@front-api/app";
+
+function listTasks(workspace: { sId: string }, spaceId: string) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/spaces/${spaceId}/project_tasks`
+  );
+}
+
+function createTask(
+  workspace: { sId: string },
+  spaceId: string,
+  body: unknown
+) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/spaces/${spaceId}/project_tasks`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+// An open Pod (the workspace global group is attached as a viewer) that the caller can read but is
+// not a member of.
+async function setupOpenPodWithoutCallerMembership() {
+  const { workspace, user, globalGroup } = await createPrivateApiMockRequest();
+  const pod = await SpaceFactory.project(workspace);
+  await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+  return { workspace, user, pod };
+}
 
 function markRead(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(
@@ -40,6 +71,40 @@ function startTask(
     }
   );
 }
+
+describe("POST /api/w/:wId/spaces/:spaceId/project_tasks", () => {
+  it("creates a task for a Pod member", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest();
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    const response = await createTask(workspace, project.sId, {
+      text: "Write the release notes",
+    });
+
+    expect(response.status).toBe(201);
+    const { task } = await response.json();
+    expect(task.text).toBe("Write the release notes");
+  });
+
+  it("rejects a non-member of an open Pod, who can still list its tasks", async () => {
+    const { workspace, pod } = await setupOpenPodWithoutCallerMembership();
+
+    const listResponse = await listTasks(workspace, pod.sId);
+    expect(listResponse.status).toBe(200);
+
+    const response = await createTask(workspace, pod.sId, {
+      text: "Injected task",
+    });
+
+    expect(response.status).toBe(404);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const tasks = await ProjectTaskResource.fetchBySpace(auth, {
+      spaceId: pod.id,
+      timeScope: "all",
+    });
+    expect(tasks).toHaveLength(0);
+  });
+});
 
 describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/mark_read", () => {
   it("creates a state row on first call and returns success", async () => {
@@ -160,5 +225,22 @@ describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/:taskId/start", () => {
     const body = await response.json();
     expect(body.task.sId).toBe(todo.sId);
     expect(body.task.status).toBe("in_progress");
+  });
+
+  it("rejects a non-member of an open Pod without creating a conversation", async () => {
+    const { workspace, user, pod } =
+      await setupOpenPodWithoutCallerMembership();
+    const todo = await ProjectTaskFactory.create(workspace, pod, {
+      userId: user.id,
+      text: "Prepare launch checklist",
+    });
+
+    const response = await startTask(workspace, pod.sId, todo.sId);
+
+    expect(response.status).toBe(404);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const refreshed = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+    expect(refreshed?.status).toBe("todo");
+    expect(await refreshed?.getLatestConversationId(auth)).toBeNull();
   });
 });
