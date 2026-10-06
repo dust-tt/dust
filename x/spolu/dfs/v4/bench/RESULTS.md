@@ -1,7 +1,9 @@
 # Benchmark results — dfs v4 localhost
 
-2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
+Full-suite baseline: 2026-10-06, source `c1784434e9`. **All 24 checks passed**, including every-file SHA-256
 in both first and warm passes. Untar and all subsequent phases recorded zero writeback failures.
+The later [directory absence cache](#directory-absence-cache) run measures untar only; the full
+baseline table remains below.
 
 ## Configuration and method
 
@@ -64,6 +66,46 @@ server persistence stage. Drain can exceed W because server/network time is excl
 | write        | unlink (32 files)                              | once  |     25.93 | OK     |
 +--------------+------------------------------------------------+-------+-----------+--------+
 ```
+
+## Directory absence cache
+
+2026-10-06, source `427d20bce0`. Same local fixture, corpus, deep path, cache settings and profiling;
+the server binary is unchanged. One focused untar run, not a rerun of the full read suite.
+After drain, a fresh server and mount verified the manifest and all 10,000 persisted file sizes and
+SHA-256 hashes outside the timed run. Unit, real FDB integration, and mounted filesystem tests passed.
+
+| Measurement | Baseline `c1784434e9` | Absence cache `427d20bce0` |
+| --- | ---: | ---: |
+| Untar (s) | 39.053 | 24.625 |
+| Remaining client drain (s) | 1.801 | 3.540 |
+| Untar + remaining drain (s) | 40.854 | 28.165 |
+| Lookup RPCs | 10,233 | 347 |
+| Cumulative Lookup RPC elapsed (s) | 14.180 | 0.676 |
+| Mutation batch RPCs | 5,239 | 1,195 |
+| Mutation groups | 10,192 | 10,140 |
+| FUSE CPU (s) | 6.120 | 5.100 |
+| DFS CPU, including drain (s) | 14.170 | 11.430 |
+
+Untar is **37% faster**; including the remaining drain, **31% faster**. Lookup RPC count falls **97%**.
+The client answered 19,578 missing-name checks from directory coverage, including repeated checks
+for the same name. Fresh directory ranges and newly created directories now avoid those RPCs while
+keeping the original one-second expiry. Local edits exclude touched names without discarding the
+rest of the range. Each mutation group still commits independently in FDB.
+
+Both runs issued **zero fsync/fsyncdir calls** during untar. Their 10,001 FUSE flush callbacks are
+close notifications, not publication barriers. The new run had zero writeback failures; the 313
+Lookup errors were expected `NotFound` responses. Unmount including drain took 3.695s. Elapsed RPC
+and CPU measurements overlap; they do not sum to wall time. Admission-wait durations remain unmeasured.
+
+Reproduce the focused run:
+
+```sh
+v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=427d20bce0 python3 /dfs/v4/bench/run.py --untar-only
+```
+
+Report: `/tmp/dfs-v4-427d20bce0-absence/run.json` inside `dfs-v4-dev-1`.
+FUSE binary SHA-256: `aa5ca5e4b6feb2ba0524bc4d8c710d6d2233f75f7e0f061b200c7a9c8a1dd5d1`.
+The manifest and server binary hashes match the baseline below.
 
 ## Comparison with v3
 
