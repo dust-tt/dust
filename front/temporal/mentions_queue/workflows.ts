@@ -1,7 +1,6 @@
 import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/mentions_queue/activities";
-import { CONVERSATION_BUSY_FAILURE_TYPE } from "@app/temporal/mentions_queue/config";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   ActivityFailure,
@@ -9,6 +8,8 @@ import {
   proxyActivities,
   sleep,
 } from "@temporalio/workflow";
+
+import { CONVERSATION_BUSY_FAILURE_TYPE } from "./config";
 
 const { handleMentionsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
