@@ -5233,6 +5233,208 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10045,
+    name: "Superhuman Docs (Coda)",
+    description:
+      "Superhuman Docs (Coda) tools for searching, reading and editing docs, pages, tables, comments and formulas.",
+    url: "https://docs.superhuman.com/apis/mcp",
+    icon: "SuperhumanLogo",
+    documentationUrl:
+      "https://help.superhuman.com/hc/en-us/articles/46210076980365-Connect-to-the-Superhuman-Docs-MCP",
+    connectionInstructions:
+      "Superhuman Docs (Coda) uses OAuth with dynamic client registration. Sign in with your Superhuman or Coda account to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      content_read: "never_ask",
+      document_outline: "never_ask",
+      control_read: "never_ask",
+      formula_execute: "never_ask",
+      name_match: "never_ask",
+      page_describe: "never_ask",
+      table_columns_read: "never_ask",
+      table_rows_read: "never_ask",
+      tool_guide: "never_ask",
+      url_convert: "never_ask",
+      whoami: "never_ask",
+      notifications_list: "never_ask",
+      search: "never_ask",
+      comment_add: "high",
+      comment_delete: "high",
+      comment_resolve: "high",
+      content_image_upload: "high",
+      content_modify: "high",
+      document_suggest_changes: "high",
+      control_delete: "high",
+      control_manage: "high",
+      page_create: "high",
+      page_delete: "high",
+      page_update: "high",
+      table_columns_manage: "high",
+      table_create: "high",
+      table_delete: "high",
+      table_columns_delete: "high",
+      table_rows_delete: "high",
+      table_rows_manage: "high",
+      table_view_delete: "high",
+      table_view_manage: "high",
+      content_duplicate: "high",
+      document_create: "high",
+      document_delete: "high",
+      document_manage: "high",
+      notifications_mark_read: "high",
+    },
+    toolDisplayLabels: {
+      content_read: {
+        running: "Reading content on Superhuman Docs",
+        done: "Read content on Superhuman Docs",
+      },
+      document_outline: {
+        running: "Loading a doc outline from Superhuman Docs",
+        done: "Loaded a doc outline from Superhuman Docs",
+      },
+      control_read: {
+        running: "Reading a control on Superhuman Docs",
+        done: "Read a control on Superhuman Docs",
+      },
+      formula_execute: {
+        running: "Running a formula on Superhuman Docs",
+        done: "Ran a formula on Superhuman Docs",
+      },
+      name_match: {
+        running: "Matching names on Superhuman Docs",
+        done: "Matched names on Superhuman Docs",
+      },
+      page_describe: {
+        running: "Describing a page on Superhuman Docs",
+        done: "Described a page on Superhuman Docs",
+      },
+      table_columns_read: {
+        running: "Reading table columns on Superhuman Docs",
+        done: "Read table columns on Superhuman Docs",
+      },
+      table_rows_read: {
+        running: "Reading table rows on Superhuman Docs",
+        done: "Read table rows on Superhuman Docs",
+      },
+      tool_guide: {
+        running: "Loading a tool guide from Superhuman Docs",
+        done: "Loaded a tool guide from Superhuman Docs",
+      },
+      url_convert: {
+        running: "Converting a URL on Superhuman Docs",
+        done: "Converted a URL on Superhuman Docs",
+      },
+      whoami: {
+        running: "Checking the current user on Superhuman Docs",
+        done: "Checked the current user on Superhuman Docs",
+      },
+      notifications_list: {
+        running: "Listing notifications on Superhuman Docs",
+        done: "Listed notifications on Superhuman Docs",
+      },
+      search: {
+        running: "Searching Superhuman Docs",
+        done: "Searched Superhuman Docs",
+      },
+      comment_add: {
+        running: "Adding a comment on Superhuman Docs",
+        done: "Added a comment on Superhuman Docs",
+      },
+      comment_delete: {
+        running: "Deleting a comment on Superhuman Docs",
+        done: "Deleted a comment on Superhuman Docs",
+      },
+      comment_resolve: {
+        running: "Updating a comment thread on Superhuman Docs",
+        done: "Updated a comment thread on Superhuman Docs",
+      },
+      content_image_upload: {
+        running: "Uploading an image to Superhuman Docs",
+        done: "Uploaded an image to Superhuman Docs",
+      },
+      content_modify: {
+        running: "Modifying content on Superhuman Docs",
+        done: "Modified content on Superhuman Docs",
+      },
+      document_suggest_changes: {
+        running: "Suggesting changes on Superhuman Docs",
+        done: "Suggested changes on Superhuman Docs",
+      },
+      control_delete: {
+        running: "Deleting a control on Superhuman Docs",
+        done: "Deleted a control on Superhuman Docs",
+      },
+      control_manage: {
+        running: "Managing a control on Superhuman Docs",
+        done: "Managed a control on Superhuman Docs",
+      },
+      page_create: {
+        running: "Creating a page on Superhuman Docs",
+        done: "Created a page on Superhuman Docs",
+      },
+      page_delete: {
+        running: "Deleting a page on Superhuman Docs",
+        done: "Deleted a page on Superhuman Docs",
+      },
+      page_update: {
+        running: "Updating a page on Superhuman Docs",
+        done: "Updated a page on Superhuman Docs",
+      },
+      table_columns_manage: {
+        running: "Managing table columns on Superhuman Docs",
+        done: "Managed table columns on Superhuman Docs",
+      },
+      table_create: {
+        running: "Creating a table on Superhuman Docs",
+        done: "Created a table on Superhuman Docs",
+      },
+      table_delete: {
+        running: "Deleting a table on Superhuman Docs",
+        done: "Deleted a table on Superhuman Docs",
+      },
+      table_columns_delete: {
+        running: "Deleting table columns on Superhuman Docs",
+        done: "Deleted table columns on Superhuman Docs",
+      },
+      table_rows_delete: {
+        running: "Deleting table rows on Superhuman Docs",
+        done: "Deleted table rows on Superhuman Docs",
+      },
+      table_rows_manage: {
+        running: "Managing table rows on Superhuman Docs",
+        done: "Managed table rows on Superhuman Docs",
+      },
+      table_view_delete: {
+        running: "Deleting a table view on Superhuman Docs",
+        done: "Deleted a table view on Superhuman Docs",
+      },
+      table_view_manage: {
+        running: "Managing a table view on Superhuman Docs",
+        done: "Managed a table view on Superhuman Docs",
+      },
+      content_duplicate: {
+        running: "Duplicating content on Superhuman Docs",
+        done: "Duplicated content on Superhuman Docs",
+      },
+      document_create: {
+        running: "Creating a doc on Superhuman Docs",
+        done: "Created a doc on Superhuman Docs",
+      },
+      document_delete: {
+        running: "Deleting a doc on Superhuman Docs",
+        done: "Deleted a doc on Superhuman Docs",
+      },
+      document_manage: {
+        running: "Managing doc access on Superhuman Docs",
+        done: "Managed doc access on Superhuman Docs",
+      },
+      notifications_mark_read: {
+        running: "Marking notifications as read on Superhuman Docs",
+        done: "Marked notifications as read on Superhuman Docs",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

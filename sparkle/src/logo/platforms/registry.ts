@@ -103,6 +103,7 @@ import StackOneLogo from "./StackOne";
 import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
+import SuperhumanLogo from "./Superhuman";
 import TableLogo from "./Table";
 import TemporalLogo from "./Temporal";
 import ThinkingMachinesLogo from "./ThinkingMachines";
@@ -227,6 +228,7 @@ export const PLATFORM_LOGOS = {
   StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
+  SuperhumanLogo,
   TableLogo,
   TemporalLogo,
   ThinkingMachinesLogo,
