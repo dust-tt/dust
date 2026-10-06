@@ -1,6 +1,9 @@
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -48,46 +51,6 @@ import type {
  * - Authorization: https://<account>.snowflakecomputing.com/oauth/authorize
  * - Token: https://<account>.snowflakecomputing.com/oauth/token-request
  */
-
-/**
- * Helper to fetch the workspace OAuth connection for an MCP server.
- * Used to get credentials from an existing admin-configured connection.
- */
-async function getWorkspaceConnectionForMCPServer(
-  auth: Authenticator,
-  mcpServerId: string
-): Promise<Result<OAuthConnectionType, OAuthError>> {
-  const oauthConnectionIdRes = await getWorkspaceOAuthConnectionIdForMCPServer(
-    auth,
-    mcpServerId
-  );
-  if (oauthConnectionIdRes.isErr()) {
-    return new Err({
-      code: "credential_retrieval_failed",
-      message:
-        oauthConnectionIdRes.error.kind === "oauth_not_configured"
-          ? "Workspace Snowflake MCP connection is not configured for OAuth. " +
-            "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server."
-          : oauthConnectionIdRes.error.message,
-    });
-  }
-
-  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-  const connectionRes = await oauthApi.getAccessToken({
-    connectionId: oauthConnectionIdRes.value,
-  });
-
-  if (connectionRes.isErr()) {
-    return new Err({
-      code: "credential_retrieval_failed",
-      message:
-        "Failed to get connection metadata: " + connectionRes.error.message,
-      oAuthAPIError: connectionRes.error,
-    });
-  }
-
-  return new Ok(connectionRes.value.connection);
-}
 
 export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   requiresWorkspaceConnectionForPersonalAuth = true;
@@ -152,8 +115,12 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
    */
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // For personal actions, an mcp_server_id means the admin already setup the connection.
-      if (useCase === "personal_actions" && extraConfig.mcp_server_id) {
+      // An mcp_server_id without a typed account means reusing the workspace connection
+      // (personal connection or admin Refresh).
+      if (
+        extraConfig.mcp_server_id &&
+        extraConfig.snowflake_account === undefined
+      ) {
         return true;
       }
       // Admin setup - requires full credentials including default role and warehouse
@@ -188,29 +155,42 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<Result<RelatedCredential, OAuthError>> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin). Admin setup (platform_actions) carries the full
-      // credentials, even though the connect dialog also sends mcp_server_id.
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // For personal/platform actions we reuse the existing connection credential id from the
+      // existing workspace connection (setup by admin) if we have it, otherwise we fallback to
+      // assuming we have client_secret (initial admin setup).
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
-        const connectionResult = await getWorkspaceConnectionForMCPServer(
+        const connectionResult = await getWorkspaceOAuthConnectionForMCPServer(
           auth,
           mcp_server_id
         );
 
-        if (connectionResult.isErr()) {
-          return connectionResult;
+        if (connectionResult.isOk()) {
+          return new Ok({
+            content: {
+              from_connection_id: connectionResult.value.connection_id,
+            },
+            metadata: { workspace_id: workspaceId, user_id: userId },
+            redirectUri: connectionResult.value.redirect_uri,
+          });
         }
-
-        return new Ok({
-          content: {
-            from_connection_id: connectionResult.value.connection_id,
-          },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-          redirectUri: connectionResult.value.redirect_uri,
-        });
+        const { error } = connectionResult;
+        if (!shouldFallThroughPlatformWorkspaceReuse({ useCase, error })) {
+          return new Err({
+            code: "credential_retrieval_failed",
+            message:
+              error.kind === "oauth_not_configured"
+                ? "Workspace Snowflake MCP connection is not configured for OAuth. " +
+                  "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server."
+                : error.message,
+            ...(error.kind === "oauth_metadata_failed" && {
+              oAuthAPIError: error.oAuthAPIError,
+            }),
+          });
+        }
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 
@@ -249,6 +229,12 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     });
   }
 
+  /**
+   * @cc [owner:philipperolet,label:security] reuse-workspace-connection-settings
+   * When the workspace connection exists for `mcp_server_id`, `client_id`, `snowflake_account` and
+   * `snowflake_warehouse` MUST come from that connection, never from the caller, since its client
+   * secret is reused. Only `snowflake_role` MAY be overridden by the caller.
+   */
   async getUpdatedExtraConfig(
     auth: Authenticator,
     {
@@ -259,60 +245,67 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_secret (initial admin setup).
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // For personal/platform actions we reuse the existing connection credential id from the
+      // existing workspace connection (setup by admin) if we have it, otherwise we fallback to
+      // assuming we have client_secret (initial admin setup).
       const { mcp_server_id, snowflake_role: userRole } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
-        const connectionResult = await getWorkspaceConnectionForMCPServer(
+        const connectionResult = await getWorkspaceOAuthConnectionForMCPServer(
           auth,
           mcp_server_id
         );
 
-        if (connectionResult.isErr()) {
-          throw new Error(connectionResult.error.message);
-        }
+        if (connectionResult.isOk()) {
+          const {
+            client_id: wsClientId,
+            snowflake_account: wsAccount,
+            snowflake_role: wsRole,
+            snowflake_warehouse: wsWarehouse,
+          } = connectionResult.value.metadata;
 
-        const {
-          client_id: wsClientId,
-          snowflake_account: wsAccount,
-          snowflake_role: wsRole,
-          snowflake_warehouse: wsWarehouse,
-        } = connectionResult.value.metadata;
-
-        if (
-          !isString(wsClientId) ||
-          !isString(wsAccount) ||
-          !isString(wsRole) ||
-          !isString(wsWarehouse)
-        ) {
-          throw new Error(
-            "Workspace connection is missing required Snowflake configuration. " +
-              "Please ask an admin to reconfigure the MCP server connection."
-          );
-        }
-
-        // Use user-provided role if specified, otherwise use the default from workspace connection.
-        let role = wsRole;
-        const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
-        if (trimmedUserRole) {
-          if (!isValidSnowflakeRole(trimmedUserRole)) {
+          if (
+            !isString(wsClientId) ||
+            !isString(wsAccount) ||
+            !isString(wsRole) ||
+            !isString(wsWarehouse)
+          ) {
             throw new Error(
-              `Invalid Snowflake role format: "${trimmedUserRole}". ` +
-                "Role must be non-empty and at most 255 characters."
+              "Workspace connection is missing required Snowflake configuration. " +
+                "Please ask an admin to reconfigure the MCP server connection."
             );
           }
-          role = trimmedUserRole;
-        }
 
-        return {
-          client_id: wsClientId,
-          snowflake_account: wsAccount,
-          snowflake_role: role,
-          snowflake_warehouse: wsWarehouse,
-        };
+          // Use user-provided role if specified, otherwise use the default from workspace connection.
+          let role = wsRole;
+          const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
+          if (trimmedUserRole) {
+            if (!isValidSnowflakeRole(trimmedUserRole)) {
+              throw new Error(
+                `Invalid Snowflake role format: "${trimmedUserRole}". ` +
+                  "Role must be non-empty and at most 255 characters."
+              );
+            }
+            role = trimmedUserRole;
+          }
+
+          return {
+            client_id: wsClientId,
+            snowflake_account: wsAccount,
+            snowflake_role: role,
+            snowflake_warehouse: wsWarehouse,
+          };
+        }
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: connectionResult.error,
+          })
+        ) {
+          throw new Error(connectionResult.error.message);
+        }
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 
