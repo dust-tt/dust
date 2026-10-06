@@ -18,23 +18,20 @@ import {
   useSendApiErrorNotification,
   useSendNotification,
 } from "@app/hooks/useNotification";
+import { useSearchMembersByEmails } from "@app/hooks/useSearchMembersByEmails";
 import type {
   SeatBillingFrequency,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
-import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { getPriceAsString } from "@app/lib/client/subscription";
-import { clientFetch } from "@app/lib/egress/client";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatList } from "@app/lib/i18n/format";
 import {
   mutateWorkspaceInvitations,
   sendInvitations,
 } from "@app/lib/invitations";
-import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
@@ -59,7 +56,6 @@ import {
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
-import chunk from "lodash/chunk";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
@@ -170,6 +166,7 @@ export function InviteEmailButtonWithModal({
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
+  const searchMembersByEmails = useSearchMembersByEmails({ owner });
 
   const { seatPlans, isSeatPlanLoading } = useSeatPlan({
     workspaceId: owner.sId,
@@ -280,24 +277,12 @@ export function InviteEmailButtonWithModal({
       return;
     }
 
-    const existingMembersResponses: SearchMembersAdminResponseBody[] =
-      await concurrentExecutor(
-        chunk(inviteEmailsList, MAX_SEARCH_EMAILS),
-        async (emails) => {
-          const response = await clientFetch(
-            `/api/w/${owner.sId}/members/search?searchEmails=${encodeURIComponent(emails.join(","))}`
-          );
-          if (!response.ok) {
-            throw new Error("Failed to fetch member information");
-          }
-          return response.json();
-        },
-        { concurrency: 4 }
-      );
+    const foundMembers = await searchMembersByEmails(inviteEmailsList);
+    if (!foundMembers) {
+      return;
+    }
     const existingMembersByEmail = new Map(
-      existingMembersResponses
-        .flatMap((response) => response.members)
-        .map((m) => [m.email.toLowerCase(), m])
+      foundMembers.map((m) => [m.email.toLowerCase(), m])
     );
     const existingMembers = [...existingMembersByEmail.values()];
 
