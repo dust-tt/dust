@@ -12,6 +12,7 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
@@ -41,6 +42,12 @@ setupGlobalErrorHandler(logger);
 const port = config.getCollabServerPort();
 const hostname = config.getCollabServerHostname();
 
+/** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
+function refuse(documentName: string, reason: string): never {
+  logger.warn({ documentName, reason }, "Collab connection refused");
+  throw new Error(reason);
+}
+
 // Each document's Yjs state, kept across unloads so a reconnecting browser merges into the same
 // identities instead of a rebuilt copy. In memory only: durable storage comes with step 8.
 const storedStates = new Map<string, Uint8Array>();
@@ -51,25 +58,27 @@ const storedStates = new Map<string, Uint8Array>();
  * `no-parameter-mutation` limited to them: a hook MUST reject a connection or a load by throwing,
  * MUST make a connection read-only by setting `connectionConfig.readOnly`, and `onLoadDocument`
  * MUST destroy the document it was handed when the load fails, since Hocuspocus does not.
+ * Hocuspocus swallows what the hooks throw, so every refusal and failure MUST be logged first,
+ * without the token.
  */
 const hocuspocus = new Hocuspocus<LiveFile>({
   // Dev token: the user id. The document name carries the workspace and the file.
   async onAuthenticate({ documentName, token, connectionConfig }) {
     const parsed = parseLiveDocumentName(documentName);
     if (!parsed) {
-      throw new Error("Invalid document name.");
+      refuse(documentName, "Invalid document name.");
     }
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       token,
       parsed.workspaceId
     );
     if (!auth.isUser()) {
-      throw new Error("Not a member of this workspace.");
+      refuse(documentName, "Not a member of this workspace.");
     }
 
     const file = await openLiveFile(auth, parsed.canonicalPath);
     if (file.isErr()) {
-      throw new Error(file.error);
+      refuse(documentName, file.error);
     }
     connectionConfig.readOnly = !file.value.canWrite;
     return file.value;
@@ -82,20 +91,19 @@ const hocuspocus = new Hocuspocus<LiveFile>({
       return stored;
     }
 
-    // Cleans up after an Err as well as an unexpected exception.
-    let loaded: Y.Doc | undefined;
-    try {
-      const live = await loadLiveDocument(context);
-      if (live.isErr()) {
-        throw new Error(live.error);
-      }
-      loaded = live.value.doc;
-      return loaded;
-    } finally {
-      if (loaded === undefined) {
-        document.destroy();
-      }
+    const live = await loadLiveDocument(context).catch((err: unknown) => {
+      document.destroy();
+      logger.error(
+        { err: normalizeError(err), documentName },
+        "Collab document load failed"
+      );
+      throw err;
+    });
+    if (live.isErr()) {
+      document.destroy();
+      refuse(documentName, live.error);
     }
+    return live.value.doc;
   },
 
   async onStoreDocument({ documentName, document }) {
