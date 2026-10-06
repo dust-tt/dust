@@ -175,8 +175,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * For workspace admins, loaded targets MAY include agents or redacted skills the admin cannot
    * read. Callers MUST check `auth.can("read", target)` before exposing a target to a user, unless
    * a documented admin exception applies, such as [pinned-items-group-read].
-   * Skills MUST be readable and satisfy editor visibility unless bypassEditorVisibility is set
-   * for group pin management.
+   * Skills MUST be readable and satisfy editor visibility unless a workspace admin sets
+   * bypassEditorVisibility for group pin management. Non-admin bypass requests MUST throw.
    */
   /**
    * @cc [owner:aubin-tchoi,label:security;performance] discovery-target-authors
@@ -193,6 +193,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     skillsById: Map<string, SkillResource>;
     skillEditorsById: Map<string, UserResource[]>;
   }> {
+    if (bypassEditorVisibility && !auth.isAdmin()) {
+      throw new Error("Only admins can bypass editor visibility.");
+    }
+
     const agentIds = items
       .filter((item) => item.type === "agent")
       .map((item) => item.itemId);
@@ -343,7 +347,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       transaction,
     });
     const resolvedItems = await this.resolveTargets(auth, items, {
-      bypassEditorVisibility: true,
+      bypassEditorVisibility: auth.isAdmin(),
     });
     return omitPinsTheGroupCannotRead(
       auth,
@@ -427,7 +431,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
       auth,
       [item],
-      { bypassEditorVisibility: true }
+      { bypassEditorVisibility: auth.isAdmin() }
     );
     const target =
       item.type === "agent"
