@@ -2642,10 +2642,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * The ACLs a caller has to satisfy to hold a verb on this group, by kind:
-   * - regular_manual: read, write, admin and usage verbs for workspace admins and managers;
-   *   read for everyone else; instance grants add the group manager's verbs.
-   * - provisioned: read and usage verbs for workspace admins and managers; read for everyone
-   *   else; instance grants add only read and usage verbs. Membership belongs to directory sync.
+   * - regular_manual: read, write, admin, usage and analytics verbs for workspace admins and
+   *   managers; read for everyone else; instance grants add their verbs.
+   * - provisioned: read, usage and analytics verbs for workspace admins and managers; read for
+   *   everyone else; instance grants add their verbs except write and admin.
+   *   Membership belongs to directory sync.
    * - global: read for every workspace member. Membership is implicit.
    * - regular_auto: nothing. These groups only carry the membership of the resource
    *   they are linked to, so the permission is checked on that resource and never on the
@@ -2672,6 +2673,7 @@ export class GroupResource extends BaseResource<GroupModel> {
               "admin",
               "read_usage",
               "set_usage_limits",
+              "read_analytics",
             ],
           },
           {
@@ -2682,6 +2684,7 @@ export class GroupResource extends BaseResource<GroupModel> {
               "admin",
               "read_usage",
               "set_usage_limits",
+              "read_analytics",
             ],
           },
           { role: "user", permissions: ["read"] },
@@ -2698,11 +2701,21 @@ export class GroupResource extends BaseResource<GroupModel> {
         roleGrants = [
           {
             role: "admin",
-            permissions: ["read", "read_usage", "set_usage_limits"],
+            permissions: [
+              "read",
+              "read_usage",
+              "set_usage_limits",
+              "read_analytics",
+            ],
           },
           {
             role: "manager",
-            permissions: ["read", "read_usage", "set_usage_limits"],
+            permissions: [
+              "read",
+              "read_usage",
+              "set_usage_limits",
+              "read_analytics",
+            ],
           },
           { role: "user", permissions: ["read"] },
         ];

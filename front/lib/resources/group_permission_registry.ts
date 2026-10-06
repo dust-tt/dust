@@ -86,6 +86,11 @@ interface RoleDefinition {
  * email or by domain (see `checkFrameEmailGrantPermission`). A caller without it MUST only be able
  * to invite active workspace members.
  */
+/**
+ * @cc [owner:fabiencelier,label:security;product] group-read-analytics-verb
+ * `read_analytics` on a `group` means accessing and exporting the consumption analytics of that group's
+ * members.
+ */
 export const ROLE_REGISTRY: Record<
   ConcreteResourceType,
   Partial<Record<ConcreteGrantType, RoleDefinition>>
@@ -131,6 +136,7 @@ export const ROLE_REGISTRY: Record<
       verbs: ["read", "write", "read_usage", "set_usage_limits"],
       levels: ["instance"],
     },
+    analytics_reader: { verbs: ["read_analytics"], levels: ["instance"] },
   },
 };
 
