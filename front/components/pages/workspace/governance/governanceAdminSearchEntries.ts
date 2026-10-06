@@ -1,23 +1,14 @@
 import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
-import { CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL } from "@app/components/workspace/settings/ConversationExternalNotificationsToggle";
 import {
+  CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL,
   INACTIVE_AGENT_ARCHIVAL_LABEL,
-  INACTIVITY_THRESHOLD_LABEL,
-} from "@app/components/workspace/settings/InactiveAgentArchival";
-import { FRAME_SHARING_LABEL } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
-import { OPEN_PODS_LABEL } from "@app/components/workspace/settings/OpenPodsPolicy";
-import { POD_KNOWLEDGE_LABEL } from "@app/components/workspace/settings/PodKnowledgePolicy";
-import { PRIVATE_CONVERSATION_URLS_LABEL } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
-import {
-  ALLOW_SELF_IMPROVING_SKILLS_LABEL,
-  ENABLE_BATCH_PROCESSING_LABEL,
-  SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL,
-} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
-import { VOICE_TRANSCRIPTION_LABEL } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
-import { WORKSPACE_ANALYTICS_LABEL } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
-import { WORKSPACE_DEFAULT_AGENT_LABEL } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
-import { WORKSPACE_LOCALE_LABEL } from "@app/components/workspace/settings/WorkspaceLocalePicker";
-import { WORKSPACE_NAME_LABEL } from "@app/components/workspace/settings/WorkspaceNameEditor";
+  OPEN_PODS_LABEL,
+  POD_KNOWLEDGE_LABEL,
+  PRIVATE_CONVERSATION_URLS_LABEL,
+  VOICE_TRANSCRIPTION_LABEL,
+  WORKSPACE_ANALYTICS_LABEL,
+  WORKSPACE_DEFAULT_AGENT_LABEL,
+} from "@app/components/workspace/settings/settings_metadata";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
@@ -79,7 +70,7 @@ function capabilityEntries(): AdminSettingEntry[] {
 export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   // Always mounted above the tabs (no `?tab=`).
   ...adminSearchEntries(PAGE, G.workspaceName, [
-    [WORKSPACE_NAME_LABEL, "rename workspace organization name"],
+    ["Workspace Name", "rename workspace organization name"],
   ]),
   ...capabilityEntries(),
   ...adminSearchEntries(
@@ -87,11 +78,11 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     S.settings,
     [
       [
-        ALLOW_SELF_IMPROVING_SKILLS_LABEL,
+        "Allow self-improving skills",
         "self improving skills reinforcement analyze conversations",
       ],
       [
-        ENABLE_BATCH_PROCESSING_LABEL,
+        "Enable batch processing",
         "self improving skills zdr immediate data deletion batches",
       ],
     ],
@@ -100,18 +91,13 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     S.skills,
-    [
-      [
-        SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL,
-        "per skill editors enabled currently spent lock state",
-      ],
-    ],
+    [["Skills", "per skill editors enabled currently spent lock state"]],
     "agents"
   ),
   ...adminSearchEntries(
     PAGE,
     G.frame,
-    [[FRAME_SHARING_LABEL, "shareable outside workspace restriction"]],
+    [["Frame sharing", "shareable outside workspace restriction"]],
     "pods"
   ),
   ...adminSearchEntries(
@@ -128,16 +114,13 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     G.features,
     [
       [WORKSPACE_DEFAULT_AGENT_LABEL, "workspace default agent picker"],
-      [WORKSPACE_LOCALE_LABEL, "locale localisation"],
+      ["Language", "locale localisation"],
       [VOICE_TRANSCRIPTION_LABEL, "dictation conversations"],
       [CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL, "conversation notifications"],
       [PRIVATE_CONVERSATION_URLS_LABEL, "conversation privacy participants"],
       [WORKSPACE_ANALYTICS_LABEL, "analyst agent analytics tools admins"],
       [INACTIVE_AGENT_ARCHIVAL_LABEL, "archive them once auto"],
-      [
-        INACTIVITY_THRESHOLD_LABEL,
-        "days unmentioned archived schedule excluded",
-      ],
+      ["Inactivity threshold", "days unmentioned archived schedule excluded"],
     ],
     "features"
   ),

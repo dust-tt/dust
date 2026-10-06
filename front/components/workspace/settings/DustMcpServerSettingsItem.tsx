@@ -3,19 +3,17 @@ import { DustMcpServerSettingsSheet } from "@app/components/workspace/DustMcpSer
 import { useDustMcpServerSettings } from "@app/hooks/useDustMcpServerSettings";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Settings01, SliderToggle } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface DustMcpServerSettingsItemProps {
   owner: WorkspaceType;
 }
 
-export const DUST_MCP_SERVER_LABEL = "MCP server";
-export const DUST_MCP_SERVER_DESCRIPTION =
-  "Whether external MCP clients can connect to this workspace";
-
 export function DustMcpServerSettingsItem({
   owner,
 }: DustMcpServerSettingsItemProps) {
+  const { t } = useLingui();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { settings, isSaving, saveSettings } = useDustMcpServerSettings({
     owner,
@@ -38,13 +36,13 @@ export function DustMcpServerSettingsItem({
   return (
     <>
       <GovernanceSettingRowLayout
-        label={DUST_MCP_SERVER_LABEL}
-        description={DUST_MCP_SERVER_DESCRIPTION}
+        label={t`MCP server`}
+        description={t`Whether external MCP clients can connect to this workspace`}
         action={
           <div className="flex shrink-0 items-center gap-2">
             {isEnabled && (
               <Button
-                label="Manage"
+                label={t`Manage`}
                 size="xs"
                 variant="outline"
                 icon={Settings01}
