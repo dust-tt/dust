@@ -114,6 +114,7 @@ export function UpgradeRequests({
         message: t`Deny ${requesterName}'s request to increase their spend limit?`,
         validateLabel: t`Deny`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       }))
     ) {
       return;

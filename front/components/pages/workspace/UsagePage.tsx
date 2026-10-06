@@ -627,6 +627,7 @@ export function UsagePage() {
         message,
         validateLabel: t`Remove seat`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       });
       if (!confirmed) {
         return;

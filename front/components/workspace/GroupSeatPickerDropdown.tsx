@@ -87,6 +87,7 @@ export function GroupSeatPickerDropdown({
         )}.`,
         validateLabel: t`Remove seat`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       });
       if (confirmed) {
         await doUpdateGroupGrantedSeatType({

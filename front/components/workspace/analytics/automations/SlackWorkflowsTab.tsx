@@ -149,6 +149,7 @@ function SlackWorkflowsCard({
         message: t`"${botName}" will no longer be able to summon agents from Slack.`,
         validateLabel: t`Revoke`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       });
 
       if (confirmed) {

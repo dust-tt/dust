@@ -1,7 +1,8 @@
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { formatCurrency } from "@app/lib/i18n/format";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
-import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
+import { isSupportedCurrency } from "@app/types/currency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
@@ -144,7 +145,6 @@ export function BuyCreditDialog({
 
   const effectiveDiscount = discountPercent || 0;
   const displayCurrency = isSupportedCurrency(currency) ? currency : "usd";
-  const currencySymbol = CURRENCY_SYMBOLS[displayCurrency];
   const needsConversion = displayCurrency !== "usd";
 
   // Calculate conversion using Stripe pricing data
@@ -293,15 +293,14 @@ export function BuyCreditDialog({
                     <Trans>Credits</Trans>
                   </span>
                   <span className="font-medium text-foreground">
-                    ${parsedAmount.toFixed(2)}
+                    {formatCurrency(parsedAmount, "usd")}
                   </span>
                 </div>
                 {needsConversion && (
                   <div className="flex justify-between">
                     <span></span>
                     <span className="text-muted-foreground">
-                      {currencySymbol}
-                      {creditsInCurrency.toFixed(2)}
+                      {formatCurrency(creditsInCurrency, displayCurrency)}
                     </span>
                   </div>
                 )}
@@ -311,8 +310,7 @@ export function BuyCreditDialog({
                       <Trans>Discount ({effectiveDiscount}%)</Trans>
                     </span>
                     <span className="font-medium text-success-500">
-                      -{currencySymbol}
-                      {discountInCurrency.toFixed(2)}
+                      -{formatCurrency(discountInCurrency, displayCurrency)}
                     </span>
                   </div>
                 )}
@@ -329,8 +327,7 @@ export function BuyCreditDialog({
                     <Trans>Total</Trans>
                   </span>
                   <span className="font-medium text-foreground">
-                    {currencySymbol}
-                    {totalInCurrency.toFixed(2)}
+                    {formatCurrency(totalInCurrency, displayCurrency)}
                     <span className="ml-1 text-xs text-muted-foreground">
                       <Trans>(excl. tax)</Trans>
                     </span>

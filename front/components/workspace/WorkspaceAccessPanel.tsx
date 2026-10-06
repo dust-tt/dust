@@ -190,6 +190,7 @@ function DomainVerificationTable({
         ),
         validateLabel: t`Delete`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       });
 
       if (confirmed) {

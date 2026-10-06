@@ -21,7 +21,7 @@ import { formatMicroUsdCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
-import { formatDate } from "@app/lib/i18n/format";
+import { formatCurrency, formatDate } from "@app/lib/i18n/format";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
@@ -186,7 +186,7 @@ function GroupedTooltip(
 
       return {
         label,
-        value: `$${(p.value / 1_000_000).toFixed(2)}`,
+        value: formatCurrency(p.value / 1_000_000, "USD"),
         colorClassName,
       };
     });
@@ -195,7 +195,7 @@ function GroupedTooltip(
   if (shouldShowTotalCredits) {
     rows.push({
       label: t(msg`Total credits`),
-      value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
+      value: formatCurrency(data.totalCreditsMicroUsd / 1_000_000, "USD"),
       colorClassName: COST_PALETTE.totalCredits,
     });
   }

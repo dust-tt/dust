@@ -63,7 +63,6 @@ export function getConsumptionAttributionDimensions(
 
 interface ConsumptionDimensionConfig {
   label: MessageDescriptor;
-  breakdownLabel: string;
   hasAvatar: boolean;
   countLabel: MessageDescriptor;
   avgLabel: MessageDescriptor;
@@ -80,63 +79,54 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
 > = {
   agent: {
     label: msg`Agents`,
-    breakdownLabel: "agent",
     hasAvatar: true,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   user: {
     label: msg`Members`,
-    breakdownLabel: "member",
     hasAvatar: true,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   group: {
     label: msg`Groups`,
-    breakdownLabel: "group",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   model: {
     label: msg`Models`,
-    breakdownLabel: "model",
     hasAvatar: true,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   tool: {
     label: msg`Tools`,
-    breakdownLabel: "tool",
     hasAvatar: true,
     countLabel: INVOCATION_COUNT_LABEL,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   skill: {
     label: msg`Skills`,
-    breakdownLabel: "skill",
     hasAvatar: true,
     countLabel: INVOCATION_COUNT_LABEL,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   source: {
     label: msg`Sources`,
-    breakdownLabel: "source",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   trigger: {
     label: msg`Triggers`,
-    breakdownLabel: "trigger",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   api_key: {
     label: msg`API keys`,
-    breakdownLabel: "API key",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
