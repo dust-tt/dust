@@ -7,6 +7,7 @@
   "scripts": {
     "prebuild": "npm run i18n:compile",
     "build": "npm run clean:dist && npm run build:assets && npm run build:esm",
+    "build:watch": "npm run build && touch dist/.build-complete",
     "clean:dist": "mkdir -p dist && find dist -mindepth 1 -delete",
     "build:assets": "npm run tailwind && npm run copy:esm",
     "tailwind": "npx @tailwindcss/cli -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -15,13 +16,23 @@
     "build:js": "babel src --out-dir dist/esm --extensions .ts,.tsx --ignore 'src/**/*.d.ts' --config-file ./babel.esm.json --source-maps",
     "i18n:extract": "lingui extract --clean",
     "i18n:compile": "lingui compile",
-    "i18n:check": "npm run i18n:extract && git diff --exit-code -- src/locales && npm run i18n:compile -- --strict",
+    "i18n:check": "npm run i18n:extract && git diff --exit-code -- src/locales && ! git status --porcelain -- src/locales | grep . && npm run i18n:compile -- --strict",
+    "prestorybook": "npm run i18n:compile",
     "storybook": "storybook dev -p 6006",
+    "prebuild-storybook": "npm run i18n:compile",
     "build-storybook": "storybook build",
     "pretest:unit": "npm run i18n:compile",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "a11y:sync": "node scripts/sync-a11y-tags.mjs",
-    "watch": "node scripts/watch.mjs"
+  },
+  "watch": {
+    "build:watch": {
+      "patterns": [
+        "src"
+      ],
+      "extensions": "ts,tsx,css,po",
+      "ignore": "src/locales/*/messages.ts"
+    }
   },
   "main": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
@@ -32,6 +43,11 @@
       "import": "./dist/esm/index.js",
       "default": "./dist/esm/index.js"
     },
+    "./i18n": {
+      "types": "./dist/esm/lib/i18n/index.d.ts",
+      "import": "./dist/esm/lib/i18n/index.js",
+      "default": "./dist/esm/lib/i18n/index.js"
+    },
     "./dist/esm/*": {
       "types": "./dist/esm/*.d.ts",
       "import": "./dist/esm/*.js",
@@ -41,8 +57,15 @@
     "./styles/tailwind.css": "./src/styles/tailwind.css",
     "./styles/theme.css": "./src/styles/theme.css"
   },
-  "files": ["dist/", "src/", "!src/stories/"],
-  "sideEffects": ["src/index_with_tw_base.ts", "*.css"],
+  "files": [
+    "dist/",
+    "src/",
+    "!src/stories/"
+  ],
+  "sideEffects": [
+    "src/index_with_tw_base.ts",
+    "*.css"
+  ],
   "devDependencies": {
     "@babel/cli": "^7.29.0",
     "@babel/core": "^7.29.0",
