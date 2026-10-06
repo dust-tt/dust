@@ -1,3 +1,4 @@
+import { SkillWithoutInstructionsAndToolsSchema } from "@app/types/assistant/skill_configuration";
 import { isString } from "@app/types/shared/utils/general";
 import { AgentSuggestionSchema } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
@@ -33,7 +34,11 @@ export const GetSuggestionsQuerySchema = z.object({
 export type GetSuggestionsQuery = z.infer<typeof GetSuggestionsQuerySchema>;
 
 export const GetSuggestionsResponseBodySchema = z.object({
-  suggestions: z.array(AgentSuggestionSchema),
+  suggestions: z.array(
+    AgentSuggestionSchema.and(
+      z.object({ skill: SkillWithoutInstructionsAndToolsSchema.optional() })
+    )
+  ),
 });
 export type GetSuggestionsResponseBody = z.infer<
   typeof GetSuggestionsResponseBodySchema

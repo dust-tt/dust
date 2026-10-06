@@ -7,6 +7,8 @@ import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory"
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
@@ -389,6 +391,55 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
 });
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId/suggestions", () => {
+  it("includes readable skill references but not unreadable skill metadata", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const readable = await SkillFactory.create(auth, {
+      name: "Readable reference",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+    const privateSpace = await SpaceFactory.regular(workspace);
+    const unreadable = await SkillFactory.create(auth, {
+      name: "Unreadable reference",
+      requestedSpaceIds: [privateSpace.id],
+    });
+    const readableSuggestion = await AgentSuggestionFactory.createSkills(
+      auth,
+      agent,
+      {
+        suggestion: { action: "add", skillId: readable.sId },
+      }
+    );
+    const unreadableSuggestion = await AgentSuggestionFactory.createSkills(
+      auth,
+      agent,
+      {
+        suggestion: { action: "add", skillId: unreadable.sId },
+      }
+    );
+
+    const response = await getSuggestions(workspace, agent.sId);
+    expect(response.status).toBe(200);
+    const { suggestions } = await response.json();
+    expect(suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sId: readableSuggestion.sId,
+          skill: expect.objectContaining({
+            sId: readable.sId,
+            canWrite: false,
+          }),
+        }),
+        expect.objectContaining({ sId: unreadableSuggestion.sId }),
+      ])
+    );
+    expect(
+      suggestions.find(
+        (s: { sId: string }) => s.sId === unreadableSuggestion.sId
+      )
+    ).not.toHaveProperty("skill");
+  });
+
   it("returns 403 for a non-editor admin", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
