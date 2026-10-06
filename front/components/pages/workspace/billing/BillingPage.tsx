@@ -24,11 +24,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 type BillingTab = "billing-information" | "invoices" | "coupons";
 
 export function BillingPage() {
+  const { t } = useLingui();
   const { workspace: owner, subscription } = useAuth();
   const router = useAppRouter();
   const freePlan = isCreditPricedFreePlan(subscription.plan.code);
@@ -70,8 +72,8 @@ export function BillingPage() {
     <AdminPageContainer>
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Billing"
-          description="Change your subscription and edit your billing information."
+          title={t`Billing`}
+          description={t`Change your subscription and edit your billing information.`}
         />
         <SubscriptionProvider owner={owner} subscription={subscription}>
           {freePlan ? (
@@ -90,10 +92,12 @@ export function BillingPage() {
               <TabsList>
                 <TabsTrigger
                   value="billing-information"
-                  label="Billing information"
+                  label={t`Billing information`}
                 />
-                <TabsTrigger value="invoices" label="Invoices" />
-                {hasCoupons && <TabsTrigger value="coupons" label="Coupons" />}
+                <TabsTrigger value="invoices" label={t`Invoices`} />
+                {hasCoupons && (
+                  <TabsTrigger value="coupons" label={t`Coupons`} />
+                )}
               </TabsList>
               <TabsContent value="billing-information">
                 <AdminSectionAnchor
