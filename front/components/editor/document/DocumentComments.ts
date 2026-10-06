@@ -515,7 +515,9 @@ const inheritEnclosingComments = (
  * @cc [owner:tdraier,label:product] document-comment-orphan-marks-dropped
  * When a transaction puts the mark of a comment without a thread on text, such as an undo
  * restoring text after its comment was deleted, that mark MUST be removed from the whole
- * document, since saving fails on an anchor without a thread.
+ * document, since saving fails on an anchor without a thread. A live document, configured with
+ * `dropOrphanMarks: false`, MUST keep such marks: its editor does not hold the threads, and a
+ * removal would spread to every other editor.
  */
 const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
   const threads = new Set(
@@ -577,8 +579,9 @@ const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
   return false;
 };
 
-export const DocumentCommentMark = Mark.create({
+export const DocumentCommentMark = Mark.create<{ dropOrphanMarks: boolean }>({
   name: COMMENT_MARK_NAME,
+  addOptions: () => ({ dropOrphanMarks: true }),
   inclusive: false,
   excludes: "",
   addAttributes: () => ({
@@ -592,7 +595,8 @@ export const DocumentCommentMark = Mark.create({
   }),
   parseHTML: () => [],
   renderHTML: ({ HTMLAttributes }) => ["span", HTMLAttributes, 0],
-  addProseMirrorPlugins: () => {
+  addProseMirrorPlugins() {
+    const { dropOrphanMarks } = this.options;
     // ProseMirror runs transformPasted before deciding whether a drop moves or copies; the drop
     // event arrives first. Asking the dragCopies props, this one included, gives ProseMirror's
     // own answer.
@@ -629,7 +633,9 @@ export const DocumentCommentMark = Mark.create({
             return null;
           }
           const tr = newState.tr;
-          dropOrphanCommentMarks(tr, changed);
+          if (dropOrphanMarks) {
+            dropOrphanCommentMarks(tr, changed);
+          }
           if (getDocumentComments(tr.doc).length > 0) {
             inheritEnclosingComments(tr, changed);
           }
