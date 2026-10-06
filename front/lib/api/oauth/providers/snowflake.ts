@@ -116,7 +116,8 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
       // An mcp_server_id without a typed account means reusing the workspace connection
-      // (personal connection or admin Refresh).
+      // (personal connection or admin Refresh). The admin connect dialog also sends
+      // mcp_server_id, with typed credentials that must be validated below.
       if (
         extraConfig.mcp_server_id &&
         extraConfig.snowflake_account === undefined
@@ -181,7 +182,8 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           return new Err({
             code: "credential_retrieval_failed",
             message:
-              error.kind === "oauth_not_configured"
+              error.kind === "oauth_not_configured" &&
+              useCase === "personal_actions"
                 ? "Workspace Snowflake MCP connection is not configured for OAuth. " +
                   "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server."
                 : error.message,

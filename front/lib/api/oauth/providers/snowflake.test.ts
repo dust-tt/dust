@@ -90,7 +90,7 @@ describe("SnowflakeOAuthProvider admin setup with mcp_server_id", () => {
     mocks.getWorkspaceOAuthConnectionForMCPServer.mockReset();
   });
 
-  it("reuses the workspace connection on Refresh", async () => {
+  it("reuses the workspace connection on Refresh, over typed values", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new SnowflakeOAuthProvider();
     mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
@@ -109,7 +109,11 @@ describe("SnowflakeOAuthProvider admin setup with mcp_server_id", () => {
       })
     );
     const args = {
-      extraConfig: { mcp_server_id: "ims_123" },
+      extraConfig: {
+        mcp_server_id: "ims_123",
+        client_id: "typed-client-id",
+        snowflake_account: "typed123",
+      },
       useCase: "platform_actions" as const,
     };
 
