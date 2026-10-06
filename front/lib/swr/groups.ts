@@ -10,7 +10,6 @@ import {
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
-import type { GetGroupsUsageResponseBody } from "@app/types/api/groups/group_limit";
 import type {
   GetGroupResponseBody,
   GetMemberGroupsResponseBody,
@@ -90,34 +89,6 @@ export function useGroups({
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
-  };
-}
-
-export function useGroupsUsage({
-  owner,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const groupsUsageFetcher: Fetcher<GetGroupsUsageResponseBody> = fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/credits/groups-usage`,
-    groupsUsageFetcher,
-    { disabled }
-  );
-
-  const usageByGroupId = useMemo(
-    () => new Map((data?.groups ?? []).map((usage) => [usage.groupId, usage])),
-    [data]
-  );
-
-  return {
-    usageByGroupId,
-    isGroupsUsageLoading: !error && !data && !disabled,
-    isGroupsUsageError: !!error,
   };
 }
 

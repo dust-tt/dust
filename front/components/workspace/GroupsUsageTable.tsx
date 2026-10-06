@@ -3,12 +3,9 @@ import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupMod
 import { GroupSeatPickerDropdown } from "@app/components/workspace/GroupSeatPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
+import { useGroupsUsage } from "@app/hooks/useGroupsUsage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
-import {
-  useGroups,
-  useGroupsUsage,
-  useUpdateGroupSpendLimit,
-} from "@app/lib/swr/groups";
+import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import type { GroupLimitUsage } from "@app/types/api/groups/group_limit";
 import type { GroupGrantableSeatType } from "@app/types/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
