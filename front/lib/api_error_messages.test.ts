@@ -52,6 +52,20 @@ describe("formatError", () => {
     });
   });
 
+  it("uses the fallback description when inspecting the value throws", () => {
+    const unreadable = {
+      get error() {
+        throw new Error("boom");
+      },
+    };
+    expect(formatError(unreadable, WITH_LOCALISATION)).toEqual({
+      description: "An unexpected error occurred.",
+    });
+    expect(formatError(unreadable, WITHOUT_LOCALISATION)).toEqual({
+      description: "An unexpected error occurred.",
+    });
+  });
+
   it("translates the description and details labels", async () => {
     const messages = await loadCatalog("fr-FR");
     i18n.loadAndActivate({ locale: "fr-FR", messages });
@@ -113,6 +127,14 @@ describe("formatError without the localisation flag", () => {
       description: "An unexpected error occurred.",
     });
     expect(formatError(new Error(""), WITHOUT_LOCALISATION)).toEqual({
+      description: "An unexpected error occurred.",
+    });
+  });
+
+  it("uses the fallback description for a self-referential wrapper", () => {
+    const wrapper: { error?: unknown } = {};
+    wrapper.error = wrapper;
+    expect(formatError(wrapper, WITHOUT_LOCALISATION)).toEqual({
       description: "An unexpected error occurred.",
     });
   });

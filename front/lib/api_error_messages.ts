@@ -190,19 +190,27 @@ function getRawDetails(error: unknown): string | undefined {
 }
 
 // The untranslated message of a value, or of the error it wraps (`{ error: { message } }`).
+// Stops on self-referential wrappers instead of looping forever.
 function getRawMessage(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null) {
-    return undefined;
-  }
-  if (
-    "message" in error &&
-    typeof error.message === "string" &&
-    error.message
+  const seen = new Set<object>();
+  let current = error;
+  while (
+    typeof current === "object" &&
+    current !== null &&
+    !seen.has(current)
   ) {
-    return error.message;
-  }
-  if ("error" in error) {
-    return getRawMessage(error.error);
+    seen.add(current);
+    if (
+      "message" in current &&
+      typeof current.message === "string" &&
+      current.message
+    ) {
+      return current.message;
+    }
+    if (!("error" in current)) {
+      return undefined;
+    }
+    current = current.error;
   }
   return undefined;
 }
@@ -230,6 +238,18 @@ function getRawMessage(error: unknown): string | undefined {
  * `formatError` MUST NOT throw.
  */
 export function formatError(
+  error: unknown,
+  options: FormatErrorOptions
+): FormattedError {
+  try {
+    return formatErrorUnsafe(error, options);
+  } catch {
+    // Inspecting `error` can throw (e.g. a throwing getter): fall back rather than fail the caller.
+    return { description: t(UNEXPECTED_ERROR_MESSAGE) };
+  }
+}
+
+function formatErrorUnsafe(
   error: unknown,
   { hasLocalisation }: FormatErrorOptions
 ): FormattedError {
