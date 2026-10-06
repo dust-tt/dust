@@ -26,6 +26,8 @@ pub struct State {
     scheduling: Scheduling,
     #[cfg(test)]
     pauses: tests::Pauses,
+    #[cfg(test)]
+    reply_pauses: tests::Pauses,
 }
 impl State {
     pub fn new(storage: storage::Storage, server_key: &str) -> anyhow::Result<Arc<Self>> {
@@ -43,6 +45,8 @@ impl State {
             scheduling: Default::default(),
             #[cfg(test)]
             pauses: Default::default(),
+            #[cfg(test)]
+            reply_pauses: Default::default(),
         });
         Ok(state)
     }

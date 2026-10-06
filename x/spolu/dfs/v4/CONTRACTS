@@ -25,7 +25,9 @@ It MUST NOT drain unrelated objects or a parent queue. Known deferred errors MUS
 @cc [owner:spolu,label:performance;security] v4-client-freshness
 Client-controlled write buffering W and read/authorization cache validity C MUST satisfy W+C<=2000ms,
 initially W=C=1000ms. Server/network waits are excluded. Cache validity starts at response receipt;
-hits and block fills MUST NOT renew it. More writes MUST NOT postpone the oldest dispatch window.
+tentative new objects instead start their own C at local acceptance, without inheriting parent expiry.
+Hits, edits and block fills MUST NOT renew validity. More writes MUST NOT postpone the oldest dispatch
+window. RAM acceptance MAY rely on a valid child after its parent expires; FDB MUST recheck authority.
 
 @cc [owner:spolu,label:concurrency] v4-revision-coherence
 Each committed object modification MUST change its revision. Retained blocks MUST be used only with

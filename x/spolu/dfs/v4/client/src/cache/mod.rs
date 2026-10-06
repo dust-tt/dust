@@ -15,7 +15,7 @@ use std::{
     collections::HashMap,
     sync::{
         Arc, Weak,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
     },
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -54,6 +54,8 @@ impl Default for CacheConfig {
 struct Gate {
     mutex: Arc<AsyncMutex<()>>,
     generation: AtomicU64,
+    primary_generation: AtomicU64,
+    refreshes: AtomicUsize,
 }
 struct Inner {
     rpc: Client,
@@ -73,7 +75,8 @@ struct Inner {
 #[derive(Clone)]
 /// @cc [owner:spolu,label:security;performance] mount-cache-validity
 /// Every cache instance MUST belong to one session. Metadata, names, pages and authority MUST expire
-/// from their validating response, without renewal on hits. Retained blocks alone MUST NOT grant access.
+/// from their validating response, except tentative objects get C from local creation. Hits/edits
+/// MUST NOT renew validity. Retained blocks alone MUST NOT grant access.
 pub struct CachedClient {
     raw: BlockingClient,
     inner: Arc<Inner>,
@@ -182,6 +185,11 @@ impl Inner {
             gate.generation.fetch_add(1, Ordering::AcqRel);
         }
     }
+    fn bump_primary(&self, id: &str) {
+        if let Some(gate) = self.gates.lock().get(id).and_then(Weak::upgrade) {
+            gate.primary_generation.fetch_add(1, Ordering::AcqRel);
+        }
+    }
     fn cached_object(&self, id: &str) -> Option<Result<Object>> {
         {
             let pending = self.pending.lock();
@@ -234,9 +242,11 @@ impl Inner {
             if let Some(result) = self.cached_object(id) {
                 return result;
             }
-            if self.pending.lock().contains(id) {
-                let _wait = self.rpc.measure("wait.refresh_flush");
-                self.flush(id).await?;
+            if self.refresh_pending(id).await? {
+                if let Some(result) = self.cached_object(id) {
+                    return result;
+                }
+                continue;
             }
             let generation = gate.generation.load(Ordering::Acquire);
             let started = Instant::now();
@@ -448,8 +458,8 @@ impl Inner {
         let _guard = gate.mutex.lock().await;
         drop(gate_wait);
         for _ in 0..4 {
-            let generation = gate.generation.load(Ordering::Acquire);
             let object = self.stat_locked(&r.object_id, &gate).await?;
+            let generation = gate.generation.load(Ordering::Acquire);
             if object.directory {
                 return Err(status(ErrorCode::IsDirectory));
             }
@@ -460,9 +470,7 @@ impl Inner {
                 || generation != gate.generation.load(Ordering::Acquire)
             {
                 self.cache.lock().remove(&Key::Object(r.object_id.clone()));
-                if self.pending.lock().contains(&r.object_id) {
-                    self.flush(&r.object_id).await?;
-                }
+                self.pending.lock().expire(&r.object_id);
                 continue;
             }
             return result.map(|data| ReadResponse {

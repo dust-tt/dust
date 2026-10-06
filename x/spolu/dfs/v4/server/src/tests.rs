@@ -7,6 +7,7 @@ use dfs_protocol::{
 };
 use futures::TryStreamExt;
 use tonic::Request;
+mod client_refresh;
 
 // Deterministic network stalls; storage and authorization still use the real FDB fixture.
 pub(super) type Pauses = parking_lot::Mutex<std::collections::HashMap<String, Arc<Pause>>>;
@@ -14,10 +15,10 @@ pub(super) struct Pause {
     entered: tokio::sync::Notify,
     release: Semaphore,
 }
-pub(super) async fn pause(state: &State, changes: &[mutation::Change]) {
+pub(super) async fn pause(pauses: &Pauses, changes: &[mutation::Change]) {
     let paused = changes
         .first()
-        .and_then(|c| state.pauses.lock().get(c.primary_id()).cloned());
+        .and_then(|c| pauses.lock().get(c.primary_id()).cloned());
     if let Some(paused) = paused {
         paused.entered.notify_one();
         if let Ok(permit) = paused.release.acquire().await {
@@ -540,6 +541,7 @@ async fn client_cache_contracts() -> Result<()> {
         )?;
         let observer = ::dfs_client::BlockingClient::connect(&endpoint, &key)?;
         directory_absence_contracts(&endpoint, &key, &tenant.root_id)?;
+        client_refresh::contracts(&endpoint, &key, &tenant, &state)?;
         let a = client
             .create(CreateRequest {
                 parent_id: directory.id.clone(),

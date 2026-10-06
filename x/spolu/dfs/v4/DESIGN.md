@@ -54,6 +54,11 @@ Cache hits, later use of prefetched entries, and block fills do not restart that
 authorization refresh together against current FDB state. An unchanged file revision does not prove
 that ancestor grants or parent links are unchanged. Session expiry also caps cached access.
 
+A tentative new object starts its own `C` at local creation, independently of the parent's remaining
+TTL. Accept writes while that child's view is valid even if the parent expires. This is optimistic
+local acceptance, not renewed proof of authorization; the server rechecks every edit transactionally.
+Later local edits do not extend this deadline.
+
 There is no 2s acceptance-to-commit deadline or wall-clock convergence promise: total visibility delay
 also includes server and network time. An RPC exceeding `W` or `D` is not itself a freshness failure.
 Use independent RPC timeouts for stalled requests; on failure, invalidate affected tentative overlays
@@ -88,6 +93,13 @@ Local generations are distinct from committed revisions. Serialize conflicting l
 unrelated objects proceed concurrently. Late RPC replies must not overwrite newer edits or resurrect
 locally removed names. Refresh or rebase an overlay atomically, never independently update its size
 and blocks. In-flight dirty state follows the RPC's outcome/timeout, not a client freshness deadline.
+
+Metadata expiry does not force pending edits to publish. Refresh the authoritative base and replay
+queued edits over it; for a still-unpublished create, validate its nearest existing ancestor while
+retaining the local object. Briefly pause dispatch for these objects during refresh. An unchanged
+base can retain in-flight edits; a changed base must first resolve captured in-flight results to
+avoid applying already-committed edits twice. An in-flight creation must likewise resolve before
+assuming server absence. These waits never force queued edits or drain sibling files.
 
 ### Versions and block retention
 
@@ -137,7 +149,8 @@ the same paging/freshness rules without a tenant-wide revision or subtree grant 
 ## Writeback and fsync
 
 RAM acceptance records an ordered edit and updates the coherent local view before returning to FUSE.
-It requires valid cached authorization or a fresh server check; commit rechecks authority in FDB.
+It requires a valid object view (including the tentative-create window above) or a fresh server check;
+commit rechecks authority in FDB.
 Coalesce adjacent/overlapping writes and metadata changes on the same object, preserving truncate,
 append, and namespace ordering. Append chooses the final EOF in the server transaction. Stream large
 files through bounded groups; neither side needs to materialize an entire file.
@@ -151,6 +164,11 @@ bound; only known noncommits retry, with bounded jitter, never uncertain outcome
 Clients allocate stable IDs for tentative creates; servers validate that those IDs are unused. A
 create may absorb its initial content and attributes before dispatch while its group stays within
 limits. Independent sibling creates remain independent groups even when sent in one RPC.
+
+Every successful mutation group returns canonical postcommit target metadata/revision and changed
+parents; removal returns no target. Give every returned object and confirmed name binding a full `C`
+from receipt, capped only by session expiry, and replay later queued edits without an extra Stat.
+This does not validate an entire directory listing or promote old blocks to the new revision.
 
 **`fsync(objectId)` captures only that object's current pending sequence and immediately dispatches
 it, bypassing coalescing.** Await its existing in-flight work and commits through that sequence;

@@ -102,7 +102,7 @@ async fn apply_group(
     changes: Vec<Change>,
 ) -> Result<Mutation> {
     #[cfg(test)]
-    crate::tests::pause(&state, &changes).await;
+    crate::tests::pause(&state.pauses, &changes).await;
     let _profile = Guard::new(Phase::Batch);
     let first = changes
         .first()
@@ -111,7 +111,7 @@ async fn apply_group(
     let scheduling = state.schedule(&session.info.tenant_id, first.primary_id());
     let _scheduled = scheduling.lock().await;
     let _gate = session.gate.read().await;
-    state
+    let result = state
         .storage
         .transact(|snapshot| {
             let changes = &changes;
@@ -154,7 +154,10 @@ async fn apply_group(
                 Ok((crate::storage::WriteBatch::new(), result))
             }
         })
-        .await
+        .await;
+    #[cfg(test)]
+    crate::tests::pause(&state.reply_pauses, &changes).await;
+    result
 }
 
 /// Only same-target file edits, or a create followed by edits of its new target, may coalesce.

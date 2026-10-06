@@ -2,6 +2,7 @@ use super::*;
 use memory::object_weight;
 use std::collections::{BTreeMap, BTreeSet};
 use tokio::sync::{OwnedSemaphorePermit, watch};
+mod refresh;
 
 const MAX_GROUP_COST: usize = 900_000;
 const MAX_WRITE: usize = 256 * 1024;
@@ -67,6 +68,7 @@ struct Dirty {
     primary: BTreeSet<u64>,
     own_tail: Option<Arc<Receipt>>,
     _charge: Arc<Charge>,
+    _refresh_memory: Option<OwnedSemaphorePermit>,
 }
 #[derive(Default)]
 pub(super) struct Pending {
@@ -716,7 +718,6 @@ impl Inner {
             _ => vec![],
         };
         let mut projections = HashMap::new();
-        let mut expires = self.deadline(received);
         for (id, base) in &participants {
             let mut projected = pending
                 .objects
@@ -727,11 +728,6 @@ impl Inner {
                 projected = None;
             }
             projections.insert(id.clone(), projected);
-            if let Some(node) = pending.objects.get(id) {
-                expires = expires.min(node.expires);
-            } else if let Some(entry) = self.cache.lock().get(&Key::Object(id.clone())) {
-                expires = expires.min(entry.expires);
-            }
         }
         let previous = pending
             .objects
@@ -855,6 +851,16 @@ impl Inner {
             pending.groups.insert(id, group);
         }
         for (id, base) in participants {
+            // Each object owns its validity. A new UUID gets C from acceptance, independently
+            // of its parent's remaining validity; editing an existing node never renews it.
+            let expires = if base.is_none() {
+                self.deadline(received)
+            } else {
+                self.cache
+                    .lock()
+                    .get(&Key::Object(id.clone()))
+                    .map_or(received, |entry| entry.expires)
+            };
             let node = pending.objects.entry(id.clone()).or_insert_with(|| Dirty {
                 base: base.clone(),
                 current: base,
@@ -863,6 +869,7 @@ impl Inner {
                 primary: BTreeSet::new(),
                 own_tail: None,
                 _charge: charge.clone(),
+                _refresh_memory: None,
             });
             node.pending.insert(receipt.id);
             if id == target || deleted.contains(&id) {
@@ -875,6 +882,9 @@ impl Inner {
                 .remove(&id)
                 .ok_or_else(|| status(ErrorCode::Internal))?;
             self.bump(&id);
+            if id == target || deleted.contains(&id) {
+                self.bump_primary(&id);
+            }
             self.cache.lock().invalidate_directory(&id, false);
         }
         for (parent, name, value) in bindings {
@@ -904,7 +914,7 @@ impl Inner {
                 &Page::default(),
                 std::iter::empty(),
                 received,
-                expires,
+                self.deadline(received),
             );
         }
         let result = Mutation {
@@ -963,6 +973,13 @@ impl Inner {
                 .collect();
             for group in pending.groups.values_mut() {
                 if group.inflight {
+                    continue;
+                }
+                if group
+                    ._pins
+                    .iter()
+                    .any(|gate| gate.refreshes.load(Ordering::Acquire) != 0)
+                {
                     continue;
                 }
                 let mut ready = true;
@@ -1040,6 +1057,10 @@ impl Inner {
             }
         });
     }
+    /// @cc [owner:spolu,label:concurrency;performance] canonical-write-response-renews-validity
+    /// Successful publication MUST install all returned objects and confirmed name bindings with a
+    /// full C from receipt (capped by session expiry), replaying later edits without an extra Stat.
+    /// It MUST NOT renew directory coverage or relabel old blocks with the new revision.
     fn finish(&self, id: u64, result: std::result::Result<Mutation, ErrorCode>) {
         let mut pending = self.pending.lock();
         let Some(group) = pending.groups.remove(&id) else {
@@ -1075,6 +1096,9 @@ impl Inner {
         }
         for participant in &group.participants {
             self.bump(participant);
+            if participant == &group.target || group.deleted.contains(participant) {
+                self.bump_primary(participant);
+            }
             if result.is_err() || group.deleted.contains(participant) {
                 self.cache
                     .lock()
