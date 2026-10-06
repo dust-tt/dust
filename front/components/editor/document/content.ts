@@ -7,6 +7,7 @@ import {
   marksToAnchors,
   substituteAnchorDirectives,
 } from "@app/components/editor/document/DocumentCommentAnchor";
+import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -17,7 +18,7 @@ import type {
 } from "@tiptap/core";
 import { flattenExtensions, getExtensionField, getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
-import type { Node } from "@tiptap/pm/model";
+import type { Mark, Node } from "@tiptap/pm/model";
 import { Fragment } from "@tiptap/pm/model";
 
 const documentSchema = getSchema(documentExtensions);
@@ -126,7 +127,27 @@ const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
   );
 };
 
+// Comment marks share one rank, so their order on a text node only records which was added
+// first: a comment added around an existing one comes after it, but reopens before it.
+const sortCommentMarks = (marks: readonly Mark[]): readonly Mark[] => {
+  const comments = marks
+    .filter((mark) => mark.type.name === COMMENT_MARK_NAME)
+    .sort((a, b) => (String(a.attrs.id) < String(b.attrs.id) ? -1 : 1));
+  let next = 0;
+  return marks.map((mark) =>
+    mark.type.name === COMMENT_MARK_NAME ? comments[next++] : mark
+  );
+};
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-mark-order
+ * Documents that differ only in the order of comment marks on a text MUST compare equal, so a
+ * comment added around or over an existing one saves.
+ */
 export const normalizeTextNodes = (node: Node): Node => {
+  if (node.isText) {
+    return node.mark(sortCommentMarks(node.marks));
+  }
   const children: Node[] = [];
   node.forEach((child) => children.push(normalizeTextNodes(child)));
   return node.copy(Fragment.fromArray(children));

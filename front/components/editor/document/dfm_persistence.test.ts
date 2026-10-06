@@ -375,6 +375,26 @@ describe("saveDfm", () => {
     );
   });
 
+  it("saves a new comment around an existing one", () => {
+    const source = `A :comment-start{id=c1}b:comment-end{id=c1} c\n\n${twoThreads("c1", "c2")}`;
+    const { envelope, content } = load(source);
+    const paragraph = content.content?.[0];
+    if (!paragraph?.content) {
+      throw new Error("No paragraph.");
+    }
+    // The editor adds the new comment's mark after the existing one, as on the whole paragraph.
+    paragraph.content = paragraph.content.map((node) => ({
+      ...node,
+      marks: [...(node.marks ?? []), { type: "comment", attrs: { id: "c2" } }],
+    }));
+
+    const saved = saveDfm(envelope, content);
+
+    expect(saved.isOk() && saved.value.split("\n")[0]).toBe(
+      ":comment-start{id=c2}A :comment-start{id=c1}b:comment-end{id=c1} c:comment-end{id=c2}"
+    );
+  });
+
   it("keeps front matter when the body is empty", () => {
     const source = "---\ntitle: x\n---\n";
 
