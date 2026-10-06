@@ -3,7 +3,8 @@
 starts more than MAX_DELAY after the mutation was acknowledged may observe the old state. Also
 checks that a revoked reader loses access within MAX_DELAY, and that every read returns a whole
 state the writer produced (never a mix of two). Also covers a directory handle held open across the
-mutation (rewound each poll) and a file opened for writing just before its cached state expires."""
+mutation (rewound each poll), a file opened for writing just before its cached state expires, and a
+block overwritten in the middle of a file read by range (block cache)."""
 import os
 from pathlib import Path
 import sys
@@ -17,6 +18,8 @@ from harness import MAX_DELAY_MS, Stack  # noqa: E402
 MAX = MAX_DELAY_MS / 1000
 TTL = MAX - min(MAX / 4, 1.0)
 WARM = 0.3
+BIG = 2 << 20
+AT = (1 << 20) + 100
 # Every content of d/f the writer produces, in order.
 STATES = {b'one', b'two!', b'two!+3', b'tw', 'EACCES'}
 
@@ -77,6 +80,22 @@ def check(name, path, how, mutate, expect):
     return status == 'ok'
 
 
+def pread(path, length, offset):
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        return os.pread(fd, length, offset)
+    finally:
+        os.close(fd)
+
+
+def pwrite(path, data, offset):
+    fd = os.open(path, os.O_WRONLY)
+    try:
+        os.pwrite(fd, data, offset)
+    finally:
+        os.close(fd)
+
+
 def check_promoted_writer(a, b):
     """B caches d/f, A overwrites it, then B opens d/f for writing just before its cached state
     expires: reads through that handle must still see A's write within the budget."""
@@ -117,6 +136,8 @@ def main():
         (a / 'd').mkdir()
         (a / 'd' / 'f').write_bytes(b'one')
         (a / 'd' / 'g').write_bytes(b'gone')
+        (a / 'L').mkdir()
+        (a / 'L' / 'f').write_bytes(bytes(BIG))
         time.sleep(MAX + 0.1)
         cases = [
             ('create', b / 'd' / 'new', 'exists', lambda: (a / 'd' / 'new').write_bytes(b'x'), True),
@@ -139,6 +160,8 @@ def main():
                         lambda: (a / 'd' / 'k').write_bytes(b'k'), ('f', 'k', 'new'))
         finally:
             os.close(handle)
+        ok &= check('large file block overwrite', b / 'L' / 'f', lambda: pread(b / 'L' / 'f', 4096, AT),
+                    lambda: pwrite(a / 'L' / 'f', b'\xab' * 4096, AT), b'\xab' * 4096)
         ok &= check_promoted_writer(a, b)
         ino = os.stat(a / 'd').st_ino
         ok &= check('revoke read', b / 'd' / 'f', 'content',

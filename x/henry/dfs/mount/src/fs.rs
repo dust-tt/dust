@@ -24,6 +24,8 @@ use crate::state::{Budget, Listing, Local, Name, State};
 
 /// Largest file a read miss fetches whole (with siblings); larger files are read by range.
 const WHOLE_FILE: u64 = 1 << 20;
+/// Blocks a range-read miss of a large file fetches, starting at the first block it needs.
+const RANGE_BLOCKS: u64 = 16;
 /// Largest sibling a read miss prefetches.
 const SIBLING_FILE: u64 = 256 << 10;
 /// Siblings the first read miss in a directory prefetches; later misses there prefetch up to
@@ -428,6 +430,53 @@ impl Fs {
         Ok(demanded)
     }
 
+    /// `len` bytes of large file `id` at `offset`: from cached blocks of its live revision, or one
+    /// `Read` of `RANGE_BLOCKS` blocks (at least the range) whose blocks are then cached
+    /// (`content-under-live-rev`). An expired attribute is fetched again first.
+    fn read_range(&self, id: Id, offset: u64, len: u32) -> Result<Vec<u8>, Errno> {
+        let live = self.state.lock().server_attr(id);
+        let attr = match live {
+            Some(attr) => Some(attr),
+            None => {
+                self.attr(id)?;
+                self.state.lock().server_attr(id)
+            }
+        };
+        let first = offset / BLOCK_BYTES;
+        if let Some(attr) = &attr {
+            let end = attr.size.min(offset.saturating_add(u64::from(len)));
+            if offset >= end {
+                return Ok(Vec::new());
+            }
+            let state = self.state.lock();
+            let blocks: Option<Vec<_>> = (first..=(end - 1) / BLOCK_BYTES).map(|i| state.content.block(id, attr.rev, i)).collect();
+            if let Some(blocks) = blocks {
+                drop(state);
+                self.stats.local("read");
+                let mut bytes = vec![0; (end - offset) as usize];
+                for (i, block) in (first..).zip(blocks) {
+                    copy_block(&mut bytes, offset, &block, i * BLOCK_BYTES);
+                }
+                return Ok(bytes);
+            }
+        }
+        let start = first * BLOCK_BYTES;
+        // Whole blocks only: a block shorter than `BLOCK_BYTES` is then always the file's last.
+        let want = (offset + u64::from(len) - start).max(RANGE_BLOCKS * BLOCK_BYTES).next_multiple_of(BLOCK_BYTES).min(u64::from(MAX_IO_BYTES));
+        let (reply, _) = self.call("read", Request::Read { id, offset: start, len: want as u32 })?;
+        let Response::Data { rev, bytes, .. } = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
+        let mut state = self.state.lock();
+        state.observe_rev(id, rev);
+        if reply.version >= state.floor(id) {
+            for (i, block) in (first..).zip(bytes.chunks(BLOCK_BYTES as usize)) {
+                state.content.insert_block(id, rev, i, block.into());
+            }
+        }
+        drop(state);
+        let skip = ((offset - start) as usize).min(bytes.len());
+        Ok(bytes[skip..(skip + len as usize).min(bytes.len())].to_vec())
+    }
+
     /// Waits until a new mutation may be acknowledged (`State::backlogged`); the request then
     /// counts as having taken effect.
     fn admit(&self, state: &mut MutexGuard<'_, State>) -> Result<(), Errno> {
@@ -758,6 +807,15 @@ fn prefetch(state: &mut State, id: Id, size: u64) -> Vec<Id> {
     ids
 }
 
+/// Copies the part of `block` (which starts at file offset `at`) that overlaps `buf` (at `offset`).
+fn copy_block(buf: &mut [u8], offset: u64, block: &[u8], at: u64) {
+    let from = offset.max(at);
+    let to = (offset + buf.len() as u64).min(at + block.len() as u64);
+    if from < to {
+        buf[(from - offset) as usize..(to - offset) as usize].copy_from_slice(&block[(from - at) as usize..(to - at) as usize]);
+    }
+}
+
 /// A FUSE reply that can carry an error.
 trait Fail {
     fn fail(self, e: Errno);
@@ -1031,15 +1089,7 @@ impl Filesystem for Mount {
                 if let Some(bytes) = fs.read_whole(id, offset)? {
                     return Ok(slice(&bytes));
                 }
-                let (reply, _) = fs.call("read", Request::Read { id, offset, len: size.min(MAX_IO_BYTES) })?;
-                match reply.result {
-                    Ok(Response::Data { rev, bytes, .. }) => {
-                        fs.state.lock().observe_rev(id, rev);
-                        Ok(bytes)
-                    }
-                    Ok(_) => Err(Errno::EIO),
-                    Err(e) => Err(errno(e)),
-                }
+                fs.read_range(id, offset, size.min(MAX_IO_BYTES))
             })();
             answer(reply, result, |reply, bytes| reply.data(&bytes))
         });

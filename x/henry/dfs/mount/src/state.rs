@@ -18,6 +18,9 @@ pub const BATCH_BYTES: usize = 2 << 20;
 pub const SEAL_BYTES: usize = 1 << 20;
 pub const SEAL_BLOCKS: usize = dfs_proto::MAX_FLUSH_BLOCKS - 8;
 const OP_COST: usize = 256;
+/// `Apply` latencies admission projects from (the most recent ones), and the least it assumes.
+const RECENT_APPLIES: usize = 8;
+const MIN_APPLY: Duration = Duration::from_millis(5);
 const CONTENT_BYTES: usize = 256 << 20;
 const CONTENT_FILES: usize = 1 << 16;
 
@@ -44,11 +47,17 @@ pub struct Cached<T> {
     pub version: u64,
 }
 
-/// Whole file contents by content revision, evicted oldest first.
+/// What `Content` holds for a file: its whole content (`None`) or one `BLOCK_BYTES` block.
+type Slot = (Id, Option<u64>);
+
+/// @cc [owner:fontanierh,label:product] content-under-live-rev
+/// File bytes are cached by `(id, rev)`, whole for small files and by `BLOCK_BYTES` block for
+/// large ones, and are installed only from a reply at or above `floor(id)`. They MUST be served
+/// only under a live (`ttl-at-serve`) server attribute of `id` with that same rev.
 #[derive(Default)]
 pub struct Content {
-    files: HashMap<Id, (u64, Arc<[u8]>)>,
-    order: VecDeque<(Id, u64)>,
+    slots: HashMap<Slot, (u64, Arc<[u8]>)>,
+    order: VecDeque<(Slot, u64)>,
     bytes: usize,
     /// Files a `ReadFiles` call in flight will install.
     pub fetching: HashSet<Id>,
@@ -56,19 +65,35 @@ pub struct Content {
 
 impl Content {
     pub fn get(&self, id: Id, rev: u64) -> Option<Arc<[u8]>> {
-        self.files.get(&id).filter(|(r, _)| *r == rev).map(|(_, bytes)| bytes.clone())
+        self.slot((id, None), rev)
+    }
+
+    pub fn block(&self, id: Id, rev: u64, index: u64) -> Option<Arc<[u8]>> {
+        self.slot((id, Some(index)), rev)
+    }
+
+    fn slot(&self, slot: Slot, rev: u64) -> Option<Arc<[u8]>> {
+        self.slots.get(&slot).filter(|(r, _)| *r == rev).map(|(_, bytes)| bytes.clone())
     }
 
     pub fn insert(&mut self, id: Id, rev: u64, bytes: Arc<[u8]>) {
+        self.put((id, None), rev, bytes);
+    }
+
+    pub fn insert_block(&mut self, id: Id, rev: u64, index: u64, bytes: Arc<[u8]>) {
+        self.put((id, Some(index)), rev, bytes);
+    }
+
+    fn put(&mut self, slot: Slot, rev: u64, bytes: Arc<[u8]>) {
         self.bytes += bytes.len();
-        if let Some((_, old)) = self.files.insert(id, (rev, bytes)) {
+        if let Some((_, old)) = self.slots.insert(slot, (rev, bytes)) {
             self.bytes -= old.len();
         }
-        self.order.push_back((id, rev));
-        while self.bytes > CONTENT_BYTES || self.files.len() > CONTENT_FILES {
-            let Some((id, rev)) = self.order.pop_front() else { break };
-            if self.files.get(&id).is_some_and(|(r, _)| *r == rev)
-                && let Some((_, bytes)) = self.files.remove(&id)
+        self.order.push_back((slot, rev));
+        while self.bytes > CONTENT_BYTES || self.slots.len() > CONTENT_FILES {
+            let Some((slot, rev)) = self.order.pop_front() else { break };
+            if self.slots.get(&slot).is_some_and(|(r, _)| *r == rev)
+                && let Some((_, bytes)) = self.slots.remove(&slot)
             {
                 self.bytes -= bytes.len();
             }
@@ -246,6 +271,10 @@ pub struct Log {
     pub in_flight: bool,
     /// Acknowledgment instant of the oldest op of the batch in flight.
     pub in_flight_since: Option<Instant>,
+    /// When the batch in flight was taken.
+    pub sent_at: Option<Instant>,
+    /// Latencies of the last `RECENT_APPLIES` batches.
+    pub recent: VecDeque<Duration>,
     /// First op failure since the last drain barrier.
     pub failed: Option<Errno>,
     pub stats: CommitStats,
@@ -304,6 +333,8 @@ impl State {
                 dirty_bytes: 0,
                 in_flight: false,
                 in_flight_since: None,
+                sent_at: None,
+                recent: VecDeque::new(),
                 failed: None,
                 stats: CommitStats::default(),
             },
@@ -614,16 +645,25 @@ impl State {
         self.log.dirty_bytes += bytes;
     }
 
-    /// Whether a new mutation must wait: the next batch could not carry everything acknowledged,
-    /// or the oldest uncommitted mutation (in flight included) has already used half its window.
+    /// @cc [owner:fontanierh,label:product;performance] admission-projects-apply
+    /// A new mutation MUST wait while the next batch could not carry everything acknowledged, or
+    /// while the oldest uncommitted mutation (in flight included) could not commit within the
+    /// window: its age plus one `Apply` (two while a batch is in flight: the rest of that one,
+    /// then the next) exceeds `budget.window`. An `Apply` is assumed to take as long as the
+    /// slowest of the last `RECENT_APPLIES`, the one in flight so far, and `MIN_APPLY`. With
+    /// nothing uncommitted a mutation is always admitted.
     pub fn backlogged(&self) -> bool {
         let log = &self.log;
         if log.queue.len() >= BATCH_OPS || log.cost + log.dirty_bytes >= BATCH_BYTES {
             return true;
         }
         let oldest = log.in_flight_since.or(log.queue.front().map(|p| p.acked));
-        let oldest = log.dirty.iter().filter_map(|id| self.locals.get(id)?.dirty_since).chain(oldest).min();
-        oldest.is_some_and(|at| at.elapsed() > self.budget.window / 2)
+        let Some(oldest) = log.dirty.iter().filter_map(|id| self.locals.get(id)?.dirty_since).chain(oldest).min() else {
+            return false;
+        };
+        let apply = log.recent.iter().copied().chain(log.sent_at.map(|t| t.elapsed())).max().unwrap_or_default().max(MIN_APPLY);
+        let applies = if log.sent_at.is_some() { 2 } else { 1 };
+        oldest.elapsed() + apply * applies > self.budget.window
     }
 
     /// Seals every unsealed change and takes the next batch from the queue.
@@ -645,6 +685,7 @@ impl State {
         }
         self.log.in_flight = !batch.is_empty();
         self.log.in_flight_since = batch.iter().map(|p| p.acked).min();
+        self.log.sent_at = (!batch.is_empty()).then(Instant::now);
         batch
     }
 
@@ -661,6 +702,11 @@ impl State {
         stats.ops += batch.len() as u64;
         stats.apply += now - sent;
         stats.max_apply = stats.max_apply.max(now - sent);
+        self.log.sent_at = None;
+        if self.log.recent.len() == RECENT_APPLIES {
+            self.log.recent.pop_front();
+        }
+        self.log.recent.push_back(now - sent);
         let mut locals = Vec::new();
         for (pending, result) in batch.iter().zip(results) {
             let lag = now - pending.acked;

@@ -105,8 +105,11 @@ correctness depends on server memory, and any number of servers can serve a tena
 
 **Cache.** Attributes, names (positive and negative), listings and symlink targets are cached with
 the send time of the request that fetched them and the read version of its reply; they are served
-until the TTL lapses. Content is cached by `(id, rev)` (256 MiB) and served only under a live
-attribute of that rev. A reply read below the version at which one of this mount's own ops on that
+until the TTL lapses. Content is cached by `(id, rev)` in one 256 MiB memory budget, whole for
+files up to 1 MiB and by 64 KiB block for larger ones, and served only under a live attribute of
+that rev (`content-under-live-rev`). So bytes outlive the TTL but are revalidated by a fresh
+attribute, never served stale. A range-read miss fetches 16 blocks (1 MiB) from the first block
+it needs; a range read whose attribute expired fetches the attribute first. A reply read below the version at which one of this mount's own ops on that
 object committed is not installed (`own-commit-floor`); lookups retry up to 3 times, then serve
 uncached.
 
@@ -137,11 +140,15 @@ attributes and names at the commit version, raises the floor, and drops the over
 batch carried. On failure (another mount won a race) it invalidates what the ops touched, counts
 them as dropped, logs each, and reports the first failure at the next fsync.
 
-**Admission.** A new mutation waits while the queue is full (512 ops), the queued plus dirty bytes
-exceed 2 MiB, or the oldest uncommitted op (the batch in flight included) is older than
-`window / 2`. A commit therefore lands within the window unless one `Apply` takes longer than
-`window / 2` (a stalled server); such a commit is counted as a missed window, and the benchmark
-harness rejects any run with one. Measured: 0 missed windows in every run, worst commit lag
+**Admission (`admission-projects-apply`).** A new mutation waits while the queue is full (512 ops),
+the queued plus dirty bytes exceed 2 MiB, or the oldest uncommitted op (the batch in flight
+included) could not commit in time: its age plus one `Apply` (two while a batch is in flight)
+exceeds the window, an `Apply` being assumed as slow as the slowest of the last 8 (and the one in
+flight so far). A slow server therefore slows writers instead of stretching visibility. Only an
+`Apply` far slower than the recent ones can still land late; such a commit is counted as a missed
+window, and the benchmark harness rejects any run with one. The previous rule (wait once the
+oldest op is `window / 2` old) missed 828 windows in a `git clone`, whose reads slowed `Apply` to
+218 ms. Measured: 0 missed windows in every run, worst commit lag
 58 ms at 1 s (250 ms window), 53 ms at 8 s.
 
 **Inline-or-defer (`serve-inline-or-defer`).** The kernel round-robins requests across idle FUSE
@@ -189,14 +196,15 @@ absent; `fsck` clean).
 Directory (`CONTRACTS`): `tenant-and-principal-from-session`, `store-trait-boundary`.
 Declarations: `write-stop-boundaries`, `read-version-reuse`, `auth-cache-epoch`, `fresh-reads`,
 `apply-batch`, `session-principal`, `ordered-commit`, `own-commit-floor`, `ttl-at-serve`,
-`local-permissions`, `serve-inline-or-defer`, `local-keeps-freshness`, `overlay-over-fresh-base`.
+`local-permissions`, `serve-inline-or-defer`, `local-keeps-freshness`, `overlay-over-fresh-base`,
+`content-under-live-rev`, `admission-projects-apply`.
 
 ## Checks (`local/`)
 
 | script | checks |
 | --- | --- |
 | `smoke.bash` | end-to-end ops; unmount with 0 dropped ops; remount and verify content, listing; `fsck` |
-| `visibility.py` | two mounts; for create, overwrite, append, truncate, chmod, utime, rename, unlink, mkdir, rmdir, a directory handle held open and rewound, a file opened for writing just before its cache expires, and read revocation, no poll starting later than ack + MAX sees the old state, and every read returns a whole written state |
+| `visibility.py` | two mounts; for create, overwrite, append, truncate, chmod, utime, rename, unlink, mkdir, rmdir, a directory handle held open and rewound, a file opened for writing just before its cache expires, a 4 KiB overwrite in the middle of a 2 MiB file read by range, and read revocation, no poll starting later than ack + MAX sees the old state, and every read returns a whole written state |
 | `crash.py` | SIGKILL the mount mid-untar; every file complete, a prefix, or absent; `fsck` clean |
 | `stall.py` | cached requests are not delayed by another client's slow uncached reads |
 | `bigdir.py` | lookup hits and misses in a directory above and below the listing cap |
@@ -227,6 +235,22 @@ References:
 and after the sparse overlay, spans 2.19 to 2.48 s), vs Spolu pinned 65.6 s and Spolu latest 37.2 s.
 Native tar of the same archive on this machine: 0.23 s. Deep-grant untar (1000 files): 0.160 s /
 0.173 s (first build of this design: 1.73 s; lease design: 11.27 s).
+
+`git clone https://github.com/dust-tt/dust` (1.03 GB pack, 15,295 files; network included) then
+`git status` twice (`bench/git.py`; validated after a server restart against a native clone):
+
+| | native | ours, 1 s | ours, 8 s |
+| --- | ---: | ---: | ---: |
+| clone | 43.2 s | 71.4 s | 70.4 s |
+| status, first / repeated | 0.37 / 0.023 s | 8.3 / 6.6 s | 9.4 / 1.0 s |
+
+Before the block cache and the projected admission: clone 496 s at 1 s (727k `Read` calls from
+`index-pack`, 828 missed windows); after: 8.9k `Read` calls, 0 missed windows, worst lag 164 ms.
+`status` refetches one listing per directory (2.5k) once the TTL has lapsed.
+
+Spolu's own corpus (10k files, 662 MiB, `bench/archive.py`, before the block cache): `tar -xzf`
+6.1 s at 1 s and 6.4 s at 8 s vs 3.9 s native; uncompressed `tar -xf` 7.1 s / 5.9 s vs 0.8 to
+2.0 s native.
 
 jd's rows, ms, `first / warm`. Native is jd's script on the VM's local disk, with the corpus
 already in the page cache, so its `first` is not cold:
