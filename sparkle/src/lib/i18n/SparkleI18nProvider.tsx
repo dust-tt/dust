@@ -56,10 +56,7 @@ export function SparkleI18nProvider({
     };
   }, [locale, loadedI18n]);
 
-  const context = useMemo(
-    () => toI18nContext(renderedI18n),
-    [renderedI18n]
-  );
+  const context = useMemo(() => toI18nContext(renderedI18n), [renderedI18n]);
 
   return (
     <SparkleI18nContext.Provider value={context}>
