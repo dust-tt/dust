@@ -716,8 +716,7 @@ app.put(
       canonicalPath,
       content,
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["x-dust-if-revision-match"] ??
-        checkedRevision
+      ctx.req.valid("header")["x-dust-if-revision-match"] ?? checkedRevision
     );
 
     if (writeResult.isErr()) {
