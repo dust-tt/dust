@@ -53,6 +53,16 @@ The demo/benchmark choose ephemeral loopback gRPC ports inside the container; th
 is available for a manually started server on `0.0.0.0:8080` with `--allow-insecure`.
 Stopping preserves the database. This is a single-node local FDB evaluation, not an HA test.
 
+Local FDB has an **8 GiB container limit** (`DFS_V4_FDB_MEMORY`) and keeps its native **2 GiB disk-page
+cache**, with automatic restart unless explicitly stopped. Allocate at least **16 GiB to Docker
+Desktop** for FDB alongside the development container and other local services. The former 3 GiB
+FDB limit caused an OOM kill during a large Git clone. Failed/uncertain DFS writes are not replayed;
+after an outage, start a fresh mount before retrying failed operations.
+
+Validated with a 2 GiB streamed write, fsync and matching SHA-256 read through a fresh server/mount.
+FDB peaked at 3.44 GiB of container memory with no OOM events or restarts; the full Git clone was
+not rerun. Existing database volumes and the interrupted clone were preserved.
+
 Storage format `dfs-v4-fdb-2` splits directory core/state. Older prefixes are rejected; this PoC has
 no migration. After an operator resets FDB, start the demo with a fresh `--work` directory because its
 saved tenant credentials refer to the erased fixture.

@@ -27,6 +27,14 @@ The original 1 GiB baseline and intermediate measurements remain below.
 The existing `page cache` and `search` labels name benchmark categories; search here is filesystem
 `rg`, not a search service. Kernel caching remains disabled.
 
+**Later local configuration change:** a large Git clone OOM-killed FDB under its 3 GiB container
+limit. Docker was increased to 16 GiB and FDB to 8 GiB, retaining the native 2 GiB page cache.
+A separate 2 GiB streamed write then completed in 40.207s plus 0.233s fsync; a fresh server/mount
+read and verified its SHA-256 in 11.612s. Peak FDB cgroup memory was 3.44 GiB, with zero OOM events
+or restarts. This was a large-file recovery check, not a Git clone or suite rerun. All benchmark
+tables below retain their original **3 GiB FDB / 7.65 GiB Docker** configuration and timings.
+Diagnostic report: `/tmp/dfs-v4-large-write-omfo6v36/result.json` inside `dfs-v4-dev-1`.
+
 ## Latest full table — directory-record split
 
 Source `26dbc5e862` (implementation `9e8c6ea3c7`). Same 10k corpus and local setup described above;

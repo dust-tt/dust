@@ -6,7 +6,8 @@ services:
       FDB_NETWORKING_MODE: container
     volumes:
       - fdb-data:/var/fdb
-    mem_limit: 3g
+    mem_limit: ${DFS_V4_FDB_MEMORY:-8g}
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'"]
       interval: 2s
