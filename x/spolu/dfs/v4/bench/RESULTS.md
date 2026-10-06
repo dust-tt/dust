@@ -1,9 +1,9 @@
 # Benchmark results — dfs v4 localhost
 
-Latest full-suite measurements: **2026-10-06**, source `133f09dac5`. All **24 timed checks and final
-cleanup passed**. The [new full table and EIO diagnosis](#latest-full-table--directory-cleanup-fix)
-record the directory-publication race fix. Client budget remains 512 MiB; previous tables and failures
-are preserved below. Replicated-backend measurements are in [GCP results](../gcp/RESULTS.md).
+Latest full-suite measurements: **2026-10-06**, source `4ad853b432`. All **24 checks and cleanup
+passed**. The [new full table](#latest-full-table--paired-rerun) is a fresh local run before the
+[same revision on dust-dev](../gcp/RESULTS.md#latest-full-table--paired-rerun).
+Previous tables and the cleanup diagnosis remain below.
 
 ## Configuration and method
 
@@ -35,7 +35,83 @@ tables before the directory-cache work retain their original **3 GiB FDB / 7.65 
 configuration and timings; the directory-cache and cleanup-fix tables use the enlarged fixture.
 Diagnostic report: `/tmp/dfs-v4-large-write-omfo6v36/result.json` inside `dfs-v4-dev-1`.
 
-## Latest full table — directory cleanup fix
+## Latest full table — paired rerun
+
+2026-10-06T18:29:33Z, source `4ad853b432` (runtime implementation `133f09dac5`). Full **10,000-file** run:
+100 directories, **177,499,149 document bytes**, seed 42, with both first and warm passes.
+Local run completed first, before remote build/test/timing. Native Linux ARM64 on Apple M4 Max,
+16 vCPUs, 16 GiB Docker VM, one FDB 7.3.69 node (`single ssd`) with an 8 GiB container limit and native
+2 GiB page cache. Same binaries as the preceding cleanup-fix run. The idle demo mount stayed mounted;
+FDB remained available with unchanged configuration.
+
+Client: **512 MiB**, 1s read TTL, 25ms coalescing, 128 in-flight groups, 16 envelopes, eight FUSE workers.
+Directory revision reuse, bounded page-ahead attribute prefetch and the cleanup-race fix are enabled;
+no file-content prefetch or kernel data/writeback caching. Each first read restarts server/session/mount;
+FDB and OS caches remain. Warm is one repeat and can outlast the TTL. Profiling enabled; no concurrent
+builds/tests. Existing data retained under separate prefixes. Single samples, not statistical estimates.
+
+**All 24 timed checks, both full-content hash passes and final cleanup passed; exit 0.**
+Untar: **6.509s + 0.528s remaining client drain = 7.037s**.
+Unmount including drain: 0.579s. Fsync waits for durable FDB commits;
+there is no later server persistence stage.
+No fsync/fsyncdir calls occurred during untar. Cleanup encountered one listing race and stabilized
+it with 1.864ms cumulative in-flight wait; no retry exhaustion or writeback errors. FDB had no
+restart or OOM kill.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| population   | untar (10,000 files, 177.5 MB)                 | once  |  6,508.68 | OK     |
+| writeback    | remaining client drain after untar             | once  |    528.00 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 11,771.22 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 21,119.41 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |    339.52 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |     35.58 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 10,655.92 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 13,828.90 | OK     |
+| metadata     | stat missing (256 paths)                       | first |  1,436.15 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |    824.56 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first |  4,246.31 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |  2,101.63 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |  4,073.28 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |  2,180.56 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |  1,787.44 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |  2,428.76 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |    417.93 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |    350.63 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 64,177.31 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 15,484.36 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |  1,988.09 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |  3,505.27 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |     17.33 | OK     |
+| file sync    | fsync (32 files)                               | once  |    148.29 | OK     |
+| write        | close (32 files)                               | once  |      0.77 | OK     |
+| write        | unlink (32 files)                              | once  |     21.97 | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+### Where time is spent in this run
+
+Read rows cover first + warm; untar includes fixture setup. FUSE CPU is sampled before remaining
+drain, DFS CPU after it; neither includes FDB server CPU. Instrumented durations overlap and must
+not be added as a wall-time breakdown.
+
+| Workload | FUSE CPU (s) | DFS CPU (s) | FDB get elapsed (s) | FDB commit elapsed (s) |
+| --- | ---: | ---: | ---: | ---: |
+| Untar | 6.060 | 6.360 | 209.109 | 16.444 |
+| Scandir + stat | 6.530 | 4.360 | 25.983 | 0.000 |
+| Open + fstat + close | 6.830 | 2.460 | 13.880 | 0.000 |
+| rg no-match | 9.200 | 9.030 | 147.255 | 0.000 |
+| Open + read + SHA-256 | 11.760 | 13.730 | 98.242 | 0.000 |
+
+Report: `/tmp/dfs-v4-4ad853b432-full/run.json` inside `dfs-v4-dev-1`.
+Server SHA-256: `016b7ac67daa7f6c8e4cee045ff798d090052f23c7df905c4f79199e17b4920a`.
+FUSE SHA-256: `545039110bbb3bbcc4ec87d07765dddba258f92125e98f9778ad5ac6e6631766`.
+Manifest SHA-256: `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
+Generated reports, logs and credentials remain outside Git.
+
+## Previous full table — directory cleanup fix
 
 2026-10-06, source `133f09dac5`. Same 10k corpus and directory-cache configuration as the preceding
 run: 512 MiB client budget, 1s read TTL, 25ms coalescing, 16 GiB Docker / 8 GiB FDB limit.
@@ -97,7 +173,8 @@ and completed `rmdir` with **zero retry exhaustion or writeback errors**. Regres
 a deterministic real-FDB publication race, unrelated-object progress, queued unlink visibility,
 five deep mounted cleanup cycles, and ten repetitions of jd's isolated write/cleanup workload.
 Workspace tests, clippy and mounted release checks passed before timing. FDB stayed available with
-no restart or OOM kill. This validates the fix locally; earlier GCP measurements predate it.
+no restart or OOM kill. This run validates the fix locally; the latest paired rerun above also
+validates it on GCP.
 
 Report: `/tmp/dfs-v4-133f09dac5-full/run.json` inside `dfs-v4-dev-1`.
 Server SHA-256: `016b7ac67daa7f6c8e4cee045ff798d090052f23c7df905c4f79199e17b4920a`.

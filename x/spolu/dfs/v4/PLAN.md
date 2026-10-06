@@ -85,6 +85,10 @@ regressions. Validate concurrent clients, same-name collisions, moves, revocatio
   cleanup checks pass; the old local/GCP benchmark failures remain recorded as historical results.
 - [x] Repeat the full local suite with the cleanup fix: all 24 timed checks and final cleanup pass,
   exit 0; 6.523s untar + 0.450s drain. Full table and diagnosis in [bench/RESULTS.md](bench/RESULTS.md).
+- [x] Rerun the full local suite, then the full replicated GCP suite at `4ad853b432`: all 24 checks
+  and final cleanup pass in both. Untar + drain: 7.037s local, 13.303s GCP. New complete tables and
+  profiling in [bench/RESULTS.md](bench/RESULTS.md) and [gcp/RESULTS.md](gcp/RESULTS.md); previous
+  measurements retained. GCP services restored and FDB configuration unchanged.
 - [ ] 100k-file and multi-server contention benchmarks.
 - [ ] Fault injection for process crashes, lost commit replies, and partitions; no automatic uncertain-write replay.
 - [ ] Git workload profiling and metadata-refresh batching beyond the current bounded directory prefetch.
