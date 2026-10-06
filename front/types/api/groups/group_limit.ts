@@ -7,3 +7,13 @@ export type SetGroupLimitResponse = {
 };
 
 export type PutGroupLimitResponseBody = SetGroupLimitResponse;
+
+export type GroupLimitUsage = {
+  groupId: string;
+  limitAwuCredits: number;
+  usedAwuCredits: number;
+};
+
+export type GetGroupsUsageResponseBody = {
+  groups: GroupLimitUsage[];
+};

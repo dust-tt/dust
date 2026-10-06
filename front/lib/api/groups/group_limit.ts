@@ -13,7 +13,10 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { contractHasPersonalCreditSeats } from "@app/lib/metronome/seats";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
@@ -31,6 +34,7 @@ import {
 import logger from "@app/logger/logger";
 import type {
   GroupLimit,
+  GroupLimitUsage,
   SetGroupLimitResponse,
 } from "@app/types/api/groups/group_limit";
 import { isCapEligibleGroupKind } from "@app/types/groups";
@@ -424,6 +428,38 @@ export async function readGroupLimitCount(
         : (consumedByGroupId.get(group.sId) ?? 0);
     },
   });
+}
+
+/**
+ * Each limited group's limit and usage this cycle, or null when group limits are not enabled. A
+ * counter that cannot be read (or an unknown cycle) reports 0, like the other spend counters.
+ */
+export async function getGroupLimitsUsage(
+  auth: Authenticator
+): Promise<GroupLimitUsage[] | null> {
+  if (!(await areGroupLimitsEnabled(auth))) {
+    return null;
+  }
+
+  const groups = await GroupResource.listLimitedGroups(auth);
+  const bounds = await resolveSpendLimitCycleBounds(
+    auth.getNonNullableWorkspace()
+  );
+
+  return concurrentExecutor(
+    groups,
+    async (group) => {
+      const count = bounds
+        ? await readGroupLimitCount(auth, { group, bounds })
+        : null;
+      return {
+        groupId: group.sId,
+        limitAwuCredits: group.groupLimitAwuCredits ?? 0,
+        usedAwuCredits: microCreditsToCredits(count ?? 0),
+      };
+    },
+    { concurrency: 8 }
+  );
 }
 
 /**

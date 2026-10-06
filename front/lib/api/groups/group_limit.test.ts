@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import {
   areGroupLimitsEnabled,
+  getGroupLimitsUsage,
   isGroupLimitReached,
   MAX_GROUP_LIMIT_AWU_CREDITS,
   recordGroupLimitUsage,
@@ -1148,5 +1149,55 @@ describe("isUserBlocked with a group limit", () => {
     await setCounter(workspace, engineering, 10_000_000_000);
 
     expect(await isUserBlocked(auth, freeMember)).toBeNull();
+  });
+});
+
+describe("getGroupLimitsUsage", () => {
+  it("reports each limited group's limit and usage this cycle", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    const sales = await makeLimitedGroup(auth, workspace, "Sales", [], 6_000);
+    await makeGroup(auth, workspace, "Marketing", [user]);
+    await setCounter(workspace, engineering, 2_500_000_000);
+
+    const usage = await getGroupLimitsUsage(auth);
+
+    expect(usage).toEqual([
+      {
+        groupId: engineering.sId,
+        limitAwuCredits: 10_000,
+        usedAwuCredits: 2_500,
+      },
+      { groupId: sales.sId, limitAwuCredits: 6_000, usedAwuCredits: 0 },
+    ]);
+  });
+
+  it("reports no usage when the billing cycle is unknown", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    await setCounter(workspace, engineering, 2_500_000_000);
+    vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
+
+    expect(await getGroupLimitsUsage(auth)).toEqual([
+      { groupId: engineering.sId, limitAwuCredits: 10_000, usedAwuCredits: 0 },
+    ]);
+  });
+
+  it("returns nothing when group limits are not enabled", async () => {
+    const { auth } = await setup({ withFlag: false });
+
+    expect(await getGroupLimitsUsage(auth)).toBeNull();
   });
 });
