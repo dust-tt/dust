@@ -322,17 +322,20 @@ const config = {
     return port;
   },
   getCollabServerPort: (): number => {
-    const value = EnvironmentConfig.getOptionalEnvVariable("PORT") ?? "3010";
+    const value =
+      EnvironmentConfig.getOptionalEnvVariable("COLLAB_PORT") ?? "3010";
     const port = Number.parseInt(value, 10);
 
     if (Number.isNaN(port) || port <= 0) {
-      throw new Error("PORT must be a positive integer");
+      throw new Error("COLLAB_PORT must be a positive integer");
     }
 
     return port;
   },
   getCollabServerHostname: (): string => {
-    return EnvironmentConfig.getOptionalEnvVariable("HOSTNAME") ?? "localhost";
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("COLLAB_HOSTNAME") ?? "localhost"
+    );
   },
   getEgressProxyTlsName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_TLS_NAME");
