@@ -18,6 +18,7 @@
     "@babel/preset-typescript"
   ],
   "plugins": [
+    ["@lingui/babel-plugin-lingui-macro", { "descriptorFields": "message" }],
     [
       "@babel/plugin-transform-react-jsx",
       { "runtime": "classic", "useSpread": true }
