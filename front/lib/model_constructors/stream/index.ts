@@ -40,6 +40,7 @@ import { GoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream } from "@app/li
 import { GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_8_flash_global_google_ai_studio";
 import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_codestral_eu_mistral";
 import { MistralMistralLarge4EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_4_eu_mistral";
+import { MistralMistralLarge4GlobalMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_4_global_mistral";
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
@@ -182,6 +183,8 @@ export const STREAM_ENDPOINTS = {
     MistralMistralLargeEuropeMistralStream,
   [MistralMistralLarge4EuropeMistralStream.id]:
     MistralMistralLarge4EuropeMistralStream,
+  [MistralMistralLarge4GlobalMistralStream.id]:
+    MistralMistralLarge4GlobalMistralStream,
   [MistralMistralMedium35EuropeMistralStream.id]:
     MistralMistralMedium35EuropeMistralStream,
   [MistralMistralSmallEuropeMistralStream.id]:

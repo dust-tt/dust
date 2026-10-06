@@ -76,7 +76,7 @@ export const MISTRAL_LARGE_4_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsResponseFormat: true,
   regionalAvailability: {
-    "us-central1": false,
+    "us-central1": true,
     "europe-west1": true,
   },
 };
