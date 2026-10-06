@@ -73,7 +73,8 @@ interface ToolValidationCardProps {
   currentUser: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
-  errorMessage: string | null;
+  // Shown inline under the card, for viewers without notifications (shared frames).
+  errorMessage?: string | null;
   isValidating: boolean;
   isPulsing?: boolean;
   // Submits the user's decision; returns whether the submission succeeded.

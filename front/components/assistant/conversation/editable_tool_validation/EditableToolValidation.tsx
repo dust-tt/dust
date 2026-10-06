@@ -11,7 +11,6 @@ interface EditableToolValidationProps {
   isPulsing: boolean;
   isValidating: boolean;
   onActionCompleted: () => void;
-  onError: (errorMessage: string | null) => void;
   onValidationStart: () => void;
   owner: LightWorkspaceType;
 }
@@ -27,15 +26,11 @@ export function EditableToolValidation({
   isPulsing,
   isValidating,
   onActionCompleted,
-  onError,
   onValidationStart,
   owner,
 }: EditableToolValidationProps) {
   const { editAndValidateAction, isEditingAndValidating } =
-    useEditAndValidateAction({
-      owner,
-      onError,
-    });
+    useEditAndValidateAction({ owner });
 
   const canAlwaysAllow =
     blockedAction.stake === "low" || blockedAction.stake === "medium";
