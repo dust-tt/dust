@@ -486,7 +486,10 @@ export async function validateMarkdownCommentsForWrite(
         ? ABSENT_FILE_REVISION
         : undefined;
     if (classifiedRevision !== undefined) {
-      stored?.stream.destroy();
+      if (stored) {
+        // The content of a write that is not validated is never read, nor the errors of its stream.
+        stored.stream.on("error", () => undefined).destroy();
+      }
       return new Ok({ revision: classifiedRevision });
     }
   }
