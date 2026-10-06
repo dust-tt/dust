@@ -26,6 +26,7 @@ export const PORT_OFFSETS = {
   sqliteWorker: 9,
   frontSpaPoke: 10,
   frontSpaApp: 11,
+  collab: 12,
   postgres: 432,
   redis: 379,
   qdrantHttp: 333,
@@ -55,6 +56,7 @@ const PortAllocationSchema = z
     sqliteWorker: z.number().optional(),
     frontSpaPoke: z.number().optional(),
     frontSpaApp: z.number().optional(),
+    collab: z.number().optional(),
     postgres: z.number(),
     redis: z.number(),
     qdrantHttp: z.number(),
@@ -72,6 +74,7 @@ const PortAllocationSchema = z
     sqliteWorker: data.sqliteWorker ?? data.base + PORT_OFFSETS.sqliteWorker,
     frontSpaPoke: data.frontSpaPoke ?? data.base + PORT_OFFSETS.frontSpaPoke,
     frontSpaApp: data.frontSpaApp ?? data.base + PORT_OFFSETS.frontSpaApp,
+    collab: data.collab ?? data.base + PORT_OFFSETS.collab,
     kibana: data.kibana ?? data.base + PORT_OFFSETS.kibana,
   }));
 
@@ -92,6 +95,7 @@ export function calculatePorts(base: number): PortAllocation {
     sqliteWorker: base + PORT_OFFSETS.sqliteWorker,
     frontSpaPoke: base + PORT_OFFSETS.frontSpaPoke,
     frontSpaApp: base + PORT_OFFSETS.frontSpaApp,
+    collab: base + PORT_OFFSETS.collab,
     postgres: base + PORT_OFFSETS.postgres,
     redis: base + PORT_OFFSETS.redis,
     qdrantHttp: base + PORT_OFFSETS.qdrantHttp,

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx esbuild.dev.ts",
+    "dev:collab": "tsx esbuild.collab.dev.ts",
     "build": "tsx esbuild.production.ts",
     "test": "NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "test:ci": "vitest --watch=false --test-timeout=30000",

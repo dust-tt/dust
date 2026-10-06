@@ -12,6 +12,7 @@ import esbuild from "esbuild";
 import {
   BUILD_TARGETS,
   type BuildTarget,
+  childEnv,
   getBaseBuildOptions,
 } from "./esbuild.shared";
 
@@ -57,27 +58,6 @@ function waitForExit(proc: ChildProcess, graceMs: number): Promise<void> {
     }, graceMs);
     proc.once("exit", done);
   });
-}
-
-// Externalized requires resolve relative to the bundle's directory, but
-// most runtime deps live under `front/node_modules` (front-api itself
-// declares almost nothing). The Dockerfile sets the same NODE_PATH at
-// runtime (see dockerfiles/front.Dockerfile, "ENV NODE_PATH=/app/front/node_modules").
-const FRONT_NODE_MODULES = "../front/node_modules";
-
-function childEnv(): NodeJS.ProcessEnv {
-  const existing = process.env.NODE_PATH;
-  return {
-    ...process.env,
-    NODE_PATH: existing
-      ? `${FRONT_NODE_MODULES}:${existing}`
-      : FRONT_NODE_MODULES,
-    // V8 compile cache persists across restarts (Node >= 22.8). Each child
-    // reuses the parsed/compiled bytecode of the 6 MB bundle from disk,
-    // cutting cold-parse cost out of every dev rebuild.
-    NODE_COMPILE_CACHE:
-      process.env.NODE_COMPILE_CACHE ?? ".cache/node-compile-cache",
-  };
 }
 
 function allocatePort(): Promise<number> {

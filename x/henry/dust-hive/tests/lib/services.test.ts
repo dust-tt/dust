@@ -18,6 +18,7 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("viz");
       expect(ALL_SERVICES).toContain("storybook");
       expect(ALL_SERVICES).toContain("sqlite-worker");
+      expect(ALL_SERVICES).toContain("collab");
     });
 
     it("does not contain the removed front service", () => {
@@ -25,16 +26,16 @@ describe("services", () => {
       expect(ALL_SERVICES).not.toContain("front" as ServiceName);
     });
 
-    it("has 14 services total", () => {
-      expect(ALL_SERVICES).toHaveLength(14);
+    it("has 15 services total", () => {
+      expect(ALL_SERVICES).toHaveLength(15);
     });
 
     it("has sdk as first service (start order)", () => {
       expect(ALL_SERVICES[0]).toBe("sdk");
     });
 
-    it("has sqlite-worker as last service", () => {
-      expect(ALL_SERVICES[ALL_SERVICES.length - 1]).toBe("sqlite-worker");
+    it("has collab as last service", () => {
+      expect(ALL_SERVICES[ALL_SERVICES.length - 1]).toBe("collab");
     });
 
     it("is immutable (readonly tuple)", () => {
@@ -85,6 +86,7 @@ describe("services", () => {
         "viz",
         "storybook",
         "sqlite-worker",
+        "collab",
       ];
 
       // All should be valid ServiceName values

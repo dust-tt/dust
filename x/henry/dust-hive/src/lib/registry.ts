@@ -89,7 +89,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     needsNvm: false,
     needsEnvSh: false,
     buildCommand: (env) =>
-      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing}`,
+      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing} ${env.ports.collab}`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.front}/__hive/healthz`,
@@ -194,6 +194,20 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     },
     portKey: "sqliteWorker",
   },
+  collab: {
+    cwd: "front-api",
+    needsNvm: true,
+    needsEnvSh: true,
+    // The co-edition live session server, reached through the proxy's /collab route. Started on
+    // demand: only co-edition work needs it.
+    buildCommand: (env) =>
+      `HOSTNAME=localhost PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.collab}/api/healthz`,
+    },
+    portKey: "collab",
+  },
 };
 
 const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];
@@ -207,15 +221,16 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, viz, storybook and
-// sqlite-worker which start at spawn/manually).
+// Services to start during warm (all services except sparkle, SDK, viz, storybook, sqlite-worker
+// and collab which start at spawn/manually).
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
   (service) =>
     service !== "sparkle" &&
     service !== "sdk" &&
     service !== "viz" &&
     service !== "storybook" &&
-    service !== "sqlite-worker"
+    service !== "sqlite-worker" &&
+    service !== "collab"
 );
 
 // Build the full shell command for a service
