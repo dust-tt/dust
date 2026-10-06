@@ -14,7 +14,6 @@ import type {
   GetGroupDiscoveryPinsResponseBody,
   PutGroupDiscoveryPinResponseBody,
 } from "@app/types/api/discovery";
-import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -32,15 +31,7 @@ export type DiscoveryPinError = DustError<
 export async function listFeaturedDiscoveryItems(
   auth: Authenticator
 ): Promise<GetFeaturedDiscoveryItemsResponseBody> {
-  const pinnedItems = await DiscoveryItemResource.listPinnedForAuth(auth);
-  const items = pinnedItems.filter(
-    (item) =>
-      item.type !== "skill" ||
-      isSkillVisibleToViewer({
-        availability: item.target.availability,
-        viewerCanWrite: auth.can("write", item.target),
-      })
-  );
+  const items = await DiscoveryItemResource.listPinnedForAuth(auth);
   return {
     items: items.map((item) => DiscoveryItemResource.toJSON(item)),
   };
@@ -162,18 +153,6 @@ async function resolveViewerVisibleItems(
       }))
     );
 
-  const visibleSkillsById = new Map(
-    [...skillsById.values()]
-      .filter(
-        (skill) =>
-          auth.can("read", skill) &&
-          isSkillVisibleToViewer({
-            availability: skill.availability,
-            viewerCanWrite: auth.can("write", skill),
-          })
-      )
-      .map((skill) => [skill.sId, skill])
-  );
   return removeNulls(
     candidates.map(
       ({ resourceType, resourceId }): DiscoveryRankedItemType | null => {
@@ -185,7 +164,7 @@ async function resolveViewerVisibleItems(
               : null;
           }
           case "skill": {
-            const skill = visibleSkillsById.get(resourceId);
+            const skill = skillsById.get(resourceId);
             return skill
               ? {
                   type: "skill",
