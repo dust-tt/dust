@@ -20,6 +20,8 @@ export interface LiveFile {
 }
 
 /** The name a live document goes by on the WebSocket: workspace and file path. */
+// TODO(co-edition step 8): key on a stable file id. A rename during a session leaves editors on
+// the old path, and saving there (step 9) would recreate the file.
 export function toLiveDocumentName(
   workspaceId: string,
   canonicalPath: string
