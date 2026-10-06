@@ -1,11 +1,10 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounce, useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { useFormatError } from "@app/hooks/useFormatError";
 import {
   useSendApiErrorNotification,
   useSendNotification,
 } from "@app/hooks/useNotification";
-import { formatError } from "@app/lib/api_error_messages";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import type {
   DetectedSkillSummary,
@@ -840,8 +839,7 @@ export function useDetectSkillsFromRepo({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const hasLocalisation = hasFeature("localisation");
+  const formatError = useFormatError();
   const { fetcher } = useFetcher();
 
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
@@ -888,18 +886,14 @@ export function useDetectSkillsFromRepo({
             err.error.type === "skill_github_repository_not_found";
           setRepositoryNotFound(repositoryNotFound);
           // Detect errors are errors we want to expose to consumers: repository not found is singled out above.
-          setDetectError(
-            repositoryNotFound
-              ? null
-              : formatError(err, { hasLocalisation }).description
-          );
+          setDetectError(repositoryNotFound ? null : formatError(err));
         } finally {
           if (!signal.aborted) {
             setIsDetecting(false);
           }
         }
       },
-      [owner.sId, fetcher, hasLocalisation]
+      [owner.sId, fetcher, formatError]
     ),
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
@@ -1020,8 +1014,7 @@ export function useDetectSkillsFromFiles({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const hasLocalisation = hasFeature("localisation");
+  const formatError = useFormatError();
   const { fetcher } = useFetcher();
 
   const [detectedSkills, setDetectedSkills] = useState<DetectedSkillSummary[]>(
@@ -1051,12 +1044,12 @@ export function useDetectSkillsFromFiles({
         );
         setDetectedSkills(data.skills);
       } catch (err) {
-        setDetectError(formatError(err, { hasLocalisation }).description);
+        setDetectError(formatError(err));
       } finally {
         setIsUploading(false);
       }
     },
-    [owner.sId, fetcher, hasLocalisation]
+    [owner.sId, fetcher, formatError]
   );
 
   return {

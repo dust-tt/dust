@@ -14,7 +14,10 @@ import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
@@ -158,6 +161,7 @@ export function FrameRenderer({
   });
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const confirm = useContext(ConfirmContext);
   const [isSavingToProject, setIsSavingToProject] = useState(false);
 
@@ -368,10 +372,9 @@ export function FrameRenderer({
       );
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to save to Pod",
-          description: errorData.message,
+          error: errorData,
         });
         return;
       }
@@ -399,6 +402,7 @@ export function FrameRenderer({
     owner.sId,
     projectInfo?.name,
     sendNotification,
+    sendApiErrorNotification,
   ]);
 
   if (error) {

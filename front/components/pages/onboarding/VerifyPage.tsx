@@ -1,5 +1,6 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
+import { useFormatError } from "@app/hooks/useFormatError";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
@@ -33,6 +34,7 @@ type Step = "captcha" | "phone" | "code" | "start-trial" | "done";
 export function VerifyPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
+  const formatError = useFormatError();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
   });
@@ -193,7 +195,7 @@ export function VerifyPage() {
 
     if (!trialResponse.ok) {
       const data = await trialResponse.json();
-      setPhoneError(data.api_error?.message ?? "Failed to start trial");
+      setPhoneError(formatError(data));
       return;
     }
 
@@ -208,7 +210,13 @@ export function VerifyPage() {
     } else {
       goToWorkspace();
     }
-  }, [workspace.sId, mutateAuthContext, isMetronomeCheckout, goToWorkspace]);
+  }, [
+    workspace.sId,
+    mutateAuthContext,
+    isMetronomeCheckout,
+    goToWorkspace,
+    formatError,
+  ]);
 
   const verifyCode = useCallback(
     async (fullCode: string) => {
