@@ -3975,44 +3975,6 @@ msgstr "Ensembles réutilisables d’instructions et d’outils que les agents p
 msgid "Hidden skills"
 msgstr "Compétences masquées"
 
-#: front/components/pages/builder/skills/utils.ts
-msgctxt "tab listing all skills"
-msgid "All"
-msgstr "Toutes"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "All active skills"
-msgstr "Toutes les compétences actives"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Editable by me"
-msgstr "Modifiables par moi"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Skills you can edit"
-msgstr "Compétences que vous pouvez modifier"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Favorites"
-msgstr "Favoris"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Skills you favorited"
-msgstr "Compétences que vous avez mises en favori"
-
-#: front/components/pages/builder/skills/utils.ts
-#: front/components/skills/skillFilter.ts
-msgid "Archived"
-msgstr "Archivées"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "Archived skills"
-msgstr "Compétences archivées"
-
-#: front/components/pages/builder/skills/utils.ts
-msgid "All availabilities"
-msgstr "Toutes les disponibilités"
-
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 #: front/components/pages/spaces/apps/DatasetsPage.tsx
 #: front/components/pages/spaces/apps/RunPage.tsx
@@ -6081,6 +6043,10 @@ msgstr "L’URL du dépôt est obligatoire"
 msgctxt "tab of the skills provided by Dust"
 msgid "Dust"
 msgstr "Dust"
+
+#: front/components/skills/skillFilter.ts
+msgid "Archived"
+msgstr "Archivées"
 
 #: front/components/spaces/AddConnectionMenu.tsx
 msgid "Failed to enable connection ({provider})"
