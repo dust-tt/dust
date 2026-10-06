@@ -31,7 +31,7 @@ function toWebStream(readable: Readable): ReadableStream<Uint8Array> {
   });
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: API route handler
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- API route
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
