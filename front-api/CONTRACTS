@@ -187,6 +187,16 @@ its message and stack are captured in the log instead of the synthetic one.
 Reviewer: if you see `c.json({ error: ... }, status)` in a handler, require
 the author to switch to `apiError(c, ...)`.
 
+@cc [owner:Nils-Fedrigo,label:api;error-handling] error-type-matches-message
+The `type` of an API error MUST describe the failure as closely as its `message`. The UI shows the
+translation of `type` as the error description, and `message` only under a collapsed "Details"
+toggle, so a user reading only the description must understand what failed.
+
+A new error path MUST NOT pair a generic type (`invalid_request_error`, `internal_server_error`,
+`unprocessable_entity`, ...) with a `message` naming a specific failure the user can act on (e.g.
+"A space with this name already exists."). It MUST use the existing type naming that failure
+(`space_already_exists`), or add one to `API_ERROR_TYPES` in `front/types/error.ts`.
+
 @cc [label:api] workspace-import-aliases
 Use `@front-api/*` for imports from `front-api/` itself (middleware, app, helpers) and `@app/*`
 for imports from `front/`. The path tree is deeply nested, so relative imports across the tree
