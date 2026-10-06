@@ -40,6 +40,7 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 
@@ -177,11 +178,27 @@ type ExportTableData =
 
 export const MAX_MESSAGES_EXPORT_DAYS = 90;
 
+export function isExportRangeTooLong({
+  table,
+  startDate,
+  endDate,
+}: {
+  table: AnalyticsExportTable;
+  startDate: string;
+  endDate: string;
+}): boolean {
+  if (table !== "messages") {
+    return false;
+  }
+  const diffMs = Date.parse(endDate) - Date.parse(startDate);
+  return diffMs > MAX_MESSAGES_EXPORT_DAYS * ONE_DAY_MS;
+}
+
 /**
  * @cc [owner:philipperolet,label:performance] messages-export-range-cap
- * For `table: "messages"`, callers MUST reject requests where `endDate` is more than
- * `MAX_MESSAGES_EXPORT_DAYS` days after `startDate`, without calling `exportTable`: every message of
- * the range is loaded in memory, and wider ranges on large workspaces crash the server.
+ * For `table: "messages"`, when `endDate` is more than `MAX_MESSAGES_EXPORT_DAYS` days after
+ * `startDate`, `exportTable` MUST return an error without fetching any data: every message of the
+ * range is loaded in memory, and wider ranges on large workspaces crash the server.
  */
 export async function exportTable({
   auth,
@@ -200,6 +217,14 @@ export async function exportTable({
   owner: WorkspaceType;
   includeHiddenAgents: boolean;
 }): Promise<Result<ExportTableData, Error>> {
+  if (isExportRangeTooLong({ table, startDate, endDate })) {
+    return new Err(
+      new Error(
+        `Time range must not exceed ${MAX_MESSAGES_EXPORT_DAYS} days for the messages table`
+      )
+    );
+  }
+
   switch (table) {
     case "usage_metrics":
       return exportUsageMetrics({ auth, startDate, endDate, timezone });
