@@ -76,22 +76,11 @@ pub const GET_SESSION_MAX_TRIES: usize = 3;
 // separator of the opaque table ID.
 const DUST_DOT_MARKER: &str = "__DUST_DOT__";
 
-/// Simple identifiers (a letter or `_`, then letters, digits, `_` or `$`) stay unquoted so
-/// Snowflake keeps resolving them case-insensitively, anything else is double-quoted with `"`
-/// escaped. Close to `quoteSnowflakeIdentifier` in connectors, which also accepts a leading `$`.
+/// Always double-quotes (escaping `"`) so Snowflake resolves the identifier with its exact case.
+/// Connectors build opaque table IDs from `SHOW` output, which returns the stored case, so an
+/// unquoted lowercase name like `zart` would wrongly be folded to `ZART`.
 fn quote_snowflake_identifier(identifier: &str) -> String {
-    let mut chars = identifier.chars();
-    let is_simple = match chars.next() {
-        Some(c) if c.is_ascii_alphabetic() || c == '_' => {
-            chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
-        }
-        _ => false,
-    };
-    if is_simple {
-        identifier.to_string()
-    } else {
-        format!("\"{}\"", identifier.replace('"', "\"\""))
-    }
+    format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
 /**
@@ -115,9 +104,8 @@ fn forbidden_operations(plan: Vec<SnowflakeQueryPlanEntry>) -> Vec<String> {
  * @cc [owner:davidebbo,label:security] describe-table-quoted-identifiers
  * `opaque_id` MUST be exactly `database.schema.table` (with dots inside a part encoded as
  * `__DUST_DOT__`), otherwise an error is returned and no SQL is produced. Each part MUST be
- * emitted as a single Snowflake identifier: unquoted only if it matches
- * `[A-Za-z_][A-Za-z0-9_$]*`, double-quoted with `"` escaped as `""` otherwise. No other
- * characters of `opaque_id` may reach the statement.
+ * emitted as a single double-quoted Snowflake identifier with `"` escaped as `""`, preserving its
+ * exact case. No other characters of `opaque_id` may reach the statement.
  */
 fn describe_table_query(opaque_id: &str) -> Result<String> {
     let parts: Vec<&str> = opaque_id.split('.').collect();
@@ -615,7 +603,16 @@ mod tests {
     fn test_describe_table_query_simple_identifiers() -> Result<()> {
         assert_eq!(
             describe_table_query("MY_DB.PUBLIC.ORDERS")?,
-            "DESCRIBE TABLE MY_DB.PUBLIC.ORDERS"
+            "DESCRIBE TABLE \"MY_DB\".\"PUBLIC\".\"ORDERS\""
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_describe_table_query_preserves_case() -> Result<()> {
+        assert_eq!(
+            describe_table_query("SJDATASTORE.VIF_PROD.zart")?,
+            "DESCRIBE TABLE \"SJDATASTORE\".\"VIF_PROD\".\"zart\""
         );
         Ok(())
     }
@@ -624,15 +621,11 @@ mod tests {
     fn test_describe_table_query_quotes_special_identifiers() -> Result<()> {
         assert_eq!(
             describe_table_query("my db.PUBLIC.my__DUST_DOT__table")?,
-            "DESCRIBE TABLE \"my db\".PUBLIC.\"my.table\""
+            "DESCRIBE TABLE \"my db\".\"PUBLIC\".\"my.table\""
         );
         assert_eq!(
             describe_table_query("DB.PUBLIC.$ORDERS")?,
-            "DESCRIBE TABLE DB.PUBLIC.\"$ORDERS\""
-        );
-        assert_eq!(
-            describe_table_query("DB.PUBLIC.ORDERS$1")?,
-            "DESCRIBE TABLE DB.PUBLIC.ORDERS$1"
+            "DESCRIBE TABLE \"DB\".\"PUBLIC\".\"$ORDERS\""
         );
         Ok(())
     }
@@ -641,7 +634,7 @@ mod tests {
     fn test_describe_table_query_escapes_injection() -> Result<()> {
         assert_eq!(
             describe_table_query("DB.SCHEMA.T\"; DROP TABLE X; --")?,
-            "DESCRIBE TABLE DB.SCHEMA.\"T\"\"; DROP TABLE X; --\""
+            "DESCRIBE TABLE \"DB\".\"SCHEMA\".\"T\"\"; DROP TABLE X; --\""
         );
         Ok(())
     }
