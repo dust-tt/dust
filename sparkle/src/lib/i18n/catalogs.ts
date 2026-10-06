@@ -53,4 +53,3 @@ export async function loadSparkleI18n(
   loadedI18nByLocale.set(locale, i18n);
   return i18n;
 }
-
