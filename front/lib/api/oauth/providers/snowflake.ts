@@ -145,10 +145,10 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
   /**
    * @cc [owner:fontanierh,label:security] validate-account-identifier
-   * When the caller supplies the Snowflake credentials (`platform_actions`, or `personal_actions`
-   * without `mcp_server_id`), `snowflake_account` MUST satisfy `isValidSnowflakeAccount`, otherwise
-   * the config is invalid. The account is interpolated into the authorize and token URL hosts, so
-   * values such as `evil.example/x?` MUST be rejected server-side, not only by the setup UI.
+   * When `snowflake_account` comes from the caller rather than from the workspace connection, it
+   * MUST satisfy `isValidSnowflakeAccount`, otherwise the config is invalid. The account is
+   * interpolated into the authorize and token URL hosts, so values such as `evil.example/x?` MUST
+   * be rejected server-side, not only by the setup UI.
    */
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
