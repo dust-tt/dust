@@ -29,6 +29,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import { getScopeHeaders } from "@app/lib/api/actions/servers/common/scope_headers";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
   getRunAgentToolDescription,
@@ -62,7 +63,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
   AgentMessagePublicType,
   ConversationPublicType,
@@ -103,12 +103,19 @@ function canRunChildAgent(auth: Authenticator, agent: AgentResource): boolean {
  * a plain member, and a sub-agent gated on `managers`/`admins` (e.g. `@analyst`) would then be
  * invisible to it. The exchange caps the forwarded role by the user's own membership.
  */
-function subAgentApiHeaders(auth: Authenticator): Record<string, string> {
-  return {
-    ...getHeaderFromUserEmail(auth.user()?.email),
+async function subAgentApiHeaders(
+  auth: Authenticator
+): Promise<Result<Record<string, string>, MCPError>> {
+  const scopeHeadersRes = await getScopeHeaders(auth);
+  if (scopeHeadersRes.isErr()) {
+    return scopeHeadersRes;
+  }
+
+  return new Ok({
+    ...scopeHeadersRes.value,
     ...getApiKeyNameHeader(auth),
     ...getHeaderFromRole(auth.role()),
-  };
+  });
 }
 
 function makeChildAgentUnavailableError(childAgentName: string): MCPError {
@@ -240,6 +247,11 @@ export const runAgent = async (
   }
   const childAgentBlob = configuredChildAgentBlob ?? childAgentRes.value;
 
+  const headersRes = await subAgentApiHeaders(auth);
+  if (headersRes.isErr()) {
+    return finalizeAndReturn(headersRes);
+  }
+
   const prodCredentials = await prodAPICredentialsForOwner(
     auth.getNonNullableWorkspace()
   );
@@ -247,7 +259,7 @@ export const runAgent = async (
     config.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: subAgentApiHeaders(auth),
+      extraHeaders: headersRes.value,
     },
     logger
   );
