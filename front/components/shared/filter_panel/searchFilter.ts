@@ -256,7 +256,6 @@ export function getSearchFilterOptions(
 }
 
 export interface SearchFilterPreset<Category extends SearchFilterCategory> {
-  key: string;
   category: Category;
   categoryLabel: string;
   options: SearchFilterOption[];
@@ -265,7 +264,7 @@ export interface SearchFilterPreset<Category extends SearchFilterCategory> {
 /**
  * @cc [owner:aubin-tchoi,label:product] empty-category-presets
  * A preset MUST be offered only for a listed category with no selection, so clearing that
- * category offers it again. The "Editor is Me" preset MUST select the current user's editor
+ * category offers it again. At most one preset MUST be offered per category. The "Editor is Me" preset MUST select the current user's editor
  * option, named as `getSearchFilterOptions` names it.
  */
 export function getSearchFilterPresets<Category extends SearchFilterCategory>({
@@ -283,7 +282,6 @@ export function getSearchFilterPresets<Category extends SearchFilterCategory>({
     categories.map((category) =>
       category === "editor" && !filter[category]?.length
         ? {
-            key: "editor-is-me",
             category,
             categoryLabel: getSearchFilterCategorySingularLabels(t).editor,
             options: getSearchFilterOptions(

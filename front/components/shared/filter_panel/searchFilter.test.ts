@@ -166,7 +166,6 @@ describe("getSearchFilterPresets", () => {
       })
     ).toEqual([
       {
-        key: "editor-is-me",
         category: "editor",
         categoryLabel: "Editor",
         options: [
