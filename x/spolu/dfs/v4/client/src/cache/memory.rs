@@ -421,4 +421,33 @@ mod tests {
         assert!(cache.fresh(&key).is_none());
         Ok(())
     }
+
+    #[tokio::test]
+    async fn writes_displace_clean_blocks_then_wait_for_shared_capacity() -> anyhow::Result<()> {
+        use anyhow::Context;
+        let budget = Arc::new(Semaphore::new(8192));
+        let mut cache = Cache::new(budget.clone());
+        let key = Key::Block("file".into(), vec![1], 0);
+        let now = Instant::now();
+        cache.insert(key.clone(), Value::Block(vec![0; 3072]), now, now);
+        let first = cache.reserve(4096).context("first write")?;
+        assert!(cache.get(&key).is_some());
+        let second = cache.reserve(2048).context("evict clean data for write")?;
+        assert!(cache.get(&key).is_none());
+        assert!(cache.reserve(4096).is_none());
+        let waiting = budget.clone().acquire_many_owned(4096);
+        tokio::pin!(waiting);
+        assert!(
+            tokio::time::timeout(Duration::from_millis(10), &mut waiting)
+                .await
+                .is_err()
+        );
+        drop(second);
+        let admitted = tokio::time::timeout(Duration::from_secs(1), waiting).await??;
+        assert_eq!(budget.available_permits(), 0);
+        drop(first);
+        drop(admitted);
+        assert_eq!(budget.available_permits(), 8192);
+        Ok(())
+    }
 }

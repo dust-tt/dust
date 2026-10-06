@@ -8,14 +8,10 @@ const MAX_GROUP_COST: usize = 900_000;
 const MAX_WRITE: usize = 256 * 1024;
 pub(super) const MAX_GROUPS: usize = 4096;
 
-struct Charge {
-    _memory: OwnedSemaphorePermit,
-    _dirty: OwnedSemaphorePermit,
-}
 #[derive(Clone)]
 struct Operation {
     rpc: Edit,
-    _charges: Vec<Arc<Charge>>,
+    _charges: Vec<Arc<OwnedSemaphorePermit>>,
 }
 struct Receipt {
     id: u64,
@@ -57,7 +53,7 @@ struct Group {
     bindings: Vec<(String, String, Option<String>)>,
     deleted: Vec<String>,
     _pins: Vec<Arc<Gate>>,
-    _charge: Arc<Charge>,
+    _charge: Arc<OwnedSemaphorePermit>,
     _slot: OwnedSemaphorePermit,
 }
 struct Dirty {
@@ -67,7 +63,7 @@ struct Dirty {
     pending: BTreeSet<u64>,
     primary: BTreeSet<u64>,
     own_tail: Option<Arc<Receipt>>,
-    _charge: Arc<Charge>,
+    _charge: Arc<OwnedSemaphorePermit>,
     _refresh_memory: Option<OwnedSemaphorePermit>,
 }
 #[derive(Default)]
@@ -367,19 +363,15 @@ impl Inner {
             None => Ok(()),
         }
     }
-    async fn reserve(&self, bytes: usize) -> Result<Arc<Charge>> {
+    /// @cc [owner:spolu,label:performance;concurrency] shared-memory-admission
+    /// Writes MUST share the clean-cache/bookkeeping budget, evicting clean entries before waiting.
+    /// Reservations MUST cover queued and in-flight payload lifetimes. Oversized requests MUST fail
+    /// without waiting; acknowledged dirty state MUST NOT be evicted to admit another write.
+    async fn reserve(&self, bytes: usize) -> Result<Arc<OwnedSemaphorePermit>> {
         let bytes = u32::try_from(bytes).map_err(|_| status(ErrorCode::Capacity))?;
-        if bytes as usize > self.config.dirty_mib * 1024 * 1024 {
+        if bytes as usize > (self.config.cache_mib - IO_RESERVE_MIB) * 1024 * 1024 {
             return Err(status(ErrorCode::Capacity));
         }
-        let dirty_wait = self.rpc.measure("wait.dirty_budget");
-        let dirty = self
-            .dirty_budget
-            .clone()
-            .acquire_many_owned(bytes)
-            .await
-            .map_err(|_| status(ErrorCode::Unavailable))?;
-        drop(dirty_wait);
         let memory_wait = self.rpc.measure("wait.memory_budget");
         let memory = self.cache.lock().reserve(bytes as usize);
         let memory = match memory {
@@ -392,10 +384,7 @@ impl Inner {
                 .map_err(|_| status(ErrorCode::Unavailable))?,
         };
         drop(memory_wait);
-        Ok(Arc::new(Charge {
-            _memory: memory,
-            _dirty: dirty,
-        }))
+        Ok(Arc::new(memory))
     }
     async fn create(self: &Arc<Self>, mut r: CreateRequest) -> Result<Mutation> {
         dfs_protocol::validate::name(&r.name)?;

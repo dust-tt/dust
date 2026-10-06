@@ -55,7 +55,7 @@ def main():
         'client_cache_ttl_ms': int(os.environ.get('DFS_CLIENT_CACHE_TTL_MS', '1000')),
         'client_write_delay_ms': int(os.environ.get('DFS_CLIENT_WRITE_DELAY_MS', '25')),
         'client_cache_mib': int(os.environ.get('DFS_CLIENT_CACHE_MIB', '1024')),
-        'client_dirty_mib': int(os.environ.get('DFS_CLIENT_DIRTY_MIB', '256')),
+        'client_memory_budget': 'shared clean/dirty/bookkeeping; includes 96 MiB transient reserve',
         'client_budget_ms': 2000,
         'manifest_sha256': hashlib.sha256((data / 'manifest.json').read_bytes()).hexdigest(),
         'document_bytes': sum(p.stat().st_size for p in (data / 'docs').rglob('*.txt')),

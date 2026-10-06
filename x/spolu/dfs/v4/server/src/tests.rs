@@ -648,14 +648,13 @@ async fn client_cache_contracts() -> Result<()> {
         synced?;
         assert!(started.elapsed() < std::time::Duration::from_secs(2));
 
-        // Dirty admission must keep making progress at a small budget while preserving every byte.
+        // Dirty writes share the total budget and must keep making progress while preserving bytes.
         let small = ::dfs_client::CachedClient::connect(
             &endpoint,
             &key,
             ::dfs_client::CacheConfig {
                 cache_mib: 128,
-                dirty_mib: 4,
-                write_delay_ms: 10,
+                write_delay_ms: 1000,
                 ..Default::default()
             },
         )?;
@@ -668,7 +667,7 @@ async fn client_cache_contracts() -> Result<()> {
             })?
             .object
             .context("pressure file")?;
-        for block in 0..16u64 {
+        for block in 0..64u64 {
             small.write(WriteRequest {
                 object_id: large.id.clone(),
                 offset: block * 262144,
@@ -679,7 +678,7 @@ async fn client_cache_contracts() -> Result<()> {
         small.fsync(ObjectRequest {
             object_id: large.id.clone(),
         })?;
-        for block in 0..16u64 {
+        for block in 0..64u64 {
             assert_eq!(
                 observer
                     .read(ReadRequest {

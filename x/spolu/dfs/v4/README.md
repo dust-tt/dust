@@ -29,9 +29,11 @@ Client settings (environment variables or equivalent `dfs-fuse` flags):
 | Variable | Default | Meaning |
 | --- | ---: | --- |
 | `DFS_CLIENT_CACHE_MIB` | 1024 | Accounted RAM budget; includes a 96 MiB bounded-I/O/bookkeeping reserve. |
-| `DFS_CLIENT_DIRTY_MIB` | 256 | Dirty reservations within the total; writers wait for capacity. |
 | `DFS_CLIENT_CACHE_TTL_MS` | 1000 | Metadata, names, listings and authorization validity. |
 | `DFS_CLIENT_WRITE_DELAY_MS` | 25 | Coalescing window, capped at the 1000ms write-buffer budget. |
+
+Clean entries and pending writes share the total budget. Writes evict clean entries before waiting
+for memory; there is no separate dirty cap or `DFS_CLIENT_DIRTY_MIB` setting.
 
 Blocks survive metadata expiry when a freshly authorized revision matches. Fsync waits for the
 object's FDB commits; ordinary writes acknowledge client RAM. Deferred failures remain visible on

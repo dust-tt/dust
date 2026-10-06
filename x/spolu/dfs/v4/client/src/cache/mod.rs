@@ -23,6 +23,7 @@ use tokio::sync::{Mutex as AsyncMutex, Semaphore};
 use tonic::Status;
 
 type Result<T> = std::result::Result<T, Status>;
+const IO_RESERVE_MIB: usize = 96;
 
 #[derive(Clone)]
 pub struct CacheReservation {
@@ -33,8 +34,6 @@ pub struct CacheReservation {
 pub struct CacheConfig {
     #[arg(long, env = "DFS_CLIENT_CACHE_MIB", default_value_t = 1024)]
     pub cache_mib: usize,
-    #[arg(long, env = "DFS_CLIENT_DIRTY_MIB", default_value_t = 256)]
-    pub dirty_mib: usize,
     #[arg(long, env = "DFS_CLIENT_CACHE_TTL_MS", default_value_t = 1000)]
     pub cache_ttl_ms: u64,
     #[arg(long, env = "DFS_CLIENT_WRITE_DELAY_MS", default_value_t = 25)]
@@ -44,7 +43,6 @@ impl Default for CacheConfig {
     fn default() -> Self {
         Self {
             cache_mib: 1024,
-            dirty_mib: 256,
             cache_ttl_ms: 1000,
             write_delay_ms: 25,
         }
@@ -66,7 +64,6 @@ struct Inner {
     config: CacheConfig,
     pending: Mutex<writeback::Pending>,
     memory: Arc<Semaphore>,
-    dirty_budget: Arc<Semaphore>,
     write_slots: Arc<Semaphore>,
     group_slots: Arc<Semaphore>,
     changed: tokio::sync::Notify,
@@ -102,10 +99,6 @@ impl CachedClient {
             "client cache must be 128..2048 MiB"
         );
         ensure!(
-            config.dirty_mib > 0 && config.dirty_mib < config.cache_mib - 96,
-            "dirty cache must fit total cache after I/O reservation"
-        );
-        ensure!(
             (1..=1000).contains(&config.cache_ttl_ms)
                 && (1..=1000).contains(&config.write_delay_ms),
             "client cache/write delays must be at most 1000ms each"
@@ -115,7 +108,9 @@ impl CachedClient {
         let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         ensure!(session.expires_at > seconds, "session expired");
         // Reserve space outside cache entries for bounded FUSE/RPC buffers and scheduler bookkeeping.
-        let memory = Arc::new(Semaphore::new((config.cache_mib - 96) * 1024 * 1024));
+        let memory = Arc::new(Semaphore::new(
+            (config.cache_mib - IO_RESERVE_MIB) * 1024 * 1024,
+        ));
         let inner = Arc::new(Inner {
             rpc: raw.client.clone(),
             cache: Mutex::new(Cache::new(memory.clone())),
@@ -123,7 +118,6 @@ impl CachedClient {
             gates: Default::default(),
             prefetch: Arc::new(Semaphore::new(2)),
             pending: Default::default(),
-            dirty_budget: Arc::new(Semaphore::new(config.dirty_mib * 1024 * 1024)),
             write_slots: Arc::new(Semaphore::new(4)),
             group_slots: Arc::new(Semaphore::new(writeback::MAX_GROUPS)),
             changed: Default::default(),

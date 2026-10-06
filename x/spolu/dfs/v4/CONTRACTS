@@ -35,9 +35,10 @@ matching freshly authorized metadata. Reads MUST NOT mix revisions or expose tai
 Client generations MUST prevent late replies from overwriting newer edits or resurrecting removals.
 
 @cc [owner:spolu,label:performance] v4-bounded-client-memory
-Client metadata, blocks, pages, queued/in-flight writes and bookkeeping MUST fit configured bounds.
-Only clean state may be evicted silently. Admission MUST apply backpressure before acknowledging
-dirty data that exceeds capacity. Directory prefetch MUST be bounded by pages and bytes.
+Client metadata, blocks, pages, queued/in-flight writes and bookkeeping MUST share one configured
+memory budget, including reserved transient space, without a separate dirty-data cap. Admission MUST
+evict clean state before waiting for memory; acknowledged dirty data MUST NOT be evicted silently.
+Directory prefetch MUST be bounded by pages and bytes.
 
 @cc [owner:spolu,label:architecture] v4-userspace-cache
 FUSE MUST use direct I/O, zero metadata/name TTLs, and no kernel writeback or directory caching.
