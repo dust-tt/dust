@@ -175,12 +175,20 @@ export function PodFileTabPreview({
 
     setIsMarkdownSaving(true);
     try {
-      await writeFileContentByPath({
+      const result = await writeFileContentByPath({
         owner,
         canonicalPath: editableMarkdownFilePath,
         content: markdownDraft,
         contentType: "text/markdown",
       });
+      if (result.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to save file",
+          description: result.error.message,
+        });
+        return;
+      }
       await mutate(
         contentApiPath,
         { kind: "loaded", content: markdownDraft },
@@ -196,12 +204,6 @@ export function PodFileTabPreview({
         markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
       }
       sendNotification({ type: "success", title: "File saved" });
-    } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: e instanceof Error ? e.message : "Unknown error",
-      });
     } finally {
       setIsMarkdownSaving(false);
     }

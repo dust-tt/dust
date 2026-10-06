@@ -10,7 +10,6 @@ import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -134,17 +133,13 @@ export function useMarkdownFileEditor({
     if (!owner || !editablePath) {
       return new Err("This file cannot be edited.");
     }
-    try {
-      await writeFileContentByPath({
-        owner,
-        canonicalPath: editablePath,
-        content,
-        contentType: "text/markdown",
-      });
-      return new Ok(undefined);
-    } catch (e) {
-      return new Err(normalizeError(e).message);
-    }
+    const result = await writeFileContentByPath({
+      owner,
+      canonicalPath: editablePath,
+      content,
+      contentType: "text/markdown",
+    });
+    return result.isOk() ? new Ok(undefined) : new Err(result.error.message);
   };
 
   /**
