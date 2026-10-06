@@ -8,6 +8,10 @@ import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import {
+  GLOBAL_AGENTS_SID,
+  getGlobalAgentAuthorName,
+} from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -101,6 +105,8 @@ describe("discovery ranked sections", () => {
           name: visibleAgent.name,
           description: visibleAgent.description,
           pictureUrl: visibleAgent.pictureUrl,
+          scope: visibleAgent.scope,
+          lastAuthors: ["Me"],
         },
       },
       {
@@ -160,7 +166,32 @@ describe("discovery ranked sections", () => {
           name: visibleAgent.name,
           description: visibleAgent.description,
           pictureUrl: visibleAgent.pictureUrl,
+          scope: visibleAgent.scope,
+          lastAuthors: ["Me"],
         },
+      },
+    ]);
+  });
+
+  it("returns global agent attribution and scope", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("agent", GLOBAL_AGENTS_SID.HELPER)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "agent",
+        target: expect.objectContaining({
+          sId: GLOBAL_AGENTS_SID.HELPER,
+          scope: "global",
+          lastAuthors: [getGlobalAgentAuthorName(GLOBAL_AGENTS_SID.HELPER)],
+        }),
       },
     ]);
   });

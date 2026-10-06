@@ -39,6 +39,8 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
           name: "Pinned agent",
           description: expect.any(String),
           pictureUrl: expect.any(String),
+          scope: "visible",
+          lastAuthors: ["Me"],
         },
       },
     });
@@ -60,6 +62,8 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
             name: "Pinned agent",
             description: expect.any(String),
             pictureUrl: expect.any(String),
+            scope: "visible",
+            lastAuthors: ["Me"],
           },
         },
       ],

@@ -3584,12 +3584,18 @@ export class AgentResource
     };
   }
 
-  toDiscoveryJSON(): DiscoveryAgentType {
+  toDiscoveryJSON({
+    lastAuthors,
+  }: {
+    lastAuthors: readonly string[];
+  }): DiscoveryAgentType {
     return {
       sId: this.sId,
       name: this.name,
       description: this.description,
       pictureUrl: this.pictureUrl,
+      scope: this.scope,
+      lastAuthors,
     };
   }
 

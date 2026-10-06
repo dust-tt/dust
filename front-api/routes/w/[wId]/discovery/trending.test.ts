@@ -60,6 +60,8 @@ describe("GET /api/w/:wId/discovery/trending", () => {
             name: "Agent",
             description: "An agent",
             pictureUrl: "https://example.com/agent.png",
+            scope: "visible",
+            lastAuthors: ["Alice"],
           },
         },
       ],

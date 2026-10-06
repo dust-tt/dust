@@ -3,7 +3,6 @@ import {
   getItemDescription,
   getItemId,
   getItemName,
-  toHydratedAgentCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   CatalogRow,
@@ -20,14 +19,12 @@ import {
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { getSkillIcon, isDustProvidedSkill } from "@app/lib/skill";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useDiscoveryFeatured,
   useDiscoveryForYou,
   useDiscoveryTrending,
 } from "@app/lib/swr/discovery";
 import type { DiscoveryRankedItemType } from "@app/types/api/discovery";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
@@ -51,10 +48,7 @@ const FEATURED_SLOT_CLASSES = "h-56 rounded-2xl border";
 const FEATURED_ITEM_CLASSES =
   "w-full shrink-0 snap-start md:w-[calc((100%-2rem)/3)]";
 
-function resolveCatalogItems(
-  items: DiscoveryRankedItemType[],
-  agentsById: Map<string, LightAgentConfigurationType>
-): CatalogItem[] {
+function resolveCatalogItems(items: DiscoveryRankedItemType[]): CatalogItem[] {
   const seen = new Set<string>();
   const resolved: CatalogItem[] = [];
   for (const { type, target } of items) {
@@ -65,10 +59,13 @@ function resolveCatalogItems(
     seen.add(key);
     switch (type) {
       case "agent": {
-        const agent = agentsById.get(target.sId);
-        if (agent) {
-          resolved.push(toHydratedAgentCatalogItem(agent));
-        }
+        resolved.push({
+          kind: "agent",
+          agent: target,
+          authors: target.lastAuthors,
+          isDustProvided: target.scope === "global",
+          activeUsersCount: null,
+        });
         break;
       }
       case "skill": {
@@ -110,49 +107,34 @@ export function DiscoverHome({
   onDetails,
   onFindMore,
 }: DiscoverHomeProps) {
-  const { agentConfigurations, isLoading: isAgentsLoading } =
-    useUnifiedAgentConfigurations({ workspaceId: owner.sId });
-  const { featuredItems, isFeaturedLoading } = useDiscoveryFeatured({
-    workspaceId: owner.sId,
-  });
-  const { forYouItems, isForYouLoading } = useDiscoveryForYou({
-    workspaceId: owner.sId,
-  });
-  const { trendingItems, isTrendingLoading } = useDiscoveryTrending({
-    workspaceId: owner.sId,
-  });
+  const { featuredItems, isFeaturedLoading, isFeaturedRefreshing } =
+    useDiscoveryFeatured({
+      workspaceId: owner.sId,
+    });
+  const { forYouItems, isForYouLoading, isForYouRefreshing } =
+    useDiscoveryForYou({
+      workspaceId: owner.sId,
+    });
+  const { trendingItems, isTrendingLoading, isTrendingRefreshing } =
+    useDiscoveryTrending({
+      workspaceId: owner.sId,
+    });
 
-  const resolve = useCallback(
-    (items: DiscoveryRankedItemType[]) => {
-      const agentsById = new Map(
-        agentConfigurations
-          .filter((a) => a.status === "active")
-          .map((a) => [a.sId, a])
-      );
-      return resolveCatalogItems(items, agentsById);
-    },
-    [agentConfigurations]
-  );
-
-  const isCatalogLoading = isAgentsLoading && agentConfigurations.length === 0;
-  const isCatalogRefreshing = isAgentsLoading && !isCatalogLoading;
-
-  const featured = resolve(featuredItems);
+  const featured = resolveCatalogItems(featuredItems);
   const forYou = useMemo(
-    () => resolve(forYouItems).slice(0, SECTION_ITEM_COUNT),
-    [forYouItems, resolve]
+    () => resolveCatalogItems(forYouItems).slice(0, SECTION_ITEM_COUNT),
+    [forYouItems]
   );
   const trending = useMemo(
-    () => resolve(trendingItems).slice(0, SECTION_ITEM_COUNT),
-    [resolve, trendingItems]
+    () => resolveCatalogItems(trendingItems).slice(0, SECTION_ITEM_COUNT),
+    [trendingItems]
   );
 
   const onUse = (item: CatalogItem) =>
     item.kind === "agent" ? onAgentClick(item.agent) : onSkillClick(item.skill);
 
-  const isFeaturedLoadingAll = isFeaturedLoading || isCatalogLoading;
   const isFeaturedHidden =
-    !onPin && !isFeaturedLoadingAll && featured.length === 0;
+    !onPin && !isFeaturedLoading && featured.length === 0;
 
   return (
     <>
@@ -160,8 +142,8 @@ export function DiscoverHome({
         <FeaturedCarousel
           title={`Curated by ${owner.name}`}
           items={featured}
-          isLoading={isFeaturedLoadingAll}
-          isRefreshing={isCatalogRefreshing}
+          isLoading={isFeaturedLoading}
+          isRefreshing={isFeaturedRefreshing}
           onUse={(item) => {
             trackDiscoverItemSelect({ source: "featured", item });
             onUse(item);
@@ -173,8 +155,8 @@ export function DiscoverHome({
         emptyMessage="Recommendations will show up here as you chat with agents and use skills."
         section="for_you"
         items={forYou}
-        isLoading={isForYouLoading || isCatalogLoading}
-        isRefreshing={isCatalogRefreshing}
+        isLoading={isForYouLoading}
+        isRefreshing={isForYouRefreshing}
         onUse={onUse}
         onPin={onPin}
         onDetails={onDetails}
@@ -185,8 +167,8 @@ export function DiscoverHome({
         emptyMessage="Trending picks will fill in as usage grows across the workspace."
         section="trending"
         items={trending}
-        isLoading={isTrendingLoading || isCatalogLoading}
-        isRefreshing={isCatalogRefreshing}
+        isLoading={isTrendingLoading}
+        isRefreshing={isTrendingRefreshing}
         onUse={onUse}
         onPin={onPin}
         onDetails={onDetails}
