@@ -10,7 +10,7 @@ import {
 import {
   EXTENSION_MCP_TOOLS_DESCRIPTION,
   EXTENSION_MCP_TOOLS_LABEL,
-} from "@app/components/workspace/ExtensionMcpToolsSection";
+} from "@app/components/workspace/extension_mcp_tools_metadata";
 import {
   CONVERSATION_EXTERNAL_NOTIFICATIONS_DESCRIPTION,
   CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL,

@@ -1,5 +1,5 @@
 import {
-  creditColumns,
+  getCreditColumns,
   getTableRows,
 } from "@app/components/workspace/CreditsList";
 import type { CreditDisplayData } from "@app/types/credits";
@@ -55,8 +55,9 @@ export function CreditHistorySheet({
   }, [credits, sixMonthsAgo]);
 
   const displayedRows = useMemo(() => {
-    return getTableRows(sortCredits([...sixMonthsCredits]));
-  }, [sixMonthsCredits]);
+    return getTableRows(sortCredits([...sixMonthsCredits]), t);
+  }, [sixMonthsCredits, t]);
+  const columns = useMemo(() => getCreditColumns(t), [t]);
 
   return (
     <>
@@ -87,7 +88,7 @@ export function CreditHistorySheet({
                 <p className="text-sm text-muted-foreground">
                   <Trans>Expired credits from the last 6 months.</Trans>
                 </p>
-                <DataTable data={displayedRows} columns={creditColumns} />
+                <DataTable data={displayedRows} columns={columns} />
               </>
             )}
             <p className="text-sm text-muted-foreground">

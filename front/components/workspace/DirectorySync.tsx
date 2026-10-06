@@ -30,14 +30,12 @@ import {
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
 
 import { GroupsList } from "../groups/GroupsList";
 import { WorkspaceSection } from "./WorkspaceSection";
-
-export const DIRECTORY_SYNC_LABEL = "Directory sync";
-export const USER_PROVISIONING_SECTION_TITLE = "User provisioning";
 
 function useDirectorySyncStatus({
   owner,
@@ -95,34 +93,39 @@ function DirectorySyncStatus({
   onDisableClick,
   onSetupClick,
 }: DirectorySyncStatusProps) {
+  const { t } = useLingui();
   if (isLoadingDSync || !dsyncStatus) {
     return <LoadingBlock className="h-16 w-full rounded-xl" />;
   }
 
   switch (dsyncStatus.status) {
-    case "configured":
+    case "configured": {
+      const connectionType = dsyncStatus.connection?.type;
       return (
         <>
           <div className="mb-4 flex flex-row items-center gap-2">
             <div className="flex-1">
               <div className="flex flex-row items-center gap-2">
-                <Page.H variant="h5">{DIRECTORY_SYNC_LABEL}</Page.H>
-                <Chip color="success" label="Enabled" size="xs" />
+                <Page.H variant="h5">
+                  <Trans>Directory sync</Trans>
+                </Page.H>
+                <Chip color="success" label={t`Enabled`} size="xs" />
               </div>
               <Page.P variant="secondary">
-                Automatically syncing users and groups from{" "}
-                {dsyncStatus.connection?.type}
+                <Trans>
+                  Automatically syncing users and groups from {connectionType}
+                </Trans>
               </Page.P>
             </div>
             <div className="flex justify-end gap-2">
               <Button
-                label="Configure Directory sync"
+                label={t`Configure Directory sync`}
                 size="sm"
                 variant="outline"
                 onClick={onSetupClick}
               />
               <Button
-                label="De-activate Directory sync"
+                label={t`Deactivate Directory sync`}
                 size="sm"
                 variant="outline"
                 onClick={onDisableClick}
@@ -132,21 +135,26 @@ function DirectorySyncStatus({
           <WorkspaceGroupButtonWithModal owner={owner} />
         </>
       );
+    }
 
     case "not_configured":
       return (
         <>
           <div className="mb-3 flex flex-row items-center gap-2">
             <div className="flex-1">
-              <Page.H variant="h5">{DIRECTORY_SYNC_LABEL}</Page.H>
+              <Page.H variant="h5">
+                <Trans>Directory sync</Trans>
+              </Page.H>
               <Page.P variant="secondary">
-                Sync your organization's users and groups from your identity
-                provider
+                <Trans>
+                  Sync your organization's users and groups from your identity
+                  provider
+                </Trans>
               </Page.P>
             </div>
             <div className="flex justify-end">
               <Button
-                label="Setup Directory sync"
+                label={t`Set up Directory sync`}
                 size="sm"
                 variant="primary"
                 onClick={onSetupClick}
@@ -156,22 +164,25 @@ function DirectorySyncStatus({
         </>
       );
 
-    case "configuring":
+    case "configuring": {
+      const connectionType = dsyncStatus.connection?.type;
       return (
         <>
           <div className="flex flex-row items-center gap-2">
             <div className="flex-1">
               <div className="flex flex-row items-center gap-2">
-                <Page.H variant="h5">User Provisioning</Page.H>
-                <Chip color="info" label="Setting up" size="xs" />
+                <Page.H variant="h5">
+                  <Trans>User provisioning</Trans>
+                </Page.H>
+                <Chip color="info" label={t`Setting up`} size="xs" />
               </div>
               <Page.P variant="secondary">
-                Configuring {dsyncStatus.connection?.type} directory sync
+                <Trans>Configuring {connectionType} directory sync</Trans>
               </Page.P>
             </div>
             <div className="flex justify-end">
               <Button
-                label="Continue setup Directory Sync"
+                label={t`Continue setting up Directory Sync`}
                 size="sm"
                 variant="primary"
                 onClick={onSetupClick}
@@ -180,6 +191,7 @@ function DirectorySyncStatus({
           </div>
         </>
       );
+    }
 
     default:
       assertNeverAndIgnore(dsyncStatus.status);
@@ -199,6 +211,7 @@ function DisableWorkOSDirectorySyncConnectionModal({
   owner,
   dsyncStatus,
 }: DisableWorkOSDirectorySyncConnectionModalProps) {
+  const { t } = useLingui();
   const { doDisableWorkOSDirectorySyncConnection } =
     useDisableWorkOSDirectorySyncConnection({
       owner,
@@ -207,6 +220,8 @@ function DisableWorkOSDirectorySyncConnectionModal({
   if (!dsyncStatus?.connection) {
     return <></>;
   }
+
+  const connectionType = dsyncStatus.connection.type;
 
   return (
     <Dialog
@@ -220,21 +235,23 @@ function DisableWorkOSDirectorySyncConnectionModal({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            Disable {dsyncStatus.connection.type} Directory Sync
+            <Trans>Disable {connectionType} Directory Sync</Trans>
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          Users synced through {dsyncStatus.connection.type} Directory Sync will
-          no longer be automatically provisioned or deprovisioned. Existing
-          users will retain their access.
+          <Trans>
+            Users synced through {connectionType} Directory Sync will no longer
+            be automatically provisioned or deprovisioned. Existing users will
+            retain their access.
+          </Trans>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: `Disable ${dsyncStatus.connection.type} Directory Sync`,
+            label: t`Disable ${connectionType} Directory Sync`,
             variant: "warning",
             onClick: async () => {
               await doDisableWorkOSDirectorySyncConnection();
@@ -255,6 +272,7 @@ export default function UserProvisioning({
   owner,
   plan,
 }: UserProvisioningProps) {
+  const { t } = useLingui();
   const {
     dsyncStatus,
     isLoadingDSync,
@@ -268,7 +286,7 @@ export default function UserProvisioning({
 
   return (
     <WorkspaceSection
-      title={USER_PROVISIONING_SECTION_TITLE}
+      title={t`User provisioning`}
       icon={Users01}
       sectionId={ADMIN_SECTION_IDS.identity.provisioning}
     >
@@ -287,8 +305,8 @@ export default function UserProvisioning({
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
         workspaceId={owner.sId}
-        title="Free plan"
-        description="You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
+        title={t`Free plan`}
+        description={t`You cannot enable SSO with the free plan. Upgrade your plan to access SSO features.`}
       />
       <DisableWorkOSDirectorySyncConnectionModal
         isOpen={showDisableDirectorySyncModal}
@@ -309,6 +327,7 @@ const DEFAULT_PAGE_SIZE = 25;
 function WorkspaceGroupButtonWithModal({
   owner,
 }: WorkspaceGroupButtonWithModalProps) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -328,11 +347,13 @@ function WorkspaceGroupButtonWithModal({
       }}
     >
       <SheetTrigger asChild>
-        <Button icon={Users01} label="View groups" />
+        <Button icon={Users01} label={t`View groups`} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Workspace Groups</SheetTitle>
+          <SheetTitle>
+            <Trans>Workspace Groups</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex grow flex-col gap-4">
@@ -342,7 +363,7 @@ function WorkspaceGroupButtonWithModal({
               </div>
             ) : groups.length === 0 ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground">
-                No groups found in this workspace.
+                <Trans>No groups found in this workspace.</Trans>
               </div>
             ) : (
               <GroupsList

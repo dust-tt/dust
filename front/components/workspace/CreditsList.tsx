@@ -5,6 +5,9 @@ import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 import type { EditedByUser } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import { Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo } from "react";
@@ -23,12 +26,14 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
+type Translate = (descriptor: MessageDescriptor) => string;
+
 // Display labels for credit types
-const TYPE_LABELS: Record<CreditType, string> = {
-  free: "Free",
-  committed: "Committed",
-  payg: "Pay-as-you-go",
-  excess: "Excess",
+const TYPE_LABELS: Record<CreditType, MessageDescriptor> = {
+  free: msg`Free`,
+  committed: msg({ message: "Committed", context: "credit type" }),
+  payg: msg`Pay-as-you-go`,
+  excess: msg`Excess`,
 };
 
 // Chip colors for credit types
@@ -71,7 +76,10 @@ export function isExpired(credit: CreditDisplayData): boolean {
   return credit.expirationDate !== null && credit.expirationDate <= now;
 }
 
-export function getTableRows(credits: CreditDisplayData[]): RowData[] {
+export function getTableRows(
+  credits: CreditDisplayData[],
+  t: Translate
+): RowData[] {
   return credits.map((credit) => ({
     sId: credit.sId,
     type: credit.type,
@@ -94,7 +102,7 @@ export function getTableRows(credits: CreditDisplayData[]): RowData[] {
             month: "long",
             day: "numeric",
           })
-        : "Never",
+        : t(msg`Never`),
     isExpired: isExpired(credit),
     boughtByUser: credit.boughtByUser,
   }));
@@ -108,66 +116,68 @@ const Cell = (info: Info, children: React.ReactNode) => (
   </DataTable.CellContent>
 );
 
-export const creditColumns: ColumnDef<RowData, string>[] = [
-  {
-    id: "type" as const,
-    header: "Type",
-    cell: (info: Info) =>
-      Cell(
-        info,
-        <Chip
-          size="xs"
-          color={TYPE_COLORS[info.row.original.type]}
-          label={TYPE_LABELS[info.row.original.type]}
-        />
-      ),
-  },
-  {
-    id: "initialAmount" as const,
-    accessorKey: "initialAmount",
-    header: "Initial Amount",
-    cell: (info: Info) => Cell(info, info.row.original.initialAmount),
-  },
-  {
-    id: "consumedAmount" as const,
-    accessorKey: "consumedAmount",
-    header: "Consumed",
-    cell: (info: Info) => Cell(info, info.row.original.consumedAmount),
-  },
-  {
-    id: "remainingAmount" as const,
-    accessorKey: "remainingAmount",
-    header: "Remaining",
-    cell: (info: Info) => Cell(info, info.row.original.remainingAmount),
-  },
-  {
-    id: "expirationDate" as const,
-    accessorKey: "expirationDate",
-    header: "Expiration Date",
-    meta: {
-      className: "text-right",
+export function getCreditColumns(t: Translate): ColumnDef<RowData, string>[] {
+  return [
+    {
+      id: "type" as const,
+      header: t(msg`Type`),
+      cell: (info: Info) =>
+        Cell(
+          info,
+          <Chip
+            size="xs"
+            color={TYPE_COLORS[info.row.original.type]}
+            label={t(TYPE_LABELS[info.row.original.type])}
+          />
+        ),
     },
-    cell: (info: Info) => Cell(info, info.row.original.expirationDate),
-  },
-  {
-    id: "by" as const,
-    header: "Buyer",
-    cell: (info: Info) => {
-      const boughtByUser = info.row.original.boughtByUser;
-      return (
-        <DataTable.CellContent
-          className={info.row.original.isExpired ? "opacity-40" : ""}
-          avatarUrl={boughtByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
-          avatarTooltipLabel={boughtByUser?.fullName ?? "System"}
-          roundedAvatar
-        />
-      );
+    {
+      id: "initialAmount" as const,
+      accessorKey: "initialAmount",
+      header: t(msg`Initial Amount`),
+      cell: (info: Info) => Cell(info, info.row.original.initialAmount),
     },
-    meta: {
-      className: "w-16",
+    {
+      id: "consumedAmount" as const,
+      accessorKey: "consumedAmount",
+      header: t(msg`Consumed`),
+      cell: (info: Info) => Cell(info, info.row.original.consumedAmount),
     },
-  },
-];
+    {
+      id: "remainingAmount" as const,
+      accessorKey: "remainingAmount",
+      header: t(msg`Remaining`),
+      cell: (info: Info) => Cell(info, info.row.original.remainingAmount),
+    },
+    {
+      id: "expirationDate" as const,
+      accessorKey: "expirationDate",
+      header: t(msg`Expiration Date`),
+      meta: {
+        className: "text-right",
+      },
+      cell: (info: Info) => Cell(info, info.row.original.expirationDate),
+    },
+    {
+      id: "by" as const,
+      header: t(msg`Buyer`),
+      cell: (info: Info) => {
+        const boughtByUser = info.row.original.boughtByUser;
+        return (
+          <DataTable.CellContent
+            className={info.row.original.isExpired ? "opacity-40" : ""}
+            avatarUrl={boughtByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
+            avatarTooltipLabel={boughtByUser?.fullName ?? t(msg`System`)}
+            roundedAvatar
+          />
+        );
+      },
+      meta: {
+        className: "w-16",
+      },
+    },
+  ];
+}
 
 interface CreditsListProps {
   credits: CreditDisplayData[];
@@ -175,9 +185,11 @@ interface CreditsListProps {
 }
 
 export function CreditsList({ credits, isLoading }: CreditsListProps) {
+  const { t } = useLingui();
   const displayedRows = useMemo(() => {
-    return getTableRows(sortCredits([...credits]));
-  }, [credits]);
+    return getTableRows(sortCredits([...credits]), t);
+  }, [credits, t]);
+  const columns = useMemo(() => getCreditColumns(t), [t]);
 
   if (isLoading) {
     return (
@@ -192,11 +204,13 @@ export function CreditsList({ credits, isLoading }: CreditsListProps) {
   if (credits.length === 0) {
     return (
       <Page.P>
-        No credits purchased yet. Purchase credits to get started with
-        programmatic API usage.
+        <Trans>
+          No credits purchased yet. Purchase credits to get started with
+          programmatic API usage.
+        </Trans>
       </Page.P>
     );
   }
 
-  return <DataTable data={displayedRows} columns={creditColumns} />;
+  return <DataTable data={displayedRows} columns={columns} />;
 }

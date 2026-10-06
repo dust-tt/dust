@@ -1,4 +1,4 @@
-import { EXTENSION_MCP_TOOLS_LABEL } from "@app/components/workspace/ExtensionMcpToolsSection";
+import { EXTENSION_MCP_TOOLS_LABEL } from "@app/components/workspace/extension_mcp_tools_metadata";
 import { DUST_MCP_SERVER_LABEL } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EMAIL_AGENTS_LABEL } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { MESSAGING_APP_METADATA } from "@app/components/workspace/settings/MessagingAppToggles";

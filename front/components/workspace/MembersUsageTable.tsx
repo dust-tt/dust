@@ -71,6 +71,9 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CellContext,
   ColumnDef,
@@ -137,6 +140,8 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
+type Translate = (descriptor: MessageDescriptor) => string;
+
 function MemberUsageSkeletonCell({
   columnId,
   rowIndex,
@@ -197,10 +202,11 @@ function MemberUsageSkeletonCell({
 function getScheduledSeatChangeLabel(
   currentSeatType: MembershipSeatType | null,
   scheduledSeatType: MembershipSeatType,
-  scheduledSeatChangeAt: string | null
+  scheduledSeatChangeAt: string | null,
+  t: Translate
 ): string {
-  const dateSuffix = scheduledSeatChangeAt
-    ? ` (${formatDate(
+  const changeDate = scheduledSeatChangeAt
+    ? formatDate(
         new Date(scheduledSeatChangeAt),
         {
           month: "long",
@@ -208,8 +214,8 @@ function getScheduledSeatChangeLabel(
           timeZone: "UTC",
         },
         getActiveLocale()
-      )})`
-    : "";
+      )
+    : null;
 
   // A same-tier monthly→yearly commitment (e.g. pro -> pro_yearly) isn't a
   // tier upgrade/downgrade/change — the user stays on the same tier, only the
@@ -222,19 +228,43 @@ function getScheduledSeatChangeLabel(
     scheduledSeatType.endsWith("_yearly") &&
     toBaseSeatType(currentSeatType) === toBaseSeatType(scheduledSeatType);
   if (isMonthlyToYearlySwitch) {
-    return `This user will switch to annual billing at the end of the billing period${dateSuffix}`;
+    return changeDate
+      ? t(
+          msg`This user will switch to annual billing at the end of the billing period (${changeDate})`
+        )
+      : t(
+          msg`This user will switch to annual billing at the end of the billing period`
+        );
   }
 
   const currentRank = currentSeatType ? SEAT_TYPE_ORDER[currentSeatType] : 0;
   const scheduledRank = SEAT_TYPE_ORDER[scheduledSeatType];
-  const verb =
-    scheduledRank > currentRank
-      ? "upgraded"
-      : scheduledRank < currentRank
-        ? "downgraded"
-        : "changed";
   const targetLabel = seatTypeDisplayName(scheduledSeatType);
-  return `This user will be ${verb} to ${targetLabel} at the end of the billing period${dateSuffix}`;
+  if (scheduledRank > currentRank) {
+    return changeDate
+      ? t(
+          msg`This user will be upgraded to ${targetLabel} at the end of the billing period (${changeDate})`
+        )
+      : t(
+          msg`This user will be upgraded to ${targetLabel} at the end of the billing period`
+        );
+  }
+  if (scheduledRank < currentRank) {
+    return changeDate
+      ? t(
+          msg`This user will be downgraded to ${targetLabel} at the end of the billing period (${changeDate})`
+        )
+      : t(
+          msg`This user will be downgraded to ${targetLabel} at the end of the billing period`
+        );
+  }
+  return changeDate
+    ? t(
+        msg`This user will be changed to ${targetLabel} at the end of the billing period (${changeDate})`
+      )
+    : t(
+        msg`This user will be changed to ${targetLabel} at the end of the billing period`
+      );
 }
 
 interface AwuUsageBarProps {
@@ -268,17 +298,18 @@ interface AwuUsageBarProps {
 // nothing worth explaining (no limit configured).
 function spendLimitSourceLabel(
   source: EffectiveSpendLimitSource,
-  groupName: string | null
+  groupName: string | null,
+  t: Translate
 ): string | null {
   switch (source) {
     case "override":
-      return "Limit set specifically for this member";
+      return t(msg`Limit set specifically for this member`);
     case "group":
       return groupName
-        ? `Limit inherited from the "${groupName}" group`
-        : "Limit from a group";
+        ? t(msg`Limit inherited from the "${groupName}" group`)
+        : t(msg`Limit from a group`);
     case "default":
-      return "Workspace default limit";
+      return t(msg`Workspace default limit`);
     case "none":
       return null;
     default:
@@ -308,6 +339,7 @@ function PoolCreditUsageBar({
   poolCapOverrideExpiresAt,
   poolCapOverridePreviousAwuCredits,
 }: PoolCreditUsageBarProps) {
+  const { t } = useLingui();
   const poolLimit = computePoolLimitAwuCredits({
     memberUsageLimit,
     effectiveLimit,
@@ -321,16 +353,25 @@ function PoolCreditUsageBar({
         ? 100
         : 0;
   const limitLabel = formatCredits(poolLimit);
-  const temporaryResetLabel =
+  const resetDate =
     poolCapOverrideExpiresAt !== null
-      ? poolCapOverridePreviousAwuCredits === null
-        ? `Resets to no personal limit on ${formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())}`
-        : `Resets to ${formatCredits(poolCapOverridePreviousAwuCredits)} credits on ${formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())}`
+      ? formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())
       : null;
+  const previousLimit =
+    poolCapOverridePreviousAwuCredits !== null
+      ? formatCredits(poolCapOverridePreviousAwuCredits)
+      : null;
+  const temporaryResetLabel =
+    resetDate !== null
+      ? previousLimit === null
+        ? t`Resets to no personal limit on ${resetDate}`
+        : t`Resets to ${previousLimit} credits on ${resetDate}`
+      : null;
+  const consumedLabel = formatCredits(consumedFromPool);
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground">
-        <span>{formatCredits(consumedFromPool)}</span>
+        <span>{consumedLabel}</span>
         {isPending ? (
           <Spinner size="xs" />
         ) : (
@@ -352,9 +393,9 @@ function PoolCreditUsageBar({
       </div>
       <div className="flex h-3 w-full items-center">
         <ProgressBar
-          aria-label="Member pool credit usage"
+          aria-label={t`Member pool credit usage`}
           aria-valuenow={percentage}
-          aria-valuetext={`${formatCredits(consumedFromPool)} of ${limitLabel} pool credits used`}
+          aria-valuetext={t`${consumedLabel} of ${limitLabel} pool credits used`}
           className="h-1 w-full gap-px"
           variant="transparent"
           values={[
@@ -386,11 +427,13 @@ export function AwuUsageBar({
   seatType,
   isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
+  const { t } = useLingui();
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
   const sourceLabel = spendLimitSourceLabel(
     spendLimitSource,
-    spendLimitGroupName
+    spendLimitGroupName,
+    t
   );
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
@@ -428,33 +471,43 @@ export function AwuUsageBar({
     className: string;
     label: string;
   }> = [];
-  const creditLabel = isFreeWithBalance ? "lifetime credits" : "seat allowance";
+  const seatConsumedLabel = formatCredits(seatConsumed);
+  const seatRemainingLabel = formatCredits(seatRemaining);
+  const allowanceLabel = formatCredits(allowance);
+  const poolConsumedLabel = formatCredits(poolConsumed);
+  const poolRemainingLabel = formatCredits(poolRemaining);
+  const poolLimitLabel = formatCredits(poolLimit);
+  const overageLabel = formatCredits(overage);
   if (seatConsumed > 0) {
     sections.push({
       value: seatConsumed,
       className: seatColors.fill,
-      label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} ${creditLabel} used`,
+      label: isFreeWithBalance
+        ? t`${seatConsumedLabel} of ${allowanceLabel} lifetime credits used`
+        : t`${seatConsumedLabel} of ${allowanceLabel} seat allowance used`,
     });
   }
   if (seatRemaining > 0) {
     sections.push({
       value: seatRemaining,
       className: seatColors.track,
-      label: `${formatCredits(seatRemaining)} of ${formatCredits(allowance)} ${creditLabel} remaining`,
+      label: isFreeWithBalance
+        ? t`${seatRemainingLabel} of ${allowanceLabel} lifetime credits remaining`
+        : t`${seatRemainingLabel} of ${allowanceLabel} seat allowance remaining`,
     });
   }
   if (poolConsumed > 0) {
     sections.push({
       value: poolConsumed,
       className: MUTED_BAR_CLASSES.fill,
-      label: `${formatCredits(poolConsumed)} credits used from the workspace pool`,
+      label: t`${poolConsumedLabel} credits used from the workspace pool`,
     });
   }
   if (poolRemaining > 0) {
     sections.push({
       value: poolRemaining,
       className: MUTED_BAR_CLASSES.track,
-      label: `${formatCredits(poolRemaining)} credits remaining before spend limit`,
+      label: t`${poolRemainingLabel} credits remaining before spend limit`,
     });
   }
 
@@ -483,24 +536,24 @@ export function AwuUsageBar({
     tooltipLines.push({
       track: seatColors.track,
       fill: seatColors.fill,
-      legend: isFreeWithBalance ? "Lifetime credits" : "Seat usage",
-      usage: `${formatCredits(seatConsumed)} credits used out of ${formatCredits(allowance)}`,
+      legend: isFreeWithBalance ? t`Lifetime credits` : t`Seat usage`,
+      usage: t`${seatConsumedLabel} credits used out of ${allowanceLabel}`,
     });
   }
   if (hasPoolSections) {
     tooltipLines.push({
       track: MUTED_BAR_CLASSES.track,
       fill: MUTED_BAR_CLASSES.fill,
-      legend: "Pool usage",
-      usage: `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolLimit)}`,
+      legend: t`Pool usage`,
+      usage: t`${poolConsumedLabel} credits used out of ${poolLimitLabel}`,
     });
   }
   if (overage > 0) {
     tooltipLines.push({
       track: OVERAGE_BAR_CLASSES.track,
       fill: OVERAGE_BAR_CLASSES.fill,
-      legend: "Overage",
-      usage: `${formatCredits(overage)} credits over the spend limit`,
+      legend: t`Overage`,
+      usage: t`${overageLabel} credits over the spend limit`,
     });
   }
 
@@ -530,12 +583,12 @@ export function AwuUsageBar({
   const bar = (
     <div className="flex h-3 w-full items-center">
       <ProgressBar
-        aria-label="Member credit usage"
+        aria-label={t`Member credit usage`}
         aria-valuenow={usedPercentage}
         aria-valuetext={
           sections.length > 0
             ? sections.map((section) => section.label).join(", ")
-            : "No credits available"
+            : t`No credits available`
         }
         className="h-1 w-full gap-px"
         variant="transparent"
@@ -584,143 +637,158 @@ export function AwuUsageBar({
 // names/emails readable.
 const nameColumn = buildMemberNameColumn<RowData>();
 
-const groupsColumn: ColumnDef<RowData, string> = {
-  id: "groups" as const,
-  header: "Groups",
-  enableSorting: false,
-  accessorFn: (row) => row.groups.join(", "),
-  cell: (info: Info) => {
-    const { groups } = info.row.original;
-    return (
-      <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground">
-          {groups.length > 0 ? groups.join(", ") : "--"}
-        </span>
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    // Least essential: only appears on very wide containers (e.g. the Poke
-    // pool-usage page), never crowding out Name on the sidebar-constrained
-    // customer admin page.
-    className: "hidden @6xl:table-cell @6xl:w-48",
-  },
-};
+function buildGroupsColumn(t: Translate): ColumnDef<RowData, string> {
+  return {
+    id: "groups" as const,
+    header: t(msg`Groups`),
+    enableSorting: false,
+    accessorFn: (row) => row.groups.join(", "),
+    cell: (info: Info) => {
+      const { groups } = info.row.original;
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground">
+            {groups.length > 0 ? groups.join(", ") : "--"}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      // Least essential: only appears on very wide containers (e.g. the Poke
+      // pool-usage page), never crowding out Name on the sidebar-constrained
+      // customer admin page.
+      className: "hidden @6xl:table-cell @6xl:w-48",
+    },
+  };
+}
 
-const seatsIconColumn: ColumnDef<RowData, string> = {
-  id: "seatsIcon" as const,
-  header: "Seats",
-  enableSorting: false,
-  accessorFn: (row) => row.seatType ?? "",
-  cell: (info: Info) => {
-    if (info.row.original.isSeatChangePending) {
+function buildSeatsIconColumn(t: Translate): ColumnDef<RowData, string> {
+  return {
+    id: "seatsIcon" as const,
+    header: t(msg`Seats`),
+    enableSorting: false,
+    accessorFn: (row) => row.seatType ?? "",
+    cell: (info: Info) => {
+      if (info.row.original.isSeatChangePending) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <Spinner size="xs" />
+          </DataTable.CellContent>
+        );
+      }
+      const { seatType, scheduledSeatType, scheduledSeatChangeAt } =
+        info.row.original;
+      if (!seatType) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <span className="text-sm text-muted-foreground">--</span>
+          </DataTable.CellContent>
+        );
+      }
+      const seatName = seatTypeDisplayName(seatType);
+      const tooltipLabel = scheduledSeatType
+        ? getScheduledSeatChangeLabel(
+            seatType,
+            scheduledSeatType,
+            scheduledSeatChangeAt,
+            t
+          )
+        : t(msg`${seatName} seat`);
       return (
         <DataTable.CellContent className="justify-center">
-          <Spinner size="xs" />
-        </DataTable.CellContent>
-      );
-    }
-    const { seatType, scheduledSeatType, scheduledSeatChangeAt } =
-      info.row.original;
-    if (!seatType) {
-      return (
-        <DataTable.CellContent className="justify-center">
-          <span className="text-sm text-muted-foreground">--</span>
-        </DataTable.CellContent>
-      );
-    }
-    const tooltipLabel = scheduledSeatType
-      ? getScheduledSeatChangeLabel(
-          seatType,
-          scheduledSeatType,
-          scheduledSeatChangeAt
-        )
-      : `${seatTypeDisplayName(seatType)} seat`;
-    return (
-      <DataTable.CellContent className="justify-center">
-        <span className="flex items-center gap-1">
-          <Tooltip
-            tooltipTriggerAsChild
-            label={tooltipLabel}
-            trigger={
-              <Chip
-                size="mini"
-                color={seatTypeChipColor(seatType)}
-                label={seatTypeDisplayName(seatType)}
-                className="cursor-default"
-              />
-            }
-          />
-          {scheduledSeatType && (
-            // Visible badge that a seat change is scheduled; hovering it explains
-            // what and when.
+          <span className="flex items-center gap-1">
             <Tooltip
               tooltipTriggerAsChild
-              label={getScheduledSeatChangeLabel(
-                seatType,
-                scheduledSeatType,
-                scheduledSeatChangeAt
-              )}
+              label={tooltipLabel}
               trigger={
-                <span className="cursor-default text-muted-foreground">
-                  <Icon visual={Clock} size="xs" />
-                </span>
+                <Chip
+                  size="mini"
+                  color={seatTypeChipColor(seatType)}
+                  label={seatTypeDisplayName(seatType)}
+                  className="cursor-default"
+                />
               }
             />
-          )}
-        </span>
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "hidden @3xl:table-cell @3xl:w-24",
-    headerAlign: "center",
-  },
-};
-
-const seatUsageColumn: ColumnDef<RowData, string> = {
-  id: "seatUsage" as const,
-  header: "Seat usage",
-  enableSorting: true,
-  sortDescFirst: true,
-  // Sorting is server-side; the accessor only exists so the header is sortable.
-  accessorFn: (row) => row.memberUsageLimit?.toString() ?? "",
-  cell: (info: Info) => {
-    const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
-      info.row.original;
-    const { percent, consumed, allowance } = computeSeatUsage({
-      seatType,
-      memberUsageLimit,
-      seatBalanceAwu,
-      consumedFromAllowanceAwuCredits:
-        info.row.original.consumedFromAllowanceAwuCredits,
-    });
-    if (isSeatChangePending || percent === null) {
-      return (
-        <DataTable.CellContent className="justify-center">
-          <span className="text-sm text-muted-foreground">--</span>
+            {scheduledSeatType && (
+              // Visible badge that a seat change is scheduled; hovering it explains
+              // what and when.
+              <Tooltip
+                tooltipTriggerAsChild
+                label={getScheduledSeatChangeLabel(
+                  seatType,
+                  scheduledSeatType,
+                  scheduledSeatChangeAt,
+                  t
+                )}
+                trigger={
+                  <span className="cursor-default text-muted-foreground">
+                    <Icon visual={Clock} size="xs" />
+                  </span>
+                }
+              />
+            )}
+          </span>
         </DataTable.CellContent>
       );
-    }
-    return (
-      <DataTable.CellContent className="justify-center">
-        <Tooltip
-          tooltipTriggerAsChild
-          label={`${formatCredits(consumed)} / ${formatCredits(allowance)} credits used`}
-          trigger={
-            <span className="text-xs font-medium text-muted-foreground">
-              {Math.round(percent)}%
-            </span>
-          }
-        />
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "hidden @4xl:table-cell @4xl:w-32",
-    headerAlign: "center",
-  },
-};
+    },
+    meta: {
+      className: "hidden @3xl:table-cell @3xl:w-24",
+      headerAlign: "center",
+    },
+  };
+}
+
+function buildSeatUsageColumn(t: Translate): ColumnDef<RowData, string> {
+  return {
+    id: "seatUsage" as const,
+    header: t(msg`Seat usage`),
+    enableSorting: true,
+    sortDescFirst: true,
+    // Sorting is server-side; the accessor only exists so the header is sortable.
+    accessorFn: (row) => row.memberUsageLimit?.toString() ?? "",
+    cell: (info: Info) => {
+      const {
+        seatType,
+        memberUsageLimit,
+        seatBalanceAwu,
+        isSeatChangePending,
+      } = info.row.original;
+      const { percent, consumed, allowance } = computeSeatUsage({
+        seatType,
+        memberUsageLimit,
+        seatBalanceAwu,
+        consumedFromAllowanceAwuCredits:
+          info.row.original.consumedFromAllowanceAwuCredits,
+      });
+      if (isSeatChangePending || percent === null) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <span className="text-sm text-muted-foreground">--</span>
+          </DataTable.CellContent>
+        );
+      }
+      const consumedLabel = formatCredits(consumed);
+      const allowanceLabel = formatCredits(allowance);
+      return (
+        <DataTable.CellContent className="justify-center">
+          <Tooltip
+            tooltipTriggerAsChild
+            label={t(msg`${consumedLabel} / ${allowanceLabel} credits used`)}
+            trigger={
+              <span className="text-xs font-medium text-muted-foreground">
+                {Math.round(percent)}%
+              </span>
+            }
+          />
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "hidden @4xl:table-cell @4xl:w-32",
+      headerAlign: "center",
+    },
+  };
+}
 
 function buildPoolCreditUsageColumn(
   hasPool: boolean
@@ -731,7 +799,7 @@ function buildPoolCreditUsageColumn(
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
           <Icon visual={CoinsStacked03} size="xs" />
-          {hasPool ? "Pool usage" : "Credit usage"}
+          {hasPool ? <Trans>Pool usage</Trans> : <Trans>Credit usage</Trans>}
         </span>
       </div>
     ),
@@ -757,7 +825,8 @@ function buildPoolCreditUsageColumn(
 }
 
 function buildPremiumMessageUsageColumn(
-  windowDays: number
+  windowDays: number,
+  t: Translate
 ): ColumnDef<RowData, string> {
   return {
     id: "premiumMessageUsage" as const,
@@ -765,10 +834,10 @@ function buildPremiumMessageUsageColumn(
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
           <Icon visual={CoinsStacked03} size="xs" />
-          Premium messages
+          <Trans>Premium messages</Trans>
         </span>
         <span className="text-xs font-normal text-muted-foreground">
-          Resets on a rolling {windowDays}-day basis
+          <Trans>Resets on a rolling {windowDays}-day basis</Trans>
         </span>
       </div>
     ),
@@ -793,9 +862,11 @@ function buildPremiumMessageUsageColumn(
       const isAtLimit = limitMessages > 0 && usedMessages === limitMessages;
       const bar = (
         <ProgressBar
-          aria-label="Premium message usage"
+          aria-label={t(msg`Premium message usage`)}
           aria-valuenow={percentage}
-          aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`}
+          aria-valuetext={t(
+            msg`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`
+          )}
           className="h-1 w-full gap-px"
           variant="transparent"
           values={[
@@ -825,7 +896,9 @@ function buildPremiumMessageUsageColumn(
               }
               label={
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">Reset schedule:</span>
+                  <span className="font-medium">
+                    <Trans>Reset schedule:</Trans>
+                  </span>
                   {refillSchedule.map(({ date, messages }) => (
                     <span key={date}>
                       {formatDate(
@@ -854,7 +927,8 @@ function buildPremiumMessageUsageColumn(
 }
 
 function buildFairUseCreditsColumn(
-  windowDays: number
+  windowDays: number,
+  t: Translate
 ): ColumnDef<RowData, string> {
   return {
     id: "fairUse" as const,
@@ -862,10 +936,10 @@ function buildFairUseCreditsColumn(
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
           <Icon visual={CoinsStacked03} size="xs" />
-          Fair Usage Credits
+          <Trans>Fair Usage Credits</Trans>
         </span>
         <span className="text-xs font-normal text-muted-foreground">
-          Resets on a rolling {windowDays}-day basis
+          <Trans>Resets on a rolling {windowDays}-day basis</Trans>
         </span>
       </div>
     ),
@@ -887,11 +961,13 @@ function buildFairUseCreditsColumn(
             ? 100
             : 0;
       const isAtLimit = limitCredits > 0 && usedCredits >= limitCredits;
+      const usedLabel = formatCredits(usedCredits);
+      const limitLabel = formatCreditValue(limitCredits);
       const bar = (
         <ProgressBar
-          aria-label="Fair-use credits usage"
+          aria-label={t(msg`Fair-use credits usage`)}
           aria-valuenow={percentage}
-          aria-valuetext={`${formatCredits(usedCredits)} of ${formatCreditValue(limitCredits)} used`}
+          aria-valuetext={t(msg`${usedLabel} of ${limitLabel} used`)}
           className="w-full"
           variant="transparent"
           values={[
@@ -921,7 +997,9 @@ function buildFairUseCreditsColumn(
               }
               label={
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">Reset schedule:</span>
+                  <span className="font-medium">
+                    <Trans>Reset schedule:</Trans>
+                  </span>
                   {refillSchedule.map(({ date, credits }) => (
                     <span key={date}>
                       {formatDate(
@@ -953,134 +1031,138 @@ function buildFairUseCreditsColumn(
   };
 }
 
-const offPaceColumn: ColumnDef<RowData, string> = {
-  id: "overallUsageTarget" as const,
-  header: "",
-  enableSorting: false,
-  accessorFn: (row) => row.overallUsageTarget ?? "",
-  cell: (info: Info) => {
-    const {
-      overallUsageTarget,
-      isSpendCapped,
-      canUpgradeSeat,
-      seatType,
-      onOpenChangeSeatRecap,
-      onOpenSpendLimitRecap,
-    } = info.row.original;
+function buildOffPaceColumn(t: Translate): ColumnDef<RowData, string> {
+  return {
+    id: "overallUsageTarget" as const,
+    header: "",
+    enableSorting: false,
+    accessorFn: (row) => row.overallUsageTarget ?? "",
+    cell: (info: Info) => {
+      const {
+        overallUsageTarget,
+        isSpendCapped,
+        canUpgradeSeat,
+        seatType,
+        onOpenChangeSeatRecap,
+        onOpenSpendLimitRecap,
+      } = info.row.original;
 
-    if (isSpendCapped) {
-      // Free seats have no pool credits to raise (their cap is just the
-      // seat's built-in allowance), so seat upgrade is the only unblock path.
-      const isFreeSeat = seatType === "free";
+      if (isSpendCapped) {
+        // Free seats have no pool credits to raise (their cap is just the
+        // seat's built-in allowance), so seat upgrade is the only unblock path.
+        const isFreeSeat = seatType === "free";
 
-      if (isFreeSeat) {
-        return (
-          <DataTable.CellContent className="justify-center">
-            <div
-              onClick={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <Button
-                variant="highlight"
-                size="xs"
-                label="Unblock"
-                disabled={!canUpgradeSeat}
-                onClick={onOpenChangeSeatRecap}
-              />
-            </div>
-          </DataTable.CellContent>
-        );
-      }
-
-      if (!canUpgradeSeat) {
-        return (
-          <DataTable.CellContent className="justify-center">
-            <div
-              onClick={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <Button
-                variant="highlight"
-                size="xs"
-                label="Unblock"
-                onClick={onOpenSpendLimitRecap}
-              />
-            </div>
-          </DataTable.CellContent>
-        );
-      }
-      return (
-        <DataTable.CellContent className="justify-center">
-          <div
-            onClick={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
+        if (isFreeSeat) {
+          return (
+            <DataTable.CellContent className="justify-center">
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
                 <Button
                   variant="highlight"
                   size="xs"
-                  label="Unblock"
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  label="Upgrade seat"
+                  label={t(msg`Unblock`)}
+                  disabled={!canUpgradeSeat}
                   onClick={onOpenChangeSeatRecap}
                 />
-                <DropdownMenuItem
-                  label="Edit spend limit"
+              </div>
+            </DataTable.CellContent>
+          );
+        }
+
+        if (!canUpgradeSeat) {
+          return (
+            <DataTable.CellContent className="justify-center">
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <Button
+                  variant="highlight"
+                  size="xs"
+                  label={t(msg`Unblock`)}
                   onClick={onOpenSpendLimitRecap}
                 />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        }
+        return (
+          <DataTable.CellContent className="justify-center">
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="highlight"
+                    size="xs"
+                    label={t(msg`Unblock`)}
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    label={t(msg`Upgrade seat`)}
+                    onClick={onOpenChangeSeatRecap}
+                  />
+                  <DropdownMenuItem
+                    label={t(msg`Edit spend limit`)}
+                    onClick={onOpenSpendLimitRecap}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </DataTable.CellContent>
+        );
+      }
+
+      if (
+        overallUsageTarget !== "elevated" &&
+        overallUsageTarget !== "critical"
+      ) {
+        return <DataTable.CellContent className="justify-center" />;
+      }
+      const isCritical = overallUsageTarget === "critical";
+      return (
+        <DataTable.CellContent className="justify-center">
+          <Tooltip
+            tooltipTriggerAsChild
+            label={
+              isCritical
+                ? t(
+                    msg`At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets.`
+                  )
+                : t(msg`Consuming credits ahead of the billing cycle's pace`)
+            }
+            trigger={
+              <span className="flex cursor-default items-center justify-center">
+                <Icon
+                  visual={AlertCircle}
+                  size="sm"
+                  className={isCritical ? "text-red-500" : "text-warning-500"}
+                />
+              </span>
+            }
+          />
         </DataTable.CellContent>
       );
-    }
+    },
+    meta: {
+      className: "hidden @4xl:table-cell @4xl:w-28",
+      headerAlign: "center",
+    },
+  };
+}
 
-    if (
-      overallUsageTarget !== "elevated" &&
-      overallUsageTarget !== "critical"
-    ) {
-      return <DataTable.CellContent className="justify-center" />;
-    }
-    const isCritical = overallUsageTarget === "critical";
-    return (
-      <DataTable.CellContent className="justify-center">
-        <Tooltip
-          tooltipTriggerAsChild
-          label={
-            isCritical
-              ? "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
-              : "Consuming credits ahead of the billing cycle's pace"
-          }
-          trigger={
-            <span className="flex cursor-default items-center justify-center">
-              <Icon
-                visual={AlertCircle}
-                size="sm"
-                className={isCritical ? "text-red-500" : "text-warning-500"}
-              />
-            </span>
-          }
-        />
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "hidden @4xl:table-cell @4xl:w-28",
-    headerAlign: "center",
-  },
-};
-
-function buildModelTiersColumn(): ColumnDef<RowData, string> {
+function buildModelTiersColumn(t: Translate): ColumnDef<RowData, string> {
   return {
     id: "modelTiers" as const,
     header: () => (
       <span className="flex items-center gap-1">
-        Models
+        <Trans>Models</Trans>
         <ModelTiersInfoButton />
       </span>
     ),
@@ -1088,15 +1170,13 @@ function buildModelTiersColumn(): ColumnDef<RowData, string> {
     accessorFn: (row) => row.modelTiersSummary,
     cell: (info: Info) => {
       const summary = info.row.original.modelTiersSummary;
-      const customSuffix = info.row.original.hasUserLevelModelTiersOverride
-        ? " (custom)"
-        : "";
 
       return (
         <DataTable.CellContent>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {summary}
-            {customSuffix}
+            {info.row.original.hasUserLevelModelTiersOverride
+              ? t(msg`${summary} (custom)`)
+              : summary}
           </span>
         </DataTable.CellContent>
       );
@@ -1133,27 +1213,32 @@ function buildCreditPlanColumns({
   premiumMessageWindowDays,
   fairUseWindowDays,
   showUnblockWidth,
+  t,
 }: {
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
   showUnblockWidth: boolean;
+  t: Translate;
 }): ColumnDef<RowData, string>[] {
+  const offPaceColumn = buildOffPaceColumn(t);
   return [
     // Premium message plans have no seats: every member is billed per
     // message, so the seat columns have nothing to show.
-    ...(showPremiumMessageUsage ? [] : [seatsIconColumn, seatUsageColumn]),
+    ...(showPremiumMessageUsage
+      ? []
+      : [buildSeatsIconColumn(t), buildSeatUsageColumn(t)]),
     {
       ...(showPremiumMessageUsage
-        ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
+        ? buildPremiumMessageUsageColumn(premiumMessageWindowDays, t)
         : buildPoolCreditUsageColumn(hasPool)),
       meta: { className: "w-56" },
     },
     // Premium message plans also carry a fixed AWU credit allowance for
     // usage on non-premium models, alongside the rolling message limit.
     ...(showPremiumMessageUsage && fairUseWindowDays !== null
-      ? [buildFairUseCreditsColumn(fairUseWindowDays)]
+      ? [buildFairUseCreditsColumn(fairUseWindowDays, t)]
       : []),
     // Icon-wide until an "Unblock" button has shown up, button-wide from then on.
     ...(!showPremiumMessageUsage
@@ -1182,6 +1267,7 @@ function buildColumns({
   premiumMessageWindowDays,
   fairUseWindowDays,
   showUnblockWidth,
+  t,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -1192,12 +1278,13 @@ function buildColumns({
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
   showUnblockWidth: boolean;
+  t: Translate;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
-    ...(showGroupsColumn ? [groupsColumn] : []),
-    ...(showModelTiersColumn ? [buildModelTiersColumn()] : []),
+    ...(showGroupsColumn ? [buildGroupsColumn(t)] : []),
+    ...(showModelTiersColumn ? [buildModelTiersColumn(t)] : []),
     ...(showSeatAndCredits
       ? buildCreditPlanColumns({
           hasPool,
@@ -1205,6 +1292,7 @@ function buildColumns({
           premiumMessageWindowDays,
           fairUseWindowDays,
           showUnblockWidth,
+          t,
         })
       : []),
     // Every row action belongs to one of these two groups.
@@ -1302,6 +1390,7 @@ export function MembersUsageTable({
   rowSelection,
   onRowSelectionChange,
 }: MembersUsageTableProps) {
+  const { t } = useLingui();
   const rows: RowData[] = useMemo(
     () =>
       members.map((m) => {
@@ -1363,7 +1452,7 @@ export function MembersUsageTable({
               ? [
                   {
                     kind: "item" as const,
-                    label: "Assign seat",
+                    label: t`Assign seat`,
                     disabled: readOnly || seatActionsDisabled,
                     onClick: () => onChangeSeat(m),
                   },
@@ -1373,7 +1462,7 @@ export function MembersUsageTable({
               ? [
                   {
                     kind: "item" as const,
-                    label: "Change seat type",
+                    label: t`Change seat type`,
                     disabled: readOnly || seatActionsDisabled,
                     onClick: () => onChangeSeat(m),
                   },
@@ -1385,7 +1474,7 @@ export function MembersUsageTable({
               ? [
                   {
                     kind: "item" as const,
-                    label: "Edit spend limit",
+                    label: t`Edit spend limit`,
                     disabled: readOnly || !canEditSpendLimit(m),
                     onClick: () => onEditSpendLimit(m),
                   },
@@ -1395,7 +1484,7 @@ export function MembersUsageTable({
               ? [
                   {
                     kind: "submenu" as const,
-                    label: "Models tier",
+                    label: t`Models tier`,
                     selectionMode: "checkbox" as const,
                     items: getUserModelTierMenuItemsWithSelection({
                       selectedValue:
@@ -1422,7 +1511,7 @@ export function MembersUsageTable({
               ? [
                   {
                     kind: "item" as const,
-                    label: "Remove seat",
+                    label: t`Remove seat`,
                     variant: "warning" as const,
                     disabled: readOnly || seatActionsDisabled,
                     onClick: () => onRemoveSeat(m),
@@ -1457,6 +1546,7 @@ export function MembersUsageTable({
       onOpenSpendLimitRecap,
       canUpgradeSeat,
       onSetUserModelTier,
+      t,
     ]
   );
 
@@ -1489,6 +1579,7 @@ export function MembersUsageTable({
         premiumMessageWindowDays,
         fairUseWindowDays,
         showUnblockWidth,
+        t,
       }),
     [
       enableSelection,
@@ -1500,6 +1591,7 @@ export function MembersUsageTable({
       showPremiumMessageUsage,
       fairUseWindowDays,
       showUnblockWidth,
+      t,
     ]
   );
 
