@@ -63,7 +63,6 @@ describe("GET /api/w/:wId/discovery/trending", () => {
             scope: "visible",
             lastAuthors: ["Alice"],
             userFavorite: false,
-            activeUsersCount: null,
           },
         },
       ],

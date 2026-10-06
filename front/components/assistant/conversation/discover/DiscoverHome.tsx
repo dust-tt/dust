@@ -64,7 +64,7 @@ function resolveCatalogItems(items: DiscoveryRankedItemType[]): CatalogItem[] {
           agent: target,
           authors: target.lastAuthors,
           isDustProvided: target.scope === "global",
-          activeUsersCount: target.activeUsersCount,
+          activeUsersCount: null,
         });
         break;
       }

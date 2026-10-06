@@ -10,7 +10,6 @@ export type DiscoveryAgentType = {
   scope: AgentConfigurationScope;
   lastAuthors: readonly string[];
   userFavorite: boolean;
-  activeUsersCount: number | null;
 };
 
 export type DiscoverySkillType = {

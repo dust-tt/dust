@@ -42,7 +42,6 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
           scope: "visible",
           lastAuthors: ["Me"],
           userFavorite: false,
-          activeUsersCount: null,
         },
       },
     });
@@ -67,7 +66,6 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
             scope: "visible",
             lastAuthors: ["Me"],
             userFavorite: false,
-            activeUsersCount: null,
           },
         },
       ],

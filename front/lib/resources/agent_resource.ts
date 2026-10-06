@@ -3581,11 +3581,9 @@ export class AgentResource
   toDiscoveryJSON({
     lastAuthors,
     userFavorite,
-    activeUsersCount,
   }: {
     lastAuthors: readonly string[];
     userFavorite: boolean;
-    activeUsersCount: number | null;
   }): DiscoveryAgentType {
     return {
       sId: this.sId,
@@ -3595,7 +3593,6 @@ export class AgentResource
       scope: this.scope,
       lastAuthors,
       userFavorite,
-      activeUsersCount,
     };
   }
 

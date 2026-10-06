@@ -1,4 +1,3 @@
-import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   listDiscoveryForYouItems,
   listDiscoveryTrendingItems,
@@ -16,14 +15,6 @@ import {
 } from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock(
-  import("@app/lib/api/assistant/agent_usage"),
-  async (importOriginal) => ({
-    ...(await importOriginal()),
-    getAgentsUsage: vi.fn(),
-  })
-);
 
 vi.mock(import("@app/lib/search_usage/trending"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -51,7 +42,6 @@ function forYouCandidate(resourceType: "agent" | "skill", resourceId: string) {
 
 describe("discovery ranked sections", () => {
   beforeEach(() => {
-    vi.mocked(getAgentsUsage).mockResolvedValue([]);
     mockedFetchTrending.mockReset();
     mockedFetchForYou.mockReset();
   });
@@ -66,15 +56,6 @@ describe("discovery ranked sections", () => {
       addCurrentUserAsEditor: true,
     });
 
-    vi.mocked(getAgentsUsage).mockResolvedValue([
-      {
-        agentId: visibleAgent.sId,
-        userCount: 8,
-        messageCount: 20,
-        conversationCount: 10,
-        timePeriodSec: 30 * 24 * 60 * 60,
-      },
-    ]);
     mockedFetchTrending.mockResolvedValue(
       new Ok({
         agents: [
@@ -128,7 +109,6 @@ describe("discovery ranked sections", () => {
           scope: visibleAgent.scope,
           lastAuthors: ["Me"],
           userFavorite: false,
-          activeUsersCount: 8,
         },
       },
       {
@@ -196,7 +176,6 @@ describe("discovery ranked sections", () => {
           scope: visibleAgent.scope,
           lastAuthors: ["Me"],
           userFavorite: true,
-          activeUsersCount: null,
         },
       },
     ]);
@@ -221,7 +200,6 @@ describe("discovery ranked sections", () => {
           scope: "global",
           lastAuthors: [getGlobalAgentAuthorName(GLOBAL_AGENTS_SID.HELPER)],
           userFavorite: false,
-          activeUsersCount: null,
         }),
       },
     ]);

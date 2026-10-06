@@ -42,7 +42,6 @@ describe("GET /api/w/:wId/discovery/featured", () => {
             scope: "visible",
             lastAuthors: ["Me"],
             userFavorite: false,
-            activeUsersCount: null,
           },
         },
       ],
