@@ -14,13 +14,13 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: src/components/Pagination.tsx
+msgid "{rowCount, plural, one {# item} other {# items}}"
+msgstr "{rowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
 msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {#+ élément} other {#+ éléments}}"
 
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
 msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {# élément} other {# éléments}}"
-
-#: src/components/Pagination.tsx
-msgid "{rowCount, plural, one {# item} other {# items}}"
-msgstr "{rowCount, plural, one {# élément} other {# éléments}}"

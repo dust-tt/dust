@@ -23,6 +23,6 @@ export default defineConfig({
     Trans: ["@sparkle/lib/i18n/Trans", "Trans"],
   },
   compileNamespace: "ts",
-  orderBy: "messageId",
+  orderBy: "origin",
   format: formatter({ lineNumbers: false }),
 });
