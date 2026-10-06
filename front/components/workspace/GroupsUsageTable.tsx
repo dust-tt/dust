@@ -89,10 +89,11 @@ export function GroupsUsageTable({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
   });
-  const { usageByGroupId, isGroupsUsageError } = useGroupsUsage({
-    owner,
-    disabled: !showGroupLimitColumn,
-  });
+  const { usageByGroupId, isGroupsUsageLoading, isGroupsUsageError } =
+    useGroupsUsage({
+      owner,
+      disabled: !showGroupLimitColumn,
+    });
   const isGroupLimitShown = showGroupLimitColumn && !isGroupsUsageError;
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
     workspaceId: owner.sId,
@@ -194,11 +195,14 @@ export function GroupsUsageTable({
               id: "groupLimit",
               header: t`Group limit`,
               meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
-              cell: (info: GroupInfo) => (
-                <GroupLimitUsageCell
-                  usage={info.row.original.groupLimitUsage}
-                />
-              ),
+              cell: (info: GroupInfo) =>
+                isGroupsUsageLoading ? (
+                  <LoadingBlock className="h-3 w-40" />
+                ) : (
+                  <GroupLimitUsageCell
+                    usage={info.row.original.groupLimitUsage}
+                  />
+                ),
               enableSorting: false,
             } satisfies ColumnDef<GroupRowData, string>,
           ]
@@ -229,6 +233,7 @@ export function GroupsUsageTable({
       owner,
       showSpendLimitColumn,
       isGroupLimitShown,
+      isGroupsUsageLoading,
       editableGroupIds,
       showModelTiersColumn,
       showSeatColumn,
