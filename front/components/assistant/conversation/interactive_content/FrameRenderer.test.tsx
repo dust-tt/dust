@@ -118,6 +118,7 @@ vi.mock("@app/lib/swr/files", () => ({
   }),
   useFileContentByUrl: () => ({
     fileContent: "export default function FrameV2() {}",
+    fileCanWrite: true,
     isNotFound: false,
     isFileContentLoading: false,
     fileContentError: null,

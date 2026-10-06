@@ -6,6 +6,7 @@ import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMark
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
+import type { FileContentByUrlData } from "@app/lib/swr/files";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
@@ -70,6 +71,9 @@ export function useMarkdownFileEditor({
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
+  // Latched once the file was writable: a later fetch refusing writes keeps the open rich
+  // editor, read only, so its draft stays visible.
+  const [wasWritable, setWasWritable] = useState(canWrite);
   const initKeyRef = useRef<string | null>(null);
 
   const sendNotification = useSendNotification();
@@ -80,11 +84,17 @@ export function useMarkdownFileEditor({
     entryPath && owner && parseCanonicalScopedPath(entryPath)
       ? entryPath
       : null;
-  const canOpenEditor =
-    category === "markdown" && !!editablePath && !isTooLarge && canWrite;
+  const isEditableMarkdown =
+    category === "markdown" && !!editablePath && !isTooLarge;
+  const canOpenEditor = isEditableMarkdown && canWrite;
+
+  if (canWrite && !wasWritable) {
+    setWasWritable(true);
+  }
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
+    setWasWritable(canWrite);
     setViewMode("preview");
     setSourcePath(null);
     setDraft("");
@@ -150,9 +160,9 @@ export function useMarkdownFileEditor({
    * plain draft is left alone: whatever was typed or undone during the save is still the draft.
    */
   const adoptWritten = async (content: string) => {
-    await mutate(
+    await mutate<FileContentByUrlData>(
       fileUrl,
-      { kind: "loaded", content },
+      { kind: "loaded", content, canWrite: true },
       {
         revalidate: false,
       }
@@ -189,7 +199,11 @@ export function useMarkdownFileEditor({
 
   const rich = useRichMarkdownEditor({
     // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
-    enabled: hasFeature("co_edition") && canOpenEditor,
+    enabled:
+      hasFeature("co_edition") &&
+      isEditableMarkdown &&
+      (wasWritable || canWrite),
+    readOnly: !canWrite,
     entryPath,
     isActive,
     rawContent,

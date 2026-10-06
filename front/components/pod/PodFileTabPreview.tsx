@@ -17,6 +17,7 @@ import {
   useFileMetadataFromPath,
   writeFileContentByPath,
 } from "@app/lib/swr/files";
+import type { FileContentByUrlData } from "@app/lib/swr/files";
 import { contentTypeFromFileName } from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -189,14 +190,14 @@ export function PodFileTabPreview({
         });
         return;
       }
-      await mutate(
+      await mutate<FileContentByUrlData>(
         contentApiPath,
-        { kind: "loaded", content: markdownDraft },
+        { kind: "loaded", content: markdownDraft, canWrite: true },
         { revalidate: false }
       );
-      await mutate(
+      await mutate<FileContentByUrlData>(
         fileUrl,
-        { kind: "loaded", content: markdownDraft },
+        { kind: "loaded", content: markdownDraft, canWrite: true },
         { revalidate: false }
       );
       setMarkdownSavedContent(markdownDraft);
