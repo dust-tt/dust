@@ -28,6 +28,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
+  getFixedWindowCount,
   readFixedWindowCountWithLazySeed,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
@@ -431,8 +432,9 @@ export async function readGroupLimitCount(
 }
 
 /**
- * Each limited group's limit and usage this cycle, or null when group limits are not enabled. A
- * counter that cannot be read (or an unknown cycle) reports 0, like the other spend counters.
+ * Each limited group's limit and usage this cycle, or null when group limits are not enabled. Reads
+ * the counters without seeding them; groups whose counter reads 0 are filled from a single
+ * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
  */
 export async function getGroupLimitsUsage(
   auth: Authenticator
@@ -446,20 +448,43 @@ export async function getGroupLimitsUsage(
     auth.getNonNullableWorkspace()
   );
 
-  return concurrentExecutor(
-    groups,
-    async (group) => {
-      const count = bounds
-        ? await readGroupLimitCount(auth, { group, bounds })
-        : null;
-      return {
-        groupId: group.sId,
-        limitAwuCredits: group.groupLimitAwuCredits ?? 0,
-        usedAwuCredits: microCreditsToCredits(count ?? 0),
-      };
-    },
-    { concurrency: 8 }
-  );
+  const workspace = auth.getNonNullableWorkspace();
+  const countByGroupId = new Map<string, number>();
+  if (bounds) {
+    const counts = await concurrentExecutor(
+      groups,
+      async (group) => {
+        const count = await getFixedWindowCount({
+          key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+          bounds,
+        });
+        return { groupId: group.sId, count: count.isOk() ? count.value : 0 };
+      },
+      { concurrency: 8 }
+    );
+    for (const { groupId, count } of counts) {
+      if (count > 0) {
+        countByGroupId.set(groupId, count);
+      }
+    }
+
+    const uncountedGroupIds = groups
+      .map((group) => group.sId)
+      .filter((groupId) => !countByGroupId.has(groupId));
+    const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
+      workspace,
+      groupIds: uncountedGroupIds,
+    });
+    for (const [groupId, consumed] of consumedByGroupId ?? []) {
+      countByGroupId.set(groupId, consumed);
+    }
+  }
+
+  return groups.map((group) => ({
+    groupId: group.sId,
+    limitAwuCredits: group.groupLimitAwuCredits ?? 0,
+    usedAwuCredits: microCreditsToCredits(countByGroupId.get(group.sId) ?? 0),
+  }));
 }
 
 /**

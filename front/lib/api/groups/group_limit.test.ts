@@ -1178,6 +1178,44 @@ describe("getGroupLimitsUsage", () => {
     ]);
   });
 
+  it("fills every group without a counter from a single analytics query, without seeding", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    const sales = await makeLimitedGroup(auth, workspace, "Sales", [], 6_000);
+    const support = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Support",
+      [],
+      3_000
+    );
+    await setCounter(workspace, support, 1_000_000_000);
+    mockConsumedByLimitGroup([
+      { group: engineering, microCredits: 2_000_000_000 },
+      { group: sales, microCredits: 500_000_000 },
+    ]);
+
+    const usage = await getGroupLimitsUsage(auth);
+
+    expect(usage).toEqual([
+      {
+        groupId: engineering.sId,
+        limitAwuCredits: 10_000,
+        usedAwuCredits: 2_000,
+      },
+      { groupId: sales.sId, limitAwuCredits: 6_000, usedAwuCredits: 500 },
+      { groupId: support.sId, limitAwuCredits: 3_000, usedAwuCredits: 1_000 },
+    ]);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    expect(await groupUsage(workspace, engineering)).toBe(0);
+  });
+
   it("reports no usage when the billing cycle is unknown", async () => {
     const { auth, workspace, user } = await setup();
     const engineering = await makeLimitedGroup(
