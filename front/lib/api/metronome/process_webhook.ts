@@ -203,6 +203,12 @@ function isSeatAwuCredit(credit: Credit): boolean {
 // create, or edit webhook event. Shared by `commit.*` and `credit.*` handlers.
 // Only AWU entities feed the pool; anything else (programmatic USD, EUR seat
 // credits, etc.) is out of scope for the pool state machine and skipped.
+/**
+ * @cc [owner:pmilliotte,label:product;backend] stamped-before-pool-reconcile
+ * A pool AWU commit or credit MUST carry `DUST_CONTRACT_CREDIT_TYPE` before this is called:
+ * the balance read filters on it, so an unstamped entity counts as 0 and can wrongly move the
+ * workspace to `overage`/`depleted`, with no later event to undo it.
+ */
 async function reconcilePoolStateFromSegmentEvent({
   workspace,
   metronomeCustomerId,
@@ -997,11 +1003,9 @@ export async function processMetronomeWebhook({
         );
       }
       if (commitResult.value) {
-        await reconcilePoolStateFromSegmentEvent({
-          workspace,
-          metronomeCustomerId,
-          commitOrCredit: commitResult.value,
-        });
+        // Stamp first: the pool balance is read with an `onlyPoolCredits`
+        // filter (see `getNetBalance`), so an unstamped commit is invisible to
+        // the reconcile.
         const stampResult = await stampCommitCreditType({
           workspaceId: workspace.sId,
           commit: commitResult.value,
@@ -1011,6 +1015,11 @@ export async function processMetronomeWebhook({
         if (stampResult.isErr()) {
           return stampResult;
         }
+        await reconcilePoolStateFromSegmentEvent({
+          workspace,
+          metronomeCustomerId,
+          commitOrCredit: commitResult.value,
+        });
       }
       break;
     }
@@ -1068,7 +1077,16 @@ export async function processMetronomeWebhook({
           "[Metronome Webhook] seat credit event: user state reconcile triggered"
         );
       } else {
-        // Pool AWU credit: reconcile the workspace pool credit state.
+        // Pool AWU credit: stamp (no-op if `credit.create` already did), then
+        // reconcile the workspace pool credit state.
+        const stampResult = await stampContractCreditType({
+          workspaceId: workspace.sId,
+          credit,
+          eventType: event.type,
+        });
+        if (stampResult.isErr()) {
+          return stampResult;
+        }
         await reconcilePoolStateFromSegmentEvent({
           workspace,
           metronomeCustomerId,
