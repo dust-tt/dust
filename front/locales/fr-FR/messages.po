@@ -421,6 +421,8 @@ msgstr "Nom complet"
 
 #: front/components/assistant/details/MemberDetails.tsx
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
 msgid "Close"
 msgstr "Fermer"
 
@@ -661,6 +663,8 @@ msgstr "Membres du groupe ({selectedMemberCount})"
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/me/UserAutomationsTable.tsx
 #: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
 #: front/components/workspace/ChangeMemberModal.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
@@ -1557,6 +1561,7 @@ msgid "Spend"
 msgstr "Dépenses"
 
 #: front/components/navigation/config.ts
+#: front/components/workspace/BuyCreditDialog.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 #: front/components/workspace/billing/CouponsList.tsx
 msgid "Credits"
@@ -1786,6 +1791,329 @@ msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
 
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Applying coupon..."
+msgstr "Application du coupon…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Applying..."
+msgstr "Application…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Coupon applied!"
+msgstr "Coupon appliqué !"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "<0>{bonusCreditsFormatted} credits</0> have been added to your pool."
+msgstr "<0>{bonusCreditsFormatted} crédits</0> ont été ajoutés à votre réserve."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Couldn't apply coupon"
+msgstr "Impossible d’appliquer le coupon"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Try again"
+msgstr "Réessayer"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Have a coupon code? Enter it below to add free credits to your Workspace Credits Pool."
+msgstr "Vous avez un code de coupon ? Saisissez-le ci-dessous pour ajouter des crédits gratuits à la réserve de crédits de votre workspace."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Coupon code"
+msgstr "Code du coupon"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Enter code"
+msgstr "Saisir le code"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Check"
+msgstr "Vérifier"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Coupon"
+msgstr "Coupon"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Current Credits Pool"
+msgstr "Réserve de crédits actuelle"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Bonus Credits"
+msgstr "Crédits bonus"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "New Credits Pool"
+msgstr "Nouvelle réserve de crédits"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Apply coupon"
+msgstr "Appliquer le coupon"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Payment failed."
+msgstr "Le paiement a échoué."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Processing payment..."
+msgstr "Traitement du paiement…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "This may take a few seconds."
+msgstr "Cela peut prendre quelques secondes."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits purchased successfully!"
+msgstr "Crédits achetés avec succès !"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Your credits are now available."
+msgstr "Vos crédits sont désormais disponibles."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Invoice has been sent by email."
+msgstr "La facture a été envoyée par e-mail."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Something went wrong"
+msgstr "Une erreur s’est produite"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please contact support if the issue persists."
+msgstr "Veuillez contacter le support si le problème persiste."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "Amount"
+msgstr "Montant"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "{addedCreditsFormatted} credits"
+msgstr "{addedCreditsFormatted} crédits"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
+msgstr "Le montant dépasse la limite de {maxAmountFormatted}. Veuillez <0>contacter le support</0>."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Summary"
+msgstr "Récapitulatif"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Added Credits"
+msgstr "Crédits ajoutés"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Cost (excl. tax)"
+msgstr "Coût (HT)"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Payment method"
+msgstr "Moyen de paiement"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Change"
+msgstr "Modifier"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Credits are valid for 12 months: credits purchased today expire on {expirationDateFormatted}."
+msgstr "Les crédits sont valables 12 mois : les crédits achetés aujourd’hui expirent le {expirationDateFormatted}."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "I agree to the <0>Terms & Conditions</0> and <1>Privacy Policy</1>"
+msgstr "J’accepte les <0>Conditions générales</0> et la <1>Politique de confidentialité</1>"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "I understand credits are non-refundable after purchase"
+msgstr "Je comprends que les crédits ne sont pas remboursables après l’achat"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Processing..."
+msgstr "Traitement…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Manage invoices"
+msgstr "Gérer les factures"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Add {addedCreditsFormatted} credits"
+msgstr "Ajouter {addedCreditsFormatted} crédits"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Top-up"
+msgstr "Recharge"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "We couldn't load your purchase information."
+msgstr "Impossible de charger vos informations d’achat."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Something went wrong while loading your top-up options. Please try again in a moment, or <0>contact support</0> if the issue persists."
+msgstr "Une erreur s’est produite lors du chargement de vos options de recharge. Veuillez réessayer dans un instant, ou <0>contacter le support</0> si le problème persiste."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Credit purchases are not available for your current plan."
+msgstr "L’achat de crédits n’est pas disponible avec votre forfait actuel."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Please <0>contact support</0> for assistance."
+msgstr "Veuillez <0>contacter le support</0> pour obtenir de l’aide."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "No billing configuration found for this workspace."
+msgstr "Aucune configuration de facturation trouvée pour ce workspace."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Please <0>contact support</0> to set up billing for your workspace."
+msgstr "Veuillez <0>contacter le support</0> pour configurer la facturation de votre workspace."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "You have pending credit purchases awaiting payment. Please complete your pending payment before making a new purchase or <0>contact support</0> to cancel your pending payments."
+msgstr "Vous avez des achats de crédits en attente de paiement. Veuillez effectuer votre paiement en attente avant tout nouvel achat, ou <0>contacter le support</0> pour annuler vos paiements en attente."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "You've reached your credit limit for this billing cycle. It resets at the start of your next billing cycle. If you need additional credits before then, please <0>contact support</0>."
+msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation. Elle sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, veuillez <0>contacter le support</0>."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Buy credits"
+msgstr "Acheter des crédits"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Use coupon"
+msgstr "Utiliser un coupon"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Processing purchase..."
+msgstr "Traitement de l’achat…"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Payment confirmation required"
+msgstr "Confirmation de paiement requise"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please complete the payment to finalize your credit purchase or contact support to cancel pending invoices."
+msgstr "Veuillez effectuer le paiement pour finaliser votre achat de crédits, ou contactez le support pour annuler les factures en attente."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You still have pay-as-you-go capacity"
+msgstr "Il vous reste de la capacité en facturation à l’usage"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your pay-as-you-go cap."
+msgstr "Vous êtes encore sous les {PAYG_CAP_WARNING_THRESHOLD_PERCENT} % de votre plafond de facturation à l’usage."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits amount"
+msgstr "Montant des crédits"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Maximum purchase amount is {maxAmountFormatted}"
+msgstr "Le montant d’achat maximal est de {maxAmountFormatted}"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Discount ({effectiveDiscount}%)"
+msgstr "Remise ({effectiveDiscount} %)"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Tax"
+msgstr "Taxes"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Calculated on invoice"
+msgstr "Calculées sur la facture"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/billing/CouponsList.tsx
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Total"
+msgstr "Total"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "(excl. tax)"
+msgstr "(HT)"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase up to {maxAmountFormatted} worth of credits. <0>Contact support</0> if you need more."
+msgstr "Achetez jusqu’à {maxAmountFormatted} de crédits. <0>Contactez le support</0> si vous avez besoin de plus."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits will be added immediately, will be invoiced at the end of your billing cycle, and expire one year after purchase."
+msgstr "Les crédits seront ajoutés immédiatement, facturés à la fin de votre cycle de facturation et expireront un an après l’achat."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits will be charged immediately, and expire one year after purchase."
+msgstr "Les crédits seront facturés immédiatement et expireront un an après l’achat."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Go to payment"
+msgstr "Passer au paiement"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase credits"
+msgstr "Acheter des crédits"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase programmatic credits"
+msgstr "Acheter des crédits API"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credit purchases are not available during your trial period."
+msgstr "L’achat de crédits n’est pas disponible pendant votre période d’essai."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credit purchases become available once you upgrade to a paid plan. If you need credits during your trial, please contact our support team."
+msgstr "L’achat de crédits sera disponible une fois que vous serez passé à un forfait payant. Si vous avez besoin de crédits pendant votre essai, veuillez contacter notre équipe support."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Contact {SUPPORT_EMAIL}"
+msgstr "Contacter {SUPPORT_EMAIL}"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credit purchases require an active subscription."
+msgstr "L’achat de crédits nécessite un abonnement actif."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please ensure your subscription is active and your payment method is up to date. If you need assistance, please contact our support team."
+msgstr "Vérifiez que votre abonnement est actif et que votre moyen de paiement est à jour. Si vous avez besoin d’aide, veuillez contacter notre équipe support."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You have pending credit purchases awaiting payment."
+msgstr "Vous avez des achats de crédits en attente de paiement."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please complete your pending payment before making a new purchase or contact support to cancel your pending payments."
+msgstr "Veuillez effectuer votre paiement en attente avant tout nouvel achat, ou contactez le support pour annuler vos paiements en attente."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You've reached your credit limit for this billing cycle."
+msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Your credit purchase limit resets at the start of your next billing cycle. If you need additional credits before then, please contact our support team."
+msgstr "Votre limite d’achat de crédits sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, veuillez contacter notre équipe support."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase credits for programmatic API usage."
+msgstr "Achetez des crédits pour l’utilisation via l’API."
+
 #: front/components/workspace/ChangeMemberModal.tsx
 msgid "The role defines the rights of a member of the workspace. {roleDescription}"
 msgstr "Le rôle définit les droits d’un membre du workspace. {roleDescription}"
@@ -1817,6 +2145,39 @@ msgstr "Oui, révoquer"
 #: front/components/workspace/ChangeMemberModal.tsx
 msgid "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
 msgstr "Supprimer un membre le retire du workspace. Il pourra le rejoindre à nouveau s’il dispose d’un lien d’invitation."
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "Past credits"
+msgstr "Crédits passés"
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "No expired credits in the last 6 months."
+msgstr "Aucun crédit expiré au cours des 6 derniers mois."
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "Expired credits from the last 6 months."
+msgstr "Crédits expirés au cours des 6 derniers mois."
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "For older credits, <0>contact support</0>."
+msgstr "Pour les crédits plus anciens, <0>contactez le support</0>."
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgid "credits/month"
+msgstr "crédits/mois"
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgctxt "credit limit currently applied"
+msgid "Active"
+msgstr "Active"
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgid "Personal limit"
+msgstr "Limite personnelle"
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgid "Remove personal limit"
+msgstr "Supprimer la limite personnelle"
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
 msgid "API Key Created"
@@ -2065,20 +2426,12 @@ msgid "Payment method {last4}"
 msgstr "Moyen de paiement {last4}"
 
 #: front/components/workspace/billing/BillingInformation.tsx
-msgid "Payment method"
-msgstr "Moyen de paiement"
-
-#: front/components/workspace/billing/BillingInformation.tsx
 msgid "Billing information"
 msgstr "Informations de facturation"
 
 #: front/components/workspace/billing/BillingInformation.tsx
 msgid "Billing contact"
 msgstr "Contact de facturation"
-
-#: front/components/workspace/billing/BillingInformation.tsx
-msgid "Change"
-msgstr "Modifier"
 
 #: front/components/workspace/billing/BillingInformation.tsx
 msgid "No billing address on file."
@@ -2166,10 +2519,6 @@ msgid "Upgrade your workspace"
 msgstr "Mettre à niveau votre workspace"
 
 #: front/components/workspace/billing/CouponsList.tsx
-msgid "Coupon"
-msgstr "Coupon"
-
-#: front/components/workspace/billing/CouponsList.tsx
 msgid "Redeemed on"
 msgstr "Utilisé le"
 
@@ -2184,11 +2533,6 @@ msgstr "Aucun coupon n’a été utilisé sur ce workspace."
 #: front/components/workspace/billing/CouponsList.tsx
 msgid "Seat coupons"
 msgstr "Coupons de sièges"
-
-#: front/components/workspace/billing/CouponsList.tsx
-#: front/components/workspace/billing/NextInvoicePreview.tsx
-msgid "Total"
-msgstr "Total"
 
 #: front/components/workspace/billing/CouponsList.tsx
 msgid "Credit top-ups"
@@ -2297,10 +2641,6 @@ msgstr "Facture"
 #: front/components/workspace/billing/RecentInvoices.tsx
 msgid "Date"
 msgstr "Date"
-
-#: front/components/workspace/billing/RecentInvoices.tsx
-msgid "Amount"
-msgstr "Montant"
 
 #: front/components/workspace/billing/RecentInvoices.tsx
 msgid "See invoice"
