@@ -1,6 +1,22 @@
+import {
+  makeGroupLimitAwuCreditsRateLimitKeyForGroup,
+  makeSpendLimitCycleWindowBounds,
+} from "@app/lib/api/assistant/rate_limits";
+import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
+import {
+  ElasticsearchError,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import {
+  expireRateLimiterKey,
+  getFixedWindowCount,
+  setFixedWindowCount,
+} from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -9,8 +25,12 @@ import {
   POOL_ONLY_SEATS,
 } from "@app/tests/utils/metronome_contracts";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.unmock("@app/lib/api/redis");
 
 vi.mock(import("@app/lib/metronome/plan_type"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -27,10 +47,56 @@ vi.mock(import("@app/lib/spend_limits/cycle"), async (importOriginal) => ({
   resolveSpendLimitCycleBounds: vi.fn(),
 }));
 
+vi.mock(
+  import("@app/lib/api/credits/members_usage"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    resolveMetronomeCycle: vi.fn(),
+  })
+);
+
+vi.mock(import("@app/lib/api/elasticsearch"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  searchConsumptionAnalytics: vi.fn(),
+}));
+
+const CYCLE = {
+  cycleStart: new Date("2026-10-01T00:00:00Z"),
+  cycleEnd: new Date("2026-11-01T00:00:00Z"),
+};
+
+const BOUNDS = makeSpendLimitCycleWindowBounds(
+  CYCLE.cycleStart,
+  CYCLE.cycleEnd
+);
+
 beforeEach(() => {
   mockActiveContract(POOL_ONLY_SEATS);
-  vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
+  vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
+  vi.mocked(resolveMetronomeCycle).mockResolvedValue(CYCLE);
+  mockConsumedByLimitGroup([]);
 });
+
+function mockConsumedByLimitGroup(
+  consumed: { group: GroupResource; microCredits: number }[]
+) {
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+    new Ok({
+      took: 1,
+      timed_out: false,
+      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      hits: { total: { value: 0, relation: "eq" }, hits: [] },
+      aggregations: {
+        by_limit_group: {
+          buckets: consumed.map(({ group, microCredits }) => ({
+            key: group.sId,
+            credits: { value: microCredits },
+          })),
+        },
+      },
+    })
+  );
+}
 
 async function groupLimitsWorkspace({
   withFlag = true,
@@ -47,22 +113,136 @@ async function groupLimitsWorkspace({
   return workspace;
 }
 
+async function makeLimitedGroup(
+  workspace: LightWorkspaceType,
+  name: string,
+  { awuCredits, priority }: { awuCredits: number; priority: number }
+) {
+  const group = await GroupFactory.regularManual(workspace, name);
+  await GroupFactory.withRawGroupLimit(group, {
+    groupLimitAwuCredits: awuCredits,
+    groupLimitPriority: priority,
+  });
+  const expired = await expireRateLimiterKey({
+    key: `${makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group)}:${BOUNDS.label}`,
+  });
+  if (expired.isErr()) {
+    throw expired.error;
+  }
+  return group;
+}
+
+async function setCounter(
+  workspace: LightWorkspaceType,
+  group: GroupResource,
+  microCredits: number
+) {
+  const result = await setFixedWindowCount({
+    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    bounds: BOUNDS,
+    value: microCredits,
+    logger,
+  });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+async function readCounter(
+  workspace: LightWorkspaceType,
+  group: GroupResource
+) {
+  const result = await getFixedWindowCount({
+    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    bounds: BOUNDS,
+  });
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return result.value;
+}
+
 function getGroupsUsage(wId: string) {
   return honoApp.request(`/api/w/${wId}/credits/groups-usage`);
 }
 
 describe("GET /api/w/[wId]/credits/groups-usage", () => {
-  it("lists the limited groups with their limit for an admin", async () => {
+  it("reports each limited group's limit and usage this cycle", async () => {
     const workspace = await groupLimitsWorkspace();
-    const engineering = await GroupFactory.regularManual(
-      workspace,
-      "Engineering"
-    );
-    await GroupFactory.regularManual(workspace, "Sales");
-    await GroupFactory.withRawGroupLimit(engineering, {
-      groupLimitAwuCredits: 10_000,
-      groupLimitPriority: 1,
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
     });
+    const sales = await makeLimitedGroup(workspace, "Sales", {
+      awuCredits: 6_000,
+      priority: 2,
+    });
+    const support = await makeLimitedGroup(workspace, "Support", {
+      awuCredits: 3_000,
+      priority: 3,
+    });
+    await GroupFactory.regularManual(workspace, "Marketing");
+    await setCounter(workspace, engineering, 2_500_000_000);
+    mockConsumedByLimitGroup([{ group: sales, microCredits: 500_000_000 }]);
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const response = await getGroupsUsage(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      groups: [
+        {
+          groupId: engineering.sId,
+          limitAwuCredits: 10_000,
+          usedAwuCredits: 2_500,
+        },
+        { groupId: sales.sId, limitAwuCredits: 6_000, usedAwuCredits: 500 },
+        { groupId: support.sId, limitAwuCredits: 3_000, usedAwuCredits: 0 },
+      ],
+    });
+  });
+
+  it("fills every group without a counter from a single analytics query, without seeding", async () => {
+    const workspace = await groupLimitsWorkspace();
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
+    });
+    const sales = await makeLimitedGroup(workspace, "Sales", {
+      awuCredits: 6_000,
+      priority: 2,
+    });
+    mockConsumedByLimitGroup([
+      { group: engineering, microCredits: 2_000_000_000 },
+      { group: sales, microCredits: 500_000_000 },
+    ]);
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const response = await getGroupsUsage(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    expect(await readCounter(workspace, engineering)).toBe(0);
+    expect(await readCounter(workspace, sales)).toBe(0);
+  });
+
+  it("reports no usage when the analytics index cannot be read", async () => {
+    const workspace = await groupLimitsWorkspace();
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Err(new ElasticsearchError("connection_error", "es down"))
+    );
     await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -81,6 +261,35 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
         },
       ],
     });
+  });
+
+  it("reports no usage when the billing cycle is unknown", async () => {
+    const workspace = await groupLimitsWorkspace();
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
+    });
+    await setCounter(workspace, engineering, 2_500_000_000);
+    vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const response = await getGroupsUsage(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      groups: [
+        {
+          groupId: engineering.sId,
+          limitAwuCredits: 10_000,
+          usedAwuCredits: 0,
+        },
+      ],
+    });
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
   it.each(["user", "manager"] as const)("refuses a %s", async (role) => {
