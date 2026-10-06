@@ -178,6 +178,8 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   clickup: "productivity",
   fullenrich: "crm",
   "superhuman docs (coda)": "productivity",
+  pandadoc: "productivity",
+  "pandadoc (europe)": "productivity",
 };
 
 // Category mapping for connectors

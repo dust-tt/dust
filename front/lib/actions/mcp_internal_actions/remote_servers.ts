@@ -4785,37 +4785,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
-    id: 10046,
-    name: "Paddle",
-    description:
-      "Manage Paddle pricing, billing, subscriptions, and integrations through Paddle's hosted MCP server.",
-    url: "https://mcp.paddle.com/mcp",
-    icon: "PaddleLogo",
-    documentationUrl: "https://developer.paddle.com/sdks/ai/paddle-mcp/",
-    connectionInstructions:
-      "Connect to your Paddle live account with OAuth. Access starts with the read permissions allowed by your Paddle role; adjust permissions in Paddle > Connectors > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      search: "never_ask",
-      execute: "high",
-      report_missing_tool: "low",
-    },
-    toolDisplayLabels: {
-      search: {
-        running: "Searching Paddle",
-        done: "Searched Paddle",
-      },
-      execute: {
-        running: "Running a Paddle operation",
-        done: "Ran a Paddle operation",
-      },
-      report_missing_tool: {
-        running: "Reporting a missing Paddle capability",
-        done: "Reported a missing Paddle capability",
-      },
-    },
-  },
-  {
     id: 10042,
     name: "Clay",
     description:
@@ -5463,6 +5432,401 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       notifications_mark_read: {
         running: "Marking notifications as read on Superhuman Docs",
         done: "Marked notifications as read on Superhuman Docs",
+      },
+    },
+  },
+  {
+    id: 10046,
+    name: "Paddle",
+    description:
+      "Manage Paddle pricing, billing, subscriptions, and integrations through Paddle's hosted MCP server.",
+    url: "https://mcp.paddle.com/mcp",
+    icon: "PaddleLogo",
+    documentationUrl: "https://developer.paddle.com/sdks/ai/paddle-mcp/",
+    connectionInstructions:
+      "Connect to your Paddle live account with OAuth. Access starts with the read permissions allowed by your Paddle role; adjust permissions in Paddle > Connectors > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      execute: "high",
+      report_missing_tool: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching Paddle",
+        done: "Searched Paddle",
+      },
+      execute: {
+        running: "Running a Paddle operation",
+        done: "Ran a Paddle operation",
+      },
+      report_missing_tool: {
+        running: "Reporting a missing Paddle capability",
+        done: "Reported a missing Paddle capability",
+      },
+    },
+  },
+  {
+    id: 10047,
+    name: "PandaDoc",
+    description:
+      "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: Global).",
+    url: "https://mcp.pandadoc.com/v1/mcp",
+    icon: "PandaDocLogo",
+    documentationUrl:
+      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
+    connectionInstructions:
+      "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.com; authentication fails if the server region does not match your account region.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      documents_audit_trail_get: "never_ask",
+      documents_list: "never_ask",
+      documents_search: "never_ask",
+      documents_status_get: "never_ask",
+      documents_details_get: "never_ask",
+      documents_summary_get: "never_ask",
+      documents_content_get: "never_ask",
+      documents_metadata_batch_get: "never_ask",
+      contacts_list: "never_ask",
+      contacts_search: "never_ask",
+      templates_list: "never_ask",
+      templates_details_get: "never_ask",
+      catalog_items_search: "never_ask",
+      catalog_item_get: "never_ask",
+      documents_create: "high",
+      documents_update: "high",
+      documents_status_change: "high",
+      documents_send: "high",
+      documents_fields_assign: "high",
+      documents_archive: "high",
+      documents_reminder_send: "high",
+      recipients_edit: "high",
+      recipients_add_cc: "high",
+      recipients_reassign: "high",
+      recipients_delete: "high",
+      templates_create: "high",
+      templates_update: "high",
+      templates_duplicate: "high",
+      templates_delete: "high",
+      catalog_item_create: "high",
+      catalog_item_update: "high",
+      catalog_item_delete: "high",
+      quotes_update: "high",
+    },
+    toolDisplayLabels: {
+      documents_audit_trail_get: {
+        running: "Loading a document audit trail from PandaDoc",
+        done: "Loaded a document audit trail from PandaDoc",
+      },
+      documents_list: {
+        running: "Listing documents on PandaDoc",
+        done: "Listed documents on PandaDoc",
+      },
+      documents_search: {
+        running: "Searching documents on PandaDoc",
+        done: "Searched documents on PandaDoc",
+      },
+      documents_status_get: {
+        running: "Checking a document status on PandaDoc",
+        done: "Checked a document status on PandaDoc",
+      },
+      documents_details_get: {
+        running: "Loading document details from PandaDoc",
+        done: "Loaded document details from PandaDoc",
+      },
+      documents_summary_get: {
+        running: "Loading a document summary from PandaDoc",
+        done: "Loaded a document summary from PandaDoc",
+      },
+      documents_content_get: {
+        running: "Loading document content from PandaDoc",
+        done: "Loaded document content from PandaDoc",
+      },
+      documents_metadata_batch_get: {
+        running: "Loading document metadata from PandaDoc",
+        done: "Loaded document metadata from PandaDoc",
+      },
+      contacts_list: {
+        running: "Looking up a contact by email on PandaDoc",
+        done: "Looked up a contact by email on PandaDoc",
+      },
+      contacts_search: {
+        running: "Searching contacts on PandaDoc",
+        done: "Searched contacts on PandaDoc",
+      },
+      templates_list: {
+        running: "Listing templates on PandaDoc",
+        done: "Listed templates on PandaDoc",
+      },
+      templates_details_get: {
+        running: "Loading template details from PandaDoc",
+        done: "Loaded template details from PandaDoc",
+      },
+      catalog_items_search: {
+        running: "Searching catalog items on PandaDoc",
+        done: "Searched catalog items on PandaDoc",
+      },
+      catalog_item_get: {
+        running: "Loading a catalog item from PandaDoc",
+        done: "Loaded a catalog item from PandaDoc",
+      },
+      documents_create: {
+        running: "Creating a document on PandaDoc",
+        done: "Created a document on PandaDoc",
+      },
+      documents_update: {
+        running: "Updating a document on PandaDoc",
+        done: "Updated a document on PandaDoc",
+      },
+      documents_status_change: {
+        running: "Changing a document status on PandaDoc",
+        done: "Changed a document status on PandaDoc",
+      },
+      documents_send: {
+        running: "Sending a document on PandaDoc",
+        done: "Sent a document on PandaDoc",
+      },
+      documents_fields_assign: {
+        running: "Assigning document fields on PandaDoc",
+        done: "Assigned document fields on PandaDoc",
+      },
+      documents_archive: {
+        running: "Archiving a document on PandaDoc",
+        done: "Archived a document on PandaDoc",
+      },
+      documents_reminder_send: {
+        running: "Sending a document reminder on PandaDoc",
+        done: "Sent a document reminder on PandaDoc",
+      },
+      recipients_edit: {
+        running: "Editing a recipient on PandaDoc",
+        done: "Edited a recipient on PandaDoc",
+      },
+      recipients_add_cc: {
+        running: "Adding a CC recipient on PandaDoc",
+        done: "Added a CC recipient on PandaDoc",
+      },
+      recipients_reassign: {
+        running: "Reassigning a recipient on PandaDoc",
+        done: "Reassigned a recipient on PandaDoc",
+      },
+      recipients_delete: {
+        running: "Removing a recipient on PandaDoc",
+        done: "Removed a recipient on PandaDoc",
+      },
+      templates_create: {
+        running: "Creating a template on PandaDoc",
+        done: "Created a template on PandaDoc",
+      },
+      templates_update: {
+        running: "Updating a template on PandaDoc",
+        done: "Updated a template on PandaDoc",
+      },
+      templates_duplicate: {
+        running: "Duplicating a template on PandaDoc",
+        done: "Duplicated a template on PandaDoc",
+      },
+      templates_delete: {
+        running: "Deleting a template on PandaDoc",
+        done: "Deleted a template on PandaDoc",
+      },
+      catalog_item_create: {
+        running: "Creating a catalog item on PandaDoc",
+        done: "Created a catalog item on PandaDoc",
+      },
+      catalog_item_update: {
+        running: "Updating a catalog item on PandaDoc",
+        done: "Updated a catalog item on PandaDoc",
+      },
+      catalog_item_delete: {
+        running: "Deleting a catalog item on PandaDoc",
+        done: "Deleted a catalog item on PandaDoc",
+      },
+      quotes_update: {
+        running: "Updating quotes on PandaDoc",
+        done: "Updated quotes on PandaDoc",
+      },
+    },
+  },
+  {
+    id: 10048,
+    name: "PandaDoc (Europe)",
+    description:
+      "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: EU).",
+    url: "https://mcp.pandadoc.eu/v1/mcp",
+    icon: "PandaDocLogo",
+    documentationUrl:
+      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
+    connectionInstructions:
+      "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.eu; authentication fails if the server region does not match your account region.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      documents_audit_trail_get: "never_ask",
+      documents_list: "never_ask",
+      documents_search: "never_ask",
+      documents_status_get: "never_ask",
+      documents_details_get: "never_ask",
+      documents_summary_get: "never_ask",
+      documents_content_get: "never_ask",
+      documents_metadata_batch_get: "never_ask",
+      contacts_list: "never_ask",
+      contacts_search: "never_ask",
+      templates_list: "never_ask",
+      templates_details_get: "never_ask",
+      catalog_items_search: "never_ask",
+      catalog_item_get: "never_ask",
+      documents_create: "high",
+      documents_update: "high",
+      documents_status_change: "high",
+      documents_send: "high",
+      documents_fields_assign: "high",
+      documents_archive: "high",
+      documents_reminder_send: "high",
+      recipients_edit: "high",
+      recipients_add_cc: "high",
+      recipients_reassign: "high",
+      recipients_delete: "high",
+      templates_create: "high",
+      templates_update: "high",
+      templates_duplicate: "high",
+      templates_delete: "high",
+      catalog_item_create: "high",
+      catalog_item_update: "high",
+      catalog_item_delete: "high",
+      quotes_update: "high",
+    },
+    toolDisplayLabels: {
+      documents_audit_trail_get: {
+        running: "Loading a document audit trail from PandaDoc",
+        done: "Loaded a document audit trail from PandaDoc",
+      },
+      documents_list: {
+        running: "Listing documents on PandaDoc",
+        done: "Listed documents on PandaDoc",
+      },
+      documents_search: {
+        running: "Searching documents on PandaDoc",
+        done: "Searched documents on PandaDoc",
+      },
+      documents_status_get: {
+        running: "Checking a document status on PandaDoc",
+        done: "Checked a document status on PandaDoc",
+      },
+      documents_details_get: {
+        running: "Loading document details from PandaDoc",
+        done: "Loaded document details from PandaDoc",
+      },
+      documents_summary_get: {
+        running: "Loading a document summary from PandaDoc",
+        done: "Loaded a document summary from PandaDoc",
+      },
+      documents_content_get: {
+        running: "Loading document content from PandaDoc",
+        done: "Loaded document content from PandaDoc",
+      },
+      documents_metadata_batch_get: {
+        running: "Loading document metadata from PandaDoc",
+        done: "Loaded document metadata from PandaDoc",
+      },
+      contacts_list: {
+        running: "Looking up a contact by email on PandaDoc",
+        done: "Looked up a contact by email on PandaDoc",
+      },
+      contacts_search: {
+        running: "Searching contacts on PandaDoc",
+        done: "Searched contacts on PandaDoc",
+      },
+      templates_list: {
+        running: "Listing templates on PandaDoc",
+        done: "Listed templates on PandaDoc",
+      },
+      templates_details_get: {
+        running: "Loading template details from PandaDoc",
+        done: "Loaded template details from PandaDoc",
+      },
+      catalog_items_search: {
+        running: "Searching catalog items on PandaDoc",
+        done: "Searched catalog items on PandaDoc",
+      },
+      catalog_item_get: {
+        running: "Loading a catalog item from PandaDoc",
+        done: "Loaded a catalog item from PandaDoc",
+      },
+      documents_create: {
+        running: "Creating a document on PandaDoc",
+        done: "Created a document on PandaDoc",
+      },
+      documents_update: {
+        running: "Updating a document on PandaDoc",
+        done: "Updated a document on PandaDoc",
+      },
+      documents_status_change: {
+        running: "Changing a document status on PandaDoc",
+        done: "Changed a document status on PandaDoc",
+      },
+      documents_send: {
+        running: "Sending a document on PandaDoc",
+        done: "Sent a document on PandaDoc",
+      },
+      documents_fields_assign: {
+        running: "Assigning document fields on PandaDoc",
+        done: "Assigned document fields on PandaDoc",
+      },
+      documents_archive: {
+        running: "Archiving a document on PandaDoc",
+        done: "Archived a document on PandaDoc",
+      },
+      documents_reminder_send: {
+        running: "Sending a document reminder on PandaDoc",
+        done: "Sent a document reminder on PandaDoc",
+      },
+      recipients_edit: {
+        running: "Editing a recipient on PandaDoc",
+        done: "Edited a recipient on PandaDoc",
+      },
+      recipients_add_cc: {
+        running: "Adding a CC recipient on PandaDoc",
+        done: "Added a CC recipient on PandaDoc",
+      },
+      recipients_reassign: {
+        running: "Reassigning a recipient on PandaDoc",
+        done: "Reassigned a recipient on PandaDoc",
+      },
+      recipients_delete: {
+        running: "Removing a recipient on PandaDoc",
+        done: "Removed a recipient on PandaDoc",
+      },
+      templates_create: {
+        running: "Creating a template on PandaDoc",
+        done: "Created a template on PandaDoc",
+      },
+      templates_update: {
+        running: "Updating a template on PandaDoc",
+        done: "Updated a template on PandaDoc",
+      },
+      templates_duplicate: {
+        running: "Duplicating a template on PandaDoc",
+        done: "Duplicated a template on PandaDoc",
+      },
+      templates_delete: {
+        running: "Deleting a template on PandaDoc",
+        done: "Deleted a template on PandaDoc",
+      },
+      catalog_item_create: {
+        running: "Creating a catalog item on PandaDoc",
+        done: "Created a catalog item on PandaDoc",
+      },
+      catalog_item_update: {
+        running: "Updating a catalog item on PandaDoc",
+        done: "Updated a catalog item on PandaDoc",
+      },
+      catalog_item_delete: {
+        running: "Deleting a catalog item on PandaDoc",
+        done: "Deleted a catalog item on PandaDoc",
+      },
+      quotes_update: {
+        running: "Updating quotes on PandaDoc",
+        done: "Updated quotes on PandaDoc",
       },
     },
   },
