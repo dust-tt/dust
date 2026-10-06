@@ -369,7 +369,7 @@ impl fuser::Filesystem for Filesystem {
         _owner: Option<LockOwner>,
         reply: ReplyData,
     ) {
-        self.client.record_fuse_call("fuse.read");
+        let _call = self.client.measure_fuse_call("fuse.read");
         let result = (|| {
             if size > CHUNK {
                 return Err(Errno::EINVAL);
@@ -406,7 +406,7 @@ impl fuser::Filesystem for Filesystem {
         _owner: Option<LockOwner>,
         reply: ReplyWrite,
     ) {
-        self.client.record_fuse_call("fuse.write");
+        let _call = self.client.measure_fuse_call("fuse.write");
         let result = (|| {
             if data.len() > MAX_IO {
                 return Err(Errno::EINVAL);
@@ -450,7 +450,7 @@ impl fuser::Filesystem for Filesystem {
         flags: RenameFlags,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.rename");
+        let _call = self.client.measure_fuse_call("fuse.rename");
         let result = (|| {
             if flags.bits() & !RENAME_NOREPLACE != 0 {
                 return Err(Errno::EOPNOTSUPP);
@@ -494,7 +494,7 @@ impl fuser::Filesystem for Filesystem {
         flags: Option<BsdFileFlags>,
         reply: ReplyAttr,
     ) {
-        self.client.record_fuse_call("fuse.setattr");
+        let _call = self.client.measure_fuse_call("fuse.setattr");
         let result = (|| {
             if uid.is_some_and(|v| v != self.uid)
                 || gid.is_some_and(|v| v != self.gid)
@@ -531,7 +531,7 @@ impl fuser::Filesystem for Filesystem {
         }
     }
     fn getxattr(&self, _req: &Request, ino: INodeNo, name: &OsStr, size: u32, reply: ReplyXattr) {
-        self.client.record_fuse_call("fuse.getxattr");
+        let _call = self.client.measure_fuse_call("fuse.getxattr");
         let result = (|| {
             let name = name_str(name)?;
             if !name.starts_with("user.") {
@@ -542,7 +542,7 @@ impl fuser::Filesystem for Filesystem {
         xattr_reply(result, size, reply);
     }
     fn listxattr(&self, _req: &Request, ino: INodeNo, size: u32, reply: ReplyXattr) {
-        self.client.record_fuse_call("fuse.listxattr");
+        let _call = self.client.measure_fuse_call("fuse.listxattr");
         let result = self.stat(ino).map(|o| {
             o.xattrs
                 .keys()
@@ -560,7 +560,7 @@ impl fuser::Filesystem for Filesystem {
         _datasync: bool,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.fsyncdir");
+        let _call = self.client.measure_fuse_call("fuse.fsyncdir");
         let result = (|| {
             let id = self.object(ino)?;
             if matches!(id.as_str(), "root" | "shared") {
@@ -576,7 +576,7 @@ impl fuser::Filesystem for Filesystem {
     }
 
     fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
-        self.client.record_fuse_call("fuse.lookup");
+        let _call = self.client.measure_fuse_call("fuse.lookup");
         let result = (|| {
             let name = name_str(name)?;
             if name == "." || name == ".." {
@@ -623,18 +623,18 @@ impl fuser::Filesystem for Filesystem {
         }
     }
     fn forget(&self, _req: &Request, ino: INodeNo, nlookup: u64) {
-        self.client.record_fuse_call("fuse.forget");
+        let _call = self.client.measure_fuse_call("fuse.forget");
         self.inodes.lock().forget(ino.0, nlookup);
     }
     fn getattr(&self, _req: &Request, ino: INodeNo, _fh: Option<FileHandle>, reply: ReplyAttr) {
-        self.client.record_fuse_call("fuse.getattr");
+        let _call = self.client.measure_fuse_call("fuse.getattr");
         match self.stat(ino).and_then(|object| self.attr(ino, &object)) {
             Ok(attr) => reply.attr(&TTL, &attr),
             Err(e) => reply.error(e),
         }
     }
     fn opendir(&self, _req: &Request, ino: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
-        self.client.record_fuse_call("fuse.opendir");
+        let _call = self.client.measure_fuse_call("fuse.opendir");
         let result = (|| {
             if !self.stat(ino)?.directory {
                 return Err(Errno::ENOTDIR);
@@ -673,7 +673,7 @@ impl fuser::Filesystem for Filesystem {
         offset: u64,
         reply: ReplyDirectory,
     ) {
-        self.client.record_fuse_call("fuse.readdir");
+        let _call = self.client.measure_fuse_call("fuse.readdir");
         self.directory_contents(ino, fh, offset, DirectoryReply::Plain(reply));
     }
     fn readdirplus(
@@ -684,7 +684,7 @@ impl fuser::Filesystem for Filesystem {
         offset: u64,
         reply: ReplyDirectoryPlus,
     ) {
-        self.client.record_fuse_call("fuse.readdirplus");
+        let _call = self.client.measure_fuse_call("fuse.readdirplus");
         self.directory_contents(ino, fh, offset, DirectoryReply::Plus(reply));
     }
     fn releasedir(
@@ -695,7 +695,7 @@ impl fuser::Filesystem for Filesystem {
         _flags: OpenFlags,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.releasedir");
+        let _call = self.client.measure_fuse_call("fuse.releasedir");
         let removed = self.directories.lock().remove(&fh.0);
         if let Some(directory) = removed {
             let stored = directory.lock().ino;
@@ -710,7 +710,7 @@ impl fuser::Filesystem for Filesystem {
         }
     }
     fn open(&self, _req: &Request, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
-        self.client.record_fuse_call("fuse.open");
+        let _call = self.client.measure_fuse_call("fuse.open");
         match self.open_file(ino, flags.0, None) {
             Ok(fh) => reply.opened(fh, FopenFlags::FOPEN_DIRECT_IO),
             Err(error) => reply.error(error),
@@ -724,7 +724,7 @@ impl fuser::Filesystem for Filesystem {
         _owner: LockOwner,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.flush");
+        let _call = self.client.measure_fuse_call("fuse.flush");
         empty_reply(self.sync_file(ino, fh, false), reply);
     }
     fn fsync(
@@ -735,7 +735,7 @@ impl fuser::Filesystem for Filesystem {
         _datasync: bool,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.fsync");
+        let _call = self.client.measure_fuse_call("fuse.fsync");
         empty_reply(self.sync_file(ino, fh, true), reply);
     }
     fn release(
@@ -748,7 +748,7 @@ impl fuser::Filesystem for Filesystem {
         _flush: bool,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.release");
+        let _call = self.client.measure_fuse_call("fuse.release");
         let result = (|| {
             let file = self.files.lock().remove(&fh.0).ok_or(Errno::EBADF)?;
             let mut file = file.lock();
@@ -771,7 +771,7 @@ impl fuser::Filesystem for Filesystem {
         flags: i32,
         reply: ReplyCreate,
     ) {
-        self.client.record_fuse_call("fuse.create");
+        let _call = self.client.measure_fuse_call("fuse.create");
         let result = (|| {
             let object = self.create_file(parent, name, mode & !umask, false)?;
             let attr = self.entry(parent, object.clone())?;
@@ -800,7 +800,7 @@ impl fuser::Filesystem for Filesystem {
         _rdev: u32,
         reply: ReplyEntry,
     ) {
-        self.client.record_fuse_call("fuse.mknod");
+        let _call = self.client.measure_fuse_call("fuse.mknod");
         if mode & MODE_TYPE_MASK != MODE_REGULAR {
             reply.error(Errno::EOPNOTSUPP);
             return;
@@ -822,7 +822,7 @@ impl fuser::Filesystem for Filesystem {
         umask: u32,
         reply: ReplyEntry,
     ) {
-        self.client.record_fuse_call("fuse.mkdir");
+        let _call = self.client.measure_fuse_call("fuse.mkdir");
         let result = self
             .create_file(parent, name, mode & !umask, true)
             .and_then(|object| self.entry(parent, object));
@@ -832,11 +832,11 @@ impl fuser::Filesystem for Filesystem {
         }
     }
     fn unlink(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
-        self.client.record_fuse_call("fuse.unlink");
+        let _call = self.client.measure_fuse_call("fuse.unlink");
         empty_reply(self.remove(parent, name, false), reply);
     }
     fn rmdir(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
-        self.client.record_fuse_call("fuse.rmdir");
+        let _call = self.client.measure_fuse_call("fuse.rmdir");
         empty_reply(self.remove(parent, name, true), reply);
     }
     fn setxattr(
@@ -849,7 +849,7 @@ impl fuser::Filesystem for Filesystem {
         position: u32,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.setxattr");
+        let _call = self.client.measure_fuse_call("fuse.setxattr");
         let result = (|| {
             if position != 0 || ![0, libc::XATTR_CREATE, libc::XATTR_REPLACE].contains(&flags) {
                 return Err(Errno::EINVAL);
@@ -862,14 +862,14 @@ impl fuser::Filesystem for Filesystem {
         empty_reply(result, reply);
     }
     fn removexattr(&self, _req: &Request, ino: INodeNo, name: &OsStr, reply: ReplyEmpty) {
-        self.client.record_fuse_call("fuse.removexattr");
+        let _call = self.client.measure_fuse_call("fuse.removexattr");
         empty_reply(
             name_str(name).and_then(|name| self.xattr(ino, name, None, libc::XATTR_REPLACE)),
             reply,
         );
     }
     fn access(&self, _req: &Request, ino: INodeNo, mask: AccessFlags, reply: ReplyEmpty) {
-        self.client.record_fuse_call("fuse.access");
+        let _call = self.client.measure_fuse_call("fuse.access");
         let result = (|| {
             self.stat(ino)?;
             if mask.bits() & libc::W_OK != 0 {
@@ -880,7 +880,7 @@ impl fuser::Filesystem for Filesystem {
         empty_reply(result, reply);
     }
     fn statfs(&self, _req: &Request, ino: INodeNo, reply: ReplyStatfs) {
-        self.client.record_fuse_call("fuse.statfs");
+        let _call = self.client.measure_fuse_call("fuse.statfs");
         match self.stat(ino) {
             Ok(_) => reply.statfs(0, 0, 0, 0, 0, 4096, 255, 4096),
             Err(e) => reply.error(e),
@@ -894,7 +894,7 @@ impl fuser::Filesystem for Filesystem {
         _target: &Path,
         reply: ReplyEntry,
     ) {
-        self.client.record_fuse_call("fuse.symlink");
+        let _call = self.client.measure_fuse_call("fuse.symlink");
         reply.error(Errno::EOPNOTSUPP);
     }
     fn link(
@@ -905,11 +905,11 @@ impl fuser::Filesystem for Filesystem {
         _name: &OsStr,
         reply: ReplyEntry,
     ) {
-        self.client.record_fuse_call("fuse.link");
+        let _call = self.client.measure_fuse_call("fuse.link");
         reply.error(Errno::EOPNOTSUPP);
     }
     fn readlink(&self, _req: &Request, _ino: INodeNo, reply: ReplyData) {
-        self.client.record_fuse_call("fuse.readlink");
+        let _call = self.client.measure_fuse_call("fuse.readlink");
         reply.error(Errno::EOPNOTSUPP);
     }
     fn getlk(
@@ -924,7 +924,7 @@ impl fuser::Filesystem for Filesystem {
         _pid: u32,
         reply: ReplyLock,
     ) {
-        self.client.record_fuse_call("fuse.getlk");
+        let _call = self.client.measure_fuse_call("fuse.getlk");
         reply.error(Errno::EOPNOTSUPP);
     }
     fn setlk(
@@ -940,7 +940,7 @@ impl fuser::Filesystem for Filesystem {
         _sleep: bool,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.setlk");
+        let _call = self.client.measure_fuse_call("fuse.setlk");
         reply.error(Errno::EOPNOTSUPP);
     }
     fn fallocate(
@@ -953,7 +953,7 @@ impl fuser::Filesystem for Filesystem {
         _mode: i32,
         reply: ReplyEmpty,
     ) {
-        self.client.record_fuse_call("fuse.fallocate");
+        let _call = self.client.measure_fuse_call("fuse.fallocate");
         reply.error(Errno::EOPNOTSUPP);
     }
 }

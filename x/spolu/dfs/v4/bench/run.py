@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import platform
 import random
+import resource
 import subprocess
 import sys
 import tarfile
@@ -124,9 +125,17 @@ def main():
         path = mount_path / 'shared' / f'dir6--{grant_root}'
         for depth in range(7, 13):
             path /= f'dir{depth}'
+        usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
         started = time.monotonic()
         subprocess.run(['/usr/bin/tar', '--no-same-owner', '-xf', str(work / 'corpus.tar'), '-C', str(path)], check=True)
         report['untar_seconds'] = time.monotonic() - started
+        usage_after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        report['untar_process_usage'] = {
+            'user_seconds': usage_after.ru_utime - usage_before.ru_utime,
+            'system_seconds': usage_after.ru_stime - usage_before.ru_stime,
+            'voluntary_context_switches': usage_after.ru_nvcsw - usage_before.ru_nvcsw,
+            'involuntary_context_switches': usage_after.ru_nivcsw - usage_before.ru_nivcsw,
+        }
         # Unmount drains client writeback through durable server responses before stopping the server.
         unmount()
         population = json.loads((work / 'populate-client-metrics.json').read_text())

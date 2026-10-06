@@ -370,12 +370,15 @@ impl Inner {
         if bytes as usize > self.config.dirty_mib * 1024 * 1024 {
             return Err(status(ErrorCode::Capacity));
         }
+        let dirty_wait = self.rpc.measure("wait.dirty_budget");
         let dirty = self
             .dirty_budget
             .clone()
             .acquire_many_owned(bytes)
             .await
             .map_err(|_| status(ErrorCode::Unavailable))?;
+        drop(dirty_wait);
+        let memory_wait = self.rpc.measure("wait.memory_budget");
         let memory = self.cache.lock().reserve(bytes as usize);
         let memory = match memory {
             Some(permit) => permit,
@@ -386,6 +389,7 @@ impl Inner {
                 .await
                 .map_err(|_| status(ErrorCode::Unavailable))?,
         };
+        drop(memory_wait);
         Ok(Arc::new(Charge {
             _memory: memory,
             _dirty: dirty,
@@ -417,7 +421,9 @@ impl Inner {
             Some(r.object_id.clone()),
         )];
         let gate = self.gate(&parent.id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
+        drop(gate_wait);
         if self
             .pending
             .lock()
@@ -448,7 +454,9 @@ impl Inner {
     }
     async fn update(self: &Arc<Self>, r: UpdateRequest) -> Result<Mutation> {
         let gate = self.gate(&r.object_id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
+        drop(gate_wait);
         let object = self.stat_locked(&r.object_id, &gate).await?;
         let mut projected = Some(object.clone());
         apply_metadata(
@@ -473,7 +481,9 @@ impl Inner {
             return Err(status(ErrorCode::InvalidInput));
         }
         let gate = self.gate(&r.object_id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
+        drop(gate_wait);
         let mut object = self.stat_locked(&r.object_id, &gate).await?;
         if object.directory {
             return Err(status(ErrorCode::IsDirectory));
@@ -634,7 +644,9 @@ impl Inner {
         let mut guards = Vec::new();
         for id in ids {
             let gate = self.gate(id)?;
+            let gate_wait = self.rpc.measure("wait.object_gate");
             let guard = gate.mutex.clone().lock_owned().await;
+            drop(gate_wait);
             guards.push((gate, guard));
         }
         Ok(guards)
@@ -659,6 +671,7 @@ impl Inner {
             .get(&target)
             .is_some_and(|n| n.primary.len() >= 64);
         if full {
+            let _wait = self.rpc.measure("wait.overlay_limit");
             self.flush(&target).await?;
         }
         let bytes = edit_weight(&edit);
@@ -678,12 +691,14 @@ impl Inner {
             .iter()
             .map(|(id, _)| self.gate(id))
             .collect::<Result<Vec<_>>>()?;
+        let slot_wait = self.rpc.measure("wait.group_slot");
         let slot = self
             .group_slots
             .clone()
             .acquire_owned()
             .await
             .map_err(|_| status(ErrorCode::Unavailable))?;
+        drop(slot_wait);
         let received = Instant::now();
         let mut pending = self.pending.lock();
         if pending.sync_errors.len() >= MAX_GROUPS {

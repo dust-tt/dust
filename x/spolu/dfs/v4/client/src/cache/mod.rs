@@ -131,8 +131,8 @@ impl CachedClient {
         Inner::start(&inner);
         Ok(Self { raw, inner })
     }
-    pub fn record_fuse_call(&self, name: &'static str) {
-        self.raw.record_fuse_call(name);
+    pub fn measure_fuse_call(&self, name: &'static str) -> crate::MetricTimer {
+        self.raw.measure_fuse_call(name)
     }
     pub fn metrics(&self) -> serde_json::Value {
         self.raw.metrics()
@@ -223,7 +223,9 @@ impl Inner {
             return result;
         }
         let gate = self.gate(id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
+        drop(gate_wait);
         self.stat_locked(id, &gate).await
     }
     async fn stat_locked(&self, id: &str, gate: &Gate) -> Result<Object> {
@@ -233,6 +235,7 @@ impl Inner {
                 return result;
             }
             if self.pending.lock().contains(id) {
+                let _wait = self.rpc.measure("wait.refresh_flush");
                 self.flush(id).await?;
             }
             let generation = gate.generation.load(Ordering::Acquire);
@@ -308,7 +311,9 @@ impl Inner {
             };
         }
         let gate = self.gate(&r.parent_id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let guard = gate.mutex.lock().await;
+        drop(gate_wait);
         let name_gate = self.gate(&name_generation(&r.parent_id, &r.name))?;
         for _ in 0..4 {
             let generation = name_gate.generation.load(Ordering::Acquire);
@@ -372,7 +377,9 @@ impl Inner {
             return Ok(page.clone());
         }
         let gate = self.gate(&r.directory_id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
+        drop(gate_wait);
         for _ in 0..4 {
             let generation = gate.generation.load(Ordering::Acquire);
             let started = Instant::now();
@@ -437,7 +444,9 @@ impl Inner {
             return Err(status(ErrorCode::InvalidInput));
         }
         let gate = self.gate(&r.object_id)?;
+        let gate_wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
+        drop(gate_wait);
         for _ in 0..4 {
             let generation = gate.generation.load(Ordering::Acquire);
             let object = self.stat_locked(&r.object_id, &gate).await?;

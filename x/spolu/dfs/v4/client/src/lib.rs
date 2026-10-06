@@ -33,7 +33,33 @@ struct Metric {
     errors: u64,
     elapsed_ns: u128,
 }
+/// @cc [owner:spolu,label:performance;security] aggregate-client-timing
+/// Timers MUST record only fixed operation names and aggregate durations, without paths or payloads.
+/// They MUST measure existing execution without changing admission, ordering, or retry behavior.
+/// Nested and concurrent durations MUST NOT be interpreted as additive wall time.
+#[must_use]
+pub struct MetricTimer {
+    metrics: Arc<Mutex<BTreeMap<&'static str, Metric>>>,
+    name: &'static str,
+    started: Instant,
+}
+impl Drop for MetricTimer {
+    fn drop(&mut self) {
+        let elapsed = self.started.elapsed();
+        let mut metrics = self.metrics.lock();
+        let metric = metrics.entry(self.name).or_default();
+        metric.calls += 1;
+        metric.elapsed_ns += elapsed.as_nanos();
+    }
+}
 impl Client {
+    fn measure(&self, name: &'static str) -> MetricTimer {
+        MetricTimer {
+            metrics: self.metrics.clone(),
+            name,
+            started: Instant::now(),
+        }
+    }
     pub async fn connect(endpoint: &str, key: &str) -> Result<Self> {
         let uri: tonic::codegen::http::Uri = endpoint.parse()?;
         ensure!(
@@ -97,8 +123,8 @@ impl BlockingClient {
         let client = runtime.block_on(Client::connect(endpoint, key))?;
         Ok(Self { runtime, client })
     }
-    pub fn record_fuse_call(&self, name: &'static str) {
-        self.client.record(name, Duration::ZERO, false);
+    pub fn measure_fuse_call(&self, name: &'static str) -> MetricTimer {
+        self.client.measure(name)
     }
     /// Only operation names, counts, and durations are recorded; no credentials, paths, or payloads.
     pub fn metrics(&self) -> serde_json::Value {
