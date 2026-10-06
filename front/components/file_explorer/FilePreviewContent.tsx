@@ -219,6 +219,8 @@ export interface FilePreviewContentData {
   exceedsWriteLimit: boolean;
   /** The preview text was cut at MAX_TEXT_CHARS; an editor of it would save a truncated file. */
   isTruncated: boolean;
+  /** The mount accepts writes from this user, per the content route. */
+  canWrite: boolean;
   sizeBytes: number;
 }
 
@@ -252,6 +254,7 @@ export function useFilePreviewContent({
 
   const {
     fileContent,
+    fileCanWrite,
     fileRevision,
     isNotFound,
     isFileContentLoading,
@@ -300,6 +303,7 @@ export function useFilePreviewContent({
     revision: fileRevision,
     exceedsWriteLimit,
     isTruncated,
+    canWrite: fileCanWrite,
     sizeBytes,
   };
 }

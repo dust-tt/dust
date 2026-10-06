@@ -29,6 +29,8 @@ interface UseMarkdownFileEditorParams {
   exceedsWriteLimit: boolean;
   /** The preview text was cut; the plain editor, which edits it, does not open. */
   isTruncated: boolean;
+  /** The mount accepts writes from this user; no editor opens otherwise. */
+  canWrite: boolean;
   owner: LightWorkspaceType | undefined;
   /** The whole file text as fetched, for the rich editor. The processed text is trimmed and cut. */
   rawContent: string | null;
@@ -63,6 +65,7 @@ export function useMarkdownFileEditor({
   isTooLarge,
   exceedsWriteLimit,
   isTruncated,
+  canWrite,
   owner,
   rawContent,
   revision,

@@ -133,6 +133,7 @@ export function FilePreviewPanel({
     isTooLarge: preview.isTooLarge,
     exceedsWriteLimit: preview.exceedsWriteLimit,
     isTruncated: preview.isTruncated,
+    canWrite: preview.canWrite,
     revision: preview.revision,
     owner,
     rawContent: preview.rawContent,

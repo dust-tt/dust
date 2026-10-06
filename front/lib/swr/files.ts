@@ -238,6 +238,8 @@ type FileContentByUrlData =
   | {
       kind: "loaded";
       content: string;
+      /** False when the mount refuses writes for this user; absent when the route says nothing. */
+      canWrite?: boolean;
       /** The stored revision when the backend reports one, for conditional writes. */
       revision?: string | null;
     }
@@ -272,6 +274,7 @@ export function useFileContentByUrl({
       return {
         kind: "loaded",
         content: await response.text(),
+        canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) !== "false",
         revision: revision.success ? revision.data : null,
       };
     },
@@ -282,6 +285,8 @@ export function useFileContentByUrl({
 
   return {
     fileContent: data?.kind === "loaded" ? data.content : null,
+    /** Whether the mount accepts writes from this user; true until the file is loaded. */
+    fileCanWrite: data?.kind === "loaded" ? (data.canWrite ?? true) : true,
     fileRevision: data?.kind === "loaded" ? (data.revision ?? null) : null,
     isNotFound,
     isFileContentLoading: !error && data === undefined && !isDisabled,
