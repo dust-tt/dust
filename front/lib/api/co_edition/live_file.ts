@@ -49,8 +49,8 @@ export function parseLiveDocumentName(
  * @cc [owner:PopDaph,label:security] live-file-access
  * A live file MUST open only for a file that exists, whose stored type is Markdown by
  * `isMarkdownContentType` as for the browser's editor, and that `auth` can read through the file
- * system, with the same mount permissions as the file API, and only under its normalized path,
- * so one file never has two live documents. A file larger than the file API can write MUST be
+ * system, with the same mount permissions as the file API, and only under its normalized path
+ * without a trailing slash, so one file never has two live documents. A file larger than the file API can write MUST be
  * refused before it is read, since the session could never save it. `canWrite` MUST be the file
  * system's write check for that path.
  */
@@ -62,7 +62,11 @@ export async function openLiveFile(
   if (!workspace) {
     return new Err("No workspace.");
   }
-  if (DustFileSystem.normalizeScopedPath(canonicalPath) !== canonicalPath) {
+  // A trailing slash survives normalization but names the same file.
+  if (
+    DustFileSystem.normalizeScopedPath(canonicalPath) !== canonicalPath ||
+    canonicalPath.endsWith("/")
+  ) {
     return new Err("Open the file by its normalized path.");
   }
 

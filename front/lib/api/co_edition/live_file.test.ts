@@ -115,6 +115,16 @@ describe("openLiveFile and loadLiveDocument", () => {
     expect((await openLiveFile(auth, path)).isOk()).toBe(true);
   });
 
+  it("refuse a path with a trailing slash, which a backend may resolve to the file", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    vi.spyOn(DustFileSystem.prototype, "stat").mockResolvedValue(
+      new Ok({ contentType: "text/markdown", sizeBytes: 8 })
+    );
+
+    expect((await openLiveFile(auth, `${path}/`)).isErr()).toBe(true);
+  });
+
   it("refuse a missing file", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const path = `user-${auth.getNonNullableUser().sId}/missing.md`;

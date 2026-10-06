@@ -48,6 +48,14 @@ function refuse(documentName: string, reason: string): never {
   throw new Error(reason);
 }
 
+/** Logs an unexpected failure, which Hocuspocus would swallow, then rethrows it. */
+function logUnexpected(documentName: string, message: string) {
+  return (err: unknown): never => {
+    logger.error({ err: normalizeError(err), documentName }, message);
+    throw err;
+  };
+}
+
 // Each document's Yjs state, kept across unloads so a reconnecting browser merges into the same
 // identities instead of a rebuilt copy. In memory only: durable storage comes with step 8.
 const storedStates = new Map<string, Uint8Array>();
@@ -71,12 +79,14 @@ const hocuspocus = new Hocuspocus<LiveFile>({
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       token,
       parsed.workspaceId
-    );
+    ).catch(logUnexpected(documentName, "Collab authentication failed"));
     if (!auth.isUser()) {
       refuse(documentName, "Not a member of this workspace.");
     }
 
-    const file = await openLiveFile(auth, parsed.canonicalPath);
+    const file = await openLiveFile(auth, parsed.canonicalPath).catch(
+      logUnexpected(documentName, "Collab authentication failed")
+    );
     if (file.isErr()) {
       refuse(documentName, file.error);
     }
@@ -93,11 +103,7 @@ const hocuspocus = new Hocuspocus<LiveFile>({
 
     const live = await loadLiveDocument(context).catch((err: unknown) => {
       document.destroy();
-      logger.error(
-        { err: normalizeError(err), documentName },
-        "Collab document load failed"
-      );
-      throw err;
+      return logUnexpected(documentName, "Collab document load failed")(err);
     });
     if (live.isErr()) {
       document.destroy();
