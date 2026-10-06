@@ -37,6 +37,7 @@ async function renderDocument(
       autosaveDebounceMs={60_000}
       commentAuthor={AUTHOR}
       renderCommentAuthorAvatar={() => null}
+      renderCommentBody={(body) => <p>{body}</p>}
       verifyCommentMessage={verifyCommentMessage}
       signCommentMessage={signCommentMessage}
     />
@@ -269,6 +270,7 @@ describe("Document comments", () => {
     render(
       <Document
         initialContent={SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={(author, size) => (
           <span data-testid={`avatar:${author.kind}:${author.id}:${size}`} />
         )}
@@ -293,6 +295,7 @@ describe("Document comments", () => {
         initialContent={"Hello brave world.\n"}
         onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
         commentAuthor={AUTHOR}
+        renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={(author, size) => (
           <span data-testid={`avatar:${author.id}:${size}`} />
         )}

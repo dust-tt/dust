@@ -378,14 +378,10 @@ const CommentThread = ({
 interface DocumentCommentsPanelProps {
   id: string;
   comments: DocumentCommentsController;
-  renderCommentBody?: (body: string) => ReactNode;
+  renderCommentBody: (body: string) => ReactNode;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
-
-const plainBody = (body: string) => (
-  <p className="text-sm whitespace-pre-wrap wrap-anywhere">{body}</p>
-);
 
 /** The thread to focus after removing one from its list: the next, else the previous. */
 const neighbourId = (list: DfmComment[], id: string): string | null => {
@@ -419,7 +415,7 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
 export const DocumentCommentsPanel = ({
   id,
   comments,
-  renderCommentBody = plainBody,
+  renderCommentBody,
   mountPortalContainer,
   renderAuthorAvatar,
 }: DocumentCommentsPanelProps) => {
