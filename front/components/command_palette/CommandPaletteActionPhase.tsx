@@ -15,6 +15,7 @@ import {
   Eye,
   Icon,
   MessageCircle01,
+  Plus,
   Star01,
   StarFilled,
 } from "@dust-tt/sparkle";
@@ -23,6 +24,7 @@ import type { ComponentType } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type CommandPaletteAction =
+  | "use_skill"
   | "view_details"
   | "edit"
   | "chat_with"
@@ -208,6 +210,12 @@ export function CommandPaletteActionPhase({
         });
         break;
       case "skill":
+        result.push({
+          action: "use_skill",
+          label: t`Use skill`,
+          description: t`Add this skill to your message`,
+          icon: Plus,
+        });
         result.push({
           action: "view_details",
           label: t`Details`,

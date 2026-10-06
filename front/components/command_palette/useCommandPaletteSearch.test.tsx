@@ -43,6 +43,7 @@ it("hides previous-query results immediately while the next query debounces", as
         isOpen: true,
         searchQuery: query,
         currentUserId: "current-user",
+        hideSettings: false,
       }),
     {
       initialProps: { query: "old" },
