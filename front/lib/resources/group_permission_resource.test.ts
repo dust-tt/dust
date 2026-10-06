@@ -3,9 +3,11 @@ import { Authenticator } from "@app/lib/auth";
 import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -932,6 +934,235 @@ describe("GroupPermissionResource", () => {
       expect(groups).toHaveLength(1);
       expect(await groups[0].isMember(user1)).toBe(false);
       expect(await groups[0].isMember(user2)).toBe(true);
+    });
+  });
+
+  describe("grantToKeys / revokeFromKeys", () => {
+    let target: GroupResource;
+    let globalGroup: GroupResource;
+    let grant: {
+      grantType: "analytics_reader";
+      resourceType: "group";
+      resourceId: number;
+    };
+
+    beforeEach(async () => {
+      target = await GroupFactory.regularManual(workspace, "Analytics target");
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      assert(globalGroupRes.isOk());
+      globalGroup = globalGroupRes.value;
+      grant = {
+        grantType: "analytics_reader",
+        resourceType: "group",
+        resourceId: target.id,
+      };
+    });
+
+    async function reloadKey(key: KeyResource): Promise<KeyResource> {
+      const reloaded = await KeyResource.fetchByWorkspaceAndId({
+        workspace: auth.getNonNullableWorkspace(),
+        id: key.id,
+      });
+      assert(reloaded);
+      return reloaded;
+    }
+
+    async function findGrantGroup() {
+      return GroupPermissionResource.findRegularAutoGroupForGrant(auth, grant);
+    }
+
+    it("adds the backing group to the key, which then holds the verb", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const otherTarget = await GroupFactory.regularManual(workspace, "Other");
+
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+
+      const group = await findGrantGroup();
+      assert(group);
+      const reloaded = await reloadKey(key);
+      expect(reloaded.groupIds).toContain(group.id);
+      expect(reloaded.groupIds).toContain(globalGroup.id);
+
+      const keyAuth = await Authenticator.fromKey(reloaded, workspace.sId);
+      expect(keyAuth.can("read_analytics", target)).toBe(true);
+      expect(keyAuth.can("read_analytics", otherTarget)).toBe(false);
+    });
+
+    it("is idempotent and shares the backing group with users", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+
+      await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+          resourceType: "group",
+          resourceId: target.id,
+        });
+      expect(groups).toHaveLength(1);
+      const reloaded = await reloadKey(key);
+      expect(
+        reloaded.groupIds.filter((id) => id === groups[0].id)
+      ).toHaveLength(1);
+    });
+
+    it("keeps the group while a key holds it after the last user is revoked", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+
+      const revokeUser = await GroupPermissionResource.revokeFromUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      expect(revokeUser.isOk()).toBe(true);
+      const group = await findGrantGroup();
+      assert(group);
+      expect(await group.isMember(user)).toBe(false);
+
+      const revokeKey = await GroupPermissionResource.revokeFromKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+      expect(revokeKey.isOk()).toBe(true);
+      expect(await findGrantGroup()).toBeNull();
+      expect((await reloadKey(key)).groupIds).toEqual([globalGroup.id]);
+    });
+
+    it("keeps the group while a user or another key holds it", async () => {
+      const key1 = await KeyFactory.regular(globalGroup);
+      const key2 = await KeyFactory.regular(globalGroup);
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key2, key1],
+        ...grant,
+      });
+      await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+
+      await GroupPermissionResource.revokeFromKeys(auth, {
+        keys: [key1],
+        ...grant,
+      });
+      const group = await findGrantGroup();
+      assert(group);
+      expect((await reloadKey(key1)).groupIds).not.toContain(group.id);
+      expect((await reloadKey(key2)).groupIds).toContain(group.id);
+
+      await GroupPermissionResource.revokeFromUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      expect(await findGrantGroup()).not.toBeNull();
+
+      await GroupPermissionResource.revokeFromKeys(auth, {
+        keys: [key2],
+        ...grant,
+      });
+      expect(await findGrantGroup()).toBeNull();
+    });
+
+    it("keeps a group held by a disabled key", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+      await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      await key.setIsDisabled();
+
+      await GroupPermissionResource.revokeFromUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      expect(await findGrantGroup()).not.toBeNull();
+    });
+
+    it("replaceUsersForGrant with no users keeps a group held by a key", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...grant,
+      });
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+
+      await GroupPermissionResource.replaceUsersForGrant(auth, {
+        users: [],
+        ...grant,
+      });
+
+      const group = await findGrantGroup();
+      assert(group);
+      expect(await group.isMember(user)).toBe(false);
+    });
+
+    it("strips the backing group from keys when the target group is deleted", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      await GroupPermissionResource.grantToKeys(auth, {
+        keys: [key],
+        ...grant,
+      });
+
+      expect((await target.delete(auth)).isOk()).toBe(true);
+
+      expect(await findGrantGroup()).toBeNull();
+      expect((await reloadKey(key)).groupIds).toEqual([globalGroup.id]);
+    });
+
+    it("rejects system and disabled keys", async () => {
+      const systemKey = await KeyFactory.system(globalGroup);
+      const disabledKey = await KeyFactory.disabled(globalGroup);
+
+      await expect(
+        GroupPermissionResource.grantToKeys(auth, {
+          keys: [systemKey],
+          ...grant,
+        })
+      ).rejects.toThrow(/System keys/);
+      await expect(
+        GroupPermissionResource.grantToKeys(auth, {
+          keys: [disabledKey],
+          ...grant,
+        })
+      ).rejects.toThrow(/disabled/);
+      expect(await findGrantGroup()).toBeNull();
     });
   });
 

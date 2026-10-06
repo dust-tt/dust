@@ -12,9 +12,11 @@ import {
 } from "@app/lib/resources/group_permission_cleanup";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import type { KeyResource } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -156,6 +158,14 @@ interface UserGrantSpec {
 
 interface UsersGrantSpec {
   users: UserType[];
+  grantType: GrantType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
+  transaction?: Transaction;
+}
+
+interface KeysGrantSpec {
+  keys: KeyResource[];
   grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
@@ -305,7 +315,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Find the regular_auto group backing user-level grants for the given tuple. At most one exists
-  // per (grantType, resourceType, resourceId): grantToUser and revokeFromUser serialize on the
+  // per (grantType, resourceType, resourceId): the user and key grant/revoke methods serialize on the
   // grant-tuple advisory lock (getGrantLock), and grant() rejects a second regular_auto group.
   static async findRegularAutoGroupForGrant(
     auth: Authenticator,
@@ -499,30 +509,12 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
 
-      let group = await this.findRegularAutoGroupForGrant(auth, {
+      const group = await this.findOrCreateRegularAutoGroupForGrant(auth, {
         grantType,
         resourceType,
         resourceId,
         transaction: t,
       });
-
-      if (!group) {
-        group = await GroupResource.makeNew(
-          {
-            name: autoGroupName({ grantType, resourceType, resourceId }),
-            kind: "regular_auto",
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          { transaction: t }
-        );
-        await this.grant(auth, {
-          group,
-          grantType,
-          resourceType,
-          resourceId,
-          transaction: t,
-        });
-      }
 
       const activeMembers = await group.getActiveMembers(auth, {
         transaction: t,
@@ -547,9 +539,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }, transaction);
   }
 
-  // Revoke a user's access by removing them from the regular_auto group that holds the grant. If the
-  // user was the last member, revokes the grant and deletes the group. No-op when the user is not a
-  // member of the backing group.
+  // Revoke a user's access by removing them from the regular_auto group that holds the grant. When no
+  // user nor key holds the group anymore, revokes the grant and deletes the group. No-op when the
+  // user is not a member of the backing group.
   static async revokeFromUser(
     auth: Authenticator,
     { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
@@ -564,7 +556,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Batched counterpart of revokeFromUser: one tuple lookup and one bulk membership write. If the
-  // removed users were the final members, the grant and its backing group are deleted.
+  // removed users were the final holders (users or keys), the grant and its backing group are
+  // deleted.
   /**
    * @cc [owner:achilleburah,label:security;backend] revoke-departed-users
    * Revoking a user who left the workspace MUST succeed and end their grant membership, exactly as
@@ -619,16 +612,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return new Ok(undefined);
       }
 
-      const memberCount = await GroupMembershipModel.count({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          groupId: group.id,
-          status: "active",
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        },
-        transaction: t,
-      });
       const removeResult = await group.dangerouslyRemoveMembers(auth, {
         users: usersToRemove,
         transaction: t,
@@ -638,22 +621,205 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return removeResult;
       }
 
-      if (usersToRemove.length === memberCount) {
-        await this.revoke(auth, {
-          group,
-          grantType,
-          resourceType,
-          resourceId,
-          transaction: t,
-        });
-        const deleteResult = await group.delete(auth, { transaction: t });
-        if (deleteResult.isErr()) {
-          return deleteResult;
-        }
+      return this.deleteRegularAutoGroupIfUnheld(auth, {
+        group,
+        grantType,
+        resourceType,
+        resourceId,
+        transaction: t,
+      });
+    }, transaction);
+  }
+
+  // Grant keys access to a resource by adding the regular_auto group that holds the grant to their
+  // `groupIds`. Shares the backing group (and the grant-tuple lock) with grantToUsers, creating it
+  // on first use. Idempotent for repeat grants to the same key.
+  static async grantToKeys(
+    auth: Authenticator,
+    { keys, grantType, resourceType, resourceId, transaction }: KeysGrantSpec
+  ): Promise<void> {
+    const sortedKeys = this.sortedGrantableKeys(auth, keys);
+    for (const key of sortedKeys) {
+      assert(key.status === "active", "Cannot grant a disabled API key.");
+    }
+    if (sortedKeys.length === 0) {
+      return;
+    }
+
+    await withTransaction(async (t) => {
+      await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
+
+      const group = await this.findOrCreateRegularAutoGroupForGrant(auth, {
+        grantType,
+        resourceType,
+        resourceId,
+        transaction: t,
+      });
+
+      for (const key of sortedKeys) {
+        await key.setGroupMembership({ group, isMember: true, transaction: t });
+      }
+    }, transaction);
+  }
+
+  // Revoke keys' access by removing the backing regular_auto group from their `groupIds`. The grant
+  // and its group are deleted once no user nor key holds them. No-op when no group backs the tuple.
+  static async revokeFromKeys(
+    auth: Authenticator,
+    { keys, grantType, resourceType, resourceId, transaction }: KeysGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    const sortedKeys = this.sortedGrantableKeys(auth, keys);
+    if (sortedKeys.length === 0) {
+      return new Ok(undefined);
+    }
+
+    return withTransaction(async (t) => {
+      await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
+
+      const group = await this.findRegularAutoGroupForGrant(auth, {
+        grantType,
+        resourceType,
+        resourceId,
+        transaction: t,
+      });
+      if (!group) {
+        return new Ok(undefined);
       }
 
-      return new Ok(undefined);
+      for (const key of sortedKeys) {
+        await key.setGroupMembership({
+          group,
+          isMember: false,
+          transaction: t,
+        });
+      }
+
+      return this.deleteRegularAutoGroupIfUnheld(auth, {
+        group,
+        grantType,
+        resourceType,
+        resourceId,
+        transaction: t,
+      });
     }, transaction);
+  }
+
+  // Deduped and sorted by id: `setGroupMembership` row-locks each key, and a consistent order keeps
+  // concurrent grants on different tuples from deadlocking on the same keys.
+  private static sortedGrantableKeys(
+    auth: Authenticator,
+    keys: KeyResource[]
+  ): KeyResource[] {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    for (const key of keys) {
+      assert(
+        key.workspaceId === workspaceId,
+        "Key does not belong to the authenticated workspace."
+      );
+      assert(!key.isSystem, "System keys cannot be granted permissions.");
+    }
+    return [...new Map(keys.map((key) => [key.id, key])).values()].sort(
+      (a, b) => a.id - b.id
+    );
+  }
+
+  // Must run under the grant-tuple lock (see getGrantLock).
+  private static async findOrCreateRegularAutoGroupForGrant(
+    auth: Authenticator,
+    {
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: {
+      grantType: GrantType;
+      resourceType: GroupPermissionResourceType;
+      resourceId: number;
+      transaction: Transaction;
+    }
+  ): Promise<GroupResource> {
+    const existing = await this.findRegularAutoGroupForGrant(auth, {
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+    if (existing) {
+      return existing;
+    }
+
+    const group = await GroupResource.makeNew(
+      {
+        name: autoGroupName({ grantType, resourceType, resourceId }),
+        kind: "regular_auto",
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      { transaction }
+    );
+    await this.grant(auth, {
+      group,
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+    return group;
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security;backend] regular-auto-grant-holders
+   * The regular_auto group backing a grant tuple is held by users (active memberships) and by keys
+   * (`groupIds`). It MUST be deleted, together with its grant, only when it has neither an active
+   * user membership nor a key referencing it, whatever the key's status. Callers MUST hold the
+   * grant-tuple lock.
+   */
+  private static async deleteRegularAutoGroupIfUnheld(
+    auth: Authenticator,
+    {
+      group,
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: {
+      group: GroupResource;
+      grantType: GrantType;
+      resourceType: GroupPermissionResourceType;
+      resourceId: number;
+      transaction: Transaction;
+    }
+  ): Promise<Result<undefined, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const now = new Date();
+    const memberCount = await GroupMembershipModel.count({
+      where: {
+        workspaceId,
+        groupId: group.id,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+      transaction,
+    });
+    if (memberCount > 0) {
+      return new Ok(undefined);
+    }
+    const keyCount = await KeyModel.count({
+      where: { workspaceId, groupIds: { [Op.contains]: [group.id] } },
+      transaction,
+    });
+    if (keyCount > 0) {
+      return new Ok(undefined);
+    }
+
+    await this.revoke(auth, {
+      group,
+      grantType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+    return group.delete(auth, { transaction });
   }
 
   /**
@@ -761,14 +927,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         throw grantResult.error;
       }
       if (group && users.length === 0) {
-        await this.revoke(auth, {
+        const deleteResult = await this.deleteRegularAutoGroupIfUnheld(auth, {
           group,
           grantType,
           resourceType,
           resourceId,
           transaction,
         });
-        const deleteResult = await group.delete(auth, { transaction });
         if (deleteResult.isErr()) {
           throw deleteResult.error;
         }
@@ -1366,8 +1531,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   //   - capability transitions (resourceId = -1): without it, two transactions can each clear the
   //     -1 rows and then insert, leaving both the everybody row and specific-group rows
   //     (overgranting);
-  //   - user-level grants: serializes grantToUser's find-or-create against itself and against
-  //     revokeFromUser's delete-when-empty, guaranteeing at most one regular_auto group per tuple.
+  //   - user- and key-level grants: serializes the find-or-create of grantToUsers / grantToKeys
+  //     against itself and against the delete-when-unheld of the revoke methods, guaranteeing at
+  //     most one regular_auto group per tuple.
   private static async getGrantLock(
     auth: Authenticator,
     {
