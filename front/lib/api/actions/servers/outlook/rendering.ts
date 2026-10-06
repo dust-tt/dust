@@ -12,22 +12,12 @@ const IANA_TIME_ZONE_BY_WINDOWS_NAME = new Map(
     .map(({ mapZone }) => [mapZone._other, mapZone._type])
 );
 
-// Outlook mailbox settings and the events fetched with them use Windows names,
-// which Intl (and so date-fns) does not understand.
-/**
- * @cc [owner:avervaet,label:product] windows-zones-resolve-to-iana
- * A Windows time zone name (e.g. "Romance Standard Time") MUST resolve to its
- * CLDR default IANA zone (e.g. "Europe/Paris"), never to UTC.
- */
-/**
- * @cc [owner:avervaet,label:error-handling] unknown-zones-fall-back-to-utc
- * A time zone that is neither a valid IANA name nor a known Windows name MUST
- * resolve to "UTC" rather than throw.
- */
 function resolveTimeZone(timeZone: string): string {
   if (isValidTimezone(timeZone)) {
     return timeZone;
   }
+  // Outlook mailbox settings and the events fetched with them use Windows names,
+  // which Intl (and so date-fns) does not understand.
   const ianaTimeZone = IANA_TIME_ZONE_BY_WINDOWS_NAME.get(timeZone);
   if (ianaTimeZone && isValidTimezone(ianaTimeZone)) {
     return ianaTimeZone;
