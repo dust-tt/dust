@@ -349,6 +349,39 @@
     },
     {
       "files": [
+        "sparkle/src/**/*.{ts,tsx}"
+      ],
+      "excludeFiles": [
+        "sparkle/src/lib/i18n/**",
+        "sparkle/src/stories/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@lingui/core/macro",
+                "importNames": [
+                  "t"
+                ],
+                "message": "The global t binds to an i18n instance consumers never activate: use t from useLingui() (see sparkle/src/CONTRACTS)."
+              },
+              {
+                "name": "@lingui/react",
+                "message": "Use useLingui and Trans from @lingui/react/macro (see sparkle/src/CONTRACTS)."
+              },
+              {
+                "name": "@lingui/core",
+                "message": "Use the macros of @lingui/core/macro (see sparkle/src/CONTRACTS)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
         "cli/dust-cli/**",
         "sparkle/**"
       ],

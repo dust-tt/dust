@@ -1,3 +1,4 @@
+import { Plural, Trans } from "@lingui/react/macro";
 import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
@@ -129,13 +130,51 @@ export function Pagination({
           showDetails ? "visible" : "collapse"
         )}
       >
-        {controlsAreHidden
-          ? `${rowCount} item${rowCount === 1 ? "" : "s"}`
-          : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount}${
-              rowCountIsCapped ? "+" : ""
-            } item${rowCount === 1 ? "" : "s"}`}
+        <PaginationDetails
+          controlsAreHidden={controlsAreHidden}
+          rowCount={rowCount}
+          rowCountIsCapped={rowCountIsCapped}
+          firstItemOnPageIndex={firstItemOnPageIndex}
+          lastItemOnPageIndex={lastItemOnPageIndex}
+        />
       </span>
     </div>
+  );
+}
+
+interface PaginationDetailsProps {
+  controlsAreHidden: boolean;
+  rowCount: number;
+  rowCountIsCapped: boolean;
+  firstItemOnPageIndex: number;
+  lastItemOnPageIndex: number;
+}
+
+function PaginationDetails({
+  controlsAreHidden,
+  rowCount,
+  rowCountIsCapped,
+  firstItemOnPageIndex,
+  lastItemOnPageIndex,
+}: PaginationDetailsProps) {
+  if (controlsAreHidden) {
+    return <Plural value={rowCount} one="# item" other="# items" />;
+  }
+
+  if (rowCountIsCapped) {
+    return (
+      <Trans>
+        Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of{" "}
+        <Plural value={rowCount} one="#+ item" other="#+ items" />
+      </Trans>
+    );
+  }
+
+  return (
+    <Trans>
+      Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of{" "}
+      <Plural value={rowCount} one="# item" other="# items" />
+    </Trans>
   );
 }
 
