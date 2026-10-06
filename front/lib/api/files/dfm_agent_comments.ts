@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { signDfmAgentCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import {
-  readCanonicalFileContent,
-  writeCanonicalFileContent,
-} from "@app/lib/api/files/file_system_ops";
-import { decodeBuffer } from "@app/lib/api/files/utils";
+  readStoredText,
+  signDfmAgentCommentMessage,
+} from "@app/lib/api/files/dfm_comment_signatures";
+import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
+import type { DfmMessage } from "@app/lib/markdown/dfm";
 import { anchorComment, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { contentTypeFromFileName } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -20,7 +20,7 @@ export type DfmAgentCommentErrorCode =
   | "not_markdown"
   | "not_found"
   | "invalid_document"
-  | "invalid_quote"
+  | "cannot_anchor"
   | "invalid_comment"
   | "conflict"
   | "refused"
@@ -50,10 +50,11 @@ function fileSystemError(error: {
  * Adding a comment MUST add exactly one open thread whose only message is the one
  * `signDfmAgentCommentMessage` writes for `agent` (signed when a signing key is configured), with
  * anchors around the nth occurrence of `quote`, and MUST NOT change the front matter, the body
- * text or the other threads. The write MUST be conditional on the revision read, and a file
- * whose storage returns no revision MUST be refused; on a conflict it MUST start over from a
- * fresh read, and give up with `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a
- * concurrent write. Only `.md` files are commented.
+ * text or the other threads, beyond the codec normalising line endings and dropping a leading
+ * byte order mark. The write MUST be conditional on the revision read, and a file whose storage
+ * returns no revision MUST be refused; on a conflict it MUST start over from a fresh read, and
+ * give up with `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write. Only
+ * files whose name maps to `text/markdown` are commented.
  */
 export async function addAgentComment(
   auth: Authenticator,
@@ -72,42 +73,23 @@ export async function addAgentComment(
     comment: string;
   }
 ): Promise<Result<{ commentId: string }, DfmAgentCommentError>> {
-  if (!scopedPath.toLowerCase().endsWith(".md")) {
-    return new Err(
-      new DfmAgentCommentError(
-        "not_markdown",
-        "Only Markdown documents (`.md`) can be commented."
-      )
-    );
-  }
-
   const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
   if (resolvedPath.isErr()) {
     return new Err(fileSystemError(resolvedPath.error));
   }
-
-  const commentId = randomUUID();
-  const signed = await signDfmAgentCommentMessage(auth, {
-    agent,
-    filePath: resolvedPath.value,
-    commentId,
-    body: comment.replaceAll("\r\n", "\n").trim(),
-  });
-  if (signed.isErr()) {
+  if (contentTypeFromFileName(resolvedPath.value) !== "text/markdown") {
     return new Err(
       new DfmAgentCommentError(
-        signed.error.code === "not_available"
-          ? "not_available"
-          : "invalid_comment",
-        signed.error.code === "not_available"
-          ? signed.error.message
-          : "The comment cannot be written: it must be non-empty Markdown with no line starting with `::`."
+        "not_markdown",
+        "Only Markdown documents can be commented."
       )
     );
   }
 
+  const commentId = randomUUID();
+  let signedMessage: DfmMessage | null = null;
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-    const read = await readCanonicalFileContent(dustFs, scopedPath);
+    const read = await readStoredText(dustFs, scopedPath);
     if (read.isErr()) {
       return new Err(fileSystemError(read.error));
     }
@@ -116,8 +98,9 @@ export async function addAgentComment(
         new DfmAgentCommentError("not_found", `File not found: ${scopedPath}`)
       );
     }
+    const { text, revision } = read.value;
     // Without a revision the write cannot be conditional, and could replace a concurrent edit.
-    if (read.value.revision === undefined) {
+    if (revision === undefined) {
       return new Err(
         new DfmAgentCommentError(
           "refused",
@@ -125,12 +108,8 @@ export async function addAgentComment(
         )
       );
     }
-    const buffer = await streamToBuffer(read.value.stream);
-    if (buffer.isErr()) {
-      return new Err(new DfmAgentCommentError("storage_failed", buffer.error));
-    }
 
-    const document = parseDfm(decodeBuffer(buffer.value));
+    const document = parseDfm(text);
     if (document.isErr()) {
       const { message, line } = document.error;
       return new Err(
@@ -148,15 +127,39 @@ export async function addAgentComment(
     });
     if (anchored.isErr()) {
       return new Err(
-        new DfmAgentCommentError("invalid_quote", anchored.error.message)
+        new DfmAgentCommentError(
+          "cannot_anchor",
+          `The comment cannot be anchored: ${anchored.error.message}`
+        )
       );
     }
+
+    if (signedMessage === null) {
+      const signed = await signDfmAgentCommentMessage(auth, {
+        agent,
+        filePath: resolvedPath.value,
+        commentId,
+        body: comment.replaceAll("\r\n", "\n").trim(),
+      });
+      if (signed.isErr()) {
+        return new Err(
+          signed.error.code === "not_available"
+            ? new DfmAgentCommentError("not_available", signed.error.message)
+            : new DfmAgentCommentError(
+                "invalid_comment",
+                `The comment cannot be written: ${signed.error.codecErrorMessage ?? signed.error.message}`
+              )
+        );
+      }
+      signedMessage = signed.value;
+    }
+
     const serialized = serializeDfm({
       ...document.value,
       body: anchored.value,
       comments: [
         ...document.value.comments,
-        { id: commentId, status: "open", messages: [signed.value] },
+        { id: commentId, status: "open", messages: [signedMessage] },
       ],
     });
     if (serialized.isErr()) {
@@ -171,7 +174,7 @@ export async function addAgentComment(
       scopedPath,
       Buffer.from(serialized.value, "utf8"),
       undefined,
-      read.value.revision
+      revision
     );
     if (written.isOk()) {
       return new Ok({ commentId });

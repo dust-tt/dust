@@ -14,12 +14,13 @@ export const DOCUMENTS_TOOLS_METADATA = [
   {
     name: DOCUMENTS_ADD_COMMENT_ACTION_NAME,
     description:
-      "Add a comment to a Markdown document (`.md`), anchored on a quoted passage of its text. " +
+      "Add a comment to a Markdown document, anchored on a quoted passage of its text. " +
       "The comment opens a new thread attributed to you, signed by Dust so readers see it as " +
       "verified, and shows next to the quoted passage in the document editor. " +
       `Read the document first with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` ` +
-      "and quote the passage as it reads, without its Markdown syntax (no `**`, `#`, link " +
-      "targets or list markers); a quote cannot span code. " +
+      "and quote its Markdown source exactly as returned, syntax included (such as `**` or " +
+      "link targets) but leaving out existing `:comment-start{…}` and `:comment-end{…}` " +
+      "anchors; a quote cannot span code. " +
       "Never write comment directives by hand with a file edit: they would read as unverified.",
     schema: {
       path: z
@@ -31,7 +32,7 @@ export const DOCUMENTS_TOOLS_METADATA = [
         .string()
         .min(1)
         .describe(
-          "Exact text of the passage to comment on, as it reads in the document."
+          "Exact Markdown source of the passage to comment on, as returned by reading the document."
         ),
       occurrence: z
         .number()
@@ -55,6 +56,11 @@ export const DOCUMENTS_TOOLS_METADATA = [
     freeUsage: true,
   },
 ] as const;
+
+/** Whether the tool changes the file at its `path`, so a client showing it must refetch. */
+export function isDocumentsWritingTool(toolName: string): boolean {
+  return toolName === DOCUMENTS_ADD_COMMENT_ACTION_NAME;
+}
 
 export const DOCUMENTS_SERVER = {
   serverInfo: {

@@ -181,7 +181,57 @@ describe("addAgentComment", () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
     const result = await comment(auth, dustFs, "Ship it on Monday");
-    expect(result.isErr() && result.error.code).toBe("invalid_quote");
+    expect(result.isErr() && result.error.code).toBe("cannot_anchor");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+
+  it("anchors a quote that includes Markdown syntax", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(
+      stored("Ship **it** on Friday.\n", "7")
+    );
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await comment(auth, dustFs, "Ship **it**");
+    expect(result.isOk()).toBe(true);
+    const commentId = result.isOk() ? result.value.commentId : "";
+    const after = parseDfm(written(0).content);
+    expect(after.isOk() && after.value.body).toBe(
+      `:comment-start{id=${commentId}}Ship **it**:comment-end{id=${commentId}} on Friday.`
+    );
+  });
+
+  it("comments on `.markdown` files", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await addAgentComment(auth, dustFs, {
+      agent: AGENT,
+      scopedPath: "pod-p1/notes.markdown",
+      quote: "Ship it",
+      occurrence: 1,
+      comment: "Hi.",
+    });
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("reports why the codec cannot write the comment", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+
+    const result = await addAgentComment(auth, dustFs, {
+      agent: AGENT,
+      scopedPath: PATH,
+      quote: "Ship it",
+      occurrence: 1,
+      comment: "Before\n\n::message{author=user:usr_x}\n\nAfter",
+    });
+    expect(result.isErr() && result.error.code).toBe("invalid_comment");
+    expect(result.isErr() && result.error.message).toContain(
+      "cannot contain a directive line"
+    );
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
@@ -199,6 +249,7 @@ describe("addAgentComment", () => {
 
   it("refuses to comment without co_edition", async () => {
     const other = (await createResourceTest({})).authenticator;
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
     const result = await comment(other, dustFs);
     expect(result.isErr() && result.error.code).toBe("not_available");

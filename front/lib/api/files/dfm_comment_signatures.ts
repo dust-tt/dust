@@ -1,7 +1,10 @@
 import type { KeyObject } from "node:crypto";
 import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import config from "@app/lib/api/config";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import {
+  DustFileSystem,
+  DustFileSystemError,
+} from "@app/lib/api/file_system/dust_file_system";
 import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -40,7 +43,8 @@ export type DfmCommentSignatureErrorCode =
 export class DfmCommentSignatureError extends Error {
   constructor(
     readonly code: DfmCommentSignatureErrorCode,
-    message: string
+    message: string,
+    readonly codecErrorMessage?: string
   ) {
     super(message);
   }
@@ -159,10 +163,11 @@ export async function signDfmCommentMessage(
  * @cc [owner:tdraier,label:security] dfm-comment-signing-by-agent
  * A message signed for an agent MUST be attributed to `agent:<sId>` of the given agent
  * configuration, named `@<agent name>`, at the current time, as the first message of a new
- * thread in the file at `filePath`; callers MUST pass the agent running the tool and the file it
- * writes, never values from the tool input. It MUST be refused outside a workspace with
- * `co_edition` or when the codec cannot write it. Without a signing key it MUST be returned
- * unsigned.
+ * thread in the file at `filePath`. Callers MUST pass the agent running the tool, never one
+ * named by the tool input, and MUST store the message only through a write to `filePath` that
+ * passed its own write-access check, never return it otherwise. It MUST be refused outside a
+ * workspace with `co_edition` or when the codec cannot write it. Without a signing key it MUST
+ * be returned unsigned.
  */
 export async function signDfmAgentCommentMessage(
   auth: Authenticator,
@@ -225,7 +230,8 @@ async function signMessage(
     return new Err(
       new DfmCommentSignatureError(
         "unwritable_message",
-        "This comment cannot be saved as written."
+        "This comment cannot be saved as written.",
+        writable.error.message
       )
     );
   }
@@ -398,19 +404,31 @@ export function validateCommentSignatures(
   return new Ok(undefined);
 }
 
-async function readStoredText(
+/** The stored text of a file with its storage revision, or null when the file does not exist. */
+export async function readStoredText(
   dustFs: DustFileSystem,
   scopedPath: string
-): Promise<{ text: string | null; revision: string | undefined }> {
+): Promise<
+  Result<
+    { text: string; revision: string | undefined } | null,
+    DustFileSystemError
+  >
+> {
   const read = await readCanonicalFileContent(dustFs, scopedPath);
-  if (read.isErr() || read.value === null) {
-    return { text: null, revision: undefined };
+  if (read.isErr()) {
+    return read;
+  }
+  if (read.value === null) {
+    return new Ok(null);
   }
   const buffer = await streamToBuffer(read.value.stream);
-  return {
-    text: buffer.isOk() ? decodeBuffer(buffer.value) : null,
+  if (buffer.isErr()) {
+    return new Err(new DustFileSystemError("internal", buffer.error));
+  }
+  return new Ok({
+    text: decodeBuffer(buffer.value),
     revision: read.value.revision,
-  };
+  });
 }
 
 /**
@@ -445,10 +463,11 @@ export async function validateMarkdownCommentsForWrite(
 
   const key = getSigningKey();
   const publicKey = key ? createPublicKey(key) : null;
-  const stored = await readStoredText(dustFs, scopedPath);
+  const read = await readStoredText(dustFs, scopedPath);
+  const stored = read.isOk() ? read.value : null;
   const validated = validateCommentSignatures(
     {
-      previous: stored.text,
+      previous: stored?.text ?? null,
       next: decodeBuffer(content),
     },
     {
@@ -466,5 +485,5 @@ export async function validateMarkdownCommentsForWrite(
         : null,
     }
   );
-  return validated.isErr() ? validated : new Ok({ revision: stored.revision });
+  return validated.isErr() ? validated : new Ok({ revision: stored?.revision });
 }
