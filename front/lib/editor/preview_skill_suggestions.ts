@@ -76,6 +76,8 @@ export function previewSkillSuggestions({
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
+    // Added files have no id until the suggestion is applied: the details view lists them from the
+    // suggestions themselves.
     fileAttachments: skill.fileAttachments.filter(
       (file) => !removedFileIds.has(file.fileId)
     ),
