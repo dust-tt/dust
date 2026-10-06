@@ -25,6 +25,7 @@ async function renderCommentedEditor(
   }: {
     sign?: (
       commentId: string,
+      previous: DfmMessage | null,
       body: string
     ) => Promise<Result<DfmMessage, string>>;
     verify?: DfmMessageVerifier;
@@ -286,7 +287,7 @@ describe("useDocumentComments", () => {
 
   it("inserts the message the server signed, with the server's name and time", async () => {
     const sign = vi.fn(
-      async (_commentId: string, body: string) =>
+      async (_commentId: string, _previous: DfmMessage | null, body: string) =>
         new Ok<DfmMessage>({
           author: { ...AUTHOR, name: "Tom Draier" },
           createdAt: SIGNED_AT,
@@ -303,7 +304,11 @@ describe("useDocumentComments", () => {
     });
     await act(() => result.current.document.save());
 
-    expect(sign).toHaveBeenCalledWith("c1", "Agreed.");
+    expect(sign).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ body: "Note." }),
+      "Agreed."
+    );
     expect(result.current.comments.comments[0].messages[1]).toEqual({
       author: { ...AUTHOR, name: "Tom Draier" },
       createdAt: SIGNED_AT,
@@ -313,6 +318,42 @@ describe("useDocumentComments", () => {
     expect(onSave.mock.calls[0][0]).toContain(
       `name="Tom Draier" at=${SIGNED_AT} sig=server-signature}`
     );
+  });
+
+  it("refuses a reply signed after a message that is no longer the thread's last", async () => {
+    let appendWhileSigning = () => undefined as unknown;
+    const sign = vi.fn(
+      async (
+        _commentId: string,
+        _previous: DfmMessage | null,
+        body: string
+      ) => {
+        appendWhileSigning();
+        return new Ok<DfmMessage>({
+          author: AUTHOR,
+          createdAt: SIGNED_AT,
+          body,
+          signature: "server-signature",
+        });
+      }
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { sign });
+    appendWhileSigning = () =>
+      result.current.document.editor?.commands.replyToComment("c1", {
+        author: AUTHOR,
+        createdAt: SIGNED_AT,
+        body: "Sent elsewhere.",
+      });
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Agreed.")).isErr()
+      ).toBe(true);
+    });
+
+    expect(
+      result.current.comments.comments[0].messages.map(({ body }) => body)
+    ).toEqual(["Note.", "Sent elsewhere."]);
   });
 
   it("leaves the document unchanged when the server refuses to sign", async () => {
@@ -354,8 +395,11 @@ describe("useDocumentComments", () => {
       `Note.\n\n::message{author=agent:dust name="@dust" at=${AT}}\n\nUnsigned.\n:::`
     );
     const verify = vi.fn(
-      async (_commentId: string, message: { signature?: string }) =>
-        message.signature === "good"
+      async (
+        _commentId: string,
+        _previous: DfmMessage | null,
+        message: { signature?: string }
+      ) => message.signature === "good"
     );
     const { result } = await renderCommentedEditor(signedSource, { verify });
 
@@ -363,6 +407,16 @@ describe("useDocumentComments", () => {
       expect(result.current.comments.isVerified("c1", 0)).toBe(true)
     );
     expect(result.current.comments.isVerified("c1", 1)).toBe(false);
+    expect(verify).toHaveBeenCalledWith(
+      "c1",
+      null,
+      expect.objectContaining({ body: "Note." })
+    );
+    expect(verify).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ body: "Note." }),
+      expect.objectContaining({ body: "Unsigned." })
+    );
   });
 
   it("reads every message as unknown without a verifier", async () => {

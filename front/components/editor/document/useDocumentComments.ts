@@ -27,6 +27,7 @@ interface UseDocumentCommentsProps {
   /** Has the server write and sign a new message; without it, messages are built locally. */
   sign?: (
     commentId: string,
+    previous: DfmMessage | null,
     body: string
   ) => Promise<Result<DfmMessage, string>>;
   verify?: DfmMessageVerifier;
@@ -65,6 +66,13 @@ const UNANCHORED_MESSAGE =
   "The selected text can no longer take a comment. Select other text to comment.";
 const UNSAVABLE_MESSAGE =
   "The document could not be saved with this comment. Try a shorter one.";
+
+const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
+  a?.author.kind === b?.author.kind &&
+  a?.author.id === b?.author.id &&
+  a?.author.name === b?.author.name &&
+  a?.createdAt === b?.createdAt &&
+  a?.body === b?.body;
 
 /** The document the commands would produce, or null when one of them refuses. */
 const previewDocument = (
@@ -170,7 +178,7 @@ export const useDocumentComments = ({
     void Promise.all(
       comments.flatMap((comment) =>
         comment.messages.map((message, index) =>
-          verify(comment.id, message).then(
+          verify(comment.id, comment.messages[index - 1] ?? null, message).then(
             (verified) => [`${comment.id}:${index}`, verified] as const
           )
         )
@@ -230,7 +238,9 @@ export const useDocumentComments = ({
     if (writable.isErr()) {
       return writable;
     }
-    return sign ? sign(commentId, body) : new Ok(local);
+    return sign
+      ? sign(commentId, thread?.messages.at(-1) ?? null, body)
+      : new Ok(local);
   };
 
   return {
@@ -358,6 +368,16 @@ export const useDocumentComments = ({
       const written = await writeMessage(author, id, thread, body);
       if (written.isErr()) {
         return written;
+      }
+      // The reply is signed after the thread's last message; it must still follow that one.
+      const current = getDocumentComments(editor.state.doc).find(
+        (comment) => comment.id === id
+      );
+      if (!current) {
+        return new Err("This comment was deleted.");
+      }
+      if (!sameMessage(current.messages.at(-1), thread.messages.at(-1))) {
+        return new Err("This thread changed while sending. Send again.");
       }
       const next = previewDocument(editor, (chain) =>
         chain.replyToComment(id, written.value)

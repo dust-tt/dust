@@ -53,7 +53,11 @@ export type GetDfmCommentSigningKeyResponseBody = {
 };
 
 export type PostDfmCommentSignatureRequestBody = {
+  /** Scoped path of the file the comment is written in. */
+  filePath: string;
   commentId: string;
+  /** The message the new one follows in its thread, or null for a new thread. */
+  previous: Pick<DfmMessage, "author" | "createdAt" | "body"> | null;
   body: string;
 };
 

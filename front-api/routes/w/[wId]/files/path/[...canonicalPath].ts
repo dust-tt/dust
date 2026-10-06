@@ -679,7 +679,8 @@ app.put(
       auth,
       dustFs,
       canonicalPath,
-      content
+      content,
+      ctx.req.header("content-type") ?? undefined
     );
     if (comments.isErr()) {
       return apiError(ctx, {

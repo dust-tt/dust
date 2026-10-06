@@ -80,15 +80,21 @@ describe("message signatures in the annotations block", () => {
 });
 
 describe("messageSignaturePayload", () => {
+  const previous = { author: DAPH, createdAt: AT, body: "Before" };
   const base = {
     workspaceId: "w1",
+    filePath: "pod-s1/notes.md",
     commentId: "c1",
+    previous,
     message: { author: DAPH, createdAt: AT, body: "Hello" },
   };
 
   it.each([
     ["workspace", { ...base, workspaceId: "w2" }],
+    ["file", { ...base, filePath: "pod-s1/copy.md" }],
     ["comment", { ...base, commentId: "c2" }],
+    ["previous message", { ...base, previous: { ...previous, body: "Other" } }],
+    ["absence of a previous message", { ...base, previous: null }],
     [
       "author",
       { ...base, message: { ...base.message, author: { ...DAPH, id: "u2" } } },

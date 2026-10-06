@@ -12,8 +12,10 @@ const PUBLIC_KEY = publicKey
   .export({ format: "der", type: "spki" })
   .toString("base64url");
 const AT = "2026-10-05T12:00:00.000Z";
+const PATH = "pod-s1/notes.md";
 const CONTEXT = {
   workspaceId: "w_1",
+  filePath: PATH,
   userId: "usr_tom",
   verify: (payload: string, signature: string) =>
     verify(
@@ -24,17 +26,25 @@ const CONTEXT = {
     ),
 };
 
-/** A message as the server signs it when it is posted. */
+/** A message as the server signs it when it is posted after `previous` in thread `commentId`. */
 function signedMessage(
   commentId: string,
-  message: Omit<DfmMessage, "signature">
+  previous: DfmMessage | null,
+  message: Omit<DfmMessage, "signature">,
+  filePath = PATH
 ): DfmMessage {
   return {
     ...message,
     signature: sign(
       null,
       Buffer.from(
-        messageSignaturePayload({ workspaceId: "w_1", commentId, message }),
+        messageSignaturePayload({
+          workspaceId: "w_1",
+          filePath,
+          commentId,
+          previous,
+          message,
+        }),
         "utf8"
       ),
       privateKey
@@ -42,11 +52,12 @@ function signedMessage(
   };
 }
 
-const TOM: DfmMessage = signedMessage("c1", {
-  author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
+const TOM_MESSAGE = {
+  author: { kind: "user" as const, id: "usr_tom", name: "Tom Draier" },
   createdAt: AT,
   body: "Looks good.",
-});
+};
+const TOM: DfmMessage = signedMessage("c1", null, TOM_MESSAGE);
 
 const line = ({ author, createdAt, body, signature }: DfmMessage) =>
   `::message{author=${author.kind}:${author.id} name="${author.name}" at=${createdAt}${signature ? ` sig=${signature}` : ""}}\n\n${body}\n`;
@@ -64,11 +75,20 @@ describe("validateCommentSignatures", () => {
     const browserVerify = await createDfmMessageVerifier({
       publicKey: PUBLIC_KEY,
       workspaceId: "w_1",
+      filePath: PATH,
     });
-    expect(await browserVerify("c1", TOM)).toBe(true);
-    expect(await browserVerify("c1", { ...TOM, body: "Looks bad." })).toBe(
-      false
-    );
+    expect(await browserVerify("c1", null, TOM)).toBe(true);
+    expect(
+      await browserVerify("c1", null, { ...TOM, body: "Looks bad." })
+    ).toBe(false);
+    expect(await browserVerify("c1", TOM, TOM)).toBe(false);
+
+    const otherFileVerify = await createDfmMessageVerifier({
+      publicKey: PUBLIC_KEY,
+      workspaceId: "w_1",
+      filePath: "pod-s1/copy.md",
+    });
+    expect(await otherFileVerify("c1", null, TOM)).toBe(false);
   });
 
   it.each([
@@ -77,6 +97,10 @@ describe("validateCommentSignatures", () => {
     [
       "has a signature from another key",
       { ...TOM, signature: "AAAA" + TOM.signature?.slice(4) },
+    ],
+    [
+      "was signed for another file",
+      signedMessage("c1", null, TOM_MESSAGE, "pod-s1/copy.md"),
     ],
   ])("refuses a new message from the user that %s", (_, message) => {
     const result = validate(file(), file(message));
@@ -91,7 +115,7 @@ describe("validateCommentSignatures", () => {
     const result = validate(
       file(),
       file(
-        signedMessage("c1", {
+        signedMessage("c1", null, {
           author: { kind, id, name: "X" },
           createdAt: AT,
           body: "Hi",
@@ -162,6 +186,46 @@ describe("validateCommentSignatures", () => {
     };
 
     expect(validate(file(yuka, TOM), file(yuka)).isOk()).toBe(true);
+  });
+
+  describe("thread order", () => {
+    const question = signedMessage("c1", null, {
+      author: { kind: "user", id: "usr_yuka", name: "Yuka" },
+      createdAt: AT,
+      body: "Shall we keep section 3?",
+    });
+    const agreed = signedMessage("c1", question, {
+      author: { kind: "user", id: "usr_daph", name: "Daph" },
+      createdAt: AT,
+      body: "Agreed.",
+    });
+    const stored = file(question, agreed);
+
+    it("accepts a reply signed after the thread's last message", () => {
+      const reply = signedMessage("c1", agreed, TOM_MESSAGE);
+
+      expect(validate(stored, file(question, agreed, reply)).isOk()).toBe(true);
+    });
+
+    it("refuses a new message put before someone else's reply", () => {
+      const inserted = signedMessage("c1", question, TOM_MESSAGE);
+      const result = validate(stored, file(question, inserted, agreed));
+
+      expect(result.isErr() && result.error.code).toBe("moved_message");
+    });
+
+    it("refuses a repeated message", () => {
+      const result = validate(stored, file(question, agreed, agreed));
+
+      expect(result.isErr() && result.error.code).toBe("moved_message");
+    });
+
+    it("refuses a new message signed after another predecessor", () => {
+      const reply = signedMessage("c1", question, TOM_MESSAGE);
+      const result = validate(stored, file(question, agreed, reply));
+
+      expect(result.isErr() && result.error.code).toBe("unsigned_message");
+    });
   });
 
   it("accepts a source the codec cannot read", () => {

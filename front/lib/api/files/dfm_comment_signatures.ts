@@ -1,7 +1,7 @@
 import type { KeyObject } from "node:crypto";
 import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import config from "@app/lib/api/config";
-import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +14,7 @@ import {
 } from "@app/lib/markdown/dfm";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
+import { contentTypeFromFileName, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -26,10 +27,12 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export type DfmCommentSignatureErrorCode =
   | "not_available"
+  | "unavailable_file"
   | "unwritable_message"
   | "foreign_message"
   | "unsigned_message"
-  | "altered_message";
+  | "altered_message"
+  | "moved_message";
 
 export class DfmCommentSignatureError extends Error {
   constructor(
@@ -39,6 +42,8 @@ export class DfmCommentSignatureError extends Error {
     super(message);
   }
 }
+
+type SignedMessageFields = Pick<DfmMessage, "author" | "createdAt" | "body">;
 
 let signingKey: { encoded: string; key: KeyObject } | null = null;
 
@@ -74,12 +79,23 @@ export function getDfmCommentPublicKey(): string | null {
  * @cc [owner:tdraier,label:security] dfm-comment-signing-on-post
  * A signed message MUST take its author, name and timestamp from the server: the requesting
  * user and the current time, never from the request. It MUST be refused when no user is signed
- * in, outside a workspace with `co_edition`, or when the codec cannot write it. Without a
- * signing key it MUST be returned unsigned.
+ * in, outside a workspace with `co_edition`, when `filePath` is not a normalized scoped path the
+ * user can write, or when the codec cannot write it. Without a signing key it MUST be returned
+ * unsigned.
  */
 export async function signDfmCommentMessage(
   auth: Authenticator,
-  { commentId, body }: { commentId: string; body: string }
+  {
+    filePath,
+    commentId,
+    previous,
+    body,
+  }: {
+    filePath: string;
+    commentId: string;
+    previous: SignedMessageFields | null;
+    body: string;
+  }
 ): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
   const user = auth.user();
   if (!user || !(await hasFeatureFlag(auth, "co_edition"))) {
@@ -87,6 +103,23 @@ export async function signDfmCommentMessage(
       new DfmCommentSignatureError(
         "not_available",
         "Commenting is not available here."
+      )
+    );
+  }
+
+  const resolvedPath = DustFileSystem.resolveScopedPath(filePath);
+  const fileSystem =
+    resolvedPath.isOk() && resolvedPath.value === filePath
+      ? await DustFileSystem.fromScopedPath(auth, filePath)
+      : null;
+  if (
+    !fileSystem?.isOk() ||
+    fileSystem.value.checkWriteAccess(filePath).isErr()
+  ) {
+    return new Err(
+      new DfmCommentSignatureError(
+        "unavailable_file",
+        "This file cannot be commented."
       )
     );
   }
@@ -124,7 +157,13 @@ export async function signDfmCommentMessage(
     signature: sign(
       null,
       Buffer.from(
-        messageSignaturePayload({ workspaceId, commentId, message }),
+        messageSignaturePayload({
+          workspaceId,
+          filePath,
+          commentId,
+          previous,
+          message,
+        }),
         "utf8"
       ),
       key
@@ -144,18 +183,46 @@ const messageKey = (commentId: string, message: DfmMessage) =>
 
 interface ValidationContext {
   workspaceId: string;
+  /** The scoped path of the file being written, which signatures bind. */
+  filePath: string;
   userId: string | null;
   /** Checks a signature over a payload, or null when no signing key is configured. */
   verify: ((payload: string, signature: string) => boolean) | null;
 }
 
+/** Whether the message at `index` of its thread verifies where it sits in this file. */
+const verifiesInPlace = (
+  context: ValidationContext,
+  commentId: string,
+  messages: DfmMessage[],
+  index: number
+) => {
+  const message = messages[index];
+  return (
+    !!context.verify &&
+    message.signature !== undefined &&
+    context.verify(
+      messageSignaturePayload({
+        workspaceId: context.workspaceId,
+        filePath: context.filePath,
+        commentId,
+        previous: messages[index - 1] ?? null,
+        message,
+      }),
+      message.signature
+    )
+  );
+};
+
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-authorship-on-save
  * A save MUST be refused when a message matching one in the stored file by author, name,
- * timestamp and body carries a different signature, or when any other message is not
- * attributed to `user:<sId>` of the saving user or, with a signing key, lacks a valid signature
- * over `messageSignaturePayload`. Deleting messages or threads, changing statuses and anchors,
- * and a source the codec cannot read MUST be accepted. Validation MUST NOT change the content.
+ * timestamp and body carries a different signature, or no longer verifies at its place in the
+ * thread while it verified at its stored place, so verified messages cannot be reordered or
+ * repeated. Any other message MUST be attributed to `user:<sId>` of the saving user and, with a
+ * signing key, verify at its place for this file. Deleting threads or the last messages of a
+ * thread, changing statuses and anchors, and a source the codec cannot read MUST be accepted.
+ * Validation MUST NOT change the content.
  */
 export function validateCommentSignatures(
   { previous, next }: { previous: string | null; next: string },
@@ -166,25 +233,47 @@ export function validateCommentSignatures(
     return new Ok(undefined);
   }
 
-  const stored = new Map<string, string | undefined>();
+  const stored = new Map<
+    string,
+    { signature: string | undefined; verified: boolean }
+  >();
   const previousDocument = previous === null ? null : parseDfm(previous);
   if (previousDocument?.isOk()) {
     for (const comment of previousDocument.value.comments) {
-      for (const message of comment.messages) {
-        stored.set(messageKey(comment.id, message), message.signature);
-      }
+      comment.messages.forEach((message, index) => {
+        stored.set(messageKey(comment.id, message), {
+          signature: message.signature,
+          verified: verifiesInPlace(
+            context,
+            comment.id,
+            comment.messages,
+            index
+          ),
+        });
+      });
     }
   }
 
   for (const comment of parsed.value.comments) {
-    for (const message of comment.messages) {
-      const key = messageKey(comment.id, message);
-      if (stored.has(key)) {
-        if (stored.get(key) !== message.signature) {
+    for (const [index, message] of comment.messages.entries()) {
+      const storedMessage = stored.get(messageKey(comment.id, message));
+      if (storedMessage) {
+        if (storedMessage.signature !== message.signature) {
           return new Err(
             new DfmCommentSignatureError(
               "altered_message",
               "A comment's signature was changed. Reload the file before saving."
+            )
+          );
+        }
+        if (
+          storedMessage.verified &&
+          !verifiesInPlace(context, comment.id, comment.messages, index)
+        ) {
+          return new Err(
+            new DfmCommentSignatureError(
+              "moved_message",
+              "A comment was moved or repeated. Reload the file before saving."
             )
           );
         }
@@ -205,15 +294,7 @@ export function validateCommentSignatures(
       }
       if (
         context.verify &&
-        (message.signature === undefined ||
-          !context.verify(
-            messageSignaturePayload({
-              workspaceId: context.workspaceId,
-              commentId: comment.id,
-              message,
-            }),
-            message.signature
-          ))
+        !verifiesInPlace(context, comment.id, comment.messages, index)
       ) {
         return new Err(
           new DfmCommentSignatureError(
@@ -242,18 +323,26 @@ async function readStoredText(
 
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-validation-scope
- * Validation MUST run on every write of a `.md` file through the file API in a workspace with
- * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere
- * else until the codec bounds its input before parsing.
+ * Validation MUST run on every content write through the file API's PUT of a file whose name or
+ * request content type is `text/markdown`, in a workspace with `co_edition`, against the file as
+ * stored right before the write, and MUST NOT run anywhere else until the codec bounds its input
+ * before parsing. Other writes, such as archive extraction, sandbox and agent writes, are not
+ * validated: what they bring can only read as unverified, since signatures bind the file and the
+ * thread order.
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
-  content: Uint8Array
+  content: Uint8Array,
+  requestContentType: string | undefined
 ): Promise<Result<void, DfmCommentSignatureError>> {
+  const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
   if (
-    !scopedPath.toLowerCase().endsWith(".md") ||
+    resolvedPath.isErr() ||
+    (contentTypeFromFileName(resolvedPath.value) !== "text/markdown" &&
+      (requestContentType === undefined ||
+        stripMimeParameters(requestContentType) !== "text/markdown")) ||
     !(await hasFeatureFlag(auth, "co_edition"))
   ) {
     return new Ok(undefined);
@@ -268,6 +357,7 @@ export async function validateMarkdownCommentsForWrite(
     },
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
+      filePath: resolvedPath.value,
       userId: auth.user()?.sId ?? null,
       verify: publicKey
         ? (payload, signature) =>

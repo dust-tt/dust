@@ -17,22 +17,26 @@ function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
 
 export type DfmMessageVerifier = (
   commentId: string,
+  previous: DfmMessage | null,
   message: DfmMessage
 ) => Promise<boolean>;
 
 /**
  * @cc [owner:tdraier,label:security] dfm-signature-browser-check
  * A message MUST verify only when it carries a signature that the configured Ed25519 key
- * accepts over `messageSignaturePayload` for this workspace and comment. A missing, malformed
+ * accepts over `messageSignaturePayload` for this workspace, file and comment, after the
+ * message that precedes it in its thread. A missing, malformed
  * or rejected signature, or a key the browser cannot import, MUST read as unverified, never as
  * an error that hides the message.
  */
 export async function createDfmMessageVerifier({
   publicKey,
   workspaceId,
+  filePath,
 }: {
   publicKey: string;
   workspaceId: string;
+  filePath: string;
 }): Promise<DfmMessageVerifier> {
   let key: CryptoKey | null = null;
   try {
@@ -47,7 +51,7 @@ export async function createDfmMessageVerifier({
     key = null;
   }
 
-  return async (commentId, message) => {
+  return async (commentId, previous, message) => {
     if (!key || message.signature === undefined) {
       return false;
     }
@@ -57,7 +61,13 @@ export async function createDfmMessageVerifier({
         key,
         fromBase64Url(message.signature),
         new TextEncoder().encode(
-          messageSignaturePayload({ workspaceId, commentId, message })
+          messageSignaturePayload({
+            workspaceId,
+            filePath,
+            commentId,
+            previous,
+            message,
+          })
         )
       );
     } catch {

@@ -1131,7 +1131,11 @@ describe("comment signatures on Markdown saves", () => {
   const AT = "2026-10-05T11:59:58.000Z";
   const file = (author: string, signature?: string) =>
     `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=${author} name="Someone" at=${AT}${signature ? ` sig=${signature}` : ""}}\n\nLooks good.\n:::\n`;
-  const signatureFor = (workspaceId: string, author: string) => {
+  const signatureFor = (
+    workspaceId: string,
+    filePath: string,
+    author: string
+  ) => {
     const [kind, id] = author.split(":");
     assert(kind === "user" || kind === "agent");
     return sign(
@@ -1139,7 +1143,9 @@ describe("comment signatures on Markdown saves", () => {
       Buffer.from(
         messageSignaturePayload({
           workspaceId,
+          filePath,
           commentId: "c1",
+          previous: null,
           message: {
             author: { kind, id, name: "Someone" },
             createdAt: AT,
@@ -1171,7 +1177,13 @@ describe("comment signatures on Markdown saves", () => {
     vi.mocked(config.getDfmCommentSigningKey).mockRestore();
   });
 
-  const setupMarkdown = async ({ coEdition }: { coEdition: boolean }) => {
+  const setupMarkdown = async ({
+    coEdition,
+    fileName = "notes.md",
+  }: {
+    coEdition: boolean;
+    fileName?: string;
+  }) => {
     const { workspace, auth, user } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -1183,8 +1195,8 @@ describe("comment signatures on Markdown saves", () => {
       visibility: "unlisted",
       spaceId: null,
     });
-    const path = `conversation-${conversation.sId}/notes.md`;
-    const mountPath = `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.md`;
+    const path = `conversation-${conversation.sId}/${fileName}`;
+    const mountPath = `w/${workspace.sId}/conversations/${conversation.sId}/files/${fileName}`;
     fileStorageMock.setObject(mountPath, "Hi there\n");
     return { workspace, user, path, mountPath };
   };
@@ -1194,7 +1206,7 @@ describe("comment signatures on Markdown saves", () => {
       coEdition: true,
     });
     const author = `user:${user.sId}`;
-    const content = file(author, signatureFor(workspace.sId, author));
+    const content = file(author, signatureFor(workspace.sId, path, author));
 
     const response = await request(workspace, path, {
       method: "PUT",
@@ -1210,21 +1222,43 @@ describe("comment signatures on Markdown saves", () => {
   it.each([
     [
       "an unsigned comment",
-      (_workspaceId: string, userId: string) => file(`user:${userId}`),
+      "notes.md",
+      (_workspaceId: string, _path: string, userId: string) =>
+        file(`user:${userId}`),
     ],
     [
       "a comment signed for someone else",
-      (workspaceId: string) =>
-        file("user:usr_other", signatureFor(workspaceId, "user:usr_other")),
+      "notes.md",
+      (workspaceId: string, path: string) =>
+        file(
+          "user:usr_other",
+          signatureFor(workspaceId, path, "user:usr_other")
+        ),
     ],
-  ])("refuses %s", async (_, content) => {
+    [
+      "a comment signed for another file",
+      "notes.md",
+      (workspaceId: string, path: string, userId: string) =>
+        file(
+          `user:${userId}`,
+          signatureFor(workspaceId, `${path}.copy.md`, `user:${userId}`)
+        ),
+    ],
+    [
+      "an unsigned comment in a .markdown file",
+      "notes.markdown",
+      (_workspaceId: string, _path: string, userId: string) =>
+        file(`user:${userId}`),
+    ],
+  ])("refuses %s", async (_, fileName, content) => {
     const { workspace, user, path, mountPath } = await setupMarkdown({
       coEdition: true,
+      fileName,
     });
 
     const response = await request(workspace, path, {
       method: "PUT",
-      body: content(workspace.sId, user.sId),
+      body: content(workspace.sId, path, user.sId),
     });
 
     expect(response.status).toBe(400);

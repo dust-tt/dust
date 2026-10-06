@@ -16,7 +16,19 @@ import { z } from "zod";
 const app = workspaceApp();
 
 const PostBodySchema = z.object({
+  filePath: z.string().min(1),
   commentId: z.string().min(1),
+  previous: z
+    .object({
+      author: z.object({
+        kind: z.enum(["user", "agent"]),
+        id: z.string(),
+        name: z.string(),
+      }),
+      createdAt: z.string(),
+      body: z.string(),
+    })
+    .nullable(),
   body: z.string().min(1),
 });
 
@@ -35,24 +47,32 @@ app.post(
       ctx.req.valid("json")
     );
     if (signed.isErr()) {
-      return apiError(
-        ctx,
-        signed.error.code === "not_available"
-          ? {
-              status_code: 403,
-              api_error: {
-                type: "feature_flag_not_found",
-                message: signed.error.message,
-              },
-            }
-          : {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: signed.error.message,
-              },
-            }
-      );
+      switch (signed.error.code) {
+        case "not_available":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "feature_flag_not_found",
+              message: signed.error.message,
+            },
+          });
+        case "unavailable_file":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "file_not_found",
+              message: signed.error.message,
+            },
+          });
+        default:
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: signed.error.message,
+            },
+          });
+      }
     }
     return ctx.json({ message: signed.value });
   }

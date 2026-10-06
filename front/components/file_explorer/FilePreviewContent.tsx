@@ -320,8 +320,14 @@ interface RichMarkdownDocumentProps {
 
 function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
-  const signCommentMessage = useSignDfmCommentMessage({ owner });
-  const verifyCommentMessage = useDfmMessageVerifier({ owner });
+  const signCommentMessage = useSignDfmCommentMessage({
+    owner,
+    filePath: editor.path,
+  });
+  const verifyCommentMessage = useDfmMessageVerifier({
+    owner,
+    filePath: editor.path,
+  });
 
   return (
     <Document

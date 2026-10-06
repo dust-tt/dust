@@ -66,8 +66,10 @@ Message bodies show as plain text for now. The host renders authors' avatars thr
 The editor never signs anything. With `signCommentMessage`, posting a comment or a reply asks the
 server to write the message, with the user's name, the server's time and a signature, and the
 editor inserts what it returns; a refusal keeps the typed text and shows the reason. Saving then
-goes through the file API, which refuses a new message it did not sign for the saving user
-(`front/lib/api/files/dfm_comment_signatures.ts`) and never rewrites the file. With
+goes through the file API, which refuses a new message it did not sign for the saving user, or a
+verified one moved within its thread (`front/lib/api/files/dfm_comment_signatures.ts`), and
+never rewrites the file. Signatures bind the file's path and the message before each one, so a
+renamed or moved file reads as unverified. With
 `verifyCommentMessage`, the panel marks each message whose signature does not check out as
 Unverified, such as one written from a sandbox or by an agent; without it, no message is
 marked.

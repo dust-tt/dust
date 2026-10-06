@@ -328,21 +328,33 @@ export async function writeFileContentByPath({
  */
 export function useDfmMessageVerifier({
   owner,
+  filePath,
   disabled,
 }: {
   owner: LightWorkspaceType | undefined;
+  /** Scoped path of the file whose messages are checked. */
+  filePath: string;
   disabled?: boolean;
 }): DfmMessageVerifier | null {
   const { fetcher } = useFetcher();
   const swrKey =
-    disabled || !owner ? null : `/api/w/${owner.sId}/files/comment-signatures`;
+    disabled || !owner
+      ? null
+      : ([`/api/w/${owner.sId}/files/comment-signatures`, filePath] as const);
   const { data } = useSWRWithDefaults(
     swrKey,
-    async (url: string): Promise<DfmMessageVerifier | null> => {
+    async ([url, path]: readonly [
+      string,
+      string,
+    ]): Promise<DfmMessageVerifier | null> => {
       const { publicKey }: GetDfmCommentSigningKeyResponseBody =
         await fetcher(url);
       return owner && publicKey
-        ? createDfmMessageVerifier({ publicKey, workspaceId: owner.sId })
+        ? createDfmMessageVerifier({
+            publicKey,
+            workspaceId: owner.sId,
+            filePath: path,
+          })
         : null;
     },
     { disabled: swrKey === null }
@@ -354,11 +366,15 @@ export function useDfmMessageVerifier({
 /** Has the server write and sign a new DFM comment message as the current user. */
 export function useSignDfmCommentMessage({
   owner,
+  filePath,
 }: {
   owner: LightWorkspaceType | undefined;
+  /** Scoped path of the file the messages are written in. */
+  filePath: string;
 }) {
   return async (
     commentId: string,
+    previous: DfmMessage | null,
     body: string
   ): Promise<Result<DfmMessage, string>> => {
     if (!owner) {
@@ -371,7 +387,13 @@ export function useSignDfmCommentMessage({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            filePath,
             commentId,
+            previous: previous && {
+              author: previous.author,
+              createdAt: previous.createdAt,
+              body: previous.body,
+            },
             body,
           } satisfies PostDfmCommentSignatureRequestBody),
         }

@@ -1,4 +1,5 @@
 import { generateKeyPairSync, verify } from "node:crypto";
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
 import { messageSignaturePayload } from "@app/lib/markdown/dfm";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -54,12 +55,34 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
       body: JSON.stringify(body),
     });
 
-  it("writes and signs the message as the signed-in user", async () => {
+  const PREVIOUS = {
+    author: { kind: "user", id: "usr_yuka", name: "Yuka" },
+    createdAt: "2026-10-05T12:00:00.000Z",
+    body: "Shall we?",
+  } as const;
+
+  const setupConversationFile = async () => {
     const { workspace, auth, user } = await createPrivateApiMockRequest();
     await FeatureFlagFactory.basic(auth, "co_edition");
+    const conversation = await createConversation(auth, {
+      title: null,
+      visibility: "unlisted",
+      spaceId: null,
+    });
+    return {
+      workspace,
+      user,
+      filePath: `conversation-${conversation.sId}/notes.md`,
+    };
+  };
+
+  it("writes and signs the message as the signed-in user", async () => {
+    const { workspace, user, filePath } = await setupConversationFile();
 
     const response = await post(workspace.sId, {
+      filePath,
       commentId: "c1",
+      previous: PREVIOUS,
       body: "Looks good.",
       author: { kind: "user", id: "usr_other", name: "Not me" },
     });
@@ -78,7 +101,9 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
         Buffer.from(
           messageSignaturePayload({
             workspaceId: workspace.sId,
+            filePath,
             commentId: "c1",
+            previous: PREVIOUS,
             message,
           }),
           "utf8"
@@ -93,19 +118,41 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
     const { workspace } = await createPrivateApiMockRequest();
 
     const response = await post(workspace.sId, {
+      filePath: "conversation-abc/notes.md",
       commentId: "c1",
+      previous: null,
       body: "Looks good.",
     });
 
     expect(response.status).toBe(403);
   });
 
-  it("refuses a message the codec cannot write", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-    await FeatureFlagFactory.basic(auth, "co_edition");
+  it.each([
+    ["a file the user cannot reach", () => "conversation-missing/notes.md"],
+    [
+      "a path that is not normalized",
+      (filePath: string) => filePath.replace("/notes.md", "/./notes.md"),
+    ],
+  ])("refuses %s", async (_, pathFor) => {
+    const { workspace, filePath } = await setupConversationFile();
 
     const response = await post(workspace.sId, {
+      filePath: pathFor(filePath),
       commentId: "c1",
+      previous: null,
+      body: "Looks good.",
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("refuses a message the codec cannot write", async () => {
+    const { workspace, filePath } = await setupConversationFile();
+
+    const response = await post(workspace.sId, {
+      filePath,
+      commentId: "c1",
+      previous: null,
       body: "::message{}",
     });
 
