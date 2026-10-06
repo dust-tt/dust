@@ -20,6 +20,9 @@ v4/local/run exec env DFS_PROFILE=1 python3 /dfs/v4/bench/run.py
 v4/local/run stop
 ```
 
+For an interactive shell, use `docker exec -it dfs-v4-dev-1 bash`. The image includes Git, SSH,
+tab completion, `less`, and `ll` (`ls -alh --color=auto`).
+
 Interrupt the demo to unmount, drain client writes, and stop its server. Its fixture and database
 survive restart. Benchmark fixtures use distinct FDB prefixes; credentials, JSON and logs stay in
 `/tmp` inside the container. The full table is in [bench/RESULTS.md](bench/RESULTS.md).
