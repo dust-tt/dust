@@ -123,19 +123,13 @@ export function saveDfm(
 /**
  * @cc [owner:tdraier,label:product] document-comment-writable
  * A thread MUST be accepted only when the codec can write it on its own and read it back
- * unchanged.
+ * unchanged. The document's comments attribute throws on a thread the codec refuses, so a
+ * thread MUST pass this check before any transaction carries it, even one only previewed.
  */
-export function validateCommentThread(
-  comment: DfmComment
-): Result<void, string> {
-  const serialized = serializeDfm({
+export function isWritableThread(comment: DfmComment): boolean {
+  return serializeDfm({
     frontMatter: null,
     body: "",
     comments: [comment],
-  });
-  return serialized.isErr()
-    ? new Err(
-        'This comment cannot be saved as written. Check for lines starting with "::" or an unclosed code block.'
-      )
-    : new Ok(undefined);
+  }).isOk();
 }

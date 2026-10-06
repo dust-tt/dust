@@ -1,5 +1,8 @@
 import { Document } from "@app/components/editor/document/Document";
-import type { DfmAuthor } from "@app/lib/markdown/dfm";
+import type { DocumentProps } from "@app/components/editor/document/types";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
+import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
+import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import {
   act,
@@ -21,7 +24,11 @@ const hasEditor = (
 ): element is HTMLElement & { editor: Editor } =>
   element !== null && "editor" in element && element.editor !== undefined;
 
-async function renderDocument(initialContent: string) {
+async function renderDocument(
+  initialContent: string,
+  verifyCommentMessage?: DfmMessageVerifier,
+  signCommentMessage?: DocumentProps["signCommentMessage"]
+) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
   const { container } = render(
     <Document
@@ -30,6 +37,8 @@ async function renderDocument(initialContent: string) {
       autosaveDebounceMs={60_000}
       commentAuthor={AUTHOR}
       renderCommentAuthorAvatar={() => null}
+      verifyCommentMessage={verifyCommentMessage}
+      signCommentMessage={signCommentMessage}
     />
   );
   const dom = await waitFor(() => {
@@ -155,7 +164,9 @@ describe("Document comments", () => {
     fireEvent.change(field, { target: { value: "Too bold?" } });
     fireEvent.keyDown(field, { key: "Enter" });
 
-    expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole("article", { name: "New comment" })).toBeNull()
+    );
     expect(
       screen.getByRole("article", { name: "Comment by Tom" }).textContent
     ).toContain("Too bold?");
@@ -188,6 +199,40 @@ describe("Document comments", () => {
       "value",
       "Too bold?"
     );
+  });
+
+  it("freezes a new comment and shows progress while the server signs it", async () => {
+    let finishSigning = () => undefined as unknown;
+    const sign = vi.fn(
+      (_commentId: string, _thread: DfmMessage[], body: string) =>
+        new Promise<Result<DfmMessage, string>>((resolve) => {
+          finishSigning = () =>
+            resolve(new Ok({ author: AUTHOR, createdAt: AT, body }));
+        })
+    );
+    const { dom, editor } = await renderDocument(
+      "Hello brave world.\n",
+      undefined,
+      sign
+    );
+
+    startComment(dom, editor, "brave");
+    const field = screen.getByRole("textbox", { name: "Comment" });
+    fireEvent.change(field, { target: { value: "Too bold?" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Sending" })).toBeDefined()
+    );
+    expect(field).toHaveProperty("readOnly", true);
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(sign).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finishSigning();
+    });
+
+    expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
   });
 
   it("cancels the draft on Escape and keeps the document unchanged", async () => {
@@ -269,4 +314,20 @@ describe("Document comments", () => {
       )
     ).toBeDefined();
   });
+
+  it.each([
+    [false, 1],
+    [true, 0],
+  ])(
+    "marks a message as unverified only when its check fails (verified: %s)",
+    async (verified, marks) => {
+      const { dom } = await renderDocument(SOURCE, async () => verified);
+
+      fireEvent.click(highlight(dom, "c1"));
+
+      await waitFor(() =>
+        expect(screen.queryAllByText("Unverified")).toHaveLength(marks)
+      );
+    }
+  );
 });

@@ -1,4 +1,4 @@
-import { validateCommentThread } from "@app/components/editor/document/dfm_persistence";
+import { isWritableThread } from "@app/components/editor/document/dfm_persistence";
 import type { DocumentCommentDraft } from "@app/components/editor/document/DocumentComments";
 import {
   documentCommentsPluginKey,
@@ -8,7 +8,9 @@ import {
   getDocumentComments,
   scrollToCommentHighlight,
 } from "@app/components/editor/document/DocumentComments";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ChainedCommands, Editor, JSONContent } from "@tiptap/core";
@@ -23,10 +25,24 @@ interface UseDocumentCommentsProps {
   author: DfmAuthor | undefined;
   /** Whether the document, as TipTap JSON, would save. */
   isSavable: (document: JSONContent) => boolean;
+  /** Has the server write and sign a new message; without it, messages are built locally. */
+  sign?: (
+    commentId: string,
+    thread: DfmMessage[],
+    body: string
+  ) => Promise<Result<DfmMessage, string>>;
+  verify?: DfmMessageVerifier;
+}
+
+interface Verification {
+  /** The threads and verifier the results belong to; results for others are stale. */
+  comments: DfmComment[];
+  verify: DfmMessageVerifier;
+  /** Whether each message verified, by `${commentId}:${index}`. */
+  results: Map<string, boolean>;
 }
 
 interface EditorCommentsState {
-  comments: DfmComment[];
   /** Commented text by comment id, in document order. */
   quotes: Map<string, string>;
   /** Position of the first commented text by comment id. */
@@ -37,8 +53,9 @@ interface EditorCommentsState {
   draftQuote: string;
 }
 
+const EMPTY_COMMENTS: DfmComment[] = [];
+
 const EMPTY_STATE: EditorCommentsState = {
-  comments: [],
   quotes: new Map(),
   starts: new Map(),
   activeId: null,
@@ -50,7 +67,14 @@ const UNAVAILABLE_MESSAGE = "Commenting is unavailable.";
 const UNANCHORED_MESSAGE =
   "The selected text can no longer take a comment. Select other text to comment.";
 const UNSAVABLE_MESSAGE =
-  "The document could not be saved with this comment. Try a shorter one.";
+  "This comment can't be saved in this document. Try shortening or simplifying it.";
+
+const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
+  a?.author.kind === b?.author.kind &&
+  a?.author.id === b?.author.id &&
+  a?.author.name === b?.author.name &&
+  a?.createdAt === b?.createdAt &&
+  a?.body === b?.body;
 
 /** The document the commands would produce, or null when one of them refuses. */
 const previewDocument = (
@@ -91,11 +115,19 @@ export interface PanelFocusRequest {
  * Opening the panel from its toggle MUST request focus on the panel. Closing the panel while
  * focus is inside it MUST return focus to the toggle.
  */
+/**
+ * @cc [owner:tdraier,label:security] document-comment-verification
+ * With a verifier, each message MUST read as verified or unverified from the current verifier's
+ * answer for the threads currently shown, and as unknown while that answer is pending. Without a
+ * verifier, every message MUST read as unknown, never as verified.
+ */
 export const useDocumentComments = ({
   editor,
   canComment,
   author,
   isSavable,
+  sign,
+  verify,
 }: UseDocumentCommentsProps) => {
   const state =
     useEditorState({
@@ -107,7 +139,6 @@ export const useDocumentComments = ({
         const pluginState = documentCommentsPluginKey.getState(editor.state);
         const draft = pluginState?.draft ?? null;
         return {
-          comments: getDocumentComments(editor.state.doc),
           quotes: getCommentedTexts(editor.state.doc),
           starts: getCommentStarts(editor.state.doc),
           activeId: pluginState?.activeId ?? null,
@@ -118,18 +149,53 @@ export const useDocumentComments = ({
         };
       },
     }) ?? EMPTY_STATE;
+  // Selected apart so the threads keep their identity while only the selection or draft moves.
+  const comments =
+    useEditorState({
+      editor,
+      selector: ({ editor }): DfmComment[] =>
+        editor ? getDocumentComments(editor.state.doc) : EMPTY_COMMENTS,
+    }) ?? EMPTY_COMMENTS;
   const [panelOpen, setPanelOpen] = useState(false);
   const [focusRequest, setFocusRequest] = useState<PanelFocusRequest | null>(
     null
   );
+  const [verification, setVerification] = useState<Verification | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const canWrite = canComment && author !== undefined;
   // Stable identity matters: the markers re-measure the DOM whenever this array changes.
   const unresolved = useMemo(
-    () => state.comments.filter((comment) => comment.status === "open"),
-    [state.comments]
+    () => comments.filter((comment) => comment.status === "open"),
+    [comments]
   );
+
+  // Signature checks are asynchronous WebCrypto calls; results are kept with the threads they
+  // checked, so an edit never shows a stale answer.
+  useEffect(() => {
+    if (!verify) {
+      return;
+    }
+    let cancelled = false;
+    void concurrentExecutor(
+      comments.flatMap((comment) =>
+        comment.messages.map((_, index) => ({ comment, index }))
+      ),
+      async ({ comment, index }) =>
+        [
+          `${comment.id}:${index}`,
+          await verify(comment.id, comment.messages, index),
+        ] as const,
+      { concurrency: 8 }
+    ).then((entries) => {
+      if (!cancelled) {
+        setVerification({ comments, verify, results: new Map(entries) });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [comments, verify]);
 
   useEffect(() => {
     if (!canWrite && state.draft && editor) {
@@ -153,14 +219,47 @@ export const useDocumentComments = ({
     requestFocus(id);
   };
 
-  const message = (writer: DfmAuthor, body: string): DfmMessage => ({
-    author: writer,
-    createdAt: new Date().toISOString(),
-    body,
-  });
+  /**
+   * The message to add to `thread`, or to a new thread `commentId`: checked against the codec
+   * locally first, then written by the server when a signer is set and checked again as written.
+   */
+  const writeMessage = async (
+    writer: DfmAuthor,
+    commentId: string,
+    thread: DfmComment | undefined,
+    body: string
+  ): Promise<Result<DfmMessage, string>> => {
+    const withMessage = (added: DfmMessage): DfmComment =>
+      thread
+        ? { ...thread, messages: [...thread.messages, added] }
+        : { id: commentId, status: "open", messages: [added] };
+    const local: DfmMessage = {
+      author: writer,
+      createdAt: new Date().toISOString(),
+      body,
+    };
+    if (!isWritableThread(withMessage(local))) {
+      return new Err(UNSAVABLE_MESSAGE);
+    }
+    if (!sign) {
+      return new Ok(local);
+    }
+    const signed = await sign(commentId, thread?.messages ?? [], body);
+    if (signed.isOk() && !isWritableThread(withMessage(signed.value))) {
+      return new Err(UNSAVABLE_MESSAGE);
+    }
+    return signed;
+  };
 
   return {
-    comments: state.comments,
+    /** Whether a message's signature checked out, or null while unknown. */
+    isVerified: (commentId: string, index: number): boolean | null =>
+      verify &&
+      verification?.comments === comments &&
+      verification.verify === verify
+        ? (verification.results.get(`${commentId}:${index}`) ?? null)
+        : null,
+    comments,
     unresolved,
     quotes: state.quotes,
     starts: state.starts,
@@ -237,24 +336,29 @@ export const useDocumentComments = ({
     cancelDraft: () => {
       editor?.chain().cancelCommentDraft().focus().run();
     },
-    submitDraft: (body: string): Result<void, string> => {
-      const draft = state.draft;
-      if (!canWrite || !editor || !author || !draft) {
+    submitDraft: async (body: string): Promise<Result<void, string>> => {
+      if (!canWrite || !editor || !author || !state.draft) {
+        return new Err(UNAVAILABLE_MESSAGE);
+      }
+      const id = crypto.randomUUID();
+      const written = await writeMessage(author, id, undefined, body);
+      if (written.isErr()) {
+        return written;
+      }
+      if (!editor.isEditable) {
         return new Err(UNAVAILABLE_MESSAGE);
       }
       const comment: DfmComment = {
-        id: crypto.randomUUID(),
+        id,
         status: "open",
-        messages: [message(author, body)],
+        messages: [written.value],
       };
-      const writable = validateCommentThread(comment);
-      if (writable.isErr()) {
-        return writable;
-      }
-      const next = previewDocument(editor, (chain) =>
-        chain.addComment(comment)
-      );
-      if (!next) {
+      // The draft may have moved, or been cancelled, while the server signed the message.
+      const draft = documentCommentsPluginKey.getState(editor.state)?.draft;
+      const next = draft
+        ? previewDocument(editor, (chain) => chain.addComment(comment))
+        : null;
+      if (!draft || !next) {
         return new Err(UNANCHORED_MESSAGE);
       }
       if (!isSavable(next.toJSON())) {
@@ -269,26 +373,41 @@ export const useDocumentComments = ({
       setPanelOpen(true);
       return new Ok(undefined);
     },
-    reply: (id: string, body: string): Result<void, string> => {
-      const thread = state.comments.find((comment) => comment.id === id);
+    reply: async (id: string, body: string): Promise<Result<void, string>> => {
+      const thread = comments.find((comment) => comment.id === id);
       if (!canWrite || !editor || !author || !thread) {
         return new Err(UNAVAILABLE_MESSAGE);
       }
-      const reply = message(author, body);
-      const writable = validateCommentThread({
-        ...thread,
-        messages: [...thread.messages, reply],
-      });
-      if (writable.isErr()) {
-        return writable;
+      const written = await writeMessage(author, id, thread, body);
+      if (written.isErr()) {
+        return written;
+      }
+      if (!editor.isEditable) {
+        return new Err(UNAVAILABLE_MESSAGE);
+      }
+      // The reply is signed after the thread's last message; it must still follow that one.
+      const current = getDocumentComments(editor.state.doc).find(
+        (comment) => comment.id === id
+      );
+      if (!current) {
+        return new Err("This comment was deleted.");
+      }
+      if (
+        current.messages.length !== thread.messages.length ||
+        !sameMessage(current.messages.at(-1), thread.messages.at(-1))
+      ) {
+        return new Err("This thread changed while sending. Send again.");
       }
       const next = previewDocument(editor, (chain) =>
-        chain.replyToComment(id, reply)
+        chain.replyToComment(id, written.value)
       );
-      if (!next || !isSavable(next.toJSON())) {
+      if (!next) {
+        return new Err("This comment was deleted.");
+      }
+      if (!isSavable(next.toJSON())) {
         return new Err(UNSAVABLE_MESSAGE);
       }
-      editor.commands.replyToComment(id, reply);
+      editor.commands.replyToComment(id, written.value);
       return new Ok(undefined);
     },
     /** Resolves or reopens, then focuses the given thread or the panel heading. */

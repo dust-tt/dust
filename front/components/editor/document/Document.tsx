@@ -57,6 +57,8 @@ export const Document = ({
   badge,
   commentAuthor,
   renderCommentAuthorAvatar,
+  signCommentMessage,
+  verifyCommentMessage,
 }: DocumentProps) => {
   const {
     editor,
@@ -80,6 +82,8 @@ export const Document = ({
     canComment: editable,
     author: commentAuthor,
     isSavable,
+    sign: signCommentMessage,
+    verify: verifyCommentMessage,
   });
   const contentRef = useRef<HTMLDivElement>(null);
   const panelId = useId();

@@ -145,6 +145,10 @@ const config = {
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
+  /** Ed25519 private key signing DFM comment messages, as base64 PKCS#8 DER. */
+  getDfmCommentSigningKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DFM_COMMENT_SIGNING_KEY");
+  },
   getIPInfoApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("IPINFO_API_TOKEN");
   },
