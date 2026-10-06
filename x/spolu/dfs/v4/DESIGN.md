@@ -207,6 +207,8 @@ Each process also schedules same-primary-object transactions fairly (the parent 
 target for file edits). This avoids self-contention when a batch contains sibling creates. These
 short-lived gates are only a scheduling optimization: different servers still coordinate solely
 through FDB, and every transaction reads current state after acquiring its gate. No tenant gate.
+`DFS_PRIMARY_CONCURRENCY` defaults to one; bounded experiments may allow 2–4 simultaneous transactions
+per local key without changing conflict checks or grouping independent operations.
 Parent waiters do not occupy the 64 active transaction slots. Up to 1,024 groups may hold mutation
 admission, with 32 accepted batch RPCs; all groups in a batch become eligible without a smaller worker
 window. Shutdown waits for accepted batches and queued mutations as well as active transactions.

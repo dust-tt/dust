@@ -43,12 +43,19 @@ struct Fixture {
 }
 impl Fixture {
     async fn new() -> Result<Self> {
+        Self::with_primary_concurrency(1).await
+    }
+    async fn with_primary_concurrency(concurrency: usize) -> Result<Self> {
         let config = storage::StorageConfig {
             fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
             fdb_prefix: format!("dfs-v4-test-{}", uuid::Uuid::new_v4().simple()),
         };
         let key = "ab".repeat(32);
-        let api = api::Api(State::new(storage::Storage::open(&config).await?, &key)?);
+        let api = api::Api(State::with_primary_concurrency(
+            storage::Storage::open(&config).await?,
+            &key,
+            concurrency,
+        )?);
         let tenant = api
             .create_tenant(request(
                 &key,
@@ -509,8 +516,85 @@ fn real_fdb_contracts() -> Result<()> {
         client_cache_contracts().await?;
         independent_batch_scheduling().await?;
         prefetched_collision().await?;
+        concurrent_parent_creates().await?;
         Ok(())
     })
+}
+
+async fn concurrent_parent_creates() -> Result<()> {
+    use futures::StreamExt;
+    for concurrency in [2, 4] {
+        let f = Fixture::with_primary_concurrency(concurrency).await?;
+        let parent = f.create(&f.tenant.root_id, "parent", true).await?;
+        let results = futures::stream::iter(0..32)
+            .map(|n| {
+                let f = &f;
+                let parent = &parent;
+                async move {
+                    let id = uuid::Uuid::new_v4().simple().to_string();
+                    let results = f
+                        .batch(vec![MutationGroup {
+                            id: n,
+                            edits: vec![
+                                edit(edit::Operation::Create(CreateRequest {
+                                    object_id: id.clone(),
+                                    parent_id: parent.id.clone(),
+                                    name: format!("file{n}"),
+                                    mode: 0o644,
+                                    ..Default::default()
+                                })),
+                                write(&id, 0, &[n as u8]),
+                            ],
+                        }])
+                        .await?;
+                    anyhow::ensure!(
+                        results[0].error.is_none(),
+                        "create failed: {:?}",
+                        results[0]
+                    );
+                    assert_eq!(f.read(&id).await?.data, [n as u8]);
+                    Ok::<_, anyhow::Error>(())
+                }
+            })
+            .buffer_unordered(32)
+            .try_collect::<Vec<_>>()
+            .await?;
+        assert_eq!(results.len(), 32);
+        let (peer, session) = f.peer().await?;
+        let create = CreateRequest {
+            parent_id: parent.id.clone(),
+            name: "same-name".into(),
+            mode: 0o644,
+            ..Default::default()
+        };
+        let (a, b) = tokio::join!(
+            f.api.create(request(&f.owner.session_key, create.clone())?),
+            peer.create(request(&session.session_key, create)?),
+        );
+        assert_eq!(usize::from(a.is_ok()) + usize::from(b.is_ok()), 1);
+        assert_eq!(
+            code(&a.err().or_else(|| b.err()).context("same-name conflict")?),
+            ErrorCode::AlreadyExists
+        );
+        let entries = f
+            .api
+            .list(request(
+                &f.owner.session_key,
+                ListRequest {
+                    directory_id: parent.id,
+                    after: None,
+                    limit: 64,
+                },
+            )?)
+            .await?
+            .into_inner()
+            .entries;
+        assert_eq!(entries.len(), 33);
+        for n in 0..32 {
+            assert!(entries.iter().any(|entry| entry.name == format!("file{n}")));
+        }
+    }
+    Ok(())
 }
 
 async fn prefetched_collision() -> Result<()> {

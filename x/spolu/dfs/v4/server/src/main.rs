@@ -34,6 +34,10 @@ struct Config {
     allow_insecure: bool,
     #[arg(long, default_value_t = 300)]
     shutdown_timeout_seconds: u64,
+    /// Local scheduling only; FDB still enforces all cross-process conflicts.
+    #[arg(long, env = "DFS_PRIMARY_CONCURRENCY", default_value_t = 1,
+        value_parser = clap::value_parser!(u8).range(1..=4))]
+    primary_concurrency: u8,
     #[command(flatten)]
     storage: StorageConfig,
 }
@@ -56,7 +60,8 @@ async fn run() -> Result<()> {
     );
     let key = read_key(&config.server_key_file).context("read server key")?;
     let storage = Storage::open(&config.storage).await?;
-    let state = State::new(storage, &key)?;
+    let state =
+        State::with_primary_concurrency(storage, &key, config.primary_concurrency as usize)?;
     let mut server = Server::builder();
     if let (Some(cert), Some(key)) = (config.tls_cert, config.tls_key) {
         server = server.tls_config(ServerTlsConfig::new().identity(Identity::from_pem(

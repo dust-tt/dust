@@ -135,7 +135,7 @@ async fn apply_group(
     validate::id_ref(first.primary_id())?;
     let scheduling = state.schedule(&session.info.tenant_id, first.primary_id());
     let parent_wait = Guard::new(Phase::Parent);
-    let _scheduled = scheduling.lock().await;
+    let _scheduled = scheduling.acquire().await.map_err(failed)?;
     drop(parent_wait);
     #[cfg(test)]
     crate::tests::pause(&state.pauses, &changes).await;

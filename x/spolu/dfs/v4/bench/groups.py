@@ -24,6 +24,7 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     print(f'Report directory: {work}', flush=True)
     report = {'revision': os.environ.get('DFS_BENCH_REVISION', 'uncommitted'), 'cases': [],
+              'server_primary_concurrency': int(os.environ.get('DFS_PRIMARY_CONCURRENCY', '1')),
               'profile': os.environ.get('DFS_PROFILE') == '1',
               'server_sha256': hashlib.sha256(support.server_binary().read_bytes()).hexdigest()}
     for directories in args.directories:
