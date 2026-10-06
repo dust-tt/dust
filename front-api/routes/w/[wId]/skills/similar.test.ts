@@ -85,6 +85,10 @@ describe("POST /api/w/:wId/skills/similar", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       similar_skills: [first.sId, second.sId],
+      skills: expect.arrayContaining([
+        expect.objectContaining({ sId: first.sId, name: first.name }),
+        expect.objectContaining({ sId: second.sId, name: second.name }),
+      ]),
     });
     expect(runMultiActionsAgent).toHaveBeenCalledTimes(1);
   });
@@ -102,7 +106,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ similar_skills: [] });
+    expect(await response.json()).toEqual({ similar_skills: [], skills: [] });
   });
 
   it("returns empty similar skills without calling the LLM when the workspace has no custom skills", async () => {
@@ -113,7 +117,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ similar_skills: [] });
+    expect(await response.json()).toEqual({ similar_skills: [], skills: [] });
     expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 
@@ -130,7 +134,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ similar_skills: [] });
+    expect(await response.json()).toEqual({ similar_skills: [], skills: [] });
     // Never calls runMultiActionsAgent because there is no published skill to check
     expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
@@ -150,7 +154,10 @@ describe("POST /api/w/:wId/skills/similar", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ similar_skills: [skill.sId] });
+    expect(await response.json()).toEqual({
+      similar_skills: [skill.sId],
+      skills: [expect.objectContaining({ sId: skill.sId })],
+    });
   });
 
   it("batches skills into multiple LLM calls and merges the results", async () => {
@@ -234,6 +241,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       similar_skills: [discoverableSkill.sId],
+      skills: [expect.objectContaining({ sId: discoverableSkill.sId })],
     });
     expect(runMultiActionsAgent).toHaveBeenCalledTimes(1);
 
@@ -259,7 +267,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ similar_skills: [] });
+    expect(await response.json()).toEqual({ similar_skills: [], skills: [] });
     expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 });
