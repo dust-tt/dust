@@ -6,6 +6,15 @@ import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Novu so no real emails are sent.
+// These tests cover the Novu path, gated by the `novu_transactional_emails` flag.
+vi.mock(
+  import("@app/lib/notifications/transactional_emails"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    shouldSendTransactionalEmailsWithNovu: vi.fn().mockResolvedValue(true),
+  })
+);
+
 vi.mock(
   import("@app/lib/notifications/triggers/workspace-invitation"),
   async (importOriginal) => {

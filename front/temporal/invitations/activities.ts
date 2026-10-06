@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
-import { sendWorkspaceInvitationReminderEmail } from "@app/lib/api/invitation";
+import {
+  getInvitationEmailRecipients,
+  sendWorkspaceInvitationReminderEmail,
+} from "@app/lib/api/invitation";
 import { Authenticator } from "@app/lib/auth";
-import { emailRecipientsFromAddresses } from "@app/lib/notifications/transactional_emails";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -14,6 +16,8 @@ const BATCH_SIZE = 50;
 export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
   // Preflight: fail fast before mutating any rows if config is missing.
   config.getNovuSecretKey();
+  config.getInvitationReminderEmailTemplate();
+  config.getSendgridApiKey();
 
   const invitations =
     await MembershipInvitationResource.listEligibleForReminder({
@@ -38,7 +42,8 @@ export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
 
   for (const [workspaceId, batch] of byWorkspaceId) {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-    const recipients = await emailRecipientsFromAddresses(
+    const recipients = await getInvitationEmailRecipients(
+      auth.getNonNullableWorkspace(),
       batch.map((invitation) => invitation.inviteEmail)
     );
 

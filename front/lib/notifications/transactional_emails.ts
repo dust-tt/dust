@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { getFeatureFlagsForContext } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications/novu-client";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -6,6 +7,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { createHash } from "crypto";
@@ -23,6 +25,19 @@ const EXTERNAL_SUBSCRIBER_ID_PREFIX = "email-";
 export const TRANSACTIONAL_EMAIL_PREFERENCES = {
   all: { enabled: true, readOnly: true },
 };
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] novu-transactional-emails-flag
+ * Returns true iff `workspace` has the `novu_transactional_emails` feature flag. Transactional
+ * emails about `workspace` MUST go through Novu when it returns true, and through the legacy
+ * SendGrid helpers of `lib/api/email.ts` otherwise.
+ */
+export async function shouldSendTransactionalEmailsWithNovu(
+  workspace: LightWorkspaceType
+): Promise<boolean> {
+  const flags = await getFeatureFlagsForContext(workspace, { plan: null });
+  return flags.includes("novu_transactional_emails");
+}
 
 export type TransactionalEmailCopy = {
   subject: string;

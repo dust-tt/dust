@@ -1,3 +1,9 @@
+import config from "@app/lib/api/config";
+import {
+  sendAdminSubscriptionPaymentFailedEmail,
+  sendCancelSubscriptionEmail,
+  sendReactivateSubscriptionEmail,
+} from "@app/lib/api/email";
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers, isWorkspaceRelocationDone } from "@app/lib/api/workspace";
@@ -25,7 +31,10 @@ import {
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
-import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientFromUser,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import {
   notifyAdminsSubscriptionCanceled,
   notifyAdminsSubscriptionPaymentFailed,
@@ -544,12 +553,23 @@ async function notifyAdminsOfPaymentFailure({
     roles: ["admin"],
     activeOnly: true,
   });
-  // The email links to `/w/:wId/subscription/manage`, built by the workflow from `workspaceId`.
-  const result = await notifyAdminsSubscriptionPaymentFailed({
-    admins: admins.map(emailRecipientFromUser),
-    workspaceId: owner.sId,
-    workspaceName: owner.name,
-  });
+  let result: Result<void, Error> = new Ok(undefined);
+  if (await shouldSendTransactionalEmailsWithNovu(owner)) {
+    // The email links to `/w/:wId/subscription/manage`, built by the workflow from `workspaceId`.
+    result = await notifyAdminsSubscriptionPaymentFailed({
+      admins: admins.map(emailRecipientFromUser),
+      workspaceId: owner.sId,
+      workspaceName: owner.name,
+    });
+  } else {
+    const manageSubscriptionUrl = `${config.getAppUrl()}/w/${owner.sId}/subscription/manage`;
+    for (const admin of admins) {
+      await sendAdminSubscriptionPaymentFailedEmail(
+        admin.email,
+        manageSubscriptionUrl
+      );
+    }
+  }
   if (result.isErr()) {
     logger.error(
       { error: result.error, workspaceId: owner.sId, stripeError: true },
@@ -1403,19 +1423,38 @@ export async function processStripeWebhookEvent({
             "[Stripe Webhook] No active admins found, skipping cancel/reactivate email."
           );
         }
-        const admins = members.map(emailRecipientFromUser);
-        const emailResult = endDate
-          ? await notifyAdminsSubscriptionCanceled({
-              admins,
-              workspaceId: workspace.sId,
-              workspaceName: workspace.name,
-              endDate: endDate.toISOString(),
-            })
-          : await notifyAdminsSubscriptionReactivated({
-              admins,
-              workspaceId: workspace.sId,
-              workspaceName: workspace.name,
-            });
+        let emailResult: Result<void, Error> = new Ok(undefined);
+        if (
+          await shouldSendTransactionalEmailsWithNovu(
+            renderLightWorkspaceType({ workspace })
+          )
+        ) {
+          const admins = members.map(emailRecipientFromUser);
+          emailResult = endDate
+            ? await notifyAdminsSubscriptionCanceled({
+                admins,
+                workspaceId: workspace.sId,
+                workspaceName: workspace.name,
+                endDate: endDate.toISOString(),
+              })
+            : await notifyAdminsSubscriptionReactivated({
+                admins,
+                workspaceId: workspace.sId,
+                workspaceName: workspace.name,
+              });
+        } else {
+          for (const admin of members) {
+            if (endDate) {
+              await sendCancelSubscriptionEmail(
+                admin.email,
+                workspace.sId,
+                endDate
+              );
+            } else {
+              await sendReactivateSubscriptionEmail(admin.email);
+            }
+          }
+        }
         if (emailResult.isErr()) {
           logger.error(
             {

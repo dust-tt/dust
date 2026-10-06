@@ -16,6 +16,15 @@ import type { WorkspaceType } from "@app/types/user";
 import { Stripe } from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These tests cover the Novu path, gated by the `novu_transactional_emails` flag.
+vi.mock(
+  import("@app/lib/notifications/transactional_emails"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    shouldSendTransactionalEmailsWithNovu: vi.fn().mockResolvedValue(true),
+  })
+);
+
 vi.mock(
   import("@app/lib/notifications/triggers/subscription-lifecycle"),
   async (importOriginal) => {

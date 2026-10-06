@@ -4,6 +4,7 @@ import {
   getDataSources,
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
+import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import { disableWorkOSSSOAndSCIM } from "@app/lib/api/workos/organization";
 import {
@@ -13,7 +14,10 @@ import {
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getWorkspaceDataRetention } from "@app/lib/data_retention";
-import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientFromUser,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import { notifyAdminsWorkspaceDataDeletion } from "@app/lib/notifications/triggers/subscription-lifecycle";
 import {
   FREE_NO_PLAN_CODE,
@@ -77,6 +81,18 @@ export async function sendDataDeletionEmail({
       roles: ["admin"],
       activeOnly: true,
     });
+    if (!(await shouldSendTransactionalEmailsWithNovu(ws))) {
+      for (const a of admins) {
+        await sendAdminDataDeletionEmail({
+          email: a.email,
+          workspaceName: ws.name,
+          remainingDays,
+          planCode: subscription?.getPlan().code,
+          isLast,
+        });
+      }
+      return;
+    }
     const result = await notifyAdminsWorkspaceDataDeletion({
       admins: admins.map(emailRecipientFromUser),
       workspaceId: ws.sId,

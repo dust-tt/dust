@@ -951,6 +951,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "localisation"
   | "co_edition"
   | "unified_search"
+  | "novu_transactional_emails"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

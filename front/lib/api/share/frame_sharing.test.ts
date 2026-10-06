@@ -1,3 +1,4 @@
+import { sendLegacyFrameOtpEmail } from "@app/lib/api/email";
 import {
   generateFrameOtpChallenge,
   getFrameFunctionSharingConflict,
@@ -7,6 +8,7 @@ import {
 import { isExternalSubscriberId } from "@app/lib/notifications/transactional_emails";
 import { notifyFrameLoginCode } from "@app/lib/notifications/triggers/frame-sharing";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -15,7 +17,16 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/api/email"), async (importOriginal) => {
+  const { Ok } = await import("@app/types/shared/result");
+  return {
+    ...(await importOriginal()),
+    sendLegacyFrameOtpEmail: vi.fn().mockResolvedValue(new Ok(undefined)),
+    sendLegacyFrameSharedEmail: vi.fn().mockResolvedValue(new Ok(undefined)),
+  };
+});
 
 vi.mock("@app/lib/utils/rate_limiter", () => ({
   rateLimiter: vi.fn().mockResolvedValue(1),
@@ -231,26 +242,56 @@ describe("validateFrameOtpChallenge", () => {
 });
 
 describe("sendFrameOtpEmail", () => {
-  it("emails the code to an external recipient in the frame's workspace", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("emails the code through Novu, in the frame's workspace, when the workspace has the flag", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "novu_transactional_emails");
+
     const result = await sendFrameOtpEmail({
       to: "outsider@example.com",
       code: "123456",
       sharedByName: "Alice",
-      workspace: { sId: "w_frame", name: "Acme" },
+      workspace,
     });
 
     expect(result.isOk()).toBe(true);
+    expect(sendLegacyFrameOtpEmail).not.toHaveBeenCalled();
     expect(notifyFrameLoginCode).toHaveBeenCalledOnce();
     const call = vi.mocked(notifyFrameLoginCode).mock.calls[0][0];
     expect(call).toMatchObject({
-      workspaceId: "w_frame",
-      workspaceName: "Acme",
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
       sharedByName: "Alice",
       code: "123456",
       expiresInMinutes: 15,
     });
     expect(call.recipient.email).toBe("outsider@example.com");
     expect(isExternalSubscriberId(call.recipient.subscriberId)).toBe(true);
+  });
+
+  it("keeps sending through SendGrid without the flag", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+
+    const result = await sendFrameOtpEmail({
+      to: "outsider@example.com",
+      code: "123456",
+      sharedByName: "Alice",
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(notifyFrameLoginCode).not.toHaveBeenCalled();
+    expect(sendLegacyFrameOtpEmail).toHaveBeenCalledWith({
+      to: "outsider@example.com",
+      code: "123456",
+      sharedByName: "Alice",
+      expiresInMinutes: 15,
+    });
   });
 });
 

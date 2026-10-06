@@ -1,9 +1,16 @@
+import {
+  sendLegacyFrameOtpEmail,
+  sendLegacyFrameSharedEmail,
+} from "@app/lib/api/email";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import type { EmailRecipient } from "@app/lib/notifications/transactional_emails";
-import { emailRecipientsFromAddresses } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientsFromAddresses,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import {
   notifyFrameLoginCode,
   notifyFrameShared,
@@ -21,7 +28,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { WorkspaceSharingPolicy } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import crypto from "crypto";
 
 export interface FrameSharingState {
@@ -387,8 +397,8 @@ export async function generateFrameOtpChallenge({
 }
 
 /**
- * Email a frame login code. The recipient may have no Dust user: the email then renders in the
- * locale of `workspace`, the workspace owning the frame.
+ * Email a frame login code. Through Novu, the recipient may have no Dust user: the email then
+ * renders in the locale of `workspace`, the workspace owning the frame.
  */
 export async function sendFrameOtpEmail({
   to,
@@ -399,8 +409,18 @@ export async function sendFrameOtpEmail({
   to: string;
   code: string;
   sharedByName: string;
-  workspace: { sId: string; name: string };
+  workspace: LightWorkspaceType;
 }): Promise<Result<void, Error>> {
+  const expiresInMinutes = Math.floor(OTP_TTL_SECONDS / 60);
+  if (!(await shouldSendTransactionalEmailsWithNovu(workspace))) {
+    return sendLegacyFrameOtpEmail({
+      to,
+      code,
+      sharedByName,
+      expiresInMinutes,
+    });
+  }
+
   const [recipient] = await emailRecipientsFromAddresses([to]);
   return notifyFrameLoginCode({
     recipient,
@@ -408,26 +428,29 @@ export async function sendFrameOtpEmail({
     workspaceName: workspace.name,
     sharedByName,
     code,
-    expiresInMinutes: Math.floor(OTP_TTL_SECONDS / 60),
+    expiresInMinutes,
   });
 }
 
+// `novuRecipient` is null when the workspace still sends its emails through SendGrid.
 async function sendFrameSharedEmail({
   frameUrl,
   sharedByName,
   shareToken,
-  recipient,
+  to,
+  novuRecipient,
   workspace,
 }: {
   frameUrl: string;
   sharedByName: string;
   shareToken: string;
-  recipient: EmailRecipient;
-  workspace: { sId: string; name: string };
+  to: string;
+  novuRecipient: EmailRecipient | null;
+  workspace: LightWorkspaceType;
 }): Promise<Result<void, Error>> {
   // Rate limit to 1 notification per recipient per frame per 24 hours to prevent spam.
   const remaining = await rateLimiter({
-    key: `frame_share_notification:${shareToken}:${recipient.email}`,
+    key: `frame_share_notification:${shareToken}:${to}`,
     maxPerTimeframe: SHARE_NOTIFICATION_MAX_PER_DAY,
     timeframeSeconds: SHARE_NOTIFICATION_TIMEFRAME_SECONDS,
     logger,
@@ -436,8 +459,11 @@ async function sendFrameSharedEmail({
     return new Ok(undefined);
   }
 
+  if (!novuRecipient) {
+    return sendLegacyFrameSharedEmail({ to, sharedByName, frameUrl });
+  }
   return notifyFrameShared({
-    recipient,
+    recipient: novuRecipient,
     workspaceId: workspace.sId,
     workspaceName: workspace.name,
     sharedByName,
@@ -468,11 +494,14 @@ function notifyFrameSharingInvitations(
     const shareToken = frameUrl.split("/").at(-1) ?? "";
 
     const workspace = auth.getNonNullableWorkspace();
-    const recipients = await emailRecipientsFromAddresses(emails);
-    for (const recipient of recipients) {
+    const recipients = (await shouldSendTransactionalEmailsWithNovu(workspace))
+      ? await emailRecipientsFromAddresses(emails)
+      : emails.map(() => null);
+    emails.forEach((email, index) => {
       fireAndForgetNotification(
         sendFrameSharedEmail({
-          recipient,
+          to: email,
+          novuRecipient: recipients[index],
           sharedByName: user.fullName(),
           frameUrl,
           shareToken,
@@ -481,13 +510,13 @@ function notifyFrameSharingInvitations(
         {
           message: "Failed to send sharing notification email",
           context: {
-            email: recipient.email,
+            email,
             fileId: file.sId,
             workspaceId: file.workspaceId,
           },
         }
       );
-    }
+    });
   };
   void sendNotifications().catch((error) => {
     logger.error(

@@ -491,6 +491,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fraggle",
   },
+  novu_transactional_emails: {
+    description:
+      "Send transactional emails (invitations, frame login codes, billing and admin alerts) through Novu instead of SendGrid",
+    stage: "dust_only",
+    owner: "Nils-Fedrigo",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

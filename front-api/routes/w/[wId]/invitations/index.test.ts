@@ -6,6 +6,15 @@ import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These tests cover the Novu path, gated by the `novu_transactional_emails` flag.
+vi.mock(
+  import("@app/lib/notifications/transactional_emails"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    shouldSendTransactionalEmailsWithNovu: vi.fn().mockResolvedValue(true),
+  })
+);
+
 vi.mock(
   import("@app/lib/notifications/triggers/workspace-invitation"),
   async (importOriginal) => {

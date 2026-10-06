@@ -2,6 +2,7 @@
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
+import { sendGitHubDeletionEmail } from "@app/lib/api/email";
 import {
   getLlmCredentials,
   MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
@@ -18,7 +19,10 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientFromUser,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import { notifyAdminsGitHubConnectionDeleted } from "@app/lib/notifications/triggers/github-connection-deleted";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -432,6 +436,12 @@ async function warnPostDeletion(
         activeOnly: true,
       });
       const owner = auth.getNonNullableWorkspace();
+      if (!(await shouldSendTransactionalEmailsWithNovu(owner))) {
+        for (const member of members) {
+          await sendGitHubDeletionEmail(member.email);
+        }
+        break;
+      }
       const result = await notifyAdminsGitHubConnectionDeleted({
         admins: members.map(emailRecipientFromUser),
         workspaceId: owner.sId,

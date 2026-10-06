@@ -1,10 +1,14 @@
+import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientFromUser,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import { notifyAdminsMCPGlobalSharingReconfiguration } from "@app/lib/notifications/triggers/mcp-global-sharing-reconfiguration";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import type {
@@ -12,6 +16,7 @@ import type {
   PostMCPServerViewResponseBody,
 } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,13 +63,35 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
       activeOnly: true,
     });
 
-    const result = await notifyAdminsMCPGlobalSharingReconfiguration({
-      admins: admins.map(emailRecipientFromUser),
-      workspaceId: workspace.sId,
-      workspaceName: workspace.name,
-      toolName,
-      agentNames,
-    });
+    let result: Result<void, Error>;
+    if (await shouldSendTransactionalEmailsWithNovu(workspace)) {
+      result = await notifyAdminsMCPGlobalSharingReconfiguration({
+        admins: admins.map(emailRecipientFromUser),
+        workspaceId: workspace.sId,
+        workspaceName: workspace.name,
+        toolName,
+        agentNames,
+      });
+    } else {
+      const results = await concurrentExecutor(
+        admins,
+        async (admin) =>
+          sendMCPGlobalSharingReconfigurationEmail({
+            email: admin.email,
+            workspaceName: workspace.name,
+            toolName,
+            agentNames,
+          }),
+        { concurrency: 8 }
+      );
+      result = results.some((r) => r.isErr())
+        ? new Err(
+            new Error(
+              "Failed to send MCP global sharing reconfiguration emails"
+            )
+          )
+        : new Ok(undefined);
+    }
     if (result.isErr()) {
       logger.error(
         {

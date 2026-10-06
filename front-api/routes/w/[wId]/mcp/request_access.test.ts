@@ -4,6 +4,15 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These tests cover the Novu path, gated by the `novu_transactional_emails` flag.
+vi.mock(
+  import("@app/lib/notifications/transactional_emails"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    shouldSendTransactionalEmailsWithNovu: vi.fn().mockResolvedValue(true),
+  })
+);
+
 vi.mock(
   import("@app/lib/notifications/triggers/access-request"),
   async (importOriginal) => {

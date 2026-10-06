@@ -1,4 +1,8 @@
-import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { sendLegacyAccessRequestEmail } from "@app/lib/api/email";
+import {
+  emailRecipientFromUser,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import { notifyAccessRequest } from "@app/lib/notifications/triggers/access-request";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -79,16 +83,24 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (ctx) => {
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const result = await notifyAccessRequest({
-    recipient: emailRecipientFromUser(dataSource.editedByUser),
-    workspaceId: owner.sId,
-    workspaceName: owner.name,
-    resourceKind: "data_source",
-    resourceName: dataSource.name,
-    requesterName: user.fullName(),
-    requesterEmail: user.email,
-    message: emailMessage,
-  });
+  const result = (await shouldSendTransactionalEmailsWithNovu(owner))
+    ? await notifyAccessRequest({
+        recipient: emailRecipientFromUser(dataSource.editedByUser),
+        workspaceId: owner.sId,
+        workspaceName: owner.name,
+        resourceKind: "data_source",
+        resourceName: dataSource.name,
+        requesterName: user.fullName(),
+        requesterEmail: user.email,
+        message: emailMessage,
+      })
+    : await sendLegacyAccessRequestEmail({
+        to: dataSource.editedByUser.email,
+        resourceKind: "data_source",
+        resourceName: dataSource.name,
+        requesterEmail: user.email,
+        message: emailMessage,
+      });
 
   if (result.isErr()) {
     return apiError(ctx, {

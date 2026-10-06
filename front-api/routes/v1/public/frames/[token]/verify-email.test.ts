@@ -9,6 +9,15 @@ import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These tests cover the Novu path, gated by the `novu_transactional_emails` flag.
+vi.mock(
+  import("@app/lib/notifications/transactional_emails"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    shouldSendTransactionalEmailsWithNovu: vi.fn().mockResolvedValue(true),
+  })
+);
+
 vi.mock(
   import("@app/lib/notifications/triggers/frame-sharing"),
   async (importOriginal) => {

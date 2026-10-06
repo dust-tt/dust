@@ -4,12 +4,19 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import {
+  sendLegacyWorkspaceInvitationEmail,
+  sendLegacyWorkspaceInvitationReminderEmail,
+} from "@app/lib/api/email";
+import {
   getMembers,
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import type { EmailRecipient } from "@app/lib/notifications/transactional_emails";
-import { emailRecipientsFromAddresses } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientsFromAddresses,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import { notifyWorkspaceInvitation } from "@app/lib/notifications/triggers/workspace-invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
@@ -37,14 +44,18 @@ import { MembershipInvitationResource } from "../resources/membership_invitation
 
 const EMAIL_CONCURRENCY = 8;
 
+// `novuRecipient` is null when the workspace still sends its emails through SendGrid.
 function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
   invitation: MembershipInvitationType,
-  recipient: EmailRecipient
+  novuRecipient: EmailRecipient | null
 ): Promise<Result<void, Error>> {
+  if (!novuRecipient) {
+    return sendLegacyWorkspaceInvitationEmail(owner, user, invitation);
+  }
   return notifyWorkspaceInvitation({
-    recipient,
+    recipient: novuRecipient,
     workspaceId: owner.sId,
     workspaceName: owner.name,
     inviterName: user.fullName,
@@ -53,19 +64,37 @@ function sendWorkspaceInvitationEmail(
   });
 }
 
+// `novuRecipient` is null when the workspace still sends its emails through SendGrid.
 export function sendWorkspaceInvitationReminderEmail(
   owner: LightWorkspaceType,
   invitation: MembershipInvitationType,
-  recipient: EmailRecipient
+  novuRecipient: EmailRecipient | null
 ): Promise<Result<void, Error>> {
+  if (!novuRecipient) {
+    return sendLegacyWorkspaceInvitationReminderEmail(owner, invitation);
+  }
   return notifyWorkspaceInvitation({
-    recipient,
+    recipient: novuRecipient,
     workspaceId: owner.sId,
     workspaceName: owner.name,
     inviterName: null,
     inviteLink: getMembershipInvitationUrl(owner, invitation),
     isReminder: true,
   });
+}
+
+/**
+ * Returns the Novu recipient of each address, in order, or null for every address when `owner`
+ * still sends its emails through SendGrid.
+ */
+export async function getInvitationEmailRecipients(
+  owner: LightWorkspaceType,
+  emails: string[]
+): Promise<(EmailRecipient | null)[]> {
+  if (!(await shouldSendTransactionalEmailsWithNovu(owner))) {
+    return emails.map(() => null);
+  }
+  return emailRecipientsFromAddresses(emails);
 }
 
 /**
@@ -359,7 +388,8 @@ export async function handleMembershipInvitations(
 
   const { resultsWithoutEmail, invitationsToEmail } = transactionResult.value;
 
-  const recipients = await emailRecipientsFromAddresses(
+  const recipients = await getInvitationEmailRecipients(
+    owner,
     invitationsToEmail.map(({ invitation }) => invitation.inviteEmail)
   );
   const emailResults = await concurrentExecutor(

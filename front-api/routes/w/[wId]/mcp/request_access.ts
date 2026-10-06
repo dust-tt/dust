@@ -1,5 +1,9 @@
+import { sendLegacyAccessRequestEmail } from "@app/lib/api/email";
 import { PostRequestActionsAccessBodySchema } from "@app/lib/api/mcp_schemas";
-import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import {
+  emailRecipientFromUser,
+  shouldSendTransactionalEmailsWithNovu,
+} from "@app/lib/notifications/transactional_emails";
 import { notifyAccessRequest } from "@app/lib/notifications/triggers/access-request";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -68,16 +72,24 @@ app.post(
     }
 
     const owner = auth.getNonNullableWorkspace();
-    const result = await notifyAccessRequest({
-      recipient: emailRecipientFromUser(mcpServerView.editedByUser),
-      workspaceId: owner.sId,
-      workspaceName: owner.name,
-      resourceKind: "mcp_server",
-      resourceName: mcpServerView.getDisplayName(),
-      requesterName: user.fullName(),
-      requesterEmail: user.email,
-      message: emailMessage,
-    });
+    const result = (await shouldSendTransactionalEmailsWithNovu(owner))
+      ? await notifyAccessRequest({
+          recipient: emailRecipientFromUser(mcpServerView.editedByUser),
+          workspaceId: owner.sId,
+          workspaceName: owner.name,
+          resourceKind: "mcp_server",
+          resourceName: mcpServerView.getDisplayName(),
+          requesterName: user.fullName(),
+          requesterEmail: user.email,
+          message: emailMessage,
+        })
+      : await sendLegacyAccessRequestEmail({
+          to: mcpServerView.editedByUser.email,
+          resourceKind: "mcp_server",
+          resourceName: mcpServerView.getDisplayName(),
+          requesterEmail: user.email,
+          message: emailMessage,
+        });
 
     if (result.isErr()) {
       return apiError(ctx, {

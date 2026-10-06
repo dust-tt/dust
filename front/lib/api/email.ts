@@ -1,16 +1,27 @@
 /**
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
+ *
+ * Transactional emails are moving to Novu (`lib/notifications`). Until the
+ * `novu_transactional_emails` feature flag is rolled out, the SendGrid helpers below remain the
+ * path for workspaces without it.
  */
 
 import config from "@app/lib/api/config";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WorkspaceType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceType,
+} from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import escape from "lodash/escape";
 
@@ -198,6 +209,132 @@ export async function sendMCPGlobalSharingReconfigurationEmail({
       <p>This removes older space-specific versions of the same tool. The following agents may need to be reconfigured:</p>
       <ul>${agentsList}</ul>
       <p>Please review these agents and re-add the tool if needed.</p>`,
+  });
+}
+
+async function sendLegacyTemplateEmail(message: {
+  to: string;
+  from: { name: string; email: string };
+  templateId: string;
+  dynamic_template_data: Record<string, string>;
+}): Promise<Result<void, Error>> {
+  try {
+    await getSgMailClient().send(message);
+    return new Ok(undefined);
+  } catch (e) {
+    return new Err(normalizeError(e));
+  }
+}
+
+export function sendLegacyWorkspaceInvitationEmail(
+  owner: WorkspaceType,
+  user: UserType,
+  invitation: MembershipInvitationType
+): Promise<Result<void, Error>> {
+  return sendLegacyTemplateEmail({
+    to: invitation.inviteEmail,
+    from: config.getSupportEmailAddress(),
+    templateId: config.getInvitationEmailTemplate(),
+    dynamic_template_data: {
+      inviteLink: getMembershipInvitationUrl(owner, invitation),
+      // Escape the name to prevent XSS attacks via injected script elements.
+      inviterName: escape(user.fullName),
+      workspaceName: owner.name,
+    },
+  });
+}
+
+export function sendLegacyWorkspaceInvitationReminderEmail(
+  owner: LightWorkspaceType,
+  invitation: MembershipInvitationType
+): Promise<Result<void, Error>> {
+  return sendLegacyTemplateEmail({
+    to: invitation.inviteEmail,
+    from: config.getSupportEmailAddress(),
+    templateId: config.getInvitationReminderEmailTemplate(),
+    dynamic_template_data: {
+      inviteLink: getMembershipInvitationUrl(owner, invitation),
+      workspaceName: owner.name,
+    },
+  });
+}
+
+export function sendLegacyFrameOtpEmail({
+  to,
+  code,
+  sharedByName,
+  expiresInMinutes,
+}: {
+  to: string;
+  code: string;
+  sharedByName: string;
+  expiresInMinutes: number;
+}): Promise<Result<void, Error>> {
+  return sendEmailWithTemplate({
+    to,
+    from: config.getSupportEmailAddress(),
+    subject: "Your Dust login code",
+    body: `<p>${escape(sharedByName)} shared a frame with you on Dust.</p>
+      <p>Your login code:</p>
+      <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; margin-block: 20px;">${escape(code)}</p>
+      <p>Expires in ${expiresInMinutes} minutes. Didn't request this? Ignore this email.</p>`,
+  });
+}
+
+export function sendLegacyFrameSharedEmail({
+  to,
+  sharedByName,
+  frameUrl,
+}: {
+  to: string;
+  sharedByName: string;
+  frameUrl: string;
+}): Promise<Result<void, Error>> {
+  return sendEmailWithTemplate({
+    to,
+    from: config.getSupportEmailAddress(),
+    subject: `${sharedByName} shared a frame with you`,
+    body: `<p>${escape(sharedByName)} is sharing a frame with you on Dust.</p>`,
+    buttonLabel: "View frame",
+    buttonUrl: frameUrl,
+  });
+}
+
+export function sendLegacyAccessRequestEmail({
+  to,
+  resourceKind,
+  resourceName,
+  requesterEmail,
+  message,
+}: {
+  to: string;
+  resourceKind: "data_source" | "mcp_server";
+  resourceName: string;
+  requesterEmail: string;
+  message: string;
+}): Promise<Result<void, Error>> {
+  let subject: string;
+  let resourceLabel: string;
+  switch (resourceKind) {
+    case "data_source":
+      subject = `[Dust] Request Data source from ${requesterEmail}`;
+      resourceLabel = "connection";
+      break;
+    case "mcp_server":
+      subject = `[Dust] Tools request from ${requesterEmail}`;
+      resourceLabel = "tools";
+      break;
+    default:
+      assertNever(resourceKind);
+  }
+  return sendEmailWithTemplate({
+    to,
+    from: config.getSupportEmailAddress(),
+    replyTo: requesterEmail,
+    subject,
+    body:
+      `${requesterEmail} has sent you a request regarding access to ` +
+      `${resourceLabel} ${escape(resourceName)}: ${escape(message)}`,
   });
 }
 
