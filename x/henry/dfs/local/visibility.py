@@ -4,7 +4,9 @@ starts more than MAX_DELAY after the mutation was acknowledged may observe the o
 checks that a revoked reader loses access within MAX_DELAY, and that every read returns a whole
 state the writer produced (never a mix of two). Also covers a directory handle held open across the
 mutation (rewound each poll), a file opened for writing just before its cached state expires, and a
-block overwritten in the middle of a file read by range (block cache)."""
+block overwritten in the middle of a file read by range (block cache). With DFS_REVALIDATE=1 the
+mounts revalidate expired listings; a nested listing then also covers the batched path, and the
+run fails unless revalidation was used."""
 import os
 from pathlib import Path
 import sys
@@ -138,6 +140,7 @@ def main():
         (a / 'd' / 'g').write_bytes(b'gone')
         (a / 'L').mkdir()
         (a / 'L' / 'f').write_bytes(bytes(BIG))
+        (a / 'S' / 'T').mkdir(parents=True)
         time.sleep(MAX + 0.1)
         cases = [
             ('create', b / 'd' / 'new', 'exists', lambda: (a / 'd' / 'new').write_bytes(b'x'), True),
@@ -160,6 +163,8 @@ def main():
                         lambda: (a / 'd' / 'k').write_bytes(b'k'), ('f', 'k', 'new'))
         finally:
             os.close(handle)
+        ok &= check('nested listing', b / 'S', lambda: (tuple(os.listdir(b / 'S')), tuple(os.listdir(b / 'S' / 'T'))),
+                    lambda: (a / 'S' / 'T' / 'z').write_bytes(b'z'), (('T',), ('z',)))
         ok &= check('large file block overwrite', b / 'L' / 'f', lambda: pread(b / 'L' / 'f', 4096, AT),
                     lambda: pwrite(a / 'L' / 'f', b'\xab' * 4096, AT), b'\xab' * 4096)
         ok &= check_promoted_writer(a, b)
@@ -173,6 +178,10 @@ def main():
             print(f"mount {mount}: dropped {commit['dropped_ops']}, missed windows {commit['missed_windows']}, "
                   f"max lag {commit['max_lag_ms']:.1f} ms")
             ok &= commit['dropped_ops'] == 0 and commit['missed_windows'] == 0
+        if os.environ.get('DFS_REVALIDATE') == '1':
+            validates = totals['b']['rpcs'].get('validate', {}).get('calls', 0)
+            print(f'mount b: {validates} validate calls')
+            ok &= validates > 0
     finally:
         stack.stop()
         stack.wipe()

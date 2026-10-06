@@ -89,6 +89,19 @@ impl World {
     }
 }
 
+impl World {
+    async fn token(&self, principal: &Principal, dir: Id) -> Result<Token, Errno> {
+        match self.fs.readdir(principal, dir, None, 100, None).await?.0 {
+            Response::Listing { token, .. } => Ok(token),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    async fn valid(&self, principal: &Principal, dir: Id, token: Token) -> Result<bool, Errno> {
+        Ok(self.fs.validate(principal, &[(dir, token)]).await?.0[0])
+    }
+}
+
 fn user(name: &str) -> Principal {
     Principal { name: name.into(), admin: false }
 }
@@ -313,5 +326,48 @@ async fn fsck_reports_blocks_past_the_size() -> Result<(), Errno> {
     txn.set(&records::block(file, 1), b"orphan");
     txn.commit().await.map_err(|_| Errno::EIO)?;
     assert_eq!(w.fs.fsck().await?.len(), 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn listing_tokens_change_with_every_listed_change_only() -> Result<(), Errno> {
+    let w = World::new().await;
+    let alice = user("alice");
+    let d = w.create(&alice, ROOT, "d", Kind::Dir).await?;
+    let e = w.create(&alice, d, "e", Kind::Dir).await?;
+    let f = w.create(&alice, d, "f", Kind::File).await?;
+    let g = w.create(&alice, e, "g", Kind::File).await?;
+    let mut token = w.token(&alice, d).await?;
+    // Changes outside `d`'s listing keep its token.
+    w.create(&alice, ROOT, "other", Kind::File).await?;
+    w.write(&alice, g, vec![write(0, b"g")]).await?;
+    assert!(w.valid(&alice, d, token).await?);
+    assert_eq!(w.token(&alice, d).await?, token);
+    let changes: Vec<Op> = vec![
+        Op::Write { id: f, changes: vec![write(0, b"f")], mtime_ns: None },
+        Op::SetAttr { id: f, mode: Some(0o600), mtime_ns: None },
+        Op::SetAttr { id: d, mode: Some(0o700), mtime_ns: None },
+        Op::Create { parent: e, name: "h".into(), id: w.id(&alice).await?, kind: Kind::File, mode: 0o644, mtime_ns: 1, target: None },
+        Op::Rename { parent: d, name: "f".into(), id: f, new_parent: ROOT, new_name: "f".into(), no_replace: false },
+        Op::Rename { parent: ROOT, name: "f".into(), id: f, new_parent: d, new_name: "f".into(), no_replace: false },
+        Op::Remove { parent: d, name: "f".into(), id: f },
+    ];
+    for op in changes {
+        let summary = format!("{op:?}");
+        w.one(&alice, op).await?;
+        assert!(!w.valid(&alice, d, token).await?, "{summary} kept the token valid");
+        let next = w.token(&alice, d).await?;
+        assert_ne!(next, token, "{summary}");
+        token = next;
+        assert!(w.valid(&alice, d, token).await?);
+    }
+    // A policy change (epoch bump) invalidates every token; a removed directory is never valid.
+    w.fs.set_members(&w.caller(&w.admin.principal), "team", &["alice".into()]).await?;
+    assert!(!w.valid(&alice, d, token).await?);
+    w.remove(&alice, e, "g").await?;
+    w.remove(&alice, e, "h").await?;
+    let token = w.token(&alice, e).await?;
+    w.remove(&alice, d, "e").await?;
+    assert!(!w.valid(&alice, e, token).await?);
     Ok(())
 }

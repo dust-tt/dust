@@ -38,7 +38,8 @@ def metadata():
             'mount_binary_sha256': hashlib.sha256((BIN / 'dfs-mount').read_bytes()).hexdigest(),
             'fdb_client_knobs': {k: os.environ[k] for k in KNOBS if k in os.environ},
             'max_delay_ms': MAX_DELAY_MS, 'durability': DURABILITY, 'fsync': 'durable (drains the mount log)',
-            'kernel_caching': 'none (TTL 0, direct I/O)', 'fuse_threads': FUSE_THREADS, 'max_background': 32}
+            'kernel_caching': 'none (TTL 0, direct I/O)', 'fuse_threads': FUSE_THREADS, 'max_background': 32,
+            'revalidate_listings': os.environ.get('DFS_REVALIDATE') == '1'}
 
 
 def totals(path, message):

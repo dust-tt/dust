@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use dfs_proto::{Attr, BLOCK_BYTES, Change, Errno, Id, Kind, Op};
+use dfs_proto::{Attr, BLOCK_BYTES, Change, Entry, Errno, Id, Kind, MAX_VALIDATE, Op, Token};
 
 pub type Listing = BTreeMap<String, (Id, Kind)>;
 pub type Name = Option<(Id, Kind)>;
@@ -23,6 +23,8 @@ const RECENT_APPLIES: usize = 8;
 const MIN_APPLY: Duration = Duration::from_millis(5);
 const CONTENT_BYTES: usize = 256 << 20;
 const CONTENT_FILES: usize = 1 << 16;
+/// Most listings kept for revalidation.
+const STORED_LISTINGS: usize = 1 << 16;
 
 /// How the visibility budget (`MAX_EVENTUAL_CONSISTENCY_DELAY`) is spent.
 #[derive(Clone, Copy, Debug)]
@@ -280,6 +282,14 @@ pub struct Log {
     pub stats: CommitStats,
 }
 
+/// A whole listing as read under `token`, kept past its TTL so one `Validate` call can reinstall
+/// it instead of fetching it again.
+pub struct Stored {
+    pub token: Token,
+    pub dir: Attr,
+    pub entries: Vec<Entry>,
+}
+
 /// Result of one `Apply`: version, per-op failures, committed attributes.
 pub type Outcome = Result<(u64, Vec<Option<Errno>>, Vec<Attr>), Errno>;
 
@@ -300,6 +310,11 @@ pub struct State {
     /// Siblings the next read miss in a directory prefetches.
     pub windows: HashMap<Id, usize>,
     pub content: Content,
+    /// Listings kept for revalidation; always empty unless `revalidate`.
+    pub stored: HashMap<Id, Stored>,
+    pub revalidate: bool,
+    /// A `Validate` call is in flight.
+    pub validating: bool,
     pub locals: HashMap<Id, Local>,
     pub pnames: HashMap<(Id, String), (u64, Name)>,
     pub pdirs: HashMap<Id, BTreeSet<String>>,
@@ -308,9 +323,12 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(budget: Budget) -> Self {
+    pub fn new(budget: Budget, revalidate: bool) -> Self {
         Self {
             budget,
+            stored: HashMap::new(),
+            revalidate,
+            validating: false,
             attrs: HashMap::new(),
             names: HashMap::new(),
             listings: HashMap::new(),
@@ -470,6 +488,77 @@ impl State {
             self.listings.insert(dir, Cached { value: listing, stamp, version });
         }
         true
+    }
+
+    /// Installs a whole listing of `dir` read at `version` and the attributes it carries; returns
+    /// it in this mount's view, and whether it was installed.
+    pub fn install_entries(&mut self, dir: Attr, entries: Vec<Entry>, stamp: Instant, version: u64) -> (Listing, bool) {
+        let id = dir.id;
+        let mut listing = Listing::new();
+        for entry in entries {
+            listing.insert(entry.name.clone(), (entry.attr.id, entry.attr.kind));
+            self.places.insert(entry.attr.id, (id, entry.name));
+            self.install_attr(entry.attr, stamp, version);
+        }
+        self.install_attr(dir, stamp, version);
+        self.sizes.insert(id, listing.len());
+        let installed = self.install_listing(id, listing.clone(), stamp, version);
+        self.overlay_listing(id, &mut listing);
+        (listing, installed)
+    }
+
+    /// Keeps a whole listing read under `token` for revalidation (when on and below the cap).
+    pub fn store_listing(&mut self, dir: Attr, entries: Vec<Entry>, token: Token) {
+        if self.revalidate && (self.stored.len() < STORED_LISTINGS || self.stored.contains_key(&dir.id)) {
+            self.stored.insert(dir.id, Stored { token, dir, entries });
+        }
+    }
+
+    /// The stored listings one `Validate` call should check when `dir`'s listing is needed: none
+    /// when `dir`'s is live or not stored, else `dir`'s, then the expired ones of its stored subtree,
+    /// then any other expired ones, at most `MAX_VALIDATE`.
+    pub fn revalidation(&self, dir: Id) -> Vec<(Id, Token)> {
+        let expired = |id: &Id| self.listings.get(id).is_none_or(|c| !self.live(c));
+        if !expired(&dir) || !self.stored.contains_key(&dir) {
+            return Vec::new();
+        }
+        let mut dirs = Vec::new();
+        let mut seen = HashSet::new();
+        let mut queue = VecDeque::from([dir]);
+        while let Some(id) = queue.pop_front() {
+            let Some(stored) = self.stored.get(&id) else { continue };
+            if !seen.insert(id) {
+                continue;
+            }
+            if expired(&id) {
+                dirs.push((id, stored.token));
+                if dirs.len() == MAX_VALIDATE {
+                    return dirs;
+                }
+            }
+            queue.extend(stored.entries.iter().filter(|e| e.attr.kind == Kind::Dir).map(|e| e.attr.id));
+        }
+        let others = self.stored.iter().filter(|(id, _)| !seen.contains(*id) && expired(id));
+        dirs.extend(others.map(|(id, stored)| (*id, stored.token)).take(MAX_VALIDATE - dirs.len()));
+        dirs
+    }
+
+    /// @cc [owner:fontanierh,label:product] revalidated-listing
+    /// A stored listing MUST be reinstalled only after a `Validate` read at `version` found its
+    /// token current, and only as read at `version` and requested at `stamp` (that call's send
+    /// instant), through the same floor and newer-version checks as a fetched listing.
+    pub fn revalidated(&mut self, dir: Id, token: Token, valid: bool, stamp: Instant, version: u64) {
+        if self.stored.get(&dir).is_none_or(|s| s.token != token) {
+            return;
+        }
+        if !valid {
+            self.stored.remove(&dir);
+            return;
+        }
+        if let Some(stored) = self.stored.get(&dir) {
+            let (attr, entries) = (stored.dir.clone(), stored.entries.clone());
+            self.install_entries(attr, entries, stamp, version);
+        }
     }
 
     pub fn install_link(&mut self, id: Id, target: String, stamp: Instant, version: u64) {

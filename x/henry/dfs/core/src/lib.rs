@@ -9,8 +9,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use dfs_proto::{
-    Attr, BLOCK_BYTES, Change, Entry, Errno, File, Id, Kind, MAX_APPLY_OPS, MAX_FILE_BYTES, MAX_FLUSH_BLOCKS, MAX_IO_BYTES, MAX_NAME_BYTES, Op, ROOT,
-    Response, Right,
+    Attr, BLOCK_BYTES, Change, Entry, Errno, File, Id, Kind, MAX_APPLY_OPS, MAX_FILE_BYTES, MAX_FLUSH_BLOCKS, MAX_IO_BYTES, MAX_NAME_BYTES, MAX_VALIDATE, Op, ROOT,
+    Response, Right, Token,
 };
 use dfs_store::{Key, Store, StoreError, Txn, TxnOptions, Value};
 use futures::FutureExt;
@@ -563,9 +563,12 @@ impl<S: Store> Fs<S> {
                     None => self.begin(attempt).await?,
                 };
                 let listing = async {
-                    let values = txn.get_many(&[records::node(dir), records::TOPO.to_vec(), records::dir_time(dir)]).await?;
+                    let values = txn
+                        .get_many(&[records::node(dir), records::TOPO.to_vec(), records::dir_time(dir), records::listing_version(dir)])
+                        .await?;
                     let node = live(values[0].clone())?;
                     let epoch = le_u64(values[1].as_ref());
+                    let token = Token { listing: le_u64(values[3].as_ref()), epoch };
                     let chain = self.dir_chain(&txn, dir, Some(&node), epoch, none).await?;
                     let groups = self.groups(&txn, principal, epoch).await?;
                     let access = Self::inherited(principal, &groups, &chain, None);
@@ -594,12 +597,48 @@ impl<S: Store> Fs<S> {
                         let write = if own.is_some() { Self::inherited(principal, &groups, &chain, own.as_ref()).write } else { access.write };
                         entries.push(Entry { name, attr: attr(id, &child, write, le_u64(children[2 * i + 1].as_ref())) });
                     }
-                    Ok(Response::Listing { dir: attr(dir, &node, access.write, le_u64(values[2].as_ref())), entries, more })
+                    Ok(Response::Listing { dir: attr(dir, &node, access.write, le_u64(values[2].as_ref())), entries, more, token })
                 };
                 match (at, listing.await) {
                     (Some(_), Err(Failure::Store(StoreError::TooOld))) => Err(Errno::EAGAIN.into()),
                     (_, listing) => Ok((listing?, txn.read_version())),
                 }
+            }
+            .boxed()
+        })
+        .await
+    }
+
+    /// Whether each `(dir, token)` is still current at a fresh read version, which it returns:
+    /// true only when `dir` is live, readable by `principal`, and its listing version and the
+    /// policy epoch both equal the token's.
+    pub async fn validate(&self, principal: &Principal, dirs: &[(Id, Token)]) -> Result<(Vec<bool>, u64), Errno> {
+        if dirs.len() > MAX_VALIDATE {
+            return Err(Errno::EINVAL);
+        }
+        let none = &HashSet::new();
+        self.run(Attempt::READ, |attempt| {
+            async move {
+                let txn = self.begin(attempt).await?;
+                let mut keys = vec![records::TOPO.to_vec()];
+                for (dir, _) in dirs {
+                    keys.push(records::node(*dir));
+                    keys.push(records::listing_version(*dir));
+                }
+                let values = txn.get_many(&keys).await?;
+                let epoch = le_u64(values[0].as_ref());
+                let mut valid = Vec::with_capacity(dirs.len());
+                for (i, (dir, token)) in dirs.iter().enumerate() {
+                    let current = token.epoch == epoch && token.listing == le_u64(values[2 + 2 * i].as_ref());
+                    let ok = match node_of(values[1 + 2 * i].clone())? {
+                        Some(node) if current && !node.detached && node.kind == Kind::Dir => {
+                            self.access(&txn, principal, *dir, &node, epoch, none).await?.read
+                        }
+                        _ => false,
+                    };
+                    valid.push(ok);
+                }
+                Ok((valid, txn.read_version()))
             }
             .boxed()
         })
@@ -759,6 +798,17 @@ impl<S: Store> Fs<S> {
                 }
                 if batch.moved_dir {
                     txn.set(records::TOPO, &(epoch + 1).to_le_bytes());
+                }
+                // @cc [owner:fontanierh,label:product] listing-version-bump
+                // A transaction that changes an entry of directory D, the attributes of a child of
+                // D (including a child directory's child-change time), or D's own attributes MUST
+                // add to `listing_version(D)` in the same transaction. Access changes are covered
+                // by the policy epoch instead.
+                for (id, (node, _)) in &batch.touched {
+                    txn.add_u64(&records::listing_version(*id), 1);
+                    if node.parent != 0 {
+                        txn.add_u64(&records::listing_version(node.parent), 1);
+                    }
                 }
                 // The receipt omits attributes to stay far below the store's value size limit.
                 let receipt = Response::Applied { version: 0, results: results.clone(), attrs: Vec::new() };

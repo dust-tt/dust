@@ -134,6 +134,10 @@ pub trait Txn: Send + Sync + 'static {
     /// `u64`, absent = 0) and `value`. Adds no read conflict, so concurrent maxima never conflict.
     fn max_u64(&mut self, key: &[u8], value: u64);
 
+    /// Blind atomic update: adds `value` (wrapping) to the stored little-endian `u64` (absent = 0).
+    /// Adds no read conflict.
+    fn add_u64(&mut self, key: &[u8], value: u64);
+
     /// Returns the commit version. `Uncertain` means the outcome is unknown.
     fn commit(self) -> impl Future<Output = Result<u64>> + Send;
 }

@@ -74,6 +74,7 @@ correctness depends on server memory, and any number of servers can serve a tena
 | `n/<id>` | node: parent, name, kind, mode, size, mtime, ctime, content rev, symlink target, detached |
 | `e/<dir>/<name>` | child id + kind |
 | `t/<dir>` | directory mtime ns, updated with atomic `MAX` (never read in mutations) |
+| `v/<dir>` | listing version, updated with atomic `ADD` (never read in mutations) |
 | `b/<id>/<idx>` | 64 KiB content block (last one short) |
 | `p/<id>` | explicit policy: grants + boundary flag |
 | `g/<group>`, `u/<principal>\0<group>` | group membership and its per-principal index |
@@ -98,6 +99,11 @@ correctness depends on server memory, and any number of servers can serve a tena
   conflict-tracked and results are returned only after commit (`read-version-reuse`).
 * Reads (`Lookup`, `GetAttr`, `ReadDir`, `Read`, `ReadFiles`, `ReadLink`) take a fresh read version
   and return it; `ReadDir` continuation pages read at the first page's version.
+* Listing versions (`listing-version-bump`): every `Apply` adds 1 to `v/<id>` and `v/<parent>` for
+  each object it changed, so `v/D` moves whenever D's entries, a child's attributes (a child
+  directory's mtime included) or D's own attributes change. `ReadDir` returns `(v/D, epoch)` as a
+  token; `Validate { dirs }` reports at a fresh read version whether each token is still current
+  and the directory still readable. The adds are blind, so concurrent writers do not conflict.
 * Authorization: write-stop boundaries (`write-stop-boundaries`), cached per `m/topo` epoch
   (`auth-cache-epoch`), acting principal only from the session (`session-principal`).
 
@@ -117,6 +123,14 @@ uncached.
 entries; the first page is capped there) with every child's attributes, so one RPC answers every
 lookup in the directory for the TTL. A directory known to be larger falls back to per-name lookups.
 This took open+fstat+close (10k files) from 20.1 s to 2.0 s and read+SHA from 43.6 s to 2.2 s.
+
+**Listing revalidation (off by default, `--revalidate-listings` / `DFS_REVALIDATE=1`).** The
+mount keeps every whole listing it fetched (entries, child attributes, the directory's attribute,
+token; at most 65,536) past its TTL. A miss on an expired kept listing sends one `Validate` for it,
+then the expired kept listings of its subtree, then any other expired ones (at most 4096). Each
+current one is reinstalled as read at the `Validate` reply's version and requested at its send time,
+through the usual floor checks (`revalidated-listing`); the others are dropped and fetched again
+when needed. One call in flight at a time; other misses wait for it.
 
 **Overlay.** Every mutation is acknowledged locally: a `Local` per touched object (attributes,
 symlink target, and for files the content changes not yet committed, one layer per op plus the
@@ -197,20 +211,22 @@ Directory (`CONTRACTS`): `tenant-and-principal-from-session`, `store-trait-bound
 Declarations: `write-stop-boundaries`, `read-version-reuse`, `auth-cache-epoch`, `fresh-reads`,
 `apply-batch`, `session-principal`, `ordered-commit`, `own-commit-floor`, `ttl-at-serve`,
 `local-permissions`, `serve-inline-or-defer`, `local-keeps-freshness`, `overlay-over-fresh-base`,
-`content-under-live-rev`, `admission-projects-apply`.
+`content-under-live-rev`, `admission-projects-apply`, `listing-version-bump`, `revalidated-listing`.
 
 ## Checks (`local/`)
 
 | script | checks |
 | --- | --- |
 | `smoke.bash` | end-to-end ops; unmount with 0 dropped ops; remount and verify content, listing; `fsck` |
-| `visibility.py` | two mounts; for create, overwrite, append, truncate, chmod, utime, rename, unlink, mkdir, rmdir, a directory handle held open and rewound, a file opened for writing just before its cache expires, a 4 KiB overwrite in the middle of a 2 MiB file read by range, and read revocation, no poll starting later than ack + MAX sees the old state, and every read returns a whole written state |
+| `visibility.py` | two mounts; for create, overwrite, append, truncate, chmod, utime, rename, unlink, mkdir, rmdir, a directory handle held open and rewound, a file opened for writing just before its cache expires, a 4 KiB overwrite in the middle of a 2 MiB file read by range, a nested listing change, and read revocation, no poll starting later than ack + MAX sees the old state, and every read returns a whole written state |
 | `crash.py` | SIGKILL the mount mid-untar; every file complete, a prefix, or absent; `fsck` clean |
 | `stall.py` | cached requests are not delayed by another client's slow uncached reads |
 | `bigdir.py` | lookup hits and misses in a directory above and below the listing cap |
 | `profile.py` | per-phase op/RPC counts for the open+fstat and read workloads |
 
-All pass at 1 s and 8 s.
+All pass at 1 s and 8 s. `smoke`, `visibility`, `crash`, `stall` and `bigdir` also pass with
+`DFS_REVALIDATE=1` at 1 s (`visibility` then also requires `Validate` calls). `cargo test -p
+dfs-core` checks that every listed change kind moves the token and unrelated changes do not.
 
 ## Benchmark protocol
 

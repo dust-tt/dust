@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use dfs_proto::client::{Client, Reply};
-use dfs_proto::{Attr, BLOCK_BYTES, Id, Kind, MAX_IO_BYTES, MAX_NAME_BYTES, Op, Request, Response};
+use dfs_proto::{Attr, BLOCK_BYTES, Id, Kind, MAX_IO_BYTES, MAX_NAME_BYTES, Op, Request, Response, Token};
 use fuser::{
     AccessFlags, BsdFileFlags, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo, InitFlags,
     KernelConfig, LockOwner, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry,
@@ -76,7 +76,7 @@ impl Caller {
 /// A file's id, content revision, and whole content.
 type Fetched = (Id, u64, Arc<[u8]>);
 /// A directory's entries and attribute, with the request send time and read version.
-type FetchedListing = (Vec<dfs_proto::Entry>, Attr, Instant, u64);
+type FetchedListing = (Vec<dfs_proto::Entry>, Attr, Instant, u64, Token);
 /// A listing in this mount's view, with the send time of the request it came from.
 type Snapshot = (Listing, Instant);
 
@@ -130,6 +130,8 @@ pub struct Fs {
     pub wake: tokio::sync::Notify,
     /// Signalled when a `ReadFiles` call ends.
     fetched: Condvar,
+    /// Signalled when a `Validate` call ends.
+    validated: Condvar,
     root: Id,
     uid: u32,
     gid: u32,
@@ -177,8 +179,8 @@ fn mask(read: bool, write: bool, exec: bool) -> i32 {
 }
 
 impl Fs {
-    pub fn new(rt: tokio::runtime::Handle, client: Arc<Client>, root: Attr, owner: (u32, u32), budget: Budget) -> Self {
-        let mut state = State::new(budget);
+    pub fn new(rt: tokio::runtime::Handle, client: Arc<Client>, root: Attr, owner: (u32, u32), budget: Budget, revalidate: bool) -> Self {
+        let mut state = State::new(budget, revalidate);
         let id = root.id;
         state.install_attr(root, Instant::now(), 0);
         Self {
@@ -189,6 +191,7 @@ impl Fs {
             progress: Condvar::new(),
             wake: tokio::sync::Notify::new(),
             fetched: Condvar::new(),
+            validated: Condvar::new(),
             root: id,
             uid: owner.0,
             gid: owner.1,
@@ -298,6 +301,10 @@ impl Fs {
         self.resolve(
             |state| state.name(parent, name),
             || {
+                self.revalidate(parent)?;
+                if let Some(value) = self.state.lock().name(parent, name) {
+                    return Ok((value, true));
+                }
                 if self.state.lock().sizes.get(&parent).is_none_or(|n| *n <= LIST_ON_MISS)
                     && let Some(((listing, _), installed)) = self.fetch_listing_installed(parent, Some(LIST_ON_MISS))?
                 {
@@ -320,28 +327,60 @@ impl Fs {
     fn listing(&self, dir: Id) -> Result<(Listing, Instant), Errno> {
         self.resolve(
             |state| state.listing(dir),
-            || self.fetch_listing_installed(dir, None)?.ok_or(Errno::EIO),
+            || {
+                self.revalidate(dir)?;
+                if let Some(listing) = self.state.lock().listing(dir) {
+                    return Ok((listing, true));
+                }
+                self.fetch_listing_installed(dir, None)?.ok_or(Errno::EIO)
+            },
         )
+    }
+
+    /// With revalidation on and `dir`'s listing expired but stored, checks it and other expired
+    /// stored listings (`State::revalidation`) with one `Validate` call and reinstalls the current
+    /// ones; waits instead while another call is in flight.
+    fn revalidate(&self, dir: Id) -> Result<(), Errno> {
+        let mut state = self.state.lock();
+        while state.validating {
+            may_block()?;
+            self.validated.wait(&mut state);
+        }
+        let dirs = state.revalidation(dir);
+        if dirs.is_empty() {
+            return Ok(());
+        }
+        // Before `validating` is set: a deferral after it would leave it set for good.
+        may_block()?;
+        state.validating = true;
+        drop(state);
+        let (reply, sent) = self.call("validate", Request::Validate { dirs: dirs.clone() })?;
+        let mut state = self.state.lock();
+        state.validating = false;
+        self.validated.notify_all();
+        let valid = match reply.result.map_err(errno)? {
+            Response::Valid(valid) if valid.len() == dirs.len() => valid,
+            _ => return Err(Errno::EIO),
+        };
+        for ((id, token), valid) in dirs.into_iter().zip(valid) {
+            state.revalidated(id, token, valid, sent, reply.version);
+        }
+        Ok(())
     }
 
     /// Fetches and installs `dir`'s listing; returns it in this mount's view, and whether it was
     /// installed. `None` when `dir` has more than `cap` entries.
     fn fetch_listing_installed(&self, dir: Id, cap: Option<usize>) -> Result<Option<(Snapshot, bool)>, Errno> {
-        let Some((entries, dir_attr, sent, version)) = self.fetch_listing(dir, cap)? else {
+        let Some((entries, dir_attr, sent, version, token)) = self.fetch_listing(dir, cap)? else {
             self.state.lock().sizes.insert(dir, usize::MAX);
             return Ok(None);
         };
         let mut state = self.state.lock();
-        let mut listing = Listing::new();
-        for entry in entries {
-            listing.insert(entry.name.clone(), (entry.attr.id, entry.attr.kind));
-            state.places.insert(entry.attr.id, (dir, entry.name));
-            state.install_attr(entry.attr, sent, version);
+        let stored = state.revalidate.then(|| (dir_attr.clone(), entries.clone()));
+        let (listing, installed) = state.install_entries(dir_attr, entries, sent, version);
+        if installed && let Some((dir_attr, entries)) = stored {
+            state.store_listing(dir_attr, entries, token);
         }
-        state.install_attr(dir_attr, sent, version);
-        state.sizes.insert(dir, listing.len());
-        let installed = state.install_listing(dir, listing.clone(), sent, version);
-        state.overlay_listing(dir, &mut listing);
         Ok(Some(((listing, sent), installed)))
     }
 
@@ -349,22 +388,23 @@ impl Fs {
     fn fetch_listing(&self, dir: Id, cap: Option<usize>) -> Result<Option<FetchedListing>, Errno> {
         'restart: for _ in 0..TRIES {
             let mut entries: Vec<dfs_proto::Entry> = Vec::new();
-            let mut first: Option<(Instant, u64)> = None;
+            // The token is read with the first page, at the version every page is read at.
+            let mut first: Option<(Instant, u64, Token)> = None;
             loop {
                 let after = entries.last().map(|e| e.name.clone());
-                let at = first.map(|(_, version)| version);
+                let at = first.map(|(_, version, _)| version);
                 let limit = cap.map_or(PAGE, |cap| u32::try_from(cap).unwrap_or(PAGE).min(PAGE));
                 let (reply, sent) = self.call("readdir", Request::ReadDir { dir, after, limit, at })?;
-                let (dir_attr, page, more) = match reply.result {
-                    Ok(Response::Listing { dir, entries, more }) => (dir, entries, more),
+                let (dir_attr, page, more, token) = match reply.result {
+                    Ok(Response::Listing { dir, entries, more, token }) => (dir, entries, more, token),
                     Ok(_) => return Err(Errno::EIO),
                     Err(e) if e == dfs_proto::Errno::EAGAIN && at.is_some() => continue 'restart,
                     Err(e) => return Err(errno(e)),
                 };
-                let (sent, version) = *first.get_or_insert((sent, reply.version));
+                let (sent, version, token) = *first.get_or_insert((sent, reply.version, token));
                 entries.extend(page);
                 if !more {
-                    return Ok(Some((entries, dir_attr, sent, version)));
+                    return Ok(Some((entries, dir_attr, sent, version, token)));
                 }
                 if cap.is_some_and(|cap| entries.len() >= cap) {
                     return Ok(None);

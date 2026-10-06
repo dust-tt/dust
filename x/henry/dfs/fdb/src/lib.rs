@@ -158,6 +158,11 @@ impl Txn for FdbTxn {
         self.trx.atomic_op(&key, &value.to_le_bytes(), MutationType::Max);
     }
 
+    fn add_u64(&mut self, key: &[u8], value: u64) {
+        let key = self.key(key);
+        self.trx.atomic_op(&key, &value.to_le_bytes(), MutationType::Add);
+    }
+
     async fn commit(self) -> Result<u64> {
         let read_version = self.read_version;
         match self.trx.commit().await {

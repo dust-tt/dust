@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub mod client;
 pub mod frame;
 
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 4;
 pub const BLOCK_BYTES: u64 = 64 << 10;
 /// Largest read the server answers in one call.
 pub const MAX_IO_BYTES: u32 = 4 << 20;
@@ -17,6 +17,8 @@ pub const MAX_FILE_BYTES: u64 = 1 << 40;
 pub const MAX_FLUSH_BLOCKS: usize = 128;
 /// Most ops one `Apply` call carries.
 pub const MAX_APPLY_OPS: usize = 4096;
+/// Most directories one `Validate` call may name.
+pub const MAX_VALIDATE: usize = 4096;
 
 pub type Id = u64;
 pub const ROOT: Id = 1;
@@ -73,6 +75,15 @@ pub struct Entry {
     pub attr: Attr,
 }
 
+/// What a listing was read under: the directory's listing version and the tenant's policy epoch.
+/// Equal tokens at two versions mean the listing (entries, child attributes, the directory's own
+/// attributes) is identical at both.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Token {
+    pub listing: u64,
+    pub epoch: u64,
+}
+
 /// The whole content of a file at content revision `rev`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct File {
@@ -121,6 +132,9 @@ pub enum Request {
     /// Lists `dir` after `after` (exclusive) with attributes of every child; `at` continues a
     /// listing at the version its first page was read at (`EAGAIN` once too old).
     ReadDir { dir: Id, after: Option<String>, limit: u32, at: Option<u64> },
+    /// Whether each listing read under the given token is still current; false for a directory
+    /// the session can no longer read.
+    Validate { dirs: Vec<(Id, Token)> },
     Read { id: Id, offset: u64, len: u32 },
     /// Whole contents of the files among `ids` that are readable and fit, in order, in `budget`
     /// bytes (at most `MAX_IO_BYTES`); the others are left out.
@@ -158,7 +172,8 @@ pub enum Response {
     /// `None`: no such name.
     Entry(Option<Attr>),
     Attr(Attr),
-    Listing { dir: Attr, entries: Vec<Entry>, more: bool },
+    Listing { dir: Attr, entries: Vec<Entry>, more: bool, token: Token },
+    Valid(Vec<bool>),
     Data { rev: u64, size: u64, bytes: Vec<u8> },
     Files(Vec<File>),
     Link(String),

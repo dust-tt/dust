@@ -53,6 +53,11 @@ pub fn dir_time(dir: Id) -> Vec<u8> {
     key(b"t/", &[&dir.to_be_bytes()])
 }
 
+/// Listing version of a directory, maintained with blind atomic add.
+pub fn listing_version(dir: Id) -> Vec<u8> {
+    key(b"v/", &[&dir.to_be_bytes()])
+}
+
 pub fn block(id: Id, index: u32) -> Vec<u8> {
     key(b"b/", &[&id.to_be_bytes(), &index.to_be_bytes()])
 }

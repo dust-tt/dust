@@ -59,6 +59,7 @@ enum Write {
     Clear(Key),
     ClearRange(KeyRange),
     Max(Key, u64),
+    Add(Key, u64),
 }
 
 fn le_u64(value: Option<&Value>) -> u64 {
@@ -87,6 +88,13 @@ impl MemoryTxn {
                         None => le_u64(self.store.inner.lock().read_at(key, self.read_version).as_ref()),
                     };
                     result = Some(Some(base.max(*v).to_le_bytes().to_vec()));
+                }
+                Write::Add(k, v) if k.as_slice() == key => {
+                    let base = match &result {
+                        Some(local) => le_u64(local.as_ref()),
+                        None => le_u64(self.store.inner.lock().read_at(key, self.read_version).as_ref()),
+                    };
+                    result = Some(Some(base.wrapping_add(*v).to_le_bytes().to_vec()));
                 }
                 _ => {}
             }
@@ -181,6 +189,10 @@ impl Txn for MemoryTxn {
         self.writes.push(Write::Max(key.to_vec(), value));
     }
 
+    fn add_u64(&mut self, key: &[u8], value: u64) {
+        self.writes.push(Write::Add(key.to_vec(), value));
+    }
+
     async fn commit(self) -> Result<u64> {
         let mut inner = self.store.inner.lock();
         let reads = self.reads.lock();
@@ -230,6 +242,11 @@ impl Txn for MemoryTxn {
                 Write::Max(k, v) => {
                     let current = le_u64(inner.read_at(k, version).as_ref());
                     inner.data.entry(k.clone()).or_default().push((version, Some(current.max(*v).to_le_bytes().to_vec())));
+                    written.push(KeyRange::single(k));
+                }
+                Write::Add(k, v) => {
+                    let current = le_u64(inner.read_at(k, version).as_ref());
+                    inner.data.entry(k.clone()).or_default().push((version, Some(current.wrapping_add(*v).to_le_bytes().to_vec())));
                     written.push(KeyRange::single(k));
                 }
             }
