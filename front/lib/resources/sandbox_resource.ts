@@ -4,8 +4,10 @@ import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
+  recordRunningSandboxDelta,
   recordStateDuration,
 } from "@app/lib/api/sandbox/instrumentation";
+import type { SandboxLifecycleType } from "@app/lib/api/sandbox/instrumentation";
 import type {
   ExecOptions,
   ExecResult,
@@ -85,6 +87,7 @@ export class ScopeTransitionDestroyError extends Error {}
 
 export type SandboxLifecycleOwner = {
   lockKey: string;
+  sandboxType: SandboxLifecycleType;
   // Must return a sandbox scoped to the same workspace as the Authenticator
   // passed to the lifecycle operation.
   fetchSandbox: () => Promise<SandboxResource | null>;
@@ -114,7 +117,6 @@ type SandboxCreateOwner<TScope> = SandboxLifecycleOwner & {
   envVars:
     | Record<string, string>
     | ((scope: TScope) => Promise<Result<Record<string, string>, Error>>);
-  logLabel: string;
 };
 
 export type SandboxTimestampCursor = {
@@ -216,6 +218,33 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     await sandbox.updateStatus("deleted");
     if (opts.recordLifecycle) {
       recordLifecycleOperation("destroy");
+    }
+  }
+
+  private static recordRunningDelta(
+    auth: Authenticator,
+    sandboxType: SandboxLifecycleType,
+    sandbox: SandboxResource,
+    reason: "create" | "wake" | "pause" | "kill",
+    delta: 1 | -1
+  ): void {
+    recordRunningSandboxDelta({
+      delta,
+      sandboxType,
+      reason,
+      sandboxId: sandbox.sId,
+      providerId: sandbox.providerId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    });
+  }
+
+  private static recordRunningKillIfRunning(
+    auth: Authenticator,
+    sandboxType: SandboxLifecycleType,
+    sandbox: SandboxResource
+  ): void {
+    if (sandbox.status === "running") {
+      this.recordRunningDelta(auth, sandboxType, sandbox, "kill", -1);
     }
   }
 
@@ -538,6 +567,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             recordLifecycleOperation("destroy");
           }
 
+          this.recordRunningKillIfRunning(auth, owner.sandboxType, existing);
           await existing.updateStatus("deleted");
           logger.info(
             { sandbox: existing.toLogJSON() },
@@ -582,6 +612,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         if (sandbox.status !== "deleted") {
+          this.recordRunningKillIfRunning(auth, owner.sandboxType, sandbox);
           const tracingOpts = {
             workspaceId: auth.getNonNullableWorkspace().sId,
           };
@@ -626,9 +657,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     {
       deleteOwnerLinks,
       sandboxes,
+      sandboxType,
     }: {
       deleteOwnerLinks: (transaction: Transaction) => Promise<void>;
       sandboxes: SandboxResource[];
+      sandboxType: SandboxLifecycleType;
     }
   ): Promise<Result<void, Error>> {
     const liveSandboxes = sandboxes.filter(
@@ -643,6 +676,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       await concurrentExecutor(
         liveSandboxes,
         async (sandbox) => {
+          this.recordRunningKillIfRunning(auth, sandboxType, sandbox);
           const result = await provider.destroy(sandbox.providerId, {
             workspaceId: auth.getNonNullableWorkspace().sId,
           });
@@ -931,9 +965,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         });
 
         logger.info(
-          { owner: owner.logLabel, sandbox: sandbox.toLogJSON() },
+          { sandboxType: owner.sandboxType, sandbox: sandbox.toLogJSON() },
           "Created new sandbox for owner"
         );
+        this.recordRunningDelta(auth, owner.sandboxType, sandbox, "create", 1);
 
         return new Ok({
           sandbox,
@@ -994,6 +1029,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             );
           }
         }
+        this.recordRunningKillIfRunning(auth, owner.sandboxType, existing);
         effectiveStatus = "deleted";
       }
 
@@ -1116,8 +1152,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       if (wokeFromSleep) {
         recordLifecycleOperation("wake");
+        this.recordRunningDelta(auth, owner.sandboxType, existing, "wake", 1);
       } else if (freshlyCreated) {
         recordLifecycleOperation("create");
+        this.recordRunningDelta(auth, owner.sandboxType, existing, "create", 1);
       }
 
       return new Ok({
@@ -1172,6 +1210,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during sleep — marking deleted."
           );
+          this.recordRunningDelta(auth, owner.sandboxType, sandbox, "kill", -1);
           await sandbox.updateStatus("deleted");
           return new Ok(undefined);
         }
@@ -1180,6 +1219,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       await sandbox.updateStatus("sleeping");
       recordLifecycleOperation("sleep");
+      this.recordRunningDelta(auth, owner.sandboxType, sandbox, "pause", -1);
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox put to sleep.");
       return new Ok(undefined);
     });
@@ -1247,6 +1287,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return sleepResult;
       }
 
+      this.recordRunningDelta(auth, owner.sandboxType, sandbox, "pause", -1);
       logger.info(
         { sandbox: sandbox.toLogJSON() },
         "Sandbox paused for tool approval."
@@ -1509,6 +1550,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Kill-requested sandbox not found at provider — marking deleted."
           );
+          this.recordRunningKillIfRunning(auth, owner.sandboxType, sandbox);
           await SandboxResource.finalizeDestroyed(sandbox, {
             recordLifecycle: false,
           });
@@ -1517,6 +1559,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return result;
       }
 
+      this.recordRunningKillIfRunning(auth, owner.sandboxType, sandbox);
       await SandboxResource.finalizeDestroyed(sandbox, {
         recordLifecycle: true,
       });

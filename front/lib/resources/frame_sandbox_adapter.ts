@@ -179,6 +179,7 @@ export class FrameSandboxAdapter {
   ): SandboxLifecycleOwner {
     return {
       lockKey: this.lockKey(frame),
+      sandboxType: "frame",
       fetchSandbox: () => this.fetchSandboxByFrame(auth, frame),
     };
   }
@@ -273,9 +274,9 @@ export class FrameSandboxAdapter {
       auth,
       {
         lockKey: this.lockKey(frame),
+        sandboxType: "frame",
         resolveScope: () => this.resolveScope(auth, frame),
         envVars: (scope) => this.buildFrameEnvVars(auth, frame, scope),
-        logLabel: "frame",
         fetchSandbox: () => this.fetchSandboxByFrame(auth, frame),
         createSandbox: (blob) =>
           this.createSandboxRecordForFrame(auth, frame, blob),
@@ -325,6 +326,7 @@ export class FrameSandboxAdapter {
       );
       const result = await SandboxResource.deleteBatchForWorkspaceScrub(auth, {
         sandboxes,
+        sandboxType: "frame",
         deleteOwnerLinks: async (transaction) => {
           await SandboxOwnerModel.destroy({
             where: {

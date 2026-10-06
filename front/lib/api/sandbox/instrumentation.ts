@@ -1,6 +1,7 @@
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { statsDMetrics } from "@app/lib/utils/statsd";
+import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 
 // Intentionally NOT tagged by workspace_id: region (+ operation/status) is
@@ -96,6 +97,55 @@ export function recordLifecycleOperation(
   operation: "create" | "wake" | "sleep" | "destroy"
 ): void {
   statsDMetrics.increment(`sandbox.lifecycle.${operation}`, 1, [regionTag()]);
+}
+
+export type SandboxLifecycleType = "conversation" | "frame";
+
+export type RunningSandboxDeltaReason = "create" | "wake" | "pause" | "kill";
+
+/**
+ * @cc [owner:jdfiquet,label:backend] running-gauge-not-workspace-tagged
+ * `sandbox.lifecycle.running` is tagged by region and sandbox_type
+ * (conversation|frame) only. It is never tagged by workspace_id: that
+ * cardinality blows past Datadog custom-metric limits. Per-workspace
+ * drill-down is the log line this helper emits alongside the delta.
+ */
+/**
+ * @cc [owner:jdfiquet,label:backend] running-gauge-delta-pairing
+ * +1 on provider create or wake (the sandbox is now running). -1 on pause
+ * (sleep or approval pause) and on kill of a still-running sandbox. Killing
+ * a sandbox that is already paused must not decrement again.
+ */
+export function recordRunningSandboxDelta({
+  delta,
+  sandboxType,
+  reason,
+  sandboxId,
+  providerId,
+  workspaceId,
+}: {
+  delta: 1 | -1;
+  sandboxType: SandboxLifecycleType;
+  reason: RunningSandboxDeltaReason;
+  sandboxId: string;
+  providerId: string;
+  workspaceId: string;
+}): void {
+  statsDMetrics.gaugeDelta("sandbox.lifecycle.running", delta, [
+    regionTag(),
+    `sandbox_type:${sandboxType}`,
+  ]);
+  logger.info(
+    {
+      sandboxId,
+      providerId,
+      workspaceId,
+      sandboxType,
+      reason,
+      delta,
+    },
+    "Sandbox running count updated"
+  );
 }
 
 /**

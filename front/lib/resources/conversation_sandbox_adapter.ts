@@ -115,6 +115,7 @@ export class ConversationSandboxAdapter {
   ): SandboxLifecycleOwner {
     return {
       lockKey: conversation.sId,
+      sandboxType: "conversation",
       fetchSandbox: () =>
         this.dangerouslyFetchSandboxByConversation(conversation),
     };
@@ -126,6 +127,7 @@ export class ConversationSandboxAdapter {
   ): SandboxDeleteOwner {
     return {
       lockKey: conversation.sId,
+      sandboxType: "conversation",
       fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
       deleteSandbox: async (
         sandbox: SandboxResource,
@@ -156,6 +158,7 @@ export class ConversationSandboxAdapter {
   ): Promise<Result<EnsureSandboxResult<ConversationSandboxScope>, Error>> {
     return SandboxResource.ensureActive(auth, {
       lockKey: conversation.sId,
+      sandboxType: "conversation",
       // Runs under the lifecycle lock: the conversation's pod association is
       // an authorization input (egress claims, pod env vars, pod mounts) and
       // a move — which holds the same lock — can change it at any time
@@ -177,7 +180,6 @@ export class ConversationSandboxAdapter {
       // actually created.
       envVars: (scope) =>
         this.buildConversationEnvVars(auth, conversation, scope),
-      logLabel: "conversation",
       fetchSandbox: () => this.fetchSandbox(auth, conversation),
       createSandbox: (blob) =>
         this.createSandboxRecordForConversation(auth, conversation, blob),
@@ -232,6 +234,7 @@ export class ConversationSandboxAdapter {
   ): Promise<Result<void, Error>> {
     return SandboxResource.pauseForApproval(auth, {
       lockKey: conversation.sId,
+      sandboxType: "conversation",
       fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
     });
   }
@@ -282,6 +285,7 @@ export class ConversationSandboxAdapter {
       auth,
       {
         lockKey: conversation.sId,
+        sandboxType: "conversation",
         fetchSandbox: () => this.fetchSandbox(auth, conversation),
       },
       {
