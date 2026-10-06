@@ -21,17 +21,19 @@ import {
   SearchMd,
   Table,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import isEmpty from "lodash/isEmpty";
 import type { ComponentType } from "react";
 
 interface CapabilityConfig {
   icon: ComponentType;
-  configPageTitle: string;
-  configPageDescription: string;
+  configPageTitle: MessageDescriptor;
+  configPageDescription: MessageDescriptor | null;
   descriptionConfig: {
-    title: string;
-    description: string;
-    placeholder: string;
+    title: MessageDescriptor;
+    description: MessageDescriptor;
+    placeholder: MessageDescriptor;
     maxLength?: number;
   };
 }
@@ -66,62 +68,53 @@ export function getKnowledgeLookupMethodLabel(
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   [SEARCH_SERVER.serverInfo.name]: {
     icon: SearchMd,
-    configPageTitle: "Configure Knowledge",
-    configPageDescription: "",
+    configPageTitle: msg`Configure knowledge`,
+    configPageDescription: null,
     descriptionConfig: {
-      title: "What’s the data?",
-      description:
-        "Provide a brief description of the data content and context to help the agent determine when to utilize it effectively.",
-      placeholder: "This data contains…",
+      title: msg`What’s the data?`,
+      description: msg`Provide a brief description of the data content and context to help the agent determine when to utilize it effectively.`,
+      placeholder: msg`This data contains…`,
     },
   },
   [INCLUDE_DATA_SERVER.serverInfo.name]: {
     icon: ArrowCircleBrokenRight,
-    configPageTitle: "Configure Include Data",
-    configPageDescription: "Set time range and describe what data to include.",
+    configPageTitle: msg`Configure Include Data`,
+    configPageDescription: msg`Set time range and describe what data to include.`,
     descriptionConfig: {
-      title: "What’s the data?",
-      description:
-        "Describe what type of data you want to include from your selected data sources to provide context to the agent.",
-      placeholder:
-        "Describe what data you want to include from your selected data sources...",
+      title: msg`What’s the data?`,
+      description: msg`Describe what type of data you want to include from your selected data sources to provide context to the agent.`,
+      placeholder: msg`Describe what data you want to include from your selected data sources...`,
     },
   },
   [EXTRACT_DATA_SERVER.serverInfo.name]: {
     icon: Scan,
-    configPageTitle: "Configure Extract Data",
-    configPageDescription:
-      "Set extraction parameters and describe what data to extract.",
+    configPageTitle: msg`Configure Extract Data`,
+    configPageDescription: msg`Set extraction parameters and describe what data to extract.`,
     descriptionConfig: {
-      title: "What’s the data?",
-      description:
-        "Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively.",
-      placeholder: "This data contains…",
+      title: msg`What’s the data?`,
+      description: msg`Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively.`,
+      placeholder: msg`This data contains…`,
       maxLength: DESCRIPTION_MAX_LENGTH,
     },
   },
   [QUERY_TABLES_V2_SERVER.serverInfo.name]: {
     icon: Table,
-    configPageTitle: "Configure Query Tables",
-    configPageDescription:
-      "Describe how you want to query the selected tables.",
+    configPageTitle: msg`Configure Query Tables`,
+    configPageDescription: msg`Describe how you want to query the selected tables.`,
     descriptionConfig: {
-      title: "Query Description",
-      description:
-        "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
-      placeholder: "Describe what you want to query from your tables...",
+      title: msg`Query description`,
+      description: msg`Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.`,
+      placeholder: msg`Describe what you want to query from your tables...`,
     },
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     icon: Table,
-    configPageTitle: "Configure Data Warehouse",
-    configPageDescription:
-      "Describe how you want to query the selected tables.",
+    configPageTitle: msg`Configure Data Warehouse`,
+    configPageDescription: msg`Describe how you want to query the selected tables.`,
     descriptionConfig: {
-      title: "Query Description",
-      description:
-        "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
-      placeholder: "Describe what you want to query from your tables...",
+      title: msg`Query description`,
+      description: msg`Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.`,
+      placeholder: msg`Describe what you want to query from your tables...`,
     },
   },
 };

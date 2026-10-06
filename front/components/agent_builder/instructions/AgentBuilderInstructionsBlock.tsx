@@ -18,6 +18,7 @@ import {
   Separator,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -53,6 +54,7 @@ interface AgentBuilderInstructionsBlockProps {
 export function AgentBuilderInstructionsBlock({
   agentConfigurationId,
 }: AgentBuilderInstructionsBlockProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<AgentBuilderFormData>();
   const [compareVersion, setCompareVersion] =
@@ -79,22 +81,25 @@ export function AgentBuilderInstructionsBlock({
 
   const headerActions = <>{!isInstructionDiffMode && <AdvancedSettings />}</>;
 
+  const compareVersionDate = compareVersion?.versionCreatedAt
+    ? formatDateTime(
+        new Date(compareVersion.versionCreatedAt),
+        NUMERIC_DATE_TIME_OPTIONS
+      )
+    : null;
+
   return (
     <AgentBuilderSectionContainer
-      title="Instructions"
-      description="Command or guideline you provide to your agent to direct its responses."
+      title={t`Instructions`}
+      description={t`Command or guideline you provide to your agent to direct its responses.`}
       headerActions={headerActions}
     >
       {isInstructionDiffMode && compareVersion && (
         <>
           <Separator />
-          {compareVersion?.versionCreatedAt && (
+          {compareVersionDate && (
             <Label>
-              Comparing current version with{" "}
-              {formatDateTime(
-                new Date(compareVersion.versionCreatedAt),
-                NUMERIC_DATE_TIME_OPTIONS
-              )}
+              <Trans>Comparing current version with {compareVersionDate}</Trans>
             </Label>
           )}
           <div className="flex gap-2">
@@ -106,14 +111,14 @@ export function AgentBuilderInstructionsBlock({
                 setIsInstructionDiffMode(false);
                 setCompareVersion(null);
               }}
-              label="Leave comparison mode"
+              label={t`Leave comparison mode`}
             />
             <Button
               variant="warning"
               size="sm"
               icon={RefreshCw02}
               onClick={restoreVersion}
-              label="Restore this version"
+              label={t`Restore this version`}
             />
           </div>
         </>

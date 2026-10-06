@@ -182,6 +182,8 @@ msgstr "How you appear to other members of the workspace"
 #: front/components/agent_builder/AgentBuilder.tsx
 #: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
 #: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
@@ -497,12 +499,15 @@ msgid "Save anyway"
 msgstr "Save anyway"
 
 #: front/components/agent_builder/AgentBuilder.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
 msgid "Go back"
 msgstr "Go back"
 
 #: front/components/agent_builder/AgentBuilderLeftPanel.tsx
 #: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
 #: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
@@ -846,6 +851,330 @@ msgstr "Configure {serverLabel}"
 msgid "Edit {serverLabel} configuration"
 msgstr "Edit {serverLabel} configuration"
 
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "Are you sure?"
+msgstr "Are you sure?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "Do you want to unselect all of \"{itemTitle}\"?"
+msgstr "Do you want to unselect all of \"{itemTitle}\"?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "Unselect all"
+msgstr "Unselect all"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage.tsx
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+#: front/components/me/UserToolsTable.tsx
+#: front/components/members/MemberSelectionTable.tsx
+#: front/components/members/MembersList.tsx
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+#: front/components/workspace/member_name_column.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+msgid "No pages found"
+msgstr "No pages found"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+msgid "This website doesn't have any pages to browse yet."
+msgstr "This website doesn't have any pages to browse yet."
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgctxt "breadcrumb root"
+msgid "All"
+msgstr "All"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "No data sources available"
+msgstr "No data sources available"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Connect data sources or ask your admin to set them up"
+msgstr "Connect data sources or ask your admin to set them up"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Connect data"
+msgstr "Connect data"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Search in {currentSpaceName}"
+msgstr "Search in {currentSpaceName}"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Search in space"
+msgstr "Search in space"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Searching in:"
+msgstr "Searching in:"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "All {currentSpaceName}"
+msgstr "All {currentSpaceName}"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+msgid "Do you want to unselect all selected items?"
+msgstr "Do you want to unselect all selected items?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+msgid "Do you want to unselect \"{itemTitle}\"?"
+msgstr "Do you want to unselect \"{itemTitle}\"?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+msgid "Unselect"
+msgstr "Unselect"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "0 results found"
+msgstr "0 results found"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "No matching results found. Try different search terms."
+msgstr "No matching results found. Try different search terms."
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "Error searching results."
+msgstr "Error searching results."
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "Location"
+msgstr "Location"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Unsaved changes"
+msgstr "Unsaved changes"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "You have unsaved changes. Are you sure you want to close without saving?"
+msgstr "You have unsaved changes. Are you sure you want to close without saving?"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Discard changes"
+msgstr "Discard changes"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgctxt "button, go to the next step"
+msgid "Next"
+msgstr "Next"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Select knowledge type and configure settings"
+msgstr "Select knowledge type and configure settings"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Select tables"
+msgstr "Select tables"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "Select data sources"
+msgstr "Select data sources"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Choose the tables to query for your processing method"
+msgstr "Choose the tables to query for your processing method"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Choose the data sources to include in your knowledge base"
+msgstr "Choose the data sources to include in your knowledge base"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure knowledge"
+msgstr "Configure knowledge"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Name ..."
+msgstr "Name ..."
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeFooter.tsx
+msgid "{selectionCount, plural, one {Selection (# item)} other {Selection (# items)}}"
+msgstr "{selectionCount, plural, one {Selection (# item)} other {Selection (# items)}}"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeFooter.tsx
+msgid "No selection"
+msgstr "No selection"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "What’s the data?"
+msgstr "What’s the data?"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Provide a brief description of the data content and context to help the agent determine when to utilize it effectively."
+msgstr "Provide a brief description of the data content and context to help the agent determine when to utilize it effectively."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "This data contains…"
+msgstr "This data contains…"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Include Data"
+msgstr "Configure Include Data"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Set time range and describe what data to include."
+msgstr "Set time range and describe what data to include."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what type of data you want to include from your selected data sources to provide context to the agent."
+msgstr "Describe what type of data you want to include from your selected data sources to provide context to the agent."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what data you want to include from your selected data sources..."
+msgstr "Describe what data you want to include from your selected data sources..."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Extract Data"
+msgstr "Configure Extract Data"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Set extraction parameters and describe what data to extract."
+msgstr "Set extraction parameters and describe what data to extract."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
+msgstr "Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Query Tables"
+msgstr "Configure Query Tables"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe how you want to query the selected tables."
+msgstr "Describe how you want to query the selected tables."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Query description"
+msgstr "Query description"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries."
+msgstr "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what you want to query from your tables..."
+msgstr "Describe what you want to query from your tables..."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Data Warehouse"
+msgstr "Configure Data Warehouse"
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage.tsx
+msgid "My tool name…"
+msgstr "My tool name…"
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerInfoPage.tsx
+msgid "Available tools"
+msgstr "Available tools"
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerInfoPage.tsx
+msgid "{nbTools, plural, one {# tool} other {# tools}}"
+msgstr "{nbTools, plural, one {# tool} other {# tools}}"
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerInfoPage.tsx
+msgid "{nbTools, plural, one {This tool will be available to your agent during conversations and can be configured with different permission levels:} other {These tools will be available to your agent during conversations and can be configured with different permission levels:}}"
+msgstr "{nbTools, plural, one {This tool will be available to your agent during conversations and can be configured with different permission levels:} other {These tools will be available to your agent during conversations and can be configured with different permission levels:}}"
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerInfoPage.tsx
+msgid "No tools are currently available for this server."
+msgstr "No tools are currently available for this server."
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerSelectionPage.tsx
+msgid "Find documentation <0>here</0>."
+msgstr "Find documentation <0>here</0>."
+
+#: front/components/agent_builder/capabilities/mcp/MCPServerSelectionPage.tsx
+msgid "Tool details"
+msgstr "Tool details"
+
+#: front/components/agent_builder/capabilities/mcp/utils/formValidation.ts
+msgid "Tool \"{toolName}\" has invalid configuration. Please reconfigure it."
+msgstr "Tool \"{toolName}\" has invalid configuration. Please reconfigure it."
+
+#: front/components/agent_builder/capabilities/mcp/utils/infoPageUtils.ts
+msgid "Tool information"
+msgstr "Tool information"
+
+#: front/components/agent_builder/capabilities/mcp/utils/infoPageUtils.ts
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "No description available"
+msgstr "No description available"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Child agent selection is required"
+msgstr "Child agent selection is required"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select a valid child agent"
+msgstr "Please select a valid child agent"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select a Dust app"
+msgstr "Please select a Dust app"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Selected Dust app is not valid"
+msgstr "Selected Dust app is not valid"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+#: front/components/agent_builder/types.ts
+msgid "The name cannot be empty."
+msgstr "The name cannot be empty."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
+msgstr "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+#: front/components/agent_builder/types.ts
+msgid "Description is required"
+msgstr "Description is required"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Description too long"
+msgstr "Description too long"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Secret selection is required"
+msgstr "Secret selection is required"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select a valid secret"
+msgstr "Please select a valid secret"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select one Pod"
+msgstr "Please select one Pod"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Selected Pod is not valid"
+msgstr "Selected Pod is not valid"
+
+#: front/components/agent_builder/capabilities/mcp/validation/schemaBuilders.ts
+msgid "You must select at least one value for \"{rootKey}\""
+msgstr "You must select at least one value for \"{rootKey}\""
+
 #: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
 msgid "Enter value for {keyLabel}"
 msgstr "Enter value for {keyLabel}"
@@ -881,11 +1210,6 @@ msgstr "Configure additional parameters required by this action."
 #: front/components/navigation/AdminSettingsSearchNav.tsx
 msgid "Search"
 msgstr "Search"
-
-#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
-#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
-msgid "No description available"
-msgstr "No description available"
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "Error loading agents"
@@ -1117,10 +1441,6 @@ msgid "We couldn't find any documents in your selection. Add documents to enable
 msgstr "We couldn't find any documents in your selection. Add documents to enable \"{serverName}\"."
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "Select data sources"
-msgstr "Select data sources"
-
-#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
 msgid "{dataSourceCount, plural, one {Selected data source} other {Selected data sources}}"
 msgstr "{dataSourceCount, plural, one {Selected data source} other {Selected data sources}}"
 
@@ -1196,6 +1516,150 @@ msgstr "{toolName} has been added to your agent"
 msgid "Error saving draft agent"
 msgstr "Error saving draft agent"
 
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Structured response format"
+msgstr "Structured response format"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Specify a JSON schema to get responses in a consistent structure."
+msgstr "Specify a JSON schema to get responses in a consistent structure."
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "See documentation"
+msgstr "See documentation"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Example:\n"
+"\n"
+"{RESPONSE_FORMAT_EXAMPLE}"
+msgstr "Example:\n"
+"\n"
+"{RESPONSE_FORMAT_EXAMPLE}"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "JSON response"
+msgstr "JSON response"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Pick a specific model that supports structured response format (JSON schema)"
+msgstr "Pick a specific model that supports structured response format (JSON schema)"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Will constrain the model to a specific JSON schema"
+msgstr "Will constrain the model to a specific JSON schema"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Command or guideline you provide to your agent to direct its responses."
+msgstr "Command or guideline you provide to your agent to direct its responses."
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Comparing current version with {compareVersionDate}"
+msgstr "Comparing current version with {compareVersionDate}"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Leave comparison mode"
+msgstr "Leave comparison mode"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Restore this version"
+msgstr "Restore this version"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsEditor.tsx
+msgid "What is the purpose of the agent? How should it behave?"
+msgstr "What is the purpose of the agent? How should it behave?"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsEditor.tsx
+msgid "{count} / {maxCount} characters"
+msgstr "{count} / {maxCount} characters"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Unknown"
+msgstr "Unknown"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgctxt "version number"
+msgid "v{version}"
+msgstr "v{version}"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgctxt "author of a version"
+msgid "System"
+msgstr "System"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "Compare with previous versions"
+msgstr "Compare with previous versions"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "Choose version to compare"
+msgstr "Choose version to compare"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "by {authorName}"
+msgstr "by {authorName}"
+
+#: front/components/agent_builder/instructions/BlockInsertDropdown.tsx
+msgctxt "dropdown header, insert a block"
+msgid "Insert"
+msgstr "Insert"
+
+#: front/components/agent_builder/instructions/BlockInsertDropdown.tsx
+msgid "No matching blocks"
+msgstr "No matching blocks"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+#: front/components/agent_builder/instructions/useBlockInsertDropdown.tsx
+msgid "Heading"
+msgstr "Heading"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Bold"
+msgstr "Bold"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Italic"
+msgstr "Italic"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Bulleted list"
+msgstr "Bulleted list"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Ordered list"
+msgstr "Ordered list"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+#: front/components/agent_builder/instructions/useBlockInsertDropdown.tsx
+msgid "Code block"
+msgstr "Code block"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+#: front/components/agent_builder/instructions/useBlockInsertDropdown.tsx
+msgid "XML tag"
+msgstr "XML tag"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Reject all"
+msgstr "Reject all"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Reject all suggestions"
+msgstr "Reject all suggestions"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Accept all"
+msgstr "Accept all"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Accept all suggestions"
+msgstr "Accept all suggestions"
+
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
 msgid "Add knowledge"
 msgstr "Add knowledge"
@@ -1224,14 +1688,6 @@ msgstr "Capabilities and knowledge"
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
 msgid "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
 msgstr "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
-
-#: front/components/agent_builder/types.ts
-msgid "The name cannot be empty."
-msgstr "The name cannot be empty."
-
-#: front/components/agent_builder/types.ts
-msgid "Description is required"
-msgstr "Description is required"
 
 #: front/components/agent_builder/types.ts
 msgid "Description should be less than {DESCRIPTION_MAX_LENGTH} characters."
@@ -1603,23 +2059,6 @@ msgstr "Group managers ({managerCount})"
 #: front/components/groups/GroupManagersField.tsx
 msgid "Group managers can add members and set their usage and credit limits."
 msgstr "Group managers can add members and set their usage and credit limits."
-
-#: front/components/groups/GroupSelectionTable.tsx
-#: front/components/groups/ProvisionedGroupDialog.tsx
-#: front/components/groups/WorkspaceGroupsList.tsx
-#: front/components/me/UserToolsTable.tsx
-#: front/components/members/MemberSelectionTable.tsx
-#: front/components/members/MembersList.tsx
-#: front/components/pages/workspace/developers/SecretsPage.tsx
-#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
-#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
-#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-#: front/components/workspace/billing/NextInvoicePreview.tsx
-#: front/components/workspace/member_name_column.tsx
-#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Name"
-msgstr "Name"
 
 #: front/components/groups/GroupSelectionTable.tsx
 #: front/components/groups/WorkspaceGroupsList.tsx
@@ -5861,11 +6300,6 @@ msgstr "Read & write"
 #: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
 msgid "No access"
 msgstr "No access"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-#: front/components/workspace/billing/BillingInformation.tsx
-msgid "Unknown"
-msgstr "Unknown"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "No spaces"

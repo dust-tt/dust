@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -78,12 +79,12 @@ export const BlockInsertDropdown = ({
       >
         <div className="px-2 pb-0.5 pt-1">
           <span className="text-xs font-medium text-muted-foreground">
-            Insert
+            <Trans context="dropdown header, insert a block">Insert</Trans>
           </span>
         </div>
         {suggestions.length === 0 ? (
           <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
-            No matching blocks
+            <Trans>No matching blocks</Trans>
           </div>
         ) : (
           <>

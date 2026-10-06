@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { compareDesc } from "date-fns";
 import { useCallback, useMemo } from "react";
 
@@ -33,6 +34,7 @@ export function AgentInstructionsHistory({
   selectedConfig,
   owner,
 }: AgentInstructionsHistoryProps) {
+  const { t } = useLingui();
   const authorIdsToLookup = useMemo(() => {
     const ids = new Set<number>();
     history.forEach((config) => {
@@ -54,31 +56,32 @@ export function AgentInstructionsHistory({
   const authorMap = useMemo(() => {
     const map: Record<string, string> = {};
     authorLookupMembers.forEach((user) => {
-      map[user.id.toString()] = user.fullName || user.firstName || "Unknown";
+      map[user.id.toString()] = user.fullName || user.firstName || t`Unknown`;
     });
     return map;
-  }, [authorLookupMembers]);
+  }, [authorLookupMembers, t]);
 
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
+      const version = config.version;
       return config.versionCreatedAt
         ? formatDateTime(
             new Date(config.versionCreatedAt),
             NUMERIC_DATE_TIME_OPTIONS
           )
-        : `v${config.version}`;
+        : t({ message: `v${version}`, context: "version number" });
     },
-    []
+    [t]
   );
 
   const getAuthorName = useCallback(
     (config: LightAgentConfigurationType) => {
       if (!config.versionAuthorId) {
-        return "System";
+        return t({ message: "System", context: "author of a version" });
       }
-      return authorMap[config.versionAuthorId.toString()] || "Unknown";
+      return authorMap[config.versionAuthorId.toString()] || t`Unknown`;
     },
-    [authorMap]
+    [authorMap, t]
   );
 
   const historyWithPrev = useMemo(() => {
@@ -121,7 +124,7 @@ export function AgentInstructionsHistory({
           variant="ghost-secondary"
           icon={ClockRewind}
           size="icon"
-          tooltip="Compare with previous versions"
+          tooltip={t`Compare with previous versions`}
           isSelect
         />
       </DropdownMenuTrigger>
@@ -130,7 +133,7 @@ export function AgentInstructionsHistory({
         className="h-96 w-72"
         dropdownHeaders={
           <>
-            <DropdownMenuLabel label="Choose version to compare" />
+            <DropdownMenuLabel label={t`Choose version to compare`} />
             <DropdownMenuSeparator />
           </>
         }
@@ -151,21 +154,24 @@ export function AgentInstructionsHistory({
               }
             }}
           >
-            {historyWithPrev.map((config) => (
-              <DropdownMenuRadioItem
-                key={config.version}
-                value={config.version.toString()}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex flex-col">
-                    <span>{formatVersionLabel(config)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      by {getAuthorName(config)}
-                    </span>
+            {historyWithPrev.map((config) => {
+              const authorName = getAuthorName(config);
+              return (
+                <DropdownMenuRadioItem
+                  key={config.version}
+                  value={config.version.toString()}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex flex-col">
+                      <span>{formatVersionLabel(config)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        <Trans>by {authorName}</Trans>
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </DropdownMenuRadioItem>
-            ))}
+                </DropdownMenuRadioItem>
+              );
+            })}
           </DropdownMenuRadioGroup>
         )}
       </DropdownMenuContent>

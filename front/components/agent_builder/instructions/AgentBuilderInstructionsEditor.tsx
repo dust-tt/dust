@@ -31,6 +31,7 @@ import { createMentionSuggestion } from "@app/components/editor/input_bar/mentio
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -173,6 +174,7 @@ export function AgentBuilderInstructionsEditor({
   isInstructionDiffMode = false,
   children,
 }: AgentBuilderInstructionsEditorProps = {}) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
 
   const { field } = useController<AgentBuilderFormData, "instructions">({
@@ -218,7 +220,7 @@ export function AgentBuilderInstructionsEditor({
             }
           }
 
-          return "What is the purpose of the agent? How should it behave?";
+          return t`What is the purpose of the agent? How should it behave?`;
         },
         emptyNodeClass:
           "first:before:text-muted-foreground first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -246,7 +248,7 @@ export function AgentBuilderInstructionsEditor({
 
     return extensions;
     // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
-  }, [owner.sId, suggestionHandler]);
+  }, [owner.sId, suggestionHandler, t]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
@@ -554,7 +556,9 @@ const CharacterCountDisplay = ({
         isOverLimit ? "text-warning" : "text-muted-foreground"
       )}
     >
-      {count} / {maxCount} characters
+      <Trans>
+        {count} / {maxCount} characters
+      </Trans>
     </span>
   );
 };
