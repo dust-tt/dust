@@ -15,8 +15,9 @@ without suppressing entries accessible through the main tree. No exclusive tenan
 - **Object consistency:** metadata, size, blocks, and affected indexes MUST represent one complete
   state in the client overlay and each FDB transaction. Reads MUST NOT mix block revisions or expose
   old tails after truncate/re-extension. Separate calls need not observe the same state.
-- **Bounded freshness:** publication and read/authorization caching MUST share one
-  `MAX_EVENTUAL_CONSISTENCY_DELAY_MS = 1000` budget. Hits and subsequent writes MUST NOT renew it.
+- **Bounded freshness:** client write buffering and read/authorization caching MUST share one
+  `MAX_EVENTUAL_CONSISTENCY_DELAY_MS = 1000` budget. Server processing and network delays are
+  excluded. Hits and subsequent writes MUST NOT renew the client budget.
 - **Minimal transactions:** independent objects MUST NOT share a write transaction merely because
   they share a tenant, parent, or network request. Namespace operations coordinate their explicit
   participants atomically.
@@ -25,36 +26,39 @@ without suppressing entries accessible through the main tree. No exclusive tenan
 - **Independent writers:** FDB conflict detection and current transactional authorization remain
   authoritative. No process-local lock, client lease, or tenant affinity provides correctness.
 - **Failure:** uncommitted client edits MAY be lost. Deferred errors MUST reach fsync and subsequent
-  mutations; expired or rejected overlays MUST NOT remain readable indefinitely.
+  mutations; failed overlays and expired clean views MUST NOT remain readable indefinitely.
 
 ## Freshness budget
 
-Call the total bound `D`. It covers content, metadata, xattrs, names, listings, negative results,
-moves, and authorization, including existing handles. RPC delivery may add delay, as in v3.
+Call the client-side bound `D`. It covers content, metadata, xattrs, names, listings, negative results,
+moves, and authorization, including existing handles. The server has no write buffer or read cache:
+server processing, FDB transactions/retries, and network delays are entirely outside `D`.
 
 | Budget | Initial value |
 | --- | ---: |
-| Client acceptance → FDB publication (`P`), including queuing and server processing | 500 ms |
-| Read/authorization validity (`C`) | 500 ms |
-| Total `P + C <= D` | 1000 ms |
+| Client write buffering before dispatch (`W`) | 500 ms |
+| Client read/authorization cache validity (`C`) | 500 ms |
+| Total client-added delay `W + C <= D` | 1000 ms |
 
-Giving writeback and read caching separate 1s budgets would permit roughly 2s of staleness.
-Start dispatch after a short **25 ms coalescing window**, earlier on pressure or fsync; `P` is the
-maximum publication budget, not the normal flush interval. Deadlines follow the oldest remaining
-accepted edit and never slide when more edits arrive. Apply backpressure before RAM acknowledgment
-when capacity or publication deadlines cannot be respected.
+Giving the writing client's buffer and the reading client's cache separate 1s budgets would permit
+roughly 2s of client-added staleness. Start dispatch after a short **25 ms coalescing window**, earlier
+on pressure or fsync; `W` bounds client-controlled coalescing and scheduling, not commit latency.
+Measure it from the oldest remaining accepted edit, without resetting it when more edits arrive.
+Waiting for an in-flight prerequisite RPC is excluded; dispatch as soon as that prerequisite completes
+once the coalescing window has elapsed. Apply backpressure before RAM acknowledgment when capacity
+or the client buffering bound cannot be respected.
 
-Read expiry is anchored at the start of validation, conservatively the client's RPC start, never
-reply arrival. Delayed responses, prefetches, cache hits, and block fills cannot extend that expiry.
-Every layer uses the same budget; there is no additional server cache TTL. Metadata and authorization
-refresh together against current FDB state. An unchanged file revision does not prove that ancestor
-grants or parent links are unchanged. Session expiry also caps cached access.
+Read validity starts when the client receives a freshly validated response: expire it after `C`.
+Cache hits, later use of prefetched entries, and block fills do not restart that clock. Metadata and
+authorization refresh together against current FDB state. An unchanged file revision does not prove
+that ancestor grants or parent links are unchanged. Session expiry also caps cached access.
 
-If publication misses its deadline, stop serving that tentative branch, retain an error, and refresh
-or fail. A timeout cannot cancel an already submitted commit: its outcome may be unknown. Therefore
-the 1s bound describes normal publication plus cache convergence, not guaranteed survival/visibility
-of every RAM-acknowledged write through arbitrary outages or ambiguous commits. After an actual
-commit, other clients must refresh within `C`. Application-owned buffers are outside this contract.
+There is no 1s acceptance-to-commit deadline or wall-clock convergence promise: total visibility delay
+also includes server and network time. An RPC exceeding `W` or `D` is not itself a freshness failure.
+Use independent RPC timeouts for stalled requests; on failure, invalidate affected tentative overlays
+and retain deferred errors. A timeout cannot cancel an already submitted commit, whose outcome may
+be unknown. Expired clean views refresh or fail; they are not served indefinitely during an outage.
+Application-owned buffers are outside this contract.
 
 ## Client cache
 
@@ -69,7 +73,7 @@ stable ID. Cached authorization must not cross session/grant sets. Keep:
 ```text
 ObjectView = object ID + server revision + metadata + absolute expiry
 Block      = (object ID, server revision, block index) -> bytes or proven hole
-Pending    = ordered local edits + local generation + oldest acceptance/deadline + deferred error
+Pending    = ordered local edits + local generation + oldest acceptance/dispatch state + deferred error
 DirPage    = parent/projection + cursor + entries with full attributes + expiry
 ```
 
@@ -77,7 +81,7 @@ An immutable base plus ordered local edits provides immediate read-your-local-wr
 Local generations are distinct from committed revisions. Serialize conflicting local edits by object;
 unrelated objects proceed concurrently. Late RPC replies must not overwrite newer edits or resurrect
 locally removed names. Refresh or rebase an overlay atomically, never independently update its size
-and blocks. Dirty state cannot outlive its publication deadline.
+and blocks. In-flight dirty state follows the RPC's outcome/timeout, not a client freshness deadline.
 
 ### Versions and block retention
 
@@ -111,8 +115,8 @@ seed one bounded sibling page. Bound total prefetch concurrency and charge it to
 never eagerly load an entire directory or recurse into descendants.
 
 Use opaque keyset cursors, not offsets. Each page is one authorized snapshot; pagination does not
-promise a snapshot across all pages during concurrent mutation. Cache entries retain their original
-validation deadline. An unchanged directory revision cannot renew cached child attributes or grants:
+promise a snapshot across all pages during concurrent mutation. Cache entries expire `C` after receipt
+of their validating response. An unchanged directory revision cannot renew child attributes or grants:
 children can change without changing directory membership. Partial pages cannot prove arbitrary name
 absence or directory EOF; negative lookups require explicit validation.
 
@@ -155,7 +159,7 @@ If a prerequisite fails, discard its dependent overlays and report their failure
 The server validates the session, reads current FDB state, authorizes, applies edits, and commits.
 No authoritative RAM overlay or additional read cache. Existing parent-chain hints may batch FDB
 reads, but every authority decision is validated in the transaction. Ordinary FDB retries apply
-only to known noncommits, preserve the deadline, and recompute against current state.
+only to known noncommits, respect the independent RPC deadline, and recompute against current state.
 
 | Operation | Objects changed atomically |
 | --- | --- |
@@ -207,5 +211,6 @@ bypasses the kernel page cache and its readahead.
 Verify object-only fsync with unrelated writes stalled; create/write/fsync prerequisites; concurrent
 writers, moves, unlink, append, and truncate/re-extension; unchanged-revision block reuse; child
 attribute changes within cached directory pages; grant revocation and expiry across clients/servers;
-bounded memory/backpressure; deferred errors and ambiguous commits. Then compare deep untar, Git's
-small writes, and the existing filesystem suite with v3, including writeback drain separately.
+client-only buffering/cache timing with slow RPCs; bounded memory/backpressure; deferred errors and
+ambiguous commits. Then compare deep untar, Git's small writes, and the existing filesystem suite
+with v3, including writeback drain separately.
