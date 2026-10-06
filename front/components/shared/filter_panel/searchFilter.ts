@@ -16,6 +16,7 @@ import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { TagType } from "@app/types/tag";
@@ -248,24 +249,24 @@ export function getSearchFilterPresets<Category extends SearchFilterCategory>({
   categories: readonly Category[];
   currentUser: Pick<UserType, "sId" | "fullName" | "image">;
 }): SearchFilterPreset<Category>[] {
-  return categories.flatMap((category): SearchFilterPreset<Category>[] => {
-    if (category !== "editor" || filter[category]?.length) {
-      return [];
-    }
-    const [option] = getSearchFilterOptions(
-      "editor",
-      { editors: [currentUser] },
-      currentUser.sId
-    );
-    return [
-      {
+  return removeNulls(
+    categories.map((category): SearchFilterPreset<Category> | null => {
+      if (category !== "editor" || filter[category]?.length) {
+        return null;
+      }
+      const [option] = getSearchFilterOptions(
+        "editor",
+        { editors: [currentUser] },
+        currentUser.sId
+      );
+      return {
         key: "editor-is-me",
         category,
         categoryLabel: SEARCH_FILTER_CATEGORY_SINGULAR_LABEL.editor,
         options: [option],
-      },
-    ];
-  });
+      };
+    })
+  );
 }
 
 export function getSearchFilterIds<Category extends SearchFilterCategory>(
