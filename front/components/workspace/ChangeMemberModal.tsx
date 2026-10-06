@@ -2,7 +2,7 @@ import type { SearchMemberWithWorkspaceType } from "@app/components/members/Memb
 import { isFullUserType } from "@app/components/members/MemberSelectionTable";
 import {
   GROUP_ROLE_MANAGED_MESSAGE,
-  getRoleDescription,
+  ROLE_DESCRIPTIONS,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { MemberGroupsSection } from "@app/components/workspace/MemberGroupsSection";
@@ -31,23 +31,8 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
-
-function getMemberRoleMessage({
-  rolesManagedByGroups,
-  role,
-}: {
-  rolesManagedByGroups: boolean;
-  role: ActiveRoleType;
-}): string {
-  if (rolesManagedByGroups) {
-    return GROUP_ROLE_MANAGED_MESSAGE;
-  }
-
-  return `The role defines the rights of a member of the workspace. ${getRoleDescription(
-    role
-  )}`;
-}
 
 /**
  * @cc [owner:philipperolet,label:security;react] delegated-member-controls
@@ -65,6 +50,7 @@ export function ChangeMemberModal({
   mutateMembers: () => void | Promise<unknown>;
   workspace: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const { isManager } = useAuth();
   const canEditWorkspaceMember =
     isManager && member !== null && isFullUserType(member);
@@ -83,13 +69,15 @@ export function ChangeMemberModal({
 
   const rolesManagedByGroups = grantedRoles.length > 0;
 
-  const roleMessage =
-    role && isActiveRoleType(role)
-      ? getMemberRoleMessage({
-          rolesManagedByGroups,
-          role,
-        })
-      : "";
+  const roleDescription =
+    role && isActiveRoleType(role) ? t(ROLE_DESCRIPTIONS[role]) : null;
+  let roleMessage = "";
+  if (roleDescription !== null) {
+    roleMessage = rolesManagedByGroups
+      ? t(GROUP_ROLE_MANAGED_MESSAGE)
+      : t`The role defines the rights of a member of the workspace. ${roleDescription}`;
+  }
+  const memberFullName = member?.fullName;
 
   // Revoking an admin requires to be an admin
   const canRevokeMember =
@@ -124,7 +112,7 @@ export function ChangeMemberModal({
         {member && role && isActiveRoleType(role) ? (
           <>
             <SheetHeader>
-              <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
+              <SheetTitle>{member.fullName || t`Unreachable`}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
               <div className="flex flex-col gap-6 text-sm text-muted-foreground">
@@ -146,7 +134,9 @@ export function ChangeMemberModal({
                 {canEditWorkspaceMember && (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <div className="heading-base text-foreground">Role:</div>
+                      <div className="heading-base text-foreground">
+                        <Trans>Role:</Trans>
+                      </div>
                       <RoleDropDown
                         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         selectedRole={selectedRole || role}
@@ -167,19 +157,21 @@ export function ChangeMemberModal({
                         <DialogTrigger asChild>
                           <Button
                             variant="warning"
-                            label="Revoke member access"
+                            label={t`Revoke member access`}
                             size="sm"
                             disabled={member.origin === "provisioned"}
                             tooltip={
                               member.origin === "provisioned"
-                                ? "This user is managed by your identity provider."
+                                ? t`This user is managed by your identity provider.`
                                 : undefined
                             }
                           />
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Confirm deletion</DialogTitle>
+                            <DialogTitle>
+                              <Trans>Confirm deletion</Trans>
+                            </DialogTitle>
                           </DialogHeader>
                           {isSaving ? (
                             <div className="flex justify-center py-8">
@@ -189,20 +181,22 @@ export function ChangeMemberModal({
                             <>
                               <DialogContainer>
                                 <div>
-                                  Revoke access for user{" "}
-                                  <span className="font-bold">
-                                    {member.fullName}
-                                  </span>
-                                  ?
+                                  <Trans>
+                                    Revoke access for user{" "}
+                                    <span className="font-bold">
+                                      {memberFullName}
+                                    </span>
+                                    ?
+                                  </Trans>
                                 </div>
                               </DialogContainer>
                               <DialogFooter
                                 leftButtonProps={{
-                                  label: "Cancel",
+                                  label: t`Cancel`,
                                   variant: "outline",
                                 }}
                                 rightButtonProps={{
-                                  label: "Yes, revoke",
+                                  label: t`Yes, revoke`,
                                   variant: "warning",
                                   onClick: async () => {
                                     await handleMembersRoleChange({
@@ -222,9 +216,11 @@ export function ChangeMemberModal({
                     </div>
                     {member.origin !== "provisioned" && (
                       <Page.P>
-                        Deleting a member will remove them from the workspace.
-                        They will be able to rejoin if they have an invitation
-                        link.
+                        <Trans>
+                          Deleting a member will remove them from the workspace.
+                          They will be able to rejoin if they have an invitation
+                          link.
+                        </Trans>
                       </Page.P>
                     )}
                   </div>
@@ -234,7 +230,7 @@ export function ChangeMemberModal({
             {canEditWorkspaceMember && (
               <SheetFooter
                 rightButtonProps={{
-                  label: "Update role",
+                  label: t`Update role`,
                   onClick: handleSave,
                   disabled:
                     selectedRole === member.workspace.role ||

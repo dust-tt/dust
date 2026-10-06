@@ -2,7 +2,6 @@ import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { useGroups } from "@app/lib/swr/groups";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
@@ -11,6 +10,8 @@ import {
   SearchInput,
   Users01,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CellContext,
   ColumnDef,
@@ -51,6 +52,7 @@ export function GroupSelectionTable({
   onSelectionChange,
   extraColumns,
 }: GroupSelectionTableProps) {
+  const { t } = useLingui();
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -119,7 +121,7 @@ export function GroupSelectionTable({
       createSelectionColumn<GroupRowData>(),
       {
         accessorKey: "name",
-        header: "Name",
+        header: t`Name`,
         id: "name",
         sortingFn: "text",
         meta: {
@@ -130,7 +132,10 @@ export function GroupSelectionTable({
           return (
             <DataTable.CellContent
               icon={Users01}
-              description={`${memberCount} member${pluralize(memberCount)}`}
+              description={t`${plural(memberCount, {
+                one: "# member",
+                other: "# members",
+              })}`}
             >
               {name}
             </DataTable.CellContent>
@@ -145,14 +150,14 @@ export function GroupSelectionTable({
           const { label, color } = getGroupKindChip(info.row.original.kind);
           return (
             <DataTable.CellContent>
-              <Chip size="xs" color={color} label={label} />
+              <Chip size="xs" color={color} label={t(label)} />
             </DataTable.CellContent>
           );
         },
       },
       ...(extraColumns ?? []),
     ],
-    [extraColumns]
+    [extraColumns, t]
   );
 
   return (
@@ -161,14 +166,14 @@ export function GroupSelectionTable({
         name="group-search"
         value={searchText}
         onChange={handleSearchChange}
-        placeholder="Search groups..."
+        placeholder={t`Search groups...`}
         className="mt-2"
       />
       <div className="flex min-h-0 flex-1 flex-col">
         {isGroupsLoading ? (
           <div className="flex items-center justify-center p-4">
             <span className="text-sm text-muted-foreground">
-              Loading groups...
+              <Trans>Loading groups...</Trans>
             </span>
           </div>
         ) : (

@@ -171,6 +171,9 @@ msgid "How you appear to other members of the workspace"
 msgstr "Comment les autres membres du workspace vous voient"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -195,7 +198,9 @@ msgid "Last name"
 msgstr "Nom"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/assistant/details/MemberDetails.tsx
 #: front/components/me/NotificationPreferences.tsx
+#: front/components/members/MembersList.tsx
 msgid "Email"
 msgstr "E-mail"
 
@@ -328,6 +333,7 @@ msgid "Choose where else to receive notifications"
 msgstr "Choisissez où recevoir aussi les notifications"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
 msgid "Invitations"
 msgstr "Invitations"
 
@@ -373,9 +379,47 @@ msgid "New conversation"
 msgstr "Nouvelle conversation"
 
 #: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
 #: front/components/navigation/AdminSettingsSearchNav.tsx
 msgid "Search"
 msgstr "Rechercher"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Not available"
+msgstr "Non disponible"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "This user is not available."
+msgstr "Cet utilisateur n’est pas disponible."
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "User avatar"
+msgstr "Avatar de l’utilisateur"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Former member"
+msgstr "Ancien membre"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Left the workspace: {leftDate}"
+msgstr "A quitté le workspace : {leftDate}"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Joined the workspace: {joinedDate}"
+msgstr "A rejoint le workspace : {joinedDate}"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Username"
+msgstr "Nom d’utilisateur"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Full name"
+msgstr "Nom complet"
+
+#: front/components/assistant/details/MemberDetails.tsx
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Close"
+msgstr "Fermer"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "New conversation in pod"
@@ -398,6 +442,7 @@ msgid "View description and settings"
 msgstr "Voir la description et les paramètres"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Edit"
 msgstr "Modifier"
 
@@ -484,11 +529,14 @@ msgid "Agents"
 msgstr "Agents"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/groups/GroupsList.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
 #: front/components/navigation/config.ts
 msgid "Members"
 msgstr "Membres"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Skills"
 msgstr "Compétences"
 
@@ -577,9 +625,179 @@ msgstr "D’autres paramètres sont disponibles. Saisissez du texte pour filtrer
 msgid "Actions"
 msgstr "Actions"
 
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Close"
-msgstr "Fermer"
+#: front/components/groups/GroupDialog.tsx
+msgid "Edit group"
+msgstr "Modifier le groupe"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "New group"
+msgstr "Nouveau groupe"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Managed by admins"
+msgstr "Géré par les administrateurs"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "This group grants the Admin role. Only workspace admins can change its members."
+msgstr "Ce groupe accorde le rôle Administrateur. Seuls les administrateurs du workspace peuvent modifier ses membres."
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/GroupsList.tsx
+msgid "Group name"
+msgstr "Nom du groupe"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "e.g. Sales"
+msgstr "ex. : Ventes"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Group members ({selectedMemberCount})"
+msgstr "Membres du groupe ({selectedMemberCount})"
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/me/UserAutomationsTable.tsx
+#: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Create"
+msgstr "Créer"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Provisioned"
+msgstr "Provisionné"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Manual"
+msgstr "Manuel"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Other"
+msgstr "Autre"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Synced from your identity provider. Manage membership in your IdP."
+msgstr "Synchronisé depuis votre fournisseur d’identité. Gérez les membres dans votre IdP."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Membership stays managed by your directory."
+msgstr "L’appartenance est gérée par votre annuaire."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Only workspace admins can change this group's members."
+msgstr "Seuls les administrateurs du workspace peuvent modifier les membres de ce groupe."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers can manage usage and credit limits for this group's members."
+msgstr "Les managers du groupe peuvent gérer les limites d’utilisation et de crédits des membres de ce groupe."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "{fullName} isn't a member of {groupName} but can manage it."
+msgstr "{fullName} n’est pas membre de {groupName} mais peut le gérer."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "They can grant themselves access to the group's permissions and data."
+msgstr "Cette personne peut s’accorder l’accès aux autorisations et aux données du groupe."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Not group member"
+msgstr "Non membre du groupe"
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers ({managerCount})"
+msgstr "Managers du groupe ({managerCount})"
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers can add members and set their usage and credit limits."
+msgstr "Les managers du groupe peuvent ajouter des membres et définir leurs limites d’utilisation et de crédits."
+
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+#: front/components/me/UserToolsTable.tsx
+#: front/components/members/MemberSelectionTable.tsx
+#: front/components/members/MembersList.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "{memberCount, plural, one {# member} other {# members}}"
+msgstr "{memberCount, plural, one {# membre} other {# membres}}"
+
+#: front/components/groups/GroupSelectionTable.tsx
+msgid "Search groups..."
+msgstr "Rechercher des groupes…"
+
+#: front/components/groups/GroupSelectionTable.tsx
+msgid "Loading groups..."
+msgstr "Chargement des groupes…"
+
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "Group members ({memberCount})"
+msgstr "Membres du groupe ({memberCount})"
+
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "This group has no members."
+msgstr "Ce groupe n’a aucun membre."
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Group Manager"
+msgstr "Manager du groupe"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Delete"
+msgstr "Supprimer"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Delete group"
+msgstr "Supprimer le groupe"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Are you sure you want to delete {groupName}? This action cannot be undone."
+msgstr "Voulez-vous vraiment supprimer {groupName} ? Cette action est irréversible."
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "User provisioning is configured in <0>IT & Security → User provisioning</0>"
+msgstr "Le provisionnement des utilisateurs se configure dans <0>IT et sécurité → Provisionnement des utilisateurs</0>"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Search groups"
+msgstr "Rechercher des groupes"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Create group"
+msgstr "Créer un groupe"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "You don’t have any groups yet."
+msgstr "Vous n’avez encore aucun groupe."
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "{fullName} isn't a member of {groupName}"
+msgstr "{fullName} n’est pas membre de {groupName}"
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
+msgstr "En tant que manager, cette personne peut ajouter n’importe qui au groupe, y compris elle-même. Toute personne ajoutée obtient les autorisations du groupe et l’accès à chaque espace et source de données partagés avec lui. Continuez uniquement si vous faites confiance à {firstName} pour ces autorisations."
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "{managerCount, plural, one {# person you're appointing isn't a member of {groupName}} other {# people you're appointing aren't members of {groupName}}}"
+msgstr "{managerCount, plural, one {# personne que vous nommez n’est pas membre de {groupName}} other {# personnes que vous nommez ne sont pas membres de {groupName}}}"
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
+msgstr "En tant que managers, ces personnes peuvent ajouter n’importe qui au groupe, y compris elles-mêmes. Toute personne ajoutée obtient les autorisations du groupe et l’accès à chaque espace et source de données partagés avec lui. Continuez uniquement si vous leur faites confiance pour ces autorisations."
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "Appoint anyway"
+msgstr "Nommer quand même"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Every 5 minutes"
@@ -766,6 +984,7 @@ msgid "An error occurred while deleting the automation."
 msgstr "Une erreur s’est produite lors de la suppression de l’automatisation."
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Enabled"
 msgstr "Activée"
 
@@ -796,18 +1015,6 @@ msgstr "Voulez-vous vraiment supprimer « {triggerToDeleteName} » ?"
 #: front/components/me/UserAutomationsTable.tsx
 msgid "This action cannot be undone."
 msgstr "Cette action est irréversible."
-
-#: front/components/me/UserAutomationsTable.tsx
-msgid "Cancel"
-msgstr "Annuler"
-
-#: front/components/me/UserAutomationsTable.tsx
-msgid "Delete"
-msgstr "Supprimer"
-
-#: front/components/me/UserToolsTable.tsx
-msgid "Name"
-msgstr "Nom"
 
 #: front/components/me/UserToolsTable.tsx
 msgid "Error"
@@ -888,6 +1095,274 @@ msgstr "Impossible de charger vos réveils."
 #: front/components/me/UserWakeUpsTable.tsx
 msgid "None of your conversations has a scheduled wake-up. Agents schedule wake-ups to pick a conversation back up on their own."
 msgstr "Aucune de vos conversations n’a de réveil planifié. Les agents planifient des réveils pour reprendre une conversation d’eux-mêmes."
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "Search members"
+msgstr "Rechercher des membres"
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "No members found"
+msgstr "Aucun membre trouvé"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "The role defines the rights of a member for the workspace. {roleDescription}"
+msgstr "Le rôle définit les droits d’un membre dans le workspace. {roleDescription}"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Edit invitation"
+msgstr "Modifier l’invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Invitation sent on {sentDate}"
+msgstr "Invitation envoyée le {sentDate}"
+
+#: front/components/members/EditInvitationModal.tsx
+#: front/components/members/InvitationsList.tsx
+msgid "(expired)"
+msgstr "(expirée)"
+
+#: front/components/members/EditInvitationModal.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Role:"
+msgstr "Rôle :"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Send invitation again"
+msgstr "Renvoyer l’invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Revoke invitation"
+msgstr "Révoquer l’invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Update role"
+msgstr "Modifier le rôle"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Invitation Email"
+msgstr "E-mail de l’invitation"
+
+#: front/components/members/InvitationsList.tsx
+#: front/components/members/MembersList.tsx
+msgid "Role"
+msgstr "Rôle"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Resend"
+msgstr "Renvoyer"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No pending invitations"
+msgstr "Aucune invitation en attente"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Send invitations to add new members to your workspace"
+msgstr "Envoyez des invitations pour ajouter de nouveaux membres à votre workspace"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No invitations match your search"
+msgstr "Aucune invitation ne correspond à votre recherche"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Try adjusting your search terms"
+msgstr "Essayez d’autres termes de recherche"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invalid email addresses: {invalidEmailsList}"
+msgstr "Adresses e-mail non valides : {invalidEmailsList}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{openCount, plural, one {# Available} other {# Available}}"
+msgstr "{openCount, plural, one {# disponible} other {# disponibles}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "If eligible"
+msgstr "Si éligible"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Too many invitations"
+msgstr "Trop d’invitations"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Your cannot send more than {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day."
+msgstr "Vous ne pouvez pas envoyer plus de {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations par jour."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{activeDifferentRoleCount, plural, one {The user below is already in your workspace with a different role. Moving forward will change their role to <0>{newRole}</0>.} other {The users below are already in your workspace with a different role. Moving forward will change their role to <1>{newRole}</1>.}}"
+msgstr "{activeDifferentRoleCount, plural, one {L’utilisateur ci-dessous fait déjà partie de votre workspace avec un rôle différent. En continuant, son rôle deviendra <0>{newRole}</0>.} other {Les utilisateurs ci-dessous font déjà partie de votre workspace avec un rôle différent. En continuant, leur rôle deviendra <1>{newRole}</1>.}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "- {fullName} (current role: {currentRole})"
+msgstr "- {fullName} (rôle actuel : {currentRole})"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Do you want to proceed?"
+msgstr "Voulez-vous continuer ?"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Some users are already in the workspace"
+msgstr "Certains utilisateurs sont déjà dans le workspace"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Yes, proceed"
+msgstr "Oui, continuer"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite members"
+msgstr "Inviter des membres"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite new users"
+msgstr "Inviter de nouveaux utilisateurs"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Choose a new plan to continue"
+msgstr "Choisissez un nouveau forfait pour continuer"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses"
+msgstr "Adresses e-mail"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses, comma separated"
+msgstr "Adresses e-mail, séparées par des virgules"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Validate"
+msgstr "Valider"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Note"
+msgstr "Remarque"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>yearly fee of {price} at the end of the trial period</0>."
+msgstr "Les nouveaux utilisateurs se verront facturer <0>des frais annuels de {price} à la fin de la période d’essai</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
+msgstr "Les nouveaux utilisateurs se verront facturer <0>des frais mensuels de {price} à la fin de la période d’essai</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Next bill will be adjusted proportionally based on the members' sign-up date."
+msgstr "La prochaine facture sera ajustée au prorata de la date d’inscription des membres."
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Search users..."
+msgstr "Rechercher des utilisateurs…"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Loading users..."
+msgstr "Chargement des utilisateurs…"
+
+#: front/components/members/MembersList.tsx
+msgid "Active"
+msgstr "Actif"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered"
+msgstr "Non inscrit"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Provisioned)"
+msgstr "Actif (provisionné)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Provisioned)"
+msgstr "Non inscrit (provisionné)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Invited)"
+msgstr "Actif (invité)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Invited)"
+msgstr "Non inscrit (invité)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Auto-joined)"
+msgstr "Actif (adhésion automatique)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Auto-joined)"
+msgstr "Non inscrit (adhésion automatique)"
+
+#: front/components/members/MembersList.tsx
+msgid "(you)"
+msgstr "(vous)"
+
+#: front/components/members/MembersList.tsx
+msgid "Status"
+msgstr "Statut"
+
+#: front/components/members/MembersList.tsx
+msgid "Groups"
+msgstr "Groupes"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Admin"
+msgstr "Administrateur"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Manager"
+msgstr "Manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Member"
+msgstr "Membre"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "None"
+msgstr "Aucun"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "admin"
+msgstr "administrateur"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "manager"
+msgstr "manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "member"
+msgstr "membre"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "none"
+msgstr "aucun"
+
+#: front/components/members/Roles.ts
+msgid "All roles"
+msgstr "Tous les rôles"
+
+#: front/components/members/Roles.ts
+msgid "Can use agents in conversations. Building permissions are set by admins."
+msgstr "Peut utiliser les agents dans les conversations. Les droits de création sont définis par les administrateurs."
+
+#: front/components/members/Roles.ts
+msgid "Can manage members, groups, roles, and workspace analytics."
+msgstr "Peut gérer les membres, les groupes, les rôles et les statistiques du workspace."
+
+#: front/components/members/Roles.ts
+msgid "Full administrative control, including settings, connections, billing, and governance."
+msgstr "Contrôle administratif complet, y compris les paramètres, les connexions, la facturation et la gouvernance."
+
+#: front/components/members/Roles.ts
+msgid "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
+msgstr "Les rôles sont gérés par les associations entre groupes et rôles configurées dans Paramètres et gouvernance. Pour changer un rôle, modifiez les groupes du membre."
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Search members (email)"
+msgstr "Rechercher des membres (e-mail)"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Check our <0>status page</0> for updates."
@@ -1098,6 +1573,178 @@ msgstr "Jeux de données"
 msgid "Logs"
 msgstr "Journaux"
 
+#: front/components/pages/workspace/governance/RoleProvisioningSection.tsx
+msgid "Roles"
+msgstr "Rôles"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "From 1 user"
+msgstr "À partir d’1 utilisateur"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Multiple private spaces"
+msgstr "Plusieurs espaces privés"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Flexible payment options (SEPA, Credit Card)"
+msgstr "Options de paiement flexibles (SEPA, carte bancaire)"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "US / EU data hosting"
+msgstr "Hébergement des données aux États-Unis ou dans l’UE"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Advanced models (GPT-5, Claude, Gemini, Mistral…)"
+msgstr "Modèles avancés (GPT-5, Claude, Gemini, Mistral…)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Custom agents which can execute actions"
+msgstr "Agents personnalisés capables d’exécuter des actions"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Connections (GitHub, Google Drive, Notion, Slack, ...)"
+msgstr "Connexions (GitHub, Google Drive, Notion, Slack…)"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgstr "Intégrations natives (Zendesk, Slack, extension Chrome)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Privacy and Data Security (SOC2, Zero Data Retention)"
+msgstr "Confidentialité et sécurité des données (SOC2, Zero Data Retention)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Unlimited messages (<0>Fair use limits apply*</0>)"
+msgstr "Messages illimités (<0>Sous réserve d’usage raisonnable*</0>)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Free credits for programmatic usage (API, GSheet, Zapier,...) (<0>Learn more</0>)"
+msgstr "Crédits gratuits pour l’utilisation via l’API (GSheet, Zapier…) (<0>En savoir plus</0>)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Fixed price on additional programmatic usage"
+msgstr "Prix fixe pour l’utilisation supplémentaire via l’API"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Up to 1GB/user of data sources"
+msgstr "Jusqu’à 1 Go/utilisateur de sources de données"
+
+#: front/components/plans/PlansTables.tsx
+msgid "One private space"
+msgstr "Un espace privé"
+
+#: front/components/plans/PlansTables.tsx
+msgid "/ month / user, excl. tax."
+msgstr "/ mois / utilisateur, HT."
+
+#: front/components/plans/PlansTables.tsx
+msgid "Start now, 14 days free"
+msgstr "Commencer, 14 jours gratuits"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Start now"
+msgstr "Commencer"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Enterprise (Seat-based)"
+msgstr "Enterprise (par siège)"
+
+#: front/components/plans/ProPlansTable.tsx
+msgid "Monthly Billing"
+msgstr "Facturation mensuelle"
+
+#: front/components/plans/ProPlansTable.tsx
+msgid "Yearly Billing"
+msgstr "Facturation annuelle"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more"
+msgstr "Modèles d’IA avancés : GPT-5, Claude 4.5, Gemini, Mistral et plus"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Data connections: Slack, Notion, Google Drive, GitHub, and more"
+msgstr "Connexions de données : Slack, Notion, Google Drive, GitHub et plus"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Email support: Get help when you need it"
+msgstr "Support par e-mail : de l’aide quand vous en avez besoin"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Free credits for programmatic usage (API, GSheet, Zapier)"
+msgstr "Crédits gratuits pour l’utilisation via l’API (GSheet, Zapier)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)"
+msgstr "Authentification unique (SSO) (Okta, Entra ID, Jumpcloud)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced connections (Salesforce, etc)"
+msgstr "Connexions avancées (Salesforce, etc.)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Everything in Pro"
+msgstr "Tout ce qu’inclut Pro"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced security and controls"
+msgstr "Sécurité et contrôles avancés"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Larger storage and file size limits"
+msgstr "Stockage et taille de fichiers plus importants"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Access to programmatic usage"
+msgstr "Accès à l’utilisation via l’API"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "User provisioning (SCIM)"
+msgstr "Provisionnement des utilisateurs (SCIM)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Flexible billing options (SEPA, Credit Card)"
+msgstr "Options de facturation flexibles (SEPA, carte bancaire)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Priority access to new features"
+msgstr "Accès prioritaire aux nouvelles fonctionnalités"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Priority support"
+msgstr "Support prioritaire"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Dedicated Customer Success"
+msgstr "Customer Success dédié"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "per user"
+msgstr "par utilisateur"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Subscribe to Enterprise (Seat-based)"
+msgstr "S’abonner à Enterprise (par siège)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Subscribe to Pro"
+msgstr "S’abonner à Pro"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Custom"
+msgstr "Sur mesure"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "based on active users"
+msgstr "selon les utilisateurs actifs"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Contact sales"
+msgstr "Contacter l’équipe commerciale"
+
 #: front/components/sparkle/ConversationFontContext.tsx
 msgctxt "conversation font"
 msgid "Default"
@@ -1112,6 +1759,166 @@ msgstr "Lora"
 msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "The role defines the rights of a member of the workspace. {roleDescription}"
+msgstr "Le rôle définit les droits d’un membre du workspace. {roleDescription}"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Unreachable"
+msgstr "Injoignable"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoke member access"
+msgstr "Révoquer l’accès du membre"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "This user is managed by your identity provider."
+msgstr "Cet utilisateur est géré par votre fournisseur d’identité."
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Confirm deletion"
+msgstr "Confirmer la suppression"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoke access for user <0>{memberFullName}</0>?"
+msgstr "Révoquer l’accès de l’utilisateur <0>{memberFullName}</0> ?"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Yes, revoke"
+msgstr "Oui, révoquer"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
+msgstr "Supprimer un membre le retire du workspace. Il pourra le rejoindre à nouveau s’il dispose d’un lien d’invitation."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to enable {name}."
+msgstr "Impossible d’activer {name}."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Could not create a new {name} data source."
+msgstr "Impossible de créer une nouvelle source de données {name}."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to reconnect {name}."
+msgstr "Impossible de reconnecter {name}."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Could not reconnect the Dust {name}."
+msgstr "Impossible de reconnecter {name} de Dust."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to update the {name} connection"
+msgstr "Impossible de mettre à jour la connexion {name}"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Successfully updated {name} connection"
+msgstr "Connexion {name} mise à jour"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "The connection was successfully updated."
+msgstr "La connexion a bien été mise à jour."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Reconnect"
+msgstr "Reconnecter"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "SVG, PNG, WebP or ICO — Square format"
+msgstr "SVG, PNG, WebP ou ICO — format carré"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "SVG, PNG or WebP — Transparent background"
+msgstr "SVG, PNG ou WebP — fond transparent"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Upload"
+msgstr "Importer"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best."
+msgstr "Affiché dans l’en-tête de chaque Frame partagé à la place du logo Dust. Le format horizontal est idéal."
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Logo"
+msgstr "Logo"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
+msgstr "Une version compacte de votre logo. Utilisée comme favicon quand quelqu’un ouvre un Frame en marque blanche. Doit être carrée (format 1:1)."
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Icon"
+msgstr "Icône"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Editors"
+msgstr "Éditeurs"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Currently Spent<0/>(credits)"
+msgstr "Dépenses actuelles<0/>(crédits)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Currently Spent ($)"
+msgstr "Dépenses actuelles ($)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Cap<0/>(credits)"
+msgstr "Plafond<0/>(crédits)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Cap ($)"
+msgstr "Plafond ($)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Lock State"
+msgstr "Verrouillage"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "{defaultCapValue} (default)"
+msgstr "{defaultCapValue} (par défaut)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Search skills..."
+msgstr "Rechercher des compétences…"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "No active skills."
+msgstr "Aucune compétence active."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace name must only contain letters, numbers, and the characters `._-`"
+msgstr "Le nom du workspace ne peut contenir que des lettres, des chiffres et les caractères `._-`"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Failed to update workspace."
+msgstr "Impossible de mettre à jour le workspace."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace Name"
+msgstr "Nom du workspace"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Edit Workspace Name"
+msgstr "Modifier le nom du workspace"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Think GitHub repository names, short and memorable."
+msgstr "Pensez aux noms de dépôts GitHub : courts et faciles à retenir."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace name"
+msgstr "Nom du workspace"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Saving..."
+msgstr "Enregistrement…"
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"

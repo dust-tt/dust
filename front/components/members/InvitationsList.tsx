@@ -1,12 +1,12 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { compareStrings } from "@app/lib/i18n/format";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
@@ -19,6 +19,7 @@ import {
   Page,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -27,12 +28,29 @@ type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
 
+interface InitialRoleCellProps {
+  role: ActiveRoleType;
+}
+
+function InitialRoleCell({ role }: InitialRoleCellProps) {
+  const { t } = useLingui();
+  return (
+    <DataTable.CellContent>
+      <Chip size="xs" color={ROLES_DATA[role]["color"]}>
+        {t(ROLE_LABELS[role])}
+      </Chip>
+    </DataTable.CellContent>
+  );
+}
+
 function getColumns({
   owner,
   sendNotification,
+  labels,
 }: {
   owner: WorkspaceType;
   sendNotification: ReturnType<typeof useSendNotification>;
+  labels: { invitationEmail: string; role: string; resend: string };
 }) {
   // Managers cannot resend invitations targeting the admin role (matches the
   // server-side escalation guard); only admins can.
@@ -41,7 +59,7 @@ function getColumns({
   return [
     {
       id: "inviteEmail" as const,
-      header: "Invitation Email",
+      header: labels.invitationEmail,
       accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => {
         const isExpired = info.row.original.isExpired;
@@ -53,13 +71,15 @@ function getColumns({
               <span>{info.row.original.inviteEmail}</span>
               {isExpired && (
                 <>
-                  <span className="text-red-500">(expired)</span>
+                  <span className="text-red-500">
+                    <Trans>(expired)</Trans>
+                  </span>
                   {canResend && (
                     <Button
                       size="xs"
                       variant="outline"
                       icon={Mail01}
-                      label="Resend"
+                      label={labels.resend}
                       onClick={async (e: React.MouseEvent) => {
                         e.stopPropagation();
                         await sendInvitations({
@@ -81,22 +101,11 @@ function getColumns({
     },
     {
       id: "initialRole" as const,
-      header: "Role",
+      header: labels.role,
       accessorFn: (row: RowData) => row.initialRole,
-      cell: (info: CellContext<RowData, string>) => {
-        const role = info.row.original.initialRole;
-        return (
-          <DataTable.CellContent>
-            <Chip
-              size="xs"
-              color={ROLES_DATA[role]["color"]}
-              className="capitalize"
-            >
-              {displayRole(role)}
-            </Chip>
-          </DataTable.CellContent>
-        );
-      },
+      cell: (info: CellContext<RowData, string>) => (
+        <InitialRoleCell role={info.row.original.initialRole} />
+      ),
       meta: {
         className: "w-32",
       },
@@ -130,6 +139,7 @@ export function InvitationsList({
   owner: WorkspaceType;
   searchText?: string;
 }) {
+  const { t } = useLingui();
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner, {
     includeExpired: true,
   });
@@ -159,7 +169,15 @@ export function InvitationsList({
     [filteredInvitations]
   );
 
-  const columns = getColumns({ owner, sendNotification });
+  const columns = getColumns({
+    owner,
+    sendNotification,
+    labels: {
+      invitationEmail: t`Invitation Email`,
+      role: t`Role`,
+      resend: t`Resend`,
+    },
+  });
 
   return (
     <>
@@ -178,9 +196,13 @@ export function InvitationsList({
         )}
         {!isInvitationsLoading && invitations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Page.P variant="secondary">No pending invitations</Page.P>
             <Page.P variant="secondary">
-              Send invitations to add new members to your workspace
+              <Trans>No pending invitations</Trans>
+            </Page.P>
+            <Page.P variant="secondary">
+              <Trans>
+                Send invitations to add new members to your workspace
+              </Trans>
             </Page.P>
           </div>
         )}
@@ -189,10 +211,10 @@ export function InvitationsList({
           (filteredInvitations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Page.P variant="secondary">
-                No invitations match your search
+                <Trans>No invitations match your search</Trans>
               </Page.P>
               <Page.P variant="secondary">
-                Try adjusting your search terms
+                <Trans>Try adjusting your search terms</Trans>
               </Page.P>
             </div>
           ) : (

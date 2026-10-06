@@ -1,4 +1,3 @@
-import { displayRoleCapitalized } from "@app/components/members/Roles";
 import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
 import { DIRECTORY_SYNC_LABEL } from "@app/components/workspace/DirectorySync";
 import { AUTO_JOIN_WORKSPACE_LABEL } from "@app/components/workspace/sso/AutoJoinToggle";
@@ -7,11 +6,17 @@ import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { GOVERNANCE_CAPABILITIES } from "@app/types/group_permissions";
 import { GROUP_GRANTABLE_ROLES } from "@app/types/groups";
+import type { RoleType } from "@app/types/user";
 
 const P = ADMIN_SECTION_IDS.people;
 const G = ADMIN_SECTION_IDS.governance;
 const I = ADMIN_SECTION_IDS.identity;
 const PAGE = "members" as const;
+
+function displayRoleCapitalized(role: RoleType): string {
+  const label = role === "user" ? "member" : role;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 export const INVITE_MEMBERS_LABEL = "Invite members";
 export const CREATE_GROUP_LABEL = "Create group";
