@@ -335,10 +335,15 @@ export const EditSkillSuggestionSchema = z.object({
     .array(z.string())
     .optional()
     .describe("Ids of the current editors to remove from the skill."),
-  removeFileIds: z
-    .array(z.string())
+  files: z
+    .object({
+      removeFileIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the skill's attached files to remove from it."),
+    })
     .optional()
-    .describe(`Ids of the files to remove from the skill.`),
+    .describe("Changes to the files attached to the skill."),
 });
 
 export type EditSkillSuggestion = z.infer<typeof EditSkillSuggestionSchema>;

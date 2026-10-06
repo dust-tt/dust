@@ -2494,7 +2494,9 @@ describe("building_agents_and_skills tools", () => {
       const removeFiles = (skillId: string, removeFileIds: string[]) => ({
         title: "Remove files",
         analysis: "The skill no longer needs these files.",
-        suggestions: [{ kind: "edit_skill", skillId, removeFileIds }],
+        suggestions: [
+          { kind: "edit_skill", skillId, files: { removeFileIds } },
+        ],
       });
 
       const seedSkillWithFiles = async (
