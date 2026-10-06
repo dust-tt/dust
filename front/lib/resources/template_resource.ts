@@ -61,6 +61,11 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new this(TemplateModel, template.get());
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] returns-any-visibility
+   * Returns the template whatever its visibility. Callers exposing a template to non-superusers
+   * MUST treat it as not found unless `isPublished()` is true.
+   */
   static async fetchByExternalId(
     sId: string
   ): Promise<TemplateResource | null> {
