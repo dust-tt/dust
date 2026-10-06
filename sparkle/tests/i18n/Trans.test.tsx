@@ -1,6 +1,6 @@
 import { setupI18n } from "@lingui/core";
 import { Plural, Trans } from "@lingui/react/macro";
-import { SparkleI18nContext, toI18nContext } from "@sparkle/lib/i18n/useLingui";
+import { SparkleI18nContext } from "@sparkle/lib/i18n/useLingui";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -41,7 +41,7 @@ describe("Trans", () => {
     });
 
     const html = renderToStaticMarkup(
-      <SparkleI18nContext.Provider value={toI18nContext(i18n)}>
+      <SparkleI18nContext.Provider value={{ i18n, _: i18n.t }}>
         <Greeting name="Ada" />
         <ItemCount count={3} />
       </SparkleI18nContext.Provider>

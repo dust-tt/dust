@@ -4,7 +4,7 @@ import {
   sourceLocaleI18n,
 } from "@sparkle/lib/i18n/catalogs";
 import type { SparkleCatalogLocale } from "@sparkle/lib/i18n/locales";
-import { SparkleI18nContext, toI18nContext } from "@sparkle/lib/i18n/useLingui";
+import { SparkleI18nContext } from "@sparkle/lib/i18n/useLingui";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface SparkleI18nProviderProps {
@@ -56,7 +56,10 @@ export function SparkleI18nProvider({
     };
   }, [locale, loadedI18n]);
 
-  const context = useMemo(() => toI18nContext(renderedI18n), [renderedI18n]);
+  const context = useMemo(
+    () => ({ i18n: renderedI18n, _: renderedI18n.t }),
+    [renderedI18n]
+  );
 
   return (
     <SparkleI18nContext.Provider value={context}>
