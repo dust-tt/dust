@@ -507,8 +507,63 @@ fn real_fdb_contracts() -> Result<()> {
             .context("stale authorization must conflict")?;
         assert!(conflict.is_retryable_not_committed());
         client_cache_contracts().await?;
+        independent_batch_scheduling().await?;
         Ok(())
     })
+}
+
+async fn independent_batch_scheduling() -> Result<()> {
+    let f = Fixture::new().await?;
+    let blocked = f.create(&f.tenant.root_id, "blocked", true).await?;
+    let ready = f.create(&f.tenant.root_id, "ready", true).await?;
+    let pause = Arc::new(Pause {
+        entered: Default::default(),
+        release: Semaphore::new(0),
+    });
+    f.api
+        .0
+        .pauses
+        .lock()
+        .insert(blocked.id.clone(), pause.clone());
+    let groups = (0..64u64)
+        .map(|id| MutationGroup {
+            id,
+            edits: vec![edit(edit::Operation::Create(CreateRequest {
+                parent_id: if id == 63 {
+                    ready.id.clone()
+                } else {
+                    blocked.id.clone()
+                },
+                object_id: uuid::Uuid::new_v4().simple().to_string(),
+                name: format!("file-{id}"),
+                mode: 0o644,
+                ..Default::default()
+            }))],
+        })
+        .collect();
+    let mut results = f
+        .api
+        .mutate_batch(request(
+            &f.owner.session_key,
+            MutateBatchRequest { groups },
+        )?)
+        .await?
+        .into_inner();
+    let first = tokio::time::timeout(std::time::Duration::from_secs(2), results.try_next()).await;
+    // Release the stalled parent before reporting failure so a regression cannot strand the fixture.
+    f.api.0.pauses.lock().remove(&blocked.id);
+    pause.release.add_permits(1);
+    let first = first??.context("independent outcome")?;
+    assert_eq!(
+        first.id, 63,
+        "later independent group must bypass blocked siblings"
+    );
+    assert!(first.error.is_none());
+    let remaining: Vec<_> = results.try_collect().await?;
+    assert_eq!(remaining.len(), 63);
+    assert!(remaining.iter().all(|r| r.error.is_none()));
+    f.api.0.drain().await?;
+    Ok(())
 }
 
 async fn client_cache_contracts() -> Result<()> {

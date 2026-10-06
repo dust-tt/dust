@@ -22,6 +22,8 @@ pub struct State {
     sessions: auth::Sessions,
     creation: Mutex<()>,
     admission: Arc<Semaphore>,
+    mutations: Arc<Semaphore>,
+    batches: Arc<Semaphore>,
     ancestry: Arc<ancestry::Ancestry>,
     scheduling: Scheduling,
     #[cfg(test)]
@@ -41,6 +43,8 @@ impl State {
             sessions: Default::default(),
             creation: Mutex::new(()),
             admission: Arc::new(Semaphore::new(64)),
+            mutations: Arc::new(Semaphore::new(1024)),
+            batches: Arc::new(Semaphore::new(32)),
             ancestry: Default::default(),
             scheduling: Default::default(),
             #[cfg(test)]
@@ -67,6 +71,8 @@ impl State {
         gate
     }
     pub async fn drain(&self) -> anyhow::Result<()> {
+        let _batches = self.batches.acquire_many(32).await?;
+        let _mutations = self.mutations.acquire_many(1024).await?;
         let _requests = self.admission.acquire_many(64).await?;
         profile::report();
         Ok(())

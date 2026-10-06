@@ -160,9 +160,11 @@ files through bounded groups; neither side needs to materialize an entire file.
 
 Background dispatch prefers disjoint object sets to avoid this client's own FDB conflicts. Fsync
 and the oldest edit's buffering deadline bypass that preference; it creates no dependency between
-sibling files. Independent clients still contend in FDB. Bound the queue to 4,096 groups, with four
-in-flight envelopes of at most 32 groups / 1 MiB. Server admission queues requests at its concurrency
-bound; only known noncommits retry, with bounded jitter, never uncertain outcomes.
+sibling files. Rotate ready groups across primary objects. Independent clients still contend in FDB.
+Bound the queue to 4,096 groups; coalescing into an existing group needs no additional queue slot.
+Allow 64 in-flight groups (configurable 1–128), releasing capacity on each outcome, with at most 16
+envelopes of 32 groups / 1 MiB each. A slow envelope tail must not occupy already-completed group slots.
+Only known noncommits retry, with bounded jitter, never uncertain outcomes.
 
 Clients allocate stable IDs for tentative creates; servers validate that those IDs are unused. A
 create may absorb its initial content and attributes before dispatch while its group stays within
@@ -205,6 +207,9 @@ Each process also schedules same-primary-object transactions fairly (the parent 
 target for file edits). This avoids self-contention when a batch contains sibling creates. These
 short-lived gates are only a scheduling optimization: different servers still coordinate solely
 through FDB, and every transaction reads current state after acquiring its gate. No tenant gate.
+Parent waiters do not occupy the 64 active transaction slots. Up to 1,024 groups may hold mutation
+admission, with 32 accepted batch RPCs; all groups in a batch become eligible without a smaller worker
+window. Shutdown waits for accepted batches and queued mutations as well as active transactions.
 
 | Operation | Objects changed atomically |
 | --- | --- |

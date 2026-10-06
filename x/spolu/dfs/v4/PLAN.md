@@ -32,13 +32,13 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 - [x] `bench/RESULTS.md` with the full table, untar, client drain, configuration, and limitations.
 - [x] Local run instructions and final design/code-contract consistency review.
 
-## 4. Transaction throughput — proposed
+## 4. Transaction throughput
 
 Optimize **untar + remaining drain**, preserving the API, fresh transactional authorization, independent
 writers and minimal atomic groups. Do not merge sibling creates into a shared transaction. No server
 writeback, weaker durability or FDB consistency tuning in this work.
 
-- [ ] **Locate serialization.** Measure client ready-queue/envelope waits, server batch/admission/parent
+- [x] **Locate serialization.** Measure client ready-queue/envelope waits, server batch/admission/parent
   waits, active FDB transactions, read/commit time and retries. Compare one busy directory with several
   directories; current aggregate group timings include queuing and cannot separate these costs.
 - [ ] **Keep independent work running.** Stop parent-lock waiters consuming transaction permits and

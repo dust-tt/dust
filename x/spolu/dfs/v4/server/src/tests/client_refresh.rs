@@ -60,6 +60,85 @@ pub(super) fn contracts(endpoint: &str, key: &str, tenant: &Tenant, state: &Stat
         inflight_append(endpoint, key, &directory.id, &observer, state, committed)?;
     }
     revoked_creation(endpoint, tenant, &directory.id, &observer)?;
+    group_capacity(endpoint, key, &directory.id, &observer, state)?;
+    Ok(())
+}
+
+fn group_capacity(
+    endpoint: &str,
+    key: &str,
+    parent: &str,
+    observer: &BlockingClient,
+    state: &State,
+) -> Result<()> {
+    let client = CachedClient::connect(
+        endpoint,
+        key,
+        CacheConfig {
+            write_concurrency: 2,
+            write_delay_ms: 1000,
+            ..Default::default()
+        },
+    )?;
+    let blocked = observer
+        .create(create(parent, "credit-blocked", false))?
+        .object
+        .context("blocked")?;
+    let fast = observer
+        .create(create(parent, "credit-fast", false))?
+        .object
+        .context("fast")?;
+    let next = observer
+        .create(create(parent, "credit-next", false))?
+        .object
+        .context("next")?;
+    let pause = Arc::new(Pause {
+        entered: Default::default(),
+        release: Semaphore::new(0),
+    });
+    state
+        .pauses
+        .lock()
+        .insert(blocked.id.clone(), pause.clone());
+    client.write(write(&blocked.id, 0, b"blocked", false))?;
+    client.write(write(&fast.id, 0, b"fast", false))?;
+    let draining = client.clone();
+    let drain = std::thread::spawn(move || draining.drain());
+    let outcome = (|| -> Result<()> {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(2), pause.entered.notified()).await
+        })?;
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while observer.read(read(&fast.id))?.data != b"fast" {
+            anyhow::ensure!(
+                std::time::Instant::now() < deadline,
+                "independent commit stalled"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        // One group has committed, but its batch still has a stalled tail. The released group
+        // credit must admit a new fsync while the earlier finite drain remains blocked.
+        client.write(write(&next.id, 0, b"next", false))?;
+        let syncing = client.clone();
+        let next_id = next.id.clone();
+        let (sent, received) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sent.send(syncing.fsync(object(&next_id)));
+        });
+        received.recv_timeout(Duration::from_secs(2))??;
+        anyhow::ensure!(observer.read(read(&next.id))?.data == b"next");
+        Ok(())
+    })();
+    state.pauses.lock().remove(&blocked.id);
+    pause.release.add_permits(1);
+    drain
+        .join()
+        .map_err(|_| anyhow::anyhow!("drain panicked"))??;
+    outcome?;
+    client.drain()?;
     Ok(())
 }
 

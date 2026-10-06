@@ -50,17 +50,41 @@ impl Api {
         request: Request<T>,
         change: impl FnOnce(T) -> Change + Send + 'static,
     ) -> Result<Response<Mutation>> {
-        self.call(move |state| async move {
-            let session = state.sessions.get(&request).await?;
-            let mut change = change(request.into_inner());
-            if let Change::Create(r) = &mut change
-                && r.object_id.is_empty()
-            {
-                r.object_id = uuid::Uuid::new_v4().simple().to_string();
-            }
-            apply_group(state, session, vec![change]).await
+        let session = self.0.sessions.get(&request).await?;
+        let mut change = change(request.into_inner());
+        if let Change::Create(r) = &mut change
+            && r.object_id.is_empty()
+        {
+            r.object_id = uuid::Uuid::new_v4().simple().to_string();
+        }
+        self.mutate_group(session, vec![change])
+            .await
+            .map(Response::new)
+    }
+    /// @cc [owner:spolu,label:concurrency] bounded-independent-mutation-admission
+    /// Queued groups MUST be bounded separately from active transactions. Waiting on a primary
+    /// object MUST NOT occupy transaction admission. Accepted groups MUST finish after disconnection.
+    async fn mutate_group(
+        &self,
+        session: Arc<auth::SessionState>,
+        changes: Vec<Change>,
+    ) -> Result<Mutation> {
+        let waiting = Guard::new(Phase::MutationQueue);
+        let queued = self
+            .0
+            .mutations
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(failed)?;
+        drop(waiting);
+        let state = self.0.clone();
+        tokio::spawn(async move {
+            let _queued = queued;
+            apply_group(state, session, changes).await
         })
         .await
+        .map_err(failed)?
     }
     async fn read_call<T, U, F, Fut>(
         &self,
@@ -103,8 +127,6 @@ async fn apply_group(
     session: Arc<auth::SessionState>,
     changes: Vec<Change>,
 ) -> Result<Mutation> {
-    #[cfg(test)]
-    crate::tests::pause(&state.pauses, &changes).await;
     let _profile = Guard::new(Phase::Batch);
     let first = changes
         .first()
@@ -114,6 +136,16 @@ async fn apply_group(
     let parent_wait = Guard::new(Phase::Parent);
     let _scheduled = scheduling.lock().await;
     drop(parent_wait);
+    #[cfg(test)]
+    crate::tests::pause(&state.pauses, &changes).await;
+    let waiting = Guard::new(Phase::Admission);
+    let _admitted = state
+        .admission
+        .clone()
+        .acquire_owned()
+        .await
+        .map_err(failed)?;
+    drop(waiting);
     let _gate = session.gate.read().await;
     let result = state
         .storage
@@ -456,10 +488,20 @@ impl Dfs for Api {
         if request.groups.iter().any(|g| !ids.insert(g.id)) {
             return Err(status(ErrorCode::InvalidInput));
         }
+        let waiting = Guard::new(Phase::BatchAdmission);
+        let accepted = self
+            .0
+            .batches
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(failed)?;
+        drop(waiting);
         let (tx, rx) = tokio::sync::mpsc::channel(64);
         let received = std::time::Instant::now();
         let api = self.clone();
         tokio::spawn(async move {
+            let _accepted = accepted;
             let tasks = futures::stream::iter(request.groups)
                 .map(|group| {
                     let api = api.clone();
@@ -468,10 +510,7 @@ impl Dfs for Api {
                         crate::profile::record(Phase::BatchQueue, received.elapsed());
                         let id = group.id;
                         let result = match changes(group) {
-                            Ok(edits) => api
-                                .call(move |state| apply_group(state, session, edits))
-                                .await
-                                .map(Response::into_inner),
+                            Ok(edits) => api.mutate_group(session, edits).await,
                             Err(e) => Err(e),
                         };
                         match result {
@@ -490,7 +529,7 @@ impl Dfs for Api {
                         }
                     }
                 })
-                .buffer_unordered(16);
+                .buffer_unordered(64);
             futures::pin_mut!(tasks);
             while let Some(result) = tasks.next().await {
                 let _ = tx.send(Ok(result)).await;

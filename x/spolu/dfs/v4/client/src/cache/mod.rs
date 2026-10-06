@@ -38,6 +38,8 @@ pub struct CacheConfig {
     pub cache_ttl_ms: u64,
     #[arg(long, env = "DFS_CLIENT_WRITE_DELAY_MS", default_value_t = 25)]
     pub write_delay_ms: u64,
+    #[arg(long, env = "DFS_CLIENT_WRITE_CONCURRENCY", default_value_t = 64)]
+    pub write_concurrency: usize,
 }
 impl Default for CacheConfig {
     fn default() -> Self {
@@ -45,6 +47,7 @@ impl Default for CacheConfig {
             cache_mib: 1024,
             cache_ttl_ms: 1000,
             write_delay_ms: 25,
+            write_concurrency: 64,
         }
     }
 }
@@ -65,6 +68,7 @@ struct Inner {
     pending: Mutex<writeback::Pending>,
     memory: Arc<Semaphore>,
     write_slots: Arc<Semaphore>,
+    flight_slots: Arc<Semaphore>,
     group_slots: Arc<Semaphore>,
     changed: tokio::sync::Notify,
 }
@@ -103,6 +107,10 @@ impl CachedClient {
                 && (1..=1000).contains(&config.write_delay_ms),
             "client cache/write delays must be at most 1000ms each"
         );
+        ensure!(
+            (1..=128).contains(&config.write_concurrency),
+            "write concurrency must be 1..128"
+        );
         let raw = BlockingClient::connect(endpoint, key)?;
         let session = raw.current_session(Empty {})?;
         let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -118,7 +126,8 @@ impl CachedClient {
             gates: Default::default(),
             prefetch: Arc::new(Semaphore::new(2)),
             pending: Default::default(),
-            write_slots: Arc::new(Semaphore::new(4)),
+            write_slots: Arc::new(Semaphore::new(16)),
+            flight_slots: Arc::new(Semaphore::new(config.write_concurrency)),
             group_slots: Arc::new(Semaphore::new(writeback::MAX_GROUPS)),
             changed: Default::default(),
             expires: Instant::now() + Duration::from_secs(session.expires_at - seconds),

@@ -41,6 +41,8 @@ phases! {
     Rename => "rpc.rename", Remove => "rpc.remove", Write => "rpc.write",
     Batch => "rpc.mutate_group",
     BatchQueue => "wait.batch", Admission => "wait.admission", Parent => "wait.parent",
+    MutationQueue => "wait.mutation_queue",
+    BatchAdmission => "wait.batch_admission",
     Prefetch => "read.prefetch", Object => "read.object", Authorize => "read.authorize",
     Child => "read.child", Collision => "read.collision", Block => "read.block",
     FdbVersion => "fdb.read_version", FdbGet => "fdb.get", FdbRange => "fdb.range",

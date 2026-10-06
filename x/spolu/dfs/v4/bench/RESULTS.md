@@ -228,6 +228,37 @@ Report: `/tmp/dfs-v4-1110a3419b-shared-memory/run.json` inside `dfs-v4-dev-1`.
 FUSE binary SHA-256: `d9bef5b9629a6c0b411da428024b03f307fe59b0ad5a3820fe75f680aa65dbb6`.
 The manifest and server hashes match the preceding overlay-refresh run. Raw reports remain outside Git.
 
+## Transaction throughput investigation
+
+Instrumented control `b9f56a195e`: **16.803s untar + 15.427s drain = 32.230s**. Same corpus/settings;
+new aggregate timers measure scheduling without changing transaction semantics. Client envelope
+capacity was blocked for 25.903s across untar/drain. FDB reached only **4 concurrent transaction
+attempts**, while **64 operations waited on primary-object locks**. Cumulative server parent wait
+was 1553.484s, batch-window wait 647.027s, actual transaction attempts 55.669s, and retry backoff
+2.034s (331 retries). These overlap and must not be added as wall time.
+
+A separate direct-gRPC diagnostic creates **2,048 files of 16 KiB**, each in an independent
+create+write transaction, with four concurrent 32-group envelopes. Fixture creation and full content
+verification are outside timing. It runs 13 levels deep with inherited grants, without FUSE or a
+client writeback cache. Files are distributed round-robin across the specified parents.
+
+| Parent directories | Durable completion (s) | Groups/s | Peak FDB attempts | Retries |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 10.806 | 190 | 1 | 0 |
+| 64 | 0.390 | 5,253 | 64 | 0 |
+
+This demonstrates available independent-object parallelism; it is **not an untar timing**. All
+2,048 files in each case passed content verification. Reports inside `dfs-v4-dev-1`:
+`/tmp/dfs-v4-b9f56a195e-scheduling/run.json` and `/tmp/dfs-v4-b9f56a195e-groups/run.json`.
+
+Reproduce with the matching source and binaries:
+
+```sh
+v4/local/run exec cargo build --workspace --release
+v4/local/run exec cargo build --workspace --examples --release
+v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=b9f56a195e python3 /dfs/v4/bench/groups.py
+```
+
 ## Comparison with v3
 
 [Latest v3 localhost results](../../v3/bench/RESULTS.md#latest-full-suites), same corpus and deep path.

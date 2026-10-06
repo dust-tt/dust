@@ -59,6 +59,7 @@ struct Group {
     _pins: Vec<Arc<Gate>>,
     _charge: Arc<OwnedSemaphorePermit>,
     _slot: OwnedSemaphorePermit,
+    _flight: Option<OwnedSemaphorePermit>,
 }
 struct Dirty {
     base: Option<Object>,
@@ -70,6 +71,18 @@ struct Dirty {
     _charge: Arc<OwnedSemaphorePermit>,
     _refresh_memory: Option<OwnedSemaphorePermit>,
 }
+impl Group {
+    fn primary(&self) -> &str {
+        match self
+            .operations
+            .first()
+            .and_then(|e| e.rpc.operation.as_ref())
+        {
+            Some(edit::Operation::Create(r)) => &r.parent_id,
+            _ => &self.target,
+        }
+    }
+}
 #[derive(Default)]
 pub(super) struct Pending {
     groups: BTreeMap<u64, Group>,
@@ -80,8 +93,129 @@ pub(super) struct Pending {
     next: u64,
     retired: std::collections::VecDeque<String>,
     envelope_wait: Option<Instant>,
+    last_primary: Option<String>,
+    flight_wait: Option<Instant>,
 }
 impl Pending {
+    fn ready(&self) -> bool {
+        self.groups.values().any(|g| {
+            !g.inflight
+                && (g.forced || Instant::now() >= g.ready)
+                && g.dependencies
+                    .iter()
+                    .all(|d| matches!(*d.result.borrow(), Some(Ok(()))))
+        })
+    }
+    /// @cc [owner:spolu,label:performance;concurrency] fair-ready-groups
+    /// Selection MUST preserve explicit dependencies and rotate across ready primary objects.
+    /// Independent groups MUST remain separate. Fsync and overdue groups MUST bypass only the
+    /// overlap preference, never dependencies, refresh pauses or group/byte limits.
+    fn select(&self, limit: usize, delay_ms: u64) -> (Vec<u64>, Vec<(u64, ErrorCode)>) {
+        let now = Instant::now();
+        let mut busy: BTreeSet<_> = self
+            .groups
+            .values()
+            .filter(|g| g.inflight)
+            .flat_map(|g| g.participants.iter().map(String::as_str))
+            .collect();
+        let mut queues: BTreeMap<&str, std::collections::VecDeque<&Group>> = BTreeMap::new();
+        let mut failed = Vec::new();
+        for group in self.groups.values().filter(|g| !g.inflight) {
+            if group
+                ._pins
+                .iter()
+                .any(|g| g.refreshes.load(Ordering::Acquire) != 0)
+            {
+                continue;
+            }
+            let mut ready = true;
+            for dependency in &group.dependencies {
+                match *dependency.result.borrow() {
+                    Some(Ok(())) => (),
+                    Some(Err(error)) => {
+                        failed.push((group.id, error));
+                        ready = false;
+                        break;
+                    }
+                    None => {
+                        ready = false;
+                    }
+                }
+            }
+            if ready && (group.forced || now >= group.ready) {
+                queues.entry(group.primary()).or_default().push_back(group);
+            }
+        }
+        let mut queues: Vec<_> = queues.into_iter().collect();
+        let start = self
+            .last_primary
+            .as_deref()
+            .map_or(0, |last| queues.partition_point(|(id, _)| *id <= last));
+        queues.rotate_left(start);
+        let mut queues: std::collections::VecDeque<_> = queues.into();
+        let mut selected = Vec::new();
+        let mut bytes = 0;
+        while selected.len() < limit
+            && let Some((primary, mut queue)) = queues.pop_front()
+        {
+            if let Some(group) = queue.pop_front() {
+                let overdue = now >= group.ready + Duration::from_millis(1000 - delay_ms);
+                let overlaps = group
+                    .participants
+                    .iter()
+                    .any(|id| busy.contains(id.as_str()));
+                if bytes + group.bytes <= MAX_IO && (group.forced || overdue || !overlaps) {
+                    selected.push(group.id);
+                    bytes += group.bytes;
+                    busy.extend(group.participants.iter().map(String::as_str));
+                }
+            }
+            if !queue.is_empty() {
+                queues.push_back((primary, queue));
+            }
+        }
+        (selected, failed)
+    }
+    fn merge_target(
+        &self,
+        target: &str,
+        edit: &Edit,
+        bytes: usize,
+        no_bindings: bool,
+    ) -> Option<u64> {
+        let previous = self
+            .objects
+            .get(target)
+            .and_then(|node| node.own_tail.clone());
+        previous
+            .as_ref()
+            .and_then(|r| self.groups.get(&r.id))
+            .filter(|group| {
+                !group.inflight
+                    && !group.forced
+                    && no_bindings
+                    && group.operations.len() < 8
+                    && merged_cost(group, edit) <= MAX_GROUP_COST
+                    && group.bytes + bytes <= MAX_IO / 2
+                    && matches!(
+                        edit.operation,
+                        Some(edit::Operation::Update(_) | edit::Operation::Write(_))
+                    )
+                    && matches!(
+                        group
+                            .operations
+                            .first()
+                            .and_then(|e| e.rpc.operation.as_ref()),
+                        Some(
+                            edit::Operation::Create(_)
+                                | edit::Operation::Update(_)
+                                | edit::Operation::Write(_)
+                        )
+                    )
+            })
+            .map(|g| g.id)
+    }
+
     pub fn names(&self, parent: &str) -> impl Iterator<Item = &str> {
         self.names
             .get(parent)
@@ -689,16 +823,25 @@ impl Inner {
             .iter()
             .map(|(id, _)| self.gate(id))
             .collect::<Result<Vec<_>>>()?;
-        let slot_wait = self.rpc.measure("wait.group_slot");
-        let slot = self
-            .group_slots
-            .clone()
-            .acquire_owned()
-            .await
-            .map_err(|_| status(ErrorCode::Unavailable))?;
-        drop(slot_wait);
+        let mut slot = None;
+        let (mut pending, merge) = loop {
+            {
+                let pending = self.pending.lock();
+                let merge = pending.merge_target(&target, &edit, bytes, bindings.is_empty());
+                if merge.is_some() || slot.is_some() {
+                    break (pending, merge);
+                }
+            }
+            let _wait = self.rpc.measure("wait.group_slot");
+            slot = Some(
+                self.group_slots
+                    .clone()
+                    .acquire_owned()
+                    .await
+                    .map_err(|_| status(ErrorCode::Unavailable))?,
+            );
+        };
         let received = Instant::now();
-        let mut pending = self.pending.lock();
         if pending.sync_errors.len() >= MAX_GROUPS {
             return Err(status(ErrorCode::Capacity));
         }
@@ -725,37 +868,6 @@ impl Inner {
             }
             projections.insert(id.clone(), projected);
         }
-        let previous = pending
-            .objects
-            .get(&target)
-            .and_then(|node| node.own_tail.clone());
-        let merge = previous
-            .as_ref()
-            .and_then(|r| pending.groups.get(&r.id))
-            .filter(|group| {
-                !group.inflight
-                    && !group.forced
-                    && bindings.is_empty()
-                    && group.operations.len() < 8
-                    && merged_cost(group, &edit) <= MAX_GROUP_COST
-                    && group.bytes + bytes <= MAX_IO / 2
-                    && matches!(
-                        edit.operation,
-                        Some(edit::Operation::Update(_) | edit::Operation::Write(_))
-                    )
-                    && matches!(
-                        group
-                            .operations
-                            .first()
-                            .and_then(|e| e.rpc.operation.as_ref()),
-                        Some(
-                            edit::Operation::Create(_)
-                                | edit::Operation::Update(_)
-                                | edit::Operation::Write(_)
-                        )
-                    )
-            })
-            .map(|g| g.id);
         let receipt;
         if let Some(id) = merge {
             let group = pending
@@ -844,7 +956,8 @@ impl Inner {
                 deleted: deleted.clone(),
                 _pins: pins,
                 _charge: charge.clone(),
-                _slot: slot,
+                _slot: slot.ok_or_else(|| status(ErrorCode::Internal))?,
+                _flight: None,
             };
             pending.groups.insert(id, group);
         }
@@ -955,74 +1068,41 @@ impl Inner {
         }
         let Ok(permit) = self.write_slots.clone().try_acquire_owned() else {
             let mut pending = self.pending.lock();
-            if pending.groups.values().any(|g| {
-                !g.inflight
-                    && (g.forced || Instant::now() >= g.ready)
-                    && g.dependencies
-                        .iter()
-                        .all(|d| matches!(*d.result.borrow(), Some(Ok(()))))
-            }) {
+            if pending.ready() {
                 pending.envelope_wait.get_or_insert_with(Instant::now);
             }
             return;
         };
-        let mut failed = Vec::new();
+        let capacity = self.flight_slots.available_permits().min(32);
+        if capacity == 0 {
+            let mut pending = self.pending.lock();
+            if pending.ready() {
+                pending.flight_wait.get_or_insert_with(Instant::now);
+            }
+            return;
+        }
+        let failed;
         let mut groups = Vec::new();
-        let mut bytes = 0;
         {
             let mut pending = self.pending.lock();
             if let Some(started) = pending.envelope_wait.take() {
                 self.rpc
                     .record("writeback.envelope_blocked", started.elapsed(), false);
             }
-            // Avoid self-contention without coupling receipts or fsync to a parent queue. Forced
-            // groups bypass this preference; independent clients remain arbitrated by FDB.
-            let mut busy: BTreeSet<_> = pending
-                .groups
-                .values()
-                .filter(|g| g.inflight)
-                .flat_map(|g| g.participants.iter().cloned())
-                .collect();
-            for group in pending.groups.values_mut() {
-                if group.inflight {
+            if let Some(started) = pending.flight_wait.take() {
+                self.rpc
+                    .record("writeback.flight_blocked", started.elapsed(), false);
+            }
+            let (selected, rejected) = pending.select(capacity, self.config.write_delay_ms);
+            failed = rejected;
+            for id in selected {
+                let Ok(flight) = self.flight_slots.clone().try_acquire_owned() else {
+                    break;
+                };
+                let Some(group) = pending.groups.get_mut(&id) else {
                     continue;
-                }
-                if group
-                    ._pins
-                    .iter()
-                    .any(|gate| gate.refreshes.load(Ordering::Acquire) != 0)
-                {
-                    continue;
-                }
-                let mut ready = true;
-                for dependency in &group.dependencies {
-                    match *dependency.result.borrow() {
-                        Some(Ok(())) => (),
-                        Some(Err(e)) => {
-                            failed.push((group.id, e));
-                            ready = false;
-                            break;
-                        }
-                        None => {
-                            ready = false;
-                        }
-                    }
-                }
-                if !ready || (!group.forced && Instant::now() < group.ready) {
-                    continue;
-                }
-                let overdue = Instant::now()
-                    >= group.ready + Duration::from_millis(1000 - self.config.write_delay_ms);
-                if !group.forced
-                    && !overdue
-                    && group.participants.iter().any(|id| busy.contains(id))
-                {
-                    continue;
-                }
-                if groups.len() >= 32 || bytes + group.bytes > MAX_IO {
-                    continue;
-                }
-                bytes += group.bytes;
+                };
+                group._flight = Some(flight);
                 group.inflight = true;
                 let dispatched = Instant::now();
                 let dependencies_done = group
@@ -1048,11 +1128,11 @@ impl Inner {
                     false,
                 );
                 group.dispatched = Some(dispatched);
-                busy.extend(group.participants.iter().cloned());
                 groups.push(MutationGroup {
                     id: group.id,
                     edits: group.operations.iter().map(|e| e.rpc.clone()).collect(),
                 });
+                pending.last_primary = Some(group.primary().into());
             }
         }
         for (id, error) in failed {
@@ -1226,6 +1306,7 @@ impl Inner {
         }
         let _ = group.receipt.completed.set(Instant::now());
         group.receipt.result.send_replace(Some(result.map(|_| ())));
+        drop(group);
         drop(pending);
         self.changed.notify_one();
     }
