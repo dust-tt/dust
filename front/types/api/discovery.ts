@@ -13,6 +13,8 @@ export type DiscoverySkillType = {
   name: string;
   description: string;
   icon: string | null;
+  editors: string[];
+  editedBy: number | null;
 };
 
 type DiscoveryPinType = {

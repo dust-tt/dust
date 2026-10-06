@@ -23,11 +23,18 @@ export type DiscoveryPinError = DustError<
   "group_not_found" | "invalid_id" | "invalid_request_error" | "unauthorized"
 >;
 
+/**
+ * @cc [owner:aubin-tchoi,label:security;product] featured-skill-visibility
+ * Featured skill targets MUST satisfy the skill list's editor visibility rule.
+ * Include editor display names without loading relations for unrelated skills.
+ */
 export async function listFeaturedDiscoveryItems(
   auth: Authenticator
 ): Promise<GetFeaturedDiscoveryItemsResponseBody> {
   const items = await DiscoveryItemResource.listPinnedForAuth(auth);
-  return { items: items.map((item) => DiscoveryItemResource.toJSON(item)) };
+  return {
+    items: items.map((item) => DiscoveryItemResource.toJSON(item)),
+  };
 }
 
 export async function listGroupDiscoveryPins(
@@ -128,17 +135,24 @@ const DISCOVERY_TRENDING_ITEMS_PER_KIND_LIMIT = 5;
 const DISCOVERY_FOR_YOU_ITEM_LIMIT = 10;
 const DISCOVERY_FOR_YOU_CANDIDATE_POOL_SIZE = 5 * DISCOVERY_FOR_YOU_ITEM_LIMIT;
 
+/**
+ * @cc [owner:aubin-tchoi,label:security;product] ranked-skill-visibility
+ * Ranked skills MUST be readable and satisfy the skill list's editor visibility
+ * rule. Include editor display names only for those visible skill targets.
+ */
 async function resolveViewerVisibleItems(
   auth: Authenticator,
   candidates: { resourceType: SearchUsageDimension; resourceId: string }[]
 ): Promise<DiscoveryRankedItemType[]> {
-  const { agentsById, skillsById } = await DiscoveryItemResource.loadTargets(
-    auth,
-    candidates.map(({ resourceType, resourceId }) => ({
-      type: resourceType,
-      itemId: resourceId,
-    }))
-  );
+  const { agentsById, skillsById, skillEditorsById } =
+    await DiscoveryItemResource.loadTargets(
+      auth,
+      candidates.map(({ resourceType, resourceId }) => ({
+        type: resourceType,
+        itemId: resourceId,
+      })),
+      { bypassEditorVisibility: false }
+    );
 
   return removeNulls(
     candidates.map(
@@ -152,8 +166,13 @@ async function resolveViewerVisibleItems(
           }
           case "skill": {
             const skill = skillsById.get(resourceId);
-            return skill && auth.can("read", skill)
-              ? { type: "skill", target: skill.toDiscoveryJSON() }
+            return skill
+              ? {
+                  type: "skill",
+                  target: skill.toDiscoveryJSON({
+                    editors: skillEditorsById.get(skill.sId) ?? [],
+                  }),
+                }
               : null;
           }
           default:
