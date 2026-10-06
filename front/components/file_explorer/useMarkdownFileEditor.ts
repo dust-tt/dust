@@ -3,12 +3,17 @@ import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreview
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
+import { formatError } from "@app/lib/api_error_messages";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
@@ -75,6 +80,7 @@ export function useMarkdownFileEditor({
 
   const { t } = useLingui();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutate } = useSWRConfig();
   const { hasFeature } = useFeatureFlags();
 
@@ -134,17 +140,29 @@ export function useMarkdownFileEditor({
     processedContent,
   ]);
 
-  const writeFile = async (content: string): Promise<DocumentSaveResult> => {
+  const writeFile = async (content: string): Promise<Result<void, unknown>> => {
     if (!owner || !editablePath) {
-      return new Err(t`This file cannot be edited.`);
+      return new Err(new Error(t`This file cannot be edited.`));
     }
-    const result = await writeFileContentByPath({
+    return writeFileContentByPath({
       owner,
       canonicalPath: editablePath,
       content,
       contentType: "text/markdown",
     });
-    return result.isOk() ? new Ok(undefined) : new Err(result.error.message);
+  };
+
+  const writeRichFile = async (
+    content: string
+  ): Promise<DocumentSaveResult> => {
+    const result = await writeFile(content);
+    return result.isOk()
+      ? new Ok(undefined)
+      : new Err(
+          formatError(result.error, {
+            hasLocalisation: hasFeature("localisation"),
+          }).description
+        );
   };
 
   /**
@@ -182,10 +200,9 @@ export function useMarkdownFileEditor({
         await adoptWritten(draft);
         sendNotification({ type: "success", title: t`File saved` });
       } else {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to save file`,
-          description: result.error,
+          error: result.error,
         });
       }
     } finally {
@@ -200,7 +217,7 @@ export function useMarkdownFileEditor({
     isActive,
     rawContent,
     isTruncated,
-    writeFile,
+    writeFile: writeRichFile,
     // The plain editor is not shown while the rich one is open, so its draft follows the file.
     adoptWritten: async (content) => {
       await adoptWritten(content);

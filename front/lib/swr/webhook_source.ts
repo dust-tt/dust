@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/lib/resources/webhook_sources_view_resource";
 import {
@@ -127,6 +130,7 @@ export function useCreateWebhookSource({
     owner,
   });
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
@@ -142,10 +146,9 @@ export function useCreateWebhookSource({
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Failed to create webhook source`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return null;
     }

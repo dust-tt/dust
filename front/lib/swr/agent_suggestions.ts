@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { getBrowserMarkdownPipeline } from "@app/lib/editor/browser_markdown_pipeline";
 import { previewAgentSuggestions } from "@app/lib/editor/preview_agent_suggestions";
 import { clientFetch } from "@app/lib/egress/client";
@@ -100,6 +103,7 @@ export function usePatchAgentSuggestions({
   agentConfigurationId: string | null;
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const patchSuggestions = useCallback(
@@ -128,10 +132,9 @@ export function usePatchAgentSuggestions({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update suggestion",
-            description: errorData.message,
+            error: errorData,
           });
           return null;
         }
@@ -146,7 +149,12 @@ export function usePatchAgentSuggestions({
         return null;
       }
     },
-    [agentConfigurationId, sendNotification, workspaceId]
+    [
+      agentConfigurationId,
+      sendNotification,
+      workspaceId,
+      sendApiErrorNotification,
+    ]
   );
 
   return { patchSuggestions };

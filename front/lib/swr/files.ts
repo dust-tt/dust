@@ -287,6 +287,7 @@ export function useFileContentByUrl({
   };
 }
 
+/** Errs with the API error, or the network failure, for `sendApiErrorNotification`. */
 export async function writeFileContentByPath({
   owner,
   canonicalPath,
@@ -297,7 +298,7 @@ export async function writeFileContentByPath({
   canonicalPath: string;
   content: string;
   contentType?: string;
-}): Promise<Result<void, Error>> {
+}): Promise<Result<void, unknown>> {
   const url = getFilePathContentApiPath(owner, canonicalPath);
   let response: Response;
   try {
@@ -311,14 +312,14 @@ export async function writeFileContentByPath({
   }
 
   if (!response.ok) {
-    const errorData = await getErrorFromResponse(response);
-    return new Err(new Error(errorData.message));
+    return new Err(await getErrorFromResponse(response));
   }
   return new Ok(undefined);
 }
 
 /** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
 export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   return async (canonicalPath: string): Promise<Result<void, Error>> => {
@@ -334,10 +335,9 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to delete file",
-          description: errorData.message,
+          error: errorData,
         });
         return new Err(new Error(errorData.message));
       }
@@ -361,6 +361,7 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   return async (
@@ -383,10 +384,9 @@ export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to rename",
-          description: errorData.message,
+          error: errorData,
         });
         return new Err(new Error(errorData.message));
       }
@@ -414,6 +414,7 @@ export function useWriteFileContentByPath({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
 
@@ -427,7 +428,7 @@ export function useWriteFileContentByPath({
     content: string;
     contentType?: string;
     showSuccessNotification?: boolean;
-  }): Promise<Result<void, Error>> => {
+  }): Promise<Result<void, unknown>> => {
     const url = getFilePathContentApiPath(owner, canonicalPath);
 
     const result = await writeFileContentByPath({
@@ -437,10 +438,9 @@ export function useWriteFileContentByPath({
       contentType,
     });
     if (result.isErr()) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to save file",
-        description: result.error.message,
+        error: result.error,
       });
       return result;
     }
@@ -565,6 +565,7 @@ export function useUpsertFileAsDatasourceEntry(
       disabled: true,
     });
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 
@@ -579,10 +580,9 @@ export function useUpsertFileAsDatasourceEntry(
     });
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to upload the file.",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return null;
     } else {
@@ -760,7 +760,7 @@ export function useSharingGrants({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const grantsFetcher: Fetcher<SharingGrantsResponse> = fetcher;
 
@@ -784,10 +784,9 @@ export function useSharingGrants({
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to add access.",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return false;
     }
@@ -805,10 +804,9 @@ export function useSharingGrants({
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to revoke access.",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return false;
     }

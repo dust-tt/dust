@@ -4,7 +4,10 @@ import {
   useConversations,
   usePodConversationsSummary,
 } from "@app/hooks/conversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
@@ -16,6 +19,7 @@ export function useMoveConversationOutOfPod(
   owner: LightWorkspaceType,
   conversationId: string | null
 ) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -67,10 +71,9 @@ export function useMoveConversationOutOfPod(
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
+        sendApiErrorNotification({
           title: "Error removing conversation from Pod.",
-          description: errorData.message,
-          type: "error",
+          error: errorData,
         });
         return false;
       }
@@ -103,6 +106,7 @@ export function useMoveConversationOutOfPod(
       mutateConversations,
       mutatePodConversationsSummary,
       mutateConversation,
+      sendApiErrorNotification,
       sendNotification,
       confirm,
     ]

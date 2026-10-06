@@ -1,5 +1,8 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useCheckPodName } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -44,6 +47,7 @@ export const EditPodTitleDialog = ({
   const nameNotAvailable =
     title.trim().length > 0 && !isCheckingName && !isNameAvailable;
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -82,10 +86,9 @@ export const EditPodTitleDialog = ({
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to edit title",
-        description: errorData.message,
+        error: errorData,
       });
       return;
     }
@@ -102,6 +105,7 @@ export const EditPodTitleDialog = ({
     podId,
     mutateSpaceInfo,
     mutatePodConversationsSummary,
+    sendApiErrorNotification,
     sendNotification,
     onClose,
   ]);

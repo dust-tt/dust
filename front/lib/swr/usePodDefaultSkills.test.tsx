@@ -10,6 +10,7 @@ const { clientFetch } = vi.hoisted(() => ({ clientFetch: vi.fn() }));
 vi.mock("@app/lib/egress/client", () => ({ clientFetch }));
 vi.mock("@app/hooks/useNotification", () => ({
   useSendNotification: () => vi.fn(),
+  useSendApiErrorNotification: () => vi.fn(),
 }));
 
 it("reads only metadata and refreshes resolved defaults after changing their IDs", async () => {

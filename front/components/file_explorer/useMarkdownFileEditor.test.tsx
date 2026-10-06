@@ -14,6 +14,7 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
 }));
 
 vi.mock("@app/hooks/useNotification", () => ({
+  useSendApiErrorNotification: () => vi.fn(),
   useSendNotification: () => vi.fn(),
 }));
 

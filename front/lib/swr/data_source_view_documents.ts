@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -75,6 +78,7 @@ export function useUpdateDataSourceViewDocument(
     disabled: true, // Needed just to create
   });
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdate = async (body: PatchDataSourceDocumentRequestBody) => {
@@ -90,10 +94,9 @@ export function useUpdateDataSourceViewDocument(
     });
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to update document",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return null;
     } else {
@@ -125,6 +128,7 @@ export function useCreateDataSourceViewDocument(
       disabled: true,
     });
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doCreate = async (body: PostDataSourceDocumentRequestBody) => {
@@ -140,10 +144,9 @@ export function useCreateDataSourceViewDocument(
     });
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to create document",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return null;
     } else {
