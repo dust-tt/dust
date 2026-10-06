@@ -9,7 +9,7 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
+import { useSimilarSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { Button, cn, ReverseLeft } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -36,8 +36,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   const isReadOnly = descriptionField.disabled ?? false;
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
-  const { skills } = useSkills({ owner });
-
   const [similarSkills, setSimilarSkills] = useState<
     SkillWithoutInstructionsAndToolsType[]
   >([]);
@@ -75,16 +73,11 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       if (!signal.aborted) {
         setIsLoading(false);
         if (result.isOk()) {
-          const similarSkillIds = new Set(
-            result.value.map((skill) => skill.sId)
-          );
-          setSimilarSkills(
-            skills.filter((skill) => similarSkillIds.has(skill.sId))
-          );
+          setSimilarSkills(result.value);
         }
       }
     },
-    [getSimilarSkills, skillId, skills]
+    [getSimilarSkills, skillId]
   );
 
   const triggerSimilarSkillsFetch = useDebounceWithAbort(fetchSimilarSkills, {
