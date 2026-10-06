@@ -1,14 +1,29 @@
+import { trackDiscoverScrollPullOpen } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { MOTION_EASINGS } from "@dust-tt/sparkle";
+import type { MotionValue } from "framer-motion";
+import { animate, useMotionValue } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Fallback for browsers without `scrollend`, and for a scroll that never
 // starts because Discover is already in view.
 const TRANSITION_FALLBACK_MS = 800;
 
+const PULL_DISTANCE_PX = 250;
+const PULL_RELEASE_DELAY_MS = 300;
+const PULL_RELEASE_SECONDS = 0.25;
+
 type DiscoverStage = "home" | "transition" | "discover";
 
 interface UseDiscoverScrollParams {
   isLockEnabled: boolean;
+}
+
+function releasePull(pullProgress: MotionValue<number>) {
+  return animate(pullProgress, 0, {
+    duration: PULL_RELEASE_SECONDS,
+    ease: MOTION_EASINGS.enter,
+  });
 }
 
 function onScrollSettled(
@@ -29,14 +44,23 @@ function onScrollSettled(
   return cancel;
 }
 
+/**
+ * @cc [owner:adrsimon,label:react;product] home-scroll-pull-opens-discover
+ * On the locked homepage, `PULL_DISTANCE_PX` of downward wheel MUST open Discover and fire
+ * `trackDiscoverScrollPullOpen`. Wheel events from the input bar or with `ctrlKey` (pinch zoom)
+ * MUST NOT move `pullProgress`, and a pull left idle for `PULL_RELEASE_DELAY_MS` MUST fall back
+ * to 0.
+ */
 export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
   // State rather than a ref: the scroller comes and goes with the new-conversation route,
   // and the listeners below have to rebind to whichever node is on screen.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const discoverRef = useRef<HTMLDivElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
   const [stage, setRenderedStage] = useState<DiscoverStage>("home");
   const stageRef = useRef<DiscoverStage>("home");
   const endTransitionRef = useRef<(() => void) | null>(null);
+  const pullProgress = useMotionValue(0);
 
   const setStage = useCallback((nextStage: DiscoverStage) => {
     // Native scroll events can arrive before React commits the new stage.
@@ -116,6 +140,55 @@ export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
   }, [scroller, stage]);
 
   useEffect(() => {
+    if (stage !== "discover") {
+      return;
+    }
+    const release = releasePull(pullProgress);
+    return () => release.stop();
+  }, [pullProgress, stage]);
+
+  useEffect(() => {
+    if (!scroller || !isLockEnabled || stage !== "home") {
+      return;
+    }
+
+    let release = releasePull(pullProgress);
+    let releaseTimer = 0;
+
+    const handleWheel = (event: WheelEvent) => {
+      if (
+        event.ctrlKey ||
+        (event.target instanceof Node &&
+          inputBarRef.current?.contains(event.target))
+      ) {
+        return;
+      }
+      release.stop();
+      window.clearTimeout(releaseTimer);
+      const progress = Math.min(
+        1,
+        Math.max(0, pullProgress.get() + event.deltaY / PULL_DISTANCE_PX)
+      );
+      pullProgress.set(progress);
+      if (progress === 1) {
+        trackDiscoverScrollPullOpen();
+        goToDiscover();
+        return;
+      }
+      releaseTimer = window.setTimeout(() => {
+        release = releasePull(pullProgress);
+      }, PULL_RELEASE_DELAY_MS);
+    };
+
+    scroller.addEventListener("wheel", handleWheel, { passive: true });
+    return () => {
+      window.clearTimeout(releaseTimer);
+      release.stop();
+      scroller.removeEventListener("wheel", handleWheel);
+    };
+  }, [goToDiscover, isLockEnabled, pullProgress, scroller, stage]);
+
+  useEffect(() => {
     if (!scroller || !isLockEnabled) {
       return;
     }
@@ -149,8 +222,10 @@ export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
     discoverRef,
     goToDiscover,
     goToHome,
+    inputBarRef,
     isOpeningDiscover: stage === "transition",
     isScrollLocked: isLockEnabled && stage !== "discover",
+    pullProgress,
     scrollerRef: setScroller,
   };
 }
