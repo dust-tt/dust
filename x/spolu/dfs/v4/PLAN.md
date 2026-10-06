@@ -23,9 +23,9 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 
 - [x] Real-network tests for cache expiry/revocation, stalled unrelated RPCs, failed prerequisites, and memory pressure.
 - [x] Real FDB concurrent-writer tests and mounted rename, unlink, sparse files, xattrs, fsync, and external-server edits.
-- [ ] Release build, full local deep-subtree 10k untar and existing filesystem benchmark.
-- [ ] `bench/RESULTS.md` with the full table, untar, client drain, configuration, and limitations.
-- [ ] Local run instructions and final design/code-contract consistency review.
+- [x] Release build, full local deep-subtree 10k untar and existing filesystem benchmark.
+- [x] `bench/RESULTS.md` with the full table, untar, client drain, configuration, and limitations.
+- [x] Local run instructions and final design/code-contract consistency review.
 
 ## Follow-up evaluation
 
