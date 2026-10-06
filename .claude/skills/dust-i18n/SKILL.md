@@ -1,6 +1,6 @@
 ---
 name: dust-i18n
-description: Make front and sparkle UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code or in sparkle components (`sparkle/src`), when wrapping existing strings for translation, or when reviewing UI text changes.
+description: Make front UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code, when wrapping existing strings for translation, or when reviewing UI text changes.
 ---
 
 # Translatable UI strings (Lingui)
@@ -68,28 +68,11 @@ act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
 render(<MyComponent />);
 ```
 
-## Sparkle
-
-Sparkle has its own catalogs in `sparkle/src/locales/{locale}/messages.po`, for
-`SPARKLE_CATALOG_LOCALES` in `sparkle/src/lib/i18n/locales.ts` (contract
-`sparkle-owned-text-translated` in `sparkle/src/CONTRACTS`). The macros and rules above apply, with
-these differences:
-
-- Import the macros from the same `@lingui/react/macro` and `@lingui/core/macro` paths: the sparkle
-  Lingui config rewrites them to sparkle's own `useLingui` and `Trans`
-  (`sparkle/src/lib/i18n/`), which render English when the consumer has no `SparkleI18nProvider`.
-- Translate only text sparkle supplies itself (JSX text, default labels, placeholders, tooltips,
-  `aria-label`, `alt`). Text the consumer passes through props is the consumer's to translate.
-- Resolve a prop default in the component body (``label ?? t`Next` ``) and document the prop with
-  `@default`.
-- Stories (`sparkle/src/stories/**`) are not extracted: do not wrap their strings.
-
 ## Workflow
 
 1. Wrap the strings with the macros above.
-2. From the package you changed (`front/` or `sparkle/`), run `npm run i18n:extract`: it updates
-   every catalog of that package and removes obsolete messages.
+2. From `front/`, run `npm run i18n:extract`: it updates every catalog and removes obsolete
+   messages.
 3. Fill the new empty `msgstr` entries with the `dust-translate` skill.
-4. Run `npm run i18n:check` from the same package (also run in CI): it fails on stale catalogs and
-   missing translations.
+4. Run `npm run i18n:check` (also run in CI): it fails on stale catalogs and missing translations.
 5. Commit the code and the catalogs together.

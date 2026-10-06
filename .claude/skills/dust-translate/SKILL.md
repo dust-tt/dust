@@ -1,20 +1,13 @@
 ---
 name: dust-translate
-description: Translate or fix Dust product UI translations in the Lingui catalogs (`front/locales/*/messages.po`, `sparkle/src/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
+description: Translate or fix Dust product UI translations in the Lingui catalogs (`front/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
 ---
 
 # Translating the product UI
 
-Catalogs are gettext `.po` files, one per catalog locale, in two packages:
-
-| Package | Catalogs | Locales |
-|---|---|---|
-| `front/` | `front/locales/{locale}/messages.po` | `CATALOG_LOCALES` in `front/types/locale.ts` |
-| `sparkle/` | `sparkle/src/locales/{locale}/messages.po` | `SPARKLE_CATALOG_LOCALES` in `sparkle/src/lib/i18n/locales.ts` |
-
-`en-US` is the source locale: its catalog is generated and never translated by hand. Every other
-catalog must have a non-empty `msgstr` for every message. Run the commands below from the package
-whose catalogs you are translating.
+Catalogs are gettext `.po` files in `front/locales/{locale}/messages.po`, one per entry of
+`CATALOG_LOCALES` in `front/types/locale.ts`. `en-US` is the source locale: its catalog is generated
+and never translated by hand. Every other catalog must have a non-empty `msgstr` for every message.
 
 Some supported locales reuse another locale's catalog (`CATALOG_LOCALE_BY_LOCALE`): `en-GB` renders
 the `en-US` messages and only changes date and number formatting. Never create a catalog or write
@@ -22,7 +15,7 @@ translations for them.
 
 ## Procedure
 
-1. Run `npm run i18n:extract` from the package so the catalogs match the code.
+1. Run `npm run i18n:extract` from `front/` so the catalogs match the code.
 2. For each entry with an empty `msgstr`:
    - Read the `#:` file reference and the code around the string: know whether it is a button,
      a title, a description or a toast, and what it refers to.
@@ -30,7 +23,7 @@ translations for them.
    - Translate following the locale style guide and the glossary in `references/`.
 3. To fix an existing translation, edit its `msgstr` only. Never edit `msgid`, `msgctxt` or the
    `#:` references: they are generated from the code.
-4. Run `npm run i18n:check` from the package.
+4. Run `npm run i18n:check` from `front/`.
 
 ## Rules for every locale
 
