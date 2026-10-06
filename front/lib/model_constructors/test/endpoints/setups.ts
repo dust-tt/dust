@@ -43,6 +43,7 @@ import { GoogleGeminiThreeDotEightFlashEuropeAgentPlatformStream } from "@app/li
 import { GoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_8_flash_global_agent_platform";
 import { GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_8_flash_global_google_ai_studio";
 import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_codestral_eu_mistral";
+import { MistralMistralLarge4EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_4_eu_mistral";
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
@@ -130,6 +131,7 @@ import { GoogleGeminiThreeDotEightFlashEuropeAgentPlatformStreamSetup } from "@a
 import { GoogleGeminiThreeDotEightFlashGlobalAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_gemini_3_8_flash_global_agent_platform.test";
 import { GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_gemini_3_8_flash_global_google_ai_studio.test";
 import { MistralCodestralEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_codestral_eu_mistral.test";
+import { MistralMistralLarge4EuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_large_4_eu_mistral.test";
 import { MistralMistralLargeEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_large_eu_mistral.test";
 import { MistralMistralMedium35EuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_medium_3_5_eu_mistral.test";
 import { MistralMistralSmallEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_small_eu_mistral.test";
@@ -272,6 +274,8 @@ export const STREAM_ENDPOINT_SETUPS = {
     MistralCodestralEuropeMistralStreamSetup,
   [MistralMistralLargeEuropeMistralStream.id]:
     MistralMistralLargeEuropeMistralStreamSetup,
+  [MistralMistralLarge4EuropeMistralStream.id]:
+    MistralMistralLarge4EuropeMistralStreamSetup,
   [MistralMistralMedium35EuropeMistralStream.id]:
     MistralMistralMedium35EuropeMistralStreamSetup,
   [MistralMistralSmallEuropeMistralStream.id]:
