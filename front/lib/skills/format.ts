@@ -1,6 +1,6 @@
 import { removeNulls } from "@app/types/shared/utils/general";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
-import { unescape } from "html-escaper";
+import unescape from "lodash/unescape";
 import uniq from "lodash/uniq";
 
 export type SkillReference = {

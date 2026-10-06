@@ -7,7 +7,7 @@ import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 

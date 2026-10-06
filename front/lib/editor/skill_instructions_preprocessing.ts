@@ -1,5 +1,5 @@
 import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
-import { unescape } from "html-escaper";
+import unescape from "lodash/unescape";
 
 const ZWS = "\u200B";
 const TOOL_TAG_PLACEHOLDER_PREFIX = "\uE000DUST_TOOL_TAG_";

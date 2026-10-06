@@ -18,7 +18,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 
 export interface FrameSharingState {
   grants: SharingGrantResource[];
