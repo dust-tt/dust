@@ -166,6 +166,14 @@ msgstr "Preview not available due to data retention policy on conversations in t
 msgid "Preview not available due to data retention policy on agents in this conversation."
 msgstr "Preview not available due to data retention policy on agents in this conversation."
 
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Summary not generated due to data retention policy on conversations in this workspace."
+msgstr "Summary not generated due to data retention policy on conversations in this workspace."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Summary not generated due to data retention policy on agents in this conversation."
+msgstr "Summary not generated due to data retention policy on agents in this conversation."
+
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A Pod"
 msgstr "A Pod"
