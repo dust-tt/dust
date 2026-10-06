@@ -1,0 +1,4 @@
+native clone  102.96s  status first  0.357s  warm  0.306s
+dfs    clone  128.84s  status first 10.421s  warm  1.208s
+dfs status after remount 2.175s
+Validated 15313 work-tree files; report: /tmp/gitv-8000-2

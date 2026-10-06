@@ -804,11 +804,11 @@ impl<S: Store> Fs<S> {
                 // D (including a child directory's child-change time), or D's own attributes MUST
                 // add to `listing_version(D)` in the same transaction. Access changes are covered
                 // by the policy epoch instead.
-                for (id, (node, _)) in &batch.touched {
-                    txn.add_u64(&records::listing_version(*id), 1);
-                    if node.parent != 0 {
-                        txn.add_u64(&records::listing_version(node.parent), 1);
-                    }
+                let own = |id: Id, node: &Node| (node.kind == Kind::Dir).then_some(id);
+                let dirs: BTreeSet<Id> =
+                    batch.touched.iter().flat_map(|(id, (node, _))| [own(*id, node), Some(node.parent)]).flatten().filter(|id| *id != 0).collect();
+                for dir in dirs {
+                    txn.add_u64(&records::listing_version(dir), 1);
                 }
                 // The receipt omits attributes to stay far below the store's value size limit.
                 let receipt = Response::Applied { version: 0, results: results.clone(), attrs: Vec::new() };

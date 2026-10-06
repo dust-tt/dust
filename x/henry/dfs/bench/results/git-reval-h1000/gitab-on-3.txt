@@ -1,0 +1,4 @@
+native clone   45.68s  status first  0.518s  warm  0.023s
+dfs    clone   73.63s  status first  6.251s  warm  1.213s
+dfs status after remount 1.694s
+Validated 15317 work-tree files; report: /tmp/gitab-on-3

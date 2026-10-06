@@ -1,0 +1,150 @@
+{
+  "label": "dfs henry [FoundationDB]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "profile": "release",
+  "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
+  "cpu_count": 12,
+  "server_binary_sha256": "7e082f8ce6afec7a9660f9dd8bab8a38d1a7b5667b014b9fedf347e99fb9a2df",
+  "mount_binary_sha256": "80b26c591c5360342941685d49e0cfa8498b0932eb534a6fc3e8478e170c71c8",
+  "fdb_client_knobs": {},
+  "max_delay_ms": 1000,
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
+  "kernel_caching": "none (TTL 0, direct I/O)",
+  "fuse_threads": 1,
+  "max_background": 32,
+  "revalidate_listings": true,
+  "url": "https://github.com/dust-tt/dust",
+  "git": "git version 2.47.3",
+  "native": {
+    "clone_seconds": 52.25992110300285,
+    "status_first_seconds": 0.07618065499991644,
+    "status_warm_seconds": 0.0660676199986483,
+    "clean": true,
+    "head": "e9174f0403e502b5d7dfd6ac8336cc5010d9bedb",
+    "sync_seconds": 0.7331507410053746
+  },
+  "dfs": {
+    "clone_seconds": 84.64158544100064,
+    "status_first_seconds": 6.0028218509978615,
+    "status_warm_seconds": 1.0270825100014918,
+    "clean": true,
+    "head": "d4713f3090ef7159126fc844b5bed712134ae29e",
+    "remaining_client_writeback_seconds": 0.0016498749973834492,
+    "status_after_remount_seconds": 1.7722144880026462
+  },
+  "mount": {
+    "budget": {
+      "ttl_ms": 750.0,
+      "window_ms": 250.0
+    },
+    "commit": {
+      "apply_ms": 32347.491675,
+      "batches": 6420,
+      "dropped_ops": 0,
+      "max_apply_ms": 94.765102,
+      "max_lag_ms": 174.30988,
+      "missed_windows": 0,
+      "ops": 39469
+    },
+    "local": {
+      "admission_waits": 129,
+      "deferred": 11787,
+      "op.access": 43,
+      "op.create": 15364,
+      "op.flush": 15364,
+      "op.fsync": 3,
+      "op.fsyncdir": 1,
+      "op.getattr": 76768,
+      "op.lookup": 949427,
+      "op.mkdir": 2495,
+      "op.open": 3294,
+      "op.opendir": 4962,
+      "op.read": 731785,
+      "op.readdir": 10006,
+      "op.release": 18658,
+      "op.rename": 19,
+      "op.setattr": 11,
+      "op.unlink": 11,
+      "op.write": 282968,
+      "read": 722834
+    },
+    "message": "mount totals",
+    "rpcs": {
+      "alloc_ids": {
+        "calls": 18,
+        "total_ms": 96.431
+      },
+      "apply": {
+        "calls": 6420,
+        "total_ms": 32341.28
+      },
+      "getattr": {
+        "calls": 79,
+        "total_ms": 178.119
+      },
+      "read": {
+        "calls": 8234,
+        "total_ms": 72116.57
+      },
+      "read_files": {
+        "calls": 692,
+        "total_ms": 1813.461
+      },
+      "readdir": {
+        "calls": 2561,
+        "total_ms": 7714.653
+      },
+      "validate": {
+        "calls": 62,
+        "total_ms": 639.087
+      }
+    }
+  },
+  "server": {
+    "calls": {
+      "alloc_ids": {
+        "calls": 18,
+        "total_ms": 94.197
+      },
+      "apply": {
+        "calls": 6420,
+        "total_ms": 30307.464
+      },
+      "close": {
+        "calls": 1,
+        "total_ms": 0.001
+      },
+      "getattr": {
+        "calls": 79,
+        "total_ms": 130.324
+      },
+      "read": {
+        "calls": 8234,
+        "total_ms": 54445.47
+      },
+      "read_files": {
+        "calls": 692,
+        "total_ms": 1724.596
+      },
+      "readdir": {
+        "calls": 2561,
+        "total_ms": 7526.603
+      },
+      "validate": {
+        "calls": 62,
+        "total_ms": 626.0
+      }
+    },
+    "commits": 6439,
+    "failed_ops": 0,
+    "fresh_versions": 11693,
+    "message": "server totals",
+    "ops": 39469,
+    "retries": 0
+  },
+  "files": 15314,
+  "same_head": false,
+  "blobs_match": true,
+  "validated": true
+}

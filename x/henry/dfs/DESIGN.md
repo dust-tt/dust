@@ -268,6 +268,23 @@ tracked file re-hashed through the mount equal to its blob at HEAD.
 At 8 s a status costs 1 to 2 s when the directory listings are still cached and about 7 to 10 s when
 they expired (2.5k listing fetches, one per directory, one at a time).
 
+With listing revalidation on (`DFS_REVALIDATE=1`; `bench/results/git-reval-h*`, a later session
+with slower network, so clone times are not comparable). `gitv-*` runs used a server that added to
+the listing version of every changed object; `gitab-*` runs add once per directory per
+transaction and interleave on and off:
+
+| | off, 1 s (2 runs) | on, 1 s (4 runs) | on, 8 s (3 runs) |
+| --- | ---: | ---: | ---: |
+| status, first | 10.7 s, 9.0 s | 6.1 s [5.3 to 9.5] | 9.1 s [6.7 to 10.4] |
+| status, repeated | 6.8 s, 7.1 s | 1.2 s [1.0 to 1.5] | 1.2 s [1.2 to 1.3] |
+| status after remount | 6.9 s, 7.2 s | 2.1 s [1.7 to 3.1] | 2.2 s [1.8 to 2.5] |
+
+A status costs about 60 `Validate` calls (16 ms each) instead of about 7k listing fetches. The
+first status after a clone still fetches every listing once: the mount created those directories
+and never read them, so it has nothing to revalidate. **Two of the six 1 s runs with revalidation
+on were rejected** for missed windows (771 and 267; `Apply` up to 241 ms during the clone), against
+none of the eight runs with it off; the cause is not established.
+
 Before the block cache and the projected admission: clone 496 s at 1 s (727k `Read` calls from
 `index-pack`, 828 missed windows); after: 8.9k `Read` calls, 0 missed windows, worst lag 164 ms.
 `status` refetches one listing per directory (2.5k) once the TTL has lapsed.
