@@ -132,7 +132,7 @@ const ReplyComposer = ({
 }: ReplyComposerProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
 
   return (
     <DocumentCommentInput
@@ -143,12 +143,16 @@ const ReplyComposer = ({
       value={body}
       onChange={setBody}
       onSubmit={async (trimmed) => {
-        if (sending) {
+        if (sendingRef.current) {
           return;
         }
-        setSending(true);
-        const replied = await onReply(trimmed);
-        setSending(false);
+        sendingRef.current = true;
+        let replied: Result<void, string>;
+        try {
+          replied = await onReply(trimmed);
+        } finally {
+          sendingRef.current = false;
+        }
         if (replied.isErr()) {
           setError(replied.error);
           return;
@@ -187,7 +191,7 @@ const DraftCard = ({
 }: DraftCardProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -214,12 +218,16 @@ const DraftCard = ({
         value={body}
         onChange={setBody}
         onSubmit={async (trimmed) => {
-          if (sending) {
+          if (sendingRef.current) {
             return;
           }
-          setSending(true);
-          const submitted = await onSubmit(trimmed);
-          setSending(false);
+          sendingRef.current = true;
+          let submitted: Result<void, string>;
+          try {
+            submitted = await onSubmit(trimmed);
+          } finally {
+            sendingRef.current = false;
+          }
           setError(submitted.isErr() ? submitted.error : null);
         }}
         onCancel={onCancel}

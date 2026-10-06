@@ -169,12 +169,10 @@ export const useDocumentComments = ({
     let cancelled = false;
     void Promise.all(
       comments.flatMap((comment) =>
-        comment.messages.map(
-          async (message, index) =>
-            [
-              `${comment.id}:${index}`,
-              await verify(comment.id, message),
-            ] as const
+        comment.messages.map((message, index) =>
+          verify(comment.id, message).then(
+            (verified) => [`${comment.id}:${index}`, verified] as const
+          )
         )
       )
     ).then((entries) => {
