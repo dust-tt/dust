@@ -26,6 +26,7 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -35,6 +36,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
+import { conversationScopedPath } from "@app/types/file_system";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -2521,6 +2523,126 @@ describe("building_agents_and_skills tools", () => {
         });
         return { skill, files };
       };
+
+      const editFiles = (
+        skillId: string,
+        files: { addFilePaths?: string[]; removeFileIds?: string[] }
+      ) => ({
+        title: "Update files",
+        analysis: "The skill needs other files.",
+        suggestions: [{ kind: "edit_skill", skillId, files }],
+      });
+
+      const createConversationFile = async (
+        authenticator: Authenticator,
+        rel: string
+      ) => {
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const conversation = await ConversationFactory.create(authenticator, {
+          agentConfigurationId: agent.sId,
+          messagesCreatedAt: [],
+        });
+        fileStorageMock.setFileMetadata(() => ({
+          contentType: "text/plain",
+          size: "5",
+        }));
+        return conversationScopedPath({
+          conversationId: conversation.sId,
+          rel,
+        });
+      };
+
+      it("records an added file without uploading it", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const skill = await seedSkill(authenticator, {});
+        const path = await createConversationFile(authenticator, "notes.txt");
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editFiles(skill.sId, { addFilePaths: [path, path] })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.skillSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "files",
+            state: "pending",
+            suggestion: { addFilePaths: [path], removeFileIds: [] },
+          },
+        ]);
+        expect(fileStorageMock.writeStreamCalls).toHaveLength(0);
+      });
+
+      it("records an addition and a removal as one suggestion", async () => {
+        const { authenticator, user } = await createResourceTest({
+          role: "user",
+        });
+        const {
+          skill,
+          files: [file],
+        } = await seedSkillWithFiles(authenticator, user, ["old.txt"]);
+        const path = await createConversationFile(authenticator, "new.txt");
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editFiles(skill.sId, {
+              addFilePaths: [path],
+              removeFileIds: [file.sId],
+            })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.skillSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "files",
+            suggestion: { addFilePaths: [path], removeFileIds: [file.sId] },
+          },
+        ]);
+      });
+
+      it("refuses to add a file that does not exist", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const skill = await seedSkill(authenticator, {});
+        const path = await createConversationFile(authenticator, "missing.txt");
+        fileStorageMock.setFileExists(() => false);
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editFiles(skill.sId, { addFilePaths: [path] })
+          ),
+          "File not found"
+        );
+      });
+
+      it("refuses to add a file named like an attached one", async () => {
+        const { authenticator, user } = await createResourceTest({
+          role: "user",
+        });
+        const { skill } = await seedSkillWithFiles(authenticator, user, [
+          "notes.txt",
+        ]);
+        const path = await createConversationFile(authenticator, "notes.txt");
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editFiles(skill.sId, { addFilePaths: [path] })
+          ),
+          'already has a file named "notes.txt"'
+        );
+      });
 
       it("records one pending files suggestion without applying it", async () => {
         const { authenticator, user } = await createResourceTest({

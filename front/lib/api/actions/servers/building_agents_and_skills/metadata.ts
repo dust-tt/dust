@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   agentFeedbackSchema,
   agentInsightsSchema,
@@ -7,6 +8,10 @@ import {
   GET_AGENT_INSIGHTS_DESCRIPTION,
   GET_AGENT_INSIGHTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
+import {
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { SUGGESTION_REF_REGEX } from "@app/lib/skills/format";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
@@ -337,6 +342,13 @@ export const EditSkillSuggestionSchema = z.object({
     .describe("Ids of the current editors to remove from the skill."),
   files: z
     .object({
+      addFilePaths: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Scoped paths of the files to attach to the skill, as returned by " +
+            `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\`.`
+        ),
       removeFileIds: z
         .array(z.string())
         .optional()
