@@ -1209,8 +1209,8 @@ msgid "{activeDifferentRoleCount, plural, one {The user below is already in your
 msgstr "{activeDifferentRoleCount, plural, one {L’utilisateur ci-dessous fait déjà partie de votre workspace avec un rôle différent. En continuant, son rôle deviendra <0>{newRole}</0>.} other {Les utilisateurs ci-dessous font déjà partie de votre workspace avec un rôle différent. En continuant, leur rôle deviendra <1>{newRole}</1>.}}"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
-msgid "- {fullName} (current role: {currentRole})"
-msgstr "- {fullName} (rôle actuel : {currentRole})"
+msgid "- {fullName} ({email}, current role: {currentRole})"
+msgstr "- {fullName} ({email}, rôle actuel : {currentRole})"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
 msgid "Do you want to proceed?"

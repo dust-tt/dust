@@ -19,12 +19,14 @@ import type {
   SeatBillingFrequency,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   mutateWorkspaceInvitations,
   sendInvitations,
 } from "@app/lib/invitations";
+import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/types/membership_invitation";
@@ -51,6 +53,7 @@ import {
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
+import chunk from "lodash/chunk";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
@@ -246,6 +249,17 @@ export function InviteEmailButtonWithModal({
     }
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] role-change-exact-email-only
+   * An existing member's role MUST only be changed when their email equals one of the invited
+   * addresses (case-insensitively); members merely matching an address by name or email prefix
+   * MUST NOT be listed for confirmation nor have their role changed.
+   */
+  /**
+   * @cc [owner:avervaet,label:security] confirmation-shows-email
+   * The confirmation listing members whose role will change MUST show each member's email, since
+   * the display name is user-editable and cannot identify the account.
+   */
   async function handleSendInvitations(
     inviteEmailsList: string[]
   ): Promise<void> {
@@ -260,37 +274,37 @@ export function InviteEmailButtonWithModal({
       return;
     }
 
-    const existingMembersResponses = await Promise.all(
-      inviteEmailsList.map(async (email) => {
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch member information");
-        }
-        return response.json();
-      })
+    const existingMembersResponses: SearchMembersAdminResponseBody[] =
+      await Promise.all(
+        chunk(inviteEmailsList, MAX_SEARCH_EMAILS).map(async (emails) => {
+          const response = await clientFetch(
+            `/api/w/${owner.sId}/members/search?searchEmails=${encodeURIComponent(emails.join(","))}`
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch member information");
+          }
+          return response.json();
+        })
+      );
+    const existingMembersByEmail = new Map(
+      existingMembersResponses
+        .flatMap((response) => response.members)
+        .map((m) => [m.email.toLowerCase(), m])
     );
-    const existingMembers = existingMembersResponses.flatMap(
-      (response) => response.members
-    );
+    const existingMembers = [...existingMembersByEmail.values()];
 
     const invitesByCase = {
       activeSameRole: existingMembers.filter(
-        (m) => m && m.workspaces?.role === invitationRole
+        (m) => m.workspace.role === invitationRole
       ),
       activeDifferentRole: existingMembers.filter(
         (m) =>
-          m &&
-          m.workspaces?.role !== invitationRole &&
-          m.workspaces?.role !== "none"
+          m.workspace.role !== invitationRole && m.workspace.role !== "none"
       ),
-      notInWorkspace: inviteEmailsList.filter(
-        (m) =>
-          !existingMembers.find((x) => x.email === m) ||
-          existingMembers.find((x) => x.email === m)?.workspaces?.role ===
-            "none"
-      ),
+      notInWorkspace: inviteEmailsList.filter((email) => {
+        const member = existingMembersByEmail.get(email.toLowerCase());
+        return !member || member.workspace.role === "none";
+      }),
     };
 
     const { notInWorkspace, activeDifferentRole } = invitesByCase;
@@ -323,6 +337,7 @@ export function InviteEmailButtonWithModal({
             <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
               {activeDifferentRole.map((user) => {
                 const fullName = user.fullName;
+                const email = user.email;
                 const role = user.workspace.role;
                 const currentRole = isRoleType(role)
                   ? t(ROLE_NAMES_IN_SENTENCE[role])
@@ -330,7 +345,7 @@ export function InviteEmailButtonWithModal({
                 return (
                   <div
                     key={user.email}
-                  >{t`- ${fullName} (current role: ${currentRole})`}</div>
+                  >{t`- ${fullName} (${email}, current role: ${currentRole})`}</div>
                 );
               })}
             </div>
