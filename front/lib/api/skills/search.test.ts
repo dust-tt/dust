@@ -124,7 +124,7 @@ describe("searchSkills pagination", () => {
         result.value.skills.every((skill) => !("isFavorite" in skill))
       ).toBe(true);
       expect(mockSearch.mock.lastCall![0].sort[0]).toEqual(
-        favoritesOnly && !searchTerm.trim()
+        selectionMode === "favorites_or_all" && favoritesOnly
           ? { "name.keyword": { order: "asc", missing: "_last" } }
           : { _score: { order: "desc" } }
       );

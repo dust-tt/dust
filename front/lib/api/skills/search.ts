@@ -94,8 +94,8 @@ function buildFacetAggregation(
  * normally for nonempty queries or if no favorites match in total, not just on the requested page.
  * "all" searches normally without filtering on favorites.
  * Favorite selection MUST retain authorization, filters and pagination. isFavoritesOnly reports
- * whether the returned result is restricted to favorites. Blank-query favorites default to name sort;
- * other results default to relevance. Explicit sort options take precedence.
+ * whether the returned result is restricted to favorites. Only favorites selected by "favorites_or_all"
+ * default to name sort; other results default to relevance. Explicit sort options take precedence.
  */
 export async function searchSkills(
   auth: Authenticator,
@@ -168,7 +168,11 @@ export async function searchSkills(
         size: limit,
         track_total_hits: true,
         sort: buildSkillDefaultSort({
-          sortBy: sortBy ?? (favoritesOnly && !hasQuery ? "name" : "relevance"),
+          sortBy:
+            sortBy ??
+            (selectionMode === "favorites_or_all" && favoritesOnly
+              ? "name"
+              : "relevance"),
           sortOrder,
         }),
         ...(facets.length > 0
