@@ -71,8 +71,9 @@ regressions. Validate concurrent clients, same-name collisions, moves, revocatio
 
 ## Follow-up evaluation
 
-- [ ] Directory-revision membership reuse, independent child-attribute refresh, and demand-driven
-  one-page-ahead prefetch; validate correctness and repeat the cold open/fstat/close RPC measurement.
+- [x] Directory-revision membership reuse, independent child-attribute refresh, and demand-driven
+  one-page-ahead prefetch. Local/replicated FDB and mounted checks passed; cold GCP open/fstat/close
+  fell from 35.921s to 10.348s, with 4,975 → 474 workload RPCs. See [gcp/RESULTS.md](gcp/RESULTS.md).
 - [x] Existing dust-dev nodes: latest 10k untar and full filesystem benchmark, with durable drain.
   12.869s untar + 0.479s drain; all 24 timed checks passed, final cleanup failed with `EIO`.
   Full table and profiling: [gcp/RESULTS.md](gcp/RESULTS.md).

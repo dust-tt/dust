@@ -1,5 +1,8 @@
 # Benchmark results — dfs v4 dust-dev
 
+Latest focused result: [directory revision reuse and page-ahead prefetch](#directory-revision-reuse-and-page-ahead-prefetch)
+reduce cold 10k open/fstat/close from **35.921s to 10.348s**. The earlier full table remains below.
+
 2026-10-06, source `a44ae816c9`, directory-record split and the **512 MiB** client cache.
 All **24 timed checks passed**, including both full-content SHA-256 passes, but final recursive
 scratch-directory cleanup failed with `EIO`, reproducing the local failure. This is **not a clean
@@ -104,7 +107,59 @@ only this cold pass, its background directory prefetch, and mount initialization
 `/var/log/dfs-bench/v4/fstat-first-8203a56c5c-20261006/benchmark/run.json`. The focused run and service
 restoration both exited **0**. It omits scratch writes and does not resolve the full-suite cleanup bug.
 
-## Where time is spent
+## Directory revision reuse and page-ahead prefetch
+
+2026-10-06, source `3e481abc97`. Same focused first-only method, corpus, replicated FDB topology,
+512 MiB client budget and one-second TTL as the preceding measurement. New server/session/mount;
+FDB/OS caches retained. This is one run per version, not an ablation or a full-suite rerun.
+
+Real-directory pages now carry their snapshot revision. Matching fresh directory metadata validates
+retained names/IDs, while `StatMany` refreshes child attributes independently in bounded batches.
+Child writes, attributes and grants do not update the parent revision. Consuming a cached page also
+prefetches its next page; background completion never recursively loads further pages. Virtual root
+and `/shared` keep refreshing through List because their visibility can change independently.
+
+| Measurement | Before (`8203a56c5c`) | After (`3e481abc97`) |
+| --- | ---: | ---: |
+| Cold open + fstat + close, 10,000 files (ms) | 35,921.14 | **10,348.06** |
+| Lookup RPCs | 4,382 | 130 |
+| List RPCs | 556 | 238 |
+| Stat RPCs | 37 | 12 |
+| StatMany RPCs | 0 | 94 |
+| **Total workload RPCs** | **4,975** | **474** |
+| Workload RPCs/file | 0.4975 | 0.0474 |
+| Cumulative client RPC elapsed (s) | 29.557 | 3.367 |
+| FUSE CPU (s) | 7.700 | 5.100 |
+| DFS CPU (s) | 8.290 | 1.220 |
+| FDB get calls | 120,072 | 20,199 |
+| Cumulative FDB get elapsed (s) | 100.769 | 15.332 |
+
+**3.47× faster**, with **90.5% fewer workload RPCs** and **97.0% fewer Lookups**. The client reused
+85 expired pages after validating membership; 94 StatMany calls refreshed their attributes.
+The combined measurement does not isolate revision reuse from page-ahead prefetch.
+Cumulative RPC/FDB durations include parallel work and are not an additive wall-time breakdown.
+
+All 10,000 sizes verified. Client/server Lookup/List/Stat/StatMany counts match exactly, with zero
+RPC errors and no active handlers at shutdown. Each run additionally has one CurrentSession setup
+RPC, excluded from the table. There were no content, mutation, or fsync RPCs in this workload.
+FUSE callbacks remain 154,004 lookup, 174,006 getattr, and 10,000 each of open/flush/release.
+
+This run's population took **12.853s untar + 0.542s remaining client drain = 13.395s**,
+with no fsync/fsyncdir calls, versus 12.869s + 0.479s in the earlier full run.
+
+Workspace tests against local and replicated FDB, plus mounted checks with release binaries, passed,
+including rename,
+replacement, ancestor grant revocation, independent child attribute expiry and bounded prefetch.
+FDB remained healthy with unchanged configuration; benchmark and service restoration both exited 0.
+The previously active interactive services were restored, and the v2 mount remained inactive.
+This focused run omits scratch cleanup and does not resolve the full-suite cleanup failure above.
+
+Report: `/var/log/dfs-bench/v4/fstat-first-3e481abc97-20261006/benchmark/run.json`.
+Server SHA-256: `249f75ccdcb1fc183ceea650d786d3caf5c73a60d00b33dcc4d6c0b150b4f6ce`.
+FUSE SHA-256: `d35b0cca701ad398e30e14965df53db6f82cf8b94baeee91061a15c679995799`.
+Manifest SHA-256 is unchanged from the full table. Generated reports and logs stay outside Git.
+
+## Where time is spent (earlier full table)
 
 Cumulative instrumented seconds; read rows cover **first + warm** and their small untimed setup.
 Untar includes fixture setup; FUSE CPU is sampled before remaining drain, DFS CPU after it.
