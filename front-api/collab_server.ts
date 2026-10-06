@@ -114,6 +114,8 @@ const hocuspocus = new Hocuspocus<LiveFile>({
 const app = createHono();
 app.route("/api/healthz", healthzApp);
 
+// crossws turns HTTP upgrades into WebSockets and hands them to Hocuspocus, as Hocuspocus's own
+// server does, so Hono and Hocuspocus share one HTTP server and one port.
 type ClientConnection = ReturnType<typeof hocuspocus.handleConnection>;
 const connections = new WeakMap<Peer, ClientConnection>();
 
