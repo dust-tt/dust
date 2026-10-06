@@ -13,7 +13,7 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 
 ## 2. Client cache and writeback
 
-- [x] Accounted 1 GiB cache including FUSE identities/cursors, bounded queues and backpressure.
+- [x] Accounted cache including FUSE identities/cursors, bounded queues and backpressure (512 MiB default).
 - [x] One-second metadata/name/authorization validity; version-validated retained blocks.
 - [x] Object-scoped async coalescing, namespace dependencies, create plus initial-write bundling.
 - [x] Object-only fsync, deferred failures, coherent local reads, orderly shutdown drain.
@@ -21,7 +21,8 @@ Local only. Preserve v1–v3; commit and push each verified milestone.
 - [x] Fresh listing ranges and new-directory absence checks, preserving TTLs across local edits.
 - [x] Independent TTLs for tentative objects; overlay-aware expiry without forcing queued publication.
 - [x] Validate refresh races, transactional failures and postcommit response reuse; repeat the 10k untar.
-- [x] Share one 1 GiB budget across clean/dirty state; remove the dirty cap and validate memory pressure.
+- [x] Share one budget across clean/dirty state; remove the dirty cap and validate memory pressure.
+- [x] Reduce the default shared budget from 1 GiB to 512 MiB, including the 96 MiB transient reserve.
 - [x] Repeat the 10k untar with shared memory; report foreground time, remaining drain and admission waits.
 
 ## 3. Validation and measurements

@@ -32,7 +32,7 @@ pub struct CacheReservation {
 
 #[derive(Args, Clone, Debug)]
 pub struct CacheConfig {
-    #[arg(long, env = "DFS_CLIENT_CACHE_MIB", default_value_t = 1024)]
+    #[arg(long, env = "DFS_CLIENT_CACHE_MIB", default_value_t = 512)]
     pub cache_mib: usize,
     #[arg(long, env = "DFS_CLIENT_CACHE_TTL_MS", default_value_t = 1000)]
     pub cache_ttl_ms: u64,
@@ -44,7 +44,7 @@ pub struct CacheConfig {
 impl Default for CacheConfig {
     fn default() -> Self {
         Self {
-            cache_mib: 1024,
+            cache_mib: 512,
             cache_ttl_ms: 1000,
             write_delay_ms: 25,
             write_concurrency: 128,

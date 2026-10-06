@@ -6,6 +6,9 @@ Later focused runs measure untar only, most recently
 [transaction throughput](#transaction-throughput-investigation).
 The full baseline table remains below.
 
+All FUSE measurements below used a 1 GiB total budget. The current default is **512 MiB**; that budget has
+not yet been benchmarked.
+
 ## Configuration and method
 
 - Native Linux ARM64 in Docker Desktop on an Apple M4 Max; 16 vCPUs, 7.65 GiB VM RAM.
@@ -101,7 +104,7 @@ and CPU measurements overlap; they do not sum to wall time. Admission-wait durat
 Reproduce the focused run:
 
 ```sh
-v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=427d20bce0 python3 /dfs/v4/bench/run.py --untar-only
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=1024 DFS_BENCH_REVISION=427d20bce0 python3 /dfs/v4/bench/run.py --untar-only
 ```
 
 Report: `/tmp/dfs-v4-427d20bce0-absence/run.json` inside `dfs-v4-dev-1`.
@@ -222,7 +225,7 @@ With this source checked out:
 
 ```sh
 v4/local/run exec cargo build --workspace --release
-v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=1110a3419b python3 /dfs/v4/bench/run.py --untar-only
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=1024 DFS_BENCH_REVISION=1110a3419b python3 /dfs/v4/bench/run.py --untar-only
 ```
 
 Report: `/tmp/dfs-v4-1110a3419b-shared-memory/run.json` inside `dfs-v4-dev-1`.
@@ -314,8 +317,8 @@ amplification and worsens the independent-parent workload. `DFS_PRIMARY_CONCURRE
 explicit experiment. The [directory layout proposal](../DESIGN-DIRECTORY.md) addresses the underlying
 shared parent record; implementing it and proving its races are follow-up work.
 
-The final default uses one shared **1 GiB** budget, 128 in-flight client groups, 16 bounded envelopes,
-25ms coalescing and unchanged TTL/FDB durability. Relative to the instrumented control, total
+The measured configuration at `4acecff7f4` uses one shared **1 GiB** budget, 128 in-flight client groups,
+16 bounded envelopes, 25ms coalescing and unchanged TTL/FDB durability. Relative to the instrumented control, total
 completion fell **32.230s → 11.084s (2.9×)**. Untar alone fell **16.803s → 5.751s**.
 
 In this run, group-slot waiting was 0.0005s and memory waiting 0.0043s. Envelope capacity was blocked
@@ -342,7 +345,7 @@ Reproduce the final default untar with the matching source and release binaries:
 
 ```sh
 v4/local/run exec cargo build --workspace --release
-v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=4acecff7f4 python3 /dfs/v4/bench/run.py --untar-only
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=1024 DFS_BENCH_REVISION=4acecff7f4 python3 /dfs/v4/bench/run.py --untar-only
 ```
 
 ## Comparison with v3
@@ -389,7 +392,7 @@ remain. The long warm SHA-256 pass can reuse file blocks after refreshing metada
 ```sh
 v4/local/run up
 v4/local/run exec cargo build --workspace --release
-v4/local/run exec env DFS_PROFILE=1 DFS_BENCH_REVISION=c1784434e9 python3 /dfs/v4/bench/run.py
+v4/local/run exec env DFS_PROFILE=1 DFS_CLIENT_CACHE_MIB=1024 DFS_BENCH_REVISION=c1784434e9 python3 /dfs/v4/bench/run.py
 ```
 
 Baseline report: `/tmp/dfs-v4-c1784434e9/run.json` inside `dfs-v4-dev-1`; focused-run reports are listed

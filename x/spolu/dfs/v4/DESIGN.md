@@ -68,8 +68,8 @@ Application-owned buffers are outside this contract.
 
 ## Client cache
 
-Use one **1 GiB accounted RAM budget per mount**, configurable. It includes metadata, names, directory
-pages, blocks, dirty edits, queued/in-flight payloads, and bookkeeping. There is **no separate dirty
+Use one **512 MiB accounted RAM budget per mount** by default, configurable. It includes metadata, names,
+directory pages, blocks, dirty edits, queued/in-flight payloads, and bookkeeping. There is **no separate dirty
 cap**: writes evict clean LRU entries, then wait for shared capacity if needed; acknowledged dirty
 data is never silently evicted. Also bound entry counts and concurrent requests. No disk recovery.
 
@@ -78,7 +78,7 @@ keep 96 MiB aside for bounded transient I/O and scheduler overhead. Bound retain
 to 64 per object, applying backpressure before further acceptance. Parent membership edits use a
 separate index, so completing one child does not replay every sibling's payload.
 
-The remaining 928 MiB is shared by clean and dirty state. Keep conservative copy/metadata accounting
+The remaining 416 MiB is shared by clean and dirty state. Keep conservative copy/metadata accounting
 within that one budget; this is an accounted cache bound, not a hard process RSS limit.
 
 Cache state belongs to the authenticated tenant/session; aliases and handles share object state by

@@ -28,7 +28,7 @@ Client settings (environment variables or equivalent `dfs-fuse` flags):
 
 | Variable | Default | Meaning |
 | --- | ---: | --- |
-| `DFS_CLIENT_CACHE_MIB` | 1024 | Accounted RAM budget; includes a 96 MiB bounded-I/O/bookkeeping reserve. |
+| `DFS_CLIENT_CACHE_MIB` | 512 | Accounted RAM budget; includes a 96 MiB bounded-I/O/bookkeeping reserve. |
 | `DFS_CLIENT_CACHE_TTL_MS` | 1000 | Metadata, names, listings and authorization validity. |
 | `DFS_CLIENT_WRITE_DELAY_MS` | 25 | Coalescing window, capped at the 1000ms write-buffer budget. |
 | `DFS_CLIENT_WRITE_CONCURRENCY` | 128 | In-flight mutation groups; capacity returns per result (1–128). |
