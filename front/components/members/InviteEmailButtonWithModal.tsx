@@ -29,6 +29,7 @@ import {
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
@@ -148,6 +149,7 @@ export function InviteEmailButtonWithModal({
   const { inviteEmailsList, emailError } =
     useGetEmailsListAndError(inviteEmails);
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -264,8 +266,9 @@ export function InviteEmailButtonWithModal({
     }
 
     const existingMembersResponses: SearchMembersAdminResponseBody[] =
-      await Promise.all(
-        chunk(inviteEmailsList, MAX_SEARCH_EMAILS).map(async (emails) => {
+      await concurrentExecutor(
+        chunk(inviteEmailsList, MAX_SEARCH_EMAILS),
+        async (emails) => {
           const response = await clientFetch(
             `/api/w/${owner.sId}/members/search?searchEmails=${encodeURIComponent(emails.join(","))}`
           );
@@ -273,7 +276,8 @@ export function InviteEmailButtonWithModal({
             throw new Error("Failed to fetch member information");
           }
           return response.json();
-        })
+        },
+        { concurrency: 4 }
       );
     const existingMembersByEmail = new Map(
       existingMembersResponses
@@ -495,14 +499,20 @@ export function InviteEmailButtonWithModal({
           rightButtonProps={{
             label: t`Validate`,
             variant: "primary",
-            disabled: !!shouldDisableButton,
+            disabled: !!shouldDisableButton || isSubmitting,
+            isLoading: isSubmitting,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               if (!inviteEmailsList) {
                 return;
               }
-              await handleSendInvitations(inviteEmailsList);
-              setInviteEmails("");
+              setIsSubmitting(true);
+              try {
+                await handleSendInvitations(inviteEmailsList);
+                setInviteEmails("");
+              } finally {
+                setIsSubmitting(false);
+              }
             },
           }}
         />
