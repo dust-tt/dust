@@ -168,9 +168,11 @@ export function useSubmitMessage({
                 ? "credits_exhausted_error"
                 : data.error.type === "user_cap_reached"
                   ? "user_cap_reached_error"
-                  : data.error.type === "no_seat"
-                    ? "no_seat_error"
-                    : "message_send_error",
+                  : data.error.type === "group_limit_reached"
+                    ? "group_limit_reached_error"
+                    : data.error.type === "no_seat"
+                      ? "no_seat_error"
+                      : "message_send_error",
           title: "Your message could not be sent.",
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",

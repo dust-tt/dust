@@ -13,6 +13,7 @@ import {
   isProgrammaticSpendLimitRateCapReached,
   isProgrammaticSpendLimitRateWarningReached,
 } from "@app/lib/api/credits/programmatic_usage_limit";
+import { isGroupLimitReached } from "@app/lib/api/groups/group_limit";
 import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
 import {
   isUserSpendLimitRateCapReached,
@@ -58,7 +59,7 @@ export async function isPoolDepleted(auth: Authenticator): Promise<boolean> {
 
 /**
  * Whether the user is blocked from sending billable messages, and why. The
- * per-user cap comes from the Redis fixed-window counter; the pool part
+ * per-user cap and the group limit come from the Redis fixed-window counters; the pool part
  * (no_seat, pool depletion, personal-seat carve-out) comes from the Metronome
  * pool state.
  */
@@ -67,10 +68,14 @@ export async function isUserBlocked(
   user: UserResource
 ): Promise<UserBlockedReason | null> {
   const workspace = auth.getNonNullableWorkspace();
-  const userCapBlocked = await isUserSpendLimitRateCapReached(auth, {
-    user,
+  const [userCapBlocked, groupLimitBlocked] = await Promise.all([
+    isUserSpendLimitRateCapReached(auth, { user }),
+    isGroupLimitReached(auth, { user }),
+  ]);
+  return isUserBlockedByMetronome(workspace, user, {
+    userCapBlocked,
+    groupLimitBlocked,
   });
-  return isUserBlockedByMetronome(workspace, user, { userCapBlocked });
 }
 
 /**

@@ -2485,6 +2485,16 @@ export async function checkMessagesLimit(
           },
         });
       }
+      // No seat auto-upgrade: a seat does not raise a group's budget.
+      if (blockedReason === "group_limit_reached") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "group_limit_reached",
+            message: "Your group has reached its usage limit.",
+          },
+        });
+      }
       if (blockedReason === "credits_exhausted") {
         return new Err({
           status_code: 403,

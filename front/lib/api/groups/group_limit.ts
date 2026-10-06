@@ -226,6 +226,37 @@ export async function resolveLimitGroupForUser(
   return limitGroups.get(user.sId) ?? null;
 }
 
+/**
+ * Whether the member's limit group has used its whole limit for the current cycle. Fails open (not
+ * blocked) when the cycle or the counter cannot be read.
+ */
+export async function isGroupLimitReached(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const limitGroup = await resolveLimitGroupForUser(auth, { user });
+  if (!limitGroup || limitGroup.groupLimitAwuCredits === null) {
+    return false;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  const count = await readGroupLimitCount(auth, { group: limitGroup, bounds });
+  if (count === null) {
+    logger.warn(
+      { workspaceId: workspace.sId, groupId: limitGroup.sId },
+      "[GroupLimit] Failed to read group limit count; allowing message"
+    );
+    return false;
+  }
+
+  return count >= roundCreditsToMicroCredits(limitGroup.groupLimitAwuCredits);
+}
+
 export async function recordGroupLimitUsage(
   auth: Authenticator,
   {

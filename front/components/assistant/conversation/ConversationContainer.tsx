@@ -259,6 +259,9 @@ export function ConversationContainerVirtuoso({
           case "user_cap_reached":
             limitCode = "user_credits_exhausted";
             break;
+          case "group_limit_reached":
+            limitCode = "group_limit_reached";
+            break;
           case "credits_exhausted":
             limitCode = "pool_credits_exhausted";
             break;
