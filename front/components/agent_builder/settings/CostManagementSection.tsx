@@ -2,9 +2,11 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBu
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { SliderToggle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController } from "react-hook-form";
 
 export function CostManagementSection() {
+  const { t } = useLingui();
   const { isManager } = useAuth();
   const { field } = useController<
     AgentBuilderFormData,
@@ -19,15 +21,18 @@ export function CostManagementSection() {
   }
 
   return (
-    <SettingSectionContainer title="Cost Management">
+    <SettingSectionContainer title={t`Cost Management`}>
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-sm font-medium text-foreground">
-            Ignore credit spend threshold alert
+            <Trans>Ignore credit spend threshold alert</Trans>
           </span>
           <span className="text-xs text-muted-foreground">
-            Conversations with this agent will not pause to ask for confirmation
-            when they cross the workspace's credit spend checkpoint.
+            <Trans>
+              Conversations with this agent will not pause to ask for
+              confirmation when they cross the workspace's credit spend
+              checkpoint.
+            </Trans>
           </span>
         </div>
         <SliderToggle

@@ -16,6 +16,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
@@ -33,6 +34,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
   { avatarUrl, onChange }: AgentBuilderEmojiPickerProps,
   ref
 ) {
+  const { t } = useLingui();
   const emojiButtonRef = useRef<HTMLDivElement>(null);
   const colorButtonRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +83,11 @@ const AgentBuilderEmojiPicker = React.forwardRef<
       <div className="flex flex-row gap-2">
         <PopoverRoot>
           <PopoverTrigger asChild>
-            <Button variant="outline" icon={FaceSmile} label="Pick an Emoji" />
+            <Button
+              variant="outline"
+              icon={FaceSmile}
+              label={t`Pick an Emoji`}
+            />
           </PopoverTrigger>
           <PopoverContent fullWidth>
             <EmojiPicker
@@ -102,7 +108,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
 
         <PopoverRoot>
           <PopoverTrigger asChild>
-            <Button variant="outline" icon={Paint} label="Pick a color" />
+            <Button variant="outline" icon={Paint} label={t`Pick a color`} />
           </PopoverTrigger>
           <PopoverContent mountPortal={false} className="w-fit">
             <ColorPicker

@@ -19,6 +19,9 @@ import {
 } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import { cn } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import {
   CartesianGrid,
   Line,
@@ -28,6 +31,13 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
+
+type FeedbackKind = (typeof FEEDBACK_DISTRIBUTION_LEGEND)[number]["key"];
+
+const FEEDBACK_LABELS: Record<FeedbackKind, MessageDescriptor> = {
+  positive: msg`Positive`,
+  negative: msg`Negative`,
+};
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -67,6 +77,7 @@ function FeedbackDistributionTooltip(
     selectedKey?: string;
   }
 ) {
+  const { t } = useLingui();
   const { active, payload, activeKey, selectedKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -80,9 +91,9 @@ function FeedbackDistributionTooltip(
   return (
     <ChartTooltipCard
       title={row.date}
-      rows={FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label }) => ({
+      rows={FEEDBACK_DISTRIBUTION_LEGEND.map(({ key }) => ({
         key,
-        label,
+        label: t(FEEDBACK_LABELS[key]),
         value: row[key],
         colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
       }))}
@@ -106,6 +117,7 @@ export function FeedbackDistributionChart({
   agentConfigurationId,
   isCustomAgent,
 }: FeedbackDistributionChartProps) {
+  const { t } = useLingui();
   const { period, mode, selectedVersion } = useObservabilityContext();
   const {
     feedbackDistribution,
@@ -135,7 +147,10 @@ export function FeedbackDistributionChart({
 
   const legendItems = decorate(
     legendFromConstant(
-      FEEDBACK_DISTRIBUTION_LEGEND,
+      FEEDBACK_DISTRIBUTION_LEGEND.map(({ key }) => ({
+        key,
+        label: t(FEEDBACK_LABELS[key]),
+      })),
       FEEDBACK_DISTRIBUTION_PALETTE,
       {
         includeVersionMarker:
@@ -156,16 +171,16 @@ export function FeedbackDistributionChart({
 
   return (
     <ChartContainer
-      title="Feedback Trends"
-      description="Daily counts of positive and negative feedback."
+      title={t`Feedback Trends`}
+      description={t`Daily counts of positive and negative feedback.`}
       isLoading={isFeedbackDistributionLoading}
       errorMessage={
         isFeedbackDistributionError
-          ? "Failed to load feedback distribution data."
+          ? t`Failed to load feedback distribution data.`
           : undefined
       }
       emptyMessage={
-        data.length === 0 ? "No feedback data available." : undefined
+        data.length === 0 ? t`No feedback data available.` : undefined
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
@@ -209,7 +224,7 @@ export function FeedbackDistributionChart({
         <Line
           type="monotone"
           dataKey="positive"
-          name="Positive"
+          name={t(FEEDBACK_LABELS.positive)}
           className={cn(
             FEEDBACK_DISTRIBUTION_PALETTE.positive,
             "transition-opacity",
@@ -225,7 +240,7 @@ export function FeedbackDistributionChart({
         <Line
           type="monotone"
           dataKey="negative"
-          name="Negative"
+          name={t(FEEDBACK_LABELS.negative)}
           className={cn(
             FEEDBACK_DISTRIBUTION_PALETTE.negative,
             "transition-opacity",

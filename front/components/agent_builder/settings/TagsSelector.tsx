@@ -18,6 +18,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { KeyboardEvent } from "react";
 import { useMemo, useState } from "react";
 
@@ -42,6 +43,7 @@ export const TagsSelector = ({
   isSuggestDisabled,
   instructions,
 }: TagsSelectorProps) => {
+  const { t } = useLingui();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [suggestedTags, setSuggestedTags] = useState<TagType[]>([]);
@@ -88,14 +90,16 @@ export const TagsSelector = ({
   };
 
   const { suggestedFilteredTags, otherFilteredTags } = useMemo(() => {
-    const suggestedTagIds = new Set(suggestedTags.map((t) => t.sId));
+    const suggestedTagIds = new Set(suggestedTags.map((tag) => tag.sId));
 
     const allFiltered = allTags
-      .filter((t) => t.name.toLowerCase().includes(searchText.toLowerCase()))
-      .filter((t) => canManageProtectedTags || t.kind !== "protected")
+      .filter((tag) =>
+        tag.name.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .filter((tag) => canManageProtectedTags || tag.kind !== "protected")
       .sort(tagsSorter);
 
-    const suggested = allFiltered.filter((t) => suggestedTagIds.has(t.sId));
+    const suggested = allFiltered.filter((tag) => suggestedTagIds.has(tag.sId));
     return {
       suggestedFilteredTags: suggested,
       otherFilteredTags: allFiltered,
@@ -103,7 +107,7 @@ export const TagsSelector = ({
   }, [suggestedTags, allTags, searchText, canManageProtectedTags]);
 
   const exactMatch = allTags.find(
-    (t) => t.name.toLowerCase() === searchText.toLowerCase()
+    (tag) => tag.name.toLowerCase() === searchText.toLowerCase()
   );
   const showCreateOption =
     isAdmin(owner) && searchText.trim() !== "" && !exactMatch;
@@ -118,6 +122,7 @@ export const TagsSelector = ({
   };
 
   const sortedTags = tags.toSorted(tagsSorter);
+  const newTagName = searchText.trim();
 
   const onKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -147,16 +152,16 @@ export const TagsSelector = ({
             <Button
               icon={Plus}
               variant="outline"
-              label="Add"
+              label={t`Add`}
               isSelect
               size="sm"
-              tooltip="Select a tag"
+              tooltip={t`Select a tag`}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-96" side="top" align="start">
             <DropdownMenuSearchbar
               autoFocus
-              placeholder="Choose an option"
+              placeholder={t`Choose an option`}
               name="input"
               value={searchText}
               onChange={setSearchText}
@@ -166,7 +171,7 @@ export const TagsSelector = ({
             <div className="max-h-80 overflow-auto">
               {showCreateOption && (
                 <DropdownMenuItem
-                  label={`Create "${searchText.trim()}"`}
+                  label={t`Create "${newTagName}"`}
                   icon={Plus}
                   onClick={() => handleCreateTag(searchText.trim())}
                 />
@@ -178,15 +183,17 @@ export const TagsSelector = ({
                     <div className="flex items-center gap-2">
                       {isSuggestLoading && <Spinner size="xs" />}
                       {isSuggestLoading
-                        ? "Generating suggestions..."
-                        : "Suggested tags"}
+                        ? t`Generating suggestions...`
+                        : t`Suggested tags`}
                     </div>
                   </DropdownMenuLabel>
                   {suggestedFilteredTags.map((tag) => (
                     <DropdownMenuCheckboxItem
                       key={tag.sId}
                       label={tag.name}
-                      checked={tags.some((t) => t.sId === tag.sId)}
+                      checked={tags.some(
+                        (selectedTag) => selectedTag.sId === tag.sId
+                      )}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           onAddTag(tag);
@@ -207,12 +214,16 @@ export const TagsSelector = ({
                   {(suggestedFilteredTags.length > 0 || isSuggestLoading) && (
                     <DropdownMenuSeparator />
                   )}
-                  <DropdownMenuLabel>Other tags</DropdownMenuLabel>
+                  <DropdownMenuLabel>
+                    <Trans>Other tags</Trans>
+                  </DropdownMenuLabel>
                   {otherFilteredTags.map((tag) => (
                     <DropdownMenuCheckboxItem
                       key={tag.sId}
                       label={tag.name}
-                      checked={tags.some((t) => t.sId === tag.sId)}
+                      checked={tags.some(
+                        (selectedTag) => selectedTag.sId === tag.sId
+                      )}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           onAddTag(tag);
