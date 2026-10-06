@@ -1,7 +1,10 @@
 import type { KeyObject } from "node:crypto";
 import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import config from "@app/lib/api/config";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import {
+  DustFileSystem,
+  DustFileSystemError,
+} from "@app/lib/api/file_system/dust_file_system";
 import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +17,7 @@ import {
 } from "@app/lib/markdown/dfm";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { contentTypeFromFileName, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -21,8 +25,9 @@ import { Err, Ok } from "@app/types/shared/result";
 /**
  * Server-side authorship for DFM comments. The server writes and signs each message a user
  * posts, and a Markdown save through the file API is refused when it brings a new message the
- * server did not sign for the saving user. Messages written around this path, from a sandbox or
- * an agent tool, stay unsigned and read as unverified.
+ * server did not sign for the saving user. The documents agent tool signs the messages it writes
+ * for the running agent. Messages written around both paths, from a sandbox or a plain file
+ * edit, stay unsigned and read as unverified.
  */
 
 export type DfmCommentSignatureErrorCode =
@@ -38,7 +43,8 @@ export type DfmCommentSignatureErrorCode =
 export class DfmCommentSignatureError extends Error {
   constructor(
     readonly code: DfmCommentSignatureErrorCode,
-    message: string
+    message: string,
+    readonly codecErrorMessage?: string
   ) {
     super(message);
   }
@@ -140,11 +146,81 @@ export async function signDfmCommentMessage(
     );
   }
 
-  const message: DfmMessage = {
-    author: { kind: "user", id: user.sId, name: user.fullName() },
-    createdAt: new Date().toISOString(),
+  return signMessage(auth, {
+    filePath,
+    commentId,
+    position,
+    previous,
+    message: {
+      author: { kind: "user", id: user.sId, name: user.fullName() },
+      createdAt: new Date().toISOString(),
+      body,
+    },
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:security] dfm-comment-signing-by-agent
+ * A message signed for an agent MUST be attributed to `agent:<sId>` of the given agent
+ * configuration, named `@<agent name>`, at the current time, as the first message of a new
+ * thread in the file at `filePath`. Callers MUST pass the agent running the tool, never one
+ * named by the tool input, and MUST store the message only through a write to `filePath` that
+ * passed its own write-access check, never return it otherwise. It MUST be refused outside a
+ * workspace with `co_edition` or when the codec cannot write it. Without a signing key it MUST
+ * be returned unsigned.
+ */
+export async function signDfmAgentCommentMessage(
+  auth: Authenticator,
+  {
+    agent,
+    filePath,
+    commentId,
     body,
-  };
+  }: {
+    agent: Pick<LightAgentConfigurationType, "sId" | "name">;
+    filePath: string;
+    commentId: string;
+    body: string;
+  }
+): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
+  if (!(await hasFeatureFlag(auth, "co_edition"))) {
+    return new Err(
+      new DfmCommentSignatureError(
+        "not_available",
+        "Commenting is not available here."
+      )
+    );
+  }
+
+  return signMessage(auth, {
+    filePath,
+    commentId,
+    position: 0,
+    previous: null,
+    message: {
+      author: { kind: "agent", id: agent.sId, name: `@${agent.name}` },
+      createdAt: new Date().toISOString(),
+      body,
+    },
+  });
+}
+
+async function signMessage(
+  auth: Authenticator,
+  {
+    filePath,
+    commentId,
+    position,
+    previous,
+    message,
+  }: {
+    filePath: string;
+    commentId: string;
+    position: number;
+    previous: SignedMessageFields | null;
+    message: DfmMessage;
+  }
+): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
   const writable = serializeDfm({
     frontMatter: null,
     body: "",
@@ -154,7 +230,8 @@ export async function signDfmCommentMessage(
     return new Err(
       new DfmCommentSignatureError(
         "unwritable_message",
-        "This comment cannot be saved as written."
+        "This comment cannot be saved as written.",
+        writable.error.message
       )
     );
   }
@@ -327,19 +404,31 @@ export function validateCommentSignatures(
   return new Ok(undefined);
 }
 
-async function readStoredText(
+/** The stored text of a file with its storage revision, or null when the file does not exist. */
+export async function readStoredText(
   dustFs: DustFileSystem,
   scopedPath: string
-): Promise<{ text: string | null; revision: string | undefined }> {
+): Promise<
+  Result<
+    { text: string; revision: string | undefined } | null,
+    DustFileSystemError
+  >
+> {
   const read = await readCanonicalFileContent(dustFs, scopedPath);
-  if (read.isErr() || read.value === null) {
-    return { text: null, revision: undefined };
+  if (read.isErr()) {
+    return read;
+  }
+  if (read.value === null) {
+    return new Ok(null);
   }
   const buffer = await streamToBuffer(read.value.stream);
-  return {
-    text: buffer.isOk() ? decodeBuffer(buffer.value) : null,
+  if (buffer.isErr()) {
+    return new Err(new DustFileSystemError("internal", buffer.error));
+  }
+  return new Ok({
+    text: decodeBuffer(buffer.value),
     revision: read.value.revision,
-  };
+  });
 }
 
 /**
@@ -348,9 +437,11 @@ async function readStoredText(
  * request content type is `text/markdown`, in a workspace with `co_edition`, against the file as
  * stored right before the write, and MUST NOT run anywhere else until the codec bounds its input
  * before parsing. It MUST return the revision it validated against, when storage has one, so
- * the write can be conditional on it. Other writes, such as archive extraction, sandbox and agent writes, are not
- * validated: what they bring can only read as unverified, since signatures bind the file and the
- * thread order.
+ * the write can be conditional on it. Other writes, such as archive extraction and sandbox or
+ * plain agent file writes, are not validated: what they bring can only read as unverified, since
+ * signatures bind the file and the thread order. The one exception is `documents.add_comment`,
+ * which adds a message the server itself signs for the running agent
+ * (`dfm-comment-signing-by-agent`).
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,
@@ -372,10 +463,11 @@ export async function validateMarkdownCommentsForWrite(
 
   const key = getSigningKey();
   const publicKey = key ? createPublicKey(key) : null;
-  const stored = await readStoredText(dustFs, scopedPath);
+  const read = await readStoredText(dustFs, scopedPath);
+  const stored = read.isOk() ? read.value : null;
   const validated = validateCommentSignatures(
     {
-      previous: stored.text,
+      previous: stored?.text ?? null,
       next: decodeBuffer(content),
     },
     {
@@ -393,5 +485,5 @@ export async function validateMarkdownCommentsForWrite(
         : null,
     }
   );
-  return validated.isErr() ? validated : new Ok({ revision: stored.revision });
+  return validated.isErr() ? validated : new Ok({ revision: stored?.revision });
 }

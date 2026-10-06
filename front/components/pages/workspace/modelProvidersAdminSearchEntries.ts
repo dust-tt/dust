@@ -1,8 +1,3 @@
-import {
-  MODELS_TIER_SECTION_LABEL,
-  PUBLISHED_AGENTS_MODEL_ACCESS_LABEL,
-  WORKSPACE_MODEL_ACCESS_LABEL,
-} from "@app/components/workspace/usage/ModelTiersSettingsCard";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -33,13 +28,13 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
         "Workspace model tiers",
         "model tiers workspace access tier standard advanced frontier",
       ],
-      [MODELS_TIER_SECTION_LABEL, "model tiers workspace defaults"],
+      ["Models tier", "model tiers workspace defaults"],
       [
-        WORKSPACE_MODEL_ACCESS_LABEL,
+        "Workspace access",
         "model tiers highest workspace access standard advanced frontier",
       ],
       [
-        PUBLISHED_AGENTS_MODEL_ACCESS_LABEL,
+        "Published agents",
         "model tiers run above member tier published agents",
       ],
     ],

@@ -107,7 +107,7 @@ function BulkTriggerPoolForm({
               key={value}
               value={value}
               id={`bulk-trigger-pool-${value}`}
-              label={label}
+              label={t(label)}
               disabled={!canUseExecutionMode(value)}
             />
           ))}

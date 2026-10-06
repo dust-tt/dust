@@ -1,6 +1,7 @@
 import { useSidekickHighlight } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { Button, Check, HoveringBar, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/react";
 import type { RefObject } from "react";
 import {
@@ -32,6 +33,7 @@ export function SuggestionBubbleMenu({
   editor,
   containerRef,
 }: SuggestionBubbleMenuProps) {
+  const { t } = useLingui();
   const { acceptSuggestion, rejectSuggestion, getSuggestionWithRelations } =
     useSidekickSuggestions();
   const {
@@ -282,8 +284,8 @@ export function SuggestionBubbleMenu({
           icon={XClose}
           size="xs"
           variant="ghost"
-          tooltip="Reject suggestion"
-          label="Reject"
+          tooltip={t`Reject suggestion`}
+          label={t`Reject`}
           onClick={handleReject}
         />
         <HoveringBar.Separator />
@@ -291,8 +293,8 @@ export function SuggestionBubbleMenu({
           icon={Check}
           size="xs"
           variant="highlight"
-          tooltip="Accept suggestion"
-          label="Accept"
+          tooltip={t`Accept suggestion`}
+          label={t`Accept`}
           onClick={handleAccept}
         />
       </HoveringBar>

@@ -190,28 +190,31 @@ export async function validateSkillEditorsSuggestion(
 export async function validateSkillFilesSuggestion(
   auth: Authenticator,
   skill: SkillResource,
-  { removeFileIds }: { removeFileIds: string[] }
+  {
+    addFilePaths,
+    removeFileIds,
+  }: { addFilePaths: string[]; removeFileIds: string[] }
 ): Promise<Result<SkillFilesSuggestionType, MCPError>> {
-  if (removeFileIds.length === 0) {
+  if (addFilePaths.length === 0 && removeFileIds.length === 0) {
     return new Err(
-      new MCPError("Provide at least one file in `removeFileIds`.")
+      new MCPError(
+        "Provide at least one file in `addFilePaths` or `removeFileIds`."
+      )
     );
   }
 
-  const validation = await resolveSkillFileAttachments(
-    auth,
-    skill,
-    { addFilePaths: [], removeFileIds },
-    { upload: false }
-  );
+  const files = {
+    addFilePaths: [...new Set(addFilePaths)],
+    removeFileIds: [...new Set(removeFileIds)],
+  };
+  const validation = await resolveSkillFileAttachments(auth, skill, files, {
+    upload: false,
+  });
   if (validation.isErr()) {
     return new Err(new MCPError(validation.error.message));
   }
 
-  return new Ok({
-    addFilePaths: [],
-    removeFileIds: [...new Set(removeFileIds)],
-  });
+  return new Ok(files);
 }
 
 export function validateSkillDeletionSuggestion(

@@ -115,14 +115,11 @@ The plan:
    written on checkpoints and on close, through the codec, so reload or disconnect loses
    nothing. Plan mode (`plan.md`, Redis lock, `plan_updated` event) is the closest existing
    shape, minus the streaming.
-3. **The sync layer is chosen when building step 2, not before.** Two candidates. Yjs with
-   `y-prosemirror`, its awareness protocol for cursors, and a Hocuspocus-style server: cursors,
-   presence and any number of clients come with it, and the product brainstorm assumed it.
-   ProseMirror `collab` with a central authority: simpler, no CRDT, enough for one human plus
-   agents, but cursors and multi-client have to be built. Leaning Yjs. The spike that settles
-   it answers two questions: can an agent tool act as a client from the server (apply
-   operations to the shared document and publish its awareness state), and how is the file
-   checkpoint produced from the shared document through the codec, anchors included.
+3. **The sync layer is Yjs, with Hocuspocus embedded in our own server.** Chosen 2026-10-06,
+   design in `LIVE_SESSION.md`. Yjs with `y-prosemirror` brings cursors, presence and any
+   number of clients. The alternative, ProseMirror `collab` with a central authority, is simpler
+   and has no CRDT, but cursors and multi-client would have to be built, and several humans
+   editing together is part of the plan.
 
 Several humans editing the same document at once is then a matter of opening more clients on
 the same session, not a new architecture.

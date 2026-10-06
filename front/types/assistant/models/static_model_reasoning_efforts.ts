@@ -463,6 +463,15 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     xhigh: false,
     maximal: false,
   },
+  "mistral-large-4": {
+    none: true,
+    minimal: false,
+    low: false,
+    medium: false,
+    high: true,
+    xhigh: false,
+    maximal: false,
+  },
   "mistral-medium": {
     none: true,
     minimal: false,

@@ -53,19 +53,6 @@ export function getUsageFilterCategories(
   }
 }
 
-export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
-  {
-    agent: "Agents",
-    member: "Members",
-    group: "Groups",
-    model: "Models",
-    tool: "Tools",
-    skill: "Skills",
-    source: "Sources",
-    trigger: "Triggers",
-    api_key: "API keys",
-  };
-
 export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   UsageFilterCategory,
   string
@@ -87,13 +74,6 @@ export const USAGE_FILTER_AGENT_SCOPES = [
 ] as const;
 
 export type UsageFilterAgentScope = (typeof USAGE_FILTER_AGENT_SCOPES)[number];
-
-export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterAgentScope, string> = {
-  global: "Company",
-  visible: "Shared",
-  hidden: "Private",
-  all: "All",
-};
 
 interface UsageFilterOptionBase {
   id: string;
@@ -309,7 +289,8 @@ export interface UsageFilterSummary {
 }
 
 export function getUsageFilterSummaries(
-  filter: UsageFilter
+  filter: UsageFilter,
+  categoryLabels: Record<UsageFilterCategory, string>
 ): UsageFilterSummary[] {
   return USAGE_FILTER_CATEGORIES.flatMap((category) => {
     const options = filter[category];
@@ -320,7 +301,7 @@ export function getUsageFilterSummaries(
     return [
       {
         category,
-        categoryLabel: USAGE_FILTER_CATEGORY_SINGULAR_LABEL[category],
+        categoryLabel: categoryLabels[category],
         options: options.map(({ id, name }) => ({ id, name })),
       },
     ];
@@ -328,7 +309,10 @@ export function getUsageFilterSummaries(
 }
 
 export function describeUsageFilter(filter: UsageFilter): string {
-  const summaries = getUsageFilterSummaries(filter);
+  const summaries = getUsageFilterSummaries(
+    filter,
+    USAGE_FILTER_CATEGORY_SINGULAR_LABEL
+  );
   if (summaries.length === 0) {
     return "none";
   }

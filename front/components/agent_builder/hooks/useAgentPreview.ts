@@ -12,11 +12,13 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { useLingui } from "@lingui/react/macro";
 import isEqual from "lodash/isEqual";
 import { useCallback, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 export function useDraftAgent() {
+  const { t } = useLingui();
   const { owner, user } = useAgentBuilderContext();
   const { fetcherWithBody } = useFetcher();
   const sendNotification = useSendNotification();
@@ -63,7 +65,7 @@ export function useDraftAgent() {
 
       if (!aRes.isOk()) {
         sendNotification({
-          title: "Error saving Draft Agent",
+          title: t`Error saving draft agent`,
           description: aRes.error.message,
           type: "error",
         });
@@ -77,7 +79,7 @@ export function useDraftAgent() {
       setDraftAgent(newDraft);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, user, sendNotification, getValues, fetcherWithBody]);
+    }, [owner, user, sendNotification, getValues, fetcherWithBody, t]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {

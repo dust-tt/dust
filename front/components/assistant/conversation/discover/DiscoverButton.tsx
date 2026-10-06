@@ -1,6 +1,5 @@
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
-import { Icon, Stars02 } from "@dust-tt/sparkle";
 
 interface DiscoverButtonProps {
   onClick: () => void;
@@ -19,7 +18,7 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
         onClick();
       }}
       className={classNames(
-        "group relative inline-flex h-9 items-center gap-2 rounded-full pl-3 pr-4",
+        "relative inline-flex h-9 items-center rounded-full px-4",
         "border border-border bg-muted text-foreground",
         "shadow-[0px_1px_1px_-0.5px_rgba(0,0,0,0.05),0px_2px_4px_-2px_rgba(0,0,0,0.06)]",
         "transition-[color,background-color,border-color,box-shadow,scale,translate] duration-[160ms] ease-emphasized",
@@ -30,16 +29,6 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
           "border-highlight-200 bg-highlight-50 text-highlight-700 dark:border-highlight-800"
       )}
     >
-      <span
-        aria-hidden
-        className={classNames(
-          "relative flex transition-[color,rotate] duration-300 ease-emphasized motion-reduce:rotate-0",
-          isOpening ? "rotate-90 text-highlight-500" : "text-muted-foreground",
-          "[@media(hover:hover)_and_(pointer:fine)]:group-hover:text-highlight-500"
-        )}
-      >
-        <Icon visual={Stars02} size="xs" />
-      </span>
       <span className="relative grid heading-sm">
         <span
           aria-hidden={isOpening}

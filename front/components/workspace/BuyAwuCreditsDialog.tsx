@@ -11,7 +11,7 @@ import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "@app/lib/credits/awu_purchase_constants";
-import { formatNumber } from "@app/lib/i18n/format";
+import { formatCurrency } from "@app/lib/i18n/format";
 import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
@@ -23,6 +23,7 @@ import {
 } from "@app/lib/swr/credits";
 import { useValidateCoupon } from "@app/lib/swr/workspaces";
 import type { CouponType } from "@app/types/coupon";
+import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import {
   assertNever,
@@ -78,11 +79,11 @@ function formatPaymentMethodLabel(
   }
 }
 
-function formatCost(amount: number): string {
+function formatCost(amount: number, currency: SupportedCurrency): string {
   if (Number.isInteger(amount)) {
-    return formatNumber(amount);
+    return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
   }
-  return formatNumber(amount, {
+  return formatCurrency(amount, currency, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -485,8 +486,8 @@ export function BuyAwuCreditsDialog({
     if (maxAmountInCurrency === null) {
       return null;
     }
-    return `${currencySymbol}${formatNumber(maxAmountInCurrency)}`;
-  }, [maxAmountInCurrency, currencySymbol]);
+    return formatCost(maxAmountInCurrency, currency);
+  }, [maxAmountInCurrency, currency]);
 
   const effectiveMaxAmount =
     maxAmountInCurrency ??
@@ -640,7 +641,7 @@ export function BuyAwuCreditsDialog({
                     {QUICK_SELECT_AMOUNTS.map((amount) => (
                       <Button
                         key={amount}
-                        label={`${currencySymbol}${amount}`}
+                        label={formatCost(amount, currency)}
                         variant="outline"
                         size="sm"
                         onClick={() => setAmountWithClamp(amount)}
@@ -694,7 +695,7 @@ export function BuyAwuCreditsDialog({
                   )}
                   <SummaryRow
                     label={t`Cost (excl. tax)`}
-                    value={`${currencySymbol}${formatCost(parsedAmount)}`}
+                    value={formatCost(parsedAmount, currency)}
                   />
                 </div>
               )}

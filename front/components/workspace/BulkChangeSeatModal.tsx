@@ -23,6 +23,7 @@ import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
 import { isSubscriptionCancellationScheduled } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ArrowRight,
   Avatar,
@@ -37,6 +38,9 @@ import {
   Icon,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 interface BulkChangeSeatModalProps {
@@ -114,30 +118,39 @@ interface BulkChangeSeatFormProps {
   title?: string;
 }
 
-const FREQUENCY_LABELS: Record<SeatBillingFrequency, string> = {
-  weekly: "weekly",
-  monthly: "monthly",
-  quarterly: "quarterly",
-  annual: "yearly",
-};
-
 // Compact seat label for the move rows: base tier name without the "Seat" /
 // yearly suffixes, plus the billing cadence for paid seats — e.g.
 // "Pro (monthly)", "Max (yearly)", "Free", "No seat".
 function seatMoveLabel(
   seatType: MembershipSeatType,
   name: string | null,
-  seatPlans: SeatPlanResponseBody
+  seatPlans: SeatPlanResponseBody,
+  t: (descriptor: MessageDescriptor) => string
 ): string {
   if (seatType === "none") {
-    return "No seat";
+    return t(msg`No seat`);
   }
   const baseName = stripYearlySuffix(name ?? seatType).replace(/\s+Seat$/, "");
   if (!isPaidSeatType(seatType)) {
     return baseName;
   }
   const frequency = seatPlans[seatType]?.billingFrequency;
-  return frequency ? `${baseName} (${FREQUENCY_LABELS[frequency]})` : baseName;
+  if (!frequency) {
+    return baseName;
+  }
+  switch (frequency) {
+    case "weekly":
+      return t(msg`${baseName} (weekly)`);
+    case "monthly":
+      return t(msg`${baseName} (monthly)`);
+    case "quarterly":
+      return t(msg`${baseName} (quarterly)`);
+    case "annual":
+      return t(msg`${baseName} (yearly)`);
+    default:
+      assertNeverAndIgnore(frequency);
+      return baseName;
+  }
 }
 
 interface SeatMoveSectionProps {
@@ -163,9 +176,15 @@ function SeatMoveSection({
   preview,
   seatPlans,
 }: SeatMoveSectionProps) {
+  const { t } = useLingui();
   const { targetSeatType, targetSeatName } = preview;
   const targetSeatInfo = seatPlans[targetSeatType];
-  const targetLabel = seatMoveLabel(targetSeatType, targetSeatName, seatPlans);
+  const targetLabel = seatMoveLabel(
+    targetSeatType,
+    targetSeatName,
+    seatPlans,
+    t
+  );
   const moveCount = moves.reduce((sum, move) => sum + move.count, 0);
   // Conservative: if any member in this section is coming off an annual
   // seat, that seat's already-paid commitment isn't refunded, so treat the
@@ -190,7 +209,12 @@ function SeatMoveSection({
                 className={getSeatIconColorClass(move.fromSeatType)}
               />
               <span>
-                {seatMoveLabel(move.fromSeatType, move.fromSeatName, seatPlans)}
+                {seatMoveLabel(
+                  move.fromSeatType,
+                  move.fromSeatName,
+                  seatPlans,
+                  t
+                )}
               </span>
             </div>
             <Icon
@@ -237,19 +261,28 @@ function SeatSummarySection({
   seatTotals,
   seatPlans,
 }: SeatSummarySectionProps) {
+  const { t } = useLingui();
   const headerClasses =
     "justify-self-end text-xs font-medium text-muted-foreground";
   const valueClasses = "justify-self-end font-medium text-muted-foreground";
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-semibold text-foreground">Summary</p>
+      <p className="text-sm font-semibold text-foreground">
+        <Trans>Summary</Trans>
+      </p>
       <div className="grid grid-cols-[1fr_max-content_max-content_max-content] items-center gap-x-4 gap-y-1.5 text-sm text-foreground">
         <span className="text-xs font-medium text-muted-foreground">
-          Seat type
+          <Trans>Seat type</Trans>
         </span>
-        <span className={headerClasses}>Committed</span>
-        <span className={headerClasses}>Before</span>
-        <span className={headerClasses}>After</span>
+        <span className={headerClasses}>
+          <Trans>Committed</Trans>
+        </span>
+        <span className={headerClasses}>
+          <Trans>Before</Trans>
+        </span>
+        <span className={headerClasses}>
+          <Trans>After</Trans>
+        </span>
         {seatTotals.map((total) => (
           <Fragment key={total.seatType}>
             <div className="flex items-center gap-1.5">
@@ -259,7 +292,7 @@ function SeatSummarySection({
                 className={getSeatIconColorClass(total.seatType)}
               />
               <span>
-                {seatMoveLabel(total.seatType, total.seatName, seatPlans)}
+                {seatMoveLabel(total.seatType, total.seatName, seatPlans, t)}
               </span>
             </div>
             <span className={valueClasses}>
@@ -294,16 +327,27 @@ function formatBillingPeriodDate(iso: string): string {
 
 // Price badge of a seat card in the pick step; annual seats show the
 // monthly-equivalent price.
-function getBadge(info: SeatTypeInfo): React.ReactNode {
+function getBadge(
+  info: SeatTypeInfo,
+  t: (descriptor: MessageDescriptor) => string
+): React.ReactNode {
+  const monthlyPrice = formatPriceCents(
+    info.priceCents / 12,
+    info.currency,
+    "monthly",
+    t
+  );
   return (
     <span className="text-xs text-foreground">
       {info.billingFrequency === "annual" ? (
-        <>
-          {formatPriceCents(info.priceCents / 12, info.currency, "monthly")} ·
-          billed annually
-        </>
+        <Trans>{monthlyPrice} · billed annually</Trans>
       ) : (
-        formatPriceCents(info.priceCents, info.currency, info.billingFrequency)
+        formatPriceCents(
+          info.priceCents,
+          info.currency,
+          info.billingFrequency,
+          t
+        )
       )}
     </span>
   );
@@ -321,6 +365,7 @@ function BulkChangeSeatModalPickSeatDialogContent({
   selectedSeat,
   onSelectSeat,
 }: BulkChangeSeatModalPickSeatDialogContentProps) {
+  const { t } = useLingui();
   // "free" seats are one-shot starter seats and can never be assigned from
   // this modal; "none" (seat removal) has its own dedicated action.
   const seatTypes = sortSeatTypes(
@@ -363,7 +408,7 @@ function BulkChangeSeatModalPickSeatDialogContent({
             seatType={seatType}
             info={info}
             isSelected={selectedSeat === seatType}
-            badge={getBadge(info)}
+            badge={getBadge(info, t)}
             onClick={() => onSelectSeat(seatType)}
           />
         );
@@ -383,6 +428,7 @@ function BulkChangeSeatModalPreviewDialogContent({
   preview,
   seatPlans,
 }: BulkChangeSeatModalPreviewDialogContentProps) {
+  const { t } = useLingui();
   const immediateMoves = preview.moves.filter((m) => m.kind === "immediate");
   const deferredMoves = preview.moves.filter((m) => m.kind === "deferred");
   const unchangedCount = preview.moves
@@ -392,26 +438,32 @@ function BulkChangeSeatModalPreviewDialogContent({
   const hasAnyChange = immediateMoves.length > 0 || deferredMoves.length > 0;
   const blockedByCapCount = preview.blockedByCapCount ?? 0;
   const targetMaxSeats = preview.targetMaxSeats ?? null;
+  const targetLabel = seatMoveLabel(
+    preview.targetSeatType,
+    preview.targetSeatName,
+    seatPlans,
+    t
+  );
+  const nextBillingPeriodDate = preview.nextBillingPeriodAt
+    ? formatBillingPeriodDate(preview.nextBillingPeriodAt)
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
       {blockedByCapCount > 0 && targetMaxSeats !== null && (
         <p className="text-sm text-warning-600">
-          {formatNumber(blockedByCapCount)}{" "}
-          {blockedByCapCount === 1 ? "member can't" : "members can't"} be
-          assigned —{" "}
-          {seatMoveLabel(
-            preview.targetSeatType,
-            preview.targetSeatName,
-            seatPlans
-          )}{" "}
-          is at its cap of {formatNumber(targetMaxSeats)}{" "}
-          {targetMaxSeats === 1 ? "seat" : "seats"}.
+          {t`${plural(blockedByCapCount, {
+            one: "# member can't",
+            other: "# members can't",
+          })} be assigned — ${targetLabel} is at its cap of ${plural(
+            targetMaxSeats,
+            { one: "# seat", other: "# seats" }
+          )}.`}
         </p>
       )}
       {immediateMoves.length > 0 && (
         <SeatMoveSection
-          title="Immediate changes"
+          title={t`Immediate changes`}
           moves={immediateMoves}
           deltaMonthlyCents={preview.immediateDeltaMonthlyCents}
           isDeferred={false}
@@ -422,9 +474,9 @@ function BulkChangeSeatModalPreviewDialogContent({
       {deferredMoves.length > 0 && (
         <SeatMoveSection
           title={
-            preview.nextBillingPeriodAt
-              ? `Changes on next billing period (${formatBillingPeriodDate(preview.nextBillingPeriodAt)})`
-              : "Changes on next billing period"
+            nextBillingPeriodDate
+              ? t`Changes on next billing period (${nextBillingPeriodDate})`
+              : t`Changes on next billing period`
           }
           moves={deferredMoves}
           deltaMonthlyCents={preview.deferredDeltaMonthlyCents}
@@ -435,14 +487,10 @@ function BulkChangeSeatModalPreviewDialogContent({
       )}
       {unchangedCount > 0 && (
         <p className="text-sm text-muted-foreground">
-          {formatNumber(unchangedCount)}{" "}
-          {unchangedCount === 1 ? "member is" : "members are"} already on{" "}
-          {seatMoveLabel(
-            preview.targetSeatType,
-            preview.targetSeatName,
-            seatPlans
-          )}{" "}
-          and won&apos;t change.
+          {t`${plural(unchangedCount, {
+            one: "# member is",
+            other: "# members are",
+          })} already on ${targetLabel} and won't change.`}
         </p>
       )}
       {seatTotals.length > 0 && hasAnyChange && (
@@ -464,6 +512,7 @@ function BulkChangeSeatForm({
   presetSeatType,
   title,
 }: BulkChangeSeatFormProps) {
+  const { t } = useLingui();
   const { subscription } = useAuth();
   // A cancelled subscription already has its end date scheduled with
   // Metronome; scheduling a seat change on top of it can land past that end
@@ -548,8 +597,9 @@ function BulkChangeSeatForm({
 
   const subtitle =
     step === "pick"
-      ? "Choose a new seat to continue"
-      : "Review the changes before applying";
+      ? t`Choose a new seat to continue`
+      : t`Review the changes before applying`;
+  const displayedMemberCount = preview?.memberCount ?? memberCount;
 
   return (
     <>
@@ -568,7 +618,10 @@ function BulkChangeSeatForm({
           <div className="flex flex-col gap-1">
             <DialogTitle>
               {title ??
-                `Change seat for ${formatNumber(preview?.memberCount ?? memberCount)} members`}
+                t`Change seat for ${plural(displayedMemberCount, {
+                  one: "# member",
+                  other: "# members",
+                })}`}
             </DialogTitle>
             <DialogDescription>{subtitle}</DialogDescription>
           </div>
@@ -577,8 +630,10 @@ function BulkChangeSeatForm({
       <DialogContainer>
         {isSubscriptionCancelled && (
           <p className="mb-3 text-xs text-warning-600">
-            Your subscription is scheduled to end and seats can&apos;t be
-            changed until it&apos;s reactivated.
+            <Trans>
+              Your subscription is scheduled to end and seats can&apos;t be
+              changed until it&apos;s reactivated.
+            </Trans>
           </p>
         )}
         {step === "pick" ? (
@@ -606,7 +661,7 @@ function BulkChangeSeatForm({
         <Button
           // With a preset seat there is no pick step to go back to, so the left
           // button always cancels.
-          label={step === "pick" || hasPresetSeat ? "Cancel" : "Back"}
+          label={step === "pick" || hasPresetSeat ? t`Cancel` : t`Back`}
           variant="outline"
           onClick={
             step === "pick" || hasPresetSeat ? onClose : () => setPreview(null)
@@ -615,7 +670,7 @@ function BulkChangeSeatForm({
         />
         {step === "pick" ? (
           <Button
-            label="Review"
+            label={t`Review`}
             variant="primary"
             disabled={
               !selectedSeat || isLoadingPreview || isSubscriptionCancelled
@@ -625,7 +680,7 @@ function BulkChangeSeatForm({
           />
         ) : (
           <Button
-            label="Validate"
+            label={t`Validate`}
             variant="primary"
             disabled={
               !preview ||

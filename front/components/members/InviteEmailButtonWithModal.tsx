@@ -122,7 +122,12 @@ function SeatBadge({ seatType, info }: SeatBadgeProps) {
 
   return (
     <span className="text-xs text-foreground">
-      {formatPriceCents(info.priceCents, info.currency, info.billingFrequency)}
+      {formatPriceCents(
+        info.priceCents,
+        info.currency,
+        info.billingFrequency,
+        t
+      )}
     </span>
   );
 }

@@ -62,9 +62,9 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
+import { isFileWritingInternalTool } from "@app/lib/actions/file_writing_tools";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
-import { isFilesWritingTool } from "@app/lib/api/actions/servers/files/metadata";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -501,8 +501,10 @@ export function AgentMessage({
             // than on the next window focus. The editor reopens when clean and holds its
             // draft otherwise. Same reliable per-message stream as the plan revalidation.
             if (
-              action.internalMCPServerName === "files" &&
-              isFilesWritingTool(action.toolName)
+              isFileWritingInternalTool(
+                action.internalMCPServerName,
+                action.toolName
+              )
             ) {
               // The tools name the canonical scoped path every preview keys on.
               const paths = [

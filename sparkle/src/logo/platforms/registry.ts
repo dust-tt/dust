@@ -83,6 +83,7 @@ import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
 import OfficeLogo from "./Office";
 import OpenaiLogo from "./Openai";
+import PaddleLogo from "./Paddle";
 import PandaDocLogo from "./PandaDoc";
 import PdfLogo from "./Pdf";
 import PowerBiLogo from "./PowerBi";
@@ -104,6 +105,7 @@ import StackOneLogo from "./StackOne";
 import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
+import SuperhumanLogo from "./Superhuman";
 import TableLogo from "./Table";
 import TemporalLogo from "./Temporal";
 import ThinkingMachinesLogo from "./ThinkingMachines";
@@ -208,6 +210,7 @@ export const PLATFORM_LOGOS = {
   NotionLogo,
   OfficeLogo,
   OpenaiLogo,
+  PaddleLogo,
   PandaDocLogo,
   PdfLogo,
   PowerBiLogo,
@@ -229,6 +232,7 @@ export const PLATFORM_LOGOS = {
   StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
+  SuperhumanLogo,
   TableLogo,
   TemporalLogo,
   ThinkingMachinesLogo,

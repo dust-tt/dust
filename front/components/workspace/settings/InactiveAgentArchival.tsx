@@ -12,18 +12,15 @@ import { useUpdateInactiveAgentArchival } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types/user";
 import { getInactiveAgentArchivalThresholdDays } from "@app/types/user";
 import { cn, InputWithSave, SliderToggle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
-
-export const INACTIVE_AGENT_ARCHIVAL_LABEL = "Archive unused agents";
-export const INACTIVE_AGENT_ARCHIVAL_DESCRIPTION =
-  "Automatically archive unused agents";
-export const INACTIVITY_THRESHOLD_LABEL = "Inactivity threshold";
 
 interface InactiveAgentArchivalProps {
   owner: WorkspaceType;
 }
 
 export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
 
   const updateInactiveAgentArchival = useUpdateInactiveAgentArchival({ owner });
@@ -68,10 +65,10 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
   return (
     <>
       <GovernanceSettingRowLayout
-        label={INACTIVE_AGENT_ARCHIVAL_LABEL}
+        label={t`Archive unused agents`}
         description={
-          <>
-            {INACTIVE_AGENT_ARCHIVAL_DESCRIPTION}. Or{" "}
+          <Trans>
+            Automatically archive unused agents. Or{" "}
             <button
               type="button"
               className="underline"
@@ -80,7 +77,7 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
               archive them once
             </button>
             .
-          </>
+          </Trans>
         }
         action={
           <SliderToggle
@@ -93,13 +90,15 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
       <GovernanceSettingRowLayout
         label={
           <span className={cn(!isEnabled && "text-faint")}>
-            {INACTIVITY_THRESHOLD_LABEL}
+            <Trans>Inactivity threshold</Trans>
           </span>
         }
         description={
           <span className={cn(!isEnabled && "text-faint")}>
-            How long an agent has to go unmentioned before it's archived. Agents
-            with a schedule are excluded.
+            <Trans>
+              How long an agent has to go unmentioned before it's archived.
+              Agents with a schedule are excluded.
+            </Trans>
           </span>
         }
         action={
@@ -114,11 +113,11 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
                   parsed >= MIN_INACTIVITY_THRESHOLD_DAYS &&
                   parsed <= MAX_INACTIVITY_THRESHOLD_DAYS
                   ? null
-                  : `Between ${MIN_INACTIVITY_THRESHOLD_DAYS} and ${MAX_INACTIVITY_THRESHOLD_DAYS}`;
+                  : t`Between ${MIN_INACTIVITY_THRESHOLD_DAYS} and ${MAX_INACTIVITY_THRESHOLD_DAYS}`;
               }}
               inputMode="numeric"
               pattern="[0-9]*"
-              unit="days"
+              unit={t`days`}
               disabled={isChanging || !isEnabled}
             />
           </div>

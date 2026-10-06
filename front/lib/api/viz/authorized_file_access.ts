@@ -328,8 +328,10 @@ export async function reverifyAuthorAccess(
   }
 
   if (matchingRef.kind === "file_id") {
-    const file = await FileResource.fetchById(auth, matchingRef.ref);
-    return file !== null;
+    const verifyResult = await FileResource.verifyAuthorizedFileIdRef(auth, {
+      fileId: matchingRef.ref,
+    });
+    return verifyResult.verified;
   }
 
   const canonicalPath =

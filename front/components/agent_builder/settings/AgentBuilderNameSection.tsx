@@ -15,6 +15,7 @@ import {
   Spinner,
   Stars02,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -28,6 +29,7 @@ interface AgentBuilderNameSectionProps {
 export function AgentBuilderNameSection({
   isCreatingNew = false,
 }: AgentBuilderNameSectionProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
   const sendNotification = useSendNotification();
@@ -67,7 +69,7 @@ export function AgentBuilderNameSection({
     if (result.isErr()) {
       sendNotification({
         type: "error",
-        title: "Failed to generate name suggestions",
+        title: t`Failed to generate name suggestions`,
         description: result.error.message,
       });
       setIsGenerating(false);
@@ -79,9 +81,8 @@ export function AgentBuilderNameSection({
       if (result.value.suggestions.length === 0) {
         sendNotification({
           type: "info",
-          title: "No suggestions available",
-          description:
-            "Try adding more details to your instructions to get better suggestions.",
+          title: t`No suggestions available`,
+          description: t`Try adding more details to your instructions to get better suggestions.`,
         });
       }
     }
@@ -141,12 +142,12 @@ export function AgentBuilderNameSection({
   }, [handleAutoGenerateName, isCreatingNew]);
 
   return (
-    <BaseFormFieldSection title="Name" fieldName={NAME_FIELD_NAME}>
+    <BaseFormFieldSection title={t`Name`} fieldName={NAME_FIELD_NAME}>
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
         <div className="relative">
           <Input
             ref={registerRef}
-            placeholder="Enter agent name"
+            placeholder={t`Enter agent name`}
             className="pr-10"
             maxLength={AGENT_NAME_MAX_LENGTH}
             onChange={(e) => {
@@ -177,12 +178,12 @@ export function AgentBuilderNameSection({
                 }
                 tooltip={
                   isGenerating
-                    ? "Generating name..."
+                    ? t`Generating name...`
                     : !instructions ||
                         instructions.length <
                           MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                      ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
-                      : "Get name suggestions"
+                      ? t`Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
+                      : t`Get name suggestions`
                 }
               />
             </DropdownMenuTrigger>
@@ -201,7 +202,7 @@ export function AgentBuilderNameSection({
                 ))
               ) : (
                 <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
-                  No suggestions available
+                  <Trans>No suggestions available</Trans>
                 </div>
               )}
             </DropdownMenuContent>

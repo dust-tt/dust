@@ -12,6 +12,11 @@ import React from "react";
 import { Toaster, toast } from "sonner";
 
 import { Button } from "./Button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./Collapsible";
 import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
@@ -24,6 +29,7 @@ export type NotificationType = {
   };
   title?: string;
   description?: string;
+  details?: string;
   /** Outcome variant driving the icon and its color. */
   type: "success" | "error" | "info" | "warning" | "hello";
 };
@@ -85,7 +91,7 @@ function resolveForeground(type: NotificationType["type"]): string {
 
 /**
  * The presentational card of a toast notification: icon, title, description,
- * optional action button, and optional dismiss control. Use it directly for
+ * optional collapsible details, optional action button, and optional dismiss control. Use it directly for
  * inline previews; in product code dispatch toasts with useSendNotification
  * instead.
  * @summary Presentational notification card.
@@ -94,9 +100,15 @@ export function NotificationContent({
   type,
   title,
   description,
+  details,
   action,
   onDismiss,
-}: NotificationType & { onDismiss?: () => void }) {
+  onToggleDetails,
+}: NotificationType & {
+  onDismiss?: () => void;
+  /** Called each time the details are expanded or collapsed. */
+  onToggleDetails?: (open: boolean) => void;
+}) {
   const icon = resolveIcon(type);
   const foreground = resolveForeground(type);
 
@@ -145,6 +157,25 @@ export function NotificationContent({
           </button>
         )}
       </div>
+      {details && (
+        <Collapsible className="pl-6" onOpenChange={onToggleDetails}>
+          <CollapsibleTrigger>
+            <span className={cn("copy-xs", foreground)}>Details</span>
+          </CollapsibleTrigger>
+          {/* Not animated: the toast's height is measured right after the toggle, so the details
+              must already be at their final size. */}
+          <CollapsibleContent animated={false}>
+            <pre
+              className={cn(
+                "copy-xs mt-1 max-h-40 select-text overflow-auto whitespace-pre-wrap break-words font-mono opacity-80",
+                foreground
+              )}
+            >
+              {details}
+            </pre>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       {action && (
         <div className="pl-6">
           <Button
@@ -174,20 +205,30 @@ export const Notification = {
   Area: ({ children }: { children: React.ReactNode }) => {
     const sendNotification = React.useCallback(
       (notification: NotificationType) => {
-        toast.custom(
-          (t) => (
-            <NotificationContent
-              type={notification.type}
-              title={notification.title}
-              description={notification.description}
-              action={notification.action}
-              onDismiss={() => toast.dismiss(t)}
-            />
-          ),
-          {
-            duration: NOTIFICATION_DELAY_MS,
-          }
+        let detailsToggleCount = 0;
+        const render = (id: string | number) => (
+          <NotificationContent
+            type={notification.type}
+            title={notification.title}
+            description={notification.description}
+            details={notification.details}
+            action={notification.action}
+            onDismiss={() => toast.dismiss(id)}
+            onToggleDetails={() => {
+              detailsToggleCount += 1;
+              // Update the toast in place without a dismiss timer, so someone reading the details
+              // doesn't lose it. Sonner only re-measures a toast's height when its `description`
+              // changes (custom toasts don't render it), and caps the toast to that height while
+              // the stack is expanded on hover: a new value makes it fit the toggled details.
+              toast.custom(render, {
+                id,
+                duration: Infinity,
+                description: String(detailsToggleCount),
+              });
+            }}
+          />
         );
+        toast.custom(render, { duration: NOTIFICATION_DELAY_MS });
       },
       []
     );

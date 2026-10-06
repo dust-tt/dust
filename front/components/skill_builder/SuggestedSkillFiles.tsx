@@ -28,6 +28,14 @@ export function SuggestedSkillFiles({
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Files</span>
       <div className="divide-y divide-border">
+        {suggestion.addFilePaths.map((filePath) => (
+          <SuggestedChangeRow
+            key={`add-${filePath}`}
+            action="add"
+            visual={<Avatar size="xs" icon={File02} />}
+            title={filePath.split("/").pop() ?? filePath}
+          />
+        ))}
         {suggestion.removeFileIds.map((fileId) => (
           <SuggestedChangeRow
             key={`remove-${fileId}`}

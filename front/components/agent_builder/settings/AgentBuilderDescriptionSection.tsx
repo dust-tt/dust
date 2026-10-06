@@ -5,6 +5,7 @@ import { getDescriptionSuggestion } from "@app/components/agent_builder/settings
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -18,6 +19,7 @@ interface AgentBuilderDescriptionSectionProps {
 export function AgentBuilderDescriptionSection({
   isCreatingNew,
 }: AgentBuilderDescriptionSectionProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<AgentBuilderFormData>();
   const sendNotification = useSendNotification();
@@ -54,7 +56,7 @@ export function AgentBuilderDescriptionSection({
     if (result.isErr()) {
       sendNotification({
         type: "error",
-        title: "Failed to generate description",
+        title: t`Failed to generate description`,
         description: result.error.message,
       });
       setIsGenerating(false);
@@ -73,13 +75,12 @@ export function AgentBuilderDescriptionSection({
     } else {
       sendNotification({
         type: "info",
-        title: "No description suggestions available",
-        description:
-          "Try adding more details to your instructions to get better suggestions.",
+        title: t`No description suggestions available`,
+        description: t`Try adding more details to your instructions to get better suggestions.`,
       });
     }
     setIsGenerating(false);
-  }, [instructions, isGenerating, name, owner, sendNotification, setValue]);
+  }, [instructions, isGenerating, name, owner, sendNotification, setValue, t]);
 
   useEffect(() => {
     const onInstructionsBlur = () => {
@@ -100,14 +101,14 @@ export function AgentBuilderDescriptionSection({
 
   return (
     <BaseFormFieldSection
-      title="Description"
+      title={t`Description`}
       fieldName={DESCRIPTION_FIELD_NAME}
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
         <div className="relative">
           <Input
             ref={registerRef}
-            placeholder="Enter agent description"
+            placeholder={t`Enter agent description`}
             className="pr-10"
             onChange={(e) => {
               userSetDescriptionRef.current = true;
@@ -130,11 +131,11 @@ export function AgentBuilderDescriptionSection({
             onClick={handleGenerateDescription}
             tooltip={
               isGenerating
-                ? "Generating description..."
+                ? t`Generating description...`
                 : !instructions ||
                     instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the instructions to get suggestions`
-                  : "Generate description"
+                  ? t`Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the instructions to get suggestions`
+                  : t`Generate description`
             }
           />
         </div>

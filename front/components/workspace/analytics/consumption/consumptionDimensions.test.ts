@@ -28,7 +28,7 @@ describe("consumption dimension URL state", () => {
       "trigger",
       "api_key",
     ]);
-    expect(CONSUMPTION_DIMENSION_CONFIG.api_key.label).toBe("API keys");
+    expect(CONSUMPTION_DIMENSION_CONFIG.api_key.label.message).toBe("API keys");
   });
 
   it("selects the dimensions available to the analytics scope", () => {

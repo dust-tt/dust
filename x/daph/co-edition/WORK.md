@@ -17,18 +17,20 @@ Update this file in the same PR as the work it describes. Dates are absolute.
   `Document` core copied into `front/components/editor/document/`, DFM-only persistence,
   mounted in the conversation side panel and file dialog behind `co_edition`. Verified live in a
   hive: edit, autosave, reload.
+- 2026-10-05 and 06, editor M1 merged behind `co_edition`: DFM persistence (#34038), host mount
+  in the conversation panel and file dialog (#34029), WIP badge (#34125), refresh of open files
+  when an agent's file tool writes them (#34040), no Markdown editor on a mount that refuses
+  writes (#34149), no plain editor on preview text cut at 100k characters (#34205, for
+  everyone), `writeFileContentByPath` returns a `Result` (#34216).
+- 2026-10-06 closed, branches kept, to be superseded by the live session: #34041 (saves
+  conditional on the file revision, whole file for the rich editor) and #34043 (agent writes
+  adopted in place with a typing animation). What carries over: the revision guard moves to
+  the session's server-side checkpoint; `external_changes.ts` (block diff and frame pacing) is
+  the starting point for turning an agent's file write into operations on the shared document.
 
 ## In progress
 
-- Editor M1 as three stacked drafts: #34027 (Sparkle copy), #34038 (DFM persistence and unmount save), #34029 (host mount behind the flag). Done in them after review: the editor choice depends only on the
-  flag and the file (a file the editor cannot load is shown read-only with the reason), one last
-  save on unmount, files above the preview limit stay in the plain editor, the dialog holds
-  close, Prev and Next while edits are unsaved (lifted once a save has failed), a clean editor
-  reopens on content written by someone else while a dirty one keeps its draft and refuses to
-  save over it, an unmount save queues behind the save in flight. Still to do from M1: raw bytes, revision-aware save,
-  Source toggle, Pod tab parity, Storybook tests ported, rename the copied "block" files
-  (`blocks.ts`, `DocumentBlockMenu`) after the slash menu they are, since "block" reads as a
-  block model the product doc rules out.
+- M3 live session with Yjs (daph), starting 2026-10-06 with the spike below.
 - 2026-10-05 M4 editor comments (tdraier), two PRs stacked on #34029: #34126 shows comments
   (`editor-dfm-comments`), the next one writes them (`editor-dfm-comment-authoring`).
   Sparkle's comment UI ported to `front/components/editor/document/`, on DFM threads. Anchors
@@ -61,6 +63,8 @@ ship behind `co_edition` until M7. The order is the dependency order, not a spri
   (`PodFileTabPreview.tsx` is a third Markdown editor copy); Storybook tests ported to vitest.
 - `.txt` keeps the plain editor. `.md` detection relies on the `text/markdown` content type;
   check what files created by agents and by upload actually carry.
+- The editor supports the Markdown agents write: tables, task lists and tilde fences are
+  refused today, so those files open read-only.
 - Outcome: open, edit, reload, close and reopen a `.md` from the conversation panel, the
   dialog and the Pod tab; the bytes on disk are what the editor showed, byte for byte outside
   the body.
@@ -89,26 +93,29 @@ a DFM file from a sandbox and the editor still opens it.
   target.
 - Indexing: the project sync runs after delete and extract but not after a PUT. A saved `.md`
   must reach search, body and comments.
-- A clean editor adopts an agent's version in place, keeping the scroll position, instead of
-  remounting on a new key. No change animation: per-character liveness is the live session.
+- Revision-guarded saves in the editor and in-place adoption were built (#34041, #34043) and
+  closed in favor of the live session; see Done.
 - Outcome: in one conversation, the human edits in the editor, asks the agent for a change,
   the agent edits the file, the editor shows the result; then both edit at once and the loser
   is told, never overwritten. Nothing lost in ten rounds of this.
 
 ### M3. Live session (stream 2, human-present mode)
 
-- Sync-layer spike first (Yjs vs ProseMirror collab, README decision 3), answering: can an
-  agent tool act as a client from the server, and how is the file checkpoint produced from
-  the shared document through the codec, anchors included.
-- Then: session opens when a human opens the document and closes when the last one leaves;
-  shared document state on the server; presence with cursors, agents included; agent edits
-  through co-edition tools emitting operations streamed to open editors; direct file writes
-  refused with a pointer to those tools while the session is open; checkpoints and close write
-  the file through the codec; reload or disconnect loses nothing; several humans at once.
-- Outcome: a human watches the agent's cursor move and its text appear; two humans and one
-  agent edit together; killing the tab and reopening shows the same document.
+Design: `LIVE_SESSION.md`. A Hocuspocus service per region, run like `front-sse`, with the
+merged Yjs state stored durably between checkpoints of the `.md` file.
+
+- Build plan in `LIVE_SESSION.md`: eleven small PRs behind a new `co_edition_live` flag. First
+  one open: #34280 (the document model runs without a DOM). Next: moving the document model to
+  `front/lib/editor/`, to coordinate with tdraier's open comment PRs. In parallel: the infra ask,
+  and an hour on Cloudflare Durable Objects as a fallback host.
+- Outcome: a human watches the agent's cursor move and its text appear; killing the service
+  while typing and reconnecting shows the same document, once; the file on disk matches what
+  the editor showed after the last checkpoint.
 
 ### M4. Comments (stream 3)
+
+To agree between tdraier and daph before more comment code lands: the comment model inside the
+live document (`LIVE_SESSION.md`, "Comments in the live document").
 
 - Editor: anchors become marks on load, marks become anchors on save; comment panel; add,
   reply, resolve; the fixture renders as expected.
@@ -157,14 +164,19 @@ directives stripped, notifications on replies and mentions.
 
 ## Decisions pending someone
 
+- A new WebSocket service per region: Cloud Armor policy, hostname, ingress (daph with the
+  infra owners, M3).
+- Where the merged Yjs state is stored: Postgres or a GCS object (daph, M3 spike).
+- The comment model inside the live document (tdraier and daph, before M4 continues).
 - Authorship enforcement mechanism (daph, to settle with the team).
 - Whether to ungate the editor before comments or ship both together (daph; current call: keep
   behind the flag).
 
 ## Things that bit us
 
-- `npm run format:changed` skips untracked files; run biome on the directory explicitly for
-  new modules.
+- Since #34057 the repo formats with oxfmt and lints with oxlint; there is no `biome.json`.
+  Running Biome with `--write` falls back to its defaults and rewrites whole files with tabs.
+  After rebasing onto that change, run `npm install` so the pinned binaries exist.
 - After rebasing on a main that moved a lot, rebuild `sdks/js` and `sparkle` locally or the
   type check fails on unrelated files.
 - The hoisted `mdast-util-directive@2` ships its own nested `mdast-util-from-markdown@1`;

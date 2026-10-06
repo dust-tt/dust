@@ -17,6 +17,7 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactNode } from "react";
 import { Fragment, useCallback, useContext, useMemo } from "react";
 
@@ -108,10 +109,12 @@ export function DataSourceList({
   showCheckboxOnlyForPartialSelection = false,
   onSelectionChange,
   showSelectAllHeader = false,
-  headerTitle = "Name",
+  headerTitle,
   isItemSelected,
   additionalColumns = [],
 }: DataSourceListProps) {
+  const { t } = useLingui();
+  const displayedHeaderTitle = headerTitle ?? t`Name`;
   const {
     isRowSelected,
     selectNode,
@@ -253,9 +256,9 @@ export function DataSourceList({
 
       if (itemsToUnselect.length > 0) {
         const confirmed = await confirm({
-          title: "Are you sure?",
-          message: `Do you want to unselect all selected items?`,
-          validateLabel: "Unselect all",
+          title: t`Are you sure?`,
+          message: t`Do you want to unselect all selected items?`,
+          validateLabel: t`Unselect all`,
           validateVariant: "warning",
         });
 
@@ -299,6 +302,7 @@ export function DataSourceList({
     navigationHistory,
     confirm,
     isCurrentNavigationEntrySelected,
+    t,
   ]);
 
   const handleSelectionChange = useCallback(
@@ -313,10 +317,11 @@ export function DataSourceList({
 
       // Default behavior for data sources and nodes
       if (selectionState === "partial") {
+        const itemTitle = item.title;
         const confirmed = await confirm({
-          title: "Are you sure?",
-          message: `Do you want to unselect all of "${item.title}"?`,
-          validateLabel: "Unselect all",
+          title: t`Are you sure?`,
+          message: t`Do you want to unselect all of "${itemTitle}"?`,
+          validateLabel: t`Unselect all`,
           validateVariant: "warning",
         });
         if (!confirmed) {
@@ -331,10 +336,11 @@ export function DataSourceList({
       } else {
         // Special handling for data source unselection
         if (item.entry.type === "data_source") {
+          const itemTitle = item.title;
           const confirmed = await confirm({
-            title: "Are you sure?",
-            message: `Do you want to unselect "${item.title}"?`,
-            validateLabel: "Unselect",
+            title: t`Are you sure?`,
+            message: t`Do you want to unselect "${itemTitle}"?`,
+            validateLabel: t`Unselect`,
             validateVariant: "warning",
           });
           if (!confirmed) {
@@ -344,7 +350,7 @@ export function DataSourceList({
         removeNode(item.entry);
       }
     },
-    [confirm, isRowSelected, removeNode, selectNode, onSelectionChange]
+    [confirm, isRowSelected, removeNode, selectNode, onSelectionChange, t]
   );
 
   return (
@@ -358,7 +364,7 @@ export function DataSourceList({
               checked={selectAllState}
               onCheckedChange={handleSelectAll}
             />
-            {headerTitle && <div>{headerTitle}</div>}
+            {displayedHeaderTitle && <div>{displayedHeaderTitle}</div>}
           </div>
           {additionalColumns.length > 0 && (
             <div className="ml-3 flex w-1/3 items-center gap-3 text-muted-foreground">

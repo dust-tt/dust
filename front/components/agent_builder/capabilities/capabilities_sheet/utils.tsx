@@ -26,6 +26,8 @@ import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
@@ -46,6 +48,7 @@ export function useCapabilitiesPageAndFooter({
   leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
 } {
+  const { t } = useLingui();
   const { owner, user } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -114,9 +117,9 @@ export function useCapabilitiesPageAndFooter({
   const formSchema = useMemo(
     () =>
       isConfigurationState(sheetState)
-        ? getMCPConfigurationFormSchema(sheetState.mcpServerView)
+        ? getMCPConfigurationFormSchema(sheetState.mcpServerView, t)
         : null,
-    [sheetState]
+    [sheetState, t]
   );
 
   const form = useForm<MCPFormData>({
@@ -150,7 +153,7 @@ export function useCapabilitiesPageAndFooter({
     case "selection":
       return {
         page: {
-          title: "Add capabilities",
+          title: t`Add capabilities`,
           id: sheetState.state,
           content: (
             <CapabilitiesSelectionPageContent
@@ -176,15 +179,18 @@ export function useCapabilitiesPageAndFooter({
             ) : null,
         },
         leftButton: {
-          label: "Cancel",
+          label: t`Cancel`,
           variant: "outline",
           onClick: onClose,
         },
         rightButton: {
           label:
             selectedCapabilitiesCount > 0
-              ? `Add ${selectedCapabilitiesCount} ${selectedCapabilitiesCount === 1 ? "capability" : "capabilities"}`
-              : "Add capabilities",
+              ? t`${plural(selectedCapabilitiesCount, {
+                  one: "Add # capability",
+                  other: "Add # capabilities",
+                })}`
+              : t`Add capabilities`,
           disabled: selectedCapabilitiesCount === 0,
           onClick: handleCapabilitiesSelectionSave,
           variant: "primary",
@@ -214,14 +220,14 @@ export function useCapabilitiesPageAndFooter({
           },
           leftButton: sheetState.hasPreviousPage
             ? {
-                label: "Back",
+                label: t`Back`,
                 variant: "outline",
                 onClick: () => {
                   onStateChange({ state: "selection" });
                 },
               }
             : {
-                label: "Close",
+                label: t`Close`,
                 variant: "primary",
                 onClick: onClose,
               },
@@ -236,28 +242,28 @@ export function useCapabilitiesPageAndFooter({
 
         return {
           page: {
-            title: getInfoPageTitle(mcpServerView),
-            description: getInfoPageDescription(mcpServerView),
+            title: getInfoPageTitle(mcpServerView, t),
+            description: getInfoPageDescription(mcpServerView, t),
             icon: getInfoPageIcon(mcpServerView),
             id: sheetState.state,
             content: mcpServerView ? (
               <MCPServerInfoPage infoMCPServerView={mcpServerView} />
             ) : (
               <div className="p-4 text-muted-foreground">
-                Tool information not available.
+                <Trans>Tool information not available.</Trans>
               </div>
             ),
           },
           leftButton: sheetState.hasPreviousPage
             ? {
-                label: "Back",
+                label: t`Back`,
                 variant: "outline",
                 onClick: () => {
                   onStateChange({ state: "selection" });
                 },
               }
             : {
-                label: "Close",
+                label: t`Close`,
                 variant: "primary",
                 onClick: onClose,
               },
@@ -267,9 +273,10 @@ export function useCapabilitiesPageAndFooter({
     case "configuration":
       // index === null means new configuration, index !== null means edit
       if (sheetState.index === null) {
+        const serverLabel = sheetState.mcpServerView.label;
         return {
           page: {
-            title: `Configure ${sheetState.mcpServerView.label}`,
+            title: t`Configure ${serverLabel}`,
             icon: () => getAvatar(sheetState.mcpServerView.server),
             id: sheetState.state,
             content: (
@@ -282,14 +289,14 @@ export function useCapabilitiesPageAndFooter({
             ),
           },
           leftButton: {
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: () => {
               onStateChange({ state: "selection" });
             },
           },
           rightButton: {
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: form.handleSubmit(
               toolSelection.handleToolConfigurationSave(sheetState)
@@ -298,9 +305,10 @@ export function useCapabilitiesPageAndFooter({
         };
       } else {
         // edit mode
+        const serverLabel = sheetState.mcpServerView.label;
         return {
           page: {
-            title: `Edit ${sheetState.mcpServerView.label} Configuration`,
+            title: t`Edit ${serverLabel} configuration`,
             icon: () => getAvatar(sheetState.mcpServerView.server),
             id: sheetState.state,
             content: (
@@ -313,12 +321,12 @@ export function useCapabilitiesPageAndFooter({
             ),
           },
           leftButton: {
-            label: "Close",
+            label: t`Close`,
             variant: "outline",
             onClick: onClose,
           },
           rightButton: {
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: form.handleSubmit(handleToolEditSave(sheetState)),
           },

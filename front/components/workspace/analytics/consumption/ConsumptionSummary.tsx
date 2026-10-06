@@ -164,7 +164,7 @@ export function ConsumptionSummaryView({
           hint={creditUsage ? t`${usedPercentage}% of ${capCredits} cap` : null}
         />
         <SummaryCard
-          label={MESSAGE_COUNT_LABEL}
+          label={t(MESSAGE_COUNT_LABEL)}
           value={formatNumber(messageCount)}
           hint={
             formattedAverageCost === null

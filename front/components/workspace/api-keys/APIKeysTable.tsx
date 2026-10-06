@@ -2,7 +2,7 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/client/relative_time";
-import { compareStrings } from "@app/lib/i18n/format";
+import { compareStrings, formatCurrency } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
@@ -176,7 +176,7 @@ function formatMonthlyCap({
   if (showLegacyUsdMonthlyCap) {
     return key.monthlyCapMicroUsd === null
       ? null
-      : `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`;
+      : formatCurrency(key.monthlyCapMicroUsd / 1_000_000, "USD");
   }
   return "—";
 }

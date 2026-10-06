@@ -271,6 +271,23 @@ describe("agent_templates tools", () => {
       }
     });
 
+    it("returns error for unpublished templates", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template = await TemplateFactory.draft();
+
+      const tool = getToolByName("get_agent_template");
+      const result = await tool.handler(
+        { templateId: template.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Template not found");
+      }
+    });
+
     it("returns error for non-existent template", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 

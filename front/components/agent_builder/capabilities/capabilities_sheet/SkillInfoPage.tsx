@@ -15,6 +15,7 @@ import {
   TabsTrigger,
   Users01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 type SkillTabType = "info" | "editors";
@@ -32,6 +33,7 @@ export function SkillInfoPage({
   user,
   onClose,
 }: SkillInfoPageProps) {
+  const { t } = useLingui();
   const [selectedTab, setSelectedTab] = useState<SkillTabType>("info");
   const showEditorsTabs = skill.canAdministrate;
 
@@ -52,13 +54,13 @@ export function SkillInfoPage({
           <TabsList border={false}>
             <TabsTrigger
               value="info"
-              label="Info"
+              label={t`Info`}
               icon={InfoCircle}
               onClick={() => setSelectedTab("info")}
             />
             <TabsTrigger
               value="editors"
-              label="Editors"
+              label={t`Editors`}
               icon={Users01}
               onClick={() => setSelectedTab("editors")}
             />
@@ -133,7 +135,9 @@ function SkillInfoContent({
       {editedBy && editedAt && (
         <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
           <div>
-            Last edited {editedAt} by {editedBy}
+            <Trans>
+              Last edited {editedAt} by {editedBy}
+            </Trans>
           </div>
           {editorAvatars.length > 0 && (
             <Avatar.Stack

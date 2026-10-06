@@ -10,17 +10,12 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController, useFormContext } from "react-hook-form";
 
 const TIME_FRAME_UNITS = ["hour", "day", "week", "month", "year"] as const;
-
-const TIME_FRAME_UNIT_TO_LABEL: Record<TimeFrame["unit"], string> = {
-  hour: "hour(s)",
-  day: "day(s)",
-  week: "week(s)",
-  month: "month(s)",
-  year: "year(s)",
-};
 
 function isTimeFrameUnit(unit: string): unit is TimeFrame["unit"] {
   return (TIME_FRAME_UNITS as readonly string[]).includes(unit);
@@ -32,11 +27,20 @@ type ActionType = "include" | "search" | "extract";
 
 const ACTION_CONFIG: Record<
   ActionType,
-  { actionText: string; contextText: string }
+  { label: MessageDescriptor; description: MessageDescriptor }
 > = {
-  include: { actionText: "Include", contextText: "data inclusion" },
-  search: { actionText: "Search", contextText: "searching" },
-  extract: { actionText: "Extract", contextText: "data extraction" },
+  include: {
+    label: msg`Include data from the last`,
+    description: msg`By default, the time frame is determined automatically based on the conversation context. Enable manual time frame selection when you need to specify an exact range for data inclusion.`,
+  },
+  search: {
+    label: msg`Search data from the last`,
+    description: msg`By default, the time frame is determined automatically based on the conversation context. Enable manual time frame selection when you need to specify an exact range for searching.`,
+  },
+  extract: {
+    label: msg`Extract data from the last`,
+    description: msg`By default, the time frame is determined automatically based on the conversation context. Enable manual time frame selection when you need to specify an exact range for data extraction.`,
+  },
 };
 
 interface TimeFrameSectionProps {
@@ -44,6 +48,7 @@ interface TimeFrameSectionProps {
 }
 
 export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
+  const { t } = useLingui();
   const { setValue } = useFormContext();
 
   const { field: timeFrameField } = useController<
@@ -54,17 +59,23 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
   });
 
   const isChecked = timeFrameField.value !== null;
-  const { actionText, contextText } = ACTION_CONFIG[actionType];
+  const { label, description } = ACTION_CONFIG[actionType];
+  const duration = timeFrameField.value?.duration ?? 1;
+  const timeFrameUnitToLabel: Record<TimeFrame["unit"], string> = {
+    hour: t`${plural(duration, { one: "hour", other: "hours" })}`,
+    day: t`${plural(duration, { one: "day", other: "days" })}`,
+    week: t`${plural(duration, { one: "week", other: "weeks" })}`,
+    month: t`${plural(duration, { one: "month", other: "months" })}`,
+    year: t`${plural(duration, { one: "year", other: "years" })}`,
+  };
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="mb-2 text-lg font-semibold">Time Range Configuration</h3>
-        <p className="text-sm text-muted-foreground">
-          By default, the time frame is determined automatically based on the
-          conversation context. Enable manual time frame selection when you need
-          to specify an exact range for {contextText}.
-        </p>
+        <h3 className="mb-2 text-lg font-semibold">
+          <Trans>Time range configuration</Trans>
+        </h3>
+        <p className="text-sm text-muted-foreground">{t(description)}</p>
       </div>
 
       <div className="flex flex-row items-center gap-4 pb-4">
@@ -83,7 +94,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
             !isChecked ? "text-muted-foreground" : "text-foreground"
           )}
         >
-          {actionText} data from the last
+          {t(label)}
         </div>
         <Input
           type="number"
@@ -102,16 +113,14 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[timeFrameField.value?.unit ?? "day"]
-              }
+              label={timeFrameUnitToLabel[timeFrameField.value?.unit ?? "day"]}
               variant="outline"
               size="sm"
               disabled={!isChecked}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
+            {Object.entries(timeFrameUnitToLabel).map(([key, value]) => (
               <DropdownMenuItem
                 key={key}
                 label={value}

@@ -11,6 +11,7 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -45,6 +46,7 @@ async function getTagsSuggestions({
 }
 
 export function TagsSection() {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { tags: allTags } = useTags({ owner });
@@ -65,7 +67,7 @@ export function TagsSection() {
 
   const availableTagsCount = useMemo(() => {
     const currentTagIds = new Set(selectedTags.map((field) => field.sId));
-    return allTags.filter((t) => !currentTagIds.has(t.sId)).length;
+    return allTags.filter((tag) => !currentTagIds.has(tag.sId)).length;
   }, [allTags, selectedTags]);
 
   const isButtonDisabled = useMemo(() => {
@@ -92,7 +94,7 @@ export function TagsSection() {
         owner,
         instructions,
         description,
-        tags: allTags.map((t) => t.name),
+        tags: allTags.map((tag) => tag.name),
       });
 
       if (tagsSuggestionsResult.isOk()) {
@@ -101,12 +103,13 @@ export function TagsSection() {
         if (tagsSuggestions.status === "ok") {
           const currentTagIds = new Set(selectedTags.map((field) => field.sId));
           return allTags
-            .filter((t) => !currentTagIds.has(t.sId))
-            .filter((t) => canManageProtectedTags || t.kind !== "protected")
+            .filter((tag) => !currentTagIds.has(tag.sId))
+            .filter((tag) => canManageProtectedTags || tag.kind !== "protected")
             .filter(
               (tag) =>
                 tagsSuggestions.suggestions?.findIndex(
-                  (t) => tag.name.toLowerCase() === t.toLowerCase()
+                  (suggestion) =>
+                    tag.name.toLowerCase() === suggestion.toLowerCase()
                 ) !== -1
             )
             .slice(0, 3);
@@ -114,10 +117,9 @@ export function TagsSection() {
       }
     } catch {
       sendNotification({
-        title: "Could not get tag suggestions.",
+        title: t`Could not get tag suggestions.`,
         type: "error",
-        description:
-          "An error occurred while generating tag suggestions. Please contact us if the error persists.",
+        description: t`An error occurred while generating tag suggestions. Please contact us if the error persists.`,
       });
     }
 
@@ -136,10 +138,9 @@ export function TagsSection() {
 
       if (suggestedTags.length === 0) {
         sendNotification({
-          title: "No tag suggestions available",
+          title: t`No tag suggestions available`,
           type: "info",
-          description:
-            "We couldn't find any relevant tags to suggest for this agent.",
+          description: t`We couldn't find any relevant tags to suggest for this agent.`,
         });
         return [];
       }
@@ -162,7 +163,7 @@ export function TagsSection() {
   };
 
   return (
-    <SettingSectionContainer title="Tags" className="h-full">
+    <SettingSectionContainer title={t`Tags`} className="h-full">
       <TagsSelector
         owner={owner}
         tags={selectedTags}

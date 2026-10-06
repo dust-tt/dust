@@ -61,7 +61,10 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
   return (await rawBody(req)).toString();
 }
 
-// Creates middleware that verifies Notion signature.
+// Notion workspace ids are UUIDs in practice, but this is not documented, so we only
+// restrict to characters that cannot alter a URL path.
+const NOTION_WORKSPACE_ID_REGEX = /^[A-Za-z0-9-]+$/;
+
 export function createNotionVerificationMiddleware(
   secretManager: SecretManager,
   webhookRouterConfigManager: WebhookRouterConfigManager,
@@ -74,6 +77,17 @@ export function createNotionVerificationMiddleware(
   ): Promise<void> => {
     let providerWorkspaceId: string | undefined;
     let connectorIdsByCell: Record<string, number[]> | undefined;
+
+    if (
+      useClientCredentials &&
+      !NOTION_WORKSPACE_ID_REGEX.test(req.params.providerWorkspaceId ?? "")
+    ) {
+      error("Notion request rejected: invalid providerWorkspaceId", {
+        component: "notion-verification",
+      });
+      res.status(400).send();
+      return;
+    }
 
     try {
       // Get the raw body for Notion signature verification.

@@ -1,19 +1,3 @@
-import {
-  DEFAULT_COST_CAP_PER_SKILL_LABEL,
-  GLOBAL_SPENDING_CAP_LABEL,
-} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
-import { CREDIT_SPEND_CHECKPOINT_LABEL } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
-import {
-  UPGRADE_REQUEST_EMAILS_LABEL,
-  WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL,
-} from "@app/components/workspace/usage/UsageNotificationsCard";
-import { PROGRAMMATIC_MONTHLY_LIMIT_LABEL } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
-import {
-  AUTO_UPGRADE_SEATS_LABEL,
-  DEFAULT_PER_USER_POOL_LIMIT_LABEL,
-  REQUIRE_UPGRADE_REQUEST_REASON_LABEL,
-  UPGRADE_REQUEST_LABEL,
-} from "@app/components/workspace/usage/UsageSettingsCard";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -76,17 +60,20 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.spendingPolicies,
     [
-      [DEFAULT_PER_USER_POOL_LIMIT_LABEL, "spending policy default limit pool"],
-      [UPGRADE_REQUEST_LABEL, "allow members request upgrade"],
-      [REQUIRE_UPGRADE_REQUEST_REASON_LABEL, "justification"],
-      [AUTO_UPGRADE_SEATS_LABEL, "free pro max at limit"],
+      [
+        "Default per-user workspace credit pool monthly limit",
+        "spending policy default limit pool",
+      ],
+      ["Upgrade request", "allow members request upgrade"],
+      ["Require a reason for upgrade requests", "justification"],
+      ["Auto-upgrade seats", "free pro max at limit"],
     ],
     SETTINGS_TAB
   ),
   ...adminSearchEntries(
     PAGE,
     U.costManagement,
-    [[CREDIT_SPEND_CHECKPOINT_LABEL, "pause agent message threshold"]],
+    [["Credit spend checkpoint", "pause agent message threshold"]],
     SETTINGS_TAB
   ),
   ...adminSearchEntries(
@@ -96,11 +83,11 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
       // Legacy Programmatic Usage page keywords, retargeted here.
       ["Programmatic Usage", "credits usage api keys triggers"],
       [
-        PROGRAMMATIC_MONTHLY_LIMIT_LABEL,
+        "Programmatic monthly limit",
         "api keys triggers block programmatic access",
       ],
-      [GLOBAL_SPENDING_CAP_LABEL, "self improving skills monthly cap credits"],
-      [DEFAULT_COST_CAP_PER_SKILL_LABEL, "self improving skills per run cap"],
+      ["Global spending cap", "self improving skills monthly cap credits"],
+      ["Default cost cap per skill", "self improving skills per run cap"],
     ],
     SETTINGS_TAB
   ),
@@ -108,8 +95,8 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.notifications,
     [
-      [WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL, "email alert pool percent"],
-      [UPGRADE_REQUEST_EMAILS_LABEL, "email admins managers"],
+      ["Workspace credit pool threshold alert", "email alert pool percent"],
+      ["Upgrade request emails", "email admins managers"],
     ],
     SETTINGS_TAB
   ),

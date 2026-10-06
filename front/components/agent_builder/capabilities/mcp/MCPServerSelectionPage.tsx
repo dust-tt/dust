@@ -11,6 +11,7 @@ import {
   BookOpen01,
   Hoverable,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React from "react";
 
 interface MCPServerCardProps {
@@ -26,6 +27,7 @@ export function MCPServerCard({
   onClick,
   onToolInfoClick,
 }: MCPServerCardProps) {
+  const { t } = useLingui();
   const requirements = getMCPServerRequirements(view);
   const canAdd = requirements.noRequirement ? !isSelected : true;
 
@@ -40,17 +42,20 @@ export function MCPServerCard({
   if (view.server.documentationUrl) {
     description = (
       <>
-        {getMcpServerViewDescription(view)} Find documentation{" "}
-        <Hoverable
-          href={view.server.documentationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="primary"
-          onClick={(e) => e.stopPropagation()}
-        >
-          here
-        </Hoverable>
-        .
+        {getMcpServerViewDescription(view)}{" "}
+        <Trans>
+          Find documentation{" "}
+          <Hoverable
+            href={view.server.documentationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="primary"
+            onClick={(e) => e.stopPropagation()}
+          >
+            here
+          </Hoverable>
+          .
+        </Trans>
       </>
     );
   } else {
@@ -71,7 +76,7 @@ export function MCPServerCard({
         // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
         footer={{
-          label: "Tool Details",
+          label: t`Tool details`,
           onClick: onToolInfoClick,
         }}
       />

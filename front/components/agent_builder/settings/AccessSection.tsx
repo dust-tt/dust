@@ -7,7 +7,6 @@ import { SlackSettingsSheet } from "@app/components/agent_builder/settings/Slack
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
-import { getAgentScopeLabel } from "@app/lib/agent_builder/helpers";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
@@ -20,6 +19,8 @@ import {
   SlackLogo,
   Users01,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -39,6 +40,7 @@ export function AccessSection({
   isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AccessSectionProps) {
+  const { t } = useLingui();
   const { field: scope } = useController<
     AgentBuilderFormData,
     "agentSettings.scope"
@@ -71,7 +73,7 @@ export function AccessSection({
   const canPublishAgent = hasPermission("publish", "agent");
 
   const getDisplayValue = () => {
-    return getAgentScopeLabel(scope.value);
+    return scope.value === "visible" ? t`Published` : t`Unpublished`;
   };
 
   const getDisplayIcon = () => {
@@ -84,11 +86,14 @@ export function AccessSection({
       )?.dataSource
     : null;
 
+  const editorsCount = editors.length;
   const buttonLabel =
-    editors.length <= 1 ? "Add editors" : `${editors.length} editors`;
+    editorsCount <= 1
+      ? t`Add editors`
+      : t`${plural(editorsCount, { one: "# editor", other: "# editors" })}`;
 
   return (
-    <SettingSectionContainer title="Editors & Access">
+    <SettingSectionContainer title={t`Editors & Access`}>
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
         {isEditorGateVisible ? (
           <BecomeEditorButton
@@ -128,22 +133,22 @@ export function AccessSection({
               disabled={!canPublishAgent}
               tooltip={
                 !canPublishAgent
-                  ? "You don’t have permission to publish agents."
+                  ? t`You don’t have permission to publish agents.`
                   : undefined
               }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem
-              label="Published"
-              description="Visible & usable by all members of the workspace."
+              label={t`Published`}
+              description={t`Visible & usable by all members of the workspace.`}
               icon={Eye}
               onClick={() => scope.onChange("visible")}
               disabled={!canPublishAgent}
             />
             <DropdownMenuItem
-              label="Unpublished"
-              description="Visible & usable by editors only."
+              label={t`Unpublished`}
+              description={t`Visible & usable by editors only.`}
               icon={EyeOff}
               onClick={() => scope.onChange("hidden")}
               disabled={!canPublishAgent}
@@ -155,7 +160,7 @@ export function AccessSection({
           <>
             <Button
               variant="outline"
-              label="Slack preferences"
+              label={t`Slack preferences`}
               icon={SlackLogo}
               onClick={() => setShowSlackSettings(true)}
               type="button"

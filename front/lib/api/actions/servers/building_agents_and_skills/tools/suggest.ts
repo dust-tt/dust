@@ -542,9 +542,13 @@ async function planSkillEdit(
     rows.push({ kind: "editors", suggestion: validation.value });
   }
 
-  if (fileChanges?.removeFileIds !== undefined) {
+  if (
+    fileChanges?.addFilePaths !== undefined ||
+    fileChanges?.removeFileIds !== undefined
+  ) {
     const validation = await validateSkillFilesSuggestion(auth, skill, {
-      removeFileIds: fileChanges.removeFileIds,
+      addFilePaths: fileChanges.addFilePaths ?? [],
+      removeFileIds: fileChanges.removeFileIds ?? [],
     });
     if (validation.isErr()) {
       return validation;

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   loadDfm,
   saveDfm,
@@ -81,6 +82,12 @@ function formattedTexts(document: JSONContent): string[] {
   visit(document);
   return texts;
 }
+
+// The live session server runs these functions in Node: see `document-model-runs-without-dom`.
+it("runs without a DOM", () => {
+  expect(typeof window).toBe("undefined");
+  expect(typeof document).toBe("undefined");
+});
 
 describe("loadDfm", () => {
   it("opens a plain Markdown file", () => {
@@ -365,6 +372,26 @@ describe("saveDfm", () => {
 
     expect(saved.isOk() && saved.value.split("\n")[0]).toBe(
       "A :comment-start{id=c1}:comment-start{id=c2}b c:comment-end{id=c2}:comment-end{id=c1} d"
+    );
+  });
+
+  it("saves a new comment around an existing one", () => {
+    const source = `A :comment-start{id=c1}b:comment-end{id=c1} c\n\n${twoThreads("c1", "c2")}`;
+    const { envelope, content } = load(source);
+    const paragraph = content.content?.[0];
+    if (!paragraph?.content) {
+      throw new Error("No paragraph.");
+    }
+    // The editor adds the new comment's mark after the existing one, as on the whole paragraph.
+    paragraph.content = paragraph.content.map((node) => ({
+      ...node,
+      marks: [...(node.marks ?? []), { type: "comment", attrs: { id: "c2" } }],
+    }));
+
+    const saved = saveDfm(envelope, content);
+
+    expect(saved.isOk() && saved.value.split("\n")[0]).toBe(
+      ":comment-start{id=c2}A :comment-start{id=c1}b:comment-end{id=c1} c:comment-end{id=c2}"
     );
   });
 

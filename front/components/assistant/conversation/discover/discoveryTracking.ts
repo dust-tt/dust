@@ -19,6 +19,7 @@ const HOMEPAGE_USE_CASE_OBJECT = "homepage_use_case";
 const DISCOVERY_SUGGESTION_OBJECT = "discovery_suggestion";
 const DISCOVER_ITEM_OBJECT = "item";
 const DISCOVER_ITEM_DETAILS_OBJECT = "item_details";
+const SCROLL_PULL_OBJECT = "scroll_pull";
 
 export type DiscoverySuggestionSection = "for_you" | "trending";
 export type DiscoverItemSource =
@@ -176,4 +177,12 @@ export function trackDiscoverItemDetailsOpen(
     TRACKING_ACTIONS.OPEN,
     tracking
   );
+}
+
+export function trackDiscoverScrollPullOpen(): void {
+  trackEvent({
+    area: TRACKING_AREAS.DISCOVER,
+    object: SCROLL_PULL_OBJECT,
+    action: TRACKING_ACTIONS.OPEN,
+  });
 }

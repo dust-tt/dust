@@ -2225,7 +2225,7 @@ export class FileResource extends BaseResource<FileModel> {
     return { conversationId, spaceId };
   }
 
-  private async verifyAuthorizedFileIdRef(
+  static async verifyAuthorizedFileIdRef(
     auth: Authenticator,
     {
       fileId,
@@ -2297,9 +2297,12 @@ export class FileResource extends BaseResource<FileModel> {
   > {
     switch (fileRef.type) {
       case "fileId": {
-        const verifyResult = await this.verifyAuthorizedFileIdRef(auth, {
-          fileId: fileRef.fileId,
-        });
+        const verifyResult = await FileResource.verifyAuthorizedFileIdRef(
+          auth,
+          {
+            fileId: fileRef.fileId,
+          }
+        );
         if (!verifyResult.verified) {
           return { verified: false };
         }
