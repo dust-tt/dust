@@ -6,7 +6,11 @@ import {
 } from "@app/lib/api/email";
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { getActiveAdminEmails, getMembers } from "@app/lib/api/workspace";
+import {
+  getActiveAdminEmails,
+  getMembers,
+  isWorkspaceRelocationDone,
+} from "@app/lib/api/workspace";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -309,10 +313,37 @@ async function resolveCreditPurchaseInvoiceCtx(
 /**
  * Single entry point for resolving any invoice (subscription or credit
  * purchase, Stripe-billed or Metronome-pushed) to a uniform context.
+ * Returns null if the workspace was relocated to another region.
+ */
+async function resolveInvoiceCtx(
+  invoice: Stripe.Invoice
+): Promise<SubscriptionInvoiceCtx | null> {
+  const ctx = await resolveInvoiceCtxByKind(invoice);
+
+  // Every region receives every Stripe event, and a relocated workspace's row
+  // stays in the source region until purge. Only the destination region may
+  // act on its invoices.
+  if (
+    ctx &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({ workspace: ctx.workspace })
+    )
+  ) {
+    logger.info(
+      { invoiceId: invoice.id, workspaceId: ctx.workspace.sId },
+      "[Stripe Webhook] Workspace has been relocated, skipping invoice event"
+    );
+    return null;
+  }
+
+  return ctx;
+}
+
+/**
  * Picks the right underlying resolver based on which identifiers are present
  * on the invoice.
  */
-async function resolveInvoiceCtx(
+async function resolveInvoiceCtxByKind(
   invoice: Stripe.Invoice
 ): Promise<SubscriptionInvoiceCtx | null> {
   // Stripe-subscription invoice (regular or credit-purchase).
@@ -705,6 +736,12 @@ async function handleStripeCheckoutCompleted({
  * `APIErrorWithContentfulStatusCode` on failures the caller should surface as an HTTP
  * error response.
  */
+/**
+ * @cc [owner:philipperolet,label:product] skip-relocated-workspace-invoices
+ * For invoice events (`invoice.*`, `charge.dispute.created`) whose workspace row in this region is
+ * marked `relocation-done`, the handler MUST have no side effect other than logging (no database,
+ * Stripe, Metronome, Temporal or email writes): the destination region handles them.
+ */
 export async function processStripeWebhookEvent({
   event,
   stripe,
@@ -818,6 +855,16 @@ export async function processStripeWebhookEvent({
         logger.warn(
           { invoiceId: invoice.id, metronomeCustomerId },
           "[Stripe Webhook] invoice.created: workspace not found for Metronome invoice, skipping clean"
+        );
+        break;
+      }
+
+      // Same rule as in `resolveInvoiceCtx`: only the destination region of a
+      // relocated workspace may act on its invoices.
+      if (isWorkspaceRelocationDone(renderLightWorkspaceType({ workspace }))) {
+        logger.info(
+          { invoiceId: invoice.id, workspaceId: workspace.sId },
+          "[Stripe Webhook] invoice.created: workspace has been relocated, skipping clean"
         );
         break;
       }
