@@ -56,6 +56,8 @@ export type PostDfmCommentSignatureRequestBody = {
   /** Scoped path of the file the comment is written in. */
   filePath: string;
   commentId: string;
+  /** Index of the new message in its thread: 0 for a new thread. */
+  position: number;
   /** The message the new one follows in its thread, or null for a new thread. */
   previous: Pick<DfmMessage, "author" | "createdAt" | "body"> | null;
   body: string;

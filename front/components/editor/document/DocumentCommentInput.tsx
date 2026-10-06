@@ -1,6 +1,6 @@
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmAuthor } from "@app/lib/markdown/dfm";
-import { ArrowUp, cn, Icon, TextArea } from "@dust-tt/sparkle";
+import { ArrowUp, cn, Icon, Spinner, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 interface DocumentCommentInputProps {
@@ -18,6 +18,8 @@ interface DocumentCommentInputProps {
   error?: string | null;
   /** Focuses the field while true, once it is visible. */
   autoFocus?: boolean;
+  /** A submission is being sent: the text is frozen and Send shows progress. */
+  pending?: boolean;
   className?: string;
 }
 
@@ -25,7 +27,8 @@ interface DocumentCommentInputProps {
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-input
  * Enter MUST submit and Shift+Enter MUST insert a line break, except while an input method
  * is composing text. Blank text MUST NOT submit. The field's height MUST follow its value,
- * including when the value is cleared.
+ * including when the value is cleared. While pending, the text MUST NOT change or submit again,
+ * and Send MUST show progress.
  */
 export const DocumentCommentInput = ({
   label,
@@ -38,6 +41,7 @@ export const DocumentCommentInput = ({
   renderAuthorAvatar,
   error,
   autoFocus = false,
+  pending = false,
   className,
 }: DocumentCommentInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -59,7 +63,7 @@ export const DocumentCommentInput = ({
   }, [autoFocus]);
 
   const submit = () => {
-    if (trimmed) {
+    if (trimmed && !pending) {
       void onSubmit(trimmed);
     }
   };
@@ -79,6 +83,8 @@ export const DocumentCommentInput = ({
             aria-label={label}
             placeholder={placeholder}
             value={value}
+            readOnly={pending}
+            aria-busy={pending}
             minRows={1}
             resize="none"
             onChange={(event) => onChange(event.target.value)}
@@ -100,7 +106,8 @@ export const DocumentCommentInput = ({
         </div>
         <button
           type="button"
-          aria-label="Send"
+          aria-label={pending ? "Sending" : "Send"}
+          aria-disabled={pending}
           tabIndex={trimmed ? 0 : -1}
           onClick={submit}
           className={cn(
@@ -109,7 +116,11 @@ export const DocumentCommentInput = ({
             trimmed ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         >
-          <Icon visual={ArrowUp} size="xs" />
+          {pending ? (
+            <Spinner size="xs" variant="revert" />
+          ) : (
+            <Icon visual={ArrowUp} size="xs" />
+          )}
         </button>
       </div>
       {error && (

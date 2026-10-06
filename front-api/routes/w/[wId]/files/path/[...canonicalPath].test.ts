@@ -1145,6 +1145,7 @@ describe("comment signatures on Markdown saves", () => {
           workspaceId,
           filePath,
           commentId: "c1",
+          position: 0,
           previous: null,
           message: {
             author: { kind, id, name: "Someone" },

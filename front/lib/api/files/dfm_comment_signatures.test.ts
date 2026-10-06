@@ -26,10 +26,10 @@ const CONTEXT = {
     ),
 };
 
-/** A message as the server signs it when it is posted after `previous` in thread `commentId`. */
+/** A message as the server signs it when posted after `earlier` in thread `commentId`. */
 function signedMessage(
   commentId: string,
-  previous: DfmMessage | null,
+  earlier: DfmMessage[],
   message: Omit<DfmMessage, "signature">,
   filePath = PATH
 ): DfmMessage {
@@ -42,7 +42,8 @@ function signedMessage(
           workspaceId: "w_1",
           filePath,
           commentId,
-          previous,
+          position: earlier.length,
+          previous: earlier.at(-1) ?? null,
           message,
         }),
         "utf8"
@@ -57,7 +58,7 @@ const TOM_MESSAGE = {
   createdAt: AT,
   body: "Looks good.",
 };
-const TOM: DfmMessage = signedMessage("c1", null, TOM_MESSAGE);
+const TOM: DfmMessage = signedMessage("c1", [], TOM_MESSAGE);
 
 const line = ({ author, createdAt, body, signature }: DfmMessage) =>
   `::message{author=${author.kind}:${author.id} name="${author.name}" at=${createdAt}${signature ? ` sig=${signature}` : ""}}\n\n${body}\n`;
@@ -77,18 +78,18 @@ describe("validateCommentSignatures", () => {
       workspaceId: "w_1",
       filePath: PATH,
     });
-    expect(await browserVerify("c1", null, TOM)).toBe(true);
-    expect(
-      await browserVerify("c1", null, { ...TOM, body: "Looks bad." })
-    ).toBe(false);
-    expect(await browserVerify("c1", TOM, TOM)).toBe(false);
+    expect(await browserVerify("c1", [TOM], 0)).toBe(true);
+    expect(await browserVerify("c1", [{ ...TOM, body: "Looks bad." }], 0)).toBe(
+      false
+    );
+    expect(await browserVerify("c1", [TOM, TOM], 1)).toBe(false);
 
     const otherFileVerify = await createDfmMessageVerifier({
       publicKey: PUBLIC_KEY,
       workspaceId: "w_1",
       filePath: "pod-s1/copy.md",
     });
-    expect(await otherFileVerify("c1", null, TOM)).toBe(false);
+    expect(await otherFileVerify("c1", [TOM], 0)).toBe(false);
   });
 
   it.each([
@@ -100,7 +101,7 @@ describe("validateCommentSignatures", () => {
     ],
     [
       "was signed for another file",
-      signedMessage("c1", null, TOM_MESSAGE, "pod-s1/copy.md"),
+      signedMessage("c1", [], TOM_MESSAGE, "pod-s1/copy.md"),
     ],
   ])("refuses a new message from the user that %s", (_, message) => {
     const result = validate(file(), file(message));
@@ -115,7 +116,7 @@ describe("validateCommentSignatures", () => {
     const result = validate(
       file(),
       file(
-        signedMessage("c1", null, {
+        signedMessage("c1", [], {
           author: { kind, id, name: "X" },
           createdAt: AT,
           body: "Hi",
@@ -189,12 +190,12 @@ describe("validateCommentSignatures", () => {
   });
 
   describe("thread order", () => {
-    const question = signedMessage("c1", null, {
+    const question = signedMessage("c1", [], {
       author: { kind: "user", id: "usr_yuka", name: "Yuka" },
       createdAt: AT,
       body: "Shall we keep section 3?",
     });
-    const agreed = signedMessage("c1", question, {
+    const agreed = signedMessage("c1", [question], {
       author: { kind: "user", id: "usr_daph", name: "Daph" },
       createdAt: AT,
       body: "Agreed.",
@@ -202,14 +203,33 @@ describe("validateCommentSignatures", () => {
     const stored = file(question, agreed);
 
     it("accepts a reply signed after the thread's last message", () => {
-      const reply = signedMessage("c1", agreed, TOM_MESSAGE);
+      const reply = signedMessage("c1", [question, agreed], TOM_MESSAGE);
 
       expect(validate(stored, file(question, agreed, reply)).isOk()).toBe(true);
     });
 
     it("refuses a new message put before someone else's reply", () => {
-      const inserted = signedMessage("c1", question, TOM_MESSAGE);
+      const inserted = signedMessage("c1", [question], TOM_MESSAGE);
       const result = validate(stored, file(question, inserted, agreed));
+
+      expect(result.isErr() && result.error.code).toBe("moved_message");
+    });
+
+    it("refuses a signed reply repeated with the unsigned message it follows", () => {
+      const unsigned: DfmMessage = {
+        author: { kind: "agent", id: "dust", name: "@dust" },
+        createdAt: AT,
+        body: "Unsigned.",
+      };
+      const reply = signedMessage("c1", [unsigned], {
+        author: { kind: "user", id: "usr_daph", name: "Daph" },
+        createdAt: AT,
+        body: "Agreed.",
+      });
+      const result = validate(
+        file(unsigned, reply),
+        file(unsigned, reply, unsigned, reply)
+      );
 
       expect(result.isErr() && result.error.code).toBe("moved_message");
     });
@@ -221,7 +241,7 @@ describe("validateCommentSignatures", () => {
     });
 
     it("refuses a new message signed after another predecessor", () => {
-      const reply = signedMessage("c1", question, TOM_MESSAGE);
+      const reply = signedMessage("c1", [question], TOM_MESSAGE);
       const result = validate(stored, file(question, agreed, reply));
 
       expect(result.isErr() && result.error.code).toBe("unsigned_message");

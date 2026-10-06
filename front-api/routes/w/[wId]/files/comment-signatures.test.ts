@@ -82,6 +82,7 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
     const response = await post(workspace.sId, {
       filePath,
       commentId: "c1",
+      position: 1,
       previous: PREVIOUS,
       body: "Looks good.",
       author: { kind: "user", id: "usr_other", name: "Not me" },
@@ -103,6 +104,7 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
             workspaceId: workspace.sId,
             filePath,
             commentId: "c1",
+            position: 1,
             previous: PREVIOUS,
             message,
           }),
@@ -120,6 +122,7 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
     const response = await post(workspace.sId, {
       filePath: "conversation-abc/notes.md",
       commentId: "c1",
+      position: 0,
       previous: null,
       body: "Looks good.",
     });
@@ -139,11 +142,29 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
     const response = await post(workspace.sId, {
       filePath: pathFor(filePath),
       commentId: "c1",
+      position: 0,
       previous: null,
       body: "Looks good.",
     });
 
     expect(response.status).toBe(404);
+  });
+
+  it.each([
+    ["a first message with a previous one", 0, PREVIOUS],
+    ["a reply without a previous message", 2, null],
+  ])("refuses %s", async (_, position, previous) => {
+    const { workspace, filePath } = await setupConversationFile();
+
+    const response = await post(workspace.sId, {
+      filePath,
+      commentId: "c1",
+      position,
+      previous,
+      body: "Looks good.",
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it("refuses a message the codec cannot write", async () => {
@@ -152,6 +173,7 @@ describe("POST /api/w/:wId/files/comment-signatures", () => {
     const response = await post(workspace.sId, {
       filePath,
       commentId: "c1",
+      position: 0,
       previous: null,
       body: "::message{}",
     });

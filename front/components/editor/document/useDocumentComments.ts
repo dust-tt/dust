@@ -10,6 +10,7 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ChainedCommands, Editor, JSONContent } from "@tiptap/core";
@@ -27,15 +28,16 @@ interface UseDocumentCommentsProps {
   /** Has the server write and sign a new message; without it, messages are built locally. */
   sign?: (
     commentId: string,
-    previous: DfmMessage | null,
+    thread: DfmMessage[],
     body: string
   ) => Promise<Result<DfmMessage, string>>;
   verify?: DfmMessageVerifier;
 }
 
 interface Verification {
-  /** The threads the results belong to; results for older threads are stale. */
+  /** The threads and verifier the results belong to; results for others are stale. */
   comments: DfmComment[];
+  verify: DfmMessageVerifier;
   /** Whether each message verified, by `${commentId}:${index}`. */
   results: Map<string, boolean>;
 }
@@ -115,8 +117,8 @@ export interface PanelFocusRequest {
  */
 /**
  * @cc [owner:tdraier,label:security] document-comment-verification
- * With a verifier, each message MUST read as verified or unverified from the verifier's answer
- * for the threads currently shown, and as unknown while that answer is pending. Without a
+ * With a verifier, each message MUST read as verified or unverified from the current verifier's
+ * answer for the threads currently shown, and as unknown while that answer is pending. Without a
  * verifier, every message MUST read as unknown, never as verified.
  */
 export const useDocumentComments = ({
@@ -175,17 +177,19 @@ export const useDocumentComments = ({
       return;
     }
     let cancelled = false;
-    void Promise.all(
+    void concurrentExecutor(
       comments.flatMap((comment) =>
-        comment.messages.map((message, index) =>
-          verify(comment.id, comment.messages[index - 1] ?? null, message).then(
-            (verified) => [`${comment.id}:${index}`, verified] as const
-          )
-        )
-      )
+        comment.messages.map((_, index) => ({ comment, index }))
+      ),
+      async ({ comment, index }) =>
+        [
+          `${comment.id}:${index}`,
+          await verify(comment.id, comment.messages, index),
+        ] as const,
+      { concurrency: 8 }
     ).then((entries) => {
       if (!cancelled) {
-        setVerification({ comments, results: new Map(entries) });
+        setVerification({ comments, verify, results: new Map(entries) });
       }
     });
     return () => {
@@ -240,7 +244,7 @@ export const useDocumentComments = ({
     if (!sign) {
       return new Ok(local);
     }
-    const signed = await sign(commentId, thread?.messages.at(-1) ?? null, body);
+    const signed = await sign(commentId, thread?.messages ?? [], body);
     if (signed.isOk() && !isWritableThread(withMessage(signed.value))) {
       return new Err(UNSAVABLE_MESSAGE);
     }
@@ -250,7 +254,9 @@ export const useDocumentComments = ({
   return {
     /** Whether a message's signature checked out, or null while unknown. */
     isVerified: (commentId: string, index: number): boolean | null =>
-      verify && verification?.comments === comments
+      verify &&
+      verification?.comments === comments &&
+      verification.verify === verify
         ? (verification.results.get(`${commentId}:${index}`) ?? null)
         : null,
     comments,
@@ -339,6 +345,9 @@ export const useDocumentComments = ({
       if (written.isErr()) {
         return written;
       }
+      if (!editor.isEditable) {
+        return new Err(UNAVAILABLE_MESSAGE);
+      }
       const comment: DfmComment = {
         id,
         status: "open",
@@ -373,6 +382,9 @@ export const useDocumentComments = ({
       if (written.isErr()) {
         return written;
       }
+      if (!editor.isEditable) {
+        return new Err(UNAVAILABLE_MESSAGE);
+      }
       // The reply is signed after the thread's last message; it must still follow that one.
       const current = getDocumentComments(editor.state.doc).find(
         (comment) => comment.id === id
@@ -380,7 +392,10 @@ export const useDocumentComments = ({
       if (!current) {
         return new Err("This comment was deleted.");
       }
-      if (!sameMessage(current.messages.at(-1), thread.messages.at(-1))) {
+      if (
+        current.messages.length !== thread.messages.length ||
+        !sameMessage(current.messages.at(-1), thread.messages.at(-1))
+      ) {
         return new Err("This thread changed while sending. Send again.");
       }
       const next = previewDocument(editor, (chain) =>

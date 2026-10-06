@@ -18,6 +18,7 @@ const app = workspaceApp();
 const PostBodySchema = z.object({
   filePath: z.string().min(1),
   commentId: z.string().min(1),
+  position: z.number().int().min(0),
   previous: z
     .object({
       author: z.object({

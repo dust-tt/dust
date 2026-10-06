@@ -15,17 +15,18 @@ function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+/** Checks the message at `index` of thread `commentId`, whose messages are `messages`. */
 export type DfmMessageVerifier = (
   commentId: string,
-  previous: DfmMessage | null,
-  message: DfmMessage
+  messages: DfmMessage[],
+  index: number
 ) => Promise<boolean>;
 
 /**
  * @cc [owner:tdraier,label:security] dfm-signature-browser-check
  * A message MUST verify only when it carries a signature that the configured Ed25519 key
- * accepts over `messageSignaturePayload` for this workspace, file and comment, after the
- * message that precedes it in its thread. A missing, malformed
+ * accepts over `messageSignaturePayload` for this workspace, file and comment, at its position in
+ * its thread after the message that precedes it. A missing, malformed
  * or rejected signature, or a key the browser cannot import, MUST read as unverified, never as
  * an error that hides the message.
  */
@@ -51,8 +52,9 @@ export async function createDfmMessageVerifier({
     key = null;
   }
 
-  return async (commentId, previous, message) => {
-    if (!key || message.signature === undefined) {
+  return async (commentId, messages, index) => {
+    const message = messages[index];
+    if (!key || message?.signature === undefined) {
       return false;
     }
     try {
@@ -65,7 +67,8 @@ export async function createDfmMessageVerifier({
             workspaceId,
             filePath,
             commentId,
-            previous,
+            position: index,
+            previous: messages[index - 1] ?? null,
             message,
           })
         )

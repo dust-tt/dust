@@ -28,6 +28,7 @@ import { Err, Ok } from "@app/types/shared/result";
 export type DfmCommentSignatureErrorCode =
   | "not_available"
   | "unavailable_file"
+  | "invalid_position"
   | "unwritable_message"
   | "foreign_message"
   | "unsigned_message"
@@ -80,19 +81,21 @@ export function getDfmCommentPublicKey(): string | null {
  * A signed message MUST take its author, name and timestamp from the server: the requesting
  * user and the current time, never from the request. It MUST be refused when no user is signed
  * in, outside a workspace with `co_edition`, when `filePath` is not a normalized scoped path the
- * user can write, or when the codec cannot write it. Without a signing key it MUST be returned
- * unsigned.
+ * user can write, when `position` and `previous` disagree (only a first message has no previous
+ * one), or when the codec cannot write it. Without a signing key it MUST be returned unsigned.
  */
 export async function signDfmCommentMessage(
   auth: Authenticator,
   {
     filePath,
     commentId,
+    position,
     previous,
     body,
   }: {
     filePath: string;
     commentId: string;
+    position: number;
     previous: SignedMessageFields | null;
     body: string;
   }
@@ -120,6 +123,19 @@ export async function signDfmCommentMessage(
       new DfmCommentSignatureError(
         "unavailable_file",
         "This file cannot be commented."
+      )
+    );
+  }
+
+  if (
+    !Number.isInteger(position) ||
+    position < 0 ||
+    (position === 0) !== (previous === null)
+  ) {
+    return new Err(
+      new DfmCommentSignatureError(
+        "invalid_position",
+        "This comment's place in its thread is not valid."
       )
     );
   }
@@ -161,6 +177,7 @@ export async function signDfmCommentMessage(
           workspaceId,
           filePath,
           commentId,
+          position,
           previous,
           message,
         }),
@@ -206,6 +223,7 @@ const verifiesInPlace = (
         workspaceId: context.workspaceId,
         filePath: context.filePath,
         commentId,
+        position: index,
         previous: messages[index - 1] ?? null,
         message,
       }),
@@ -312,13 +330,16 @@ export function validateCommentSignatures(
 async function readStoredText(
   dustFs: DustFileSystem,
   scopedPath: string
-): Promise<string | null> {
+): Promise<{ text: string | null; revision: string | undefined }> {
   const read = await readCanonicalFileContent(dustFs, scopedPath);
   if (read.isErr() || read.value === null) {
-    return null;
+    return { text: null, revision: undefined };
   }
   const buffer = await streamToBuffer(read.value.stream);
-  return buffer.isOk() ? decodeBuffer(buffer.value) : null;
+  return {
+    text: buffer.isOk() ? decodeBuffer(buffer.value) : null,
+    revision: read.value.revision,
+  };
 }
 
 /**
@@ -326,7 +347,8 @@ async function readStoredText(
  * Validation MUST run on every content write through the file API's PUT of a file whose name or
  * request content type is `text/markdown`, in a workspace with `co_edition`, against the file as
  * stored right before the write, and MUST NOT run anywhere else until the codec bounds its input
- * before parsing. Other writes, such as archive extraction, sandbox and agent writes, are not
+ * before parsing. It MUST return the revision it validated against, when storage has one, so
+ * the write can be conditional on it. Other writes, such as archive extraction, sandbox and agent writes, are not
  * validated: what they bring can only read as unverified, since signatures bind the file and the
  * thread order.
  */
@@ -336,7 +358,7 @@ export async function validateMarkdownCommentsForWrite(
   scopedPath: string,
   content: Uint8Array,
   requestContentType: string | undefined
-): Promise<Result<void, DfmCommentSignatureError>> {
+): Promise<Result<{ revision: string | undefined }, DfmCommentSignatureError>> {
   const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
   if (
     resolvedPath.isErr() ||
@@ -345,14 +367,15 @@ export async function validateMarkdownCommentsForWrite(
         stripMimeParameters(requestContentType) !== "text/markdown")) ||
     !(await hasFeatureFlag(auth, "co_edition"))
   ) {
-    return new Ok(undefined);
+    return new Ok({ revision: undefined });
   }
 
   const key = getSigningKey();
   const publicKey = key ? createPublicKey(key) : null;
-  return validateCommentSignatures(
+  const stored = await readStoredText(dustFs, scopedPath);
+  const validated = validateCommentSignatures(
     {
-      previous: await readStoredText(dustFs, scopedPath),
+      previous: stored.text,
       next: decodeBuffer(content),
     },
     {
@@ -370,4 +393,5 @@ export async function validateMarkdownCommentsForWrite(
         : null,
     }
   );
+  return validated.isErr() ? validated : new Ok({ revision: stored.revision });
 }

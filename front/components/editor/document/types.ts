@@ -36,13 +36,13 @@ export interface DocumentProps {
     size: DocumentCommentAvatarSize
   ) => ReactNode;
   /**
-   * Has the server write and sign a new message for the comment, after `previous` in its thread
-   * (null for a new thread); resolve with the message to insert, or Err with the reason. Without
-   * it, new messages are built locally and unsigned.
+   * Has the server write and sign a new message for the comment, after the messages already in
+   * `thread` (none for a new thread); resolve with the message to insert, or Err with the reason.
+   * Without it, new messages are built locally and unsigned.
    */
   signCommentMessage?: (
     commentId: string,
-    previous: DfmMessage | null,
+    thread: DfmMessage[],
     body: string
   ) => Promise<Result<DfmMessage, string>>;
   /** Checks a message's signature; without it, messages are shown without a verification mark. */

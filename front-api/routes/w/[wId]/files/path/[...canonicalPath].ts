@@ -692,13 +692,15 @@ app.put(
       });
     }
 
+    // A Markdown write is conditional on the revision its comments were validated against.
     const writeResult = await writeCanonicalFileContent(
       auth,
       dustFs,
       canonicalPath,
       content,
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["x-dust-if-revision-match"]
+      ctx.req.valid("header")["x-dust-if-revision-match"] ??
+        comments.value.revision
     );
 
     if (writeResult.isErr()) {

@@ -72,8 +72,8 @@ the comment itself, the rest are replies. A thread may exist with no anchor in t
 instance when the commented text was deleted; an anchor with no thread is an error.
 
 A message may also carry `sig`, the server's Ed25519 signature in base64url over
-`messageSignaturePayload` in `signatures.ts`: workspace, file path, comment id, the message
-before it in the thread, author, name, timestamp and body, not the status. A copy into another
+`messageSignaturePayload` in `signatures.ts`: workspace, file path, comment id, the message's
+position in the thread and the message before it, author, name, timestamp and body, not the status. A copy into another
 file, a rename or a reordering therefore reads as unverified. The server writes and signs a
 message when a signed-in user posts it, and refuses a save through the file API that brings a
 new message it did not sign for the saving user at that place, or moves a verified one; a
@@ -120,7 +120,7 @@ module; the last one is shared by message signing:
 | `readAnchorDirective(source)` | The well-formed anchor directive at the very start of `source` with its `kind`, `id` and `length`, or null. |
 | `findAnchorDirective(source)` | Index of the first anchor directive syntax in `source`, or -1. |
 | `anchorDirective(kind, id)` | The directive text for one end of an anchor pair. |
-| `messageSignaturePayload({ workspaceId, filePath, commentId, previous, message })` | The exact string a message signature covers, for the server that signs and the browser that checks. |
+| `messageSignaturePayload({ workspaceId, filePath, commentId, position, previous, message })` | The exact string a message signature covers, for the server that signs and the browser that checks. |
 
 Nothing here touches the network, the database or React: the module runs on the server and in
 the browser, next to the `:preview_file` directive codec in `lib/markdown/file_preview.ts`.

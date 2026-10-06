@@ -85,6 +85,7 @@ describe("messageSignaturePayload", () => {
     workspaceId: "w1",
     filePath: "pod-s1/notes.md",
     commentId: "c1",
+    position: 1,
     previous,
     message: { author: DAPH, createdAt: AT, body: "Hello" },
   };
@@ -95,6 +96,7 @@ describe("messageSignaturePayload", () => {
     ["comment", { ...base, commentId: "c2" }],
     ["previous message", { ...base, previous: { ...previous, body: "Other" } }],
     ["absence of a previous message", { ...base, previous: null }],
+    ["position", { ...base, position: 3 }],
     [
       "author",
       { ...base, message: { ...base.message, author: { ...DAPH, id: "u2" } } },

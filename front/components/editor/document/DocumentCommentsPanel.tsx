@@ -132,7 +132,7 @@ const ReplyComposer = ({
 }: ReplyComposerProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const sendingRef = useRef(false);
+  const [sending, setSending] = useState(false);
 
   return (
     <DocumentCommentInput
@@ -143,15 +143,12 @@ const ReplyComposer = ({
       value={body}
       onChange={setBody}
       onSubmit={async (trimmed) => {
-        if (sendingRef.current) {
-          return;
-        }
-        sendingRef.current = true;
+        setSending(true);
         let replied: Result<void, string>;
         try {
           replied = await onReply(trimmed);
         } finally {
-          sendingRef.current = false;
+          setSending(false);
         }
         if (replied.isErr()) {
           setError(replied.error);
@@ -166,6 +163,7 @@ const ReplyComposer = ({
         onCancel();
       }}
       error={error}
+      pending={sending}
       className="-mb-1 border-t border-border pt-2"
     />
   );
@@ -191,7 +189,7 @@ const DraftCard = ({
 }: DraftCardProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const sendingRef = useRef(false);
+  const [sending, setSending] = useState(false);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -218,20 +216,18 @@ const DraftCard = ({
         value={body}
         onChange={setBody}
         onSubmit={async (trimmed) => {
-          if (sendingRef.current) {
-            return;
-          }
-          sendingRef.current = true;
+          setSending(true);
           let submitted: Result<void, string>;
           try {
             submitted = await onSubmit(trimmed);
           } finally {
-            sendingRef.current = false;
+            setSending(false);
           }
           setError(submitted.isErr() ? submitted.error : null);
         }}
         onCancel={onCancel}
         error={error}
+        pending={sending}
         // Hidden elements ignore focus(), so wait until the panel shows.
         autoFocus={visible}
       />

@@ -25,31 +25,34 @@ async function renderCommentedEditor(
   }: {
     sign?: (
       commentId: string,
-      previous: DfmMessage | null,
+      thread: DfmMessage[],
       body: string
     ) => Promise<Result<DfmMessage, string>>;
     verify?: DfmMessageVerifier;
   } = {}
 ) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
-  const rendered = renderHook(() => {
-    const document = useDocumentEditor({
-      initialContent,
-      readOnly: false,
-      autosaveDebounceMs: 60_000,
-      onSave,
-      onStateChange: undefined,
-    });
-    const comments = useDocumentComments({
-      editor: document.editor,
-      canComment: document.editable,
-      author: AUTHOR,
-      isSavable: document.isSavable,
-      sign,
-      verify,
-    });
-    return { document, comments };
-  });
+  const rendered = renderHook(
+    ({ currentVerify }: { currentVerify?: DfmMessageVerifier }) => {
+      const document = useDocumentEditor({
+        initialContent,
+        readOnly: false,
+        autosaveDebounceMs: 60_000,
+        onSave,
+        onStateChange: undefined,
+      });
+      const comments = useDocumentComments({
+        editor: document.editor,
+        canComment: document.editable,
+        author: AUTHOR,
+        isSavable: document.isSavable,
+        sign,
+        verify: currentVerify,
+      });
+      return { document, comments };
+    },
+    { initialProps: { currentVerify: verify } }
+  );
   await waitFor(() =>
     expect(rendered.result.current.document.editor).not.toBeNull()
   );
@@ -287,7 +290,7 @@ describe("useDocumentComments", () => {
 
   it("inserts the message the server signed, with the server's name and time", async () => {
     const sign = vi.fn(
-      async (_commentId: string, _previous: DfmMessage | null, body: string) =>
+      async (_commentId: string, _thread: DfmMessage[], body: string) =>
         new Ok<DfmMessage>({
           author: { ...AUTHOR, name: "Tom Draier" },
           createdAt: SIGNED_AT,
@@ -306,7 +309,7 @@ describe("useDocumentComments", () => {
 
     expect(sign).toHaveBeenCalledWith(
       "c1",
-      expect.objectContaining({ body: "Note." }),
+      [expect.objectContaining({ body: "Note." })],
       "Agreed."
     );
     expect(result.current.comments.comments[0].messages[1]).toEqual({
@@ -323,11 +326,7 @@ describe("useDocumentComments", () => {
   it("refuses a reply signed after a message that is no longer the thread's last", async () => {
     let appendWhileSigning = () => undefined as unknown;
     const sign = vi.fn(
-      async (
-        _commentId: string,
-        _previous: DfmMessage | null,
-        body: string
-      ) => {
+      async (_commentId: string, _thread: DfmMessage[], body: string) => {
         appendWhileSigning();
         return new Ok<DfmMessage>({
           author: AUTHOR,
@@ -395,11 +394,8 @@ describe("useDocumentComments", () => {
       `Note.\n\n::message{author=agent:dust name="@dust" at=${AT}}\n\nUnsigned.\n:::`
     );
     const verify = vi.fn(
-      async (
-        _commentId: string,
-        _previous: DfmMessage | null,
-        message: { signature?: string }
-      ) => message.signature === "good"
+      async (_commentId: string, messages: DfmMessage[], index: number) =>
+        messages[index].signature === "good"
     );
     const { result } = await renderCommentedEditor(signedSource, { verify });
 
@@ -409,14 +405,50 @@ describe("useDocumentComments", () => {
     expect(result.current.comments.isVerified("c1", 1)).toBe(false);
     expect(verify).toHaveBeenCalledWith(
       "c1",
-      null,
-      expect.objectContaining({ body: "Note." })
+      [
+        expect.objectContaining({ body: "Note." }),
+        expect.objectContaining({ body: "Unsigned." }),
+      ],
+      1
     );
-    expect(verify).toHaveBeenCalledWith(
-      "c1",
-      expect.objectContaining({ body: "Note." }),
-      expect.objectContaining({ body: "Unsigned." })
+  });
+
+  it("reads messages as unknown again while a new verifier checks them", async () => {
+    const { result, rerender } = await renderCommentedEditor(SOURCE, {
+      verify: async () => true,
+    });
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 0)).toBe(true)
     );
+
+    rerender({ currentVerify: () => new Promise<boolean>(() => undefined) });
+
+    expect(result.current.comments.isVerified("c1", 0)).toBeNull();
+  });
+
+  it("refuses a reply when the document turns read-only while it is signed", async () => {
+    let turnReadOnly = () => undefined as unknown;
+    const sign = vi.fn(
+      async (_commentId: string, _thread: DfmMessage[], body: string) => {
+        turnReadOnly();
+        return new Ok<DfmMessage>({
+          author: AUTHOR,
+          createdAt: SIGNED_AT,
+          body,
+          signature: "server-signature",
+        });
+      }
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { sign });
+    turnReadOnly = () => result.current.document.editor?.setEditable(false);
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Agreed.")).isErr()
+      ).toBe(true);
+    });
+
+    expect(result.current.comments.comments[0].messages).toHaveLength(1);
   });
 
   it("reads every message as unknown without a verifier", async () => {

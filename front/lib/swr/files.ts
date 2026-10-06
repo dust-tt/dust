@@ -5,10 +5,7 @@ import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/lib/api/files/upsert";
-import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import { clientFetch } from "@app/lib/egress/client";
-import type { DfmMessage } from "@app/lib/markdown/dfm";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -16,11 +13,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  GetDfmCommentSigningKeyResponseBody,
-  PostDfmCommentSignatureRequestBody,
-  PostDfmCommentSignatureResponseBody,
-} from "@app/types/api/file_system/types";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
 import {
@@ -320,95 +312,6 @@ export async function writeFileContentByPath({
     return new Err(new Error(errorData.message));
   }
   return new Ok(undefined);
-}
-
-/**
- * Checks DFM comment signatures with the server's public key. Null while the key loads, or
- * when the server has none, so callers do not mark messages they cannot check.
- */
-export function useDfmMessageVerifier({
-  owner,
-  filePath,
-  disabled,
-}: {
-  owner: LightWorkspaceType | undefined;
-  /** Scoped path of the file whose messages are checked. */
-  filePath: string;
-  disabled?: boolean;
-}): DfmMessageVerifier | null {
-  const { fetcher } = useFetcher();
-  const swrKey =
-    disabled || !owner
-      ? null
-      : ([`/api/w/${owner.sId}/files/comment-signatures`, filePath] as const);
-  const { data } = useSWRWithDefaults(
-    swrKey,
-    async ([url, path]: readonly [
-      string,
-      string,
-    ]): Promise<DfmMessageVerifier | null> => {
-      const { publicKey }: GetDfmCommentSigningKeyResponseBody =
-        await fetcher(url);
-      return owner && publicKey
-        ? createDfmMessageVerifier({
-            publicKey,
-            workspaceId: owner.sId,
-            filePath: path,
-          })
-        : null;
-    },
-    { disabled: swrKey === null }
-  );
-
-  return data ?? null;
-}
-
-/** Has the server write and sign a new DFM comment message as the current user. */
-export function useSignDfmCommentMessage({
-  owner,
-  filePath,
-}: {
-  owner: LightWorkspaceType | undefined;
-  /** Scoped path of the file the messages are written in. */
-  filePath: string;
-}) {
-  return async (
-    commentId: string,
-    previous: DfmMessage | null,
-    body: string
-  ): Promise<Result<DfmMessage, string>> => {
-    if (!owner) {
-      return new Err("Commenting is unavailable.");
-    }
-    try {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/files/comment-signatures`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filePath,
-            commentId,
-            previous: previous && {
-              author: previous.author,
-              createdAt: previous.createdAt,
-              body: previous.body,
-            },
-            body,
-          } satisfies PostDfmCommentSignatureRequestBody),
-        }
-      );
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        return new Err(errorData.message);
-      }
-      const { message }: PostDfmCommentSignatureResponseBody =
-        await response.json();
-      return new Ok(message);
-    } catch (error) {
-      return new Err(normalizeError(error).message);
-    }
-  };
 }
 
 /** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
