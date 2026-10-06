@@ -5,15 +5,15 @@ import type {
 } from "@app/components/agent_builder/agentBuilderFormSchema";
 import {
   formValuesToScheduleTriggerData,
-  getScheduleFormDefaultValues,
+  useGetScheduleFormDefaultValues,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { TriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { useTriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import {
   formValuesToWebhookTriggerData,
-  getWebhookFormDefaultValues,
+  useGetWebhookFormDefaultValues,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
@@ -26,6 +26,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -60,7 +61,11 @@ export function TriggerViewsSheet({
   onAppendTriggerToCreate,
   onAppendTriggerToUpdate,
 }: TriggerViewsSheetProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
+  const getScheduleFormDefaultValues = useGetScheduleFormDefaultValues();
+  const getWebhookFormDefaultValues = useGetWebhookFormDefaultValues();
+  const formSchema = useTriggerViewsSheetFormSchema();
 
   const [currentPageId, setCurrentPageId] = useState<string>(
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
@@ -104,11 +109,16 @@ export function TriggerViewsSheet({
         };
       }
     }
-  }, [editTrigger, editWebhookSourceView]);
+  }, [
+    editTrigger,
+    editWebhookSourceView,
+    getScheduleFormDefaultValues,
+    getWebhookFormDefaultValues,
+  ]);
 
   const form = useForm<TriggerViewsSheetFormValues>({
     defaultValues,
-    resolver: zodResolver(TriggerViewsSheetFormSchema),
+    resolver: zodResolver(formSchema),
     mode: "onSubmit",
   });
 
@@ -128,7 +138,7 @@ export function TriggerViewsSheet({
       schedule: getScheduleFormDefaultValues(null),
     });
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
-  }, [form]);
+  }, [form, getScheduleFormDefaultValues]);
 
   const handleWebhookSelect = useCallback(
     (webhookSourceView: WebhookSourceViewType) => {
@@ -142,7 +152,7 @@ export function TriggerViewsSheet({
       });
       setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
     },
-    [form]
+    [form, getWebhookFormDefaultValues]
   );
 
   const handleFormSubmit = useCallback(
@@ -172,7 +182,7 @@ export function TriggerViewsSheet({
           if (webhookSourceView?.provider && !values.webhook.event) {
             form.setError("webhook.event", {
               type: "manual",
-              message: "Please select an event",
+              message: t`Please select an event`,
             });
             return;
           }
@@ -204,6 +214,7 @@ export function TriggerViewsSheet({
       onAppendTriggerToCreate,
       onAppendTriggerToUpdate,
       form,
+      t,
     ]
   );
 
@@ -237,24 +248,25 @@ export function TriggerViewsSheet({
 
   let scheduleTitle;
   if (editTrigger) {
-    scheduleTitle = isEditor ? "Edit Schedule" : "View Schedule";
+    scheduleTitle = isEditor ? t`Edit schedule` : t`View schedule`;
   } else {
-    scheduleTitle = "Create Schedule";
+    scheduleTitle = t`Create schedule`;
   }
 
   let webhookTitle;
   if (editTrigger) {
-    webhookTitle = isEditor ? "Edit Trigger" : "View Trigger";
+    webhookTitle = isEditor ? t`Edit trigger` : t`View trigger`;
   } else if (webhookSourceView) {
-    webhookTitle = `Create ${webhookSourceView.customName} Trigger`;
+    const webhookSourceName = webhookSourceView.customName;
+    webhookTitle = t`Create ${webhookSourceName} trigger`;
   } else {
-    webhookTitle = "Create Trigger";
+    webhookTitle = t`Create trigger`;
   }
 
   const pages: MultiPageSheetPage[] = [
     {
       id: TRIGGERS_SHEET_PAGE_IDS.SELECTION,
-      title: "Add triggers",
+      title: t`Add triggers`,
       content: (
         <TriggerSelectionPageContent
           onScheduleSelect={handleScheduleSelect}
@@ -309,8 +321,8 @@ export function TriggerViewsSheet({
           leftButton={{
             label:
               currentPageId !== TRIGGERS_SHEET_PAGE_IDS.SELECTION
-                ? "Cancel"
-                : "Close",
+                ? t`Cancel`
+                : t`Close`,
             variant: "outline",
             onClick:
               currentPageId !== TRIGGERS_SHEET_PAGE_IDS.SELECTION
@@ -318,7 +330,7 @@ export function TriggerViewsSheet({
                 : handleSheetClose,
           }}
           rightButton={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             disabled: !canUseSelectedExecutionMode,
             onClick: form.handleSubmit(handleFormSubmit),

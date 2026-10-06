@@ -6,6 +6,7 @@ import {
 } from "@app/lib/matcher";
 import { OperationDisplayNames } from "@app/lib/matcher/types";
 import { Chip, ContentMessage, cn } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface TriggerFilterRendererProps {
   data: string | undefined;
@@ -62,7 +63,7 @@ function ExpressionNode({ expression, depth = 0 }: ExpressionNodeProps) {
     return (
       <>
         <p className="mb-1 text-xs font-semibold">
-          Expression too deeply nested (depth &gt; 4)
+          <Trans>Expression too deeply nested (depth &gt; 4)</Trans>
         </p>
         <pre className="overflow-x-auto text-xs">
           {JSON.stringify(expression, null, 2)}
@@ -154,10 +155,13 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
   const parseResult = parseMatcherExpression(data);
 
   if (parseResult.isErr()) {
+    const errorMessage = parseResult.error.message;
     return (
       <ContentMessage variant="warning" size="lg">
-        Error parsing filter expression: {parseResult.error.message}. Please
-        check the filter syntax.
+        <Trans>
+          Error parsing filter expression: {errorMessage}. Please check the
+          filter syntax.
+        </Trans>
       </ContentMessage>
     );
   }

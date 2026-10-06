@@ -1,13 +1,14 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { useDescribeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/useDescribeScheduleConfig";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
-import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { ActionCard, Clock } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
@@ -27,16 +28,6 @@ function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
   }
 }
 
-function getWebhookCardDescription({
-  webhookTrigger,
-  webhookSourceView,
-}: {
-  webhookTrigger: AgentBuilderTriggerType & { kind: "webhook" };
-  webhookSourceView: WebhookSourceViewType | undefined;
-}) {
-  return `Triggered ${webhookTrigger.configuration.event ? `by ${webhookTrigger.configuration.event} events` : ""} on ${webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name}'s source.`;
-}
-
 interface TriggerCardProps {
   trigger: AgentBuilderTriggerType;
   webhookSourceView: WebhookSourceViewType | undefined;
@@ -50,6 +41,8 @@ export function TriggerCard({
   onRemove,
   onEdit,
 }: TriggerCardProps) {
+  const { t } = useLingui();
+  const describeScheduleConfig = useDescribeScheduleConfig();
   const { isAdmin } = useAgentBuilderContext();
   const { user } = useAuth();
   const isEditor = trigger.editor === user?.id;
@@ -57,15 +50,21 @@ export function TriggerCard({
     switch (trigger.kind) {
       case "schedule": {
         const schedule = describeScheduleConfig(trigger.configuration);
-        return schedule ? `Runs ${schedule}.` : "";
+        return schedule ? t`Runs ${schedule}.` : "";
       }
-      case "webhook":
-        return getWebhookCardDescription({
-          webhookTrigger: trigger,
-          webhookSourceView,
-        });
+      case "webhook": {
+        const event = trigger.configuration.event;
+        const sourceName =
+          webhookSourceView?.customName ??
+          webhookSourceView?.webhookSource.name;
+        return event
+          ? t`Triggered by ${event} events on ${sourceName}'s source.`
+          : t`Triggered on ${sourceName}'s source.`;
+      }
     }
-  }, [trigger, webhookSourceView]);
+  }, [trigger, webhookSourceView, describeScheduleConfig, t]);
+
+  const editorName = trigger.editorName;
 
   const resolvedIcon = webhookSourceView?.provider
     ? getIcon(
@@ -89,10 +88,10 @@ export function TriggerCard({
         trigger.editorName
           ? {
               label: (
-                <>
-                  Managed by{" "}
-                  <span className="font-semibold">{trigger.editorName}</span>.
-                </>
+                <Trans>
+                  Managed by <span className="font-semibold">{editorName}</span>
+                  .
+                </Trans>
               ),
             }
           : undefined

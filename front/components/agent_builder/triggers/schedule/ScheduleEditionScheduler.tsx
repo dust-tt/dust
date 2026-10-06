@@ -1,9 +1,9 @@
+import { useDescribeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/useDescribeScheduleConfig";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate } from "@app/lib/i18n/format";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
-import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { getNextOccurrences } from "@app/lib/utils/schedule_next_occurrences";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
@@ -21,6 +21,7 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useMemo, useState } from "react";
 
@@ -52,11 +53,11 @@ function isErrorWithMessage(
   );
 }
 
-function extractErrorMessage(error: unknown): string {
+function extractErrorMessage(error: unknown): string | null {
   if (isErrorWithMessage(error)) {
     return error.error.message;
   }
-  return "Unable to generate a schedule. Please try rephrasing.";
+  return null;
 }
 
 interface ScheduleEditionSchedulerProps {
@@ -68,6 +69,8 @@ export function ScheduleEditionScheduler({
   isEditor,
   owner,
 }: ScheduleEditionSchedulerProps) {
+  const { t } = useLingui();
+  const describeScheduleConfig = useDescribeScheduleConfig();
   const { control, setValue, getFieldState, formState } =
     useFormContext<TriggerViewsSheetFormValues>();
 
@@ -135,7 +138,10 @@ export function ScheduleEditionScheduler({
           setGenerationStatus("idle");
         } else {
           setGenerationStatus("error");
-          setCronErrorMessage(extractErrorMessage(result.error));
+          setCronErrorMessage(
+            extractErrorMessage(result.error) ??
+              t`Unable to generate a schedule. Please try rephrasing.`
+          );
           setGeneratedTimezone(null);
           setGeneratedConfig(null);
         }
@@ -164,23 +170,31 @@ export function ScheduleEditionScheduler({
   const cronDescription = useMemo(() => {
     switch (generationStatus) {
       case "loading":
-        return "Generating schedule...";
+        return t`Generating schedule...`;
       case "error":
         return cronErrorMessage;
       case "idle": {
         if (!resolvedConfig) {
           return undefined;
         }
-        const desc = describeScheduleConfig(resolvedConfig);
+        const description = describeScheduleConfig(resolvedConfig);
         if (generatedTimezone) {
-          return `${desc}, in ${formatTimezone(generatedTimezone)} timezone.`;
+          const timezoneLabel = formatTimezone(generatedTimezone);
+          return t`${description}, in ${timezoneLabel} timezone.`;
         }
-        return desc;
+        return description;
       }
       default:
         assertNever(generationStatus);
     }
-  }, [generationStatus, resolvedConfig, generatedTimezone, cronErrorMessage]);
+  }, [
+    generationStatus,
+    resolvedConfig,
+    generatedTimezone,
+    cronErrorMessage,
+    describeScheduleConfig,
+    t,
+  ]);
 
   const nextOccurrences = useMemo(() => {
     if (!resolvedConfig) {
@@ -201,13 +215,17 @@ export function ScheduleEditionScheduler({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="schedule-description">Scheduler</Label>
+      <Label htmlFor="schedule-description">
+        <Trans>Scheduler</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Describe when you want the agent to run in natural language.
+        <Trans>
+          Describe when you want the agent to run in natural language.
+        </Trans>
       </p>
       <TextArea
         id="schedule-description"
-        placeholder='e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
+        placeholder={t`e.g. "run every day at 9 AM", or "Late afternoon on business days"...`}
         rows={3}
         value={naturalLanguageDescription}
         disabled={!isEditor}
@@ -235,7 +253,7 @@ export function ScheduleEditionScheduler({
                         label={
                           <div className="flex flex-col gap-0.5 text-xs">
                             <span className="font-semibold">
-                              Next 5 occurrences
+                              <Trans>Next 5 occurrences</Trans>
                             </span>
                             {nextOccurrences.map((date, index) => (
                               <span key={index}>

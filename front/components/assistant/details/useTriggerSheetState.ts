@@ -5,14 +5,14 @@ import type {
 } from "@app/components/agent_builder/agentBuilderFormSchema";
 import {
   formValuesToScheduleTriggerData,
-  getScheduleFormDefaultValues,
+  useGetScheduleFormDefaultValues,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { TriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { useTriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import {
   formValuesToWebhookTriggerData,
-  getWebhookFormDefaultValues,
+  useGetWebhookFormDefaultValues,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { useCanUseSelectedExecutionMode } from "@app/hooks/useTriggerExecutionModes";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -71,6 +71,9 @@ export function useTriggerSheetState({
   onSuccess,
 }: UseTriggerSheetStateParams) {
   const { user } = useAuth();
+  const getScheduleFormDefaultValues = useGetScheduleFormDefaultValues();
+  const getWebhookFormDefaultValues = useGetWebhookFormDefaultValues();
+  const formSchema = useTriggerViewsSheetFormSchema();
 
   const [currentPageId, setCurrentPageId] =
     useState<PageId>("trigger-selection");
@@ -106,11 +109,16 @@ export function useTriggerSheetState({
           schedule: getScheduleFormDefaultValues(null),
         };
     }
-  }, [editTrigger, editWebhookSourceView]);
+  }, [
+    editTrigger,
+    editWebhookSourceView,
+    getScheduleFormDefaultValues,
+    getWebhookFormDefaultValues,
+  ]);
 
   const form = useForm<TriggerViewsSheetFormValues>({
     defaultValues,
-    resolver: zodResolver(TriggerViewsSheetFormSchema),
+    resolver: zodResolver(formSchema),
     mode: "onSubmit",
   });
 
@@ -130,7 +138,7 @@ export function useTriggerSheetState({
       schedule: getScheduleFormDefaultValues(null),
     });
     setCurrentPageId("schedule-edition");
-  }, [form]);
+  }, [form, getScheduleFormDefaultValues]);
 
   const handleWebhookSelect = useCallback(
     (wsv: WebhookSourceViewType) => {
@@ -144,7 +152,7 @@ export function useTriggerSheetState({
       });
       setCurrentPageId("webhook-edition");
     },
-    [form]
+    [form, getWebhookFormDefaultValues]
   );
 
   const handleCancel = useCallback(() => {

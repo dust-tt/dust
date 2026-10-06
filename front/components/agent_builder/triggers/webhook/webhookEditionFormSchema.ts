@@ -10,33 +10,65 @@ import {
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
+import { useCallback, useMemo } from "react";
 import { z } from "zod";
 
-export const WebhookFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(255, "Name should be less than 255 characters"),
-  status: triggerStatusSchema.default("enabled"),
-  customPrompt: z.string(),
-  webhookSourceViewId: z.string().min(1, "Select a webhook source"),
-  event: z.string().optional(),
-  filter: z.string().optional(),
-  includePayload: z.boolean().default(false),
-  naturalDescription: z.string().optional(),
-  executionPerDayLimitOverride: z.number(),
-  executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
-  spaceId: z.string().nullable(),
-});
+export function useWebhookFormSchema() {
+  const { t } = useLingui();
 
-type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        name: z
+          .string()
+          .min(1, t`Name is required`)
+          .max(255, t`Name should be less than 255 characters`),
+        status: triggerStatusSchema.default("enabled"),
+        customPrompt: z.string(),
+        webhookSourceViewId: z.string().min(1, t`Select a webhook source`),
+        event: z.string().optional(),
+        filter: z.string().optional(),
+        includePayload: z.boolean().default(false),
+        naturalDescription: z.string().optional(),
+        executionPerDayLimitOverride: z.number(),
+        executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
+        spaceId: z.string().nullable(),
+      }),
+    [t]
+  );
+}
 
-export function getWebhookFormDefaultValues({
+type WebhookFormValues = z.infer<ReturnType<typeof useWebhookFormSchema>>;
+
+export function useGetWebhookFormDefaultValues() {
+  const { t } = useLingui();
+
+  return useCallback(
+    ({
+      trigger,
+      webhookSourceView,
+    }: {
+      trigger: AgentBuilderWebhookTriggerType | null;
+      webhookSourceView: WebhookSourceViewType | null;
+    }) =>
+      getWebhookFormDefaultValues({
+        trigger,
+        webhookSourceView,
+        defaultName: t`Webhook trigger`,
+      }),
+    [t]
+  );
+}
+
+function getWebhookFormDefaultValues({
   trigger,
   webhookSourceView,
+  defaultName,
 }: {
   trigger: AgentBuilderWebhookTriggerType | null;
   webhookSourceView: WebhookSourceViewType | null;
+  defaultName: string;
 }): WebhookFormValues {
   return {
     name:
@@ -46,7 +78,7 @@ export function getWebhookFormDefaultValues({
           (webhookSourceView?.provider
             ? ` - ${asDisplayName(webhookSourceView?.provider)}`
             : "")
-        : "Webhook Trigger"),
+        : defaultName),
     status: trigger?.status ?? "enabled",
     customPrompt: trigger?.customPrompt ?? "",
     webhookSourceViewId: webhookSourceView?.sId ?? "",

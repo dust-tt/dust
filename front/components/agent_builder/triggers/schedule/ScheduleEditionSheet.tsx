@@ -12,6 +12,7 @@ import {
   Separator,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController, useFormContext } from "react-hook-form";
 
 interface ScheduleEditionNameInputProps {
@@ -19,6 +20,7 @@ interface ScheduleEditionNameInputProps {
 }
 
 function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
+  const { t } = useLingui();
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field,
@@ -27,10 +29,12 @@ function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
 
   return (
     <div className="flex-1 space-y-1">
-      <Label htmlFor="trigger-name">Name</Label>
+      <Label htmlFor="trigger-name">
+        <Trans>Name</Trans>
+      </Label>
       <Input
         id="trigger-name"
-        placeholder="Enter trigger name"
+        placeholder={t`Enter trigger name`}
         disabled={!isEditor}
         {...field}
         isError={!!error}
@@ -53,9 +57,11 @@ function ScheduleEditionMessageInput({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="schedule-custom-prompt">Message (optional)</Label>
+      <Label htmlFor="schedule-custom-prompt">
+        <Trans>Message (optional)</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Message for the agent when the trigger runs.
+        <Trans>Message for the agent when the trigger runs.</Trans>
       </p>
       <TextArea
         id="schedule-custom-prompt"
@@ -81,9 +87,11 @@ function ScheduleEditionPodSelector({
 
   return (
     <div className="space-y-1">
-      <Label>Where to create this conversation? (optional) </Label>
+      <Label>
+        <Trans>Where to create this conversation? (optional)</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Run this trigger's conversation inside a Pod instead.
+        <Trans>Run this trigger's conversation inside a Pod instead.</Trans>
       </p>
       <TriggerPodSelector
         owner={owner}
@@ -106,15 +114,17 @@ export function ScheduleEditionSheetContent({
   trigger,
   isEditor,
 }: ScheduleEditionSheetContentProps) {
+  const { t } = useLingui();
+  const editorName = trigger?.editorName ?? t`another user`;
+
   return (
     <>
       {trigger && !isEditor && (
         <ContentMessage variant="info">
-          You cannot edit this schedule. It is managed by{" "}
-          <span className="font-semibold">
-            {trigger.editorName ?? "another user"}
-          </span>
-          .
+          <Trans>
+            You cannot edit this schedule. It is managed by{" "}
+            <span className="font-semibold">{editorName}</span>.
+          </Trans>
         </ContentMessage>
       )}
       <div className="space-y-8">

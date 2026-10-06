@@ -6,7 +6,6 @@ import {
   useWebhookFilterGenerator,
 } from "@app/lib/swr/agent_triggers";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
   WebhookEventMetadata,
@@ -22,6 +21,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -35,6 +35,9 @@ interface WebhookEditionFiltersProps {
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
+const FILTER_EXPRESSION_EXAMPLE =
+  '(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)';
+
 export function WebhookEditionFilters({
   isEditor,
   webhookSourceView,
@@ -42,6 +45,7 @@ export function WebhookEditionFilters({
   availableEvents,
   workspace,
 }: WebhookEditionFiltersProps) {
+  const { t } = useLingui();
   const { setError, control } = useFormContext<TriggerViewsSheetFormValues>();
 
   const selectedEvent = useWatch({ control, name: "webhook.event" });
@@ -111,9 +115,8 @@ export function WebhookEditionFilters({
         // If the request was not aborted, we can update the error state
         if (!signal.aborted) {
           setFilterGenerationStatus("error");
-          setFilterErrorMessage(
-            `Error generating filter: ${normalizeError(error).message}`
-          );
+          const errorMessage = normalizeError(error).message;
+          setFilterErrorMessage(t`Error generating filter: ${errorMessage}`);
         }
       }
     },
@@ -142,7 +145,7 @@ export function WebhookEditionFilters({
           <div className="flex items-center gap-2">
             <Spinner size="sm" />
             <span className="text-sm text-muted-foreground">
-              Generating filter...
+              <Trans>Generating filter...</Trans>
             </span>
           </div>
         );
@@ -150,27 +153,30 @@ export function WebhookEditionFilters({
         return (
           <ContentMessageInline variant="warning">
             {filterErrorMessage ??
-              "Unable to generate filter. Please try rephrasing."}
+              t`Unable to generate filter. Please try rephrasing.`}
           </ContentMessageInline>
         );
       default:
         return null;
     }
-  }, [filterGenerationStatus, filterErrorMessage, filterField.value]);
+  }, [filterGenerationStatus, filterErrorMessage, filterField.value, t]);
+
+  const matchingCount = estimation?.matchingCount;
+  const totalCount = estimation?.totalCount;
 
   return (
     <div className="space-y-1">
       {selectedPreset && availableEvents.length > 0 && (
         <>
           <Label htmlFor="webhook-filter-description">
-            Run only when (optional)
+            <Trans>Run only when (optional)</Trans>
           </Label>
           <p className="text-sm text-muted-foreground">
-            Set conditions that must be met to run the agent.
+            <Trans>Set conditions that must be met to run the agent.</Trans>
           </p>
           <TextArea
             id="webhook-filter-description"
-            placeholder='Describe the conditions (e.g "Pull requests by John on dust repository")'
+            placeholder={t`Describe the conditions (e.g "Pull requests by John on dust repository")`}
             rows={3}
             value={naturalDescriptionValue ?? ""}
             disabled={!isEditor}
@@ -178,7 +184,7 @@ export function WebhookEditionFilters({
               if (!selectedEvent || !selectedPreset) {
                 setError("webhook.event", {
                   type: "manual",
-                  message: "Please select an event first",
+                  message: t`Please select an event first`,
                 });
                 return;
               }
@@ -192,38 +198,42 @@ export function WebhookEditionFilters({
       {!webhookSourceView?.provider && (
         <div className="space-y-2">
           <Label htmlFor="webhook-filter-description">
-            Filter Expression (optional)
+            <Trans>Filter expression (optional)</Trans>
           </Label>
           <p className="text-sm text-muted-foreground">
-            Enter a filter that will be used to filter the webhook payload JSON.
-            Will always trigger if left empty.
+            <Trans>
+              Enter a filter that will be used to filter the webhook payload
+              JSON. Will always trigger if left empty.
+            </Trans>
           </p>
           <ContentMessage
             variant="highlight"
             size="lg"
-            title="Payload filtering Syntax"
+            title={t`Payload filtering syntax`}
           >
-            This trigger uses a custom webhook without an integrated provider.
-            As a result, Dust is unable to automatically generate a payload
-            filter. You can manually write a filter expression using our syntax
-            to specify conditions on your webhook's payload.
+            <Trans>
+              This trigger uses a custom webhook without an integrated provider.
+              As a result, Dust is unable to automatically generate a payload
+              filter. You can manually write a filter expression using our
+              syntax to specify conditions on your webhook's payload.
+            </Trans>
             <br />
-            See documentation on{" "}
-            <LinkWrapper
-              href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-            >
-              filter expressions
-            </LinkWrapper>{" "}
-            to learn how to write them.
+            <Trans>
+              See documentation on{" "}
+              <LinkWrapper
+                href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                filter expressions
+              </LinkWrapper>{" "}
+              to learn how to write them.
+            </Trans>
           </ContentMessage>
           <TextArea
             id="webhook-filter-description"
-            placeholder={
-              'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
-            }
+            placeholder={t`Example:\n\n${FILTER_EXPRESSION_EXAMPLE}`}
             rows={6}
             {...filterField}
             disabled={!isEditor}
@@ -236,7 +246,7 @@ export function WebhookEditionFilters({
 
       {webhookSourceView && (
         <Button
-          label="Compute stats"
+          label={t`Compute stats`}
           size="sm"
           variant="outline"
           onClick={handleComputeEstimation}
@@ -249,17 +259,23 @@ export function WebhookEditionFilters({
         <>
           {estimation.totalCount < 10 ? (
             <ContentMessageInline variant="warning">
-              Not enough data to compute statistics. {estimation.totalCount}{" "}
-              event{pluralize(estimation.totalCount)} found in the last 24
-              hours. At least 10 events are needed for estimation.
+              <Trans>Not enough data to compute statistics.</Trans>{" "}
+              <Plural
+                value={estimation.totalCount}
+                one="# event found in the last 24 hours."
+                other="# events found in the last 24 hours."
+              />{" "}
+              <Trans>At least 10 events are needed for estimation.</Trans>
             </ContentMessageInline>
           ) : (
             <ContentMessageInline variant="outline">
-              According to the most recent data, this trigger would have created{" "}
-              <span className="font-semibold">{estimation.matchingCount}</span>{" "}
-              conversations out of{" "}
-              <span className="font-semibold">{estimation.totalCount}</span>{" "}
-              events in the last 24 hours.
+              <Trans>
+                According to the most recent data, this trigger would have
+                created <span className="font-semibold">{matchingCount}</span>{" "}
+                conversations out of{" "}
+                <span className="font-semibold">{totalCount}</span> events in
+                the last 24 hours.
+              </Trans>
             </ContentMessageInline>
           )}
         </>
