@@ -79,23 +79,29 @@ function resolveInstructions(
   );
 }
 
-function resolveFileAttachments(
+export function validateSkillFilesChange(
   skill: SkillResource,
-  files: SkillEdits["files"]
+  { removeFileIds }: { removeFileIds: string[] }
 ): Result<FileResource[], DustError<"invalid_request_error">> {
-  const fileAttachments = skill.getFileAttachments();
-  if (!files) {
-    return new Ok([...fileAttachments]);
+  if (skill.status === "archived") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "This skill is archived; its files cannot be changed."
+      )
+    );
   }
 
-  const { removeFileIds } = files;
+  const fileAttachments = skill.getFileAttachments();
   const attachedFileIds = new Set(fileAttachments.map((file) => file.sId));
-  const notAttached = removeFileIds.filter((id) => !attachedFileIds.has(id));
+  const notAttached = [
+    ...new Set(removeFileIds.filter((id) => !attachedFileIds.has(id))),
+  ];
   if (notAttached.length > 0) {
     return new Err(
       new DustError(
         "invalid_request_error",
-        `These files are no longer attached to the skill: ${notAttached.join(", ")}.`
+        `These files are not attached to the skill: ${notAttached.join(", ")}.`
       )
     );
   }
@@ -104,6 +110,17 @@ function resolveFileAttachments(
   return new Ok(
     fileAttachments.filter((file) => !removedFileIds.has(file.sId))
   );
+}
+
+function resolveFileAttachments(
+  skill: SkillResource,
+  files: SkillEdits["files"]
+): Result<FileResource[], DustError<"invalid_request_error">> {
+  if (!files) {
+    return new Ok([...skill.getFileAttachments()]);
+  }
+
+  return validateSkillFilesChange(skill, files);
 }
 
 async function resolveInstructionAttachments(

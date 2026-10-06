@@ -1,5 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
+import { validateSkillFilesChange } from "@app/lib/api/skills/apply_skill_suggestions";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -28,6 +29,7 @@ import type {
   SkillCreateSuggestionType,
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
+  SkillFilesSuggestionType,
   SkillInstructionEditItemType,
   SkillNameSuggestionType,
   SkillSuggestionData,
@@ -183,6 +185,27 @@ export async function validateSkillEditorsSuggestion(
   }
 
   return new Ok({ addUserIds, removeUserIds });
+}
+
+export function validateSkillFilesSuggestion(
+  skill: SkillResource,
+  { removeFileIds }: { removeFileIds: string[] }
+): Result<SkillFilesSuggestionType, MCPError> {
+  if (removeFileIds.length === 0) {
+    return new Err(
+      new MCPError("Provide at least one file in `removeFileIds`.")
+    );
+  }
+
+  const validation = validateSkillFilesChange(skill, { removeFileIds });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
+  }
+
+  return new Ok({
+    addFilePaths: [],
+    removeFileIds: [...new Set(removeFileIds)],
+  });
 }
 
 export function validateSkillDeletionSuggestion(

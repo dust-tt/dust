@@ -591,7 +591,7 @@ describe("pruneConflictingSkillFilesSuggestions", () => {
   ) => {
     const created = await SkillSuggestionFactory.create(authenticator, skill, {
       kind: "files",
-      suggestion: { removeFileIds },
+      suggestion: { addFilePaths: [], removeFileIds },
       source: "conversational",
     });
     if (!isFilesSkillSuggestion(created)) {
