@@ -2,6 +2,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { ActionCard, Clock, SearchInput } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface TriggerSelectionPageContentProps {
@@ -15,6 +16,7 @@ export function TriggerSelectionPageContent({
   onWebhookSelect,
   webhookSourceViews,
 }: TriggerSelectionPageContentProps) {
+  const { t } = useLingui();
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredWebhookSourceViews = useMemo(() => {
@@ -47,7 +49,7 @@ export function TriggerSelectionPageContent({
   return (
     <>
       <SearchInput
-        placeholder="Search triggers..."
+        placeholder={t`Search triggers...`}
         value={searchTerm}
         onChange={setSearchTerm}
         name="triggerSearch"
@@ -59,8 +61,8 @@ export function TriggerSelectionPageContent({
           {showSchedule && (
             <ActionCard
               icon={Clock}
-              label="Schedule"
-              description="Trigger this agent on a schedule"
+              label={t`Schedule`}
+              description={t`Trigger this agent on a schedule`}
               isSelected={false}
               canAdd
               onClick={onScheduleSelect}
@@ -70,6 +72,7 @@ export function TriggerSelectionPageContent({
 
           {filteredWebhookSourceViews.length > 0 &&
             filteredWebhookSourceViews.map((view) => {
+              const webhookSourceName = view.customName;
               return (
                 <ActionCard
                   key={view.sId}
@@ -77,7 +80,7 @@ export function TriggerSelectionPageContent({
                   label={view.customName}
                   description={
                     view.description ||
-                    `Trigger this agent with ${view.customName}.`
+                    t`Trigger this agent with ${webhookSourceName}.`
                   }
                   isSelected={false}
                   canAdd
@@ -91,7 +94,7 @@ export function TriggerSelectionPageContent({
 
       {!showSchedule && filteredWebhookSourceViews.length === 0 && (
         <div className="flex h-32 items-center justify-center text-sm">
-          No triggers found matching your search
+          <Trans>No triggers found matching your search</Trans>
         </div>
       )}
     </>

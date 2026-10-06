@@ -30,6 +30,9 @@ import {
   Separator,
   TextArea,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -38,6 +41,7 @@ interface WebhookEditionNameInputProps {
 }
 
 function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
+  const { t } = useLingui();
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field,
@@ -46,10 +50,12 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
 
   return (
     <div className="flex-grow space-y-1">
-      <Label htmlFor="webhook-name">Name</Label>
+      <Label htmlFor="webhook-name">
+        <Trans>Name</Trans>
+      </Label>
       <Input
         id="webhook-name"
-        placeholder="Enter trigger name"
+        placeholder={t`Enter trigger name`}
         disabled={!isEditor}
         {...field}
         isError={!!error}
@@ -63,25 +69,29 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
 function getQuotaDescription({
   isCreditPooled,
   executionMode,
+  t,
 }: {
   isCreditPooled: boolean;
   executionMode: "user_pool" | "workspace_pool";
+  t: (descriptor: MessageDescriptor) => string;
 }) {
   if (isCreditPooled) {
     switch (executionMode) {
       case "user_pool":
-        return "personal credit pool.";
+        return t(msg`This will count towards your personal credit pool.`);
       case "workspace_pool":
-        return "workspace's credit pool.";
+        return t(msg`This will count towards your workspace's credit pool.`);
       default:
         return assertNever(executionMode);
     }
   } else {
     switch (executionMode) {
       case "user_pool":
-        return "personal fair use limits.";
+        return t(msg`This will count towards your personal fair use limits.`);
       case "workspace_pool":
-        return "workspace's programmatic usage.";
+        return t(
+          msg`This will count towards your workspace's programmatic usage.`
+        );
       default:
         return assertNever(executionMode);
     }
@@ -95,6 +105,7 @@ interface WebhookEditionExecutionLimitProps {
 function WebhookEditionExecutionLimit({
   isEditor,
 }: WebhookEditionExecutionLimitProps) {
+  const { t } = useLingui();
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { subscription } = useAuth();
   const {
@@ -110,24 +121,28 @@ function WebhookEditionExecutionLimit({
 
   return (
     <div className="flex flex-col space-y-1">
-      <Label htmlFor="execution-limit">Rate limits</Label>
+      <Label htmlFor="execution-limit">
+        <Trans>Rate limits</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Maximum number of runs over a 24-hour window. This will count towards
-        your{" "}
+        <Trans>Maximum number of runs over a 24-hour window.</Trans>{" "}
         {getQuotaDescription({
           isCreditPooled: isCreditPricedPlan(subscription.plan),
           executionMode,
+          t,
         })}{" "}
-        (
-        <LinkWrapper
-          href="https://docs.dust.tt/docs/user-documentation/agents/triggers/credits-usage"
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          Learn more
-        </LinkWrapper>
-        )
+        <Trans>
+          (
+          <LinkWrapper
+            href="https://docs.dust.tt/docs/user-documentation/agents/triggers/credits-usage"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Learn more
+          </LinkWrapper>
+          )
+        </Trans>
       </p>
       <Input
         id="execution-limit"
@@ -157,6 +172,7 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
+  const { t } = useLingui();
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: selectedEvent, onChange: setSelectedEvent },
@@ -169,9 +185,11 @@ function WebhookEditionEventSelector({
 
   return (
     <div className="flex flex-col space-y-1">
-      <Label htmlFor="webhook-event">Listen for</Label>
+      <Label htmlFor="webhook-event">
+        <Trans>Listen for</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        External event that will trigger a run of this agent.
+        <Trans>External event that will trigger a run of this agent.</Trans>
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -183,12 +201,14 @@ function WebhookEditionEventSelector({
             disabled={!isEditor}
             label={
               availableEvents.find((e) => e.value === selectedEvent)?.name ??
-              "Select event"
+              t`Select event`
             }
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuLabel label="Select" />
+          <DropdownMenuLabel
+            label={t({ message: "Select", context: "dropdown menu heading" })}
+          />
           {availableEvents.map((event) => (
             <DropdownMenuItem
               key={event.value}
@@ -223,7 +243,9 @@ function WebhookEditionIncludePayload({
         onClick={() => setIncludePayload(!includePayload)}
         disabled={!isEditor}
       />
-      <Label>Include webhook payload</Label>
+      <Label>
+        <Trans>Include webhook payload</Trans>
+      </Label>
     </div>
   );
 }
@@ -240,9 +262,11 @@ function WebhookEditionMessageInput({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="webhook-prompt">Message (optional)</Label>
+      <Label htmlFor="webhook-prompt">
+        <Trans>Message (optional)</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Message for the agent when the trigger runs.
+        <Trans>Message for the agent when the trigger runs.</Trans>
       </p>
       <TextArea
         id="webhook-prompt"
@@ -268,9 +292,11 @@ function WebhookEditionPodSelector({
 
   return (
     <div className="space-y-1">
-      <Label>Where to create this conversation? (optional)</Label>
+      <Label>
+        <Trans>Where to create this conversation? (optional)</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Run this trigger's conversation inside a Pod instead.
+        <Trans>Run this trigger's conversation inside a Pod instead.</Trans>
       </p>
       <TriggerPodSelector
         owner={owner}
@@ -297,6 +323,7 @@ export function WebhookEditionSheetContent({
   webhookSourceView,
   isEditor,
 }: WebhookEditionSheetContentProps) {
+  const { t } = useLingui();
   const selectedPreset = useMemo((): WebhookPresetMetadata | null => {
     if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
@@ -314,15 +341,16 @@ export function WebhookEditionSheetContent({
     );
   }, [selectedPreset, webhookSourceView]);
 
+  const editorName = trigger?.editorName ?? t`another user`;
+
   return (
     <>
       {trigger && !isEditor && (
         <ContentMessage variant="info">
-          You cannot edit this trigger. It is managed by{" "}
-          <span className="font-semibold">
-            {trigger.editorName ?? "another user"}
-          </span>
-          .
+          <Trans>
+            You cannot edit this trigger. It is managed by{" "}
+            <span className="font-semibold">{editorName}</span>.
+          </Trans>
         </ContentMessage>
       )}
       <div className="space-y-8">

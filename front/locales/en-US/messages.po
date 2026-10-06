@@ -186,6 +186,7 @@ msgstr "How you appear to other members of the workspace"
 #: front/components/agent_builder/instructions/AdvancedSettings.tsx
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 #: front/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker.tsx
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
@@ -513,6 +514,7 @@ msgstr "Go back"
 #: front/components/agent_builder/instructions/AdvancedSettings.tsx
 #: front/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker.tsx
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/me/UserAutomationsTable.tsx
@@ -836,6 +838,7 @@ msgstr "Back"
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
 #: front/components/assistant/details/MemberDetails.tsx
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -880,6 +883,8 @@ msgstr "Unselect all"
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
 #: front/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage.tsx
 #: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 #: front/components/groups/GroupSelectionTable.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/groups/WorkspaceGroupsList.tsx
@@ -1369,6 +1374,7 @@ msgid "Sets the approach for finding and retrieving information from your data s
 msgstr "Sets the approach for finding and retrieving information from your data sources. Need help? Check our <0>guide.</0>"
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
 msgid "Loading..."
 msgstr "Loading..."
 
@@ -1393,18 +1399,22 @@ msgid "Select a Pod..."
 msgstr "Select a Pod..."
 
 #: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
 msgid "Search..."
 msgstr "Search..."
 
 #: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
 msgid "No description available."
 msgstr "No description available."
 
 #: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
 msgid "No matches"
 msgstr "No matches"
 
 #: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
 msgid "No Pods"
 msgstr "No Pods"
 
@@ -2014,6 +2024,470 @@ msgstr "Capabilities and knowledge"
 msgid "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
 msgstr "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
 
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Successfully removed {triggerName}"
+msgstr "Successfully removed {triggerName}"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Trigger \"{triggerName}\" will be removed when you save the agent."
+msgstr "Trigger \"{triggerName}\" will be removed when you save the agent."
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+#: front/components/me/UserAutomationsDialog.tsx
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Triggers"
+msgstr "Triggers"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Run agents based on events. Need help? Check our <0>guide</0>."
+msgstr "Run agents based on events. Need help? Check our <0>guide</0>."
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Add triggers"
+msgstr "Add triggers"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Other members' triggers"
+msgstr "Other members' triggers"
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Request history"
+msgstr "Request history"
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Loading recent requests..."
+msgstr "Loading recent requests..."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Unable to load recent webhook requests."
+msgstr "Unable to load recent webhook requests."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "No webhook requests yet."
+msgstr "No webhook requests yet."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Some requests were not processed for this trigger."
+msgstr "Some requests were not processed for this trigger."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Contact <0>support@dust.tt</0> to increase the rate limit for this trigger."
+msgstr "Contact <0>support@dust.tt</0> to increase the rate limit for this trigger."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "No payload available."
+msgstr "No payload available."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Runs {schedule}."
+msgstr "Runs {schedule}."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Triggered by {event} events on {sourceName}'s source."
+msgstr "Triggered by {event} events on {sourceName}'s source."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Triggered on {sourceName}'s source."
+msgstr "Triggered on {sourceName}'s source."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Managed by <0>{editorName}</0>."
+msgstr "Managed by <0>{editorName}</0>."
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgid "Expression too deeply nested (depth > 4)"
+msgstr "Expression too deeply nested (depth > 4)"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgid "Error parsing filter expression: {errorMessage}. Please check the filter syntax."
+msgstr "Error parsing filter expression: {errorMessage}. Please check the filter syntax."
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "My conversations (default)"
+msgstr "My conversations (default)"
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "Run in my conversations."
+msgstr "Run in my conversations."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "My credits"
+msgstr "My credits"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Workspace credits"
+msgstr "Workspace credits"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
+msgstr "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Your plan doesn't support charging automations to personal credits."
+msgstr "Your plan doesn't support charging automations to personal credits."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "You don't have permission to charge automations to the workspace credit pool."
+msgstr "You don't have permission to charge automations to the workspace credit pool."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+#: front/components/navigation/config.ts
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/TopUpsHistoryTable.tsx
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Credits"
+msgstr "Credits"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Which pool this trigger's runs take credits from."
+msgstr "Which pool this trigger's runs take credits from."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgctxt "placeholder, no option selected"
+msgid "Select"
+msgstr "Select"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Charge to"
+msgstr "Charge to"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Search triggers..."
+msgstr "Search triggers..."
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Schedule"
+msgstr "Schedule"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Trigger this agent on a schedule"
+msgstr "Trigger this agent on a schedule"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Trigger this agent with {webhookSourceName}."
+msgstr "Trigger this agent with {webhookSourceName}."
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "No triggers found matching your search"
+msgstr "No triggers found matching your search"
+
+#: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
+#: front/components/members/MembersList.tsx
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
+msgid "This trigger's status is managed by Dust."
+msgstr "This trigger's status is managed by Dust."
+
+#: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
+msgid "Only a manager or an admin can re-enable this trigger."
+msgstr "Only a manager or an admin can re-enable this trigger."
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Please select an event"
+msgstr "Please select an event"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Edit schedule"
+msgstr "Edit schedule"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "View schedule"
+msgstr "View schedule"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Create schedule"
+msgstr "Create schedule"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Edit trigger"
+msgstr "Edit trigger"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "View trigger"
+msgstr "View trigger"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Create {webhookSourceName} trigger"
+msgstr "Create {webhookSourceName} trigger"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Create trigger"
+msgstr "Create trigger"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Succeeded"
+msgstr "Succeeded"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Failed"
+msgstr "Failed"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Not matched"
+msgstr "Not matched"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Rate limited"
+msgstr "Rate limited"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Out of credits"
+msgstr "Out of credits"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Unable to generate a schedule. Please try rephrasing."
+msgstr "Unable to generate a schedule. Please try rephrasing."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Generating schedule..."
+msgstr "Generating schedule..."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "{description}, in {timezoneLabel} timezone."
+msgstr "{description}, in {timezoneLabel} timezone."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Scheduler"
+msgstr "Scheduler"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Describe when you want the agent to run in natural language."
+msgstr "Describe when you want the agent to run in natural language."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "e.g. \"run every day at 9 AM\", or \"Late afternoon on business days\"..."
+msgstr "e.g. \"run every day at 9 AM\", or \"Late afternoon on business days\"..."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Next 5 occurrences"
+msgstr "Next 5 occurrences"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Enter trigger name"
+msgstr "Enter trigger name"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Message (optional)"
+msgstr "Message (optional)"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Message for the agent when the trigger runs."
+msgstr "Message for the agent when the trigger runs."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Where to create this conversation? (optional)"
+msgstr "Where to create this conversation? (optional)"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Run this trigger's conversation inside a Pod instead."
+msgstr "Run this trigger's conversation inside a Pod instead."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "another user"
+msgstr "another user"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "You cannot edit this schedule. It is managed by <0>{editorName}</0>."
+msgstr "You cannot edit this schedule. It is managed by <0>{editorName}</0>."
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Name is required"
+msgstr "Name is required"
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Name should be less than 255 characters"
+msgstr "Name should be less than 255 characters"
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Timezone is required"
+msgstr "Timezone is required"
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Cron expression is required"
+msgstr "Cron expression is required"
+
+#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
+msgid "Every {weekday} at {time}"
+msgstr "Every {weekday} at {time}"
+
+#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
+msgid "{weeks, plural, one {Every # week on {weekday} at {time}} other {Every # weeks on {weekday} at {time}}}"
+msgstr "{weeks, plural, one {Every # week on {weekday} at {time}} other {Every # weeks on {weekday} at {time}}}"
+
+#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
+msgid "Every day at {time}"
+msgstr "Every day at {time}"
+
+#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
+msgid "{intervalDays, plural, one {Every # day at {time}} other {Every # days at {time}}}"
+msgstr "{intervalDays, plural, one {Every # day at {time}} other {Every # days at {time}}}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Error generating filter: {errorMessage}"
+msgstr "Error generating filter: {errorMessage}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Generating filter..."
+msgstr "Generating filter..."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Unable to generate filter. Please try rephrasing."
+msgstr "Unable to generate filter. Please try rephrasing."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Run only when (optional)"
+msgstr "Run only when (optional)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Set conditions that must be met to run the agent."
+msgstr "Set conditions that must be met to run the agent."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Describe the conditions (e.g \"Pull requests by John on dust repository\")"
+msgstr "Describe the conditions (e.g \"Pull requests by John on dust repository\")"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Please select an event first"
+msgstr "Please select an event first"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Filter expression (optional)"
+msgstr "Filter expression (optional)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Enter a filter that will be used to filter the webhook payload JSON. Will always trigger if left empty."
+msgstr "Enter a filter that will be used to filter the webhook payload JSON. Will always trigger if left empty."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Payload filtering syntax"
+msgstr "Payload filtering syntax"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook's payload."
+msgstr "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook's payload."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "See documentation on <0>filter expressions</0> to learn how to write them."
+msgstr "See documentation on <0>filter expressions</0> to learn how to write them."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Example:\n"
+"\n"
+"{FILTER_EXPRESSION_EXAMPLE}"
+msgstr "Example:\n"
+"\n"
+"{FILTER_EXPRESSION_EXAMPLE}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Compute stats"
+msgstr "Compute stats"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Not enough data to compute statistics."
+msgstr "Not enough data to compute statistics."
+
+#. placeholder {0}: estimation.totalCount
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "{0, plural, one {# event found in the last 24 hours.} other {# events found in the last 24 hours.}}"
+msgstr "{0, plural, one {# event found in the last 24 hours.} other {# events found in the last 24 hours.}}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "At least 10 events are needed for estimation."
+msgstr "At least 10 events are needed for estimation."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "According to the most recent data, this trigger would have created <0>{matchingCount}</0> conversations out of <1>{totalCount}</1> events in the last 24 hours."
+msgstr "According to the most recent data, this trigger would have created <0>{matchingCount}</0> conversations out of <1>{totalCount}</1> events in the last 24 hours."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count towards your personal credit pool."
+msgstr "This will count towards your personal credit pool."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count towards your workspace's credit pool."
+msgstr "This will count towards your workspace's credit pool."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count towards your personal fair use limits."
+msgstr "This will count towards your personal fair use limits."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count towards your workspace's programmatic usage."
+msgstr "This will count towards your workspace's programmatic usage."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Rate limits"
+msgstr "Rate limits"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Maximum number of runs over a 24-hour window."
+msgstr "Maximum number of runs over a 24-hour window."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "(<0>Learn more</0>)"
+msgstr "(<0>Learn more</0>)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Listen for"
+msgstr "Listen for"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "External event that will trigger a run of this agent."
+msgstr "External event that will trigger a run of this agent."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Select event"
+msgstr "Select event"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgctxt "dropdown menu heading"
+msgid "Select"
+msgstr "Select"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Include webhook payload"
+msgstr "Include webhook payload"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "You cannot edit this trigger. It is managed by <0>{editorName}</0>."
+msgstr "You cannot edit this trigger. It is managed by <0>{editorName}</0>."
+
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Select a webhook source"
+msgstr "Select a webhook source"
+
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Webhook trigger"
+msgstr "Webhook trigger"
+
 #: front/components/agent_builder/types.ts
 msgid "Description should be less than {DESCRIPTION_MAX_LENGTH} characters."
 msgstr "Description should be less than {DESCRIPTION_MAX_LENGTH} characters."
@@ -2595,13 +3069,6 @@ msgid "Play"
 msgstr "Play"
 
 #: front/components/me/UserAutomationsDialog.tsx
-#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
-#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
-msgid "Triggers"
-msgstr "Triggers"
-
-#: front/components/me/UserAutomationsDialog.tsx
 msgid "Wake-Ups"
 msgstr "Wake-Ups"
 
@@ -2959,12 +3426,6 @@ msgid "(you)"
 msgstr "(you)"
 
 #: front/components/members/MembersList.tsx
-#: front/components/workspace/WorkspaceAccessPanel.tsx
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Status"
-msgstr "Status"
-
-#: front/components/members/MembersList.tsx
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
@@ -3219,22 +3680,6 @@ msgstr "Branding"
 #: front/components/navigation/config.ts
 msgid "Spend"
 msgstr "Spend"
-
-#: front/components/navigation/config.ts
-#: front/components/pages/workspace/GroupManagerUsagePage.tsx
-#: front/components/pages/workspace/UsagePage.tsx
-#: front/components/pages/workspace/developers/APIKeysPage.tsx
-#: front/components/workspace/BuyCreditDialog.tsx
-#: front/components/workspace/TopUpsHistoryTable.tsx
-#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
-#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
-#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
-#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
-#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-#: front/components/workspace/billing/CouponsList.tsx
-msgid "Credits"
-msgstr "Credits"
 
 #: front/components/navigation/config.ts
 #: front/components/pages/workspace/billing/BillingPage.tsx
@@ -5811,10 +6256,6 @@ msgid "Verified"
 msgstr "Verified"
 
 #: front/components/workspace/WorkspaceAccessPanel.tsx
-msgid "Failed"
-msgstr "Failed"
-
-#: front/components/workspace/WorkspaceAccessPanel.tsx
 msgid "Delete domain"
 msgstr "Delete domain"
 
@@ -6062,11 +6503,6 @@ msgstr "Search type"
 #: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
 msgid "Search pool"
 msgstr "Search pool"
-
-#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
-#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
-msgid "Schedule"
-msgstr "Schedule"
 
 #: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx

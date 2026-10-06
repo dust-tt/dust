@@ -23,6 +23,7 @@ import {
   Spinner,
   Zap,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import uniqBy from "lodash/uniqBy";
 import { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -40,6 +41,7 @@ export function AgentBuilderTriggersBlock({
   isTriggersLoading,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
+  const { t } = useLingui();
   const { getValues, setValue, control } =
     useFormContext<AgentBuilderFormData>();
 
@@ -181,10 +183,11 @@ export function AgentBuilderTriggersBlock({
       removeTriggerToUpdate(displayItem.index);
     }
 
+    const triggerName = trigger.name;
     sendNotification({
       type: "success",
-      title: `Successfully removed ${trigger.name}`,
-      description: `Trigger "${trigger.name}" will be removed when you save the agent.`,
+      title: t`Successfully removed ${triggerName}`,
+      description: t`Trigger "${triggerName}" will be removed when you save the agent.`,
     });
   };
 
@@ -209,9 +212,9 @@ export function AgentBuilderTriggersBlock({
 
   return (
     <AgentBuilderSectionContainer
-      title="Triggers"
+      title={t`Triggers`}
       description={
-        <>
+        <Trans>
           Run agents based on events. Need help? Check our{" "}
           <Hoverable
             variant="primary"
@@ -221,12 +224,12 @@ export function AgentBuilderTriggersBlock({
             guide
           </Hoverable>
           .
-        </>
+        </Trans>
       }
       headerActions={
         allTriggers.length > 0 && (
           <Button
-            label="Add triggers"
+            label={t`Add triggers`}
             type="button"
             icon={Zap}
             onClick={handleAddTrigger}
@@ -243,7 +246,7 @@ export function AgentBuilderTriggersBlock({
           <EmptyCTA
             action={
               <Button
-                label="Add triggers"
+                label={t`Add triggers`}
                 type="button"
                 icon={Zap}
                 onClick={handleAddTrigger}
@@ -259,7 +262,7 @@ export function AgentBuilderTriggersBlock({
             {otherTriggers.length > 0 && (
               <Collapsible defaultOpen={false}>
                 <CollapsibleTrigger
-                  label="Other members' triggers"
+                  label={t`Other members' triggers`}
                   variant="secondary"
                 />
                 <CollapsibleContent>

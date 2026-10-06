@@ -13,6 +13,7 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 import { WebhookRequestStatusBadge } from "./WebhookRequestStatusBadge";
@@ -33,7 +34,9 @@ export function RecentWebhookRequests({
   return (
     <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger>
-        <Label className="cursor-pointer">Request history</Label>
+        <Label className="cursor-pointer">
+          <Trans>Request history</Trans>
+        </Label>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <RecentWebhookRequestsContent
@@ -60,6 +63,7 @@ function RecentWebhookRequestsContent({
   agentConfigurationId,
   trigger,
 }: RecentWebhookRequestsContentProps) {
+  const { t } = useLingui();
   const { webhookRequests, isWebhookRequestsLoading, isWebhookRequestsError } =
     useWebhookRequestTriggersForTrigger({
       owner,
@@ -72,7 +76,7 @@ function RecentWebhookRequestsContent({
       <div className="flex items-center gap-2">
         <Spinner size="sm" />
         <span className="text-sm text-muted-foreground">
-          Loading recent requests...
+          <Trans>Loading recent requests...</Trans>
         </span>
       </div>
     );
@@ -81,14 +85,16 @@ function RecentWebhookRequestsContent({
   if (isWebhookRequestsError) {
     return (
       <ContentMessageInline variant="warning">
-        Unable to load recent webhook requests.
+        <Trans>Unable to load recent webhook requests.</Trans>
       </ContentMessageInline>
     );
   }
 
   if (webhookRequests.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No webhook requests yet.</p>
+      <p className="text-sm text-muted-foreground">
+        <Trans>No webhook requests yet.</Trans>
+      </p>
     );
   }
 
@@ -104,18 +110,20 @@ function RecentWebhookRequestsContent({
         <div className="text-sm text-muted-foreground">
           <p>
             {lastBlocked.errorMessage ??
-              "Some requests were not processed for this trigger."}
+              t`Some requests were not processed for this trigger.`}
             {lastBlocked.status === "rate_limited" && (
               <>
                 <br />
-                Contact{" "}
-                <LinkWrapper
-                  href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
-                  className="underline"
-                >
-                  support@dust.tt
-                </LinkWrapper>{" "}
-                to increase the rate limit for this trigger.
+                <Trans>
+                  Contact{" "}
+                  <LinkWrapper
+                    href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
+                    className="underline"
+                  >
+                    support@dust.tt
+                  </LinkWrapper>{" "}
+                  to increase the rate limit for this trigger.
+                </Trans>
               </>
             )}
           </p>
@@ -149,7 +157,7 @@ function RecentWebhookRequestsContent({
                 )}
                 {!request.payload && !request.errorMessage && (
                   <p className="text-sm text-muted-foreground">
-                    No payload available.
+                    <Trans>No payload available.</Trans>
                   </p>
                 )}
               </CollapsibleContent>

@@ -2,10 +2,6 @@ import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/
 import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import {
-  NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE,
-  TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES,
-} from "@app/types/assistant/triggers";
-import {
   Button,
   ContentMessage,
   DropdownMenu,
@@ -15,12 +11,28 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController, useFormContext } from "react-hook-form";
 
-const POOL_OPTIONS: { value: TriggerExecutionMode; label: string }[] = [
-  { value: "user_pool", label: "My credits" },
-  { value: "workspace_pool", label: "Workspace credits" },
+const POOL_OPTIONS: {
+  value: TriggerExecutionMode;
+  label: MessageDescriptor;
+}[] = [
+  { value: "user_pool", label: msg`My credits` },
+  { value: "workspace_pool", label: msg`Workspace credits` },
 ];
+
+const NO_EXECUTION_MODE_AVAILABLE_MESSAGE = msg`Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access.`;
+
+const EXECUTION_MODE_UNAVAILABLE_MESSAGES: Record<
+  TriggerExecutionMode,
+  MessageDescriptor
+> = {
+  user_pool: msg`Your plan doesn't support charging automations to personal credits.`,
+  workspace_pool: msg`You don't have permission to charge automations to the workspace credit pool.`,
+};
 
 interface TriggerPoolSelectorProps {
   name: "schedule.executionMode" | "webhook.executionMode";
@@ -33,6 +45,7 @@ export function TriggerPoolSelector({
   isEditor,
   currentExecutionMode,
 }: TriggerPoolSelectorProps) {
+  const { t } = useLingui();
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name });
 
@@ -41,16 +54,22 @@ export function TriggerPoolSelector({
 
   let restriction: string | null = null;
   if (!hasAvailableExecutionMode) {
-    restriction = NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE;
+    restriction = t(NO_EXECUTION_MODE_AVAILABLE_MESSAGE);
   } else if (!canUseExecutionMode(field.value)) {
-    restriction = TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[field.value];
+    restriction = t(EXECUTION_MODE_UNAVAILABLE_MESSAGES[field.value]);
   }
+
+  const selectedOption = POOL_OPTIONS.find(
+    (option) => option.value === field.value
+  );
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="trigger-pool">Credits</Label>
+      <Label htmlFor="trigger-pool">
+        <Trans>Credits</Trans>
+      </Label>
       <p className="text-sm text-muted-foreground">
-        Which pool this trigger's runs take credits from.
+        <Trans>Which pool this trigger's runs take credits from.</Trans>
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -61,17 +80,21 @@ export function TriggerPoolSelector({
             className="w-fit"
             disabled={!isEditor || !hasAvailableExecutionMode}
             label={
-              POOL_OPTIONS.find((option) => option.value === field.value)
-                ?.label ?? "Select"
+              selectedOption
+                ? t(selectedOption.label)
+                : t({
+                    message: "Select",
+                    context: "placeholder, no option selected",
+                  })
             }
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuLabel label="Charge to" />
+          <DropdownMenuLabel label={t`Charge to`} />
           {POOL_OPTIONS.map(({ value, label }) => (
             <DropdownMenuItem
               key={value}
-              label={label}
+              label={t(label)}
               disabled={!isEditor || !canUseExecutionMode(value)}
               onClick={() => field.onChange(value)}
             />

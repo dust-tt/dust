@@ -12,50 +12,77 @@ import {
 } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
+import { useCallback, useMemo } from "react";
 import { z } from "zod";
 
-const commonFields = {
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(255, "Name should be less than 255 characters"),
-  status: triggerStatusSchema.default("enabled"),
-  naturalLanguageDescription: z.string().optional(),
-  customPrompt: z.string(),
-  timezone: z.string().min(1, "Timezone is required"),
-  executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
-  spaceId: z.string().nullable(),
-};
+export function useScheduleFormSchema() {
+  const { t } = useLingui();
 
-const cronScheduleSchema = z.object({
-  ...commonFields,
-  scheduleType: z.literal("cron"),
-  cron: z.string().min(1, "Cron expression is required"),
-});
+  return useMemo(() => {
+    const commonFields = {
+      name: z
+        .string()
+        .min(1, t`Name is required`)
+        .max(255, t`Name should be less than 255 characters`),
+      status: triggerStatusSchema.default("enabled"),
+      naturalLanguageDescription: z.string().optional(),
+      customPrompt: z.string(),
+      timezone: z.string().min(1, t`Timezone is required`),
+      executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
+      spaceId: z.string().nullable(),
+    };
 
-const intervalScheduleSchema = z.object({
-  ...commonFields,
-  scheduleType: z.literal("interval"),
-  intervalDays: z.number().positive(),
-  dayOfWeek: z.number().nullable(),
-  hour: z.number(),
-  minute: z.number(),
-});
+    const cronScheduleSchema = z.object({
+      ...commonFields,
+      scheduleType: z.literal("cron"),
+      cron: z.string().min(1, t`Cron expression is required`),
+    });
 
-export const ScheduleFormSchema = z.discriminatedUnion("scheduleType", [
-  cronScheduleSchema,
-  intervalScheduleSchema,
-]);
+    const intervalScheduleSchema = z.object({
+      ...commonFields,
+      scheduleType: z.literal("interval"),
+      intervalDays: z.number().positive(),
+      dayOfWeek: z.number().nullable(),
+      hour: z.number(),
+      minute: z.number(),
+    });
 
-export type ScheduleFormValues = z.infer<typeof ScheduleFormSchema>;
+    return z.discriminatedUnion("scheduleType", [
+      cronScheduleSchema,
+      intervalScheduleSchema,
+    ]);
+  }, [t]);
+}
 
-export function getScheduleFormDefaultValues(
-  trigger: AgentBuilderScheduleTriggerType | null
-): ScheduleFormValues {
+export type ScheduleFormValues = z.infer<
+  ReturnType<typeof useScheduleFormSchema>
+>;
+
+export function useGetScheduleFormDefaultValues() {
+  const { t } = useLingui();
+
+  return useCallback(
+    (trigger: AgentBuilderScheduleTriggerType | null) =>
+      getScheduleFormDefaultValues({
+        trigger,
+        defaultName: t`Schedule`,
+      }),
+    [t]
+  );
+}
+
+function getScheduleFormDefaultValues({
+  trigger,
+  defaultName,
+}: {
+  trigger: AgentBuilderScheduleTriggerType | null;
+  defaultName: string;
+}): ScheduleFormValues {
   const config = trigger?.kind === "schedule" ? trigger.configuration : null;
 
   const commonDefaults = {
-    name: trigger?.name ?? "Schedule",
+    name: trigger?.name ?? defaultName,
     status: trigger?.status ?? "enabled",
     naturalLanguageDescription: trigger?.naturalLanguageDescription ?? "",
     customPrompt: trigger?.customPrompt ?? "",
