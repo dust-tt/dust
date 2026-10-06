@@ -5,12 +5,12 @@
     "node": ">=24.16.0"
   },
   "scripts": {
-    "build": "npm run clean:dist && npm run tailwind && npm run build:esm && npm run build:cjs",
+    "build": "npm run clean:dist && npm run tailwind && npm run build:esm",
+    "build:watch": "npm run build && touch dist/.build-complete",
     "clean:dist": "mkdir -p dist && find dist -mindepth 1 -delete",
     "tailwind": "npx @tailwindcss/cli -i ./src/styles/tailwind.css -o dist/sparkle.css",
     "build:esm": "npm run copy:esm && tsgo && tsc-alias",
     "copy:esm": "copyfiles -u 1 src/**/*.css src/**/*.svg src/**/*.png src/**/*.json dist/esm",
-    "build:cjs": "node scripts/build-cjs.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:unit": "vitest run --config vitest.unit.config.ts",
@@ -18,7 +18,7 @@
     "watch": "npm-watch"
   },
   "watch": {
-    "build": {
+    "build:watch": {
       "patterns": ["src"],
       "extensions": "ts,tsx,css",
       "ignore": ""
@@ -27,24 +27,19 @@
   "nodemonConfig": {
     "signal": "SIGQUIT"
   },
-  "main": "dist/cjs/index.js",
+  "main": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
     },
     "./dist/esm/*": {
       "types": "./dist/esm/*.d.ts",
       "import": "./dist/esm/*.js",
       "default": "./dist/esm/*.js"
-    },
-    "./dist/cjs/*": {
-      "types": "./dist/esm/*.d.ts",
-      "require": "./dist/cjs/*.js"
     },
     "./dist/sparkle.css": "./dist/sparkle.css",
     "./styles/tailwind.css": "./src/styles/tailwind.css",
@@ -74,8 +69,6 @@
     "@vitest/browser-playwright": "4.0.18",
     "@vitest/coverage-v8": "4.0.18",
     "copyfiles": "^2.4.1",
-    "esbuild": "^0.27.3",
-    "esbuild-plugin-postcss2": "^0.1.2",
     "npm-watch": "^0.11.0",
     "playwright": "1.57.0",
     "react": "^18.3.1",
