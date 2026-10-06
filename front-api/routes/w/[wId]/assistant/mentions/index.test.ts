@@ -504,7 +504,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     }
   );
 
-  it("returns no agents when agent search fails", async () => {
+  it("fails when agent search fails", async () => {
     const { workspace } = await setup();
 
     vi.mocked(withEs).mockResolvedValueOnce(
@@ -514,9 +514,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
       query: "test",
       select: "agents",
     });
-    expect(response.status).toBe(200);
-    const body: { suggestions: RichMention[] } = await response.json();
-    expect(body.suggestions).toEqual([]);
+    expect(response.status).toBe(500);
   });
 
   it("does not search agents for user-only requests without feature flags", async () => {

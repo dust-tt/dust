@@ -13,7 +13,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { subFilter } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type {
   RichAgentMentionInConversation,
   RichMention,
@@ -171,11 +170,6 @@ export function parseMentionSelectParam(
  * readable favorites in alphabetical order when any exist, without searching. No favorites
  * or a nonblank query MUST retain the existing suggestions behavior.
  */
-/**
- * @cc [owner:aubin-tchoi,label:product;error-handling] agent-search-failure
- * When agent search fails, agent suggestions MUST be limited to mentionable conversation
- * participants matching the query; the error is logged and the request does not fail.
- */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -304,23 +298,16 @@ export const suggestionsOfMentions = async (
       permissionFiltering: "strict",
     });
     if (result.isErr()) {
-      logger.error(
-        {
-          error: result.error,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "Failed to search mention suggestions"
-      );
+      throw result.error;
     }
-    const searchResults: RichAgentMentionInConversation[] = result.isOk()
-      ? result.value.agents.map((agent) => ({
-          type: "agent",
-          id: agent.sId,
-          label: agent.name,
-          pictureUrl: agent.pictureUrl,
-          description: agent.description,
-        }))
-      : [];
+    const searchResults: RichAgentMentionInConversation[] =
+      result.value.agents.map((agent) => ({
+        type: "agent",
+        id: agent.sId,
+        label: agent.name,
+        pictureUrl: agent.pictureUrl,
+        description: agent.description,
+      }));
     const searchResultsById = new Map(
       searchResults.map((agent) => [agent.id, agent])
     );
