@@ -2885,10 +2885,10 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * @cc [owner:matteotrab,label:security] unattached-conversation-file-uploader-only
    * A `conversation` or `tool_output` file without `useCaseMetadata.conversationId` (uploaded
-   * before its message is sent, or never sent) MUST be accessible only to: a system key; the
-   * uploading user when `userId` is set; any non-system API key when `userId` is null (uploaded
-   * with an API key). Any other caller MUST be denied. Files with a `conversationId` are out of
-   * scope: callers MUST authorize them through the conversation instead.
+   * before its message is sent, or never sent) MUST be accessible only to: the uploading user when
+   * `userId` is set; any non-system API key when `userId` is null (uploaded with an API key). Any
+   * other caller MUST be denied. Files with a `conversationId` are out of scope: callers MUST
+   * authorize them through the conversation instead.
    */
   canAccessUnattachedConversationFile(auth: Authenticator): boolean {
     assert(
@@ -2896,10 +2896,6 @@ export class FileResource extends BaseResource<FileModel> {
         !this.useCaseMetadata?.conversationId,
       "Only unattached conversation files are authorized by their uploader."
     );
-
-    if (auth.isSystemKey()) {
-      return true;
-    }
 
     if (this.userId !== null) {
       return auth.user()?.id === this.userId;
