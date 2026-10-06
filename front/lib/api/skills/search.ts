@@ -17,6 +17,7 @@ import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFacet,
   SkillSearchFacetValues,
+  SkillSearchFavoritesMode,
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
   SkillSearchSort,
@@ -88,10 +89,11 @@ function buildFacetAggregation(
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-skills
- * With defaultToFavorites and a blank query, return only the current user's active, readable
- * favorites matching the search filters, alphabetically, excluding excludeSkillId. Archived
- * favorites MUST NOT participate in this default list. If none match, or the query is nonblank,
- * preserve ordinary search. Favorite selection MUST retain authorization, filters and pagination.
+ * Favorites mode "only" returns active, readable favorites matching the query and filters,
+ * excluding excludeSkillId. "fallback" does the same, but searches normally if no favorites match
+ * in total, not just on the requested page. "none" leaves favorites unfiltered.
+ * Favorite selection MUST retain authorization, filters and pagination. isFavoritesOnly reports
+ * whether the returned result is restricted to favorites. Blank-query favorites default to name sort.
  */
 export async function searchSkills(
   auth: Authenticator,
@@ -101,7 +103,7 @@ export async function searchSkills(
     sortBy,
     sortOrder,
     facets = [],
-    defaultToFavorites = false,
+    favoritesMode = "none",
     excludeSkillId,
     ...options
   }: {
@@ -114,7 +116,7 @@ export async function searchSkills(
     offset?: number;
     sortBy?: SkillSearchSort;
     sortOrder?: SkillSearchSortOrder;
-    defaultToFavorites?: boolean;
+    favoritesMode?: SkillSearchFavoritesMode;
     excludeSkillId?: string;
   }
 ) {
@@ -123,7 +125,7 @@ export async function searchSkills(
   }
 
   let favoriteIds: string[] = [];
-  if (defaultToFavorites && !options.searchTerm.trim()) {
+  if (favoritesMode !== "none") {
     const favorites = await SkillResource.listFavoritesForCurrentUser(auth, {
       withInstructions: false,
       withTools: false,
@@ -149,16 +151,24 @@ export async function searchSkills(
         index: SKILL_SEARCH_ALIAS_NAME,
         _source: true,
         query: favoritesOnly
-          ? { bool: { filter: [query, { terms: { skill_id: favoriteIds } }] } }
+          ? {
+              bool: {
+                must: [query],
+                filter: [{ terms: { skill_id: favoriteIds } }],
+              },
+            }
           : query,
         from: offset,
         size: limit,
         track_total_hits: true,
-        sort: buildSkillDefaultSort(
-          favoritesOnly
-            ? { sortBy: "name", sortOrder: "asc" }
-            : { sortBy, sortOrder }
-        ),
+        sort: buildSkillDefaultSort({
+          sortBy:
+            sortBy ??
+            (favoritesOnly && !options.searchTerm.trim()
+              ? "name"
+              : "relevance"),
+          sortOrder,
+        }),
         ...(facets.length > 0
           ? {
               aggs: Object.fromEntries(
@@ -168,13 +178,14 @@ export async function searchSkills(
           : {}),
       })
     );
-  let favoritesOnly = favoriteIds.length > 0;
+  let favoritesOnly = favoritesMode === "only" || favoriteIds.length > 0;
   let result = await fetchResults(favoritesOnly);
   if (result.isErr()) {
     return result;
   }
   const matchingFavorites = result.value.hits.total;
   if (
+    favoritesMode === "fallback" &&
     favoritesOnly &&
     (isNumber(matchingFavorites)
       ? matchingFavorites
@@ -211,6 +222,7 @@ export async function searchSkills(
     ),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
+    isFavoritesOnly: favoritesOnly,
     facets: facetValues,
   });
 }

@@ -2,6 +2,7 @@ import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/constants";
 import { SEARCH_TYPES } from "@app/types/api/search";
 import {
   SKILL_SEARCH_FACETS,
+  SKILL_SEARCH_FAVORITES_MODES,
   SKILL_SEARCH_SORT_ORDERS,
   SKILL_SEARCH_SORTS,
 } from "@app/types/api/skills";
@@ -91,7 +92,9 @@ export const SearchSkillsQuerySchema = BaseSearchSkillsSchema.extend({
     .optional(),
   sortBy: z.enum(SKILL_SEARCH_SORTS).optional(),
   sortOrder: z.enum(SKILL_SEARCH_SORT_ORDERS).optional(),
-  // Suggestion menus list alphabetical favorites for blank queries, falling back to normal search.
+  // "none" leaves favorites unfiltered; it does not exclude them.
+  favoritesMode: z.enum(SKILL_SEARCH_FAVORITES_MODES).optional(),
+  // @deprecated Older clients request blank-query favorites through this boolean.
   defaultToFavorites: z.boolean().optional(),
   // Only excluded from the default favorites list; ordinary search behavior is unchanged.
   excludeSkillId: z.string().min(1).optional(),

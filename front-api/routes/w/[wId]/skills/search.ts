@@ -33,6 +33,7 @@ app.post(
       facets,
       sortBy,
       sortOrder,
+      favoritesMode,
       defaultToFavorites,
       excludeSkillId,
     } = ctx.req.valid("json");
@@ -52,7 +53,9 @@ app.post(
       offset,
       sortBy,
       sortOrder,
-      defaultToFavorites,
+      favoritesMode:
+        favoritesMode ??
+        (defaultToFavorites && !query.trim() ? "fallback" : "none"),
       excludeSkillId,
       permissionFiltering,
       facets,
