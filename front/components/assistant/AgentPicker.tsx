@@ -1,6 +1,7 @@
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useClientType } from "@app/lib/context/clientType";
+import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
@@ -39,6 +40,7 @@ interface AgentPickerProps {
   onOpenChange?: (open: boolean) => void;
   selectedAgentId?: string | null;
   onDeselect?: () => void;
+  favoritesFirst?: boolean;
 }
 
 /**
@@ -46,6 +48,8 @@ interface AgentPickerProps {
  * The open, enabled picker MUST search agents in alphabetical order.
  * A selected match MUST stay first, including a supplied selection beyond the
  * first search page when the query is blank.
+ * With favoritesFirst, the user's favorite matches, fetched like blank @ mention
+ * suggestions, MUST follow the selection, alphabetically when the query is blank.
  */
 export function AgentPicker({
   owner,
@@ -62,6 +66,7 @@ export function AgentPicker({
   onOpenChange,
   selectedAgentId,
   onDeselect,
+  favoritesFirst = false,
 }: AgentPickerProps) {
   const clientType = useClientType();
   const isMobile = useIsMobile();
@@ -80,15 +85,38 @@ export function AgentPicker({
     permissionFiltering: "strict",
     disabled: !isOpen || disabled,
   });
+  const { suggestions, isLoading: isFavoritesLoading } = useMentionSuggestions({
+    workspaceId: owner.sId,
+    conversationId: null,
+    select: { agents: true, users: false },
+    disabled: !favoritesFirst || !isOpen || disabled,
+  });
+  const favoriteAgents: RichAgentMentionCandidate[] = suggestions
+    .filter((m) => m.type === "agent" && m.userFavorite)
+    .map((m) => ({
+      sId: m.id,
+      name: m.label,
+      pictureUrl: m.pictureUrl,
+      description: m.description,
+      userFavorite: true,
+    }));
+  const isListLoading = isAgentsLoading || isFavoritesLoading;
+  const isBlankSearch = !searchText.trim();
   const selected =
     searchResults.find((a) => a.sId === selectedAgentId) ??
     // Keep the current selection visible even if it is beyond the first search page.
-    (!searchText.trim()
-      ? agents.find((a) => a.sId === selectedAgentId)
-      : undefined);
-  const searchedAgents = selected
-    ? [selected, ...searchResults.filter((a) => a.sId !== selectedAgentId)]
-    : searchResults;
+    (isBlankSearch ? agents.find((a) => a.sId === selectedAgentId) : undefined);
+  const favoriteIds = new Set(favoriteAgents.map((a) => a.sId));
+  const favorites = isBlankSearch
+    ? favoriteAgents
+    : searchResults.filter((a) => favoriteIds.has(a.sId));
+  const searchedAgents = [
+    ...(selected ? [selected] : []),
+    ...favorites.filter((a) => a.sId !== selectedAgentId),
+    ...searchResults.filter(
+      (a) => a.sId !== selectedAgentId && !favoriteIds.has(a.sId)
+    ),
+  ];
 
   return (
     <DropdownMenu
@@ -134,7 +162,7 @@ export function AgentPicker({
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&
-                  !isAgentsLoading &&
+                  !isListLoading &&
                   !isAgentsError &&
                   searchedAgents.length > 0
                 ) {
@@ -157,7 +185,7 @@ export function AgentPicker({
           </>
         }
       >
-        {isAgentsLoading ? (
+        {isListLoading ? (
           <div role="status" aria-label="Loading agents">
             <div aria-hidden="true">
               {Array.from({ length: 10 }).map((_, i) => (

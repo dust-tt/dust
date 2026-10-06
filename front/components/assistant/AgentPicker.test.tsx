@@ -109,6 +109,7 @@ async function setup() {
   return {
     owner,
     legacyAgent,
+    fetcher,
     fetcherWithBody,
     onItemClick,
     onDeselect,
@@ -161,6 +162,46 @@ describe("AgentPicker", () => {
     expect(
       screen.getByPlaceholderText("Search for agents")
     ).toBeInTheDocument();
+  });
+
+  it("lists the @ mention favorites first", async () => {
+    const { owner, fetcher, renderPicker } = await setup();
+    fetcher.mockResolvedValue({
+      suggestions: [
+        {
+          type: "agent",
+          id: remoteAgents[1].sId,
+          label: remoteAgents[1].name,
+          pictureUrl: remoteAgents[1].pictureUrl,
+          description: remoteAgents[1].description,
+          userFavorite: true,
+        },
+        {
+          type: "agent",
+          id: "favorite_zulu",
+          label: "Zulu",
+          pictureUrl: "/zulu.png",
+          description: "Zulu assistant",
+          userFavorite: true,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    renderPicker({ favoritesFirst: true, agents: [] });
+    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
+    await screen.findByRole("menuitem", { name: "Zulu" });
+    expect(fetcher).toHaveBeenCalledWith(
+      `/api/w/${owner.sId}/assistant/mentions/suggestions?query=&select=agents`
+    );
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent)
+    ).toEqual(["Beta", "Zulu", "Alpha"]);
+    await user.type(screen.getByPlaceholderText("Search for agents"), "a");
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("menuitem").map((item) => item.textContent)
+      ).toEqual(["Beta", "Alpha"])
+    );
   });
 
   it("does not select stale results while a typed query is loading", async () => {
