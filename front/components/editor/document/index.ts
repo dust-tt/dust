@@ -1,5 +1,6 @@
 export { Document } from "@app/components/editor/document/Document";
 export type {
+  DocumentCommentAvatarSize,
   DocumentDraftState,
   DocumentProps,
   DocumentSaveResult,

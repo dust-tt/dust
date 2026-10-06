@@ -1,5 +1,6 @@
 import { Document } from "@app/components/editor/document";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -386,7 +387,7 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
-      if (markdownRichEditor) {
+      if (markdownRichEditor && owner) {
         return (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Document
@@ -400,6 +401,13 @@ export function FilePreviewContent({
                   : undefined
               }
               badge={<CoEditionBadge />}
+              renderCommentAuthorAvatar={(author, size) => (
+                <CommentAuthorAvatar
+                  owner={owner}
+                  author={author}
+                  size={size}
+                />
+              )}
             />
           </div>
         );
