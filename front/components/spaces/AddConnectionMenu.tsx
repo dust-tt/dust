@@ -2,7 +2,10 @@ import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateCo
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import {
@@ -118,6 +121,7 @@ export const AddConnectionMenu = ({
   integrations,
 }: AddConnectionMenuProps) => {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
@@ -289,15 +293,9 @@ export const AddConnectionMenu = ({
         onCreated(createdManagedDataSource.dataSource);
       } else {
         const error = await res.json();
-        const errorMessage =
-          error?.error?.connectors_error?.message ??
-          error?.error?.message ??
-          undefined;
-
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to enable connection (${provider})`,
-          description: errorMessage,
+          error,
         });
       }
     } catch {

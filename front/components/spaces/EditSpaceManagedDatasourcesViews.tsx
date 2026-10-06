@@ -3,7 +3,10 @@ import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPe
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
   getDisplayNameForDataSource,
@@ -69,6 +72,7 @@ export function EditSpaceManagedDataSourcesViews({
   onOpenModalHandled,
 }: EditSpaceManagedDataSourcesViewsProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -208,10 +212,10 @@ export function EditSpaceManagedDataSourcesViews({
           );
           if (!res.ok) {
             const rawError: { error: APIError } = await res.json();
-            return rawError.error.message;
+            return rawError;
           }
         } catch (e) {
-          return `${e}`;
+          return e;
         }
         return null;
       })
@@ -275,11 +279,10 @@ export function EditSpaceManagedDataSourcesViews({
 
             if (!res.ok) {
               const rawError: { error: APIError } = await res.json();
-              return rawError.error.message;
+              return rawError;
             }
           } catch (e) {
-            const errorMessage = `${e}`;
-            return t`An unknown error ${errorMessage} occurred while adding data to space.`;
+            return e;
           }
           return null;
         }
@@ -290,10 +293,9 @@ export function EditSpaceManagedDataSourcesViews({
       deletePromisesErrors.concat(upsertPromisesErors)
     );
     if (errors.length) {
-      sendNotification({
+      sendApiErrorNotification({
         title: t`Error adding data to space`,
-        type: "error",
-        description: errors[0],
+        error: errors[0],
       });
     } else {
       sendNotification({

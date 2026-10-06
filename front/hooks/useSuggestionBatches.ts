@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -87,6 +90,7 @@ interface UsePatchSuggestionBatchParams {
 function usePatchSuggestionBatch({
   workspaceId,
 }: UsePatchSuggestionBatchParams) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const patchBatch = useCallback(
@@ -108,10 +112,9 @@ function usePatchSuggestionBatch({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update the suggestions",
-            description: errorData.message,
+            error: errorData,
           });
           return null;
         }
@@ -125,7 +128,7 @@ function usePatchSuggestionBatch({
         return null;
       }
     },
-    [sendNotification, workspaceId]
+    [sendApiErrorNotification, sendNotification, workspaceId]
   );
 
   return { patchBatch };

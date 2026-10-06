@@ -929,6 +929,7 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { user } = useAuth();
   const sensitivityLabelsController = useSensitivityLabelsController({
@@ -991,18 +992,9 @@ export function ConnectorPermissionsModal({
         );
 
         if (!r.ok) {
-          const error: {
-            error: {
-              type: string;
-              message: string;
-              connectors_error: { type: string; message: string };
-            };
-          } = await r.json();
-          console.log(JSON.stringify(error, null, 2));
-          sendNotification({
-            type: "error",
-            title: error.error.message,
-            description: error.error.connectors_error.message,
+          sendApiErrorNotification({
+            title: "Failed to update permissions",
+            error: await r.json(),
           });
           return;
         } else {

@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getBrowserMarkdownPipeline } from "@app/lib/editor/browser_markdown_pipeline";
 import { previewSkillSuggestions } from "@app/lib/editor/preview_skill_suggestions";
@@ -113,6 +116,7 @@ export function usePatchSkillSuggestions({
   skillId,
   workspaceId,
 }: UsePatchSkillSuggestionsParams) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const patchSuggestions = useCallback(
@@ -141,10 +145,9 @@ export function usePatchSkillSuggestions({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update skill suggestion",
-            description: errorData.message,
+            error: errorData,
           });
           return null;
         }
@@ -159,7 +162,7 @@ export function usePatchSkillSuggestions({
         return null;
       }
     },
-    [skillId, sendNotification, workspaceId]
+    [skillId, sendApiErrorNotification, sendNotification, workspaceId]
   );
 
   return { patchSuggestions };
