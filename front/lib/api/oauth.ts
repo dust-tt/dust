@@ -19,7 +19,10 @@ import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
 import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
-import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
+import {
+  GithubOAuthProvider,
+  githubAppContinueAuthorizeUriFromQuery,
+} from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
 import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
 import { GoogleDriveOAuthProvider } from "@app/lib/api/oauth/providers/google_drive";
@@ -438,6 +441,10 @@ function assertFinalizeOwnership({
   return new Ok(undefined);
 }
 
+export type FinalizeConnectionResult =
+  | { type: "finalized"; connection: OAuthConnectionType }
+  | { type: "continue_authorize"; authorizeUrl: string };
+
 /**
  * @cc [owner:flvndvd,label:backend] tolerate-missing-workspace
  * `auth` MAY be null or carry no workspace: the callback session can reference a
@@ -459,7 +466,7 @@ export async function finalizeConnection(
   provider: OAuthProvider,
   query: ParsedUrlQuery,
   options: FinalizeConnectionOptions = {}
-): Promise<Result<OAuthConnectionType, OAuthError>> {
+): Promise<Result<FinalizeConnectionResult, OAuthError>> {
   const childLogger = logger.child({
     workspaceId: auth?.workspace()?.sId ?? options.sessionWorkspaceId,
     userId: auth?.user()?.sId,
@@ -467,29 +474,6 @@ export async function finalizeConnection(
   });
 
   const providerStrategy = getProviderStrategy(provider);
-  const code = providerStrategy.codeFromQuery(query);
-
-  if (!code) {
-    const { error, error_description: errorDescription } = query;
-    const oauthError = isString(error) ? error : undefined;
-    const oauthErrorDescription = isString(errorDescription)
-      ? errorDescription
-      : undefined;
-
-    childLogger.error(
-      {
-        step: "code_extraction",
-        oauthError,
-        oauthErrorDescription,
-      },
-      "OAuth: Failed to finalize connection"
-    );
-    return new Err({
-      code: "connection_finalization_failed",
-      message: `Failed to finalize ${provider} connection: authorization code not found in query`,
-    });
-  }
-
   const connectionId = providerStrategy.connectionIdFromQuery(query);
 
   if (!connectionId) {
@@ -503,24 +487,11 @@ export async function finalizeConnection(
     });
   }
 
-  if (
-    providerStrategy.isCallbackQueryValid &&
-    !providerStrategy.isCallbackQueryValid(query)
-  ) {
-    childLogger.error(
-      { connectionId, step: "callback_validation" },
-      "OAuth: Failed to finalize connection"
-    );
-    return new Err({
-      code: "connection_finalization_failed",
-      message: `Failed to finalize ${provider} connection: invalid callback signature`,
-    });
-  }
-
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   // Fetching the connection metadata is necessary to build the redirect URI
-  // and to enforce ownership / finalize-nonce binding before code exchange.
+  // and to enforce ownership / finalize-nonce binding before code exchange
+  // or a GitHub legacy-install continue-authorize redirect.
   const connectionRes = await api.getConnectionMetadata({
     connectionId,
   });
@@ -554,6 +525,60 @@ export async function finalizeConnection(
       "OAuth: Refusing to finalize connection — ownership or finalize nonce mismatch"
     );
     return ownershipRes;
+  }
+
+  // GitHub-only: legacy installs (App already on the account/org) often return
+  // installation_id without a user OAuth code. Continue via /login/oauth/authorize
+  // instead of failing finalize. Not modeled on BaseOAuthStrategyProvider.
+  if (provider === "github") {
+    const authorizeUrl = githubAppContinueAuthorizeUriFromQuery(
+      query,
+      connection
+    );
+    if (authorizeUrl) {
+      childLogger.info(
+        { connectionId, step: "github_legacy_install_continue_authorize" },
+        "OAuth: Continuing GitHub App finalize with user authorization"
+      );
+      return new Ok({ type: "continue_authorize", authorizeUrl });
+    }
+  }
+
+  const code = providerStrategy.codeFromQuery(query);
+
+  if (!code) {
+    const { error, error_description: errorDescription } = query;
+    const oauthError = isString(error) ? error : undefined;
+    const oauthErrorDescription = isString(errorDescription)
+      ? errorDescription
+      : undefined;
+
+    childLogger.error(
+      {
+        step: "code_extraction",
+        oauthError,
+        oauthErrorDescription,
+      },
+      "OAuth: Failed to finalize connection"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: authorization code not found in query`,
+    });
+  }
+
+  if (
+    providerStrategy.isCallbackQueryValid &&
+    !providerStrategy.isCallbackQueryValid(query)
+  ) {
+    childLogger.error(
+      { connectionId, step: "callback_validation" },
+      "OAuth: Failed to finalize connection"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: invalid callback signature`,
+    });
   }
 
   const cRes = await api.finalizeConnection({
@@ -613,8 +638,11 @@ export async function finalizeConnection(
   // Do not return the finalize-nonce hash to callers; it is only needed for the
   // ownership check above and should not circulate after a successful finalize.
   return new Ok({
-    ...cRes.value.connection,
-    metadata: scrubFinalizeNonceFromMetadata(cRes.value.connection.metadata),
+    type: "finalized",
+    connection: {
+      ...cRes.value.connection,
+      metadata: scrubFinalizeNonceFromMetadata(cRes.value.connection.metadata),
+    },
   });
 }
 

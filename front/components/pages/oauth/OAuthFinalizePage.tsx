@@ -46,6 +46,12 @@ export function OAuthFinalizePage() {
       // (e.g. go to GitHub and configure repositories from Dust App in Settings, hence no opener).
       const res = await doFinalize(validProvider, queryParams);
 
+      // Legacy GitHub App installs: continue in-popup to user OAuth authorize.
+      if (res.isOk() && res.value.type === "continue_authorize") {
+        window.location.assign(res.value.authorizeUrl);
+        return;
+      }
+
       // Prepare message data. Success payloads omit connection metadata so a
       // compromised trusted origin does not also receive workspace/user ids or
       // opener_origin; connection_id remains (required for legitimate openers).
@@ -57,15 +63,19 @@ export function OAuthFinalizePage() {
           }
         : {
             type: "connection_finalized",
-            connection: connectionPayloadForOpener(res.value),
+            connection:
+              res.value.type === "finalized"
+                ? connectionPayloadForOpener(res.value.connection)
+                : undefined, // Can't really happen, but TypeScript needs it
             provider: validProvider,
           };
 
       // Re-validate opener_origin from connection metadata before postMessage.
       // Attacker-controlled values must never be used as targetOrigin.
-      const rawOpenerOrigin = res.isOk()
-        ? res.value.metadata.opener_origin
-        : undefined;
+      const rawOpenerOrigin =
+        res.isOk() && res.value.type === "finalized"
+          ? res.value.connection.metadata.opener_origin
+          : undefined;
       const targetOrigin = resolveOAuthPostMessageTargetOrigin(
         rawOpenerOrigin,
         window.location.origin

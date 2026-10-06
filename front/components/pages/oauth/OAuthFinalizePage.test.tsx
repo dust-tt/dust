@@ -61,17 +61,48 @@ describe("OAuthFinalizePage postMessage target origin", () => {
     });
   });
 
+  it("redirects when finalize asks to continue authorize", async () => {
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...window.location,
+        origin: "https://app.dust.tt",
+        href: "https://app.dust.tt/oauth/github/finalize",
+        assign,
+      },
+    });
+    mocks.doFinalize.mockResolvedValue(
+      new Ok({
+        type: "continue_authorize",
+        authorizeUrl: "https://github.com/login/oauth/authorize?client_id=x",
+      })
+    );
+
+    render(<OAuthFinalizePage />);
+
+    await waitFor(() => {
+      expect(assign).toHaveBeenCalledWith(
+        "https://github.com/login/oauth/authorize?client_id=x"
+      );
+    });
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
   it("posts to a legitimate Dust opener origin and omits connection metadata", async () => {
     mocks.doFinalize.mockResolvedValue(
       new Ok({
-        connection_id: "con_1",
-        created: 1,
-        provider: "github",
-        status: "finalized",
-        metadata: {
-          opener_origin: "https://dust.tt",
-          workspace_id: "w_1",
-          user_id: "user_1",
+        type: "finalized",
+        connection: {
+          connection_id: "con_1",
+          created: 1,
+          provider: "github",
+          status: "finalized",
+          metadata: {
+            opener_origin: "https://dust.tt",
+            workspace_id: "w_1",
+            user_id: "user_1",
+          },
         },
       })
     );
@@ -102,13 +133,16 @@ describe("OAuthFinalizePage postMessage target origin", () => {
   it("does not postMessage to an attacker-controlled opener origin", async () => {
     mocks.doFinalize.mockResolvedValue(
       new Ok({
-        connection_id: "con_stolen",
-        created: 1,
-        provider: "github",
-        status: "finalized",
-        metadata: {
-          opener_origin: "https://attacker.example",
-          workspace_id: "w_victim",
+        type: "finalized",
+        connection: {
+          connection_id: "con_stolen",
+          created: 1,
+          provider: "github",
+          status: "finalized",
+          metadata: {
+            opener_origin: "https://attacker.example",
+            workspace_id: "w_victim",
+          },
         },
       })
     );
