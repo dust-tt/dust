@@ -4785,7 +4785,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
-    id: 10044,
+    id: 10046,
     name: "Paddle",
     description:
       "Manage Paddle pricing, billing, subscriptions, and integrations through Paddle's hosted MCP server.",
