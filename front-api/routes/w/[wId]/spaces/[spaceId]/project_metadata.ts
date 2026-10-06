@@ -10,7 +10,6 @@ import type {
 } from "@app/types/api/projects/metadata";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -50,15 +49,14 @@ app.get(
         withFileAttachments: false,
       }
     );
-    const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
 
     return ctx.json({
       projectMetadata: metadata ? metadata.toJSON() : null,
-      defaultSkills: removeNulls(
-        (metadata?.defaultSkillIds ?? []).map(
-          (skillId) => skillsById.get(skillId) ?? null
+      defaultSkills: skills
+        .sort(
+          (a, b) => a.name.localeCompare(b.name) || a.sId.localeCompare(b.sId)
         )
-      ).map((skill) => skill.toJSON(auth)),
+        .map((skill) => skill.toJSON(auth)),
     });
   }
 );

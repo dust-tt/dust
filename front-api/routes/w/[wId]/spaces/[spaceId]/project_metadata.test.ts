@@ -70,14 +70,14 @@ describe("GET /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
-  it("returns only readable active defaults in their stored order", async () => {
+  it("returns only readable active defaults in alphabetical order", async () => {
     const { workspace, auth, user } = await createPrivateApiMockRequest({
       role: "user",
     });
     const projectSpace = await SpaceFactory.project(workspace, user.id);
     const privateSpace = await SpaceFactory.regular(workspace);
-    const first = await SkillFactory.create(auth, { name: "First" });
     const second = await SkillFactory.create(auth, { name: "Second" });
+    const first = await SkillFactory.create(auth, { name: "First" });
     const archived = await SkillFactory.create(auth, { status: "archived" });
     const unreadable = await SkillFactory.create(auth, {
       requestedSpaceIds: [privateSpace.id],
@@ -93,9 +93,9 @@ describe("GET /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const response = await getMetadata(workspace, projectSpace.sId);
     expect(response.status).toBe(200);
     const data: GetPodMetadataResponseBody = await response.json();
-    expect(data.defaultSkills?.map((skill) => skill.sId)).toEqual([
-      second.sId,
+    expect(data.defaultSkills.map((skill) => skill.sId)).toEqual([
       first.sId,
+      second.sId,
     ]);
   });
 });
@@ -276,10 +276,10 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
       skillB.sId,
       globalSkillId,
     ]);
-    expect(data.defaultSkills?.map((skill) => skill.sId)).toEqual([
+    expect(data.defaultSkills.map((skill) => skill.sId)).toEqual([
+      globalSkillId,
       skillA.sId,
       skillB.sId,
-      globalSkillId,
     ]);
 
     // Replacing drops the omitted skills; keep one custom + the global one.
