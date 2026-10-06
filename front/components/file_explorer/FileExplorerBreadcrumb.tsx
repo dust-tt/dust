@@ -14,6 +14,7 @@ import {
   BreadcrumbPage,
   cn,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 
 interface BreadcrumbDropZoneProps {
@@ -64,10 +65,11 @@ export function FileExplorerBreadcrumb({
   onNavigate,
   onMoveFileDrop,
 }: FileExplorerBreadcrumbProps) {
+  const { t } = useLingui();
   const isDragging = useIsFileExplorerDragging();
   const segments = getFolderBreadcrumbSegments(currentFolderPath);
   const allItems = [
-    { label: ROOT_FOLDER_LABEL, path: "" },
+    { label: t(ROOT_FOLDER_LABEL), path: "" },
     ...segments.map((s) => ({ label: s.label, path: s.path })),
   ];
 
@@ -75,7 +77,7 @@ export function FileExplorerBreadcrumb({
     <div className="flex items-center gap-2">
       {currentFolderPath !== "" && isDragging && (
         <span className="animate-in fade-in slide-in-from-left-1 duration-150 text-sm font-medium leading-5 text-foreground">
-          Move to…
+          <Trans>Move to…</Trans>
         </span>
       )}
       <Breadcrumb>

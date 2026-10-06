@@ -10,6 +10,7 @@ import type { FileAttachmentType } from "@app/types/api/assistant/conversation/a
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 export type ContextFileSlashSearchSelection = {
@@ -79,6 +80,7 @@ export function useContextFileSlashSearchItems({
   owner: LightWorkspaceType;
   spaceId?: string | null;
 }) {
+  const { t } = useLingui();
   const shouldSearchFiles =
     includeFiles && normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
 
@@ -157,7 +159,8 @@ export function useContextFileSlashSearchItems({
         };
 
         const fileKind = getSingularFileCategoryLabelForContentType(
-          podFile.contentType
+          podFile.contentType,
+          t
         );
         const description = projectName
           ? `${fileKind} in "${projectName}" knowledge`
@@ -183,7 +186,14 @@ export function useContextFileSlashSearchItems({
       ...sortContextFileItemsByLabel(conversationFiles),
       ...sortContextFileItemsByLabel(podContextFiles),
     ];
-  }, [attachments, podFiles, projectName, shouldSearchFiles, normalizedQuery]);
+  }, [
+    attachments,
+    podFiles,
+    projectName,
+    shouldSearchFiles,
+    normalizedQuery,
+    t,
+  ]);
 
   const isFileItemsLoading =
     shouldSearchFiles &&

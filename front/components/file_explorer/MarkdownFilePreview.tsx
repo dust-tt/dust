@@ -8,6 +8,7 @@ import {
   LinkBlock,
   Markdown,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import type { Components } from "react-markdown";
@@ -39,6 +40,12 @@ export function MarkdownFilePreviewViewModeSwitch({
   disabled,
   hideLabels = false,
 }: MarkdownFilePreviewViewModeSwitchProps) {
+  const { t } = useLingui();
+  const previewLabel = t({
+    message: "Preview",
+    context: "markdown file view mode",
+  });
+  const editLabel = t({ message: "Edit", context: "markdown file view mode" });
   return (
     <ButtonsSwitchList
       value={viewMode}
@@ -52,15 +59,15 @@ export function MarkdownFilePreviewViewModeSwitch({
     >
       <ButtonsSwitch
         value="preview"
-        label={hideLabels ? undefined : "Preview"}
+        label={hideLabels ? undefined : previewLabel}
         icon={Eye}
-        tooltip={hideLabels ? "Preview" : undefined}
+        tooltip={hideLabels ? previewLabel : undefined}
       />
       <ButtonsSwitch
         value="edit"
-        label={hideLabels ? undefined : "Edit"}
+        label={hideLabels ? undefined : editLabel}
         icon={Edit04}
-        tooltip={hideLabels ? "Edit" : undefined}
+        tooltip={hideLabels ? editLabel : undefined}
       />
     </ButtonsSwitchList>
   );

@@ -20,6 +20,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface FilesTabProps {
@@ -29,6 +30,7 @@ interface FilesTabProps {
 }
 
 export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
+  const { t } = useLingui();
   const {
     inputValue: search,
     debouncedValue: debouncedSearch,
@@ -93,7 +95,7 @@ export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
             }
             return (
               <div key={value}>
-                <SectionLabel>{plural}</SectionLabel>
+                <SectionLabel>{t(plural)}</SectionLabel>
                 <FileCards rows={categoryRows} owner={owner} />
               </div>
             );

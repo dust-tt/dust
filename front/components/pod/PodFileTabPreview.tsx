@@ -21,6 +21,7 @@ import { contentTypeFromFileName } from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -40,6 +41,7 @@ export function PodFileTabPreview({
   filePath,
   canEdit,
 }: PodFileTabPreviewProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
 
@@ -169,7 +171,11 @@ export function PodFileTabPreview({
       return;
     }
     if (isTruncated) {
-      sendNotification({ type: "error", ...CUT_TEXT_SAVE_REFUSED });
+      sendNotification({
+        type: "error",
+        title: t(CUT_TEXT_SAVE_REFUSED.title),
+        description: t(CUT_TEXT_SAVE_REFUSED.description),
+      });
       return;
     }
 

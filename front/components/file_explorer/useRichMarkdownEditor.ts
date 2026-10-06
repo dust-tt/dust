@@ -3,6 +3,8 @@ import type {
   DocumentSaveResult,
 } from "@app/components/editor/document";
 import { Err } from "@app/types/shared/result";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
@@ -57,8 +59,7 @@ const IDLE_DRAFT: DocumentDraftState = {
   error: null,
 };
 
-const CONFLICT_MESSAGE =
-  "This file changed while you were editing. Copy your changes, then reopen the file.";
+const CONFLICT_MESSAGE = msg`This file changed while you were editing. Copy your changes, then reopen the file.`;
 
 function isOwnWrite(
   written: Written | null,
@@ -84,6 +85,7 @@ export function useRichMarkdownEditor({
   writeFile,
   adoptWritten,
 }: UseRichMarkdownEditorParams): RichMarkdownEditorState {
+  const { t } = useLingui();
   const [draft, setDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
   const [opened, setOpened] = useState<Opened | null>(null);
   // How many times the editor reopened on foreign content; part of the mount key. Reopening
@@ -137,7 +139,7 @@ export function useRichMarkdownEditor({
       source !== base &&
       !isOwnWrite(writtenRef.current, entryPath, source);
     if (conflict) {
-      return new Err(CONFLICT_MESSAGE);
+      return new Err(t(CONFLICT_MESSAGE));
     }
     const result = await writeFile(content);
     if (result.isErr()) {

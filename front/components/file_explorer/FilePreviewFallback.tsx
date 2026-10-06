@@ -1,4 +1,5 @@
 import { Button, Download01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export type FilePreviewDownloadAction =
   | { href: string }
@@ -13,6 +14,7 @@ export function FilePreviewFallback({
   download,
   message,
 }: FilePreviewFallbackProps) {
+  const { t } = useLingui();
   return (
     <div className="flex h-full flex-1 flex-col items-center justify-center gap-3 p-8">
       <p className="text-center text-sm text-muted-foreground">{message}</p>
@@ -21,7 +23,7 @@ export function FilePreviewFallback({
           variant="outline"
           size="sm"
           icon={Download01}
-          label="Download"
+          label={t`Download`}
           {...("href" in download
             ? {
                 href: download.href,

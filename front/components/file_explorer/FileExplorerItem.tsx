@@ -38,6 +38,9 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useState } from "react";
 
@@ -63,6 +66,7 @@ type FileExplorerItemProps = {
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
+  const { t } = useLingui();
   const {
     containerClassName,
     downloadOnOpen = false,
@@ -146,7 +150,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       <DropdownMenuContent align="end">
         {onDownload && (
           <DropdownMenuItem
-            label={isDownloading ? "Downloading…" : "Download"}
+            label={isDownloading ? t`Downloading…` : t`Download`}
             icon={Download01}
             disabled={isDownloading}
             onClick={handleDownload}
@@ -237,10 +241,12 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
 
 function getFileSubtitle(
   entry: FileSystemFileEntry,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  t: (descriptor: MessageDescriptor) => string
 ): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
-    entry.contentType
+    entry.contentType,
+    t
   );
   const timeLabel = entry.lastModifiedMs
     ? formatTimeDistance(entry.lastModifiedMs, Date.now(), {
@@ -301,13 +307,12 @@ export function FileExplorerFolderCard({
   onMoveFileDrop,
   extraMenuItems,
 }: FileExplorerFolderCardProps) {
+  const { t } = useLingui();
   const childCount = node.children.length;
   const subtitle =
     childCount === 0
-      ? "Empty"
-      : childCount === 1
-        ? "1 item"
-        : `${childCount} items`;
+      ? t({ message: "Empty", context: "folder with no items" })
+      : t`${plural(childCount, { one: "# item", other: "# items" })}`;
 
   return (
     <FileExplorerDropTargetWrapper
@@ -390,7 +395,8 @@ export function FileExplorerFileCard({
   onDownload,
   extraMenuItems,
 }: FileExplorerFileCardProps) {
-  const subtitle = getFileSubtitle(entry, viewMode);
+  const { t } = useLingui();
+  const subtitle = getFileSubtitle(entry, viewMode, t);
   const downloadOnOpen = !isFilePreviewableContentType(entry.contentType);
   const title =
     searchFolderPath !== undefined
@@ -468,6 +474,7 @@ export function FileExplorerFramePackageCard({
   onOpen,
   extraMenuItems,
 }: FileExplorerFramePackageCardProps) {
+  const { t } = useLingui();
   const title =
     searchFolderPath !== undefined
       ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
@@ -479,7 +486,7 @@ export function FileExplorerFramePackageCard({
       visual={getFileTypeIcon(entry.contentType, entry.fileName)}
       viewMode={viewMode}
       title={title}
-      subtitle="Frame"
+      subtitle={t`Frame`}
       onDownload={onDownload}
       onOpen={() => onOpen(entry)}
       extraMenuItems={extraMenuItems}
@@ -500,6 +507,7 @@ export function ContentNodeCard({
   onOpen,
   extraMenuItems,
 }: ContentNodeCardProps) {
+  const { t } = useLingui();
   const ProviderIcon = getConnectorProviderLogoWithFallback({
     provider: entry.connectorProvider,
     fallback: CloudArrowLeftRight,
@@ -511,7 +519,7 @@ export function ContentNodeCard({
       visual={ProviderIcon}
       viewMode={viewMode}
       title={entry.fileName}
-      subtitle="Knowledge"
+      subtitle={t`Knowledge`}
       onOpen={() => onOpen(entry)}
       extraMenuItems={extraMenuItems}
     />
@@ -523,7 +531,7 @@ export function FileExplorerEmptyState() {
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
       <Icon visual={FolderOpen} size="lg" className="text-muted-foreground" />
       <p className="copy-base text-center text-muted-foreground">
-        Nothing to see here
+        <Trans>Nothing to see here</Trans>
       </p>
     </div>
   );

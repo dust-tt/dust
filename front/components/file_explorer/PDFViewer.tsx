@@ -1,6 +1,8 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -83,6 +85,7 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
+  const { t } = useLingui();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const resizeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -228,7 +231,7 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
       {hasError && (
         <div className="flex flex-1 items-center justify-center px-4">
           <p className="text-sm text-muted-foreground">
-            Unable to load file. You can download it instead.
+            <Trans>Unable to load file. You can download it instead.</Trans>
           </p>
         </div>
       )}
@@ -237,7 +240,9 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
           {numPages !== null && (
             <div className="flex items-center justify-between rounded-lg bg-muted-background px-3 py-1.5">
               <span className="text-xs text-muted-foreground">
-                Page {currentPage} of {numPages}
+                <Trans>
+                  Page {currentPage} of {numPages}
+                </Trans>
               </span>
               {!isFullWidth && (
                 <div className="flex items-center gap-1">
@@ -247,10 +252,10 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
                     label="-"
                     disabled={zoomIdx <= 0}
                     onClick={() => dispatch({ type: "zoom_out" })}
-                    tooltip="Zoom out"
+                    tooltip={t`Zoom out`}
                   />
                   <span className="w-10 text-center text-xs text-muted-foreground">
-                    {Math.round(zoom * 100)}%
+                    {formatNumber(zoom, { style: "percent" })}
                   </span>
                   <Button
                     variant="ghost"
@@ -258,7 +263,7 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
                     label="+"
                     disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
                     onClick={() => dispatch({ type: "zoom_in" })}
-                    tooltip="Zoom in"
+                    tooltip={t`Zoom in`}
                   />
                 </div>
               )}

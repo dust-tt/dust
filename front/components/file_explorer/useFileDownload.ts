@@ -2,6 +2,7 @@ import type { FileEntry } from "@app/components/file_explorer/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useRef } from "react";
 
 export function useFileDownload({
@@ -9,6 +10,7 @@ export function useFileDownload({
 }: {
   getFileResponse: (path: string) => Promise<Response>;
 }): (entry: FileEntry) => Promise<void> {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const blobUrlRef = useRef<string | null>(null);
 
@@ -37,11 +39,11 @@ export function useFileDownload({
 
         sendNotification({
           type: "error",
-          title: "Failed to download the file.",
-          description: "An error occurred while downloading. Please try again.",
+          title: t`Failed to download the file.`,
+          description: t`An error occurred while downloading. Please try again.`,
         });
       }
     },
-    [getFileResponse, sendNotification]
+    [getFileResponse, sendNotification, t]
   );
 }
