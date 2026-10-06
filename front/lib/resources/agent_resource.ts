@@ -1330,6 +1330,15 @@ export class AgentResource
   static async listFavoritesForCurrentUser(
     auth: Authenticator
   ): Promise<AgentResource[]> {
+    return this.fetchByIds(
+      auth,
+      await this.listFavoriteIdsForCurrentUser(auth)
+    );
+  }
+
+  static async listFavoriteIdsForCurrentUser(
+    auth: Authenticator
+  ): Promise<string[]> {
     const user = auth.user();
     if (!user) {
       return [];
@@ -1344,10 +1353,7 @@ export class AgentResource
       },
     });
 
-    return this.fetchByIds(
-      auth,
-      relations.map((relation) => relation.agentConfiguration)
-    );
+    return relations.map((relation) => relation.agentConfiguration);
   }
 
   // Agents `authorModelId` authored any version of (matches the legacy "created by me" view; the

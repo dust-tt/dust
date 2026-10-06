@@ -39,6 +39,7 @@ interface AgentPickerProps {
   onOpenChange?: (open: boolean) => void;
   selectedAgentId?: string | null;
   onDeselect?: () => void;
+  favoritesFirst?: boolean;
 }
 
 /**
@@ -46,6 +47,8 @@ interface AgentPickerProps {
  * The open, enabled picker MUST search agents in alphabetical order.
  * A selected match MUST stay first, including a supplied selection beyond the
  * first search page when the query is blank.
+ * With favoritesFirst, the search MUST rank the user's favorites first (see
+ * `agent-search-favorites-first`), right after the selection.
  */
 export function AgentPicker({
   owner,
@@ -62,6 +65,7 @@ export function AgentPicker({
   onOpenChange,
   selectedAgentId,
   onDeselect,
+  favoritesFirst = false,
 }: AgentPickerProps) {
   const clientType = useClientType();
   const isMobile = useIsMobile();
@@ -78,6 +82,7 @@ export function AgentPicker({
     sortBy: "name",
     sortOrder: "asc",
     permissionFiltering: "strict",
+    favoritesFirst,
     disabled: !isOpen || disabled,
   });
   const selected =

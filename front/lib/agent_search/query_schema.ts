@@ -97,4 +97,5 @@ export const SearchAgentsQuerySchema = BaseSearchAgentsSchema.extend({
     .optional(),
   sortBy: z.enum(AGENT_SEARCH_SORTS).optional(),
   sortOrder: z.enum(AGENT_SEARCH_SORT_ORDERS).optional(),
+  favoritesFirst: z.boolean().optional(),
 });

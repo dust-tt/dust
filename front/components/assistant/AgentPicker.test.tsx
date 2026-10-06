@@ -163,6 +163,26 @@ describe("AgentPicker", () => {
     ).toBeInTheDocument();
   });
 
+  it("asks the search to rank favorites first and keeps its order", async () => {
+    const { fetcherWithBody, renderPicker } = await setup();
+    fetcherWithBody.mockResolvedValue({
+      ...searchResponse,
+      agents: [remoteAgents[1], remoteAgents[0]],
+    });
+    const user = userEvent.setup();
+    renderPicker({ favoritesFirst: true, agents: [] });
+    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
+    await screen.findByRole("menuitem", { name: "Beta" });
+    expect(fetcherWithBody).toHaveBeenCalledWith([
+      expect.any(String),
+      expect.objectContaining({ favoritesFirst: true }),
+      "POST",
+    ]);
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent)
+    ).toEqual(["Beta", "Alpha"]);
+  });
+
   it("does not select stale results while a typed query is loading", async () => {
     const { fetcherWithBody, onItemClick, renderPicker } = await setup();
     const user = userEvent.setup();
