@@ -19,6 +19,7 @@ import {
   RadioGroupCustomItem,
   Separator,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React, { useState } from "react";
 
 interface SpaceSelectorProps {
@@ -33,6 +34,7 @@ export function SpaceSelector({
   renderChildren,
   spaces,
 }: SpaceSelectorProps) {
+  const { t } = useLingui();
   const [selectedSpace, setSelectedSpace] = useState<string | undefined>(
     defaultSpace
   );
@@ -137,15 +139,19 @@ export function SpaceSelector({
       >
         <DialogContent size="md" isAlertDialog>
           <DialogHeader hideButton>
-            <DialogTitle>Changing source selection</DialogTitle>
+            <DialogTitle>
+              <Trans>Changing source selection</Trans>
+            </DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            An agent can access one source of data only. The other tools are
-            using a different source.
+            <Trans>
+              An agent can access one source of data only. The other tools are
+              using a different source.
+            </Trans>
           </DialogContainer>
           <DialogFooter
             rightButtonProps={{
-              label: "Ok",
+              label: t`Ok`,
               variant: "outline",
               onClick: () => setAlertIsDialogOpen(false),
             }}

@@ -1,5 +1,6 @@
+import { CATEGORY_LABELS } from "@app/components/spaces/spaceCategoryLabels";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { CATEGORY_DETAILS, getSpaceIcon, getSpaceName } from "@app/lib/spaces";
+import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
@@ -12,6 +13,7 @@ import {
   ShapesPlus,
   Zap,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React from "react";
 
 interface SpaceBreadcrumbProps {
@@ -29,6 +31,7 @@ export function SpaceBreadCrumbs({
   dataSourceView,
   parentId,
 }: SpaceBreadcrumbProps) {
+  const { t } = useLingui();
   const {
     nodes: [currentNavigationItem],
   } = useDataSourceViewContentNodes({
@@ -63,7 +66,7 @@ export function SpaceBreadCrumbs({
         href: `/w/${owner.sId}/spaces/${space.sId}`,
       },
       {
-        label: CATEGORY_DETAILS[category].label,
+        label: t(CATEGORY_LABELS[category]),
         href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`,
       },
     ];
@@ -76,7 +79,7 @@ export function SpaceBreadCrumbs({
             return [
               {
                 icon: CloudArrowLeftRight,
-                label: "Connections Admin",
+                label: t`Connections admin`,
               },
             ];
           }
@@ -86,14 +89,14 @@ export function SpaceBreadCrumbs({
           return [
             {
               icon: ShapesPlus,
-              label: "Tools",
+              label: t`Tools`,
             },
           ];
         case "triggers":
           return [
             {
               icon: Zap,
-              label: "Triggers",
+              label: t`Triggers`,
             },
           ];
       }
@@ -129,7 +132,7 @@ export function SpaceBreadCrumbs({
       }
     }
     return items;
-  }, [owner, space, category, dataSourceView, folders]);
+  }, [owner, space, category, dataSourceView, folders, t]);
 
   if (items.length === 0) {
     return null;

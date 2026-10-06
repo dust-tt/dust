@@ -17,6 +17,7 @@ import {
   Tooltip,
   UploadCloud02,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { RefObject } from "react";
 import { useState } from "react";
 
@@ -35,6 +36,8 @@ export const FoldersHeaderMenu = ({
   owner,
   space,
 }: FoldersHeaderMenuProps) => {
+  const { t } = useLingui();
+
   return (
     <>
       {canWriteInSpace ? (
@@ -46,8 +49,8 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `You need write access to add data in the ${GLOBAL_SPACE_NAME} space.`
-              : `Only members of the space can add data.`
+              ? t`You need write access to add data in the ${GLOBAL_SPACE_NAME} space.`
+              : t`Only members of the space can add data.`
           }
           side="top"
           trigger={
@@ -69,8 +72,8 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `You need write access to edit a folder in the ${GLOBAL_SPACE_NAME} space.`
-              : `Only members of the space can edit a folder.`
+              ? t`You need write access to edit a folder in the ${GLOBAL_SPACE_NAME} space.`
+              : t`Only members of the space can edit a folder.`
           }
           side="top"
           trigger={
@@ -96,12 +99,14 @@ const AddDataDropDownButton = ({
   contentActionsRef,
   canWriteInSpace,
 }: AddDataDropDrownButtonProps) => {
+  const { t } = useLingui();
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           size="sm"
-          label="Add data"
+          label={t`Add data`}
           icon={Plus}
           variant="primary"
           isSelect
@@ -115,21 +120,21 @@ const AddDataDropDownButton = ({
             onClick={() => {
               contentActionsRef.current?.callAction("DocumentUploadOrEdit");
             }}
-            label="Create a document"
+            label={t`Create a document`}
           />
           <DropdownMenuItem
             icon={Table}
             onClick={() => {
               contentActionsRef.current?.callAction("TableUploadOrEdit");
             }}
-            label="Create a table"
+            label={t`Create a table`}
           />
           <DropdownMenuItem
             icon={UploadCloud02}
             onClick={() => {
               contentActionsRef.current?.callAction("MultipleFilesUpload");
             }}
-            label="Upload files"
+            label={t`Upload files`}
           />
         </DropdownMenuContent>
       )}
@@ -150,6 +155,7 @@ const EditFolderButton = ({
   owner,
   space,
 }: EditFolderButtonProps) => {
+  const { t } = useLingui();
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
 
   return (
@@ -165,7 +171,7 @@ const EditFolderButton = ({
       />
       <Button
         size="sm"
-        label="Edit folder"
+        label={t`Edit folder`}
         icon={Settings01}
         variant="primary"
         onClick={() => {

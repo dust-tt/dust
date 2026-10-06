@@ -39,6 +39,8 @@ import {
   Plus,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface EditSpaceManagedDataSourcesViewsProps {
@@ -66,6 +68,7 @@ export function EditSpaceManagedDataSourcesViews({
   shouldOpenModal,
   onOpenModalHandled,
 }: EditSpaceManagedDataSourcesViewsProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -143,9 +146,9 @@ export function EditSpaceManagedDataSourcesViews({
     );
     if (deletedViewsWithUsage.length > 0) {
       const confirmed = await showDialog({
-        title: "Data sources in use",
-        validateLabel: "Delete anyway",
-        cancelLabel: "Cancel",
+        title: t`Data sources in use`,
+        validateLabel: t`Delete anyway`,
+        cancelLabel: t`Cancel`,
         validateVariant: "warning",
         alertDialog: true,
         children: (
@@ -153,30 +156,34 @@ export function EditSpaceManagedDataSourcesViews({
             <ContentMessage
               size="md"
               variant="warning"
-              title="Warning"
+              title={t`Warning`}
               icon={InfoCircle}
             >
-              Deleting these data sources will affect the agents using them.
-              These agents will no longer have access to this data and may not
-              work as expected.
+              <Trans>
+                Deleting these data sources will affect the agents using them.
+                These agents will no longer have access to this data and may not
+                work as expected.
+              </Trans>
             </ContentMessage>
 
             <div>
-              The following data sources are currently in use:
+              <Trans>The following data sources are currently in use:</Trans>
               <ul className="ml-6 list-disc">
-                {deletedViewsWithUsage.map((view) => (
-                  <li key={view.sId} className="font-medium">
-                    {getDisplayNameForDataSource(view.dataSource)}{" "}
-                    <span className="italic text-muted-foreground">
-                      (used by {view.usage.count} agent
-                      {view.usage.count > 1 ? "s" : ""})
-                    </span>
-                  </li>
-                ))}
+                {deletedViewsWithUsage.map((view) => {
+                  const usageCount = view.usage.count;
+                  return (
+                    <li key={view.sId} className="font-medium">
+                      {getDisplayNameForDataSource(view.dataSource)}{" "}
+                      <span className="italic text-muted-foreground">
+                        {t`(used by ${plural(usageCount, { one: "# agent", other: "# agents" })})`}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
             <div className="font-semibold">
-              Are you sure you want to remove them?
+              <Trans>Are you sure you want to remove them?</Trans>
             </div>
           </div>
         ),
@@ -271,7 +278,8 @@ export function EditSpaceManagedDataSourcesViews({
               return rawError.error.message;
             }
           } catch (e) {
-            return `An Unknown error ${e} occurred while adding data to space.`;
+            const errorMessage = `${e}`;
+            return t`An unknown error ${errorMessage} occurred while adding data to space.`;
           }
           return null;
         }
@@ -283,15 +291,15 @@ export function EditSpaceManagedDataSourcesViews({
     );
     if (errors.length) {
       sendNotification({
-        title: "Error Adding Data to Space",
+        title: t`Error adding data to space`,
         type: "error",
         description: errors[0],
       });
     } else {
       sendNotification({
-        title: "Data Successfully Updated",
+        title: t`Data successfully updated`,
         type: "success",
-        description: "All data sources were successfully updated in the Space.",
+        description: t`All data sources were successfully updated in the space.`,
       });
     }
 
@@ -341,10 +349,16 @@ export function EditSpaceManagedDataSourcesViews({
   }
 
   const hasExistingData = filteredDataSourceViews.length > 0;
-  const actionVerb = hasExistingData ? "Edit" : "Add";
+  const dataSourceName = dataSourceView
+    ? getDisplayNameForDataSource(dataSourceView.dataSource)
+    : "";
   const label = dataSourceView
-    ? `${actionVerb} data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
-    : `${actionVerb} data from connections`;
+    ? hasExistingData
+      ? t`Edit data from ${dataSourceName}`
+      : t`Add data from ${dataSourceName}`
+    : hasExistingData
+      ? t`Edit data from connections`
+      : t`Add data from connections`;
 
   const addToSpaceButton = (
     <Button
@@ -395,17 +409,21 @@ export function EditSpaceManagedDataSourcesViews({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>No connection set up</DialogTitle>
+            <DialogTitle>
+              <Trans>No connection set up</Trans>
+            </DialogTitle>
           </DialogHeader>
-          <DialogContainer>You have no connection set up.</DialogContainer>
+          <DialogContainer>
+            <Trans>You have no connection set up.</Trans>
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: handleCloseDataSourcesModal,
             }}
             rightButtonProps={{
-              label: "Go to connections management",
+              label: t`Go to connections management`,
               variant: "primary",
               onClick: handleGoToConnectionsManagement,
             }}
@@ -416,7 +434,7 @@ export function EditSpaceManagedDataSourcesViews({
       {isSavingDisabled ? (
         <Tooltip
           trigger={addToSpaceButton}
-          label="Editing spaces is temporarily disabled and will be re-enabled shortly."
+          label={t`Editing spaces is temporarily disabled and will be re-enabled shortly.`}
         />
       ) : (
         addToSpaceButton

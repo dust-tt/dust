@@ -8,6 +8,7 @@ import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Chip, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
 import { useMemo } from "react";
 
@@ -70,7 +71,9 @@ export function RequestedSpacesSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="heading-lg text-foreground">Spaces and Pods</div>
+      <div className="heading-lg text-foreground">
+        <Trans>Spaces and pods</Trans>
+      </div>
       {isSpacesLoading ? (
         <div className="flex flex-row items-center gap-2">
           <Spinner size="xs" />

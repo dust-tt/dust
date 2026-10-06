@@ -17,6 +17,8 @@ import {
   Trash01,
   XCircle,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
@@ -53,6 +55,7 @@ export function AdvancedNotionManagement({
   dataSource: DataSourceType;
   sendNotification: (notification: NotificationType) => void;
 }) {
+  const { t } = useLingui();
   const [urls, setUrls] = useState<string[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
   const [syncing, setSyncing] = useState(false);
@@ -80,19 +83,16 @@ export function AdvancedNotionManagement({
   const validateUrls = useCallback(
     (urls: string[]) => {
       if (urls.length > 10) {
-        setError("You can only enter up to 10 URLs");
+        setError(t`You can only enter up to 10 URLs`);
         return false;
       }
       if (urls.filter((url) => url.trim()).length === 0) {
-        setError("You must enter at least one URL");
+        setError(t`You must enter at least one URL`);
         return false;
       }
       if (!urls.every((url) => isValidNotionUrl(url))) {
-        setError(
-          `Invalid Notion URL format: ${
-            urls.filter((url) => !isValidNotionUrl(url))[0]
-          }`
-        );
+        const invalidUrl = urls.filter((url) => !isValidNotionUrl(url))[0];
+        setError(t`Invalid Notion URL format: ${invalidUrl}`);
         return false;
       }
       const urlsSyncedLessThan20MinutesAgo = lastSyncedUrls.filter(
@@ -104,18 +104,18 @@ export function AdvancedNotionManagement({
           urlsSyncedLessThan20MinutesAgo.some((l) => l.url === url)
         )
       ) {
-        setError("One or more URL(s) were synced less than 20 minutes ago");
+        setError(t`One or more URLs were synced less than 20 minutes ago`);
         return false;
       }
       setError(undefined);
       return true;
     },
-    [lastSyncedUrls]
+    [lastSyncedUrls, t]
   );
 
   const columns = [
     {
-      header: "Time",
+      header: t`Time`,
       accessorKey: "timestamp",
       cell: (info: CellContext<TableData, string>) => (
         <DataTable.CellContent>
@@ -130,9 +130,9 @@ export function AdvancedNotionManagement({
         className: "w-16",
       },
     },
-    { header: "URL", accessorKey: "url" },
+    { header: t`URL`, accessorKey: "url" },
     {
-      header: "Status",
+      header: t`Status`,
       accessorKey: "success",
       cell: (info: CellContext<TableData, boolean>) => (
         <DataTable.CellContent>
@@ -160,7 +160,7 @@ export function AdvancedNotionManagement({
       },
     },
     {
-      header: "Error",
+      header: t`Error`,
       accessorKey: "error_message",
       cell: (info: CellContext<TableData, string>) => (
         <DataTable.CellContent>
@@ -184,8 +184,8 @@ export function AdvancedNotionManagement({
     if (!statusUrl.trim()) {
       sendNotification({
         type: "error",
-        title: "Invalid URL",
-        description: "Please enter a URL to check",
+        title: t`Invalid URL`,
+        description: t`Please enter a URL to check`,
       });
       return;
     }
@@ -193,8 +193,8 @@ export function AdvancedNotionManagement({
     if (!isValidNotionUrl(statusUrl)) {
       sendNotification({
         type: "error",
-        title: "Invalid URL",
-        description: "Please enter a valid Notion URL",
+        title: t`Invalid URL`,
+        description: t`Please enter a valid Notion URL`,
       });
       return;
     }
@@ -227,9 +227,8 @@ export function AdvancedNotionManagement({
     } catch {
       sendNotification({
         type: "error",
-        title: "Error checking URL status",
-        description:
-          "An unexpected error occurred while checking the URL status",
+        title: t`Error checking URL status`,
+        description: t`An unexpected error occurred while checking the URL status`,
       });
     }
     setCheckingStatus(false);
@@ -266,9 +265,8 @@ export function AdvancedNotionManagement({
         if (!response.success) {
           sendNotification({
             type: "error",
-            title: "Error syncing Notion URLs",
-            description:
-              "An unexpected error occurred while syncing Notion URLs.",
+            title: t`Error syncing Notion URLs`,
+            description: t`An unexpected error occurred while syncing Notion URLs.`,
           });
           return;
         }
@@ -278,18 +276,28 @@ export function AdvancedNotionManagement({
         const successCount = syncResults.filter(
           (result) => result.success
         ).length;
+        const totalCount = syncResults.length;
 
         if (successCount === syncResults.length) {
           sendNotification({
             type: "success",
-            title: "Sync started",
-            description: `The Notion URLs should be ${method === "delete" ? "deleted" : "synced"} shortly.`,
+            title: t`Sync started`,
+            description:
+              method === "delete"
+                ? t`The Notion URLs should be deleted shortly.`
+                : t`The Notion URLs should be synced shortly.`,
           });
         } else {
           sendNotification({
             type: "error",
-            title: `Synced ${successCount} of ${syncResults.length} URLs`,
-            description: `Some URLs were not ${method === "delete" ? "deleted" : "synced"} due to errors.`,
+            title: t`${plural(totalCount, {
+              one: `Synced ${successCount} of # URL`,
+              other: `Synced ${successCount} of # URLs`,
+            })}`,
+            description:
+              method === "delete"
+                ? t`Some URLs were not deleted due to errors.`
+                : t`Some URLs were not synced due to errors.`,
           });
         }
         await mutate();
@@ -297,22 +305,36 @@ export function AdvancedNotionManagement({
     } catch {
       sendNotification({
         type: "error",
-        title: "Error syncing Notion URLs",
-        description: `An unexpected error occurred while ${method === "delete" ? "deleted" : "synced"} Notion URLs.`,
+        title: t`Error syncing Notion URLs`,
+        description:
+          method === "delete"
+            ? t`An unexpected error occurred while deleting Notion URLs.`
+            : t`An unexpected error occurred while syncing Notion URLs.`,
       });
     }
     setSyncing(false);
   }
 
+  const notionType = urlStatus?.notion.type;
+  const lastSyncDate = urlStatus?.dust.lastSync
+    ? formatDateTime(new Date(urlStatus.dust.lastSync))
+    : null;
+
   return (
     <>
-      <div className="heading-xl p-1">Advanced Notion Management</div>
+      <div className="heading-xl p-1">
+        <Trans>Advanced Notion management</Trans>
+      </div>
 
       {/* URL Status Check Section */}
       <div className="mb-8 border-b pb-6">
-        <div className="heading-md p-1">Check Notion URL Status</div>
+        <div className="heading-md p-1">
+          <Trans>Check Notion URL status</Trans>
+        </div>
         <div className="text-element-700 p-1 text-sm">
-          Check if a URL exists in Notion and whether it's synced to Dust
+          <Trans>
+            Check if a URL exists in Notion and whether it's synced to Dust
+          </Trans>
         </div>
 
         <div className="p-1">
@@ -324,7 +346,7 @@ export function AdvancedNotionManagement({
           />
           <div className="mt-2">
             <Button
-              label="Check Status"
+              label={t`Check status`}
               variant="primary"
               onClick={checkUrlStatus}
               disabled={checkingStatus}
@@ -337,7 +359,9 @@ export function AdvancedNotionManagement({
             <div className="mb-2 font-medium">{urlStatus.summary}</div>
             <div className="space-y-1 text-sm">
               <div>
-                <span className="font-medium">Notion:</span>{" "}
+                <span className="font-medium">
+                  <Trans>Notion:</Trans>
+                </span>{" "}
                 {urlStatus.notion.exists ? (
                   <>
                     <Icon
@@ -345,7 +369,7 @@ export function AdvancedNotionManagement({
                       size="xs"
                       className="inline text-success-500"
                     />{" "}
-                    Exists ({urlStatus.notion.type})
+                    <Trans>Exists ({notionType})</Trans>
                   </>
                 ) : (
                   <>
@@ -354,12 +378,14 @@ export function AdvancedNotionManagement({
                       size="xs"
                       className="inline text-warning-500"
                     />{" "}
-                    Not found
+                    <Trans>Not found</Trans>
                   </>
                 )}
               </div>
               <div>
-                <span className="font-medium">Dust:</span>{" "}
+                <span className="font-medium">
+                  <Trans>Dust:</Trans>
+                </span>{" "}
                 {urlStatus.dust.synced ? (
                   <>
                     <Icon
@@ -367,12 +393,11 @@ export function AdvancedNotionManagement({
                       size="xs"
                       className="inline text-success-500"
                     />{" "}
-                    Synced
-                    {urlStatus.dust.lastSync && (
+                    <Trans>Synced</Trans>
+                    {lastSyncDate && (
                       <span className="text-element-600">
                         {" "}
-                        (last sync:{" "}
-                        {formatDateTime(new Date(urlStatus.dust.lastSync))})
+                        <Trans>(last sync: {lastSyncDate})</Trans>
                       </span>
                     )}
                   </>
@@ -383,7 +408,7 @@ export function AdvancedNotionManagement({
                       size="xs"
                       className="inline text-warning-500"
                     />{" "}
-                    Not synced
+                    <Trans>Not synced</Trans>
                   </>
                 )}
               </div>
@@ -391,7 +416,9 @@ export function AdvancedNotionManagement({
                 urlStatus.dust.breadcrumbs &&
                 urlStatus.dust.breadcrumbs.length > 0 && (
                   <div className="mt-2">
-                    <span className="font-medium">Location:</span>{" "}
+                    <span className="font-medium">
+                      <Trans>Location:</Trans>
+                    </span>{" "}
                     <span className="text-element-600">
                       {urlStatus.dust.breadcrumbs.map((crumb, index) => (
                         <span key={crumb.id}>
@@ -408,9 +435,11 @@ export function AdvancedNotionManagement({
       </div>
 
       {/* Manual URL Sync Section */}
-      <div className="heading-md p-1">Manual URL Sync</div>
+      <div className="heading-md p-1">
+        <Trans>Manual URL sync</Trans>
+      </div>
       <div className="p-1">
-        Enter up to 10 Notion URLs to sync (one per line)
+        <Trans>Enter up to 10 Notion URLs to sync (one per line)</Trans>
       </div>
       <TextArea
         placeholder="https://app.notion.com/p/..."
@@ -423,13 +452,13 @@ export function AdvancedNotionManagement({
       />
       <div className="flex justify-end gap-2 border-t pt-4">
         <Button
-          label="Sync URL(s)"
+          label={t`Sync URLs`}
           variant="primary"
           onClick={() => syncURLs("sync")}
           disabled={syncing}
         />
         <Button
-          label="Delete URL(s)"
+          label={t`Delete URLs`}
           variant="primary"
           onClick={() => syncURLs("delete")}
           disabled={syncing}
@@ -438,16 +467,20 @@ export function AdvancedNotionManagement({
       {/* List of the last 50 synced URLs */}
       {!isLoading && lastSyncedUrls.length > 0 && (
         <>
-          <div className="p-1 font-bold">Recent operations</div>
+          <div className="p-1 font-bold">
+            <Trans>Recent operations</Trans>
+          </div>
           <div className="p-1 text-xs">
-            An{" "}
-            <Icon
-              visual={CheckCircle}
-              size="xs"
-              className="inline-block text-success-500"
-            />{" "}
-            icon indicates operation successfully started, but URLs may take up
-            to 20 minutes to sync fully.
+            <Trans>
+              An{" "}
+              <Icon
+                visual={CheckCircle}
+                size="xs"
+                className="inline-block text-success-500"
+              />{" "}
+              icon indicates operation successfully started, but URLs may take
+              up to 20 minutes to sync fully.
+            </Trans>
           </div>
 
           <DataTable

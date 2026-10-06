@@ -6,8 +6,6 @@ import type {
   AgentsUsageType,
 } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
   Button,
@@ -21,6 +19,8 @@ import {
   PuzzlePiece01,
   Robot,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type UsedByDropdownItem =
@@ -119,6 +119,7 @@ export function UsedByButton({
   onItemClick,
   onSkillClick,
 }: UsedByButtonProps) {
+  const { t } = useLingui();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -129,10 +130,11 @@ export function UsedByButton({
   const totalCount = agentCount + skillCount;
 
   const usageLabel =
-    removeNulls([
-      agentCount > 0 ? `${agentCount} agent${pluralize(agentCount)}` : null,
-      skillCount > 0 ? `${skillCount} skill${pluralize(skillCount)}` : null,
-    ]).join(" and ") || "0 agents";
+    agentCount > 0 && skillCount > 0
+      ? t`Used by ${plural(agentCount, { one: "# agent", other: "# agents" })} and ${plural(skillCount, { one: "# skill", other: "# skills" })}`
+      : skillCount > 0
+        ? t`${plural(skillCount, { one: "Used by # skill", other: "Used by # skills" })}`
+        : t`${plural(agentCount, { one: "Used by # agent", other: "Used by # agents" })}`;
 
   if (totalCount === 0) {
     return (
@@ -144,7 +146,7 @@ export function UsedByButton({
         isSelect={false}
         size="xs"
         className={USED_BY_BUTTON_CLASSES}
-        aria-label="Used by 0 agents"
+        aria-label={usageLabel}
         disabled
       />
     );
@@ -225,7 +227,7 @@ export function UsedByButton({
           isSelect={false}
           size="xs"
           className={USED_BY_BUTTON_CLASSES}
-          aria-label={`Used by ${usageLabel}`}
+          aria-label={usageLabel}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
           }}
@@ -241,7 +243,9 @@ export function UsedByButton({
               autoFocus
               name="search-used-by-agents"
               placeholder={
-                skills.length > 0 ? "Search agents and skills" : "Search agents"
+                skills.length > 0
+                  ? t`Search agents and skills`
+                  : t`Search agents`
               }
               value={searchText}
               onChange={setSearchText}
@@ -296,7 +300,7 @@ export function UsedByButton({
         })}
         {dropdownItems.length === 0 && (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-            {skills.length > 0 ? "No matches found" : "No agents found"}
+            {skills.length > 0 ? t`No matches found` : t`No agents found`}
           </div>
         )}
       </DropdownMenuContent>

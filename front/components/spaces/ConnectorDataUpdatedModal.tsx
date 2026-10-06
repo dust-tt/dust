@@ -11,6 +11,7 @@ import {
   SheetTitle,
   Stars02,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const ConnectorDataUpdatedModal = ({
   onClose,
   connectorProvider,
 }: DataSourceViewSelectionModalProps) => {
+  const { t } = useLingui();
   const isRemoteDbProvider =
     REMOTE_DATABASE_CONNECTOR_PROVIDERS.includes(connectorProvider);
 
@@ -35,21 +37,36 @@ export const ConnectorDataUpdatedModal = ({
         }}
       >
         <SheetHeader>
-          <SheetTitle icon={Stars02}>Data sync in progress...</SheetTitle>
+          <SheetTitle icon={Stars02}>
+            <Trans>Data sync in progress...</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <ContentMessage>
             <div className="flex flex-col gap-2">
               <p>
-                Once synchronized, {isRemoteDbProvider ? "table" : "data"} will
-                appear under <em>"Connection Admin"</em> and can be added to:
+                {isRemoteDbProvider ? (
+                  <Trans>
+                    Once synchronized, table will appear under{" "}
+                    <em>"Connection Admin"</em> and can be added to:
+                  </Trans>
+                ) : (
+                  <Trans>
+                    Once synchronized, data will appear under{" "}
+                    <em>"Connection Admin"</em> and can be added to:
+                  </Trans>
+                )}
               </p>
               <ul className="ml-6 list-disc">
                 <li>
-                  An <strong>Open Space</strong> for company-wide access
+                  <Trans>
+                    An <strong>Open Space</strong> for company-wide access
+                  </Trans>
                 </li>
                 <li>
-                  A <strong>Restricted Space</strong> for custom access
+                  <Trans>
+                    A <strong>Restricted Space</strong> for custom access
+                  </Trans>
                 </li>
               </ul>
             </div>
@@ -58,7 +75,7 @@ export const ConnectorDataUpdatedModal = ({
             <div className="relative w-full overflow-hidden rounded-lg pb-[56.20%]">
               <iframe
                 src="https://fast.wistia.net/embed/iframe/9vf0b2rv5f?seo=true&videoFoam=false"
-                title="Data Management"
+                title={t`Data management`}
                 allow="autoplay; fullscreen"
                 frameBorder="0"
                 className="absolute left-0 top-0 h-full w-full rounded-lg"
@@ -66,19 +83,21 @@ export const ConnectorDataUpdatedModal = ({
             </div>
           </div>
           <p>
-            See{" "}
-            <Hoverable
-              variant="highlight"
-              onClick={() => {
-                window.open("https://docs.dust.tt/docs/data", "_blank");
-              }}
-            >
-              documentation
-            </Hoverable>{" "}
-            for more information.
+            <Trans>
+              See{" "}
+              <Hoverable
+                variant="highlight"
+                onClick={() => {
+                  window.open("https://docs.dust.tt/docs/data", "_blank");
+                }}
+              >
+                documentation
+              </Hoverable>{" "}
+              for more information.
+            </Trans>
           </p>
           <div className="flex w-full justify-end">
-            <Button label="Ok" onClick={() => onClose()} />
+            <Button label={t`Ok`} onClick={() => onClose()} />
           </div>
         </SheetContainer>
       </SheetContent>

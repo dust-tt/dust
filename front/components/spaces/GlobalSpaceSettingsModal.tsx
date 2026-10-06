@@ -17,6 +17,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 
 interface GlobalSpaceSettingsModalProps {
@@ -38,6 +39,7 @@ export function GlobalSpaceSettingsModal({
   owner,
   space,
 }: GlobalSpaceSettingsModalProps) {
+  const { t } = useLingui();
   // The member selection is held as ids, not as user objects: the ids are what the save sends, so
   // a member can never drop out of the space because the UI failed to resolve their user object.
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
@@ -142,27 +144,35 @@ export function GlobalSpaceSettingsModal({
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
-          <SheetTitle>Space Settings - {spaceName}</SheetTitle>
+          <SheetTitle>
+            <Trans>Space settings - {spaceName}</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <Page.SectionHeader title="Access" />
+            <Page.SectionHeader title={t`Access`} />
             {/* Separate lines rather than one `description`: read access, write access and where
                 the members come from are three statements, as in `RestrictedAccessHeader`. */}
             <div className="flex flex-col gap-y-1">
               <span>
-                {spaceName} is the space where you upload and connect the data
-                the whole company has access to, so anyone in the workspace can
-                read this data.
+                <Trans>
+                  {spaceName} is the space where you upload and connect the data
+                  the whole company has access to, so anyone in the workspace
+                  can read this data.
+                </Trans>
               </span>
               <span>
-                Only admins, managers and the people and groups selected here
-                can modify the data (upload files, delete documents, connect
-                data sources...).
+                <Trans>
+                  Only admins, managers and the people and groups selected here
+                  can modify the data (upload files, delete documents, connect
+                  data sources...).
+                </Trans>
               </span>
               <span>
-                They are the people picked below, plus everyone in the groups
-                given access to the space.
+                <Trans>
+                  They are the people picked below, plus everyone in the groups
+                  given access to the space.
+                </Trans>
               </span>
             </div>
 
@@ -173,9 +183,11 @@ export function GlobalSpaceSettingsModal({
             ) : isAccessUnavailable ? (
               <ContentMessage
                 variant="warning"
-                title="Access settings unavailable"
+                title={t`Access settings unavailable`}
               >
-                Failed to load group members, please reload the page.
+                <Trans>
+                  Failed to load group members, please reload the page.
+                </Trans>
               </ContentMessage>
             ) : (
               <RestrictedAccessBody
@@ -197,13 +209,13 @@ export function GlobalSpaceSettingsModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: handleClose,
             disabled: isSaving,
           }}
           rightButtonProps={{
-            label: isSaving ? "Saving..." : "Save",
+            label: isSaving ? t`Saving...` : t`Save`,
             // `SheetFooter` wraps the button in a Radix close trigger, which skips its close when the
             // click is default-prevented: the sheet closes from `onSave`, once the save is done.
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {

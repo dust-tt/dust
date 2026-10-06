@@ -26,6 +26,8 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { Edit04, Eye, File04, LinkExternal01, Trash01 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import capitalize from "lodash/capitalize";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, { useCallback, useImperativeHandle, useState } from "react";
@@ -159,6 +161,7 @@ export const ContentActions = React.forwardRef<
 ContentActions.displayName = "ContentActions";
 
 export const getMenuItems = (
+  t: (descriptor: MessageDescriptor) => string,
   canReadInSpace: boolean,
   canWriteInSpace: boolean,
   dataSourceView: DataSourceViewType,
@@ -178,13 +181,13 @@ export const getMenuItems = (
 
   if (contentNode.sourceUrl) {
     actions.push({
-      ...makeViewSourceUrlContentAction(contentNode, dataSourceView),
+      ...makeViewSourceUrlContentAction(t, contentNode, dataSourceView),
     });
   }
 
   if (canReadInSpace && contentNode.type === "document") {
     actions.push({
-      ...makeViewRawContentAction(contentNode, router, onOpenDocument),
+      ...makeViewRawContentAction(t, contentNode, router, onOpenDocument),
     });
   }
 
@@ -195,7 +198,9 @@ export const getMenuItems = (
   ) {
     actions.push({
       kind: "item",
-      label: "Edit",
+      label: t(
+        msg({ message: "Edit", context: "menu item, edit a document or table" })
+      ),
       icon: Edit04,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
@@ -209,7 +214,7 @@ export const getMenuItems = (
     });
     actions.push({
       kind: "item",
-      label: "Delete",
+      label: t(msg`Delete`),
       icon: Trash01,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
@@ -262,7 +267,7 @@ export const getMenuItems = (
     actions.push({
       disabled: availableSpaces.length === 0,
       kind: "submenu",
-      label: "Add to space",
+      label: t(msg`Add to space`),
       items: availableSpaces.map((s) => ({
         id: s.sId,
         name: s.name,
@@ -277,7 +282,7 @@ export const getMenuItems = (
   ) {
     actions.push({
       kind: "item",
-      label: "Copy DataSource ID",
+      label: t(msg`Copy data source ID`),
       icon: File04,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
@@ -290,14 +295,16 @@ export const getMenuItems = (
 };
 
 const makeViewSourceUrlContentAction = (
+  t: (descriptor: MessageDescriptor) => string,
   contentNode: DataSourceViewContentNode,
   dataSourceView: DataSourceViewType
 ): MenuItem => {
   const dataSource = dataSourceView.dataSource;
+  const dataSourceName = capitalize(getDisplayNameForDataSource(dataSource));
   const label =
     isFolder(dataSource) || isWebsite(dataSource)
-      ? "View associated URL"
-      : `View in ${capitalize(getDisplayNameForDataSource(dataSource))}`;
+      ? t(msg`View associated URL`)
+      : t(msg`View in ${dataSourceName}`);
 
   return {
     kind: "item",
@@ -317,13 +324,14 @@ const makeViewSourceUrlContentAction = (
 };
 
 const makeViewRawContentAction = (
+  t: (descriptor: MessageDescriptor) => string,
   contentNode: DataSourceViewContentNode,
   router: AppRouter,
   onOpenDocument?: (node: DataSourceViewContentNode) => void
 ): MenuItem => {
   return {
     kind: "item",
-    label: "View raw content",
+    label: t(msg`View raw content`),
     icon: Eye,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();

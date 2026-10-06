@@ -3,6 +3,7 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
+import { CATEGORY_LABELS } from "@app/components/spaces/spaceCategoryLabels";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { useSidebarSectionCollapsed } from "@app/hooks/useSidebarSectionCollapsed";
@@ -61,6 +62,9 @@ import {
   Tree,
   Zap,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
 import type { ComponentType, ReactElement, ReactNode } from "react";
@@ -186,13 +190,13 @@ export default function SpaceSideBarMenu({
 
 type SpaceSectionStructureType =
   | {
-      label: string;
+      label: MessageDescriptor;
       displayCreateSpaceButton: true;
       defaultRestricted: boolean;
     }
   | {
       // A null label renders the spaces on their own, with no section header.
-      label: string | null;
+      label: MessageDescriptor | null;
       displayCreateSpaceButton: false;
     };
 
@@ -202,14 +206,14 @@ const getSpaceSectionDetails = (
   switch (kind) {
     case "shared":
       return {
-        label: "Open Spaces",
+        label: msg`Open spaces`,
         displayCreateSpaceButton: true,
         defaultRestricted: false,
       };
 
     case "restricted":
       return {
-        label: "Restricted Spaces",
+        label: msg`Restricted spaces`,
         displayCreateSpaceButton: true,
         defaultRestricted: true,
       };
@@ -240,6 +244,7 @@ function SpaceSection({
   openSpaceCreationModal,
   children,
 }: SpaceSectionProps) {
+  const { t } = useLingui();
   const { isCollapsed, setCollapsed } = useSidebarSectionCollapsed(
     `spacesSectionCollapsed:${section}`
   );
@@ -260,7 +265,7 @@ function SpaceSection({
 
   return (
     <NavigationListCollapsibleSection
-      label={sectionDetails.label}
+      label={t(sectionDetails.label)}
       type="collapse"
       open={!isCollapsed}
       onOpenChange={(open) => setCollapsed(!open)}
@@ -269,7 +274,10 @@ function SpaceSection({
           <Button
             size="xs"
             variant="ghost-secondary"
-            label="New"
+            label={t({
+              message: "New",
+              context: "button label, creates a space",
+            })}
             icon={Plus}
             onClick={() => openSpaceCreationModal({ defaultRestricted })}
           />
@@ -284,25 +292,25 @@ function SpaceSection({
 // System space.
 
 const SYSTEM_SPACE_ITEMS: {
-  label: string;
+  label: MessageDescriptor;
   visual: IconType;
   category: DataSourceViewCategory;
   flag: WhitelistableFeature | null;
 }[] = [
   {
-    label: "Connections",
+    label: msg`Connections`,
     visual: CloudArrowLeftRight,
     category: "managed",
     flag: null,
   },
   {
-    label: "Tools",
+    label: msg`Tools`,
     visual: ShapesPlus,
     category: "actions",
     flag: null,
   },
   {
-    label: "Triggers",
+    label: msg`Triggers`,
     visual: Zap,
     category: "triggers",
     flag: null,
@@ -318,6 +326,8 @@ const SystemSpaceMenu = ({
   space: SpaceType;
   hasFeature: ReturnType<typeof useFeatureFlags>["hasFeature"];
 }) => {
+  const { t } = useLingui();
+
   return (
     <NavigationList>
       {SYSTEM_SPACE_ITEMS.map((item) => {
@@ -330,8 +340,8 @@ const SystemSpaceMenu = ({
         return (
           <SystemSpaceItem
             category={item.category as DataSourceViewCategoryWithoutApps}
-            key={item.label}
-            label={item.label}
+            key={item.category}
+            label={t(item.label)}
             owner={owner}
             space={space}
             visual={item.visual}
@@ -507,6 +517,7 @@ const SpaceDataSourceViewItem = ({
   node?: DataSourceViewContentNode;
   disambiguateForNode?: boolean;
 }): ReactElement => {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
@@ -565,6 +576,14 @@ const SpaceDataSourceViewItem = ({
   const isEmpty = isExpanded && !isNodesLoading && nodes.length === 0;
   const expandableNodes = nodes.filter((node) => node.expandable);
   const hiddenNodesCount = Math.max(0, totalNodesCount - nodes.length);
+  const hiddenNodesLabel =
+    expandableNodes.length > 0
+      ? totalNodesCountIsAccurate
+        ? t`${plural(hiddenNodesCount, { one: "and # item", other: "and # items" })}`
+        : t`${plural(hiddenNodesCount, { one: "and #+ item", other: "and #+ items" })}`
+      : totalNodesCountIsAccurate
+        ? t`${plural(hiddenNodesCount, { one: "# item", other: "# items" })}`
+        : t`${plural(hiddenNodesCount, { one: "#+ item", other: "#+ items" })}`;
 
   const label = node
     ? getDisplayTitleForDataSourceViewContentNode(node, {
@@ -605,7 +624,7 @@ const SpaceDataSourceViewItem = ({
           ))}
           {hiddenNodesCount > 0 && (
             <Tree.Empty
-              label={`${expandableNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${totalNodesCountIsAccurate ? "" : "+"} item${hiddenNodesCount > 1 ? "s" : ""}`}
+              label={hiddenNodesLabel}
               onItemClick={async () => {
                 await setNavigationSelection({
                   lastSpaceId: space.sId,
@@ -630,6 +649,7 @@ const SpaceDataSourceViewSubMenu = ({
   space: SpaceType;
   category: DataSourceViewCategoryWithoutApps;
 }) => {
+  const { t } = useLingui();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
 
@@ -639,6 +659,7 @@ const SpaceDataSourceViewSubMenu = ({
   });
 
   const categoryDetails = CATEGORY_DETAILS[category];
+  const categoryLabel = t(CATEGORY_LABELS[category]);
   const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
@@ -654,7 +675,7 @@ const SpaceDataSourceViewSubMenu = ({
   return (
     <Tree.Item
       isNavigatable
-      label={categoryDetails.label}
+      label={categoryLabel}
       collapsed={!isExpanded}
       onItemClick={async () => {
         await setNavigationSelection({
@@ -749,6 +770,7 @@ const SpaceAppSubMenu = ({
   space: SpaceType;
   category: "apps";
 }) => {
+  const { t } = useLingui();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -757,6 +779,7 @@ const SpaceAppSubMenu = ({
   });
 
   const categoryDetails = CATEGORY_DETAILS[category];
+  const categoryLabel = t(CATEGORY_LABELS[category]);
 
   const { isAppsLoading, apps } = useApps({
     owner,
@@ -766,7 +789,7 @@ const SpaceAppSubMenu = ({
   return (
     <Tree.Item
       isNavigatable
-      label={categoryDetails.label}
+      label={categoryLabel}
       collapsed={!isExpanded}
       onItemClick={async () => {
         await setNavigationSelection({
@@ -801,6 +824,7 @@ const SpaceActionsSubMenu = ({
   space: SpaceType;
   category: "actions";
 }) => {
+  const { t } = useLingui();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -809,6 +833,7 @@ const SpaceActionsSubMenu = ({
   });
 
   const categoryDetails = CATEGORY_DETAILS[category];
+  const categoryLabel = t(CATEGORY_LABELS[category]);
 
   const { isMCPServerViewsLoading, serverViews } = useMCPServerViews({
     owner,
@@ -818,7 +843,7 @@ const SpaceActionsSubMenu = ({
   return (
     <Tree.Item
       isNavigatable
-      label={categoryDetails.label}
+      label={categoryLabel}
       collapsed={!isExpanded}
       onItemClick={async () => {
         await setNavigationSelection({
@@ -873,6 +898,7 @@ const SpaceTriggersSubMenu = ({
   owner: LightWorkspaceType;
   space: SpaceType;
 }) => {
+  const { t } = useLingui();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useAppRouter();
   const spaceTriggersPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${TRIGGERS_CATEGORY}`;
@@ -891,7 +917,7 @@ const SpaceTriggersSubMenu = ({
   return (
     <Tree.Item
       isNavigatable
-      label={triggersCategoryDetails.label}
+      label={t(CATEGORY_LABELS[TRIGGERS_CATEGORY])}
       collapsed={!isExpanded}
       onItemClick={async () => {
         await setNavigationSelection({
