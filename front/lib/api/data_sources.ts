@@ -3,6 +3,7 @@
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { canReadSourceFile } from "@app/lib/api/files/authorization";
 import {
   getLlmCredentials,
   MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
@@ -900,6 +901,15 @@ export async function upsertTable({
           "The file associated with the fileId you provided was not found",
       });
     }
+    if (!(await canReadSourceFile(auth, file))) {
+      return new Err<DustError>({
+        name: "dust_error",
+        code: "file_not_found",
+        message:
+          "The file associated with the fileId you provided was not found",
+      });
+    }
+
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
     const { bucket, path } = file.getContentBucketAndPath(auth);

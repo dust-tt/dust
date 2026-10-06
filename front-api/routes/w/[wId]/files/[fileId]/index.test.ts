@@ -421,6 +421,88 @@ describe("GET /api/w/:wId/files/:fileId", () => {
 
     expect(response.status).toBe(302);
   });
+
+  it("returns 404 when downloading an upsert_table file in a space the caller cannot read", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/csv",
+      fileName: "restricted.csv",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "upsert_table",
+      useCaseMetadata: { spaceId: restrictedSpace.sId },
+    });
+
+    const response = await honoApp.request(
+      fileUrl(workspace, file.sId, "?action=download"),
+      { redirect: "manual" }
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
+  it("lets the owner download an unattached conversation file", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: "application/pdf",
+      fileName: "pending.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    const response = await honoApp.request(
+      fileUrl(workspace, file.sId, "?action=download"),
+      { redirect: "manual" }
+    );
+
+    expect(response.status).toBe(302);
+  });
+
+  it("returns 404 when another member downloads an unattached conversation file", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: "application/pdf",
+      fileName: "pending.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+    });
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+      workspace,
+    });
+
+    const response = await honoApp.request(
+      fileUrl(workspace, file.sId, "?action=download"),
+      { redirect: "manual" }
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
 });
 
 describe("DELETE /api/w/:wId/files/:fileId", () => {

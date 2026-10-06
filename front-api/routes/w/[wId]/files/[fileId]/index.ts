@@ -1,14 +1,14 @@
+import { canReadSourceFile } from "@app/lib/api/files/authorization";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { frameContentType, isConversationFileUseCase } from "@app/types/files";
+import { frameContentType } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -589,42 +589,22 @@ async function checkFileAccess(
 ): Promise<Response | null> {
   const auth = ctx.get("auth");
 
-  const space = await getSpaceForFile(auth, file);
+  if (!(await canReadSourceFile(auth, file))) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
 
-  if (
-    file.useCase === "folders_document" ||
-    file.useCase === "project_context"
-  ) {
-    if (!space || !auth.can("read", space)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    }
-
-    if (!space.isProject() && file.useCase === "project_context") {
+  if (file.useCase === "project_context") {
+    const space = await getSpaceForFile(auth, file);
+    if (space && !space.isProject()) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message: "Space is not a Pod",
         },
-      });
-    }
-  }
-
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
       });
     }
   }

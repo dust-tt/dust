@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { canReadSourceFile } from "@app/lib/api/files/authorization";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -151,6 +152,17 @@ export async function upsertTableFromCsv({
   }
 
   if (file) {
+    if (!(await canReadSourceFile(auth, file))) {
+      return new Err({
+        type: "not_found_error",
+        notFoundError: {
+          type: "file_not_found",
+          message:
+            "The file associated with the fileId you provided was not found",
+        },
+      });
+    }
+
     if (file.status !== "ready") {
       return new Err({
         type: "invalid_request_error",

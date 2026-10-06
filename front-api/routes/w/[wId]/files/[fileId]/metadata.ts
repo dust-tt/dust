@@ -1,7 +1,5 @@
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { canReadSourceFile } from "@app/lib/api/files/authorization";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { isConversationFileUseCase } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -27,31 +25,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const { useCase, useCaseMetadata } = fileResource;
-  const space = useCaseMetadata?.spaceId
-    ? await SpaceResource.fetchById(auth, useCaseMetadata.spaceId)
-    : null;
-
-  if (useCase === "folders_document" && (!space || !auth.can("read", space))) {
+  if (!(await canReadSourceFile(auth, fileResource))) {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
-  }
-
-  // Check permissions based on useCase and useCaseMetadata.
-  if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      useCaseMetadata.conversationId
-    );
-
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    }
   }
 
   return ctx.json(fileResource.toJSONWithMetadata(auth));
