@@ -77,7 +77,6 @@ export function useInputBarSlashMenuSections({
     query,
   });
 
-  // Static commands follow the typed query; capabilities trail it by their search's debounce.
   const sections = useMemo(
     () =>
       buildSlashCommandSections({
