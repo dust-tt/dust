@@ -3140,6 +3140,60 @@ describe("postUserMessage", () => {
       ).toBeNull();
     });
 
+    it("refuses, without posting, a message posted only when idle", async () => {
+      const result = await postUserMessage(auth, {
+        conversationResource: runningConversationResource,
+        content: "Only when idle",
+        mentions: [{ configurationId: agentConfig1.sId }],
+        context: {
+          username: "steering-user",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+        onlyWhenIdle: true,
+      });
+
+      expect(result.isErr() && result.error.status_code).toBe(409);
+      expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("rechecks idleness inside the conversation lock when posting only when idle", async () => {
+      vi.spyOn(
+        runningConversationResource,
+        "getInFlightMessages"
+      ).mockResolvedValueOnce({
+        runningAgentMessage: null,
+        runningCompactionMessage: null,
+      });
+      const before =
+        await runningConversationResource.getRunningAgentMessage(auth);
+
+      const result = await postUserMessage(auth, {
+        conversationResource: runningConversationResource,
+        content: "Only when idle",
+        mentions: [{ configurationId: agentConfig1.sId }],
+        context: {
+          username: "steering-user",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+        onlyWhenIdle: true,
+      });
+
+      expect(before).not.toBeNull();
+      expect(result.isErr() && result.error.status_code).toBe(409);
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    });
+
     it("does not steer with an unattributed message from an API key", async () => {
       const apiKey = await KeyFactory.regular(globalGroup);
       const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);

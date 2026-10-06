@@ -2,14 +2,13 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import {
   DustFileSystem,
   parseScopedPrefix,
 } from "@app/lib/api/file_system/dust_file_system";
 import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { Authenticator } from "@app/lib/auth";
-import { executeWithLock } from "@app/lib/lock";
+import { executeWithLockResult } from "@app/lib/lock";
 import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
@@ -34,13 +33,17 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * @cc [owner:tdraier,label:product] document-conversation
  * A file in a conversation's files MUST use that conversation. A file in a pod MUST use the
  * pod's conversation linked to its normalized path, created in the pod on first use without
- * notifying the pod, and `isNew` MUST tell its creation; callers MUST hold the document's lock,
- * so concurrent posts share one conversation. Any other file has no conversation.
+ * notifying the pod, and `isPodDocument` MUST tell this second case; callers MUST hold the
+ * document's lock, so concurrent posts share one conversation. Any other file has no
+ * conversation.
  */
 async function getDocumentConversation(
   auth: Authenticator,
   documentPath: string
-): Promise<{ conversation: ConversationResource; isNew: boolean } | null> {
+): Promise<{
+  conversation: ConversationResource;
+  isPodDocument: boolean;
+} | null> {
   const scope = parseScopedPrefix(documentPath);
   if (!scope) {
     return null;
@@ -49,7 +52,7 @@ async function getDocumentConversation(
   switch (scope.kind) {
     case "conversation": {
       const conversation = await ConversationResource.fetchById(auth, scope.id);
-      return conversation ? { conversation, isNew: false } : null;
+      return conversation ? { conversation, isPodDocument: false } : null;
     }
     case "pod": {
       const pod = await SpaceResource.fetchById(auth, scope.id);
@@ -61,7 +64,7 @@ async function getDocumentConversation(
         documentPath,
       });
       if (existing) {
-        return { conversation: existing, isNew: false };
+        return { conversation: existing, isPodDocument: true };
       }
       const conversation = await createConversation(auth, {
         title: `Comments · ${getFileNameFromScopedPath(documentPath)}`,
@@ -70,7 +73,7 @@ async function getDocumentConversation(
         metadata: { dfmDocumentPath: documentPath },
         notifyPodMembers: false,
       });
-      return { conversation, isNew: true };
+      return { conversation, isPodDocument: true };
     }
     case "user":
       return null;
@@ -176,11 +179,11 @@ export class DocumentConversationBusyError extends Error {
  * A dispatched message MUST be posted as the saving user, as a user message in the document's
  * conversation carrying each mention once, so the mentioned agent runs and mentioned users are
  * notified as in a conversation. As in a conversation, a message runs at most one agent: only
- * the first agent mentioned is kept, and the others are logged. While an agent or a compaction
- * runs in that conversation, it MUST NOT be posted and MUST return a
- * `DocumentConversationBusyError`, so each comment gets its own turn instead of steering a
- * running agent or being refused. A pod
- * document's new conversation MUST notify the pod only once a message is posted in it. Any other
+ * the first agent mentioned is kept, and the others are logged. It MUST be posted with
+ * `onlyWhenIdle`, and while an agent or a compaction runs in that conversation, or the document's
+ * lock cannot be taken, it MUST return a `DocumentConversationBusyError` having posted nothing, so
+ * each comment gets its own turn instead of steering a running agent. A pod document's
+ * conversation MUST notify the pod when its first message is posted, never before. Any other
  * failure MUST be logged and the message dropped.
  */
 export async function postCommentMention(
@@ -209,9 +212,9 @@ export async function postCommentMention(
     );
   }
 
-  return executeWithLock(
+  const locked = await executeWithLockResult(
     `dfm_document_conversation_${workspaceId}_${documentPath}`,
-    async () => {
+    async (): Promise<Result<undefined, DocumentConversationBusyError>> => {
       const found = await getDocumentConversation(auth, documentPath);
       if (!found) {
         logger.warn(
@@ -220,13 +223,7 @@ export async function postCommentMention(
         );
         return new Ok(undefined);
       }
-      const { conversation, isNew } = found;
-
-      const { runningAgentMessage, runningCompactionMessage } =
-        await conversation.getInFlightMessages(auth);
-      if (runningAgentMessage || runningCompactionMessage) {
-        return new Err(new DocumentConversationBusyError());
-      }
+      const { conversation, isPodDocument } = found;
 
       const posted = await postUserMessage(auth, {
         conversationResource: conversation,
@@ -241,14 +238,10 @@ export async function postCommentMention(
           origin: "web",
         },
         skipToolsValidation: false,
+        onlyWhenIdle: true,
       });
       if (posted.isErr()) {
-        // The conversation became busy between the check above and the post.
-        if (
-          posted.error.api_error.message ===
-            RUNNING_AGENT_SWITCH_BLOCK_MESSAGE ||
-          posted.error.status_code === 409
-        ) {
+        if (posted.error.status_code === 409) {
           return new Err(new DocumentConversationBusyError());
         }
         logger.error(
@@ -264,7 +257,7 @@ export async function postCommentMention(
         return new Ok(undefined);
       }
 
-      if (isNew) {
+      if (isPodDocument && posted.value.userMessage.rank === 0) {
         notifyNewProjectConversation(auth, {
           conversation: conversation.toJSON(),
         });
@@ -272,4 +265,5 @@ export async function postCommentMention(
       return new Ok(undefined);
     }
   );
+  return locked.isErr() ? new Err(new DocumentConversationBusyError()) : locked;
 }

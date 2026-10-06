@@ -6,6 +6,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { CONVERSATION_BUSY_FAILURE_TYPE } from "@app/temporal/mentions_queue/config";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { ApplicationFailure } from "@temporalio/common";
@@ -125,6 +126,9 @@ export async function postDocumentCommentMentionActivity(
 
   const posted = await postCommentMention(auth, { documentPath, newMessage });
   if (posted.isErr()) {
-    throw ApplicationFailure.retryable(posted.error.message, posted.error.name);
+    throw ApplicationFailure.nonRetryable(
+      posted.error.message,
+      CONVERSATION_BUSY_FAILURE_TYPE
+    );
   }
 }

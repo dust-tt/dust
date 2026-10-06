@@ -1,5 +1,4 @@
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
-import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import {
   DocumentConversationBusyError,
   dispatchCommentMentions,
@@ -64,23 +63,24 @@ const MENTIONING = comment(
   `Can :mention[dust]{sId=${GLOBAL_AGENTS_SID.DUST}} check this with :mention_user[Yuka]{sId=usr_yuka}?`
 );
 
-const POSTED = new Ok({
-  userMessage: mockUserMessage("Posted."),
-  agentMessages: [],
-});
+const posted = (rank: number) =>
+  new Ok({
+    userMessage: { ...mockUserMessage("Posted."), rank },
+    agentMessages: [],
+  });
 
 describe("postCommentMention", () => {
   let auth: Authenticator;
   let workspace: WorkspaceType;
-  const posted = vi.mocked(postUserMessage);
+  const postMock = vi.mocked(postUserMessage);
   const notified = vi.mocked(notifyNewProjectConversation);
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "admin" });
     auth = setup.authenticator;
     workspace = setup.workspace;
-    posted.mockReset();
-    posted.mockResolvedValue(POSTED);
+    postMock.mockReset();
+    postMock.mockResolvedValue(posted(2));
     notified.mockReset();
   });
 
@@ -109,9 +109,9 @@ describe("postCommentMention", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(posted).toHaveBeenCalledTimes(1);
+    expect(postMock).toHaveBeenCalledTimes(1);
     const [, { conversationResource, content, mentions }] =
-      posted.mock.calls[0];
+      postMock.mock.calls[0];
     expect(conversationResource.sId).toBe(conversation.sId);
     expect(mentions).toEqual([
       { configurationId: GLOBAL_AGENTS_SID.DUST },
@@ -125,6 +125,7 @@ describe("postCommentMention", () => {
   it("creates one conversation per pod document, reuses it and notifies the pod once", async () => {
     const { pod, memberAuth } = await podMemberAuth();
     const documentPath = `pod-${pod.sId}/notes.md`;
+    postMock.mockResolvedValueOnce(posted(0));
 
     await postCommentMention(memberAuth, {
       documentPath,
@@ -141,8 +142,8 @@ describe("postCommentMention", () => {
     );
     expect(linked).not.toBeNull();
     expect(linked?.spaceId).toBe(pod.id);
-    expect(posted).toHaveBeenCalledTimes(2);
-    for (const [, { conversationResource }] of posted.mock.calls) {
+    expect(postMock).toHaveBeenCalledTimes(2);
+    for (const [, { conversationResource }] of postMock.mock.calls) {
       expect(conversationResource.sId).toBe(linked?.sId);
     }
     expect(notified).toHaveBeenCalledTimes(1);
@@ -151,7 +152,7 @@ describe("postCommentMention", () => {
 
   it("does not notify the pod of a new conversation nothing was posted in", async () => {
     const { pod, memberAuth } = await podMemberAuth();
-    posted.mockResolvedValue(
+    postMock.mockResolvedValue(
       new Err({
         status_code: 403,
         api_error: { type: "workspace_auth_error", message: "Nope." },
@@ -164,8 +165,33 @@ describe("postCommentMention", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(posted).toHaveBeenCalledTimes(1);
+    expect(postMock).toHaveBeenCalledTimes(1);
     expect(notified).not.toHaveBeenCalled();
+  });
+
+  it("notifies the pod on the first message posted after a failed one", async () => {
+    const { pod, memberAuth } = await podMemberAuth();
+    const documentPath = `pod-${pod.sId}/notes.md`;
+    postMock
+      .mockResolvedValueOnce(
+        new Err({
+          status_code: 403,
+          api_error: { type: "workspace_auth_error", message: "Nope." },
+        })
+      )
+      .mockResolvedValueOnce(posted(0));
+
+    await postCommentMention(memberAuth, {
+      documentPath,
+      newMessage: MENTIONING,
+    });
+    expect(notified).not.toHaveBeenCalled();
+
+    await postCommentMention(memberAuth, {
+      documentPath,
+      newMessage: MENTIONING,
+    });
+    expect(notified).toHaveBeenCalledTimes(1);
   });
 
   it("runs only the first agent mentioned and each mention once", async () => {
@@ -182,78 +208,44 @@ describe("postCommentMention", () => {
       newMessage: comment(`${dust} ${yuka} ${claude} ${dust} ${yuka}`),
     });
 
-    expect(posted.mock.calls[0][1].mentions).toEqual([
+    expect(postMock.mock.calls[0][1].mentions).toEqual([
       { configurationId: GLOBAL_AGENTS_SID.DUST },
       { type: "user", userId: "usr_yuka" },
     ]);
   });
 
-  it("waits while an agent runs in the conversation", async () => {
+  it("posts only when the conversation is idle, and waits while it is busy", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [],
     });
-    vi.spyOn(
-      ConversationResource.prototype,
-      "getInFlightMessages"
-    ).mockResolvedValueOnce({
-      runningAgentMessage: {
-        sId: "msg_running",
-        agentMessageId: 1,
-        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-        rank: 1,
-      },
-      runningCompactionMessage: null,
-    });
+    postMock.mockResolvedValue(
+      new Err({
+        status_code: 409,
+        api_error: {
+          type: "invalid_request_error",
+          message: "An agent or a compaction is running in this conversation.",
+        },
+      })
+    );
 
     const result = await postCommentMention(auth, {
       documentPath: `conversation-${conversation.sId}/plan.md`,
       newMessage: MENTIONING,
     });
 
+    expect(postMock.mock.calls[0][1].onlyWhenIdle).toBe(true);
     expect(result.isErr() && result.error).toBeInstanceOf(
       DocumentConversationBusyError
     );
-    expect(posted).not.toHaveBeenCalled();
   });
-
-  it.each([
-    [400 as const, RUNNING_AGENT_SWITCH_BLOCK_MESSAGE],
-    [
-      409 as const,
-      "User messages cannot be posted while conversation is being compacted.",
-    ],
-  ])(
-    "waits when the conversation becomes busy before the post (%i)",
-    async (status_code, message) => {
-      const conversation = await ConversationFactory.create(auth, {
-        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-        messagesCreatedAt: [],
-      });
-      posted.mockResolvedValue(
-        new Err({
-          status_code,
-          api_error: { type: "invalid_request_error", message },
-        })
-      );
-
-      const result = await postCommentMention(auth, {
-        documentPath: `conversation-${conversation.sId}/plan.md`,
-        newMessage: MENTIONING,
-      });
-
-      expect(result.isErr() && result.error).toBeInstanceOf(
-        DocumentConversationBusyError
-      );
-    }
-  );
 
   it("drops, without retrying, a comment whose post fails", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [],
     });
-    posted.mockResolvedValue(
+    postMock.mockResolvedValue(
       new Err({
         status_code: 403,
         api_error: { type: "workspace_auth_error", message: "Nope." },
@@ -266,7 +258,7 @@ describe("postCommentMention", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(posted).toHaveBeenCalledTimes(1);
+    expect(postMock).toHaveBeenCalledTimes(1);
   });
 });
 
