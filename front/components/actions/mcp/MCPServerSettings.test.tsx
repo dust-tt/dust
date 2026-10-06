@@ -85,7 +85,7 @@ vi.mock("@app/lib/auth/CellContext", () => ({
 }));
 
 vi.mock("@app/hooks/useNotification", () => ({
-  useSendNotification: () => vi.fn(),
+  useSendApiErrorNotification: () => vi.fn(),
 }));
 
 vi.mock("@app/lib/swr/mcp_servers", () => ({

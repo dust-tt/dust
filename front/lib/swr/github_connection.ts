@@ -91,10 +91,9 @@ export function useConnectWorkspaceGitHub({
         cellInfo,
       });
       if (connectionResult.isErr()) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to connect GitHub",
-          description: connectionResult.error.message,
+          error: connectionResult.error,
         });
         return false;
       }

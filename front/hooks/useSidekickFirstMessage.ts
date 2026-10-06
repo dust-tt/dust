@@ -1,5 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { TemplateInfo } from "@app/types/assistant/templates";
+import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -27,10 +29,14 @@ Call \`get_agent_config\` to retrieve the current configuration, then ask what t
 
 async function fetchFirstMessage(
   endpoint: string
-): Promise<Result<string, Error>> {
+): Promise<Result<string, APIError | Error>> {
   try {
     const res = await clientFetch(endpoint, { method: "GET" });
     if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      if (isAPIErrorResponse(body)) {
+        return new Err(body.error);
+      }
       return new Err(
         new Error(
           `Failed to fetch sidekick first message: ${res.status} ${res.statusText}`
@@ -58,7 +64,7 @@ function getSidekickScenario({
   conversationId?: string;
   agentConfigurationId?: string;
 }): {
-  getFirstMessage: () => Promise<Result<string, Error>>;
+  getFirstMessage: () => Promise<Result<string, APIError | Error>>;
   useCase: SidekickUseCase;
 } {
   const params = new URLSearchParams();

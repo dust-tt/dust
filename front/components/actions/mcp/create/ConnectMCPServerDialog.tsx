@@ -260,10 +260,9 @@ export function ConnectMCPServerDialog({
 
     if (submitRes.isErr()) {
       const providerName = OAUTH_PROVIDER_NAMES[authorization.provider];
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to connect ${providerName}`,
-        description: submitRes.error.message,
+        error: submitRes.error,
       });
       setIsLoading(false);
       return;

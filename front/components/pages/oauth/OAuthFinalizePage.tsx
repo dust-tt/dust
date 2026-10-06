@@ -59,7 +59,7 @@ export function OAuthFinalizePage() {
       const messageData = res.isErr()
         ? {
             type: "connection_finalized",
-            error: res.error.message || "Failed to finalize connection",
+            apiError: res.error,
             provider: validProvider,
           }
         : {

@@ -260,17 +260,8 @@
     },
     {
       "files": [
-        "front/components/actions/mcp/MCPServerSettings.tsx",
-        "front/components/actions/mcp/create/ConnectMCPServerDialog.tsx",
-        "front/components/actions/mcp/forms/submitCreateMCPServerDialogForm.ts",
-        "front/components/agent_builder/SidekickPanelContext.tsx",
         "front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx",
-        "front/components/data_source/ConnectorPermissionsModal.tsx",
-        "front/components/pages/oauth/OAuthFinalizePage.tsx",
         "front/components/pages/onboarding/VerifyPage.tsx",
-        "front/components/triggers/CreateWebhookSourceWithProviderForm.tsx",
-        "front/lib/swr/github_connection.ts",
-        "front/lib/swr/mcp_servers.ts",
         "front/lib/swr/notifications.ts"
       ],
       "rules": {

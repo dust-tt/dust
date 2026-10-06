@@ -7,7 +7,7 @@ import {
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -59,7 +59,7 @@ export function MCPServerSettings({
 }: MCPServerSettingsProps) {
   const { t } = useLingui();
   const authorization = mcpServerView.server.authorization;
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const cellContext = useCellContext();
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
@@ -158,10 +158,9 @@ export function MCPServerSettings({
 
     if (submitRes.isErr()) {
       const providerName = OAUTH_PROVIDER_NAMES[authorization!.provider];
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to connect ${providerName}`,
-        description: submitRes.error.message,
+        error: submitRes.error,
       });
     }
   };
