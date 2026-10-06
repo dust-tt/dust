@@ -1,13 +1,6 @@
 import { listMetronomeUsageWithGroups } from "@app/lib/metronome/client";
-import {
-  getMetricLlmProviderCostAwuId,
-  getMetricToolInvocationsId,
-} from "@app/lib/metronome/constants";
+import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import {
-  isToolCostCategory,
-  TOOL_COST_CATEGORY_AWU_WEIGHTS,
-} from "@app/lib/metronome/events";
 import { buildUsageQuerySegments } from "@app/lib/metronome/per_user_usage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
@@ -63,13 +56,11 @@ function fetchSegmentedUsage({
  * `user_id` (both are billable-metric group keys on the AWU products).
  *
  * Scoped to `keyNames` via an `api_key_name` `group_filters`: an unfiltered
- * query is capped server-side and silently omits groups. The AWU products only
- * expose `[api_key_name]` and `[api_key_name, tool_category]` as compound group
- * keys (no `usage_type` dimension), so — unlike the per-user query — free usage
- * can't be split out here. We count total per-name spend, which matches what
- * the per-name Metronome cap alert measures. AI Usage is already AWU spend
- * (cost_awu, priced 1:1); Tool Usage is an invocation count weighted by the
- * per-category AWU price.
+ * query is capped server-side and silently omits groups. We count total per-name
+ * spend, which matches what the per-name Metronome cap alert measures. The value
+ * is already AWU spend (cost_awu, priced 1:1) — tool-invocation cost is now
+ * folded into that aggregated metric (#31569), so the ToolInvocations metric is
+ * no longer queried.
  */
 export async function fetchPerApiKeyAwuUsage({
   workspaceId,
@@ -101,32 +92,20 @@ export async function fetchPerApiKeyAwuUsage({
     return new Ok(new Map());
   }
 
-  const [aiResult, toolResult] = await Promise.all([
-    fetchSegmentedUsage({
-      segments,
-      metronomeCustomerId,
-      billableMetricId: getMetricLlmProviderCostAwuId(),
-      groupKey: [API_KEY_NAME_GROUP_KEY],
-      keyNames,
-    }),
-    fetchSegmentedUsage({
-      segments,
-      metronomeCustomerId,
-      billableMetricId: getMetricToolInvocationsId(),
-      groupKey: [API_KEY_NAME_GROUP_KEY, "tool_category"],
-      keyNames,
-    }),
-  ]);
+  const aiResult = await fetchSegmentedUsage({
+    segments,
+    metronomeCustomerId,
+    billableMetricId: getMetricLlmProviderCostAwuId(),
+    groupKey: [API_KEY_NAME_GROUP_KEY],
+    keyNames,
+  });
   if (aiResult.isErr()) {
     return new Err(aiResult.error);
-  }
-  if (toolResult.isErr()) {
-    return new Err(toolResult.error);
   }
 
   const perKey = new Map<string, number>();
 
-  // AI usage: the value is already AWU spend (cost_awu, priced 1:1).
+  // The value is already AWU spend (cost_awu, priced 1:1).
   for (const entry of aiResult.value) {
     const keyName = entry.group?.[API_KEY_NAME_GROUP_KEY];
     if (
@@ -138,25 +117,6 @@ export async function fetchPerApiKeyAwuUsage({
       continue;
     }
     perKey.set(keyName, (perKey.get(keyName) ?? 0) + entry.value);
-  }
-
-  // Tool usage: the value is an invocation count — weight it by the
-  // per-category AWU price to convert it into AWU spend.
-  for (const entry of toolResult.value) {
-    const keyName = entry.group?.[API_KEY_NAME_GROUP_KEY];
-    const category = entry.group?.["tool_category"];
-    if (
-      !keyName ||
-      entry.value === null ||
-      new Date(entry.startingOn).getTime() < cycleStartMs ||
-      new Date(entry.startingOn).getTime() >= cycleEndMs ||
-      !category ||
-      !isToolCostCategory(category)
-    ) {
-      continue;
-    }
-    const awuSpent = entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
-    perKey.set(keyName, (perKey.get(keyName) ?? 0) + awuSpent);
   }
 
   return new Ok(perKey);
