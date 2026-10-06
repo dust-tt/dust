@@ -504,8 +504,8 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     }
   );
 
-  it("falls back to the legacy lookup when agent search fails", async () => {
-    const { workspace, agentConfig } = await setup();
+  it("returns no agents when agent search fails", async () => {
+    const { workspace } = await setup();
 
     vi.mocked(withEs).mockResolvedValueOnce(
       new Err(new ElasticsearchError("connection_error", "Search unavailable"))
@@ -516,9 +516,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     });
     expect(response.status).toBe(200);
     const body: { suggestions: RichMention[] } = await response.json();
-    expect(body.suggestions.map((agent) => agent.id)).toContain(
-      agentConfig.sId
-    );
+    expect(body.suggestions).toEqual([]);
   });
 
   it("does not search agents for user-only requests without feature flags", async () => {
