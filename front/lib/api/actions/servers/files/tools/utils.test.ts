@@ -7,19 +7,38 @@ import { describe, expect, it } from "vitest";
 
 describe("frameFileCreateRejectedError", () => {
   it("names the files create and interactive_content create tools", () => {
-    expect(frameFileCreateRejectedError().message).toContain("files__create");
-    expect(frameFileCreateRejectedError().message).toContain(
+    const { message } = frameFileCreateRejectedError({ hasFramesV2: false });
+    expect(message).toContain("files__create");
+    expect(message).toContain(
       "interactive_content__create_interactive_content_file"
     );
+    expect(message).not.toContain("dsbx");
+  });
+
+  it("points to the Computer under Frames v2", () => {
+    const { message } = frameFileCreateRejectedError({ hasFramesV2: true });
+    expect(message).toContain("files__create");
+    expect(message).toContain("dsbx frame publish");
+    expect(message).toContain("If the Computer is not available");
   });
 });
 
 describe("frameFileEditRejectedError", () => {
   it("names the files edit and interactive_content publish tools", () => {
-    expect(frameFileEditRejectedError().message).toContain("files__edit");
-    expect(frameFileEditRejectedError().message).toContain(
+    const { message } = frameFileEditRejectedError({ hasFramesV2: false });
+    expect(message).toContain("files__edit");
+    expect(message).toContain(
       "interactive_content__publish_interactive_content_file"
     );
+    expect(message).not.toContain("dsbx");
+  });
+
+  it("points to dsbx frame publish under Frames v2", () => {
+    const { message } = frameFileEditRejectedError({ hasFramesV2: true });
+    expect(message).toContain("files__edit");
+    expect(message).toContain("dsbx frame publish");
+    expect(message).toContain("If the Computer is not available");
+    expect(message).not.toContain("publish_interactive_content_file");
   });
 });
 

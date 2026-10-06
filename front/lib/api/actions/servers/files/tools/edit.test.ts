@@ -5,6 +5,7 @@ import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { frameContentType } from "@app/types/files";
 import assert from "assert";
@@ -106,6 +107,30 @@ describe("editHandler", () => {
     expect(fileStorageMock.saveFileCalls[0].contentType).toBe(
       "application/vnd.dust.frame"
     );
+  });
+
+  it("points the publish reminder to dsbx under Frames v2", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    mockStoredFile(
+      "export default function App() { return <h1>Old</h1>; }\n",
+      "application/vnd.dust.frame"
+    );
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/App.tsx`,
+        old_string: "Old",
+        new_string: "New",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    const [item] = result.value;
+    assert(item.type === "text");
+    expect(item.text).toContain("dsbx frame publish");
+    expect(item.text).not.toContain("publish_interactive_content_file");
   });
 
   it("returns Err when the file does not exist", async () => {

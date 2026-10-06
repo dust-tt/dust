@@ -4,7 +4,6 @@ import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   FRAME_SOURCE_MAX_BYTES,
   INTERACTIVE_CONTENT_SERVER_NAME,
-  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { BYTE_OFFSET_SCHEMA } from "@app/lib/api/files/text_file_pagination";
 import { FILE_PREVIEW_DIRECTIVE_EXAMPLE } from "@app/lib/markdown/file_preview";
@@ -358,12 +357,17 @@ const FILES_TOOLS_COMMON_METADATA = [
   },
 ] as const;
 
+/**
+ * @cc [owner:avervaet,label:product] edit-description-names-no-frame-publisher
+ * The description MUST NOT name a Frame publish tool or command: the available one depends on the
+ * workspace's Frames version, while this description is shared by every workspace.
+ */
 const EDIT_TOOL = {
   description:
     "Edit a text file by replacing an exact string match with new content. " +
     "This is also how to update an existing Frame (interactive dashboard, data visualization, " +
-    "chart, or slideshow): make targeted edits to the Frame's source file, then publish it with " +
-    `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`. ` +
+    "chart, or slideshow): make targeted edits to the Frame's source file, then publish it as " +
+    "this tool's result explains. " +
     "Never create a new Frame or rewrite the whole source to change an existing one. " +
     "`old_string` must match the file content exactly, including whitespace and indentation. " +
     "Fails if `old_string` is not found or if the number of occurrences does not match " +

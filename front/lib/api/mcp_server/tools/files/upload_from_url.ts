@@ -1,5 +1,6 @@
 import { uploadFileFromUrlToFileSystem } from "@app/lib/api/file_system/upload_from_url";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { sanitizeUrlForDisplay } from "@app/types/shared/utils/url_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -58,6 +59,7 @@ export function registerFilesUploadFromUrlTool(server: McpServer) {
         path,
         url,
         contentType: content_type,
+        hasFramesV2: await hasFeatureFlag(auth, "frames_v2"),
       });
 
       if (uploadResult.isErr()) {

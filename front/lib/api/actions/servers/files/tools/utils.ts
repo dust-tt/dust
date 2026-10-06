@@ -150,19 +150,53 @@ export async function resolveFile(
   );
 }
 
-export function frameFileCreateRejectedError(): MCPError {
+const FRAMES_V2_NO_COMPUTER_FALLBACK =
+  "If the Computer is not available, tell the user the Frame cannot be published here.";
+
+/**
+ * @cc [owner:avervaet,label:product] frame-publish-hint-follows-frames-v2
+ * When hasFramesV2 is true, the hint MUST point to `dsbx frame publish`, MUST tell the model to
+ * report that publishing is unavailable when the Computer is missing, and MUST NOT name
+ * `publish_interactive_content_file`, which Frames v2 does not expose. When hasFramesV2 is false,
+ * the hint MUST NOT mention `dsbx`.
+ */
+function framePublishHint({ hasFramesV2 }: { hasFramesV2: boolean }): string {
+  if (hasFramesV2) {
+    return (
+      "publish it from the Computer with `dsbx frame publish /files/<scoped path>`. " +
+      FRAMES_V2_NO_COMPUTER_FALLBACK
+    );
+  }
+
+  return `publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`;
+}
+
+export function frameFileCreateRejectedError({
+  hasFramesV2,
+}: {
+  hasFramesV2: boolean;
+}): MCPError {
+  const alternative = hasFramesV2
+    ? "Write new Frames with the Computer and publish them with `dsbx frame publish`. " +
+      FRAMES_V2_NO_COMPUTER_FALLBACK
+    : `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`;
+
   return new MCPError(
     `Frame files cannot be created with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
-      `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`,
+      alternative,
     { tracked: false }
   );
 }
 
-export function frameFileEditRejectedError(): MCPError {
+export function frameFileEditRejectedError({
+  hasFramesV2,
+}: {
+  hasFramesV2: boolean;
+}): MCPError {
   return new MCPError(
     "Frame files cannot be edited with this tool. " +
       `Edit the Frame's source with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\`, ` +
-      `then publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`,
+      `then ${framePublishHint({ hasFramesV2 })}`,
     { tracked: false }
   );
 }
@@ -171,10 +205,14 @@ export function frameFileEditRejectedError(): MCPError {
  * Notice appended after a write to a Frame source file on the mount. The mount write never
  * changes the rendered Frame directly, the model must publish to rebuild it.
  */
-export function frameSourceUpdatedNotice(): string {
+export function frameSourceUpdatedNotice({
+  hasFramesV2,
+}: {
+  hasFramesV2: boolean;
+}): string {
   return (
     "This updated the Frame's source only. The rendered Frame is unchanged until you " +
-    `publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`
+    framePublishHint({ hasFramesV2 })
   );
 }
 

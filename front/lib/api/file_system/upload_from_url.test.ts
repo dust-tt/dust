@@ -79,6 +79,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
       path: `conversation-${conversation.sId}/notes.txt`,
       url: "not-a-url",
+      hasFramesV2: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -107,6 +108,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
       path: `conversation-${conversation.sId}/notes.txt`,
       url: "http://example.com/file.txt",
+      hasFramesV2: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -142,6 +144,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
       path,
       url: "https://example.com/imported.txt",
+      hasFramesV2: false,
     });
 
     expect(result.isOk()).toBe(true);
@@ -179,6 +182,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
       path: `conversation-${conversation.sId}/large.pdf`,
       url: "https://example.com/large.pdf",
+      hasFramesV2: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -220,6 +224,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
       path: `conversation-${conversation.sId}/aborted.txt`,
       url: "https://example.com/aborted.txt",
+      hasFramesV2: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -253,6 +258,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
       path: `conversation-${conversation.sId}/frame.html`,
       url: "https://example.com/frame.html",
+      hasFramesV2: false,
     });
 
     expect(result.isErr()).toBe(true);

@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
@@ -98,10 +99,11 @@ export async function createHandler(
   const verb = exists ? "Updated" : "Created";
 
   if (isFrameSourceOverwrite) {
+    const hasFramesV2 = await hasFeatureFlag(auth, "frames_v2");
     return new Ok([
       {
         type: "text",
-        text: `Updated \`${path}\` (${sizeKb} KB). ${frameSourceUpdatedNotice()}`,
+        text: `Updated \`${path}\` (${sizeKb} KB). ${frameSourceUpdatedNotice({ hasFramesV2 })}`,
       },
     ]);
   }
