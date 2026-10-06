@@ -173,6 +173,7 @@ msgstr "How you appear to other members of the workspace"
 #: front/components/UserSettingsPopover.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
@@ -423,6 +424,7 @@ msgstr "Full name"
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/UpgradeRequestLimitModal.tsx
 msgid "Close"
 msgstr "Close"
 
@@ -537,6 +539,9 @@ msgstr "Agents"
 #: front/components/groups/GroupsList.tsx
 #: front/components/members/WorkspaceMembersSection.tsx
 #: front/components/navigation/config.ts
+#: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MemberGroupLimitTable.tsx
+#: front/components/workspace/UsageMembersSection.tsx
 msgid "Members"
 msgstr "Members"
 
@@ -666,6 +671,9 @@ msgstr "Group members ({selectedMemberCount})"
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
 #: front/components/workspace/ChangeMemberModal.tsx
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+#: front/components/workspace/UpgradePlanDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
@@ -1117,6 +1125,7 @@ msgid "None of your conversations has a scheduled wake-up. Agents schedule wake-
 msgstr "None of your conversations has a scheduled wake-up. Agents schedule wake-ups to pick a conversation back up on their own."
 
 #: front/components/members/AddEditorsDropdown.tsx
+#: front/components/workspace/UsageMembersSection.tsx
 msgid "Search members"
 msgstr "Search members"
 
@@ -1249,6 +1258,7 @@ msgid "Email addresses, comma separated"
 msgstr "Email addresses, comma separated"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Validate"
 msgstr "Validate"
 
@@ -1562,6 +1572,7 @@ msgstr "Spend"
 
 #: front/components/navigation/config.ts
 #: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/TopUpsHistoryTable.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 #: front/components/workspace/billing/CouponsList.tsx
 msgid "Credits"
@@ -1953,6 +1964,7 @@ msgid "Add {addedCreditsFormatted} credits"
 msgstr "Add {addedCreditsFormatted} credits"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/TopUpsHistoryTable.tsx
 msgid "Top-up"
 msgstr "Top-up"
 
@@ -2163,6 +2175,7 @@ msgid "For older credits, <0>contact support</0>."
 msgstr "For older credits, <0>contact support</0>."
 
 #: front/components/workspace/CreditLimitInput.tsx
+#: front/components/workspace/GroupSpendLimitCell.tsx
 msgid "credits/month"
 msgstr "credits/month"
 
@@ -2178,6 +2191,278 @@ msgstr "Personal limit"
 #: front/components/workspace/CreditLimitInput.tsx
 msgid "Remove personal limit"
 msgstr "Remove personal limit"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "This redirect URI is already in the list."
+msgstr "This redirect URI is already in the list."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Will be saved as {normalizedRedirectUri}."
+msgstr "Will be saved as {normalizedRedirectUri}."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Use a full redirect URI such as https://example.com/oauth/callback."
+msgstr "Use a full redirect URI such as https://example.com/oauth/callback."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URIs"
+msgstr "Redirect URIs"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Only workspace admins can manage MCP server settings."
+msgstr "Only workspace admins can manage MCP server settings."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Accept all redirect URIs"
+msgstr "Accept all redirect URIs"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Any redirect URI requested during OAuth will be allowed."
+msgstr "Any redirect URI requested during OAuth will be allowed."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Allowlisted redirect URIs only"
+msgstr "Allowlisted redirect URIs only"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Only the redirect URIs listed below will be accepted."
+msgstr "Only the redirect URIs listed below will be accepted."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI"
+msgstr "Redirect URI"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Add URI"
+msgstr "Add URI"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Add at least one redirect URI before saving."
+msgstr "Add at least one redirect URI before saving."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Remove {uri}"
+msgstr "Remove {uri}"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Saving..."
+msgstr "Saving..."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Edit spend limit for {memberName}"
+msgstr "Edit spend limit for {memberName}"
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "These limits cap what each member can spend, once their seat credits are used. Personal limits override workspace and group limits."
+msgstr "These limits cap what each member can spend, once their seat credits are used. Personal limits override workspace and group limits."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "These limits cap what each member can spend. Personal limits override workspace and group limits."
+msgstr "These limits cap what each member can spend. Personal limits override workspace and group limits."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Only workspace admins can edit the workspace default limit."
+msgstr "Only workspace admins can edit the workspace default limit."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Reset to no personal limit at the next billing cycle"
+msgstr "Reset to no personal limit at the next billing cycle"
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Reset to {resetBaselineCredits} credits at the next billing cycle"
+msgstr "Reset to {resetBaselineCredits} credits at the next billing cycle"
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "A personal limit applies to this member across the workspace."
+msgstr "A personal limit applies to this member across the workspace."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Group limits"
+msgstr "Group limits"
+
+#: front/components/workspace/GroupSpendLimitCell.tsx
+msgid "No limit"
+msgstr "No limit"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MemberGroupLimitTable.tsx
+msgid "Group"
+msgstr "Group"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Granted seat"
+msgstr "Granted seat"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Spend limit"
+msgstr "Spend limit"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Models tier"
+msgstr "Models tier"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
+msgstr "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
+
+#: front/components/workspace/MemberGroupLimitTable.tsx
+msgid "Limit"
+msgstr "Limit"
+
+#: front/components/workspace/MemberGroupLimitTable.tsx
+msgid "credits/m."
+msgstr "credits/m."
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "Date"
+msgstr "Date"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Expiration"
+msgstr "Expiration"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Expired {expirationDate}"
+msgstr "Expired {expirationDate}"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Failed to load top-ups history"
+msgstr "Failed to load top-ups history"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "An error occurred while loading the top-ups history. Please refresh the page or contact support if the issue persists."
+msgstr "An error occurred while loading the top-ups history. Please refresh the page or contact support if the issue persists."
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "No top-ups yet: credits you buy, free credits and coupon credits will appear here."
+msgstr "No top-ups yet: credits you buy, free credits and coupon credits will appear here."
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Free plan"
+msgstr "Free plan"
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+msgstr "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+msgid "Check Dust plans"
+msgstr "Check Dust plans"
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+msgid "You do not have permission to upgrade the plan."
+msgstr "You do not have permission to upgrade the plan."
+
+#: front/components/workspace/UpgradeRequestLimitModal.tsx
+msgid "Edit spend limit for {requesterName}"
+msgstr "Edit spend limit for {requesterName}"
+
+#: front/components/workspace/UpgradeRequestLimitModal.tsx
+msgid "Could not load this member's current limits. Refresh the page to try again."
+msgstr "Could not load this member's current limits. Refresh the page to try again."
+
+#: front/components/workspace/UpgradeRequests.tsx
+msgid "Deny upgrade request"
+msgstr "Deny upgrade request"
+
+#: front/components/workspace/UpgradeRequests.tsx
+msgid "Deny {requesterName}'s request to increase their spend limit?"
+msgstr "Deny {requesterName}'s request to increase their spend limit?"
+
+#: front/components/workspace/UpgradeRequests.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Deny"
+msgstr "Deny"
+
+#: front/components/workspace/UpgradeRequests.tsx
+msgid "Could not load requests. Refresh the page to try again."
+msgstr "Could not load requests. Refresh the page to try again."
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Reached credit limit"
+msgstr "Reached credit limit"
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Upgrade plan"
+msgstr "Upgrade plan"
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Edit limit"
+msgstr "Edit limit"
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "No pending upgrade requests."
+msgstr "No pending upgrade requests."
+
+#: front/components/workspace/UsageMembersSection.tsx
+msgid "All groups"
+msgstr "All groups"
+
+#: front/components/workspace/UsageMembersSection.tsx
+msgid "Requests"
+msgstr "Requests"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Day {elapsedDays}/{totalDays}"
+msgstr "Day {elapsedDays}/{totalDays}"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Remaining credits in the pool"
+msgstr "Remaining credits in the pool"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Used this cycle"
+msgstr "Used this cycle"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Programmatic usage this cycle"
+msgstr "Programmatic usage this cycle"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "{percentage}% of the usage"
+msgstr "{percentage}% of the usage"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Cycle"
+msgstr "Cycle"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Used credits"
+msgstr "Used credits"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Unknown cycle"
+msgstr "Unknown cycle"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Failed to load cycle history"
+msgstr "Failed to load cycle history"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "An error occurred while loading past-cycle consumption."
+msgstr "An error occurred while loading past-cycle consumption."
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Failed to load Workspace Credits Pool"
+msgstr "Failed to load Workspace Credits Pool"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "An error occurred while loading the workspace's credit pool data."
+msgstr "An error occurred while loading the workspace's credit pool data."
+
+#: front/components/workspace/WorkspaceDefaultLimitInput.tsx
+msgid "Workspace default limit"
+msgstr "Workspace default limit"
+
+#: front/components/workspace/WorkspaceDefaultLimitInput.tsx
+msgid "The workspace default limit could not be loaded."
+msgstr "The workspace default limit could not be loaded."
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
 msgid "API Key Created"
@@ -2639,10 +2924,6 @@ msgid "Invoice"
 msgstr "Invoice"
 
 #: front/components/workspace/billing/RecentInvoices.tsx
-msgid "Date"
-msgstr "Date"
-
-#: front/components/workspace/billing/RecentInvoices.tsx
 msgid "See invoice"
 msgstr "See invoice"
 
@@ -2886,11 +3167,6 @@ msgstr "Think GitHub repository names, short and memorable."
 msgid "Workspace name"
 msgstr "Workspace name"
 
-#: front/components/workspace/settings/WorkspaceNameEditor.tsx
-#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
-msgid "Saving..."
-msgstr "Saving..."
-
 #: front/components/workspace/sso/AutoJoinToggle.tsx
 msgid "De-activate Auto-join"
 msgstr "De-activate Auto-join"
@@ -2924,15 +3200,6 @@ msgstr "Update failed"
 #: front/components/workspace/sso/AutoJoinToggle.tsx
 msgid "Failed to enable auto-add for whitelisted domain."
 msgstr "Failed to enable auto-add for whitelisted domain."
-
-#: front/components/workspace/sso/AutoJoinToggle.tsx
-#: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Free plan"
-msgstr "Free plan"
-
-#: front/components/workspace/sso/AutoJoinToggle.tsx
-msgid "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
-msgstr "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
 msgid "Auto-join Workspace"
@@ -3053,6 +3320,10 @@ msgstr "Disable {connectionType} Single Sign On"
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
 msgid "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."
 msgstr "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."
+
+#: front/components/workspace/usage/LockedSection.tsx
+msgid "Top up your credit pool to enable these settings"
+msgstr "Top up your credit pool to enable these settings"
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"

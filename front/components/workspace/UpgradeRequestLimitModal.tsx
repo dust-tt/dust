@@ -18,6 +18,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UpgradeRequestLimitModalProps {
@@ -49,6 +50,7 @@ export function UpgradeRequestLimitModal({
   onSaved,
   onSavingChange,
 }: UpgradeRequestLimitModalProps) {
+  const { t } = useLingui();
   const { subscription } = useAuth();
   const canReadDefaultLimit =
     isManager(owner) && isSubscriptionMetronomeBilled(subscription);
@@ -102,24 +104,25 @@ export function UpgradeRequestLimitModal({
 
   // Never initialize the editor with fabricated limits when the member cannot be loaded.
   if (!member) {
+    const requesterName = request.requester.name;
     return (
       <Dialog open onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>
-              Edit spend limit for {request.requester.name}
+              <Trans>Edit spend limit for {requesterName}</Trans>
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
             {isMembersUsageLoading ? (
               <Spinner />
             ) : (
-              "Could not load this member's current limits. Refresh the page to try again."
+              t`Could not load this member's current limits. Refresh the page to try again.`
             )}
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}

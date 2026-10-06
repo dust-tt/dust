@@ -9,6 +9,7 @@ import type { GroupType } from "@app/types/groups";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import { ContentMessage } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useMemo, useState } from "react";
 
 interface UpgradeRequestsProps {
@@ -83,6 +84,7 @@ export function UpgradeRequests({
   onSpendLimitSavingChange,
   onSaved,
 }: UpgradeRequestsProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const [requestToEdit, setRequestToEdit] =
     useState<MembershipUpgradeRequestType | null>(null);
@@ -104,12 +106,13 @@ export function UpgradeRequests({
     request: MembershipUpgradeRequestType,
     status: "approved" | "denied"
   ) {
+    const requesterName = request.requester.name;
     if (
       status === "denied" &&
       !(await confirm({
-        title: "Deny upgrade request",
-        message: `Deny ${request.requester.name}'s request to increase their spend limit?`,
-        validateLabel: "Deny",
+        title: t`Deny upgrade request`,
+        message: t`Deny ${requesterName}'s request to increase their spend limit?`,
+        validateLabel: t`Deny`,
         validateVariant: "warning",
       }))
     ) {
@@ -138,7 +141,7 @@ export function UpgradeRequests({
     <>
       {isError ? (
         <ContentMessage variant="warning">
-          Could not load requests. Refresh the page to try again.
+          <Trans>Could not load requests. Refresh the page to try again.</Trans>
         </ContentMessage>
       ) : (
         <UpgradeRequestsTable

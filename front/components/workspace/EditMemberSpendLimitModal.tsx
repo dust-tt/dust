@@ -35,6 +35,7 @@ import {
   Label,
   Page,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 interface EditMemberSpendLimitModalProps {
@@ -80,6 +81,7 @@ function MemberSpendLimitForm({
   onSavingChange,
   onSaved,
 }: MemberSpendLimitFormProps) {
+  const { t } = useLingui();
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
     workspaceId: owner.sId,
   });
@@ -122,10 +124,11 @@ function MemberSpendLimitForm({
   const resetBaselineAwuCredits = initialResetAtNextBillingCycle
     ? (member?.poolCapOverridePreviousAwuCredits ?? null)
     : initialPersonalOverride;
-  const resetBaselineLabel =
+  const resetBaselineCredits =
     resetBaselineAwuCredits === null
-      ? "no personal limit"
-      : `${formatCredits(resetBaselineAwuCredits)} credits`;
+      ? null
+      : formatCredits(resetBaselineAwuCredits);
+  const memberName = member?.name;
 
   const memberGroupRows = useMemo(
     () => groupRowsForMember(member, groups),
@@ -275,13 +278,13 @@ function MemberSpendLimitForm({
             isRounded
           />
           <div>
-            <DialogTitle>Edit spend limit for {member?.name}</DialogTitle>
+            <DialogTitle>
+              <Trans>Edit spend limit for {memberName}</Trans>
+            </DialogTitle>
             <DialogDescription>
-              {`These limits cap what each member can spend${
-                seatAllowanceAwuCredits > 0
-                  ? ", once their seat credits are used"
-                  : ""
-              }. Personal limits override workspace and group limits.`}
+              {seatAllowanceAwuCredits > 0
+                ? t`These limits cap what each member can spend, once their seat credits are used. Personal limits override workspace and group limits.`
+                : t`These limits cap what each member can spend. Personal limits override workspace and group limits.`}
             </DialogDescription>
           </div>
         </div>
@@ -297,7 +300,7 @@ function MemberSpendLimitForm({
               field={defaultLimitField}
               readOnlyTooltip={
                 !readOnly && !canEditDefaultLimit
-                  ? "Only workspace admins can edit the workspace default limit."
+                  ? t`Only workspace admins can edit the workspace default limit.`
                   : undefined
               }
               isActive={isDefaultActive}
@@ -339,20 +342,31 @@ function MemberSpendLimitForm({
                 htmlFor="reset-at-next-billing-cycle"
                 className="cursor-pointer text-sm font-normal leading-snug text-foreground"
               >
-                Reset to {resetBaselineLabel} at the next billing cycle
+                {resetBaselineCredits === null ? (
+                  <Trans>
+                    Reset to no personal limit at the next billing cycle
+                  </Trans>
+                ) : (
+                  <Trans>
+                    Reset to {resetBaselineCredits} credits at the next billing
+                    cycle
+                  </Trans>
+                )}
               </Label>
             </div>
           )}
           {editableGroupIds && (
             <span className="copy-xs text-muted-foreground">
-              A personal limit applies to this member across the workspace.
+              <Trans>
+                A personal limit applies to this member across the workspace.
+              </Trans>
             </span>
           )}
 
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
               <span className="flex items-center gap-1 text-sm font-medium text-foreground">
-                Group limits
+                <Trans>Group limits</Trans>
               </span>
               <MemberGroupLimitTable
                 rows={memberGroupRows}
@@ -368,12 +382,12 @@ function MemberSpendLimitForm({
       </DialogContainer>
       <DialogFooter
         leftButtonProps={{
-          label: "Cancel",
+          label: t`Cancel`,
           variant: "outline",
           onClick: onClose,
         }}
         rightButtonProps={{
-          label: "Validate",
+          label: t`Validate`,
           variant: "highlight",
           disabled: isSaving || readOnly || defaultLimitField.isPending,
           isLoading: isSaving,
