@@ -205,6 +205,30 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new this(this.model, blob.get());
   }
 
+  /**
+   * @cc [owner:philipperolet,label:product] paused-bot-is-not-revoked
+   * Returns true only when the team's bot-enabled Slack configuration has a connector marked
+   * `oauth_token_revoked`. A paused connector without that error MUST NOT count as revoked: its
+   * bot still answers. Returns false when there is no bot-enabled configuration.
+   */
+  static async isActiveBotTokenRevoked(slackTeamId: string): Promise<boolean> {
+    // Uses the partial unique index on (slackTeamId, botEnabled), then the connector primary key.
+    const blob = await this.model.findOne({
+      where: { slackTeamId, botEnabled: true },
+      include: [
+        {
+          model: ConnectorModel,
+          as: "connector",
+          attributes: [],
+          required: true,
+          where: { errorType: "oauth_token_revoked" },
+        },
+      ],
+    });
+
+    return blob !== null;
+  }
+
   async isBotWhitelistedToSummon(botName: string | string[]): Promise<boolean> {
     return !!(await SlackBotWhitelistModel.findOne({
       where: {
