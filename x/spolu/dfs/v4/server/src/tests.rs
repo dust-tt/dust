@@ -539,6 +539,7 @@ async fn client_cache_contracts() -> Result<()> {
             },
         )?;
         let observer = ::dfs_client::BlockingClient::connect(&endpoint, &key)?;
+        directory_absence_contracts(&endpoint, &key, &tenant.root_id)?;
         let a = client
             .create(CreateRequest {
                 parent_id: directory.id.clone(),
@@ -903,4 +904,158 @@ async fn client_cache_contracts() -> Result<()> {
     let _ = stop.send(());
     task.await??;
     result
+}
+
+fn directory_absence_contracts(endpoint: &str, key: &str, root: &str) -> Result<()> {
+    let observer = ::dfs_client::BlockingClient::connect(endpoint, key)?;
+    let client = ::dfs_client::CachedClient::connect(
+        endpoint,
+        key,
+        ::dfs_client::CacheConfig {
+            write_delay_ms: 1000,
+            ..Default::default()
+        },
+    )?;
+    let create = |parent: &str, name: &str, directory| CreateRequest {
+        parent_id: parent.into(),
+        name: name.into(),
+        directory,
+        mode: 0o755,
+        ..Default::default()
+    };
+    let lookup = |parent: &str, name: &str| LookupRequest {
+        parent_id: parent.into(),
+        name: name.into(),
+    };
+    let calls = || {
+        client.metrics()["dfs_client_metrics"]["rpc.lookup"]["calls"]
+            .as_u64()
+            .unwrap_or(0)
+    };
+    let directory = observer
+        .create(create(root, "absence", true))?
+        .object
+        .context("directory")?;
+    let listing = ListRequest {
+        directory_id: directory.id.clone(),
+        after: None,
+        limit: 64,
+    };
+    assert!(client.list(listing.clone())?.entries.is_empty());
+    let before = calls();
+    let a = client
+        .create(create(&directory.id, "a", false))?
+        .object
+        .context("a")?;
+    let folder = client
+        .create(create(&directory.id, "folder", true))?
+        .object
+        .context("folder")?;
+    let child = client
+        .create(create(&folder.id, "child", false))?
+        .object
+        .context("child")?;
+    assert_eq!(client.lookup(lookup(&folder.id, "child"))?.id, child.id);
+    assert_eq!(
+        code(
+            &client
+                .create(create(&folder.id, "child", false))
+                .err()
+                .context("duplicate")?
+        ),
+        ErrorCode::AlreadyExists
+    );
+    client.rename_from(
+        directory.id.clone(),
+        "a".into(),
+        RenameRequest {
+            object_id: a.id.clone(),
+            parent_id: directory.id.clone(),
+            name: "renamed".into(),
+            replace: false,
+        },
+    )?;
+    assert_eq!(client.lookup(lookup(&directory.id, "renamed"))?.id, a.id);
+    assert_eq!(
+        code(
+            &client
+                .lookup(lookup(&directory.id, "a"))
+                .err()
+                .context("old name")?
+        ),
+        ErrorCode::NotFound
+    );
+    client.remove_at(
+        directory.id.clone(),
+        "renamed".into(),
+        RemoveRequest {
+            object_id: a.id,
+            directory: false,
+        },
+    )?;
+    client.drain()?;
+    assert_eq!(
+        code(
+            &client
+                .lookup(lookup(&directory.id, "another-missing"))
+                .err()
+                .context("missing")?
+        ),
+        ErrorCode::NotFound
+    );
+    assert_eq!(
+        calls(),
+        before,
+        "listings and new directories must eliminate missing-name RPCs"
+    );
+
+    // An external create can be hidden only until the original listing deadline, even after a hit.
+    client.list(listing.clone())?;
+    let external = observer
+        .create(create(&directory.id, "external", false))?
+        .object
+        .context("external")?;
+    assert_eq!(
+        code(
+            &client
+                .lookup(lookup(&directory.id, "external"))
+                .err()
+                .context("cached absence")?
+        ),
+        ErrorCode::NotFound
+    );
+    std::thread::sleep(std::time::Duration::from_millis(1050));
+    assert_eq!(
+        client.lookup(lookup(&directory.id, "external"))?.id,
+        external.id
+    );
+    assert!(calls() > before);
+
+    // The commit still checks uniqueness when the cached absence races with another writer.
+    client.list(listing)?;
+    let external = observer
+        .create(create(&directory.id, "collision", false))?
+        .object
+        .context("winner")?;
+    let tentative = client
+        .create(create(&directory.id, "collision", false))?
+        .object
+        .context("tentative")?;
+    assert_eq!(
+        code(
+            &client
+                .fsync(ObjectRequest {
+                    object_id: tentative.id
+                })
+                .err()
+                .context("collision")?
+        ),
+        ErrorCode::AlreadyExists
+    );
+    assert_eq!(
+        observer.lookup(lookup(&directory.id, "collision"))?.id,
+        external.id
+    );
+    assert!(client.drain().is_err());
+    Ok(())
 }

@@ -79,6 +79,12 @@ pub(super) struct Pending {
     retired: std::collections::VecDeque<String>,
 }
 impl Pending {
+    pub fn names(&self, parent: &str) -> impl Iterator<Item = &str> {
+        self.names
+            .get(parent)
+            .into_iter()
+            .flat_map(|names| names.keys().map(String::as_str))
+    }
     pub fn local_directory(&self, id: &str) -> bool {
         self.objects.get(id).is_some_and(|node| {
             node.base.is_none() && node.current.as_ref().is_some_and(|o| o.directory)
@@ -866,7 +872,25 @@ impl Inner {
                 .or_default()
                 .insert(receipt.id, value.clone());
             let mut cache = self.cache.lock();
+            cache.exclude_name(&parent, &name);
             cache.remove(&Key::Name(parent.clone(), name.clone()));
+        }
+        if let Some(edit::Operation::Create(r)) = &edit.operation
+            && r.directory
+        {
+            // A fresh UUID directory starts empty. Keep this deadline through publication; a
+            // commit response validates metadata, not the directory's entire membership.
+            self.cache.lock().remember_coverage(
+                &ListRequest {
+                    directory_id: r.object_id.clone(),
+                    after: None,
+                    limit: 64,
+                },
+                &Page::default(),
+                std::iter::empty(),
+                received,
+                expires,
+            );
         }
         let result = Mutation {
             object: pending.objects.get(&target).and_then(|n| n.current.clone()),
@@ -1036,6 +1060,11 @@ impl Inner {
         }
         for participant in &group.participants {
             self.bump(participant);
+            if result.is_err() || group.deleted.contains(participant) {
+                self.cache
+                    .lock()
+                    .remove(&Key::Coverage(participant.clone()));
+            }
             self.cache.lock().remove(&Key::Object(participant.clone()));
             self.cache.lock().invalidate_directory(participant, false);
             let operations = pending
@@ -1097,6 +1126,7 @@ impl Inner {
         }
         for (parent, name, value) in &group.bindings {
             self.bump(&name_generation(parent, name));
+            self.cache.lock().exclude_name(parent, name);
             if let Some(names) = pending.names.get_mut(parent) {
                 if let Some(versions) = names.get_mut(name) {
                     versions.remove(&id);

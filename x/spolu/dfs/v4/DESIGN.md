@@ -123,12 +123,16 @@ never eagerly load an entire directory or recurse into descendants.
 Use opaque keyset cursors, not offsets. Each page is one authorized snapshot; pagination does not
 promise a snapshot across all pages during concurrent mutation. Cache entries expire `C` after receipt
 of their validating response. An unchanged directory revision cannot renew child attributes or grants:
-children can change without changing directory membership. Partial pages cannot prove arbitrary name
-absence or directory EOF; negative lookups require explicit validation.
+children can change without changing directory membership. A fresh listing proves name absence only
+within its covered range: after its input cursor through its continuation, or EOF when complete.
+Keep one compact absence range per directory, excluding listed names and local namespace edits.
+New UUID directories seed a whole-directory absence record. Hits, edits and publication never renew
+its original deadline; expiration or eviction falls back to Lookup. `/shared` uses ID cursors, so its
+pages cannot prove name-range absence. FDB still checks collisions at commit.
 
-Overlay local namespace edits atomically, invalidate affected pages, and keep stable FUSE cookies
-separate from page residency. `/shared` follows the same paging/freshness rules without a tenant-wide
-revision or subtree grant propagation.
+Overlay local namespace edits atomically, invalidate affected attribute pages while preserving the
+remaining absence range, and keep stable FUSE cookies separate from page residency. `/shared` follows
+the same paging/freshness rules without a tenant-wide revision or subtree grant propagation.
 
 ## Writeback and fsync
 

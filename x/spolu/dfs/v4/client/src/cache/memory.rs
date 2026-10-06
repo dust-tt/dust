@@ -1,6 +1,6 @@
-use dfs_protocol::rpc::{Object, Page};
+use dfs_protocol::rpc::{ListRequest, Object, Page};
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     sync::Arc,
     time::Instant,
 };
@@ -11,6 +11,7 @@ pub(super) enum Key {
     Object(String),
     Name(String, String),
     Page(String, Option<String>),
+    Coverage(String),
     Block(String, Vec<u8>, u64),
 }
 pub(super) enum Value {
@@ -18,7 +19,20 @@ pub(super) enum Value {
     Absent,
     Name(Option<String>),
     Page(Page),
+    Coverage(Coverage),
     Block(Vec<u8>),
+}
+pub(super) struct Coverage {
+    after: Option<String>,
+    end: Option<String>,
+    excluded: BTreeSet<String>,
+    _edits: Vec<OwnedSemaphorePermit>,
+}
+impl Coverage {
+    fn covers(&self, name: &str) -> bool {
+        self.after.as_deref().is_none_or(|after| name > after)
+            && self.end.as_deref().is_none_or(|end| name <= end)
+    }
 }
 pub(super) struct Entry {
     pub value: Value,
@@ -37,6 +51,14 @@ impl Value {
                 .iter()
                 .map(|e| e.name.len() + e.object.as_ref().map_or(0, object_weight) + 128)
                 .sum(),
+            Self::Coverage(v) => {
+                v.after.as_ref().map_or(0, String::len)
+                    + v.end.as_ref().map_or(0, String::len)
+                    + v.excluded
+                        .iter()
+                        .map(|name| name.len() + 128)
+                        .sum::<usize>()
+            }
             Self::Block(v) => v.capacity(),
         }) + 256
     }
@@ -84,6 +106,69 @@ impl Cache {
     }
     pub fn fresh(&mut self, key: &Key) -> Option<Arc<Entry>> {
         self.get(key).filter(|entry| Instant::now() < entry.expires)
+    }
+    /// @cc [owner:spolu,label:concurrency;security] directory-absence-proof
+    /// Absence MUST use an unexpired name-ordered range, excluding listed and locally changed names.
+    /// Hits and local edits MUST NOT extend its original expiry. Shared ID cursors MUST NOT be used
+    /// as name bounds. Replacing or evicting a proof MUST only cause a fallback to the server.
+    pub fn absent(&mut self, parent: &str, name: &str) -> bool {
+        self.fresh(&Key::Coverage(parent.into())).is_some_and(|entry| {
+            matches!(&entry.value, Value::Coverage(v) if v.covers(name) && !v.excluded.contains(name))
+        })
+    }
+    pub fn remember_coverage<'a>(
+        &mut self,
+        request: &ListRequest,
+        page: &Page,
+        local_names: impl Iterator<Item = &'a str>,
+        received: Instant,
+        expires: Instant,
+    ) {
+        // Shared pagination uses object IDs, whereas ordinary directories use name boundaries.
+        if request.directory_id == "shared" {
+            return;
+        }
+        let coverage = Coverage {
+            after: request.after.clone(),
+            end: page.next_after.clone(),
+            excluded: page
+                .entries
+                .iter()
+                .map(|e| e.name.clone())
+                .chain(local_names.map(str::to_owned))
+                .collect(),
+            _edits: vec![],
+        };
+        // Keep one range per directory. Its positive entries remain in the separate name cache.
+        self.insert(
+            Key::Coverage(request.directory_id.clone()),
+            Value::Coverage(coverage),
+            received,
+            expires,
+        );
+    }
+    pub fn exclude_name(&mut self, parent: &str, name: &str) {
+        if !self.absent(parent, name) {
+            return;
+        }
+        let key = Key::Coverage(parent.into());
+        let Some(memory) = self.reserve(name.len() + 192) else {
+            self.remove(&key);
+            return;
+        };
+        let Some((_, entry)) = self.values.get_mut(&key) else {
+            return;
+        };
+        // Coverage readers normally drop their Arc under the cache lock. If retained, discard the
+        // proof instead of copying an unbounded set or changing a reader's immutable snapshot.
+        let Some(entry) = Arc::get_mut(entry) else {
+            self.remove(&key);
+            return;
+        };
+        if let Value::Coverage(coverage) = &mut entry.value {
+            coverage.excluded.insert(name.into());
+            coverage._edits.push(memory);
+        }
     }
     pub fn remove(&mut self, key: &Key) {
         if let Some((sequence, _)) = self.values.remove(key) {
@@ -138,7 +223,7 @@ impl Cache {
     pub fn insert(&mut self, key: Key, value: Value, received: Instant, expires: Instant) {
         self.remove(&key);
         let key_weight = match &key {
-            Key::Object(id) => id.len(),
+            Key::Object(id) | Key::Coverage(id) => id.len(),
             Key::Name(id, name) => id.len() + name.len(),
             Key::Page(id, after) => id.len() + after.as_ref().map_or(0, String::len),
             Key::Block(id, revision, _) => id.len() + revision.len() + 8,
@@ -182,6 +267,135 @@ impl Cache {
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[test]
+    fn listing_absence_respects_range_boundaries_and_shared_cursors() {
+        let mut cache = Cache::new(Arc::new(Semaphore::new(65536)));
+        let now = Instant::now();
+        let request = ListRequest {
+            directory_id: "dir".into(),
+            after: Some("b".into()),
+            limit: 64,
+        };
+        let page = Page {
+            entries: ["d", "h"]
+                .map(|name| dfs_protocol::rpc::Entry {
+                    name: name.into(),
+                    object: None,
+                })
+                .to_vec(),
+            next_after: Some("h".into()),
+        };
+        cache.remember_coverage(
+            &request,
+            &page,
+            ["e"].into_iter(),
+            now,
+            now + Duration::from_secs(1),
+        );
+        for name in ["c", "f", "g"] {
+            assert!(cache.absent("dir", name));
+        }
+        for name in ["a", "b", "d", "e", "h", "i"] {
+            assert!(!cache.absent("dir", name));
+        }
+        let tail = ListRequest {
+            after: Some("h".into()),
+            ..request.clone()
+        };
+        cache.remember_coverage(
+            &tail,
+            &Page::default(),
+            std::iter::empty(),
+            now,
+            now + Duration::from_secs(1),
+        );
+        assert!(cache.absent("dir", "z"));
+        assert!(!cache.absent("dir", "h"));
+        assert!(!cache.absent("dir", "a"));
+        let shared = ListRequest {
+            directory_id: "shared".into(),
+            after: None,
+            ..request
+        };
+        cache.remember_coverage(
+            &shared,
+            &Page::default(),
+            std::iter::empty(),
+            now,
+            now + Duration::from_secs(1),
+        );
+        assert!(!cache.absent("shared", "anything"));
+    }
+
+    #[test]
+    fn local_edits_keep_absence_expiry_and_survive_name_eviction() -> anyhow::Result<()> {
+        use anyhow::Context;
+        let budget = Arc::new(Semaphore::new(65536));
+        let mut cache = Cache::new(budget.clone());
+        let now = Instant::now();
+        let expires = now + Duration::from_secs(1);
+        let request = ListRequest {
+            directory_id: "dir".into(),
+            after: None,
+            limit: 64,
+        };
+        cache.remember_coverage(&request, &Page::default(), std::iter::empty(), now, expires);
+        assert!(cache.absent("dir", "new"));
+        let before = budget.available_permits();
+        cache.exclude_name("dir", "new");
+        assert!(budget.available_permits() < before);
+        cache.insert(
+            Key::Name("dir".into(), "new".into()),
+            Value::Name(Some("id".into())),
+            now,
+            expires,
+        );
+        cache.invalidate_directory("dir", true);
+        assert!(!cache.absent("dir", "new"));
+        assert!(cache.absent("dir", "other"));
+        let key = Key::Coverage("dir".into());
+        assert_eq!(cache.get(&key).context("coverage")?.expires, expires);
+        cache.remove(&key);
+        assert!(!cache.absent("dir", "other"));
+        assert_eq!(budget.available_permits(), 65536);
+        cache.remember_coverage(&request, &Page::default(), std::iter::empty(), now, now);
+        assert!(!cache.absent("dir", "other"));
+        Ok(())
+    }
+
+    #[test]
+    fn exclusion_under_memory_pressure_discards_the_proof() -> anyhow::Result<()> {
+        use anyhow::Context;
+        let budget = Arc::new(Semaphore::new(4096));
+        let mut cache = Cache::new(budget.clone());
+        let now = Instant::now();
+        let request = ListRequest {
+            directory_id: "dir".into(),
+            after: None,
+            limit: 64,
+        };
+        cache.remember_coverage(
+            &request,
+            &Page::default(),
+            std::iter::empty(),
+            now,
+            now + Duration::from_secs(1),
+        );
+        let reader = cache
+            .get(&Key::Coverage("dir".into()))
+            .context("coverage")?;
+        let reservation = cache
+            .reserve(budget.available_permits())
+            .context("reserve rest")?;
+        cache.exclude_name("dir", "new");
+        assert!(!cache.absent("dir", "new"));
+        assert!(!cache.absent("dir", "other"));
+        drop(reader);
+        drop(reservation);
+        assert_eq!(budget.available_permits(), 4096);
+        Ok(())
+    }
 
     #[test]
     fn eviction_keeps_reader_memory_charged_and_hits_do_not_renew_expiry() -> anyhow::Result<()> {

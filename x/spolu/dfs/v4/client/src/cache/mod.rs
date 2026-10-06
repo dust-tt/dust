@@ -282,20 +282,28 @@ impl Inner {
     async fn lookup(self: &Arc<Self>, r: LookupRequest) -> Result<Object> {
         self.active()?;
         dfs_protocol::validate::name(&r.name)?;
-        let local = self.pending.lock().binding(&r.parent_id, &r.name);
-        if let Some(id) = local {
+        let key = Key::Name(r.parent_id.clone(), r.name.clone());
+        let cached = {
+            // Publication updates bindings and coverage while holding this same lock.
+            let pending = self.pending.lock();
+            pending.binding(&r.parent_id, &r.name).or_else(|| {
+                let mut cache = self.cache.lock();
+                if let Some(entry) = cache.fresh(&key)
+                    && let Value::Name(id) = &entry.value
+                {
+                    return Some(id.clone());
+                }
+                if cache.absent(&r.parent_id, &r.name) {
+                    self.rpc
+                        .record("cache.lookup_absent", Duration::ZERO, false);
+                    return Some(None);
+                }
+                None
+            })
+        };
+        if let Some(id) = cached {
             return match id {
                 Some(id) => self.stat(&id).await,
-                None => Err(status(ErrorCode::NotFound)),
-            };
-        }
-        let key = Key::Name(r.parent_id.clone(), r.name.clone());
-        let cached = self.cache.lock().fresh(&key);
-        if let Some(entry) = cached
-            && let Value::Name(id) = &entry.value
-        {
-            return match id {
-                Some(id) => self.stat(id).await,
                 None => Err(status(ErrorCode::NotFound)),
             };
         }
@@ -371,6 +379,7 @@ impl Inner {
             let page = self.rpc.list(r.clone()).await?;
             let received = Instant::now();
             self.active()?;
+            let pending = self.pending.lock();
             if gate.generation.load(Ordering::Acquire) != generation {
                 continue;
             }
@@ -387,6 +396,13 @@ impl Inner {
                     self.deadline(received),
                 );
             }
+            self.cache.lock().remember_coverage(
+                &r,
+                &page,
+                pending.names(&r.directory_id),
+                received,
+                self.deadline(received),
+            );
             return Ok(page);
         }
         Err(status(ErrorCode::Unavailable))
