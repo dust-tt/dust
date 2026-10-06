@@ -107,6 +107,39 @@ Report: `/tmp/dfs-v4-427d20bce0-absence/run.json` inside `dfs-v4-dev-1`.
 FUSE binary SHA-256: `aa5ca5e4b6feb2ba0524bc4d8c710d6d2233f75f7e0f061b200c7a9c8a1dd5d1`.
 The manifest and server binary hashes match the baseline below.
 
+### Where the remaining untar time is spent
+
+Diagnostic repeat on 2026-10-06, source `5379856c36`: **26.146s untar + 1.453s remaining drain**.
+This adds callback/wait timers and tar CPU accounting without changing cache or publication behavior.
+It is a separate single run, not a replacement for the measurements above. No fsync/fsyncdir calls
+or writeback failures occurred; the Rust/FDB tests passed before the run.
+
+| Client phase | Calls | Cumulative elapsed (s) |
+| --- | ---: | ---: |
+| Flush before refreshing expired dirty metadata | 3 | **19.589** |
+| Dirty-memory admission | 47,628 | 0.593 |
+| Total-memory reservation | 47,628 | 0.003 |
+| Pending-group admission | 47,628 | 0.002 |
+| Object gate acquisition | 47,941 | 0.008 |
+| Read/metadata RPCs, including prefetch/session | 317 | 0.540 |
+
+`stat_locked` flushes pending edits when the object's cached metadata expires, before issuing Stat.
+Write and setattr call it too: ordinary foreground operations can therefore wait for durable
+publication without an application fsync. These three implicit barriers dominate the run;
+memory backpressure is small and group/object-lock admission is negligible.
+
+All 247,994 FUSE callbacks totaled 23.047s, including **13.052s in write** and **7.868s in setattr**.
+Those callback totals already include the waits above. FUSE process CPU was 4.990s; tar used 0.080s
+user CPU + 1.158s system CPU, with 229,685 voluntary context switches. Timers are nested/concurrent,
+so these figures are not an additive wall-time decomposition. The 1,446 asynchronous mutation RPCs
+carried 10,142 groups; buffering does not prevent a later foreground refresh from awaiting them.
+
+Next target: refresh authorization and committed state while preserving a coherent pending overlay,
+instead of requiring publication merely to refresh metadata. Keep the same freshness bound.
+
+Report: `/tmp/dfs-v4-5379856c36-waits/run.json` inside `dfs-v4-dev-1`.
+FUSE binary SHA-256: `96afa63a1f8ef8f6a534d37be177d235342bb7390c498ad3381946b250ef9d45`.
+
 ## Comparison with v3
 
 [Latest v3 localhost results](../../v3/bench/RESULTS.md#latest-full-suites), same corpus and deep path.
