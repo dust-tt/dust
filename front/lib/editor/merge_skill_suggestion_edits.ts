@@ -16,7 +16,7 @@ export interface SkillEdits {
   availability?: SkillAvailability;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
-  files?: { removeFileIds: string[] };
+  files?: { addFilePaths: string[]; removeFileIds: string[] };
   archive?: boolean;
 }
 
@@ -127,6 +127,7 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
   const files =
     filesEdits.length > 0
       ? {
+          addFilePaths: [...new Set(filesEdits.flatMap((e) => e.addFilePaths))],
           removeFileIds: [
             ...new Set(filesEdits.flatMap((e) => e.removeFileIds)),
           ],
