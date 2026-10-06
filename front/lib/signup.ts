@@ -8,7 +8,7 @@ export type OnboardingType =
 
 export type GetJoinResponseBody = {
   onboardingType: OnboardingType;
-  workspace: LightWorkspaceType;
+  workspace: Pick<LightWorkspaceType, "sId" | "name">;
   signInUrl: string;
   userExists: boolean;
 };

@@ -42,7 +42,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
-import type { WorkspaceSegmentationType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSegmentationType,
+} from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
   Attributes,
@@ -1097,6 +1100,18 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   toLogJSON(): ResourceLogJSON {
     return {
       sId: this.blob.sId,
+    };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] public-json-name-only
+   * Returned to callers who are not members of the workspace. MUST NOT include any field other than
+   * `sId` and `name`.
+   */
+  toPublicJSON(): Pick<LightWorkspaceType, "sId" | "name"> {
+    return {
+      sId: this.blob.sId,
+      name: this.blob.name,
     };
   }
 
