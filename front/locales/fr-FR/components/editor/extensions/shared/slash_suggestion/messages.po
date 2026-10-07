@@ -67,7 +67,7 @@ msgstr "Afficher plus"
 
 #: front/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation.ts
 msgid "Type to search"
-msgstr "Tapez pour rechercher"
+msgstr "Saisissez une recherche"
 
 #: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
 msgid "Search knowledge and reference conversation or Pod files"
@@ -107,7 +107,7 @@ msgstr "Aucun résultat ici"
 
 #: front/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems.ts
 msgid "Type at least 2 characters to search"
-msgstr "Tapez au moins 2 caractères pour rechercher"
+msgstr "Saisissez au moins 2 caractères pour rechercher"
 
 #: front/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems.ts
 msgid "No results found"

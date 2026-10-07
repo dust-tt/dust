@@ -203,10 +203,12 @@ msgid "{presetName} connection is required"
 msgstr "{presetName} connection is required"
 
 #: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
 msgid "Enabled"
 msgstr "Enabled"
 
 #: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
 msgid "Disabled"
 msgstr "Disabled"
 

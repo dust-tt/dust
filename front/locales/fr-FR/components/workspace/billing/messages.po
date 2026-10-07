@@ -140,7 +140,7 @@ msgstr "Ajouter des sièges"
 
 #: front/components/workspace/billing/BillingUpgrade.tsx
 msgid "Contact sales"
-msgstr "Contacter l’équipe commerciale"
+msgstr "Contacter les ventes"
 
 #: front/components/workspace/billing/BillingUpgrade.tsx
 msgid "Upgrade your workspace"

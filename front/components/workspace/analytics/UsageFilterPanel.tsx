@@ -432,7 +432,6 @@ export function UsageFilterPanelView({
                 <FilterOptionCheckboxList
                   key={optionListKey}
                   idPrefix={`usage-filter-option-${activeCategory}`}
-                  categoryLabel={categoryLabels[activeCategory]}
                   options={filteredOptions}
                   selectedIds={selectedIdsForActiveCategory}
                   onToggleOption={(option) =>

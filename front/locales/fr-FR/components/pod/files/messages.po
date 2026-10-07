@@ -159,7 +159,7 @@ msgstr "Voulez-vous vraiment supprimer « {fileName} » ? Cette action est i
 
 #: front/components/pod/files/PodFileExplorer.tsx
 msgid "Uploading..."
-msgstr "Import en cours..."
+msgstr "Import en cours…"
 
 #: front/components/pod/files/PodFileExplorer.tsx
 msgid "Add"

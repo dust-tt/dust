@@ -635,7 +635,11 @@ export function CreateMCPServerDialog({
         <FormProvider form={form} asForm={false}>
           <DialogHeader>
             <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>
-              <Trans>Configure {toolName}</Trans>
+              {internalMCPServer || defaultServerConfig ? (
+                <Trans>Configure {toolName}</Trans>
+              ) : (
+                <Trans>Configure an MCP server</Trans>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto px-5 py-4">

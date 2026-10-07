@@ -59,7 +59,7 @@ msgstr "Consommation de crédits"
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
 msgid "Credit usage couldn’t be loaded."
-msgstr "Impossible de charger l’utilisation des crédits."
+msgstr "Impossible de charger la consommation de crédits."
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
 msgid "No usage yet"

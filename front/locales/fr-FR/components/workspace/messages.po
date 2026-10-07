@@ -312,7 +312,7 @@ msgstr "Cela peut prendre quelques secondes."
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Credits purchased successfully!"
-msgstr "Crédits achetés avec succès !"
+msgstr "Crédits achetés !"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -1071,7 +1071,7 @@ msgstr "Revient à {previousLimit} crédits le {resetDate}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member pool credit usage"
-msgstr "Utilisation des crédits de la réserve par le membre"
+msgstr "Consommation de crédits de la réserve par le membre"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "{consumedLabel} of {limitLabel} pool credits used"
@@ -1131,7 +1131,7 @@ msgstr "{overageLabel} crédits au-delà de la limite de dépenses"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member credit usage"
-msgstr "Utilisation des crédits par le membre"
+msgstr "Consommation de crédits par le membre"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "No credits available"
@@ -1179,7 +1179,7 @@ msgstr "Crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Fair-use credits usage"
-msgstr "Utilisation des crédits d’usage raisonnable"
+msgstr "Consommation de crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "{limitCreditCount, plural, one {{usedLabel} of {limitLabel} credit used} other {{usedLabel} of {limitLabel} credits used}}"
@@ -1559,7 +1559,7 @@ msgstr "Impossible de charger les limites actuelles de ce membre. Actualisez la 
 
 #: front/components/workspace/UpgradeRequests.tsx
 msgid "Deny upgrade request"
-msgstr "Refuser la demande de mise à niveau"
+msgstr "Refuser la demande d’augmentation"
 
 #: front/components/workspace/UpgradeRequests.tsx
 msgid "Deny {requesterName}'s request to increase their spend limit?"
@@ -1588,7 +1588,7 @@ msgstr "Modifier la limite"
 
 #: front/components/workspace/UpgradeRequestsTable.tsx
 msgid "No pending upgrade requests."
-msgstr "Aucune demande de mise à niveau en attente."
+msgstr "Aucune demande d’augmentation en attente."
 
 #: front/components/workspace/UsageMembersSection.tsx
 msgid "All groups"

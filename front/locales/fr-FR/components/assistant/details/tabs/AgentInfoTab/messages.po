@@ -88,7 +88,7 @@ msgstr "{missingSpacesCount, plural, one {Vous êtes sur le point de rejoindre c
 
 #: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
 msgid "Joined {spaceName}"
-msgstr "A rejoint {spaceName}"
+msgstr "Vous avez rejoint {spaceName}"
 
 #: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
 msgid "You are now a member of {spaceName}."

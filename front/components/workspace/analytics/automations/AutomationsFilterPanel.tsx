@@ -277,7 +277,6 @@ export function AutomationsFilterPanel({
                 <FilterOptionCheckboxList
                   key={`${isOpen}|${activeCategory}|${searchText}`}
                   idPrefix={`automations-filter-option-${activeCategory}`}
-                  categoryLabel={categoryLabels[activeCategory]}
                   options={filteredOptions}
                   selectedIds={selectedIdsForActiveCategory}
                   onToggleOption={(option) =>

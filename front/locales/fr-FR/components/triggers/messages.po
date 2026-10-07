@@ -113,7 +113,7 @@ msgstr "Sélectionner des événements"
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "All events ({selectedCount}) selected"
-msgstr "Tous les événements ({selectedCount}) sélectionnés"
+msgstr "Tous les événements sélectionnés ({selectedCount})"
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "{selectedCount, plural, one {# event selected} other {# events selected}}"
@@ -203,10 +203,12 @@ msgid "{presetName} connection is required"
 msgstr "La connexion {presetName} est obligatoire"
 
 #: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
 msgid "Enabled"
-msgstr "Activée"
+msgstr "Activé"
 
 #: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
 msgid "Disabled"
 msgstr "Désactivé"
 

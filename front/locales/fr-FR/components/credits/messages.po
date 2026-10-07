@@ -43,11 +43,11 @@ msgstr "Réinitialisation le {resetDate}"
 
 #: front/components/credits/PersonalUsageCard.tsx
 msgid "Fair usage credits"
-msgstr "Crédits d’utilisation équitable"
+msgstr "Crédits d’usage raisonnable"
 
 #: front/components/credits/PersonalUsageCard.tsx
 msgid "Fair-use credits consumed"
-msgstr "Crédits d’utilisation équitable consommés"
+msgstr "Crédits d’usage raisonnable consommés"
 
 #: front/components/credits/PersonalUsageCard.tsx
 msgid "Reset schedule:"
@@ -63,7 +63,7 @@ msgstr "Messages premium utilisés"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "A reason is required to submit an upgrade request."
-msgstr "Un motif est requis pour envoyer une demande de mise à niveau."
+msgstr "Un motif est requis pour envoyer une demande d’augmentation."
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Go to workspace usage"
@@ -75,7 +75,7 @@ msgstr "Demandée"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Request for upgrade"
-msgstr "Demander une mise à niveau"
+msgstr "Demander une augmentation"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Request sent"
@@ -83,7 +83,7 @@ msgstr "Demande envoyée"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Request an upgrade"
-msgstr "Demander une mise à niveau"
+msgstr "Demander une augmentation"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Request a usage limit upgrade"
@@ -91,7 +91,7 @@ msgstr "Demander une augmentation de la limite d’utilisation"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Your workspace admins and managers will review this request."
-msgstr "Les administrateurs et responsables de votre workspace examineront cette demande."
+msgstr "Les administrateurs et managers de votre workspace examineront cette demande."
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Help your admin decide (required)"

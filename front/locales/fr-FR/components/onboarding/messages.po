@@ -28,7 +28,7 @@ msgstr "Support client"
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgctxt "job function"
 msgid "Data"
-msgstr "Data"
+msgstr "Données"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Design"
@@ -45,7 +45,7 @@ msgstr "Finance"
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgctxt "job function"
 msgid "IT"
-msgstr "IT"
+msgstr "Informatique"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "People (HR)"
@@ -137,4 +137,4 @@ msgstr "Quelles sont vos plateformes préférées ?"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognise some of these?"
-msgstr "Dust donne le meilleur de lui-même lorsqu’il peut s’appuyer sur vos connaissances et vous aider dans vos outils. Lesquels utilisez-vous ?"
+msgstr "Dust donne le meilleur de lui-même lorsqu’il peut s’appuyer sur vos connaissances et vous aider dans vos outils. Lesquelles utilisez-vous ?"

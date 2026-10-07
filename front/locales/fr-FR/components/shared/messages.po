@@ -16,7 +16,7 @@ msgstr ""
 #: front/components/shared/BecomeEditorButton.tsx
 #: front/components/shared/BuilderEditorGateMessage.tsx
 msgid "Becoming an editor..."
-msgstr "Passage en éditeur..."
+msgstr "Passage en éditeur…"
 
 #: front/components/shared/BecomeEditorButton.tsx
 #: front/components/shared/BuilderEditorGateMessage.tsx

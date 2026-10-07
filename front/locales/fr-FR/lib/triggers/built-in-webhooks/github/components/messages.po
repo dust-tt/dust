@@ -23,7 +23,7 @@ msgstr "Dépôts"
 
 #: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
 msgid "Choose which repositories can activate this trigger"
-msgstr "Choisissez les dépôts qui peuvent activer ce déclencheur"
+msgstr "Choisissez les dépôts dont les événements peuvent lancer ce déclencheur"
 
 #: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
 msgid "Add repository"
@@ -43,7 +43,7 @@ msgstr "Organisations"
 
 #: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
 msgid "Choose which organizations can activate this trigger"
-msgstr "Choisissez les organisations qui peuvent activer ce déclencheur"
+msgstr "Choisissez les organisations dont les événements peuvent lancer ce déclencheur"
 
 #: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
 msgid "Add organization"

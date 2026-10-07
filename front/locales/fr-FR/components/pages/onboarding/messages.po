@@ -528,7 +528,7 @@ msgstr "Vérification unique du téléphone requise"
 
 #: front/components/pages/onboarding/SubscriptionPlans.tsx
 msgid "Start Free"
-msgstr "Commencer avec Free"
+msgstr "Commencer gratuitement"
 
 #: front/components/pages/onboarding/SubscriptionPlans.tsx
 msgid "{seatPrice}/seat/mo · billed yearly"

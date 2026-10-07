@@ -43,16 +43,18 @@ msgid "API Key"
 msgstr "Clé API"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
+msgctxt "API key status"
 msgid "Active"
-msgstr "Actif"
+msgstr "Active"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Capped"
 msgstr "Plafonnée"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
+msgctxt "API key status"
 msgid "Revoked"
-msgstr "Révoqué"
+msgstr "Révoquée"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Read-only"
@@ -236,7 +238,7 @@ msgstr "Saisissez un nom pour la clé API"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "The key can read everything workspace members can, including open spaces and Company Data. Selecting a space grants the key read and write access to it, such as uploading files."
-msgstr "La clé peut lire tout ce que les membres du workspace peuvent lire, y compris les espaces ouverts et les données de l’entreprise. Sélectionner un espace donne à la clé un accès en lecture et en écriture à cet espace, par exemple pour importer des fichiers."
+msgstr "La clé peut lire tout ce que les membres du workspace peuvent lire, y compris les espaces ouverts et Company Data. Sélectionner un espace donne à la clé un accès en lecture et en écriture à cet espace, par exemple pour importer des fichiers."
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Add Spaces"

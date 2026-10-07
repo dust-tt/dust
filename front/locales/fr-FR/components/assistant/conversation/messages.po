@@ -35,7 +35,7 @@ msgstr "Vous ne pouvez pas envoyer de message à un agent en attente d’un rév
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Skipping…"
-msgstr "Passage…"
+msgstr "Interruption…"
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Stopping…"
@@ -85,7 +85,7 @@ msgstr "Vous avez atteint votre limite de modèles Premium pour la période de 7
 
 #: front/components/assistant/conversation/AgentMessage.tsx
 msgid "<0>View your Premium model usage in Analytics</0>."
-msgstr "<0>Voir votre utilisation des modèles Premium dans Analytics</0>."
+msgstr "<0>Voir votre utilisation des modèles Premium dans Statistiques</0>."
 
 #: front/components/assistant/conversation/AgentMessage.tsx
 msgid "Context limit reached"
@@ -424,7 +424,7 @@ msgstr "Nouvelle conversation"
 
 #: front/components/assistant/conversation/ConversationTitle.tsx
 msgid "Branched from “{chipLabel}”"
-msgstr "Branche de « {chipLabel} »"
+msgstr "Branche créée à partir de « {chipLabel} »"
 
 #: front/components/assistant/conversation/ConversationTitle.tsx
 #: front/components/assistant/conversation/CreditCostPopover.tsx
@@ -953,11 +953,11 @@ msgstr "Options des conversations"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Show triggered"
-msgstr "Afficher les conversations déclenchées"
+msgstr "Afficher les déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Hide triggered"
-msgstr "Masquer les conversations déclenchées"
+msgstr "Masquer les déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Conversations successfully deleted"
@@ -1017,7 +1017,7 @@ msgstr "À partir de zéro"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "From existing"
-msgstr "À partir de l’existant"
+msgstr "À partir d’une compétence existante"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Create a new conversation"
@@ -1090,7 +1090,7 @@ msgstr "Dites à l’agent ce qu’il doit faire autrement"
 
 #: front/components/assistant/conversation/UserAnswerRequired.tsx
 msgid "Skipping question"
-msgstr "Passage de la question"
+msgstr "Question ignorée"
 
 #: front/components/assistant/conversation/UserAnswerRequired.tsx
 msgid "Submitting answer"

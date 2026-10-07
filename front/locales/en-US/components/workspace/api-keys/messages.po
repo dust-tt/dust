@@ -43,6 +43,7 @@ msgid "API Key"
 msgstr "API Key"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
+msgctxt "API key status"
 msgid "Active"
 msgstr "Active"
 
@@ -51,6 +52,7 @@ msgid "Capped"
 msgstr "Capped"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
+msgctxt "API key status"
 msgid "Revoked"
 msgstr "Revoked"
 

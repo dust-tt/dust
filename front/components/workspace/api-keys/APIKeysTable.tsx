@@ -101,9 +101,9 @@ function APIKeySkeletonCell({
 type APIKeyStatus = "active" | "capped" | "revoked";
 
 const API_KEY_STATUS_LABELS: Record<APIKeyStatus, MessageDescriptor> = {
-  active: msg`Active`,
+  active: msg({ message: "Active", context: "API key status" }),
   capped: msg`Capped`,
-  revoked: msg`Revoked`,
+  revoked: msg({ message: "Revoked", context: "API key status" }),
 };
 
 interface APIKeysTableProps {

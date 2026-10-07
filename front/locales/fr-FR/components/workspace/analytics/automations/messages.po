@@ -350,7 +350,7 @@ msgstr "Membre"
 
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 msgid "Pool"
-msgstr "Réserve"
+msgstr "Réserve de crédits"
 
 #: front/components/workspace/analytics/automations/trigger_pool_options.ts
 msgid "Your plan doesn't support charging automations to personal credits."
