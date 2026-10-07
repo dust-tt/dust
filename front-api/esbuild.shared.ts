@@ -7,8 +7,9 @@ import { linguiPlugin } from "./esbuild.lingui";
 // library's internal validation). Bundle these via esbuild instead of
 // externalizing them, so CJS/ESM interop is resolved at build time.
 //
-// Add new entries here as we discover them during migration.
-export const ESM_ONLY_PACKAGES = ["libphonenumber-js"];
+// Add new entries here as we discover them during migration. Sparkle is here for another reason:
+// Node cannot load its ESM build at all, because of directory imports.
+export const ESM_ONLY_PACKAGES = ["libphonenumber-js", "@dust-tt/sparkle"];
 
 // Externalize every node_modules import (`bare specifier`, i.e. doesn't
 // start with `.` or `/`) by default, except for the packages above which
@@ -48,6 +49,11 @@ export interface BuildTarget {
 export const BUILD_TARGETS: BuildTarget[] = [
   { name: "server", entry: "server.ts", outfile: "dist/server.js" },
   { name: "migrate", entry: "scripts/migrate.ts", outfile: "dist/migrate.js" },
+  {
+    name: "collab",
+    entry: "collab_server.ts",
+    outfile: "dist/collab_server.js",
+  },
 ];
 
 // Options shared by dev and production builds. Mode-specific options
