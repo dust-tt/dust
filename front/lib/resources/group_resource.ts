@@ -12,6 +12,8 @@ import {
   deleteGrantsForResources,
   listRegularAutoGroupIdsForResources,
 } from "@app/lib/resources/group_permission_cleanup";
+import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
+import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -36,6 +38,7 @@ import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { SharedUsageLimitWithUsage } from "@app/types/api/groups/shared_usage_limit";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
   GroupGrantableSeatType,
@@ -72,6 +75,7 @@ import {
 } from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
+import groupBy from "lodash/groupBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -122,6 +126,10 @@ export class GroupResource extends BaseResource<GroupModel> {
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);
   }
+
+  // The grants this group holds, as opposed to the grants on it (e.g. `group_manager`). Loaded by
+  // `baseFetch` for manual groups, the only ones non-admins can edit; `null` otherwise.
+  private heldGrants: GroupGrant[] | null = null;
 
   // Default group kinds for auth (excludes system groups).
   private static readonly defaultAuthGroupKinds: Exclude<
@@ -416,7 +424,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
-    return new this(GroupModel, group.get());
+    const resource = new this(GroupModel, group.get());
+    // A new group holds no grant yet.
+    resource.heldGrants = [];
+    return resource;
   }
 
   /**
@@ -697,7 +708,45 @@ export class GroupResource extends BaseResource<GroupModel> {
       order,
       transaction,
     });
-    return groupModels.map((b) => new this(this.model, b.get()));
+    const groups = groupModels.map((b) => new this(this.model, b.get()));
+    await this.loadHeldGrants(
+      auth,
+      groups.filter((group) => group.isRegularManual()),
+      transaction
+    );
+    return groups;
+  }
+
+  // One query for all groups, on the (workspaceId, groupId) index. Not through
+  // `GroupPermissionResource.listForGroups`: that module imports this one (import cycle).
+  private static async loadHeldGrants(
+    auth: Authenticator,
+    groups: GroupResource[],
+    transaction?: Transaction
+  ): Promise<void> {
+    if (groups.length === 0) {
+      return;
+    }
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["groupId", "grantType", "resourceType", "resourceId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        groupId: groups.map((group) => group.id),
+      },
+      transaction,
+    });
+    const grantsByGroupId = groupBy(
+      grants.map(({ groupId, grantType, resourceType, resourceId }) => ({
+        groupId,
+        grantType,
+        resourceType,
+        resourceId,
+      })),
+      "groupId"
+    );
+    for (const group of groups) {
+      group.heldGrants = grantsByGroupId[group.id] ?? [];
+    }
   }
 
   static async dangerouslyFetchByModelIds(
@@ -2734,7 +2783,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
       }
     }
-    if (this.isPrivileged() && !auth.isAdmin()) {
+    if (!auth.isAdmin() && this.isPrivileged()) {
       verbs.delete("write");
       verbs.delete("admin");
     }
@@ -2767,10 +2816,24 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   /**
    * @cc [owner:philipperolet,label:security] privileged-group-definition
-   * A group that grants the admin role (`grantedRole === "admin"`) MUST be privileged.
+   * A group MUST be privileged when it grants the admin role (`grantedRole === "admin"`), or when
+   * the grants it holds give `admin` on billing or security, or `write` on every group. A group
+   * whose held grants were not loaded MUST be treated as privileged.
    */
   isPrivileged(): boolean {
-    return this.grantedRole === "admin";
+    if (this.grantedRole === "admin" || this.heldGrants === null) {
+      return true;
+    }
+    const permissions = GroupPermissions.fromGrants(this.heldGrants);
+    const givesAdminOn = (resourceType: "billing" | "security") =>
+      permissions
+        .resolvedVerbsForResource(resourceType, WHOLE_TYPE_RESOURCE_ID, "type")
+        .includes("admin");
+    const managesEveryGroup =
+      permissions.resourceIdsWithVerb("group", "write").kind === "all";
+    return (
+      givesAdminOn("billing") || givesAdminOn("security") || managesEveryGroup
+    );
   }
 
   /**
