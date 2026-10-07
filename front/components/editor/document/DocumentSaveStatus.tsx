@@ -108,33 +108,40 @@ export const DocumentSaveStatus = ({
   );
 };
 
-const LIVE_STATUS_LABELS: Record<LiveStatus, MessageDescriptor> = {
-  connecting: msg`Connecting…`,
-  live: msg`Live`,
-  offline: msg`Reconnecting…`,
-  refused: msg`Live editing unavailable`,
+const LIVE_STATES: Record<
+  LiveStatus,
+  { label: MessageDescriptor; icon: ReactNode }
+> = {
+  connecting: { label: msg`Connecting…`, icon: <Spinner size="xs" /> },
+  live: {
+    label: msg`Live`,
+    icon: <span className="mx-1 size-1.5 rounded-full bg-success-500" />,
+  },
+  offline: { label: msg`Reconnecting…`, icon: <Spinner size="xs" /> },
+  refused: {
+    label: msg`Live editing unavailable`,
+    icon: <Icon visual={AlertCircle} size="xs" className="text-warning-500" />,
+  },
 };
 
+interface DocumentLiveStatusProps {
+  status: LiveStatus;
+}
+
 /** Where the live session stands, in place of the save status. */
-export const DocumentLiveStatus = ({ status }: { status: LiveStatus }) => {
+export const DocumentLiveStatus = ({ status }: DocumentLiveStatusProps) => {
   const { t } = useLingui();
+  const { icon, label } = LIVE_STATES[status];
   return (
     <span
       role="status"
       data-state={status}
       className="inline-flex items-center gap-1.5 data-[state=refused]:text-foreground"
     >
-      {status === "live" ? (
-        <span
-          aria-hidden="true"
-          className="mx-1 size-1.5 rounded-full bg-success-500"
-        />
-      ) : status === "refused" ? (
-        <Icon visual={AlertCircle} size="xs" className="text-warning-500" />
-      ) : (
-        <Spinner size="xs" />
-      )}
-      {t(LIVE_STATUS_LABELS[status])}
+      <span aria-hidden="true" className="inline-flex items-center">
+        {icon}
+      </span>
+      {t(label)}
     </span>
   );
 };
