@@ -412,6 +412,7 @@ msgid "Resume subscription"
 msgstr "Resume subscription"
 
 #: front/components/workspace/billing/SubscriptionStatusChip.tsx
+#: front/components/workspace/billing/seatTypeUtils.ts
 msgid "Free"
 msgstr "Free"
 
@@ -426,3 +427,7 @@ msgstr "Cancelled"
 #: front/components/workspace/billing/SubscriptionStatusChip.tsx
 msgid "Ended"
 msgstr "Ended"
+
+#: front/components/workspace/billing/seatTypeUtils.ts
+msgid "None"
+msgstr "None"

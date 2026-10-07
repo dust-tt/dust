@@ -1,6 +1,9 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { TriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
-import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
+import {
+  EXECUTION_MODE_UNAVAILABLE_MESSAGES,
+  POOL_OPTIONS,
+} from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import {
   AvatarNameCell,
   CreditsCell,
@@ -11,7 +14,6 @@ import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/tr
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import { TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Avatar,
@@ -306,7 +308,7 @@ function PoolCell({ row }: PoolCellProps) {
             tooltip={
               canUseExecutionMode(value)
                 ? undefined
-                : TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[value]
+                : t(EXECUTION_MODE_UNAVAILABLE_MESSAGES[value])
             }
             onClick={() => row.onSetExecutionMode(value)}
           />

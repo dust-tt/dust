@@ -1350,6 +1350,22 @@ msgid "Top 30"
 msgstr "Top 30"
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Total cost consumed"
+msgstr "Total cost consumed"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Others"
+msgstr "Others"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Non-API programmatic usage"
+msgstr "Non-API programmatic usage"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Unknown"
+msgstr "Unknown"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
 msgid "Total credits"
 msgstr "Total credits"
 

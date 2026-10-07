@@ -143,7 +143,9 @@ type Info = CellContext<RowData, string>;
 type Translate = (descriptor: MessageDescriptor) => string;
 
 function getSeatName(seatType: MembershipSeatType, t: Translate): string {
-  return seatType === "none" ? t(msg`No seat`) : seatTypeDisplayName(seatType);
+  return seatType === "none"
+    ? t(msg`No seat`)
+    : seatTypeDisplayName(seatType, t);
 }
 
 function MemberUsageSkeletonCell({

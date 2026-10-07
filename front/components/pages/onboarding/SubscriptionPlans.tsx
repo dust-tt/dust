@@ -233,7 +233,7 @@ export function PaidPlanCards({
       <PlanCard
         icon={LayersTwo01}
         seatType="pro"
-        name={seatTypeDisplayName("pro")}
+        name={seatTypeDisplayName("pro", t)}
         credits={formatNumber(PRO_SEAT_MONTHLY_AWU_CREDITS)}
         creditsLabel={t`credits/mo`}
         priceLabel={getSeatPriceLabel(proSeatCost)}
@@ -257,7 +257,7 @@ export function PaidPlanCards({
       <PlanCard
         icon={LayersThree01}
         seatType="max"
-        name={seatTypeDisplayName("max")}
+        name={seatTypeDisplayName("max", t)}
         credits={formatNumber(MAX_SEAT_MONTHLY_AWU_CREDITS)}
         creditsLabel={t`credits/mo`}
         priceLabel={getSeatPriceLabel(maxSeatCost)}

@@ -1,7 +1,6 @@
 import {
   COST_PALETTE,
   OTHER_LABEL,
-  USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import {
   getIndexedColor,
@@ -12,6 +11,7 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
+import { getSourceOriginLabel } from "@app/components/workspace/analytics/sourceOriginLabels";
 import type {
   AvailableGroup,
   GetWorkspaceProgrammaticCostResponse,
@@ -125,6 +125,29 @@ const TOP_K_OPTIONS = [
   { value: 30, label: msg`Top 30` },
 ];
 
+function getGroupLabel(
+  groupBy: GroupByType | undefined,
+  groupKey: string,
+  serverLabel: string,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  if (!groupBy && groupKey === "total") {
+    return t(msg`Total cost consumed`);
+  }
+  switch (groupKey) {
+    case "others":
+      return t(msg`Others`);
+    case "non_api_programmatic":
+      return t(msg`Non-API programmatic usage`);
+    case "unknown":
+      return t(msg`Unknown`);
+  }
+  if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
+    return getSourceOriginLabel(groupKey, t);
+  }
+  return serverLabel;
+}
+
 function getColorClassName(
   groupBy: GroupByType | undefined,
   groupName: string,
@@ -169,14 +192,13 @@ function GroupedTooltip(
     .map((p) => {
       const groupKey = p.name;
 
-      let label;
-      if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
-        label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
-      } else {
-        label =
-          availableGroupsArray.find((g) => g.groupKey === groupKey)
-            ?.groupLabel ?? "";
-      }
+      const label = getGroupLabel(
+        groupBy,
+        groupKey,
+        availableGroupsArray.find((g) => g.groupKey === groupKey)?.groupLabel ??
+          "",
+        t
+      );
 
       const colorClassName = getColorClassName(
         groupBy,
@@ -403,12 +425,7 @@ export function BaseProgrammaticCostChart({
       allGroupKeys
     );
 
-    let label = group.groupLabel;
-    if (group.groupKey === "others") {
-      label = OTHER_LABEL.label;
-    } else if (groupBy === "origin" && isUserMessageOrigin(group.groupKey)) {
-      label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
-    }
+    const label = getGroupLabel(groupBy, group.groupKey, group.groupLabel, t);
 
     // A group is active if no filter is set (all enabled) OR it's in the enabled list
     const isActive =
@@ -544,16 +561,10 @@ export function BaseProgrammaticCostChart({
   // Util function to get label for a filter key based on type
   const getFilterLabel = useCallback(
     (type: GroupByType, key: string): string => {
-      if (key === "others") {
-        return OTHER_LABEL.label;
-      }
-      if (type === "origin" && isUserMessageOrigin(key)) {
-        return USER_MESSAGE_ORIGIN_LABELS[key].label;
-      }
       // Fallback to cached label if present, else original key
-      return labelCache[type]?.[key] ?? key;
+      return getGroupLabel(type, key, labelCache[type]?.[key] ?? key, t);
     },
-    [labelCache]
+    [labelCache, t]
   );
 
   // Build active filter chips for all groupBy types
