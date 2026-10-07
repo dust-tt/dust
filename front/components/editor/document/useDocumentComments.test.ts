@@ -1069,9 +1069,7 @@ describe("useDocumentComments", () => {
 
       act(() => {
         comments.setResolved("c1", true, null);
-        expect(comments.applySuggestion("c1", "here", null).isErr()).toBe(
-          true
-        );
+        expect(comments.applySuggestion("c1", "here", null).isErr()).toBe(true);
       });
       expect(result.current.comments.quotes.get("c1")).toBe("there");
     });
@@ -1110,9 +1108,7 @@ describe("useDocumentComments", () => {
       });
 
       const template = result.current.comments.draftSuggestionTemplate();
-      expect(template.isOk() && template.value).toBe(
-        "```suggestion\nwor\n```"
-      );
+      expect(template.isOk() && template.value).toBe("```suggestion\nwor\n```");
     });
   });
 });
