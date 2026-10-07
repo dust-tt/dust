@@ -995,7 +995,7 @@ export function ConnectorPermissionsModal({
 
         if (!r.ok) {
           sendApiErrorNotification({
-            title: "Failed to update permissions",
+            title: t`Failed to update permissions`,
             error: await r.json(),
           });
           return;

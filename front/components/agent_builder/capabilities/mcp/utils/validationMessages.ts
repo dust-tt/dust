@@ -29,4 +29,10 @@ export const VALIDATION_MESSAGES = {
     required: msg`Please select one Pod`,
     invalid: msg`Selected Pod is not valid`,
   },
+  additionalConfiguration: {
+    required: msg`This field is required.`,
+    invalidNumber: msg`Enter a valid number.`,
+    invalidOption: msg`Select one of the options.`,
+    emptyList: msg`Select at least one value.`,
+  },
 } as const;

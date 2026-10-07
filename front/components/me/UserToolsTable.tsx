@@ -2,6 +2,7 @@ import {
   areCredentialOverridesValid,
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
+import { useFormatPersonalConnectionError } from "@app/hooks/useFormatPersonalConnectionError";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerViewDescription,
@@ -202,6 +203,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   });
 
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
+  const formatPersonalConnectionError = useFormatPersonalConnectionError();
   const [connectingServerId, setConnectingServerId] = useState<string | null>(
     null
   );
@@ -244,14 +246,19 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           sendNotification({
             type: "error",
             title: t`Failed to connect provider`,
-            description: result.error,
+            ...formatPersonalConnectionError(result.error),
           });
         }
       } finally {
         setConnectingServerId(null);
       }
     },
-    [createPersonalConnection, sendNotification, t]
+    [
+      createPersonalConnection,
+      formatPersonalConnectionError,
+      sendNotification,
+      t,
+    ]
   );
 
   const handleConnectClick = useCallback(

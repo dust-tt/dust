@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentNameFormatError } from "@app/lib/agent_builder/helpers";
+import {
+  AGENT_NAME_FORMAT_ERROR_MESSAGES,
+  getAgentNameFormatError,
+} from "@app/lib/agent_builder/helpers";
 import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
 import {
   LIST_MODELS_TOOL_NAME,
@@ -126,7 +129,12 @@ async function validateAgentName(
   const trimmedName = name.trim();
   const formatError = getAgentNameFormatError(trimmedName);
   if (formatError) {
-    return new Err(new DustError("invalid_request_error", formatError));
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        AGENT_NAME_FORMAT_ERROR_MESSAGES[formatError]
+      )
+    );
   }
 
   if (await getAgentIdFromName(auth, trimmedName)) {

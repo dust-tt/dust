@@ -57,20 +57,27 @@ export function normalizeDustMcpServerRedirectUri(uri: string): string {
   return uri.trim();
 }
 
+export type DustMcpServerRedirectUriError = "empty" | "missing_scheme";
+
+const REDIRECT_URI_ERROR_MESSAGES: Record<
+  DustMcpServerRedirectUriError,
+  string
+> = {
+  empty: "Redirect URI cannot be empty.",
+  missing_scheme:
+    "Redirect URI must include a scheme (for example http://, https://, or cursor://).",
+};
+
 export function validateDustMcpServerRedirectUri(
   uri: string
-): Result<string, Error> {
+): Result<string, DustMcpServerRedirectUriError> {
   const normalized = normalizeDustMcpServerRedirectUri(uri);
   if (!normalized) {
-    return new Err(new Error("Redirect URI cannot be empty."));
+    return new Err("empty");
   }
 
   if (!/^[a-z][a-z0-9+.-]*:\/\/.+/i.test(normalized)) {
-    return new Err(
-      new Error(
-        "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
-      )
-    );
+    return new Err("missing_scheme");
   }
 
   return new Ok(normalized);
@@ -85,7 +92,7 @@ export function validateDustMcpServerAllowedRedirectUris(
   for (const uri of allowedRedirectUris) {
     const validation = validateDustMcpServerRedirectUri(uri);
     if (validation.isErr()) {
-      return validation;
+      return new Err(new Error(REDIRECT_URI_ERROR_MESSAGES[validation.error]));
     }
 
     if (seenUris.has(validation.value)) {

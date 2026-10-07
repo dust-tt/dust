@@ -72,3 +72,19 @@ msgstr "Please select one Pod"
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Selected Pod is not valid"
 msgstr "Selected Pod is not valid"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "This field is required."
+msgstr "This field is required."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Enter a valid number."
+msgstr "Enter a valid number."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Select one of the options."
+msgstr "Select one of the options."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Select at least one value."
+msgstr "Select at least one value."

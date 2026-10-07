@@ -256,6 +256,10 @@ msgid "Delete"
 msgstr "Supprimer"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Failed to update permissions"
+msgstr "Impossible de mettre à jour les permissions"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Error saving connector configuration"
 msgstr "Erreur lors de l’enregistrement de la configuration du connecteur"
 

@@ -858,6 +858,11 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
+export type PersonalConnectionError =
+  | { type: "workspace_connection_required"; mcpServerDisplayName: string }
+  | { type: "oauth_failed"; error: Error }
+  | { type: "unexpected" };
+
 export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
@@ -881,7 +886,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     useCase: OAuthUseCase;
     scope?: string;
     overriddenCredentials?: Record<string, string>;
-  }): Promise<{ success: boolean; error?: string }> => {
+  }): Promise<{ success: boolean; error?: PersonalConnectionError }> => {
     try {
       const workspaceConnectionRequirement =
         authorization?.workspace_connection;
@@ -892,9 +897,10 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       ) {
         return {
           success: false,
-          error:
-            `A workspace admin must first connect ${mcpServerDisplayName} at the workspace level before users can connect their personal accounts. ` +
-            "Please contact your workspace administrator to set up the workspace connection.",
+          error: {
+            type: "workspace_connection_required",
+            mcpServerDisplayName,
+          },
         };
       }
 
@@ -924,7 +930,10 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       });
 
       if (cRes.isErr()) {
-        return { success: false, error: cRes.error.message };
+        return {
+          success: false,
+          error: { type: "oauth_failed", error: cRes.error },
+        };
       }
 
       const result = await createMCPServerConnection({
@@ -936,11 +945,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       return { success: result !== null };
     } catch {
-      return {
-        success: false,
-        error:
-          "Unexpected error trying to connect to your provider. Please try again.",
-      };
+      return { success: false, error: { type: "unexpected" } };
     }
   };
 

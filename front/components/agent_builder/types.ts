@@ -114,10 +114,11 @@ export const getCapabilityFormSchema = (
         );
 
         if (parsedSchema.isErr()) {
+          const details = parsedSchema.error.message;
           return ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["configuration.jsonSchema"],
-            message: parsedSchema.error.message,
+            message: t(msg`The schema is invalid: ${details}`),
           });
         }
       }

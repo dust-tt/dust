@@ -14,6 +14,7 @@ const removeCompletedActionMock = vi.fn();
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ user: { sId: "user_1" } }),
+  useFeatureFlags: () => ({ hasFeature: () => false }),
 }));
 
 vi.mock(

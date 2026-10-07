@@ -13,6 +13,14 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/hooks/useFormatPersonalConnectionError.ts
+msgid "A workspace admin must first connect {mcpServerDisplayName} at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection."
+msgstr "Un administrateur doit d’abord connecter {mcpServerDisplayName} au niveau du workspace avant que les utilisateurs puissent connecter leurs comptes personnels. Veuillez contacter l’administrateur de votre workspace pour configurer la connexion du workspace."
+
+#: front/hooks/useFormatPersonalConnectionError.ts
+msgid "Unexpected error trying to connect to your provider. Please try again."
+msgstr "Erreur inattendue lors de la connexion à votre fournisseur. Veuillez réessayer."
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Impossible d’enregistrer la langue"

@@ -153,10 +153,7 @@ export function VerifyPage() {
         setCaptchaToken(null);
         setCaptchaKey((k) => k + 1);
         setStep("captcha");
-        setPhoneError(
-          data.error?.message ??
-            t`Captcha verification failed. Please try again.`
-        );
+        setPhoneError(t`Captcha verification failed. Please try again.`);
         return;
       }
       if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {

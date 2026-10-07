@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 
 describe("getAgentNameFormatError", () => {
   it("rejects an empty name", () => {
-    expect(getAgentNameFormatError("")).toBe("Agent name cannot be empty.");
+    expect(getAgentNameFormatError("")).toBe("empty");
   });
 
   it("rejects names longer than the maximum", () => {
     expect(getAgentNameFormatError("A".repeat(AGENT_NAME_MAX_LENGTH + 1))).toBe(
-      `Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`
+      "too_long"
     );
   });
 
@@ -20,8 +20,6 @@ describe("getAgentNameFormatError", () => {
   });
 
   it("rejects names that contain spaces", () => {
-    expect(getAgentNameFormatError("My Agent")).toBe(
-      "Agent name cannot contain spaces."
-    );
+    expect(getAgentNameFormatError("My Agent")).toBe("contains_spaces");
   });
 });

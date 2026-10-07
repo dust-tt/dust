@@ -3,6 +3,7 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useFormatPersonalConnectionError } from "@app/hooks/useFormatPersonalConnectionError";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -50,6 +51,7 @@ export function PersonalAuthenticationCard({
   });
 
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
+  const formatPersonalConnectionError = useFormatPersonalConnectionError();
 
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -102,7 +104,9 @@ export function PersonalAuthenticationCard({
 
     if (!result.success) {
       if (result.error) {
-        setConnectionError(result.error);
+        setConnectionError(
+          formatPersonalConnectionError(result.error).description
+        );
       }
       return;
     }

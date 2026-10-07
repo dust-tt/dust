@@ -326,6 +326,18 @@ msgid "Sidekick error"
 msgstr "Erreur de Sidekick"
 
 #: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent name cannot be empty."
+msgstr "Le nom de l’agent ne peut pas être vide."
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent name must be at most {AGENT_NAME_MAX_LENGTH} characters."
+msgstr "Le nom de l’agent ne doit pas dépasser {AGENT_NAME_MAX_LENGTH} caractères."
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent name cannot contain spaces."
+msgstr "Le nom de l’agent ne peut pas contenir d’espaces."
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
 msgid "Agent description is required"
 msgstr "La description de l’agent est obligatoire"
 
@@ -356,6 +368,10 @@ msgstr "Vous devez sélectionner au moins une source de données"
 #: front/components/agent_builder/types.ts
 msgid "You must use time frame between that and that when you have required enums in mcpServerViews."
 msgstr "Vous devez définir une période lorsque des énumérations obligatoires sont présentes dans mcpServerViews."
+
+#: front/components/agent_builder/types.ts
+msgid "The schema is invalid: {details}"
+msgstr "Le schéma n’est pas valide : {details}"
 
 #: front/components/agent_builder/utils.ts
 msgid "Content"

@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
@@ -34,6 +37,7 @@ export function CreateWebhookSourceWithProviderForm({
 }: CreateWebhookSourceWithProviderFormProps) {
   const { t } = useLingui();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const cellContext = useCellContext();
   const [connection, setConnection] = useState<OAuthConnectionType | null>(
     null
@@ -63,10 +67,9 @@ export function CreateWebhookSourceWithProviderForm({
       });
 
       if (connectionRes.isErr()) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to connect to ${presetName}`,
-          description: connectionRes.error.message,
+          error: connectionRes.error,
         });
       } else {
         setConnection(connectionRes.value);
@@ -77,10 +80,9 @@ export function CreateWebhookSourceWithProviderForm({
         });
       }
     } catch (error) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to connect to ${presetName}`,
-        description: normalizeError(error).message,
+        error: normalizeError(error),
       });
     } finally {
       setIsConnectingToProvider(false);

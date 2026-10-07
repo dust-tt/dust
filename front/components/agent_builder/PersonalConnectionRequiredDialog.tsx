@@ -3,6 +3,7 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useFormatPersonalConnectionError } from "@app/hooks/useFormatPersonalConnectionError";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -111,6 +112,7 @@ export function PersonalConnectionRequiredDialog({
   const { t } = useLingui();
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const sendNotification = useSendNotification();
+  const formatPersonalConnectionError = useFormatPersonalConnectionError();
   const [isConnecting, setIsConnecting] = useState(false);
   const [overriddenCredentialsMap, setCredentialOverridesMap] = useState<
     Record<string, Record<string, string>>
@@ -245,7 +247,9 @@ export function PersonalConnectionRequiredDialog({
                                   sendNotification({
                                     type: "error",
                                     title: t`Failed to connect provider`,
-                                    description: result.error,
+                                    ...formatPersonalConnectionError(
+                                      result.error
+                                    ),
                                   });
                                 }
                               } finally {

@@ -12,7 +12,6 @@ import {
 } from "@app/components/shared/tools_picker/types";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 /**
@@ -138,11 +137,18 @@ function createAdditionalConfigurationSchema(
       } else if (
         requirements.requiredStrings.some((item) => item.key === path)
       ) {
-        nestedStructure[rootKey] = z.string().min(1);
+        const required = t(
+          VALIDATION_MESSAGES.additionalConfiguration.required
+        );
+        nestedStructure[rootKey] = z
+          .string({ message: required })
+          .min(1, required);
       } else if (
         requirements.requiredNumbers.some((item) => item.key === path)
       ) {
-        nestedStructure[rootKey] = z.coerce.number();
+        nestedStructure[rootKey] = z.coerce.number({
+          message: t(VALIDATION_MESSAGES.additionalConfiguration.invalidNumber),
+        });
       } else if (
         requirements.requiredBooleans.some((item) => item.key === path)
       ) {
@@ -151,12 +157,17 @@ function createAdditionalConfigurationSchema(
         nestedStructure[rootKey] = z.enum(
           requirements.requiredEnums[path].options.map(
             (item) => item.value
-          ) as [string, ...string[]]
+          ) as [string, ...string[]],
+          {
+            message: t(
+              VALIDATION_MESSAGES.additionalConfiguration.invalidOption
+            ),
+          }
         );
       } else if (requirements.requiredLists[rootKey]) {
         nestedStructure[rootKey] = z
           .array(z.string())
-          .min(1, t(msg`You must select at least one value for "${rootKey}"`));
+          .min(1, t(VALIDATION_MESSAGES.additionalConfiguration.emptyList));
       }
     });
 
