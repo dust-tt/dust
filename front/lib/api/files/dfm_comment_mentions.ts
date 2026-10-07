@@ -13,8 +13,7 @@ import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { documentCommentsSkill } from "@app/lib/resources/skill/code_defined/system/document_comments";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { documentCommentMessageHeading } from "@app/lib/resources/skill/code_defined/system/document_comments";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -124,17 +123,17 @@ const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 
 /**
  * @cc [owner:tdraier,label:product] document-comment-message
- * The user message for a comment MUST open with the line the `document_comments` skill tells
- * agents to answer, naming the thread's id, the document's path and where it lives, then give
- * the quoted passage when there is one and the new message as written. It MUST NOT repeat the
- * thread's earlier messages, which agents read in the document.
+ * The user message for a comment MUST open with `documentCommentMessageHeading`, which turns on
+ * the `document_comments` skill, naming the thread's id, the document's path and where it lives,
+ * then give the quoted passage when there is one and the new message as written. It MUST NOT
+ * repeat the thread's earlier messages, which agents read in the document.
  */
 function commentMessageContent(
   { documentPath, location }: { documentPath: string; location: string },
   { commentId, quote, message }: NewCommentMessage
 ): string {
   const parts = [
-    `Comment in thread \`${commentId}\` of the document \`${documentPath}\`, in ${location}:`,
+    documentCommentMessageHeading({ commentId, documentPath, location }),
   ];
   if (quote !== null) {
     parts.push(`> ${oneLine(quote)}`);
@@ -188,41 +187,6 @@ export async function dispatchCommentMentions(
     },
     { concurrency: 4 }
   );
-}
-
-/**
- * @cc [owner:tdraier,label:product] document-comments-skill-enable
- * The `document_comments` skill MUST be enabled in the document's conversation, when the
- * workspace can use it, before a comment runs an agent there, so the agent learns how to answer
- * without the posted message saying so. A failure MUST be logged and MUST NOT stop the post.
- */
-async function enableDocumentCommentsSkill(
-  auth: Authenticator,
-  conversation: ConversationResource
-): Promise<void> {
-  const skill = await SkillResource.fetchById(auth, documentCommentsSkill.sId, {
-    withInstructions: false,
-    withTools: false,
-    withFileAttachments: false,
-  });
-  if (!skill) {
-    return;
-  }
-  const enabled = await SkillResource.upsertConversationSkills(auth, {
-    conversation: conversation.toJSON(),
-    skills: [skill],
-    enabled: true,
-  });
-  if (enabled.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        conversationId: conversation.sId,
-        err: enabled.error,
-      },
-      "Failed to enable the document comments skill."
-    );
-  }
 }
 
 export class DocumentConversationBusyError extends Error {
@@ -282,9 +246,6 @@ export async function postCommentMention(
         return new Ok(undefined);
       }
       const { conversation, isPodDocument, location } = found;
-      if (mentions.some(isAgentMention)) {
-        await enableDocumentCommentsSkill(auth, conversation);
-      }
 
       const posted = await postUserMessage(auth, {
         conversationResource: conversation,

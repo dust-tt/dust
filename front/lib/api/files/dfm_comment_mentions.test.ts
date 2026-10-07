@@ -8,16 +8,13 @@ import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signature
 import { Authenticator } from "@app/lib/auth";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { launchDocumentCommentMentionWorkflow } from "@app/temporal/mentions_queue/client";
 import { makeDocumentCommentMentionWorkflowId } from "@app/temporal/mentions_queue/helpers";
 import { mockUserMessage } from "@app/tests/utils/conversation_test_factories";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -127,34 +124,6 @@ describe("postCommentMention", () => {
         MENTIONING.message.body,
       ].join("\n\n")
     );
-  });
-
-  it("enables the document comments skill in the conversation when an agent runs", async () => {
-    await FeatureFlagFactory.basic(auth, "co_edition");
-    const enabledSkillIds = async (conversation: ConversationType) =>
-      (
-        await SkillResource.listEnabledByConversation(auth, { conversation })
-      ).map((skill) => skill.sId);
-    const withAgent = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [],
-    });
-    const usersOnly = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [],
-    });
-
-    await postCommentMention(auth, {
-      documentPath: `conversation-${withAgent.sId}/plan.md`,
-      newMessage: MENTIONING,
-    });
-    await postCommentMention(auth, {
-      documentPath: `conversation-${usersOnly.sId}/plan.md`,
-      newMessage: comment("Over to :mention_user[Yuka]{sId=usr_yuka}."),
-    });
-
-    expect(await enabledSkillIds(withAgent)).toEqual(["document_comments"]);
-    expect(await enabledSkillIds(usersOnly)).toEqual([]);
   });
 
   it("names where a pod document lives, and leaves the quote out without one", async () => {

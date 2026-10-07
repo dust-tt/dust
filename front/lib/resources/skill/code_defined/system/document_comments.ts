@@ -18,6 +18,20 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
+const COMMENT_MESSAGE_OPENING = "Comment in thread `";
+
+/** The line that opens the user message posted for a document comment. */
+export const documentCommentMessageHeading = ({
+  commentId,
+  documentPath,
+  location,
+}: {
+  commentId: string;
+  documentPath: string;
+  location: string;
+}) =>
+  `${COMMENT_MESSAGE_OPENING}${commentId}\` of the document \`${documentPath}\`, in ${location}:`;
+
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
 People discuss Markdown documents in comment threads anchored on passages of the text, and read your answers there rather than in this conversation.
 
@@ -39,10 +53,11 @@ Write like a reviewer in the margin: short, about the passage, no headings.
 
 /**
  * @cc [owner:tdraier,label:product] document-comments-skill
- * The skill MUST NOT enable itself: `document-comments-skill-enable` enables it in a document's
- * conversation, only in workspaces with `co_edition`. Its instructions MUST tell agents how to
- * recognize and answer the user message `document-comment-message` posts and find the thread
- * it omits in the document, and it MUST bring the user mention tools they name.
+ * In workspaces with `co_edition`, the skill MUST be always active, its instructions in the
+ * system prompt from the first step, in an agent run whose user message opens with
+ * `documentCommentMessageHeading`, and MUST be unavailable in any other run. Its instructions
+ * MUST tell agents how to recognize and answer that message and find the thread it omits in the
+ * document, and it MUST bring the user mention tools they name.
  */
 export const documentCommentsSkill = {
   sId: "document_comments",
@@ -59,4 +74,7 @@ export const documentCommentsSkill = {
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) =>
     !(await hasFeatureFlag(auth, "co_edition")),
+  getAutoEnabledOrEquippedForAgentLoop: () => "enabled",
+  isDisabledForAgentLoop: ({ userMessage }) =>
+    !userMessage.content.startsWith(COMMENT_MESSAGE_OPENING),
 } as const satisfies SystemSkillDefinition;
