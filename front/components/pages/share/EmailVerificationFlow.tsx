@@ -5,9 +5,10 @@ import { LinkWrapper } from "@app/lib/platform";
 import { useSendOtpVerification, useVerifyOtpCode } from "@app/lib/swr/share";
 import { Button, DustLogo, Input, Label } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { usePostHog } from "posthog-js/react";
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -46,18 +47,36 @@ function VerificationLayout({
   );
 }
 
-const emailFormSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-});
-type EmailFormValues = z.infer<typeof emailFormSchema>;
+function useEmailFormSchema() {
+  const { t } = useLingui();
 
-const codeFormSchema = z.object({
-  code: z
-    .string()
-    .length(6, "Code must be 6 digits")
-    .regex(/^\d+$/, "Code must be numeric"),
-});
-type CodeFormValues = z.infer<typeof codeFormSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        email: z.string().email(t`Please enter a valid email address`),
+      }),
+    [t]
+  );
+}
+
+type EmailFormValues = z.infer<ReturnType<typeof useEmailFormSchema>>;
+
+function useCodeFormSchema() {
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      z.object({
+        code: z
+          .string()
+          .length(6, t`Code must be 6 digits`)
+          .regex(/^\d+$/, t`Code must be numeric`),
+      }),
+    [t]
+  );
+}
+
+type CodeFormValues = z.infer<ReturnType<typeof useCodeFormSchema>>;
 
 interface EmailStepFormProps {
   onCodeSent: (email: string) => void;
@@ -65,6 +84,8 @@ interface EmailStepFormProps {
 }
 
 function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
+  const { t } = useLingui();
+  const emailFormSchema = useEmailFormSchema();
   const doSendOtp = useSendOtpVerification({ shareToken });
   const formatErrorDescription = useFormatErrorDescription();
   const posthog = usePostHog();
@@ -94,18 +115,20 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
 
   return (
     <VerificationLayout
-      title="Verify your identity"
-      description="If your email was invited to this frame, we’ll send you a one-time code."
+      title={t`Verify your identity`}
+      description={t`If your email was invited to this frame, we’ll send you a one-time code.`}
     >
       <form
         className="flex w-full max-w-xl flex-col gap-4"
         onSubmit={handleSubmit(onSubmit)}
       >
         <div className="flex flex-col gap-1">
-          <Label htmlFor="otp-email">Email</Label>
+          <Label htmlFor="otp-email">
+            <Trans>Email</Trans>
+          </Label>
           <Input
             id="otp-email"
-            placeholder="you@example.com"
+            placeholder={t`you@example.com`}
             {...register("email")}
             message={errors.email?.message}
             messageStatus={errors.email ? "error" : undefined}
@@ -114,7 +137,7 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
         <div className="flex justify-end">
           <Button
             variant="primary"
-            label="Send code"
+            label={t`Send code`}
             type="submit"
             disabled={isSubmitting}
           />
@@ -131,6 +154,8 @@ interface CodeStepFormProps {
 }
 
 function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
+  const { t } = useLingui();
+  const codeFormSchema = useCodeFormSchema();
   const doSendOtp = useSendOtpVerification({ shareToken });
   const doVerifyCode = useVerifyOtpCode({ shareToken });
   const formatErrorDescription = useFormatErrorDescription();
@@ -178,12 +203,12 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
 
   return (
     <VerificationLayout
-      title="Enter verification code"
+      title={t`Enter verification code`}
       description={
-        <>
+        <Trans>
           If <span className="font-medium">{email}</span> was invited to this
           frame, a code is on its way.
-        </>
+        </Trans>
       }
     >
       <form
@@ -191,7 +216,9 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
         onSubmit={handleSubmit(onSubmit)}
       >
         <div className="flex flex-col gap-1">
-          <Label htmlFor="otp-code">Verification code</Label>
+          <Label htmlFor="otp-code">
+            <Trans>Verification code</Trans>
+          </Label>
           <Input
             id="otp-code"
             type="number"
@@ -205,13 +232,13 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            label={resent ? "Code sent!" : "Resend code"}
+            label={resent ? t`Code sent!` : t`Resend code`}
             onClick={handleResend}
             disabled={isSubmitting || isResending}
           />
           <Button
             variant="primary"
-            label="Verify"
+            label={t`Verify`}
             type="submit"
             disabled={isSubmitting}
           />

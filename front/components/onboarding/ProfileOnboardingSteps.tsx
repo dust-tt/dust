@@ -23,6 +23,9 @@ import {
   Page,
   SlackLogo,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
@@ -37,6 +40,25 @@ const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   front: FrontLogo,
 };
 
+const JOB_TYPE_LABELS: Record<JobType, MessageDescriptor> = {
+  customer_success: msg`Customer Success`,
+  customer_support: msg`Customer Support`,
+  data: msg`Data`,
+  design: msg`Design`,
+  engineering: msg`Engineering`,
+  finance: msg`Finance`,
+  it: msg`IT`,
+  people: msg`People (HR)`,
+  legal: msg`Legal`,
+  marketing: msg`Marketing`,
+  operations: msg`Operations`,
+  procurement: msg`Procurement`,
+  product: msg`Product`,
+  revops: msg`Revenue Operations`,
+  sales: msg`Sales`,
+  other: msg`Other`,
+};
+
 export interface ProfileFormData {
   firstName: string;
   lastName: string;
@@ -44,21 +66,21 @@ export interface ProfileFormData {
 }
 
 export interface ProfileFormErrors {
-  firstName?: string;
-  lastName?: string;
-  jobType?: string;
+  firstName?: MessageDescriptor;
+  lastName?: MessageDescriptor;
+  jobType?: MessageDescriptor;
 }
 
 export function validateProfileForm(data: ProfileFormData): ProfileFormErrors {
   const errors: ProfileFormErrors = {};
   if (!data.firstName.trim()) {
-    errors.firstName = "First name is required";
+    errors.firstName = msg`First name is required`;
   }
   if (!data.lastName.trim()) {
-    errors.lastName = "Last name is required";
+    errors.lastName = msg`Last name is required`;
   }
   if (!data.jobType) {
-    errors.jobType = "Please select your job type";
+    errors.jobType = msg`Please select your job type`;
   }
   return errors;
 }
@@ -94,24 +116,36 @@ export function UserProfileStep({
   showErrors,
   onNext,
 }: UserProfileStepProps) {
+  const { t } = useLingui();
+  const firstName = formData.firstName;
+  const workspaceName = owner.name;
+
   return (
     <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
       <DustLogoSquare className="-ml-11 h-10 w-32" />
-      <Page.Header title={`Hello ${formData.firstName || "there"}!`} />
-      <p className="text-muted-foreground">Let's check a few things.</p>
+      <Page.Header
+        title={firstName ? t`Hello ${firstName}!` : t`Hello there!`}
+      />
+      <p className="text-muted-foreground">
+        <Trans>Let's check a few things.</Trans>
+      </p>
       {!isAdmin && (
         <p className="text-muted-foreground">
-          You'll be joining the workspace:{" "}
-          <span className="font-medium">{owner.name}</span>.
+          <Trans>
+            You'll be joining the workspace:{" "}
+            <span className="font-medium">{workspaceName}</span>.
+          </Trans>
         </p>
       )}
       <div>
-        <p className="pb-2 text-muted-foreground">Your name is:</p>
+        <p className="pb-2 text-muted-foreground">
+          <Trans>Your name is:</Trans>
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <Input
               name="firstName"
-              placeholder="First Name"
+              placeholder={t`First name`}
               value={formData.firstName}
               onChange={(e) =>
                 setFormData((prev) => ({
@@ -122,34 +156,36 @@ export function UserProfileStep({
             />
             {showErrors && formErrors.firstName && (
               <p className="mt-1 text-sm text-red-500">
-                {formErrors.firstName}
+                {t(formErrors.firstName)}
               </p>
             )}
           </div>
           <div>
             <Input
               name="lastName"
-              placeholder="Last Name"
+              placeholder={t`Last name`}
               value={formData.lastName}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, lastName: e.target.value }))
               }
             />
             {showErrors && formErrors.lastName && (
-              <p className="mt-1 text-sm text-red-500">{formErrors.lastName}</p>
+              <p className="mt-1 text-sm text-red-500">
+                {t(formErrors.lastName)}
+              </p>
             )}
           </div>
         </div>
       </div>
       <div>
         <p className="pb-2 text-muted-foreground">
-          Pick your role to customize your experience:
+          <Trans>Pick your role to customize your experience:</Trans>
         </p>
         <div className="flex flex-wrap gap-2">
           {JOB_TYPE_OPTIONS.map((jobTypeOption) => (
             <Chip
               key={jobTypeOption.value}
-              label={jobTypeOption.label}
+              label={t(JOB_TYPE_LABELS[jobTypeOption.value])}
               size="xs"
               color={
                 formData.jobType === jobTypeOption.value
@@ -166,11 +202,11 @@ export function UserProfileStep({
           ))}
         </div>
         {showErrors && formErrors.jobType && (
-          <p className="mt-1 text-sm text-red-500">{formErrors.jobType}</p>
+          <p className="mt-1 text-sm text-red-500">{t(formErrors.jobType)}</p>
         )}
       </div>
       <div className="flex justify-end">
-        <Button label="Next" size="md" onClick={onNext} />
+        <Button label={t`Next`} size="md" onClick={onNext} />
       </div>
     </div>
   );
@@ -189,12 +225,16 @@ export function FavoritePlatformsStep({
   onSubmit,
   isSubmitting,
 }: FavoritePlatformsStepProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
-      <Page.Header title="What are your favorite platforms?" />
+      <Page.Header title={t`What are your favorite platforms?`} />
       <p className="text-muted-foreground">
-        Dust works at full potential when it can play with your knowledge and
-        help with your tools. Do you recognise some of these?
+        <Trans>
+          Dust works at full potential when it can play with your knowledge and
+          help with your tools. Do you recognise some of these?
+        </Trans>
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {FAVORITE_PLATFORM_OPTIONS.map((platform) => {
@@ -220,7 +260,7 @@ export function FavoritePlatformsStep({
       </div>
       <div className="flex justify-end">
         <Button
-          label="Next"
+          label={t`Next`}
           isLoading={isSubmitting}
           disabled={isSubmitting}
           size="md"

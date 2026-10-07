@@ -1,0 +1,102 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:55+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Please enter a valid email address"
+msgstr "Veuillez saisir une adresse e-mail valide"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Code must be 6 digits"
+msgstr "Le code doit comporter 6 chiffres"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Code must be numeric"
+msgstr "Le code doit être numérique"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Verify your identity"
+msgstr "Vérifiez votre identité"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "If your email was invited to this frame, we’ll send you a one-time code."
+msgstr "Si votre e-mail a été invité sur ce Frame, nous vous enverrons un code à usage unique."
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Email"
+msgstr "E-mail"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "you@example.com"
+msgstr "vous@exemple.com"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Send code"
+msgstr "Envoyer le code"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Enter verification code"
+msgstr "Saisissez le code de vérification"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "If <0>{email}</0> was invited to this frame, a code is on its way."
+msgstr "Si <0>{email}</0> a été invité sur ce Frame, un code est en route."
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Verification code"
+msgstr "Code de vérification"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Code sent!"
+msgstr "Code envoyé !"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Resend code"
+msgstr "Renvoyer le code"
+
+#: front/components/pages/share/EmailVerificationFlow.tsx
+msgid "Verify"
+msgstr "Vérifier"
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "{humanFriendlyTitle} - Powered by Dust"
+msgstr "{humanFriendlyTitle} - Propulsé par Dust"
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "Discover what {workspaceName} built with AI. Explore now."
+msgstr "Découvrez ce que {workspaceName} a créé avec l’IA. Explorez dès maintenant."
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "Preview of {humanFriendlyTitle} created by {workspaceName}"
+msgstr "Aperçu de {humanFriendlyTitle} créé par {workspaceName}"
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "404: Page not found"
+msgstr "404 : page introuvable"
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "If you have access to this page, sign in to open it."
+msgstr "Si vous avez accès à cette page, connectez-vous pour l’ouvrir."
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "Sign in"
+msgstr "Se connecter"
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "Sign in to open this Frame"
+msgstr "Connectez-vous pour ouvrir ce Frame"
+
+#: front/components/pages/share/SharedFramePage.tsx
+msgid "Sign in with an account that has access. We’ll bring you back here."
+msgstr "Connectez-vous avec un compte qui y a accès. Vous serez ensuite redirigé ici."

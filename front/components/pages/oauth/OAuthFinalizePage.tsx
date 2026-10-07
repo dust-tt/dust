@@ -7,6 +7,7 @@ import { useFinalize } from "@app/lib/swr/oauth";
 import logger from "@app/logger/logger";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useEffect, useMemo } from "react";
 
 export function OAuthFinalizePage() {
@@ -132,7 +133,9 @@ export function OAuthFinalizePage() {
   if (!provider) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-element-700">Invalid OAuth provider.</p>
+        <p className="text-element-700">
+          <Trans>Invalid OAuth provider.</Trans>
+        </p>
       </div>
     );
   }
