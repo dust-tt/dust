@@ -99,6 +99,22 @@ msgid "Inherited from groups"
 msgstr "Inherited from groups"
 
 #: front/lib/client/model_tiers_explainer.ts
+msgid "Lower-cost models for routine tasks."
+msgstr "Lower-cost models for routine tasks."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Balanced models for most tasks."
+msgstr "Balanced models for most tasks."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "More capable models for complex or demanding work."
+msgstr "More capable models for complex or demanding work."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Frontier models priced far above Premium, for the most demanding work."
+msgstr "Frontier models priced far above Premium, for the most demanding work."
+
+#: front/lib/client/model_tiers_explainer.ts
 msgid "all efforts"
 msgstr "all efforts"
 

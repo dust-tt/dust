@@ -30,6 +30,13 @@ export interface ModelTierExplainerTier {
 
 const HIDDEN_PROVIDER_IDS = new Set(["auto", "noop"]);
 
+const TIER_DESCRIPTIONS: Record<ModelsTierName, MessageDescriptor> = {
+  cost_efficient: msg`Lower-cost models for routine tasks.`,
+  balanced: msg`Balanced models for most tasks.`,
+  premium: msg`More capable models for complex or demanding work.`,
+  ultra: msg`Frontier models priced far above Premium, for the most demanding work.`,
+};
+
 function formatEffortsLabel(
   inTierEfforts: ReasoningEffort[],
   supportedEfforts: ReasoningEffort[],
@@ -89,7 +96,7 @@ export function getModelTierExplainer(
     return {
       name: tier.name,
       displayName: getModelsTierDisplayName(tier.name),
-      description: tier.description,
+      description: t(TIER_DESCRIPTIONS[tier.name]),
       priceLevel: getTierIndex(tier.name) + 1,
       models,
     };
