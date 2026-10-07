@@ -60,16 +60,17 @@ export async function getGroupManagersForGroups(
 
 /**
  * @cc [owner:philipperolet,label:security;backend] group-manager-assignment
- * Only a workspace admin or manager may replace group managers. Every requested manager MUST be
+ * Only a workspace admin or manager may update group managers. Every added manager MUST be
  * an active member of the same workspace. Validation MUST finish before any grant is changed.
+ * With userIdsToRemove, managerIds MUST be added and only listed managers removed.
  */
-export async function replaceGroupManagers(
+export async function updateGroupManagers(
   auth: Authenticator,
   group: GroupResource,
   managerIds: string[],
-  expectedManagerIds?: string[]
+  userIdsToRemove?: string[]
 ): Promise<
-  | { kind: "unauthorized" | "invalid_managers" | "conflict" }
+  | { kind: "unauthorized" | "invalid_managers" }
   | {
       kind: "ok";
       managers: UserType[];
@@ -103,14 +104,11 @@ export async function replaceGroupManagers(
   const replacement = await GroupPermissionResource.replaceUsersForGrant(auth, {
     users: users.map((user) => user.toJSON()),
     ...managerGrant(group),
-    expectedUserIds: expectedManagerIds,
+    userIdsToRemove,
   });
-  if (!replacement) {
-    return { kind: "conflict" };
-  }
   return {
     kind: "ok",
-    managers: users.map((user) => user.toJSON()),
+    managers: await getGroupManagers(auth, group),
     ...replacement,
   };
 }

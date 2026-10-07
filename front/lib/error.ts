@@ -42,7 +42,6 @@ export type DustErrorCode =
   | "last_group_member"
   | "admin_key_analytics_groups_not_allowed"
   | "analytics_group_kind_not_supported"
-  | "group_changed"
   // MCP Server errors
   | "remote_server_not_found"
   | "internal_server_not_found"

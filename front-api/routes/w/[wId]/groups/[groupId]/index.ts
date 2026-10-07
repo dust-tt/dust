@@ -5,7 +5,7 @@ import {
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import {
   getGroupManagers,
-  replaceGroupManagers,
+  updateGroupManagers,
 } from "@app/lib/api/groups/manager_assignments";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -142,25 +142,36 @@ app.patch(
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
-    const {
-      name,
-      memberIds,
-      managerIds,
-      expectedMemberIds,
-      expectedManagerIds,
-    } = ctx.req.valid("json");
+    const { name, memberIds, managerIds, memberDiff, managerDiff } =
+      ctx.req.valid("json");
 
     if (
       name === undefined &&
       memberIds === undefined &&
-      managerIds === undefined
+      managerIds === undefined &&
+      memberDiff === undefined &&
+      managerDiff === undefined
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Provide a group name, members, or managers update.",
+        },
+      });
+    }
+
+    if (
+      (memberDiff !== undefined &&
+        (name !== undefined || memberIds !== undefined)) ||
+      (managerDiff !== undefined && managerIds !== undefined)
     ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message:
-            "At least one of `name`, `memberIds`, or `managerIds` must be provided.",
+            "Update additions and removals separately from other group changes.",
         },
       });
     }
@@ -201,10 +212,14 @@ app.patch(
     const isGroupManagementEnabled =
       await auth.hasFeatureFlag("group_management");
 
-    if (managerIds !== undefined) {
+    if (managerIds !== undefined || managerDiff !== undefined) {
       // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
       // a partially applied manager change (or vice versa).
-      if (name !== undefined || memberIds !== undefined) {
+      if (
+        name !== undefined ||
+        memberIds !== undefined ||
+        memberDiff !== undefined
+      ) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
@@ -229,21 +244,12 @@ app.patch(
           },
         });
       }
-      const assignment = await replaceGroupManagers(
+      const assignment = await updateGroupManagers(
         auth,
         group,
-        managerIds,
-        expectedManagerIds
+        managerIds ?? managerDiff?.add ?? [],
+        managerDiff?.remove
       );
-      if (assignment.kind === "conflict") {
-        return apiError(ctx, {
-          status_code: 409,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Group managers changed. Reopen the group and try again.",
-          },
-        });
-      }
       if (assignment.kind !== "ok") {
         return apiError(ctx, {
           status_code: assignment.kind === "unauthorized" ? 403 : 400,
@@ -281,11 +287,12 @@ app.patch(
       });
     }
 
-    const updateRes = await group.updateRegularManualGroup(auth, {
-      name,
-      memberIds,
-      expectedMemberIds,
-    });
+    const updateRes = memberDiff
+      ? await group.updateRegularManualGroupMembers(auth, {
+          addUserIds: memberDiff.add,
+          removeUserIds: memberDiff.remove,
+        })
+      : await group.updateRegularManualGroup(auth, { name, memberIds });
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
         case "unauthorized":
@@ -296,7 +303,6 @@ app.patch(
               message: updateRes.error.message,
             },
           });
-        case "group_changed":
         case "name_conflict":
           return apiError(ctx, {
             status_code: 409,

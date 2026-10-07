@@ -801,8 +801,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
    * @cc [owner:philipperolet,label:security;backend] replace-grant-users-atomically
    * Replacing the users holding one grant MUST serialize with other changes to that grant and
    * either apply every addition/removal or apply none. Callers MUST validate that the supplied
-   * users are active members of the workspace before invoking this method. With expectedUserIds,
-   * a changed active workspace-member list MUST return null without changing the grant.
+   * users are active members of the workspace before invoking this method. With userIdsToRemove,
+   * users MUST be added, listed users removed, and other active workspace members preserved.
    */
   static async replaceUsersForGrant(
     auth: Authenticator,
@@ -811,9 +811,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       grantType,
       resourceType,
       resourceId,
-      expectedUserIds,
-    }: Omit<UsersGrantSpec, "transaction"> & { expectedUserIds?: string[] }
-  ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] } | null> {
+      userIdsToRemove,
+    }: Omit<UsersGrantSpec, "transaction"> & { userIdsToRemove?: string[] }
+  ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] }> {
     return withTransaction(async (transaction) => {
       await this.getGrantLock(
         auth,
@@ -842,6 +842,22 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         { transaction }
       );
       const requestedIds = new Set(users.map((user) => user.id));
+      if (userIdsToRemove !== undefined) {
+        const removedIds = new Set(userIdsToRemove);
+        const activeUsers = group
+          ? await group.getActiveMembers(auth, { transaction })
+          : [];
+        for (const user of activeUsers) {
+          if (!removedIds.has(user.sId)) {
+            requestedIds.add(user.id);
+          }
+        }
+        for (const user of users) {
+          if (removedIds.has(user.sId)) {
+            requestedIds.delete(user.id);
+          }
+        }
+      }
       const activeIds = new Set(
         memberships
           .filter(
@@ -850,19 +866,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
           )
           .map((membership) => membership.userId)
       );
-      if (expectedUserIds !== undefined) {
-        const expectedIds = new Set(expectedUserIds);
-        const activeUsers = group
-          ? await group.getActiveMembers(auth, { transaction })
-          : [];
-        if (
-          expectedIds.size !== activeUsers.length ||
-          activeUsers.some((user) => !expectedIds.has(user.sId))
-        ) {
-          return null;
-        }
-      }
-      const addedUsers = users.filter((user) => !activeIds.has(user.id));
+      const addedUsers = users.filter(
+        (user) => requestedIds.has(user.id) && !activeIds.has(user.id)
+      );
       const removedUsers = currentUsers
         .filter((user) => !requestedIds.has(user.id))
         .map((user) => user.toJSON());
@@ -915,7 +921,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       if (grantResult.isErr()) {
         throw grantResult.error;
       }
-      if (group && users.length === 0) {
+      if (group && requestedIds.size === 0) {
         const deleteResult = await this.deleteRegularAutoGroupIfUnheld(auth, {
           group,
           grantType,

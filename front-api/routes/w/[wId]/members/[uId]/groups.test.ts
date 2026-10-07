@@ -1,4 +1,4 @@
-import { replaceGroupManagers } from "@app/lib/api/groups/manager_assignments";
+import { updateGroupManagers } from "@app/lib/api/groups/manager_assignments";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -316,7 +316,7 @@ describe("delegated membership writes", () => {
     });
     await GroupFactory.withMembers(adminAuth, manual, [member]);
     for (const group of [manual, provisioned, admins]) {
-      await replaceGroupManagers(adminAuth, group, [user.sId]);
+      await updateGroupManagers(adminAuth, group, [user.sId]);
     }
     const addSelf = (groupId: string) =>
       postMemberGroup(workspace, user.sId, { groupId });
@@ -363,7 +363,7 @@ describe("delegated membership writes", () => {
     expect(
       (await deleteMemberGroup(workspace, user.sId, manual.sId)).status
     ).toBe(400);
-    await replaceGroupManagers(adminAuth, manual, []);
+    await updateGroupManagers(adminAuth, manual, []);
     expect((await patch(manual.sId, { memberIds: [member.sId] })).status).toBe(
       403
     );
@@ -382,7 +382,7 @@ describe("delegated membership writes", () => {
       workspaceId: workspace.id,
       grantedRole: "manager",
     });
-    await replaceGroupManagers(adminAuth, group, [user.sId]);
+    await updateGroupManagers(adminAuth, group, [user.sId]);
     await FeatureFlagFactory.basic(adminAuth, "group_management");
     expect(
       (await postMemberGroup(workspace, user.sId, { groupId: group.sId }))

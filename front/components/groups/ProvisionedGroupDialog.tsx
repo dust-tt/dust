@@ -152,9 +152,13 @@ function ProvisionedGroupDetails({
   const memberCount = rows.length;
 
   const saveManagers = async () => {
+    const initialIds = new Set(initialManagers.map((manager) => manager.sId));
+    const selectedIds = new Set(selectedManagers.map((manager) => manager.sId));
     const result = await doUpdateGroup({
-      managerIds: selectedManagers.map((manager) => manager.sId),
-      expectedManagerIds: initialManagers.map((manager) => manager.sId),
+      managerDiff: {
+        add: [...selectedIds].filter((id) => !initialIds.has(id)),
+        remove: [...initialIds].filter((id) => !selectedIds.has(id)),
+      },
     });
     if (result) {
       onClose();

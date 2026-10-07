@@ -23,13 +23,20 @@ export type GetGroupResponseBody = {
   managers: LightUserType[];
 };
 
+const UserIdsDiffSchema = z.object({
+  add: z.array(z.string()),
+  remove: z.array(z.string()),
+});
+
 export const PatchGroupBodySchema = z.object({
   name: z.string().min(1).optional(),
   memberIds: z.array(z.string()).optional(),
   managerIds: z.array(z.string()).optional(),
-  expectedMemberIds: z.array(z.string()).optional(),
-  expectedManagerIds: z.array(z.string()).optional(),
+  memberDiff: UserIdsDiffSchema.optional(),
+  managerDiff: UserIdsDiffSchema.optional(),
 });
+
+export type PatchGroupBody = z.infer<typeof PatchGroupBodySchema>;
 
 export type PatchGroupResponseBody = {
   group: GroupWithAllowedActions;

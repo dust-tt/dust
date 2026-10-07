@@ -103,7 +103,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect((await response.json()).error.type).toBe("group_not_found");
   });
 
-  it("replaces managers without changing a provisioned group's members", async () => {
+  it("updates managers without changing a provisioned group's members", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "manager",
@@ -116,7 +116,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     const group = await GroupFactory.provisioned(workspace, "Engineering");
 
     const first = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [alice.sId],
+      managerDiff: { add: [alice.sId], remove: [] },
     });
     expect(first.status).toBe(200);
     expect(
@@ -124,11 +124,13 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     ).toEqual([alice.sId]);
 
     const second = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [bob.sId],
+      managerDiff: { add: [bob.sId], remove: [] },
     });
     expect(second.status).toBe(200);
     const body = await (await getGroupRequest(workspace.sId, group.sId)).json();
-    expect(body.managers.map((u: { sId: string }) => u.sId)).toEqual([bob.sId]);
+    expect(new Set(body.managers.map((u: { sId: string }) => u.sId))).toEqual(
+      new Set([alice.sId, bob.sId])
+    );
     expect(body.members).toEqual([]);
 
     const cleared = await patchGroupRequest(workspace.sId, group.sId, {

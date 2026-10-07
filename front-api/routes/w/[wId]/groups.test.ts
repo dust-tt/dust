@@ -441,7 +441,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect(refetched.value.name).toBe("New name");
   });
 
-  it("sets the full member list", async () => {
+  it("updates members using additions and removals", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
@@ -450,7 +450,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     await MembershipFactory.associate(workspace, extraUser, { role: "user" });
 
     const group = await GroupFactory.regularManual(workspace, "Team");
-    // Seed with a single member that should be replaced by the PATCH.
+    // Seed with a single member that should be removed by the PATCH.
     const seed = await group.dangerouslyAddMembers(auth, {
       users: [user.toJSON()],
     });
@@ -459,7 +459,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     }
 
     const response = await patchGroup(workspace, group.sId, {
-      memberIds: [extraUser.sId],
+      memberDiff: { add: [extraUser.sId], remove: [user.sId] },
     });
 
     expect(response.status).toBe(200);

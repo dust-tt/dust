@@ -16,6 +16,7 @@ import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import type {
   GetGroupResponseBody,
   GetMemberGroupsResponseBody,
+  PatchGroupBody,
   PatchGroupResponseBody,
   PostGroupResponseBody,
   PostMemberGroupResponseBody,
@@ -479,19 +480,7 @@ export function useUpdateGroup({
   });
 
   const doUpdateGroup = useCallback(
-    async ({
-      name,
-      memberIds,
-      managerIds,
-      expectedMemberIds,
-      expectedManagerIds,
-    }: {
-      name?: string;
-      memberIds?: string[];
-      managerIds?: string[];
-      expectedMemberIds?: string[];
-      expectedManagerIds?: string[];
-    }): Promise<PatchGroupResponseBody | null> => {
+    async (update: PatchGroupBody): Promise<PatchGroupResponseBody | null> => {
       if (!groupId) {
         return null;
       }
@@ -500,13 +489,7 @@ export function useUpdateGroup({
         const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            memberIds,
-            managerIds,
-            expectedMemberIds,
-            expectedManagerIds,
-          }),
+          body: JSON.stringify(update),
         });
 
         if (!res.ok) {

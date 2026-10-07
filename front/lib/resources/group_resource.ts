@@ -2187,14 +2187,13 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async updateName(
     auth: Authenticator,
-    newName: string,
-    { transaction }: { transaction?: Transaction } = {}
+    newName: string
   ): Promise<Result<undefined, Error>> {
     if (!auth.hasPermission("admin", this)) {
       return new Err(new Error("Only admins can update group names."));
     }
 
-    await this.update({ name: newName }, transaction);
+    await this.update({ name: newName });
     return new Ok(undefined);
   }
 
@@ -2222,28 +2221,13 @@ export class GroupResource extends BaseResource<GroupModel> {
    * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list
    * MUST fail with `last_group_member`.
    */
-  /**
-   * @cc [owner:philipperolet,label:concurrency;backend] stale-group-members
-   * With expectedMemberIds, a changed active member list MUST reject the save before any mutation.
-   * The comparison and membership replacement MUST serialize with full-list and individual
-   * membership edits.
-   */
   async updateRegularManualGroup(
     auth: Authenticator,
-    {
-      name,
-      memberIds,
-      expectedMemberIds,
-    }: {
-      name?: string;
-      memberIds?: string[];
-      expectedMemberIds?: string[];
-    }
+    { name, memberIds }: { name?: string; memberIds?: string[] }
   ): Promise<
     Result<
       { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
-        | "group_changed"
         | "unauthorized"
         | "name_conflict"
         | "user_not_found"
@@ -2256,79 +2240,61 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return withTransaction(async (transaction) => {
-      if (!this.isRegularManual()) {
-        return new Err(new DustError("group_not_found", "Group not found."));
-      }
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
 
-      // Editing a regular_manual group (name/members) requires `write` on it
-      // (workspace admins and managers; only workspace admins for a privileged group).
-      if (!auth.can("write", this)) {
+    // Editing a regular_manual group (name/members) requires `write` on it
+    // (workspace admins and managers; only workspace admins for a privileged group).
+    if (!auth.can("write", this)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          this.isPrivileged()
+            ? "Only workspace admins can update a group that gives admin-level permissions."
+            : `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+        )
+      );
+    }
+
+    // Checked before any mutation so a rejected update leaves both name and members untouched.
+    if (memberIds !== undefined && memberIds.length === 0) {
+      return new Err(
+        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
+      );
+    }
+
+    if (name !== undefined) {
+      // Only check for a collision when the name actually changes, so renaming
+      // to the same name never raises a conflict against self.
+      if (
+        name !== this.name &&
+        (await GroupResource.groupExistsByName(auth, name))
+      ) {
         return new Err(
           new DustError(
-            "unauthorized",
-            this.isPrivileged()
-              ? "Only workspace admins can update a group that gives admin-level permissions."
-              : `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+            "name_conflict",
+            `A group named "${name}" already exists in this workspace.`
           )
         );
       }
 
-      // Checked before any mutation so a rejected update leaves both name and members untouched.
-      if (memberIds !== undefined && memberIds.length === 0) {
-        return new Err(
-          new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
+      const updateRes = await this.updateName(auth, name);
+      if (updateRes.isErr()) {
+        return new Err(new DustError("unauthorized", updateRes.error.message));
+      }
+    }
+
+    if (memberIds !== undefined) {
+      return withTransaction(async (transaction) => {
+        const lockedIds = await GroupResource.lockGroupIdsForUpdate(
+          auth,
+          [this.id],
+          transaction
         );
-      }
-
-      const lockedIds = await GroupResource.lockGroupIdsForUpdate(
-        auth,
-        [this.id],
-        transaction
-      );
-      if (lockedIds.length === 0) {
-        return new Err(new DustError("group_not_found", "Group not found."));
-      }
-      if (expectedMemberIds !== undefined) {
-        const expectedIds = new Set(expectedMemberIds);
-        const members = await this.getActiveMembers(auth, { transaction });
-        if (
-          expectedIds.size !== members.length ||
-          members.some((member) => !expectedIds.has(member.sId))
-        ) {
-          return new Err(
-            new DustError(
-              "group_changed",
-              "Group members changed. Reopen the group and try again."
-            )
-          );
+        if (lockedIds.length === 0) {
+          return new Err(new DustError("group_not_found", "Group not found."));
         }
-      }
-
-      if (name !== undefined) {
-        // Only check for a collision when the name actually changes, so renaming
-        // to the same name never raises a conflict against self.
-        if (
-          name !== this.name &&
-          (await GroupResource.groupExistsByName(auth, name))
-        ) {
-          return new Err(
-            new DustError(
-              "name_conflict",
-              `A group named "${name}" already exists in this workspace.`
-            )
-          );
-        }
-
-        const updateRes = await this.updateName(auth, name, { transaction });
-        if (updateRes.isErr()) {
-          return new Err(
-            new DustError("unauthorized", updateRes.error.message)
-          );
-        }
-      }
-
-      if (memberIds !== undefined) {
         const uniqueMemberIds = [...new Set(memberIds)];
         const users = await UserResource.fetchByIds(uniqueMemberIds, {
           transaction,
@@ -2348,10 +2314,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
 
         return new Ok(setResult.value);
-      }
+      });
+    }
 
-      return new Ok({ addedUsers: [], removedUsers: [] });
-    });
+    return new Ok({ addedUsers: [], removedUsers: [] });
   }
 
   /**
@@ -2362,6 +2328,11 @@ export class GroupResource extends BaseResource<GroupModel> {
    * A `regular_manual` group MUST keep at least one active member: when the requested
    * add/remove combination would leave the group with no active member, the whole update MUST
    * fail with `last_group_member` and no membership change MUST be persisted.
+   */
+  /**
+   * @cc [owner:philipperolet,label:concurrency;backend] group-member-diff
+   * Add/remove updates MUST preserve unmentioned members and serialize the membership checks
+   * and writes with full-list and other add/remove updates.
    */
   async updateRegularManualGroupMembers(
     auth: Authenticator,
