@@ -349,10 +349,6 @@ export function ManageAgentsPage({
         ? category !== "access" && category !== "usage"
         : category === "model")
   );
-  const getVisibleFilter = (filter: AgentFilter): AgentFilter =>
-    Object.fromEntries(
-      filterCategories.map((category) => [category, filter[category]])
-    );
   const unresolvedVisibleCategories = unresolvedCategories.filter((category) =>
     filterCategories.includes(category)
   );
@@ -384,7 +380,9 @@ export function ManageAgentsPage({
       searchType: "name",
       limit: 0,
       filters: toAgentSearchFilters(
-        getVisibleFilter(pendingFilter),
+        Object.fromEntries(
+          filterCategories.map((category) => [category, pendingFilter[category]])
+        ),
         activeTab.filters
       ),
       permissionFiltering: getPermissionFiltering(activeTab.id),
@@ -394,7 +392,9 @@ export function ManageAgentsPage({
       disabled: unresolvedVisibleCategories.length === 0,
     });
   const filter = resolveFilter(selectionFacets);
-  const visibleFilter = getVisibleFilter(filter);
+  const visibleFilter: AgentFilter = Object.fromEntries(
+    filterCategories.map((category) => [category, filter[category]])
+  );
 
   const searchInput = (
     <div className="w-full md:w-1/2">
@@ -472,7 +472,15 @@ export function ManageAgentsPage({
               permissionFiltering={getPermissionFiltering(activeTab.id)}
               filter={visibleFilter}
               onFilterChange={(nextFilter) =>
-                setFilter({ ...filter, ...getVisibleFilter(nextFilter) })
+                setFilter({
+                  ...filter,
+                  ...Object.fromEntries(
+                    filterCategories.map((category) => [
+                      category,
+                      nextFilter[category],
+                    ])
+                  ),
+                })
               }
               hiddenAgents={
                 canShowHiddenAgents
@@ -521,7 +529,12 @@ export function ManageAgentsPage({
                 : []
             }
             onClearAll={() => {
-              setFilter({ ...filter, ...getVisibleFilter({}) });
+              setFilter({
+                ...filter,
+                ...Object.fromEntries(
+                  filterCategories.map((category) => [category, undefined])
+                ),
+              });
               setShowHiddenAgents(false);
             }}
           />
