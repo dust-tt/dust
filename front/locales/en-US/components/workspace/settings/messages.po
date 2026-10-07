@@ -14,10 +14,6 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/workspace/settings/AuditLogsToggle.tsx
-msgid "Audit"
-msgstr "Audit"
-
-#: front/components/workspace/settings/AuditLogsToggle.tsx
 msgid "Audit logs"
 msgstr "Audit logs"
 

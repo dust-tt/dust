@@ -1,5 +1,4 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { ComputerNetworkSection } from "@app/components/sandbox/ComputerNetworkSection";
 import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
@@ -7,7 +6,6 @@ import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/A
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
-import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import {
   useAuth,
   useFeatureFlags,
@@ -89,28 +87,14 @@ export function SecurityPage() {
           </TabsContent>
           {isComputerEnabled && (
             <TabsContent value="network" className="flex flex-col gap-6">
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.computer.agentDomains}
-              >
-                <AgentRequestedDomainsSetting />
-              </AdminSectionAnchor>
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.computer.network}
-              >
-                <ComputerNetworkSection
-                  canAdministrateComputer={canAdministrateComputer}
-                />
-              </AdminSectionAnchor>
+              <AgentRequestedDomainsSetting />
+              <ComputerNetworkSection
+                canAdministrateComputer={canAdministrateComputer}
+              />
             </TabsContent>
           )}
           <TabsContent value="audit" className="flex flex-col gap-4">
-            {showAuditLogs && (
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.identity.auditLogs}
-              >
-                <AuditLogsSection owner={owner} />
-              </AdminSectionAnchor>
-            )}
+            {showAuditLogs && <AuditLogsSection owner={owner} />}
             <AuditLogsGovernanceSection owner={owner} />
           </TabsContent>
         </Tabs>
