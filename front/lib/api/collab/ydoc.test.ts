@@ -109,6 +109,29 @@ describe("dfmToYDoc and yDocToDfm", () => {
     expect(saved.value).not.toContain("forged");
   });
 
+  it("write without the anchors of threads the session no longer holds", () => {
+    const live = dfmToYDoc(FIXTURE);
+    expect(live.isOk()).toBe(true);
+    if (!live.isOk()) {
+      return;
+    }
+    const { doc, comments } = live.value;
+    expect(comments.length).toBeGreaterThan(1);
+    const [removed, ...kept] = comments;
+
+    const saved = yDocToDfm({ doc, comments: kept });
+    expect(saved.isOk()).toBe(true);
+    if (!saved.isOk()) {
+      return;
+    }
+    expect(FIXTURE).toContain(`:comment-start{id=${removed.id}}`);
+    expect(saved.value).not.toContain(`id=${removed.id}`);
+    for (const { id } of kept) {
+      const anchor = `:comment-start{id=${id}}`;
+      expect(saved.value.includes(anchor)).toBe(FIXTURE.includes(anchor));
+    }
+  });
+
   it("refuse a body the binding cannot read", () => {
     const live = dfmToYDoc(FIXTURE);
     expect(live.isOk()).toBe(true);
