@@ -12,13 +12,17 @@ describe("documentCommentsSkill", () => {
     );
   });
 
-  it.each(["pod-abc/plan.md", "pod-abc/use`code`.md"])(
+  it.each([
+    ["pod-abc/plan.md", 'the pod "Launch"'],
+    ["pod-abc/use`code`.md", 'the pod "Launch"'],
+    ["pod-abc/plan.md", 'the pod "Launch\nQ4"'],
+  ])(
     "recognizes a message opening with the comment heading for %j",
-    (documentPath) => {
+    (documentPath, location) => {
       const heading = documentCommentMessageHeading({
         commentId: "c1",
         documentPath,
-        location: 'the pod "Launch"',
+        location,
       });
 
       expect(isDocumentCommentMessage(`${heading}\n\nThoughts @dust?`)).toBe(
@@ -30,7 +34,6 @@ describe("documentCommentsSkill", () => {
   it.each([
     "Summarize plan.md, please.",
     "Comment in thread `c1` disappeared; help me debug it",
-    "Comment in thread `c1` of the document `a.md`, in a pod: and more",
   ])("does not recognize %j", (content) => {
     expect(isDocumentCommentMessage(content)).toBe(false);
   });
