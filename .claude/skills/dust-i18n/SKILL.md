@@ -113,6 +113,25 @@ setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
 - `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
   `CATALOG_LOCALES` entry: adding a catalog locale to front means adding it to sparkle too.
 
+## Slack bot (`connectors`)
+
+The Slack bot (`connectors/src/connectors/slack`) has its own catalog in
+`connectors/locales/{locale}/messages.po`, extracted by the same `lingui.config.ts`. Connectors
+runs under `tsx`, which cannot compile Lingui macros, so the rules differ from front:
+
+- Never import `@lingui/*/macro`. Write `i18n._("Answered by *{agentName}*", { agentName })`: the
+  English text is the message id, and `lingui extract` only collects a string literal passed to a
+  callee named `i18n._`.
+- `i18n` is an `I18n` from `getSlackI18n` (`connectors/src/connectors/slack/lib/i18n.ts`), passed
+  down as a parameter. Never use the global `i18n` of `@lingui/core`: the bot answers users with
+  different locales concurrently.
+- The locales are a copy of `front/types/locale.ts` in `connectors/src/types/locale.ts`: edit
+  both (`i18n:check` fails when they differ).
+- Same never-translate rules as front: text sent to the Dust API or to models (content fragments,
+  message content), logs, agent-authored content.
+
+See `connectors/src/connectors/slack/CONTRACTS`.
+
 ## Workflow
 
 1. Wrap the strings with the macros above.
