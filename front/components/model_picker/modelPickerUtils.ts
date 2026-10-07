@@ -284,11 +284,11 @@ export function formatModelEffortLabel(
   if (effort === "none") {
     return displayName;
   }
-  const effortLabel = t(LOWERCASE_REASONING_EFFORT_LABELS[effort]);
+  const effortLabel = t(REASONING_EFFORT_LABELS[effort]);
 
   return t(
     msg({
-      message: `${displayName} · ${effortLabel}`,
+      message: `${displayName} ${effortLabel}`,
       context: "model name followed by its reasoning effort",
     })
   );

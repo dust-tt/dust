@@ -157,5 +157,5 @@ msgstr "Le modèle préféré pour {tierName} est instable. {replacementModelNam
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "model name followed by its reasoning effort"
-msgid "{displayName} · {effortLabel}"
-msgstr "{displayName} · {effortLabel}"
+msgid "{displayName} {effortLabel}"
+msgstr "{displayName} {effortLabel}"
