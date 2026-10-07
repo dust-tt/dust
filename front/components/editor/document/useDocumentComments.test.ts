@@ -1,9 +1,12 @@
+import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
 import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
+import type { LiveCommentCommand } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -26,7 +29,9 @@ async function renderCommentedEditor(
     sign,
     verify,
     isSavable,
+    live,
   }: {
+    live?: LiveCommentChannel;
     sign?: (
       commentId: string,
       thread: DfmMessage[],
@@ -53,6 +58,7 @@ async function renderCommentedEditor(
         isSavable: isSavable ?? document.isSavable,
         sign,
         verify: currentVerify,
+        live,
       });
       return { document, comments };
     },
@@ -80,6 +86,34 @@ function select(
 }
 
 const SIGNED_AT = "2026-10-05T12:00:00.000Z";
+
+/** A live session's comment side whose answers the test gives. */
+function liveChannel(
+  answer: (
+    command: LiveCommentCommand
+  ) => Result<DfmComment | null, "unavailable" | "thread_changed">
+) {
+  const send = vi.fn(async (command: LiveCommentCommand) => answer(command));
+  const channel: LiveCommentChannel = {
+    getThreads: () => null,
+    onThreads: () => () => undefined,
+    send,
+    close: () => undefined,
+  };
+  return { channel, send };
+}
+
+const sessionThread = (id: string, body: string): DfmComment => ({
+  id,
+  status: "open",
+  messages: [
+    {
+      author: { ...AUTHOR, name: "Tom (server)" },
+      createdAt: SIGNED_AT,
+      body,
+    },
+  ],
+});
 
 describe("useDocumentComments", () => {
   it("shows the file's threads with the text they cover", async () => {
@@ -241,6 +275,161 @@ describe("useDocumentComments", () => {
     await act(() => result.current.document.save());
 
     expect(onSave.mock.calls[1][0]).toBe("Hi there\n");
+  });
+
+  describe("in a live session", () => {
+    it("has the session create the thread, then anchors it", async () => {
+      const { channel, send } = liveChannel(
+        (command) =>
+          new Ok(
+            command.type === "add"
+              ? sessionThread(command.commentId, command.body)
+              : null
+          )
+      );
+      const { result, onSave } = await renderCommentedEditor(
+        "Hello brave world.\n",
+        { live: channel }
+      );
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        select(editor, "brave");
+        result.current.comments.startDraft();
+      });
+      await act(async () => {
+        expect(
+          (await result.current.comments.submitDraft("Too bold?")).isOk()
+        ).toBe(true);
+      });
+
+      expect(send).toHaveBeenCalledTimes(1);
+      const [command] = send.mock.calls[0];
+      expect(command).toEqual({
+        type: "add",
+        commentId: expect.any(String),
+        body: "Too bold?",
+      });
+      expect(getMarkedCommentIds(editor.getJSON())).toEqual(
+        new Set([command.commentId])
+      );
+      expect(result.current.comments.comments).toEqual([
+        sessionThread(command.commentId, "Too bold?"),
+      ]);
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("deletes the session's thread when the draft can no longer take it", async () => {
+      const { channel, send } = liveChannel(
+        (command) =>
+          new Ok(
+            command.type === "add"
+              ? sessionThread(command.commentId, command.body)
+              : null
+          )
+      );
+      const { result } = await renderCommentedEditor("Hello brave world.\n", {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      act(() => {
+        select(editor, "brave");
+        result.current.comments.startDraft();
+      });
+      // The draft goes while the session creates the thread.
+      send.mockImplementationOnce(async (command) => {
+        editor.commands.cancelCommentDraft();
+        return new Ok(
+          command.type === "add"
+            ? sessionThread(command.commentId, command.body)
+            : null
+        );
+      });
+
+      await act(async () => {
+        expect(
+          (await result.current.comments.submitDraft("Too bold?")).isErr()
+        ).toBe(true);
+      });
+
+      const [[added], [deleted]] = send.mock.calls;
+      expect(deleted).toEqual({ type: "delete", commentId: added.commentId });
+      expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
+    });
+
+    it("replies, resolves and deletes through the session", async () => {
+      const { channel, send } = liveChannel(() => new Ok(null));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      await act(async () => {
+        expect(
+          (await result.current.comments.reply("c1", "Not at all.")).isOk()
+        ).toBe(true);
+      });
+      act(() => {
+        result.current.comments.setResolved("c1", true, null);
+      });
+
+      expect(send.mock.calls.map(([command]) => command)).toEqual([
+        { type: "reply", commentId: "c1", position: 1, body: "Not at all." },
+        { type: "resolve", commentId: "c1", resolved: true },
+      ]);
+      // The session sends the threads back; nothing changes them here.
+      expect(result.current.comments.comments[0].messages).toHaveLength(1);
+      expect(result.current.comments.comments[0].status).toBe("open");
+
+      act(() => {
+        result.current.comments.remove("c1", null);
+      });
+
+      expect(send).toHaveBeenLastCalledWith({
+        type: "delete",
+        commentId: "c1",
+      });
+      expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
+    });
+
+    it("refuses a reply the document could not be saved with, before the session sees it", async () => {
+      const { channel, send } = liveChannel(() => new Ok(null));
+      const { result } = await renderCommentedEditor(
+        `${"a".repeat(100_000)}\n\n${SOURCE}`,
+        { live: channel }
+      );
+
+      await act(async () => {
+        expect(
+          (
+            await result.current.comments.reply("c1", "b".repeat(170_000))
+          ).isErr()
+        ).toBe(true);
+      });
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("refuses a reply the session refuses", async () => {
+      const { channel } = liveChannel(() => new Err("thread_changed"));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+
+      await act(async () => {
+        expect(
+          (await result.current.comments.reply("c1", "Late.")).isErr()
+        ).toBe(true);
+      });
+    });
   });
 
   it("saves text an undo restores after its comment was deleted, without the comment", async () => {

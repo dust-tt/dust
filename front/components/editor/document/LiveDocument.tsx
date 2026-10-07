@@ -38,7 +38,11 @@ export default function LiveDocument(props: LiveDocumentProps) {
       {...props}
       liveView={{
         status,
-        binding: { extensions, connected: status === "live" },
+        binding: {
+          extensions,
+          connected: status === "live",
+          comments: connection.comments,
+        },
       }}
     />
   ) : (

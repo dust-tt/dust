@@ -344,16 +344,16 @@ msgid "This suggestion can't replace the commented text. Another comment may cov
 msgstr "This suggestion can't replace the commented text. Another comment may cover part of it."
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This text is too long or complex to suggest a change to."
-msgstr "This text is too long or complex to suggest a change to."
-
-#: front/components/editor/document/useDocumentComments.ts
 msgid "This comment was deleted."
 msgstr "This comment was deleted."
 
 #: front/components/editor/document/useDocumentComments.ts
 msgid "This thread changed while sending. Send again."
 msgstr "This thread changed while sending. Send again."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This text is too long or complex to suggest a change to."
+msgstr "This text is too long or complex to suggest a change to."
 
 #: front/components/editor/document/useDocumentComments.ts
 msgid "This suggestion can't be saved in this document."

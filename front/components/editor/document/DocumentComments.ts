@@ -831,8 +831,11 @@ export const DocumentComments = Extension.create({
             draft.to,
             state.schema.marks[COMMENT_MARK_NAME].create({ id: comment.id })
           );
+          // A live document may already hold the thread, pushed by the session.
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
-            ...getDocumentComments(state.doc),
+            ...getDocumentComments(state.doc).filter(
+              ({ id }) => id !== comment.id
+            ),
             comment,
           ]);
           tr.setMeta(documentCommentsPluginKey, {

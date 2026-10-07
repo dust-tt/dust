@@ -16,11 +16,14 @@ import {
   scrollToCommentHighlight,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { suggestionBlock } from "@app/lib/markdown/dfm";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { LiveCommentErrorCode } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ChainedCommands, Editor, JSONContent } from "@tiptap/core";
@@ -42,6 +45,7 @@ interface UseDocumentCommentsProps {
     body: string
   ) => Promise<Result<DfmMessage, string>>;
   verify?: DfmMessageVerifier;
+  live?: LiveCommentChannel;
 }
 
 interface Verification {
@@ -89,6 +93,8 @@ const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
   a?.body === b?.body;
 const UNSUGGESTABLE_MESSAGE = msg`Suggestions can only replace text within one paragraph.`;
 const UNAPPLICABLE_MESSAGE = msg`This suggestion can't replace the commented text. Another comment may cover part of it.`;
+const DELETED_MESSAGE = msg`This comment was deleted.`;
+const THREAD_CHANGED_MESSAGE = msg`This thread changed while sending. Send again.`;
 
 /** The document the commands would produce, or null when one of them refuses. */
 const previewDocument = (
@@ -145,6 +151,15 @@ export interface PanelFocusRequest {
  * textblock, or the document would no longer save. A suggestion template MUST hold the current
  * commented text as Markdown, so applying it unchanged leaves the text as it is.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-live-comment-commands
+ * With `live`, posting, replying to, resolving and deleting comments MUST go through the session
+ * and MUST NOT change the threads in the document, which only the session sends, with two
+ * exceptions: a new thread MUST be anchored to the draft once the session created it, or deleted
+ * from the session when it can no longer be anchored, and deleting MUST remove the comment's
+ * marks before asking the session. A reply the document would no longer save with MUST be
+ * refused before the session sees it.
+ */
 export const useDocumentComments = ({
   editor,
   canComment,
@@ -152,6 +167,7 @@ export const useDocumentComments = ({
   isSavable,
   sign,
   verify,
+  live,
 }: UseDocumentCommentsProps) => {
   const { t } = useLingui();
   const state =
@@ -250,6 +266,31 @@ export const useDocumentComments = ({
     requestFocus(id);
   };
 
+  const liveErrorMessage = (code: LiveCommentErrorCode): string => {
+    switch (code) {
+      case "unavailable":
+        return t(UNAVAILABLE_MESSAGE);
+      case "not_found":
+        return t(DELETED_MESSAGE);
+      case "thread_changed":
+        return t(THREAD_CHANGED_MESSAGE);
+      case "unwritable":
+        return t(UNSAVABLE_MESSAGE);
+      default:
+        assertNeverAndIgnore(code);
+        return t(UNAVAILABLE_MESSAGE);
+    }
+  };
+
+  const withMessage = (
+    commentId: string,
+    thread: DfmComment | undefined,
+    added: DfmMessage
+  ): DfmComment =>
+    thread
+      ? { ...thread, messages: [...thread.messages, added] }
+      : { id: commentId, status: "open", messages: [added] };
+
   /**
    * The message to add to `thread`, or to a new thread `commentId`: checked against the codec
    * locally first, then written by the server when a signer is set and checked again as written.
@@ -260,26 +301,54 @@ export const useDocumentComments = ({
     thread: DfmComment | undefined,
     body: string
   ): Promise<Result<DfmMessage, string>> => {
-    const withMessage = (added: DfmMessage): DfmComment =>
-      thread
-        ? { ...thread, messages: [...thread.messages, added] }
-        : { id: commentId, status: "open", messages: [added] };
     const local: DfmMessage = {
       author: writer,
       createdAt: new Date().toISOString(),
       body,
     };
-    if (!isWritableThread(withMessage(local))) {
+    if (!isWritableThread(withMessage(commentId, thread, local))) {
       return new Err(t(UNSAVABLE_MESSAGE));
     }
     if (!sign) {
       return new Ok(local);
     }
     const signed = await sign(commentId, thread?.messages ?? [], body);
-    if (signed.isOk() && !isWritableThread(withMessage(signed.value))) {
+    if (
+      signed.isOk() &&
+      !isWritableThread(withMessage(commentId, thread, signed.value))
+    ) {
       return new Err(t(UNSAVABLE_MESSAGE));
     }
     return signed;
+  };
+
+  /** A new thread `id`: created and stored by the session when live, otherwise written here. */
+  const createThread = async (
+    writer: DfmAuthor,
+    id: string,
+    body: string
+  ): Promise<Result<DfmComment, string>> => {
+    if (!live) {
+      const written = await writeMessage(writer, id, undefined, body);
+      return written.isOk()
+        ? new Ok({ id, status: "open", messages: [written.value] })
+        : written;
+    }
+    const local: DfmMessage = {
+      author: writer,
+      createdAt: new Date().toISOString(),
+      body,
+    };
+    if (!isWritableThread(withMessage(id, undefined, local))) {
+      return new Err(t(UNSAVABLE_MESSAGE));
+    }
+    const created = await live.send({ type: "add", commentId: id, body });
+    if (created.isErr()) {
+      return new Err(liveErrorMessage(created.error));
+    }
+    return created.value
+      ? new Ok(created.value)
+      : new Err(t(UNAVAILABLE_MESSAGE));
   };
 
   const suggestionTemplate = (
@@ -388,28 +457,28 @@ export const useDocumentComments = ({
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const id = crypto.randomUUID();
-      const written = await writeMessage(author, id, undefined, body);
-      if (written.isErr()) {
-        return written;
+      const created = await createThread(author, id, body);
+      if (created.isErr()) {
+        return created;
       }
-      if (!editor.isEditable) {
-        return new Err(t(UNAVAILABLE_MESSAGE));
-      }
-      const comment: DfmComment = {
-        id,
-        status: "open",
-        messages: [written.value],
-      };
+      const comment = created.value;
       // The draft may have moved, or been cancelled, while the server signed the message.
       const draft = documentCommentsPluginKey.getState(editor.state)?.draft;
-      const next = draft
-        ? previewDocument(editor, (chain) => chain.addComment(comment))
-        : null;
-      if (!draft || !next) {
-        return new Err(t(UNANCHORED_MESSAGE));
-      }
-      if (!isSavable(next.toJSON())) {
-        return new Err(t(UNSAVABLE_MESSAGE));
+      const next =
+        draft && editor.isEditable
+          ? previewDocument(editor, (chain) => chain.addComment(comment))
+          : null;
+      const refusal = !editor.isEditable
+        ? t(UNAVAILABLE_MESSAGE)
+        : !next
+          ? t(UNANCHORED_MESSAGE)
+          : !isSavable(next.toJSON())
+            ? t(UNSAVABLE_MESSAGE)
+            : null;
+      if (!draft || refusal !== null) {
+        // The session already holds the thread; without its anchor, it goes.
+        void live?.send({ type: "delete", commentId: id });
+        return new Err(refusal ?? t(UNANCHORED_MESSAGE));
       }
       editor
         .chain()
@@ -425,6 +494,33 @@ export const useDocumentComments = ({
       if (!canWrite || !editor || !author || !thread) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
+      if (live) {
+        const local: DfmMessage = {
+          author,
+          createdAt: new Date().toISOString(),
+          body,
+        };
+        const next = previewDocument(editor, (chain) =>
+          chain.replyToComment(id, local)
+        );
+        if (
+          !isWritableThread(withMessage(id, thread, local)) ||
+          !next ||
+          !isSavable(next.toJSON())
+        ) {
+          return new Err(t(UNSAVABLE_MESSAGE));
+        }
+        // The session refuses the reply once the thread has moved past what was shown.
+        const sent = await live.send({
+          type: "reply",
+          commentId: id,
+          position: thread.messages.length,
+          body,
+        });
+        return sent.isErr()
+          ? new Err(liveErrorMessage(sent.error))
+          : new Ok(undefined);
+      }
       const written = await writeMessage(author, id, thread, body);
       if (written.isErr()) {
         return written;
@@ -437,19 +533,19 @@ export const useDocumentComments = ({
         (comment) => comment.id === id
       );
       if (!current) {
-        return new Err(t`This comment was deleted.`);
+        return new Err(t(DELETED_MESSAGE));
       }
       if (
         current.messages.length !== thread.messages.length ||
         !sameMessage(current.messages.at(-1), thread.messages.at(-1))
       ) {
-        return new Err(t`This thread changed while sending. Send again.`);
+        return new Err(t(THREAD_CHANGED_MESSAGE));
       }
       const next = previewDocument(editor, (chain) =>
         chain.replyToComment(id, written.value)
       );
       if (!next) {
-        return new Err(t`This comment was deleted.`);
+        return new Err(t(DELETED_MESSAGE));
       }
       if (!isSavable(next.toJSON())) {
         return new Err(t(UNSAVABLE_MESSAGE));
@@ -460,7 +556,11 @@ export const useDocumentComments = ({
     /** Resolves or reopens, then focuses the given thread or the panel heading. */
     setResolved: (id: string, resolved: boolean, focusNext: string | null) => {
       if (canWrite && editor) {
-        editor.commands.setCommentResolved(id, resolved);
+        if (live) {
+          void live.send({ type: "resolve", commentId: id, resolved });
+        } else {
+          editor.commands.setCommentResolved(id, resolved);
+        }
         requestFocus(focusNext);
       }
     },
@@ -520,13 +620,21 @@ export const useDocumentComments = ({
       ) {
         return new Err(t(UNAPPLICABLE_MESSAGE));
       }
-      editor.commands.setCommentResolved(id, true);
+      if (live) {
+        void live.send({ type: "resolve", commentId: id, resolved: true });
+      } else {
+        editor.commands.setCommentResolved(id, true);
+      }
       requestFocus(focusNext);
       return new Ok(undefined);
     },
     remove: (id: string, focusNext: string | null) => {
       if (canWrite && editor) {
+        // Marks go first: a thread without marks is valid, a mark without its thread is not.
         editor.commands.deleteComment(id);
+        if (live) {
+          void live.send({ type: "delete", commentId: id });
+        }
         requestFocus(focusNext);
       }
     },
