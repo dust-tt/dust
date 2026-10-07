@@ -89,7 +89,6 @@ makeScript(
 
       for (const [chunkIdx, chunkActionIds] of actionIdChunks.entries()) {
         let lastId: ModelId | null = null;
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           const whereBase: Record<string, unknown> = {
             workspaceId: workspaceModelId,

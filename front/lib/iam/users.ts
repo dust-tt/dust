@@ -131,7 +131,6 @@ export async function createOrUpdateUser({
           externalUser.name
         );
         updateArgs.firstName = softHtmlEscape(firstName);
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         updateArgs.lastName = softHtmlEscape(lastName || "");
       }
     }
@@ -182,9 +181,7 @@ export async function createOrUpdateUser({
       externalUser.name
     );
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     firstName = softHtmlEscape(externalUser.given_name || firstName);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     lastName = externalUser.family_name || lastName;
     if (lastName) {
       lastName = softHtmlEscape(lastName);

@@ -83,10 +83,10 @@ const { withToolResultProcessingSpyRef } = vi.hoisted(() => ({
 vi.mock(
   "@app/lib/actions/mcp_internal_actions/wrappers",
   async (importOriginal) => {
-    const actual = await importOriginal<
-      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-      typeof import("@app/lib/actions/mcp_internal_actions/wrappers")
-    >();
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/actions/mcp_internal_actions/wrappers")
+      >();
     const spy = vi.fn(actual.withToolResultProcessing);
     withToolResultProcessingSpyRef.current = spy;
     // registerTool closes over the original withToolResultProcessing, so we must inject the spy

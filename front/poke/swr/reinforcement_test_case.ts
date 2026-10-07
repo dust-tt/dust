@@ -22,7 +22,6 @@ export function useCopyReinforcementTestCase({
       );
       const data = await response.json();
       if (!response.ok) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(data.error?.message || "Failed to generate test case");
       }
       const { testCase } = data as GetReinforcementTestCaseResponseBody;

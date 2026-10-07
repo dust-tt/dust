@@ -2363,7 +2363,6 @@ export class CoreAPI {
     } catch (e) {
       const duration = Date.now() - now;
       const isAbort =
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (init && init.signal && (init.signal as AbortSignal).aborted) ||
         // Some environments throw an AbortError with name property.
         (typeof e === "object" &&

@@ -43,7 +43,6 @@ export function sectionFullText(
   section: CoreAPIDataSourceDocumentSection
 ): string {
   return (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     `${section.prefix || ""}${section.content || ""}` +
     section.sections.map(sectionFullText).join("")
   );
