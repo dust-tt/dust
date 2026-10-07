@@ -21,7 +21,6 @@ export function SandboxFunctionToolApprovalCard({
 
   const { validateAction, isValidating } = useValidateAction({
     owner: viewer.owner,
-    onError: setErrorMessage,
   });
 
   const handleValidation = async (
@@ -38,6 +37,8 @@ export function SandboxFunctionToolApprovalCard({
     });
 
     if (!result.success) {
+      // Shared frames render this card outside of any Notification.Area, so the error stays inline.
+      setErrorMessage("Failed to assess action approval. Please try again.");
       return false;
     }
 
