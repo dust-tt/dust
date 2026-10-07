@@ -9,6 +9,7 @@ import {
   formatDate,
   formatDateTime,
   formatFileSize,
+  formatList,
   formatNumber,
   formatRelativeTime,
   formatTime,
@@ -254,6 +255,14 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       setFormatLocale(locale);
       expect(formatRelativeTime(-3, "day")).toBe(
         new Intl.RelativeTimeFormat(locale).format(-3, "day")
+      );
+    });
+
+    it("formatList", () => {
+      setFormatLocale(locale);
+      const options: Intl.ListFormatOptions = { type: "unit", style: "narrow" };
+      expect(formatList(["2m", "5s"], options)).toBe(
+        new Intl.ListFormat(locale, options).format(["2m", "5s"])
       );
     });
 

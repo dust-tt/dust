@@ -1,5 +1,7 @@
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
+import { formatList, formatNumber } from "@app/lib/i18n/format";
 import { cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
@@ -81,19 +83,47 @@ function formatDurationMs(
   { wholeSeconds = false }: { wholeSeconds?: boolean } = {}
 ): string {
   if (!wholeSeconds && durationMs < 1000) {
-    return `${Math.round(durationMs)}ms`;
+    return formatNumber(Math.round(durationMs), {
+      style: "unit",
+      unit: "millisecond",
+      unitDisplay: "narrow",
+    });
   }
   if (durationMs < 60_000) {
     return wholeSeconds
-      ? `${Math.floor(durationMs / 1000)}s`
-      : `${(durationMs / 1000).toFixed(1)}s`;
+      ? formatNumber(Math.floor(durationMs / 1000), {
+          style: "unit",
+          unit: "second",
+          unitDisplay: "narrow",
+        })
+      : formatNumber(durationMs / 1000, {
+          style: "unit",
+          unit: "second",
+          unitDisplay: "narrow",
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        });
   }
   // Round to whole seconds first, then split, so we never produce 60s as a
   // remainder (e.g. 119.6s → "2m 0s", not "1m 60s").
   const totalSeconds = Math.round(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const remainderSeconds = totalSeconds - minutes * 60;
-  return `${minutes}m ${remainderSeconds}s`;
+  return formatList(
+    [
+      formatNumber(minutes, {
+        style: "unit",
+        unit: "minute",
+        unitDisplay: "narrow",
+      }),
+      formatNumber(remainderSeconds, {
+        style: "unit",
+        unit: "second",
+        unitDisplay: "narrow",
+      }),
+    ],
+    { type: "unit", style: "narrow" }
+  );
 }
 
 interface DurationLabelProps {
@@ -103,6 +133,7 @@ interface DurationLabelProps {
 }
 
 function DurationLabel({ durationMs, isRunning, size }: DurationLabelProps) {
+  const duration = formatDurationMs(durationMs, { wholeSeconds: isRunning });
   return (
     <span
       className={cn(
@@ -110,8 +141,11 @@ function DurationLabel({ durationMs, isRunning, size }: DurationLabelProps) {
         size === "xs" ? "text-xs" : "text-sm"
       )}
     >
-      {isRunning ? "running for " : "executed in "}
-      {formatDurationMs(durationMs, { wholeSeconds: isRunning })}
+      {isRunning ? (
+        <Trans>running for {duration}</Trans>
+      ) : (
+        <Trans>executed in {duration}</Trans>
+      )}
     </span>
   );
 }
