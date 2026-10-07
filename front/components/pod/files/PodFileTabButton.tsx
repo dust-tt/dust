@@ -8,6 +8,7 @@ import {
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, LayoutAlt02 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface PodFileTabButtonProps {
@@ -31,6 +32,7 @@ export function PodFileTabButton({
   fileName,
   hidden,
 }: PodFileTabButtonProps) {
+  const { t } = useLingui();
   const { removeFileTab, isFileTab } = usePodFileTabs({
     owner,
     podId: spaceId,
@@ -66,7 +68,7 @@ export function PodFileTabButton({
         icon={LayoutAlt02}
         variant={addedAsTab ? "highlight-ghost" : "ghost"}
         size="sm"
-        tooltip={addedAsTab ? "Remove from Pod tabs" : "Add as Pod tab"}
+        tooltip={addedAsTab ? t`Remove from Pod tabs` : t`Add as Pod tab`}
         onClick={() => {
           if (addedAsTab) {
             void removeFileTab(filePath, { fileName });

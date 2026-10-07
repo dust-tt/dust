@@ -25,6 +25,7 @@ import {
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 interface PodFrameSheetProps {
@@ -58,6 +59,7 @@ export function PodFrameSheet({
   onClose,
   owner,
 }: PodFrameSheetProps) {
+  const { t } = useLingui();
   const { vizUrl } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -149,7 +151,7 @@ export function PodFrameSheet({
                   variant="ghost"
                   size="sm"
                   tooltip={
-                    isFullscreen ? "Exit full screen" : "Open in full screen"
+                    isFullscreen ? t`Exit full screen` : t`Open in full screen`
                   }
                   onClick={() => setIsFullscreen((prev) => !prev)}
                 />
@@ -167,7 +169,7 @@ export function PodFrameSheet({
             </div>
           ) : isFileMetadataError || !fileMetadata || !functionReferenceKind ? (
             <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              This frame is no longer available in the Pod files.
+              <Trans>This frame is no longer available in the Pod files.</Trans>
             </div>
           ) : !fileContent ? (
             <div className="flex h-full items-center justify-center">

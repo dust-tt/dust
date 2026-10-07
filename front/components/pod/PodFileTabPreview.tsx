@@ -193,7 +193,7 @@ export function PodFileTabPreview({
       });
       if (result.isErr()) {
         sendApiErrorNotification({
-          title: "Failed to save file",
+          title: t`Failed to save file`,
           error: result.error,
         });
         return;
@@ -212,11 +212,13 @@ export function PodFileTabPreview({
       if (entry?.path) {
         markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
       }
-      sendNotification({ type: "success", title: "File saved" });
+      sendNotification({ type: "success", title: t`File saved` });
     } finally {
       setIsMarkdownSaving(false);
     }
   };
+
+  const fileSize = formatFileSize(sizeBytes, { decimals: 1 });
 
   if (isFileMetadataLoading) {
     return (
@@ -242,7 +244,7 @@ export function PodFileTabPreview({
             />
             <div className="flex items-center gap-2">
               <Button
-                label="Save"
+                label={t`Save`}
                 variant="highlight"
                 size="sm"
                 isLoading={isMarkdownSaving}
@@ -250,7 +252,7 @@ export function PodFileTabPreview({
                 onClick={() => void handleMarkdownSave()}
               />
               <Button
-                label="Revert"
+                label={t`Revert`}
                 variant="outline"
                 size="sm"
                 disabled={!isMarkdownDirty || isMarkdownSaving}
@@ -262,12 +264,12 @@ export function PodFileTabPreview({
         {isTooLarge ? (
           <FilePreviewFallback
             download={{ href: getFilePathDownloadUrl(owner, filePath) }}
-            message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 })}).`}
+            message={t`This file is too large to preview (${fileSize}).`}
           />
         ) : hasError ? (
           <FilePreviewFallback
             download={{ href: getFilePathDownloadUrl(owner, filePath) }}
-            message="Unable to preview this file."
+            message={t`Unable to preview this file.`}
           />
         ) : (
           <div

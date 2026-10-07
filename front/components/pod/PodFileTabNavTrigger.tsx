@@ -14,6 +14,7 @@ import {
   NavTabPillTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface PodFileTabNavTriggerProps {
@@ -35,6 +36,7 @@ export function PodFileTabNavTrigger({
   tab,
   className,
 }: PodFileTabNavTriggerProps) {
+  const { t } = useLingui();
   const { removeFileTab } = usePodFileTabs({
     owner,
     podId,
@@ -85,12 +87,12 @@ export function PodFileTabNavTrigger({
             onFocusOutside={(e) => e.preventDefault()}
           >
             <DropdownMenuItem
-              label="Edit"
+              label={t`Edit`}
               icon={Edit04}
               onClick={() => setIsEditDialogOpen(true)}
             />
             <DropdownMenuItem
-              label="Remove"
+              label={t`Remove`}
               icon={XClose}
               onClick={() =>
                 void removeFileTab(tab.path, { fileName: tab.title })
