@@ -6,5 +6,6 @@ import React from "react";
 // Renders `TransNoContext` (what Lingui's `Trans` renders once it has read the `LinguiContext`) with
 // sparkle's own context instead of the consumer's.
 export function Trans(props: TransProps) {
-  return <TransNoContext {...props} lingui={useLingui()} />;
+  const lingui = useLingui();
+  return <TransNoContext {...props} lingui={lingui} />;
 }
