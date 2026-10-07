@@ -107,11 +107,11 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
  * @cc [owner:philipperolet,label:security;product] group-verbs
  * The verbs a caller holds on a group mean:
  * - `read`: seeing the group and its membership.
- * - `write`: adding or removing members of a `regular_manual` group, subject to the
- *   admin-granting membership guard.
+ * - `write`: adding or removing members of a `regular_manual` group.
  * - `admin`: renaming or deleting a `regular_manual` group.
  * - `read_usage`: viewing usage of active members of this group.
  * - `set_usage_limits`: editing this group's allowance or an active member's personal limit.
+ * On a privileged group, only workspace admins hold `write` and `admin`.
  * `provisioned` groups can grant usage verbs but never `write` or `admin`.
  * `global` groups grant only `read`. `regular_auto` and `system` groups hold no verbs and MUST
  * only be used by paths with a separate authorization context.
@@ -2195,26 +2195,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Editing a regular_manual group (name/members) requires `write` on it
-    // (workspace admins and managers).
+    // (workspace admins and managers; only workspace admins for a privileged group).
     if (!auth.can("write", this)) {
       return new Err(
         new DustError(
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
-        )
-      );
-    }
-
-    // Changing the members of an admin-granting group escalates/de-escalates
-    // admins, so it is restricted to workspace admins.
-    if (
-      memberIds !== undefined &&
-      !this.canManageMembersGivenGrantedRole(auth)
-    ) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can manage members of a group that grants the admin role."
         )
       );
     }
@@ -2304,23 +2290,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Editing a regular_manual group (name/members) requires `write` on it
-    // (workspace admins and managers).
+    // (workspace admins and managers; only workspace admins for a privileged group).
     if (!auth.can("write", this)) {
       return new Err(
         new DustError(
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
-        )
-      );
-    }
-
-    // Changing the members of an admin-granting group escalates/de-escalates
-    // admins, so it is restricted to workspace admins.
-    if (!this.canManageMembersGivenGrantedRole(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can manage members of a group that grants the admin role."
         )
       );
     }
@@ -2653,12 +2628,19 @@ export class GroupResource extends BaseResource<GroupModel> {
    *   they are linked to, so the permission is checked on that resource and never on the
    *   group itself.
    * - system: nothing, it is internal to the workspace.
+   * A privileged group (see `isPrivileged`) is read-only for everyone but workspace admins.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
    * @returns The verbs the caller holds on this group from workspace role and governance grants.
+   */
+  /**
+   * @cc [owner:tdraier;philipperolet,label:security] privileged-group-admin-only
+   * On a privileged group, `write` and `admin` MUST only be returned for workspace admins,
+   * whatever the caller's workspace role (e.g. manager) or governance grants. In particular,
+   * only workspace admins can add or remove its members.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     let roleGrants: RoleGrant[];
@@ -2746,6 +2728,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
       }
     }
+    if (this.isPrivileged() && !auth.isAdmin()) {
+      verbs.delete("write");
+      verbs.delete("admin");
+    }
     return verbs;
   }
 
@@ -2770,18 +2756,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:tdraier,label:security] admin-group-membership-admin-only
-   * Membership of a group that grants the admin role (`grantedRole === "admin"`)
-   * MUST only be mutated by workspace admins. Adding a member to such a group
-   * escalates them to admin, so managers (who otherwise have `write` on manual
-   * groups) MUST NOT be able to add or remove its members — mirroring the
-   * members UI, where managers cannot assign the admin role.
-   *
-   * Returns true when `auth` is allowed to change this group's membership given
-   * the role it grants. Callers must still enforce `auth.can("write", group)`.
+   * A privileged group gives its members admin-level powers, so only workspace admins can change
+   * it (see `getAllowedVerbs`).
    */
-  canManageMembersGivenGrantedRole(auth: Authenticator): boolean {
-    return this.grantedRole !== "admin" || auth.isAdmin();
+  /**
+   * @cc [owner:philipperolet,label:security] privileged-group-definition
+   * A group that grants the admin role (`grantedRole === "admin"`) MUST be privileged.
+   */
+  isPrivileged(): boolean {
+    return this.grantedRole === "admin";
   }
 
   /**
