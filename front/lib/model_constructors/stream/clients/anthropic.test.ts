@@ -40,10 +40,8 @@ function createSonnetFiveDotFive() {
   });
 }
 
-function stubMessageStart(
-  endpoint: AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream,
-  message: Record<string, unknown>
-) {
+function createSonnetFiveDotFiveStartingWith(message: Record<string, unknown>) {
+  const endpoint = createSonnetFiveDotFive();
   Reflect.set(endpoint, "client", {
     beta: {
       messages: {
@@ -60,6 +58,7 @@ function stubMessageStart(
       },
     },
   });
+  return endpoint;
 }
 
 async function collectResponseIdEvent(
@@ -123,8 +122,7 @@ describe("AnthropicStream thinking-binding observability", () => {
   });
 
   it("attaches message_start input transformations to the response id event", async () => {
-    const endpoint = createSonnetFiveDotFive();
-    stubMessageStart(endpoint, {
+    const endpoint = createSonnetFiveDotFiveStartingWith({
       input_transformations: [
         {
           type: "thinking_mismatch_allowed",
@@ -147,8 +145,9 @@ describe("AnthropicStream thinking-binding observability", () => {
   });
 
   it("leaves the response id event untouched when nothing was transformed", async () => {
-    const endpoint = createSonnetFiveDotFive();
-    stubMessageStart(endpoint, { input_transformations: [] });
+    const endpoint = createSonnetFiveDotFiveStartingWith({
+      input_transformations: [],
+    });
 
     const event = await collectResponseIdEvent(endpoint);
 
