@@ -2,7 +2,7 @@ import {
   recordRunningSandboxDelta,
   recordSandboxFunctionRun,
 } from "@app/lib/api/sandbox/instrumentation";
-import { statsDMetrics } from "@app/lib/utils/statsd";
+import { getStatsDClient, statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -52,34 +52,35 @@ describe("recordRunningSandboxDelta", () => {
   });
 
   it.each(["conversation", "frame"] as const)(
-    "emits an incrementing gauge tagged by %s, not workspace",
+    "emits signed counter packets tagged by %s, not workspace",
     (sandboxType) => {
-      const gaugeDelta = vi
-        .spyOn(statsDMetrics, "gaugeDelta")
+      const send = vi
+        .spyOn(getStatsDClient().socket, "send")
         .mockImplementation(() => undefined);
       const info = vi.spyOn(logger, "info").mockImplementation(() => undefined);
 
-      recordRunningSandboxDelta({
-        delta: 1,
-        sandboxType,
-        reason: "create",
-        sandboxId: "sandbox_123",
-        providerId: "e2b_abc",
-        workspaceId: "ws_secret",
-      });
+      for (const delta of [1, 1, -1] as const) {
+        recordRunningSandboxDelta({
+          delta,
+          sandboxType,
+          reason: delta === 1 ? "create" : "pause",
+          sandboxId: "sandbox_123",
+          providerId: "e2b_abc",
+          workspaceId: "ws_secret",
+        });
+      }
 
-      expect(gaugeDelta).toHaveBeenCalledWith(
-        "sandbox.lifecycle.running",
-        1,
-        expect.arrayContaining([
-          expect.stringMatching(/^region:/),
-          `sandbox_type:${sandboxType}`,
-        ])
-      );
-      const tags = gaugeDelta.mock.calls[0]?.[2] ?? [];
-      expect(tags).not.toEqual(
-        expect.arrayContaining([expect.stringMatching(/workspace/i)])
-      );
+      const packets = send.mock.calls.map(([packet]) => packet.toString());
+      expect(packets).toEqual([
+        expect.stringMatching(/^sandbox\.lifecycle\.running_delta:1\|c\|#/),
+        expect.stringMatching(/^sandbox\.lifecycle\.running_delta:1\|c\|#/),
+        expect.stringMatching(/^sandbox\.lifecycle\.running_delta:-1\|c\|#/),
+      ]);
+      for (const packet of packets) {
+        expect(packet).toContain("region:");
+        expect(packet).toContain(`sandbox_type:${sandboxType}`);
+        expect(packet).not.toMatch(/workspace|ws_secret|host:/);
+      }
 
       expect(info).toHaveBeenCalledWith(
         expect.objectContaining({
