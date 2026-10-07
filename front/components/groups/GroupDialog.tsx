@@ -48,9 +48,9 @@ export function GroupDialog({
     disabled: !isOpen,
   });
 
-  // Managing the membership of a group that grants the admin role is restricted
-  // to admins: adding a member escalates them to admin. Managers can view but
-  // not edit such a group's membership.
+  // Managing the membership of a privileged group (e.g. one granting the admin role)
+  // is restricted to admins: adding a member gives them admin-level powers. Managers
+  // can view but not edit such a group's membership.
   const isReadOnlyForManager =
     isEdit && group?.allowedActions?.canEditMembers !== true;
 
@@ -96,8 +96,8 @@ interface GroupFormProps {
   initialName: string;
   initialMembers: SearchMemberType[];
   initialManagers: SearchMemberType[];
-  // When true, the group grants the admin role and the current user is not an
-  // admin: membership is read-only (see the admin-only membership contract).
+  // When true, the group is privileged and the current user is not an admin:
+  // membership is read-only (see the `privileged-group-admin-only` contract).
   readOnly?: boolean;
   onCreated?: (group: GroupType) => void;
   onClose: () => void;
