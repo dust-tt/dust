@@ -698,10 +698,13 @@ function resolvePathWriteContentType(
   return contentTypeFromFileName(fileName) ?? "text/plain";
 }
 
+export const isPathWritableContentType = (contentType: string) =>
+  contentType.startsWith("text/") || contentType === "application/json";
+
 function validatePathWritableContentType(
   contentType: string
 ): Result<void, WriteCanonicalFileContentError> {
-  if (!contentType.startsWith("text/") && contentType !== "application/json") {
+  if (!isPathWritableContentType(contentType)) {
     return new Err(
       new WriteCanonicalFileContentError(
         "unsupported_content_type",

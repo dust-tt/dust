@@ -1,7 +1,10 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
-import { validateMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
+import {
+  type DfmCommentSignatureError,
+  validateMarkdownCommentsForWrite,
+} from "@app/lib/api/files/dfm_comment_signatures";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -565,6 +568,42 @@ function mapFolderExtractError(
   }
 }
 
+function mapMarkdownCheckError(
+  error: DfmCommentSignatureError
+): APIErrorWithContentfulStatusCode {
+  const { code } = error;
+  switch (code) {
+    case "unreadable_file":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: error.message },
+      };
+
+    case "file_too_large":
+      return {
+        status_code: 413,
+        api_error: { type: "file_too_large", message: error.message },
+      };
+
+    case "unsupported_content_type":
+    case "not_available":
+    case "unavailable_file":
+    case "invalid_position":
+    case "unwritable_message":
+    case "foreign_message":
+    case "unsigned_message":
+    case "altered_message":
+    case "moved_message":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
+
+    default:
+      return assertNever(code);
+  }
+}
+
 /** @ignoreswagger */
 app.post(
   "/:canonicalPath{.+}",
@@ -687,25 +726,7 @@ app.put(
       ctx.req.header("content-type") ?? undefined
     );
     if (markdownCheck.isErr()) {
-      const { code, message } = markdownCheck.error;
-      return apiError(
-        ctx,
-        code === "unreadable_file"
-          ? {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message,
-              },
-            }
-          : {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message,
-              },
-            }
-      );
+      return apiError(ctx, mapMarkdownCheckError(markdownCheck.error));
     }
     const { revision: checkedRevision, newMessages } = markdownCheck.value;
 
