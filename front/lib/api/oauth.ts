@@ -49,6 +49,10 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -401,14 +405,18 @@ async function assertFinalizeOwnership({
   auth: Authenticator | null;
   connection: OAuthConnectionType;
   options: FinalizeConnectionOptions;
-}): Promise<Result<Authenticator, OAuthError>> {
+}): Promise<
+  Result<
+    { user: UserResource; connectionWorkspace: WorkspaceResource | null },
+    OAuthError
+  >
+> {
   const sessionUser = auth?.user();
   const connectionUserId = connection.metadata.user_id;
   const connectionWorkspaceId = connection.metadata.workspace_id;
   const expectedNonce = connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY];
 
   if (
-    !auth ||
     !sessionUser ||
     !isString(connectionUserId) ||
     sessionUser.sId !== connectionUserId
@@ -431,20 +439,21 @@ async function assertFinalizeOwnership({
   }
 
   // The session is bound to the workspace picked at login, which is not necessarily the one the
-  // connection was started from, so resolve membership on the connection's workspace instead.
-  const connectionWorkspaceAuth =
-    auth.workspace()?.sId === connectionWorkspaceId
-      ? auth
-      : await Authenticator.fromUserIdAndWorkspaceId(
-          sessionUser.sId,
-          connectionWorkspaceId
-        );
-
-  if (connectionWorkspaceAuth.workspace()) {
-    if (!connectionWorkspaceAuth.isUser()) {
+  // connection was started from, so check membership of the connection's workspace instead.
+  const connectionWorkspace = await WorkspaceResource.fetchById(
+    connectionWorkspaceId
+  );
+  if (connectionWorkspace) {
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: sessionUser,
+        workspace: renderLightWorkspaceType({ workspace: connectionWorkspace }),
+      });
+    if (!membership) {
       return workspaceMismatch;
     }
   } else if (options.sessionWorkspaceId !== connectionWorkspaceId) {
+    // Unknown to this region: membership cannot be checked, fall back to the session claim.
     return workspaceMismatch;
   }
 
@@ -456,7 +465,7 @@ async function assertFinalizeOwnership({
     });
   }
 
-  return new Ok(connectionWorkspaceAuth);
+  return new Ok({ user: sessionUser, connectionWorkspace });
 }
 
 export type FinalizeConnectionResult =
@@ -544,7 +553,7 @@ export async function finalizeConnection(
     );
     return ownershipRes;
   }
-  const connectionWorkspaceAuth = ownershipRes.value;
+  const { user, connectionWorkspace } = ownershipRes.value;
 
   // GitHub-only: legacy installs (App already on the account/org) often return
   // installation_id without a user OAuth code. Continue via /login/oauth/authorize
@@ -634,16 +643,20 @@ export async function finalizeConnection(
     }
   }
 
-  if (connectionWorkspaceAuth.workspace()) {
+  if (connectionWorkspace) {
+    const auditAuth =
+      auth && auth.workspace()?.sId === connectionWorkspace.sId
+        ? auth
+        : await Authenticator.fromUserIdAndWorkspaceId(
+            user.sId,
+            connectionWorkspace.sId
+          );
     // No req available in this library function — context defaults to auth.clientIp().
     void emitAuditLogEvent({
-      auth: connectionWorkspaceAuth,
+      auth: auditAuth,
       action: "oauth.authorized",
       targets: [
-        buildAuditLogTarget(
-          "workspace",
-          connectionWorkspaceAuth.getNonNullableWorkspace()
-        ),
+        buildAuditLogTarget("workspace", auditAuth.getNonNullableWorkspace()),
       ],
       metadata: {
         provider: String(provider),
