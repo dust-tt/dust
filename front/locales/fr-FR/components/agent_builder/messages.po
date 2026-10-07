@@ -356,3 +356,83 @@ msgstr "Vous devez sélectionner au moins une source de données"
 #: front/components/agent_builder/types.ts
 msgid "You must use time frame between that and that when you have required enums in mcpServerViews."
 msgstr "Vous devez définir une période lorsque des énumérations obligatoires sont présentes dans mcpServerViews."
+
+#: front/components/agent_builder/utils.ts
+msgid "Content"
+msgstr "Contenu"
+
+#: front/components/agent_builder/utils.ts
+msgid "Data"
+msgstr "Données"
+
+#: front/components/agent_builder/utils.ts
+msgid "Design"
+msgstr "Design"
+
+#: front/components/agent_builder/utils.ts
+msgid "Engineering"
+msgstr "Ingénierie"
+
+#: front/components/agent_builder/utils.ts
+msgid "Finance"
+msgstr "Finance"
+
+#: front/components/agent_builder/utils.ts
+msgid "Hiring"
+msgstr "Embauche"
+
+#: front/components/agent_builder/utils.ts
+msgid "IT"
+msgstr "Informatique"
+
+#: front/components/agent_builder/utils.ts
+msgid "Legal"
+msgstr "Juridique"
+
+#: front/components/agent_builder/utils.ts
+msgid "Knowledge"
+msgstr "Connaissances"
+
+#: front/components/agent_builder/utils.ts
+msgid "Marketing"
+msgstr "Marketing"
+
+#: front/components/agent_builder/utils.ts
+msgid "Operations"
+msgstr "Opérations"
+
+#: front/components/agent_builder/utils.ts
+msgid "Product"
+msgstr "Produit"
+
+#: front/components/agent_builder/utils.ts
+msgid "Product management"
+msgstr "Gestion de produit"
+
+#: front/components/agent_builder/utils.ts
+msgid "Productivity"
+msgstr "Productivité"
+
+#: front/components/agent_builder/utils.ts
+msgid "Recruiting & people"
+msgstr "Recrutement et RH"
+
+#: front/components/agent_builder/utils.ts
+msgid "Sales"
+msgstr "Ventes"
+
+#: front/components/agent_builder/utils.ts
+msgid "Support"
+msgstr "Support"
+
+#: front/components/agent_builder/utils.ts
+msgid "UX design"
+msgstr "Design UX"
+
+#: front/components/agent_builder/utils.ts
+msgid "UX research"
+msgstr "Recherche UX"
+
+#: front/components/agent_builder/utils.ts
+msgid "Writing"
+msgstr "Rédaction"

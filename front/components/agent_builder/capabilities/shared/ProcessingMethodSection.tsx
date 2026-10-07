@@ -90,6 +90,7 @@ export function ProcessingMethodSection() {
 
     if (mcpServerView) {
       const methodLabel = getKnowledgeLookupMethodLabel(
+        t,
         mcpServerView.server.name,
         getMcpServerViewDisplayName(mcpServerView)
       );
@@ -138,7 +139,7 @@ export function ProcessingMethodSection() {
     }
 
     return [mcpServerViewsWithKnowledge, warning];
-  }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
+  }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView, t]);
 
   useEffect(() => {
     if (serversToDisplay && sources.in.length > 0 && !mcpServerView) {
@@ -196,6 +197,7 @@ export function ProcessingMethodSection() {
               label={
                 mcpServerView
                   ? getKnowledgeLookupMethodLabel(
+                      t,
                       mcpServerView.server.name,
                       getMcpServerViewDisplayName(mcpServerView)
                     )
@@ -218,6 +220,7 @@ export function ProcessingMethodSection() {
                 <DropdownMenuItem
                   key={view.id}
                   label={getKnowledgeLookupMethodLabel(
+                    t,
                     view.server.name,
                     getMcpServerViewDisplayName(view)
                   )}

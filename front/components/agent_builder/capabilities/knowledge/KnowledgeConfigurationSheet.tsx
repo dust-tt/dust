@@ -4,7 +4,7 @@ import {
   CAPABILITY_CONFIGS,
   getInitialPageId,
   getKnowledgeDefaultValues,
-  getKnowledgeLookupMethodLabel,
+  getKnowledgeLookupMethodName,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   generateUniqueActionName,
@@ -297,7 +297,7 @@ function KnowledgeConfigurationSheetContent({
   // Prefill name field and set defaults when mcpServerView.id changes
   useEffect(() => {
     if (mcpServerView && !isEditing) {
-      const processingMethodName = getKnowledgeLookupMethodLabel(
+      const processingMethodName = getKnowledgeLookupMethodName(
         mcpServerView.server.name,
         getMcpServerViewDisplayName(mcpServerView)
       );

@@ -83,6 +83,51 @@ msgid "Managed by <0>{editorName}</0>."
 msgstr "Géré par <0>{editorName}</0>."
 
 #: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Starts with"
+msgstr "Commence par"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Contains"
+msgstr "Contient"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Has"
+msgstr "Inclut"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Has all"
+msgstr "Inclut tous"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Has any"
+msgstr "Inclut l’un de"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Exists"
+msgstr "Existe"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "And"
+msgstr "Et"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Or"
+msgstr "Ou"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgctxt "filter operator"
+msgid "Not"
+msgstr "Non"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
 msgid "Expression too deeply nested (depth > 4)"
 msgstr "Expression trop imbriquée (profondeur > 4)"
 
