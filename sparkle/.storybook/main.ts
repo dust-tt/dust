@@ -1,3 +1,5 @@
+import { linguiTransformerBabelPreset } from "@lingui/vite-plugin";
+import babel from "@rolldown/plugin-babel";
 import type { StorybookConfig } from "@storybook/react-vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -28,6 +30,10 @@ const config: StorybookConfig = {
   viteFinal: async (viteConfig) => {
     return {
       ...viteConfig,
+      plugins: [
+        ...(viteConfig.plugins ?? []),
+        babel({ presets: [linguiTransformerBabelPreset()] }),
+      ],
       server: {
         ...viteConfig.server,
         fs: {
