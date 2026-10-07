@@ -599,6 +599,14 @@ const QUERIES: LabeledQuery[] = [
     query: "create a new item in a Monday.com board",
     expected: "monday.create_item",
   },
+  {
+    query: "read the comments on a Monday item",
+    expected: "monday.get_updates",
+  },
+  {
+    query: "get the updates posted on a Monday.com item",
+    expected: "monday.get_updates",
+  },
 
   // --- notion ---
   {

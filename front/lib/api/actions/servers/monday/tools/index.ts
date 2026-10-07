@@ -24,6 +24,7 @@ import {
   getGroupDetails,
   getItemDetails,
   getItemsByColumnValue,
+  getItemUpdates,
   getSubitemValues,
   getUserDetails,
   moveItemToBoard,
@@ -258,6 +259,28 @@ const handlers: ToolHandlers<typeof MONDAY_TOOLS_METADATA> = {
     return new Ok([
       { type: "text" as const, text: "Subitems retrieved successfully" },
       { type: "text" as const, text: JSON.stringify(subitems, null, 2) },
+    ]);
+  },
+
+  get_updates: async ({ itemId, limit, page }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+
+    if (!accessToken) {
+      return new Err(new MCPError("No Monday.com access token found"));
+    }
+
+    const updates = await getItemUpdates(
+      accessToken,
+      itemId,
+      limit ?? 25,
+      page ?? 1
+    );
+    if (!updates) {
+      return new Err(new MCPError("Item not found", { tracked: false }));
+    }
+    return new Ok([
+      { type: "text" as const, text: `Retrieved ${updates.length} updates` },
+      { type: "text" as const, text: JSON.stringify(updates, null, 2) },
     ]);
   },
 

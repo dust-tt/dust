@@ -195,6 +195,34 @@ export const MONDAY_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
+    name: "get_updates",
+    description:
+      "Get the updates and comments posted on a Monday.com item, including comment replies, newest first.",
+    schema: {
+      itemId: z.string().describe("The item ID to retrieve updates for"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Maximum number of updates to return (default: 25)"),
+      page: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Page number for pagination, starting at 1 (default: 1)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving Monday item updates",
+      done: "Retrieve Monday item updates",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
     name: "get_user_details",
     description: "Retrieve details about a specific Monday.com user",
     schema: {
