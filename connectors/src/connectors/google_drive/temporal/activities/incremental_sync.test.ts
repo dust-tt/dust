@@ -21,8 +21,8 @@ const mocks = vi.hoisted(() => ({
   getSyncPageToken: vi.fn(),
   heartbeat: vi.fn(),
   objectIsInFolderSelection: vi.fn(),
-  redisGet: vi.fn(),
-  redisSet: vi.fn(),
+  redisSets: new Map<string, Set<string>>(),
+  redisValues: new Map<string, string>(),
   syncOneFile: vi.fn(),
   updateDataSourceDocumentParents: vi.fn(),
   updateDataSourceTableParents: vi.fn(),
@@ -137,8 +137,20 @@ vi.mock("@connectors/logger/logger", () => ({
 
 vi.mock("@connectors/types/shared/redis_client", () => ({
   redisClient: vi.fn(async () => ({
-    get: mocks.redisGet,
-    set: mocks.redisSet,
+    del: async (key: string) => mocks.redisSets.delete(key),
+    expire: vi.fn(),
+    get: async (key: string) => mocks.redisValues.get(key) ?? null,
+    sAdd: async (key: string, member: string) => {
+      mocks.redisSets.set(
+        key,
+        (mocks.redisSets.get(key) ?? new Set<string>()).add(member)
+      );
+    },
+    sIsMember: async (key: string, member: string) =>
+      mocks.redisSets.get(key)?.has(member) ?? false,
+    set: async (key: string, value: string) => {
+      mocks.redisValues.set(key, value);
+    },
   })),
 }));
 
@@ -218,8 +230,8 @@ describe("google drive incremental sync folder metadata", () => {
     mocks.getFileParentsMemoized.mockReset();
     mocks.getFoldersToSync.mockResolvedValue(["root-folder"]);
     mocks.objectIsInFolderSelection.mockResolvedValue(true);
-    mocks.redisGet.mockResolvedValue(null);
-    mocks.redisSet.mockResolvedValue("OK");
+    mocks.redisSets.clear();
+    mocks.redisValues.clear();
     mocks.syncOneFile.mockResolvedValue(true);
     mocks.upsertDataSourceFolder.mockReset();
     mocks.updateDataSourceDocumentParents.mockReset();
@@ -472,6 +484,121 @@ describe("google drive incremental sync folder metadata", () => {
 
     expect(folder?.parentId).toBe(oldParentId);
     expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: "skips descendants already updated when a move is retried",
+      isMovedAgain: false,
+    },
+    {
+      name: "updates all descendants when the folder moved again before the retry",
+      isMovedAgain: true,
+    },
+  ])("$name", async ({ isMovedAgain }) => {
+    const suffix = randomUUID();
+    const folderId = `folder-${suffix}`;
+    const oldParentId = `old-parent-${suffix}`;
+    const newParentId = `new-parent-${suffix}`;
+    const rootId = `root-${suffix}`;
+    const updatedFileId = `updated-file-${suffix}`;
+    const failingFileId = `failing-file-${suffix}`;
+    const connector = await makeConnector(suffix);
+
+    await GoogleDriveFilesModel.bulkCreate([
+      {
+        connectorId: connector.id,
+        driveFileId: folderId,
+        dustFileId: `gdrive-${folderId}`,
+        mimeType: "application/vnd.google-apps.folder",
+        name: "Team",
+        parentId: oldParentId,
+      },
+      {
+        connectorId: connector.id,
+        driveFileId: updatedFileId,
+        dustFileId: `gdrive-${updatedFileId}`,
+        mimeType: "application/pdf",
+        name: "Brief",
+        parentId: folderId,
+      },
+      {
+        connectorId: connector.id,
+        driveFileId: failingFileId,
+        dustFileId: `gdrive-${failingFileId}`,
+        mimeType: "application/pdf",
+        name: "Budget",
+        parentId: folderId,
+      },
+    ]);
+
+    const driveFile = makeGoogleDriveFolder({
+      id: folderId,
+      name: "Team",
+      parent: newParentId,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [makeFolderChange(driveFile)],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(driveFile);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      newParentId,
+      rootId,
+    ]);
+    mocks.updateDataSourceDocumentParents.mockImplementation(
+      async ({ documentId }: { documentId: string }) => {
+        if (documentId === `gdrive-${failingFileId}`) {
+          throw new Error("parent update failed");
+        }
+      }
+    );
+
+    const startSyncTs = Date.now();
+    await expect(
+      incrementalSync(connector.id, "drive-1", false, startSyncTs, "page-token")
+    ).rejects.toThrow("parent update failed");
+
+    mocks.updateDataSourceDocumentParents.mockReset();
+    const retriedParentId = isMovedAgain
+      ? `other-parent-${suffix}`
+      : newParentId;
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      retriedParentId,
+      rootId,
+    ]);
+    await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      startSyncTs,
+      "page-token"
+    );
+
+    const folder = await GoogleDriveFilesModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveFileId: folderId,
+      },
+    });
+
+    expect(folder?.parentId).toBe(retriedParentId);
+    expect(
+      mocks.updateDataSourceDocumentParents.mock.calls
+        .map(([args]) => args.documentId)
+        .sort()
+    ).toEqual(
+      isMovedAgain
+        ? [`gdrive-${failingFileId}`, `gdrive-${updatedFileId}`]
+        : [`gdrive-${failingFileId}`]
+    );
   });
 
   it("keeps skipped folders out of the datasource when renamed in place", async () => {
