@@ -988,6 +988,14 @@ export type OauthAPIPostModelProviderCredentialsResponse = {
   };
 };
 
+export type OauthAPIPostGatewayCredentialsResponse = {
+  credential: {
+    credential_id: string;
+    provider: "edgee" | "edgee_gateway_key";
+    created: number;
+  };
+};
+
 export type OauthAPIGetCredentialsResponse = {
   credential: {
     credential_id: string;

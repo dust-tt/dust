@@ -1,6 +1,10 @@
 import { internalFetch } from "@app/lib/api/internal_fetch";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  EdgeeAdminCredentials,
+  EdgeeGatewayKeyCredentials,
+} from "@app/types/gateways/edgee";
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
   ConnectionCredentials,
@@ -9,6 +13,7 @@ import type {
   OAuthProvider,
   OauthAPIGetCredentialsResponse,
   OauthAPIPostConnectionCredentialsResponse,
+  OauthAPIPostGatewayCredentialsResponse,
   OauthAPIPostModelProviderCredentialsResponse,
 } from "../oauth/lib";
 import type { LoggerInterface } from "../shared/logger";
@@ -46,6 +51,10 @@ type CrendentialsMetadata = {
   userId: string;
   workspaceId: string;
 };
+
+export type GatewayPostCredentialsBody =
+  | { provider: "edgee"; credentials: EdgeeAdminCredentials }
+  | { provider: "edgee_gateway_key"; credentials: EdgeeGatewayKeyCredentials };
 
 export type ModelProviderPostCredentialsBody = {
   provider: ByokModelProviderIdType;
@@ -245,14 +254,24 @@ export class OAuthAPI {
     userId,
     workspaceId,
     credentials,
+  }: CrendentialsMetadata & GatewayPostCredentialsBody): Promise<
+    OAuthAPIResponse<OauthAPIPostGatewayCredentialsResponse>
+  >;
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
   }: CrendentialsMetadata &
     (
       | { provider: CredentialsProvider; credentials: ConnectionCredentials }
       | ModelProviderPostCredentialsBody
+      | GatewayPostCredentialsBody
     )): Promise<
     OAuthAPIResponse<
       | OauthAPIPostConnectionCredentialsResponse
       | OauthAPIPostModelProviderCredentialsResponse
+      | OauthAPIPostGatewayCredentialsResponse
     >
   > {
     const response = await this._fetchWithError(`${this._url}/credentials`, {
