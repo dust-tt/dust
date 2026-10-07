@@ -70,7 +70,6 @@ export function createLiveCommentChannel(
   sendMessage({ type: "threads" });
 
   return {
-    // TODO(co-edition): return null once closed, as the contract requires.
     getThreads: () => threads,
     onThreads: (listener) => {
       listeners.add(listener);
@@ -90,6 +89,7 @@ export function createLiveCommentChannel(
     },
     close: () => {
       closed = true;
+      threads = null;
       provider.off("stateless", onStateless);
       listeners.clear();
       pending.forEach((resolve) => resolve(new Err("unavailable")));

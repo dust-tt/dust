@@ -25,6 +25,9 @@ import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
 
+// The socket id Hocuspocus reports when a direct connection disconnects.
+const DIRECT_CONNECTION_SOCKET_ID = "server";
+
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
   comments: DfmComment[];
@@ -244,9 +247,15 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       session.checkpointFailed = false;
     },
 
-    async onDisconnect({ instance, document }) {
+    async onDisconnect({ instance, document, socketId }) {
       const session = sessions.get(document);
       if (!session || document.getConnections().length > 0) {
+        return;
+      }
+      if (
+        session.graceTimer !== undefined &&
+        socketId === DIRECT_CONNECTION_SOCKET_ID
+      ) {
         return;
       }
       // Holding the document as a direct connection keeps Hocuspocus from unloading it.
