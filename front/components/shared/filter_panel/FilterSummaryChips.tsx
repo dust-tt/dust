@@ -68,7 +68,7 @@ interface FilterSummaryChipsProps<
   summaries: FilterSummary<Category>[];
   // Chips for settings outside the filter categories, shown after the category chips.
   extraChips?: FilterExtraChip[];
-  // Faded filters, labelled as the chip they become, applied on click. Shown after the active
+  // Faded filters, labelled as the chip they become, applied on click. Shown before the active
   // chips, unless all their options are already selected.
   presets?: Preset[];
   onApplyPreset?: (preset: Preset) => void;
@@ -109,7 +109,6 @@ export function FilterSummaryChips<
     ...extraChips.map((chip) => ({ ...chip, key: `extra:${chip.key}` })),
   ];
   const chipsAndPresets = [
-    ...chips.map((chip) => ({ ...chip, onApply: undefined })),
     ...presets
       .filter((preset) => !isPresetApplied(preset, summaries))
       .map((preset) => ({
@@ -123,6 +122,7 @@ export function FilterSummaryChips<
         onRemove: undefined,
         onApply: () => onApplyPreset?.(preset),
       })),
+    ...chips.map((chip) => ({ ...chip, onApply: undefined })),
   ];
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion
