@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { getDocumentTheme } from "@app/components/editor/document/themes";
+import { getDocumentTheme } from "@app/lib/editor/document_themes";
 import { describe, expect, it } from "vitest";
 
 describe("getDocumentTheme", () => {

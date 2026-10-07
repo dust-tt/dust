@@ -7,14 +7,14 @@ import {
   withDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
-import {
-  DEFAULT_DOCUMENT_THEME,
-  getDocumentTheme,
-} from "@app/components/editor/document/themes";
 import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
+import {
+  DEFAULT_DOCUMENT_THEME,
+  getDocumentTheme,
+} from "@app/lib/editor/document_themes";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";

@@ -43,7 +43,7 @@
 }
 
 /* Document themes. A DFM file names its theme in front matter (`theme: memo`,
-   see `components/editor/document/themes.ts`); `Document` sets
+   see `lib/editor/document_themes.ts`); `Document` sets
    `data-document-theme` on its article, and only the document content opts in
    through the utilities below, so the editor's controls and comments keep the
    app's typography. Serif fonts render at Geist's x-height (0.53), as for the

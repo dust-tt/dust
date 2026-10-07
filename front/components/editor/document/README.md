@@ -43,12 +43,13 @@ identically.
 ## Themes
 
 A file picks its look with a `theme` key in its front matter, one of the built-in names in
-`themes.ts`: `default`, `memo` (serif, narrow) or `report` (serif headings, wide). Anything else,
-or no key, gives `default`; the editor never refuses a file over its theme, and the key is written
-back as it was. A theme is a set of CSS variables in `front/styles/theme-extras.css`, scoped by
-`data-document-theme` on the article: fonts and content width. Only the content opts in, through
-`font-document-body`, `font-document-heading` and `max-w-(--document-max-width)`, so the status
-row, menus and comments keep the app's typography. Themes never come from the file as CSS.
+`front/lib/editor/document_themes.ts`: `default`, `memo` (serif, narrow) or `report` (serif
+headings, wide). Anything else, or no key, gives `default`; the editor never refuses a file over
+its theme, and the key is written back as it was. A theme is a set of CSS variables in
+`front/styles/theme-extras.css`, scoped by `data-document-theme` on the article: fonts and content
+width. Only the content opts in, through `font-document-body`, `font-document-heading` and
+`max-w-(--document-max-width)`, so the status row, menus and comments keep the app's typography.
+Themes never come from the file as CSS.
 
 ## Comments
 

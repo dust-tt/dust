@@ -2,6 +2,12 @@ export const DOCUMENT_THEMES = ["default", "memo", "report"] as const;
 
 export type DocumentTheme = (typeof DOCUMENT_THEMES)[number];
 
+export const DOCUMENT_THEME_DESCRIPTIONS: Record<DocumentTheme, string> = {
+  default: "sans-serif, standard width",
+  memo: "serif throughout, narrow column, for letters and memos",
+  report: "serif headings, wide page, for reports and specs",
+};
+
 export const DEFAULT_DOCUMENT_THEME: DocumentTheme = "default";
 
 const THEME_KEY_LINE = /^theme[ \t]*:/;
