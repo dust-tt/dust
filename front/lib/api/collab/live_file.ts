@@ -1,19 +1,19 @@
 import type { LiveDocument } from "@app/lib/api/collab/ydoc";
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
+import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
 import {
-  readCanonicalFileContent,
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
-import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import { isMarkdownContentType, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /** A file the live session can open, with the caller's access to it. */
 export interface LiveFile {
+  auth: Authenticator;
   workspaceId: string;
   canonicalPath: string;
   dustFs: DustFileSystem;
@@ -65,6 +65,7 @@ export async function openLiveFile(
   }
 
   return new Ok({
+    auth,
     workspaceId: workspace.sId,
     canonicalPath,
     dustFs: dustFs.value,
@@ -72,12 +73,25 @@ export async function openLiveFile(
   });
 }
 
-/** Reads the file and converts it the way the editor would load it. */
+/** The file as the live document last read or wrote it. */
+export interface LiveCheckpoint {
+  revision: string | undefined;
+  content: string;
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency] live-document-load-checkpoint
+ * The checkpoint returned MUST carry the revision of the bytes read, when storage has one, and
+ * as content what `yDocToDfm` gives for the loaded document, so a load alone never counts as a
+ * change.
+ */
 export async function loadLiveDocument({
   dustFs,
   canonicalPath,
-}: LiveFile): Promise<Result<LiveDocument, string>> {
-  const read = await readCanonicalFileContent(dustFs, canonicalPath);
+}: LiveFile): Promise<
+  Result<{ live: LiveDocument; checkpoint: LiveCheckpoint }, string>
+> {
+  const read = await readStoredText(dustFs, canonicalPath);
   if (read.isErr()) {
     return new Err(read.error.message);
   }
@@ -85,9 +99,54 @@ export async function loadLiveDocument({
     return new Err("File not found.");
   }
 
-  const buffer = await streamToBuffer(read.value.stream);
-  if (buffer.isErr()) {
-    return buffer;
+  const live = dfmToYDoc(read.value.text);
+  if (live.isErr()) {
+    return live;
   }
-  return dfmToYDoc(decodeBuffer(buffer.value));
+  const content = yDocToDfm(live.value);
+  if (content.isErr()) {
+    return content;
+  }
+  return new Ok({
+    live: live.value,
+    checkpoint: { revision: read.value.revision, content: content.value },
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency] live-document-checkpoint
+ * The checkpoint MUST write `yDocToDfm` of the live document, its threads included, only when it
+ * differs from `last.content`. With a `last.revision`, the write MUST be conditional on it: a file
+ * changed since then MUST be left unchanged and the checkpoint MUST fail. Without one, the file is
+ * overwritten, as the editor's own save does on such storage. It MUST return the file as now
+ * stored: `last` when nothing was written, otherwise the written content and its revision.
+ */
+export async function checkpointLiveDocument(
+  { auth, dustFs, canonicalPath }: LiveFile,
+  live: LiveDocument,
+  last: LiveCheckpoint
+): Promise<Result<LiveCheckpoint, string>> {
+  const content = yDocToDfm(live);
+  if (content.isErr()) {
+    return content;
+  }
+  if (content.value === last.content) {
+    return new Ok(last);
+  }
+
+  // TODO(co-edition): without `last.revision` the write is unconditional, so threads or content
+  // written to the file since the load are erased. It also decodes the content back from the
+  // buffer and stats the file again, on every checkpoint.
+  const written = await writeCanonicalFileContent(
+    auth,
+    dustFs,
+    canonicalPath,
+    Buffer.from(content.value, "utf8"),
+    undefined,
+    last.revision
+  );
+  if (written.isErr()) {
+    return new Err(written.error.message);
+  }
+  return new Ok({ revision: written.value.revision, content: content.value });
 }
