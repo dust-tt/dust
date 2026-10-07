@@ -17,6 +17,7 @@ import {
   createCollabHocuspocus,
   recheckAllConnections,
 } from "./lib/collab/hocuspocus";
+import { createInternalDocumentsApp } from "./lib/collab/internal_routes";
 import { createHono } from "./lib/hono";
 import { healthzApp } from "./routes/healthz";
 
@@ -42,6 +43,7 @@ const hocuspocus = createCollabHocuspocus();
 
 const app = createHono();
 app.route("/api/healthz", healthzApp);
+app.route("/", createInternalDocumentsApp(hocuspocus));
 
 // crossws types the upgraded socket as a partial WebSocket; on Node it is a full `ws` socket.
 function isWebSocketLike(socket: unknown): socket is WebSocketLike {
@@ -97,6 +99,7 @@ const server = serve({ fetch: app.fetch, port, hostname }, () => {
   logger.info({ port, hostname }, "Collab server listening");
 });
 // The ingress and dust-hive's proxy send `/api/collab` here; upgrades on any path are accepted.
+// `/internal` is only reached from inside the cluster.
 server.on("upgrade", (request, socket, head) => {
   ws.handleUpgrade(request, socket, head);
 });
