@@ -533,7 +533,7 @@ async function resolveAgentFieldEdits(
   const resolvedInstructions = resolveInstructionsEdits(
     current,
     instructions ?? [],
-    getMarkdownPipeline("agent")
+    () => getMarkdownPipeline("agent")
   );
   if (resolvedInstructions.isErr()) {
     return resolvedInstructions;

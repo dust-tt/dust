@@ -167,7 +167,7 @@ export function previewAgentSuggestions({
   const instructionsRes = resolveInstructionsEdits(
     agent,
     instructions ?? [],
-    pipeline
+    () => pipeline
   );
   if (instructionsRes.isErr()) {
     return instructionsRes;

@@ -180,7 +180,7 @@ interface AgentInstructions {
 export function resolveInstructionsEdits(
   agent: AgentInstructions,
   edits: InstructionsSuggestionSchemaType[],
-  pipeline: MarkdownPipeline
+  getPipeline: () => MarkdownPipeline
 ): Result<AgentInstructions, DustError<"invalid_request_error">> {
   if (edits.length === 0) {
     return new Ok({
@@ -201,6 +201,6 @@ export function resolveInstructionsEdits(
   return applyInstructionEditsToHtml(
     agent.instructionsHtml,
     edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
-    pipeline
+    getPipeline()
   );
 }
