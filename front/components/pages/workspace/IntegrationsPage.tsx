@@ -9,10 +9,7 @@ import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
-  CloudArrowLeftRight,
-  Mail01,
   Page,
-  PuzzlePiece01,
   Tabs,
   TabsContent,
   TabsList,
@@ -51,7 +48,6 @@ export function IntegrationsPage() {
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.messaging}
               label={t`Messaging apps`}
-              icon={CloudArrowLeftRight}
             >
               <MessagingAppToggles owner={owner} />
               <SlackPersonalFooterRemovalToggle owner={owner} />
@@ -61,7 +57,6 @@ export function IntegrationsPage() {
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.email}
               label={t`Email`}
-              icon={Mail01}
             >
               <EmailAgentsToggle owner={owner} />
             </GovernanceSettingSection>
@@ -70,7 +65,6 @@ export function IntegrationsPage() {
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.clients}
               label={t`Clients`}
-              icon={PuzzlePiece01}
             >
               <DustMcpServerSettingsItem owner={owner} />
               <ExtensionMcpToolsSection owner={owner} />

@@ -7,13 +7,13 @@ import {
   Edit04,
   Input,
   Page,
+  SettingsList,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
@@ -83,56 +83,61 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
 
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.governance.workspaceName}>
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <Page.H variant="h5">
-            <Trans>Workspace Name</Trans>
-          </Page.H>
-          <Page.P variant="secondary">{owner.name}</Page.P>
-        </div>
-        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" label={t`Edit`} icon={Edit04} />
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>
-                <Trans>Edit Workspace Name</Trans>
-              </SheetTitle>
-            </SheetHeader>
-            <SheetContainer>
-              <div className="mt-6 flex flex-col gap-4">
-                <Page.P>
-                  <Trans>
-                    Think GitHub repository names, short and memorable.
-                  </Trans>
-                </Page.P>
-                <Input
-                  name="name"
-                  placeholder={t`Workspace name`}
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  message={workspaceNameError}
-                  messageStatus="error"
-                />
-              </div>
-            </SheetContainer>
-            <SheetFooter
-              leftButtonProps={{
-                onClick: handleCancel,
-                variant: "outline",
-                label: t`Cancel`,
-              }}
-              rightButtonProps={{
-                onClick: handleUpdateWorkspace,
-                variant: "primary",
-                label: updating ? t`Saving...` : t`Save`,
-                disabled: disable || updating,
-              }}
-            />
-          </SheetContent>
-        </Sheet>
+      <div className="heading-base text-foreground">
+        <Trans>Workspace Name</Trans>
       </div>
+      <SettingsList>
+        <SettingsList.Row
+          title={owner.name}
+          action={
+            <Button
+              variant="outline"
+              label={t`Edit`}
+              icon={Edit04}
+              onClick={() => setIsSheetOpen(true)}
+            />
+          }
+        />
+      </SettingsList>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
+              <Trans>Edit Workspace Name</Trans>
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="mt-6 flex flex-col gap-4">
+              <Page.P>
+                <Trans>
+                  Think GitHub repository names, short and memorable.
+                </Trans>
+              </Page.P>
+              <Input
+                name="name"
+                placeholder={t`Workspace name`}
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                message={workspaceNameError}
+                messageStatus="error"
+              />
+            </div>
+          </SheetContainer>
+          <SheetFooter
+            leftButtonProps={{
+              onClick: handleCancel,
+              variant: "outline",
+              label: t`Cancel`,
+            }}
+            rightButtonProps={{
+              onClick: handleUpdateWorkspace,
+              variant: "primary",
+              label: updating ? t`Saving...` : t`Save`,
+              disabled: disable || updating,
+            }}
+          />
+        </SheetContent>
+      </Sheet>
     </AdminSectionAnchor>
   );
 }

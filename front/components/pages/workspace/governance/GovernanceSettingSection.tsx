@@ -1,10 +1,9 @@
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface GovernanceSettingSectionProps {
   label: string;
-  icon: ComponentType;
   children: ReactNode;
   /** Stable id for deep links (`#id`) and settings search. */
   sectionId: AdminSectionId;
@@ -14,7 +13,6 @@ interface GovernanceSettingSectionProps {
 
 export const GovernanceSettingSection = ({
   label,
-  icon,
   children,
   sectionId,
   footer,

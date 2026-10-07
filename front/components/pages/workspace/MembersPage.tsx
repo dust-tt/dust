@@ -29,7 +29,6 @@ import {
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
-  Lock01,
   Page,
   Spinner,
   Tabs,
@@ -235,7 +234,6 @@ function MembersRolesTab() {
       <GovernanceSettingSection
         sectionId={ADMIN_SECTION_IDS.governance.billing}
         label={t`Billing and security`}
-        icon={Lock01}
       >
         {billingAndSecurityPermissions.map((governancePermission) => (
           <GovernanceSettingRow
