@@ -25,6 +25,7 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useRef, useState } from "react";
 
 interface AddToolCardProps {
@@ -54,15 +55,19 @@ interface AddToolsButtonProps {
 export const AddToolsButton = ({
   onClick,
   variant = "primary",
-}: AddToolsButtonProps) => (
-  <Button
-    label="Add Tools"
-    variant={variant}
-    icon={Plus}
-    size="sm"
-    onClick={withTracking(TRACKING_AREAS.TOOLS, "add_tools_menu", onClick)}
-  />
-);
+}: AddToolsButtonProps) => {
+  const { t } = useLingui();
+
+  return (
+    <Button
+      label={t`Add tools`}
+      variant={variant}
+      icon={Plus}
+      size="sm"
+      onClick={withTracking(TRACKING_AREAS.TOOLS, "add_tools_menu", onClick)}
+    />
+  );
+};
 
 interface AddToolsDialogProps {
   owner: WorkspaceType;
@@ -83,6 +88,7 @@ export const AddToolsDialog = ({
   createInternalMCPServer,
   createRemoteMCPServer,
 }: AddToolsDialogProps) => {
+  const { t } = useLingui();
   // Latched on first open: keeps the SWR data mounted while the dialog
   // animates closed, otherwise the grid flashes the empty state.
   const [hasOpened, setHasOpened] = useState(false);
@@ -158,7 +164,9 @@ export const AddToolsDialog = ({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Add tools</DialogTitle>
+          <DialogTitle>
+            <Trans>Add tools</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer
           fixedContent={
@@ -166,7 +174,7 @@ export const AddToolsDialog = ({
               <SearchInput
                 ref={searchInputRef}
                 name="search"
-                placeholder="Search tools..."
+                placeholder={t`Search tools...`}
                 value={searchText}
                 onChange={setSearchText}
                 disabled={isAvailableMCPServersLoading}
@@ -174,7 +182,7 @@ export const AddToolsDialog = ({
               />
               <Button
                 icon={Plus}
-                label="Add MCP Server"
+                label={t`Add MCP server`}
                 variant="outline"
                 onClick={withTracking(
                   TRACKING_AREAS.TOOLS,
@@ -195,10 +203,10 @@ export const AddToolsDialog = ({
               <div className="flex flex-1 items-center justify-center py-8">
                 <div className="px-4 text-center">
                   <div className="mb-2 text-lg font-medium text-foreground">
-                    No tool matches your search
+                    <Trans>No tool matches your search</Trans>
                   </div>
                   <div className="max-w-sm text-muted-foreground">
-                    No tools found. Try a different search term.
+                    <Trans>No tools found. Try a different search term.</Trans>
                   </div>
                 </div>
               </div>

@@ -41,6 +41,7 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Avatar, buttonVariants, Icon, LinkExternal01 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
@@ -70,6 +71,7 @@ export function MCPServerDetails({
   onClose,
   readOnly = false,
 }: MCPServerDetailsProps) {
+  const { t } = useLingui();
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: !isOpen || !isAdmin(owner),
@@ -175,44 +177,49 @@ export function MCPServerDetails({
     }
 
     return confirm({
-      title: "Remove this tool from agents?",
+      title: t`Remove this tool from agents?`,
       message: (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Saving will remove the tool from the following agents:
+            <Trans>
+              Saving will remove the tool from the following agents:
+            </Trans>
           </p>
           <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
-            {affectedAgents.map((agent) => (
-              <div
-                key={agent.sId}
-                className="flex items-center gap-3 px-3 py-2.5"
-              >
-                <Avatar size="xs" visual={agent.pictureUrl} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                  {agent.name}
-                </span>
-                <a
-                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Open ${agent.name} in Agent Builder`}
-                  className={buttonVariants({
-                    variant: "ghost-secondary",
-                    size: "xs",
-                    isIconOnly: true,
-                  })}
+            {affectedAgents.map((agent) => {
+              const agentName = agent.name;
+              return (
+                <div
+                  key={agent.sId}
+                  className="flex items-center gap-3 px-3 py-2.5"
                 >
-                  <Icon visual={LinkExternal01} size="xs" />
-                </a>
-              </div>
-            ))}
+                  <Avatar size="xs" visual={agent.pictureUrl} />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                    {agent.name}
+                  </span>
+                  <a
+                    href={getAgentBuilderRoute(owner.sId, agent.sId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t`Open ${agentName} in Agent Builder`}
+                    className={buttonVariants({
+                      variant: "ghost-secondary",
+                      size: "xs",
+                      isIconOnly: true,
+                    })}
+                  >
+                    <Icon visual={LinkExternal01} size="xs" />
+                  </a>
+                </div>
+              );
+            })}
           </div>
           <p className="text-sm text-muted-foreground">
-            Skills using this tool will not be affected.
+            <Trans>Skills using this tool will not be affected.</Trans>
           </p>
         </div>
       ),
-      validateLabel: "Continue",
+      validateLabel: t`Continue`,
       validateVariant: "warning",
     });
   };
@@ -357,7 +364,7 @@ export function MCPServerDetails({
           ) {
             sendNotification({
               type: "error",
-              title: "Failed to save changes",
+              title: t`Failed to save changes`,
               description: REDACTED_HEADER_VALUES_ERROR_MESSAGE,
             });
             success = false;
@@ -383,12 +390,14 @@ export function MCPServerDetails({
           );
           if (isPromotingToGlobal && affectedSpaceNames.length > 0) {
             const confirmed = await confirm({
-              title: "This action will delete the tool's existing copies",
+              title: t`This action will delete the tool's existing copies`,
               message: (
                 <>
                   <div>
-                    Making the tool available to all will delete its copies in
-                    these spaces:
+                    <Trans>
+                      Making the tool available to all will delete its copies in
+                      these spaces:
+                    </Trans>
                   </div>
                   <ul className="list-disc pl-6">
                     {affectedSpaceNames.map((name) => (
@@ -396,14 +405,16 @@ export function MCPServerDetails({
                     ))}
                   </ul>
                   <div>
-                    Any agents using the tool there will lose access until an
-                    admin manually re-adds the shared version to each one. If
-                    any agents are affected, you'll receive an email listing
-                    them.
+                    <Trans>
+                      Any agents using the tool there will lose access until an
+                      admin manually re-adds the shared version to each one. If
+                      any agents are affected, you'll receive an email listing
+                      them.
+                    </Trans>
                   </div>
                 </>
               ),
-              validateLabel: "Continue anyway",
+              validateLabel: t`Continue anyway`,
               validateVariant: "warning",
             });
             if (!confirmed) {
@@ -448,17 +459,22 @@ export function MCPServerDetails({
           await mutateMCPServer();
           await mutateMCPServersUsage();
 
+          const serverName =
+            diff.serverView?.name ?? getMcpServerViewDisplayName(mcpServerView);
           sendNotification({
             type: "success",
-            title: `${diff.serverView?.name ?? getMcpServerViewDisplayName(mcpServerView)} updated`,
-            description: "Your changes have been saved.",
+            title: t`${serverName} updated`,
+            description: t`Your changes have been saved.`,
           });
 
           // Reset form with current values to mark as clean.
           form.reset(values);
           success = true;
         } catch (error) {
-          sendApiErrorNotification({ title: "Failed to save changes", error });
+          sendApiErrorNotification({
+            title: t`Failed to save changes`,
+            error,
+          });
           datadogLogger.error(
             {
               error: normalizeError(error).message,
@@ -497,9 +513,11 @@ export function MCPServerDetails({
         );
         sendNotification({
           type: "error",
-          title: "Validation error",
+          title: t`Validation error`,
           description:
-            details ?? "Please fix the highlighted fields and try again.",
+            keys.length > 0
+              ? t`Invalid: ${errorDetails}`
+              : t`Please fix the highlighted fields and try again.`,
         });
         success = false;
       }

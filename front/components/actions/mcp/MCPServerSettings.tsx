@@ -31,6 +31,9 @@ import {
   Tooltip,
   XClose,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface MCPServerSettingsProps {
@@ -41,12 +44,12 @@ interface MCPServerSettingsProps {
 
 function getSyncAuthWarningTooltip(
   oAuthUseCase: MCPOAuthUseCase | null
-): string {
+): MessageDescriptor {
   if (oAuthUseCase === "personal_actions") {
-    return "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected.";
+    return msg`The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected.`;
   }
 
-  return "Shared authentication is no longer valid and must be refreshed. Until then, agents cannot use these tools.";
+  return msg`Shared authentication is no longer valid and must be refreshed. Until then, agents cannot use these tools.`;
 }
 
 export function MCPServerSettings({
@@ -54,6 +57,7 @@ export function MCPServerSettings({
   owner,
   sensitivityLabelsController,
 }: MCPServerSettingsProps) {
+  const { t } = useLingui();
   const authorization = mcpServerView.server.authorization;
   const sendNotification = useSendNotification();
   const cellContext = useCellContext();
@@ -99,6 +103,10 @@ export function MCPServerSettings({
   const hasSyncError =
     isRemoteMCPServerType(mcpServerView.server) &&
     !!mcpServerView.server.lastError;
+  const useCaseLabel = useCase ? t(OAUTH_USE_CASE_TO_LABEL[useCase]) : null;
+  const useCaseDescription = useCase
+    ? t(OAUTH_USE_CASE_TO_DESCRIPTION[useCase])
+    : null;
 
   const handleDeleteConnection = () => {
     if (!connection) {
@@ -149,9 +157,10 @@ export function MCPServerSettings({
     setIsLoading(false);
 
     if (submitRes.isErr()) {
+      const providerName = OAUTH_PROVIDER_NAMES[authorization!.provider];
       sendNotification({
         type: "error",
-        title: `Failed to connect ${OAUTH_PROVIDER_NAMES[authorization!.provider]}`,
+        title: t`Failed to connect ${providerName}`,
         description: submitRes.error.message,
       });
     }
@@ -169,7 +178,9 @@ export function MCPServerSettings({
         lockUseCase={lockUseCase}
       />
       <div className="space-y-2">
-        <div className="heading-base">Authentication</div>
+        <div className="heading-base">
+          <Trans>Authentication</Trans>
+        </div>
         <div className="flex space-x-2">
           <div className="flex flex-grow items-center gap-2">
             {mcpServerView.oAuthUseCase &&
@@ -178,34 +189,36 @@ export function MCPServerSettings({
                 hasSyncError ? (
                   <>
                     <Chip color="warning" size="sm">
-                      Warning
+                      <Trans>Warning</Trans>
                     </Chip>
                     <Tooltip
-                      label={getSyncAuthWarningTooltip(
-                        mcpServerView.oAuthUseCase
+                      label={t(
+                        getSyncAuthWarningTooltip(mcpServerView.oAuthUseCase)
                       )}
                       className="max-w-sm"
                       tooltipTriggerAsChild
                       trigger={
-                        <Hoverable variant="primary">More info</Hoverable>
+                        <Hoverable variant="primary">
+                          <Trans>More info</Trans>
+                        </Hoverable>
                       }
                     />
                   </>
                 ) : (
                   <Chip color="success" size="sm">
-                    Active
+                    <Trans>Active</Trans>
                   </Chip>
                 )
               ) : (
                 <Chip color="warning" size="sm">
-                  Requires authentication
+                  <Trans>Requires authentication</Trans>
                 </Chip>
               ))}
           </div>
           {connection ? (
             <>
               <Button
-                label="Refresh"
+                label={t`Refresh`}
                 icon={RefreshCw02}
                 variant="outline"
                 onClick={() => {
@@ -215,7 +228,7 @@ export function MCPServerSettings({
                 isLoading={isLoading}
               />
               <Button
-                label="Deactivate"
+                label={t`Deactivate`}
                 icon={XClose}
                 variant="outline"
                 onClick={handleDeleteConnection}
@@ -223,7 +236,7 @@ export function MCPServerSettings({
             </>
           ) : (
             <Button
-              label="Activate"
+              label={t`Activate`}
               icon={LogIn01}
               variant="primary"
               onClick={() => openConnectDialog({ lock: false })}
@@ -236,23 +249,15 @@ export function MCPServerSettings({
 
       {connection && (
         <div className="space-y-2">
-          <div className="heading-base">Credentials</div>
+          <div className="heading-base">
+            <Trans>Credentials</Trans>
+          </div>
           <div className="w-full text-muted-foreground">
-            {useCase === "platform_actions" && (
-              <>
-                <span className="font-semibold">
-                  {OAUTH_USE_CASE_TO_LABEL["platform_actions"]}
-                </span>
-                : {OAUTH_USE_CASE_TO_DESCRIPTION["platform_actions"]}
-              </>
-            )}
-            {useCase === "personal_actions" && (
-              <>
-                <span className="font-semibold">
-                  {OAUTH_USE_CASE_TO_LABEL["personal_actions"]}
-                </span>
-                : {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
-              </>
+            {useCase && (
+              <Trans>
+                <span className="font-semibold">{useCaseLabel}</span>:{" "}
+                {useCaseDescription}
+              </Trans>
             )}
           </div>
         </div>
@@ -271,7 +276,9 @@ export function MCPServerSettings({
       {authorization?.availableScopes &&
         authorization.availableScopes.length > 0 && (
           <div className="space-y-2">
-            <div className="heading-base">Permissions</div>
+            <div className="heading-base">
+              <Trans>Permissions</Trans>
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {(() => {
                 const activeScopes = new Set(

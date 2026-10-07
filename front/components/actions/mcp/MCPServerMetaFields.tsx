@@ -1,5 +1,6 @@
 import type { MetaRow } from "@app/types/shared/utils/http_headers";
 import { Button, Input, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithMetaFields = {
@@ -7,6 +8,7 @@ type FormWithMetaFields = {
 };
 
 export function MCPServerMetaFields() {
+  const { t } = useLingui();
   const { control, register } = useFormContext<FormWithMetaFields>();
   const { fields, append, remove } = useFieldArray<
     FormWithMetaFields,
@@ -25,14 +27,14 @@ export function MCPServerMetaFields() {
               <div className="col-span-1">
                 <Input
                   {...register(`metaFields.${index}.key`)}
-                  placeholder="Key"
+                  placeholder={t`Key`}
                   className="w-full"
                 />
               </div>
               <div className="col-span-2">
                 <Input
                   {...register(`metaFields.${index}.value`)}
-                  placeholder="Value"
+                  placeholder={t`Value`}
                   className="w-full"
                 />
               </div>
@@ -48,7 +50,7 @@ export function MCPServerMetaFields() {
       <Button
         className="mt-4 self-start"
         variant="outline"
-        label="Add Meta Field"
+        label={t`Add meta field`}
         onClick={() => append({ key: "", value: "" })}
       />
     </div>
