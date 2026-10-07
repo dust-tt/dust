@@ -78,3 +78,22 @@ expire after one hour. Renew an owner session for any tenant with the same comma
 expires and the configured idle grace passes; the next session rebuilds it normally.
 
 The service helper remains pending live verification until population and all warmups complete.
+
+After the population/warmup job finishes, build the separate read-only size helper and run it for
+each tenant. Deploy its source first; it has only been validated locally so far.
+
+```sh
+CLOUDSDK_CORE_ACCOUNT=spolu@dust.tt v2/gcp/run ssh workload sudo docker exec \
+  -w /dfs/v5 dfs-v5-gcp-dev-1 \
+  cargo build --release -p dfs-server-v5 --example fixture_size
+CLOUDSDK_CORE_ACCOUNT=spolu@dust.tt v2/gcp/run ssh workload sudo docker exec \
+  dfs-v5-gcp-dev-1 /target/release/examples/fixture_size \
+  --fdb-prefix dfs-v5-scale-20261007-a --tenant scale-1m
+```
+
+Repeat with `--tenant scale-10m`. The helper requires an existing format-6 scale deployment and
+tenant; it never initializes or writes data. It reports FDB's byte-sample estimate of logical
+key/value bytes, including content, metadata and durable indexes within that tenant. This excludes
+physical replication/log overhead, ES and RAM. Retain the measurement time because background
+indexing and GC can change the stored indexes. Permission-tree accounting and RSS remain separate
+warmup measurements.

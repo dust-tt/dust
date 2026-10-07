@@ -58,6 +58,10 @@ and waits 30–60 seconds, with an eight-attempt bound and retained failure logs
 The replacement `dfs-v5-resume-20261007-i` unit resumes only 1M/10M in report `scale-20261007-c` and
 retains the measured Rust binaries. Do not replace binaries while this job is running.
 The 10M fixture, its actual warmup, and live persistent service verification remain unfinished.
+The read-only `fixture_size` example is ready for post-warmup tenant storage measurements. Its local
+release build, strict clippy, existing-tenant read and missing-tenant rejection passed. It reports
+FDB's sampled logical key/value byte estimate separately from tree RAM; actual GCP sizes remain
+pending. Do not deploy or build it while the population/warmup pipeline is running.
 GCP filesystem run `f` stopped at drain with one expired client dependency. The client now excludes
 actual prerequisite RPC intervals from its 200 ms buffering clock, counting overlaps once and
 retaining queued/local time. A 350 ms stalled-prerequisite test, the full local suite, strict clippy
