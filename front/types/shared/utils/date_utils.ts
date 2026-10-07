@@ -7,21 +7,6 @@ export const ONE_MINUTE_MS = 60 * 1000;
 export const ONE_HOUR_MS = 60 * 60 * 1000;
 export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
-export function ordinalDay(day: number): string {
-  const suffix =
-    day >= 11 && day <= 13
-      ? "th"
-      : day % 10 === 1
-        ? "st"
-        : day % 10 === 2
-          ? "nd"
-          : day % 10 === 3
-            ? "rd"
-            : "th";
-
-  return `${day}${suffix}`;
-}
-
 export function formatUTCDateFromMillis(ms: number): string {
   const d = new Date(ms);
   const y = d.getUTCFullYear();

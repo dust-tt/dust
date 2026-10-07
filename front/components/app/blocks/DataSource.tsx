@@ -229,7 +229,9 @@ export default function DataSource({
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Label>Top K</Label>
+            <Label>
+              <Trans>Top K</Trans>
+            </Label>
             <div className="flex flex-initial font-normal">
               <Input
                 type="text"

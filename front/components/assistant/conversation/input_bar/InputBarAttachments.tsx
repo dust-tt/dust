@@ -18,6 +18,7 @@ import type {
 import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { CitationGrid, cn } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 
 interface FileAttachmentsProps {
@@ -51,13 +52,14 @@ export function InputBarAttachments({
   files,
   disable = false,
 }: InputBarAttachmentsProps) {
+  const { t } = useLingui();
   const fileService = files.service;
 
   const createFileAttachment = useCallback(
     (blob: FileBlob): FileAttachment => {
       const isPasted = isPastedFile(blob.contentType);
       const title = isPasted
-        ? getDisplayNameFromPastedFileId(blob.id)
+        ? getDisplayNameFromPastedFileId(blob.id, t)
         : blob.filename;
       const uploadDate = isPasted
         ? getDisplayDateFromPastedFileId(blob.id)
@@ -79,7 +81,7 @@ export function InputBarAttachments({
         onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
       };
     },
-    [disable, fileService]
+    [disable, fileService, t]
   );
 
   // Convert file blobs to FileAttachments (open in viewer dialog).

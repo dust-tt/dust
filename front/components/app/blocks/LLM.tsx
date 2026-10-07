@@ -366,7 +366,7 @@ export default function LLM({
                 <span>
                   <ChevronDownIcon className="mr-1 mt-0.5 h-4 w-4" />
                 </span>
-                few-shot
+                <Trans>few-shot</Trans>
               </div>
             ) : (
               <div
@@ -376,7 +376,7 @@ export default function LLM({
                 <span>
                   <ChevronRightIcon className="mr-1 mt-0.5 h-4 w-4" />
                 </span>
-                few-shot
+                <Trans>few-shot</Trans>
               </div>
             )}
             {fewShotExpanded ? (

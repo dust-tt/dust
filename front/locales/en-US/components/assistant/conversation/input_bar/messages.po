@@ -202,3 +202,11 @@ msgstr "You've used 80% of your usage limit. You'll be automatically upgraded wh
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
 msgid "You've used 80% of your usage limit"
 msgstr "You've used 80% of your usage limit"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted ({count})"
+msgstr "Pasted ({count})"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted"
+msgstr "Pasted"

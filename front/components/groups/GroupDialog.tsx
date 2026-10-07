@@ -133,7 +133,7 @@ function GroupForm({
     ? group?.allowedActions?.canAssignManagers === true
     : isManager && hasFeature("group_management");
   const managerGroup = group ?? {
-    name: name.trim() || "this group",
+    name: name.trim(),
     kind: "regular_manual" as const,
     grantedRole: null,
   };
