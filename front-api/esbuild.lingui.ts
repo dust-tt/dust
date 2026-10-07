@@ -6,7 +6,7 @@ import type esbuild from "esbuild";
 import {
   compileMergedCatalog,
   MERGED_CATALOG_FILE_REGEX,
-} from "../front/scripts/i18n/merged_catalog";
+} from "@app/scripts/i18n/merged_catalog";
 
 const MACRO_IMPORT_REGEX = /from ["']@lingui\/(?:core|react)\/macro["']/;
 
