@@ -98,6 +98,7 @@ export const SearchAgentsQuerySchema = BaseSearchAgentsSchema.extend({
     .optional(),
   sortBy: z.enum(AGENT_SEARCH_SORTS).optional(),
   sortOrder: z.enum(AGENT_SEARCH_SORT_ORDERS).optional(),
+  // TODO: Remove favoritesFirst and its ranking path once older frontends stop sending it.
   favoritesFirst: z.boolean().optional(),
   selectionMode: z
     .enum(AGENT_SEARCH_SELECTION_MODES)
