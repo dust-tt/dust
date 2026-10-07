@@ -13,7 +13,10 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { contractHasPersonalCreditSeats } from "@app/lib/metronome/seats";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
@@ -25,6 +28,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
+  getFixedWindowCount,
   readFixedWindowCountWithLazySeed,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
@@ -424,6 +428,61 @@ export async function readGroupLimitCount(
         : (consumedByGroupId.get(group.sId) ?? 0);
     },
   });
+}
+
+/**
+ * Each limited group with its usage this cycle, or null when group limits are not enabled. Reads
+ * the counters without seeding them; groups whose counter reads 0 are filled from a single
+ * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
+ */
+export async function getGroupLimitsUsage(
+  auth: Authenticator
+): Promise<{ group: GroupResource; usedAwuCredits: number }[] | null> {
+  if (!(await areGroupLimitsEnabled(auth))) {
+    return null;
+  }
+
+  const [groups, bounds] = await Promise.all([
+    GroupResource.listLimitedGroups(auth),
+    resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
+  ]);
+
+  const workspace = auth.getNonNullableWorkspace();
+  const countByGroupId = new Map<string, number>();
+  if (bounds) {
+    const counts = await concurrentExecutor(
+      groups,
+      async (group) => {
+        const count = await getFixedWindowCount({
+          key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+          bounds,
+        });
+        return { groupId: group.sId, count: count.isOk() ? count.value : 0 };
+      },
+      { concurrency: 8 }
+    );
+    for (const { groupId, count } of counts) {
+      if (count > 0) {
+        countByGroupId.set(groupId, count);
+      }
+    }
+
+    const uncountedGroupIds = groups
+      .map((group) => group.sId)
+      .filter((groupId) => !countByGroupId.has(groupId));
+    const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
+      workspace,
+      groupIds: uncountedGroupIds,
+    });
+    for (const [groupId, consumed] of consumedByGroupId ?? []) {
+      countByGroupId.set(groupId, consumed);
+    }
+  }
+
+  return groups.map((group) => ({
+    group,
+    usedAwuCredits: microCreditsToCredits(countByGroupId.get(group.sId) ?? 0),
+  }));
 }
 
 /**

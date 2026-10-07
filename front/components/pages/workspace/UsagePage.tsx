@@ -1278,6 +1278,11 @@ export function UsagePage() {
                   owner={owner}
                   showSpendLimitColumn={isCreditPriced}
                   showModelTiersColumn={isWorkspaceAdmin}
+                  showGroupLimitColumn={
+                    isCreditPriced &&
+                    isWorkspaceAdmin &&
+                    hasFeature("group_limits")
+                  }
                   showSeatColumn={
                     isCreditPriced &&
                     isWorkspaceAdmin &&

@@ -1,9 +1,12 @@
+import { GroupLimitUsageCell } from "@app/components/workspace/GroupLimitUsageCell";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSeatPickerDropdown } from "@app/components/workspace/GroupSeatPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
+import { useGroupsUsage } from "@app/hooks/useGroupsUsage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
+import type { GroupLimitUsage } from "@app/types/api/groups/group_limit";
 import type { GroupGrantableSeatType } from "@app/types/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -24,6 +27,9 @@ interface GroupsUsageTableProps {
   editableGroupIds?: ReadonlySet<string>;
   showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
+  // Admin-only: renders the "Group limit" column (shared group budget) when group limits are
+  // enabled for the workspace, and renames the per-member column "Limit per member".
+  showGroupLimitColumn?: boolean;
   // When set (with `seatPlans` and `grantableSeatTypes`), renders the "Granted
   // seat" column letting an admin map each group to a billable seat tier.
   showSeatColumn?: boolean;
@@ -37,6 +43,7 @@ type GroupRowData = {
   memberCount: number;
   poolCapAwuCredits: number | null;
   grantedSeatType: GroupGrantableSeatType | null;
+  groupLimitUsage: GroupLimitUsage | undefined;
   onClick?: () => void;
 };
 
@@ -55,6 +62,8 @@ function GroupUsageSkeletonCell({ columnId }: DataTableSkeletonCellProps) {
       return <LoadingBlock className="h-3 w-8" />;
     case "cap":
       return <LoadingBlock className="h-8 w-60 rounded-xl" />;
+    case "groupLimit":
+      return <LoadingBlock className="h-3 w-40" />;
     case "modelTiers":
       return <LoadingBlock className="h-8 w-48 rounded-xl" />;
     case "grantedSeat":
@@ -70,6 +79,7 @@ export function GroupsUsageTable({
   editableGroupIds,
   showSpendLimitColumn = true,
   showModelTiersColumn = false,
+  showGroupLimitColumn = false,
   showSeatColumn = false,
   seatPlans,
   grantableSeatTypes,
@@ -79,6 +89,12 @@ export function GroupsUsageTable({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
   });
+  const { usageByGroupId, isGroupsUsageLoading, isGroupsUsageError } =
+    useGroupsUsage({
+      owner,
+      disabled: !showGroupLimitColumn,
+    });
+  const isGroupLimitShown = showGroupLimitColumn && !isGroupsUsageError;
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
     workspaceId: owner.sId,
   });
@@ -93,8 +109,9 @@ export function GroupsUsageTable({
           memberCount: group.memberCount,
           poolCapAwuCredits: group.poolCapAwuCredits,
           grantedSeatType: group.grantedSeatType,
+          groupLimitUsage: usageByGroupId.get(group.sId),
         })),
-    [groups, visibleGroupIds]
+    [groups, visibleGroupIds, usageByGroupId]
   );
 
   const columns: ColumnDef<GroupRowData, string>[] = useMemo(
@@ -150,7 +167,7 @@ export function GroupsUsageTable({
         ? [
             {
               id: "cap",
-              header: t`Spend limit`,
+              header: isGroupLimitShown ? t`Limit per member` : t`Spend limit`,
               meta: { className: "hidden @3xl:table-cell @3xl:w-64" },
               cell: (info: GroupInfo) => (
                 <GroupSpendLimitCell
@@ -168,6 +185,24 @@ export function GroupsUsageTable({
                   }}
                 />
               ),
+              enableSorting: false,
+            } satisfies ColumnDef<GroupRowData, string>,
+          ]
+        : []),
+      ...(isGroupLimitShown
+        ? [
+            {
+              id: "groupLimit",
+              header: t`Group limit`,
+              meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
+              cell: (info: GroupInfo) =>
+                isGroupsUsageLoading ? (
+                  <LoadingBlock className="h-3 w-40" />
+                ) : (
+                  <GroupLimitUsageCell
+                    usage={info.row.original.groupLimitUsage}
+                  />
+                ),
               enableSorting: false,
             } satisfies ColumnDef<GroupRowData, string>,
           ]
@@ -197,6 +232,8 @@ export function GroupsUsageTable({
     [
       owner,
       showSpendLimitColumn,
+      isGroupLimitShown,
+      isGroupsUsageLoading,
       editableGroupIds,
       showModelTiersColumn,
       showSeatColumn,
@@ -215,6 +252,14 @@ export function GroupsUsageTable({
             A group's monthly spend limit applies to each of its members. When a
             member belongs to several groups, the highest limit is used.
           </Trans>
+          {isGroupLimitShown && (
+            <>
+              {" "}
+              <Trans>
+                A group limit is shared by the members who draw from the group.
+              </Trans>
+            </>
+          )}
         </span>
       )}
       {isGroupsLoading ? (
