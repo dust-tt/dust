@@ -273,13 +273,16 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
 
     async onStateless({ connection, document, documentName, payload }) {
       const session = sessions.get(document);
+      const file: LiveFile = connection.context;
       const json = safeParseJSON(payload);
       const message = json.isOk()
         ? liveCommentClientMessageSchema.safeParse(json.value)
         : null;
       if (!session || !message?.success) {
-        // TODO(co-edition): log the connection's `workspaceId`.
-        logger.warn({ documentName }, "Collab stateless message ignored");
+        logger.info(
+          { documentName, workspaceId: file.workspaceId },
+          "Collab stateless message ignored"
+        );
         const request = json.isOk()
           ? commandRequestSchema.safeParse(json.value)
           : null;
@@ -298,7 +301,6 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       }
 
       const { requestId, command } = message.data;
-      const file: LiveFile = connection.context;
       const logFailure = (err: unknown) =>
         logger.error(
           {
