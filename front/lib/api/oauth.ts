@@ -47,8 +47,7 @@ import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
-import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import logger from "@app/logger/logger";
 import type {
@@ -380,17 +379,21 @@ export async function createConnectionAndGetSetupUrl(
 /**
  * @cc [owner:flvndvd,label:security] oauth-finalize-requires-ownership
  * Before exchanging the authorization code, `finalizeConnection` MUST verify
- * that `connection.metadata.user_id` and `workspace_id` match the authenticated
- * session user and workspace (using `sessionWorkspaceId` when
- * `auth.workspace()` is null for cross-region), and that the presented
- * finalize nonce hashes to `connection.metadata.finalize_nonce_hash`.
+ * that `connection.metadata.user_id` matches the authenticated session user,
+ * that this user is an active member of the workspace in
+ * `connection.metadata.workspace_id`, and that the presented finalize nonce
+ * hashes to `connection.metadata.finalize_nonce_hash`. The workspace a session
+ * was opened on MUST NOT stand in for membership: a user may start a
+ * connection from any workspace they belong to. When the connection's
+ * workspace is unknown to this region (cross-region callback), it MUST instead
+ * equal `sessionWorkspaceId`.
  * It MUST NOT call the OAuth service finalize API when any of those checks fail,
  * and MUST NOT skip checks when auth/workspace is missing. On success it MUST
  * scrub `finalize_nonce_hash` from the returned connection metadata.
  * Fails closed when identity cannot be established — including cross-region
  * callbacks that lack a session workspace claim.
  */
-function assertFinalizeOwnership({
+async function assertFinalizeOwnership({
   auth,
   connection,
   options,
@@ -398,18 +401,17 @@ function assertFinalizeOwnership({
   auth: Authenticator | null;
   connection: OAuthConnectionType;
   options: FinalizeConnectionOptions;
-}): Result<void, OAuthError> {
-  const sessionUserId = auth?.user()?.sId;
+}): Promise<Result<Authenticator, OAuthError>> {
+  const sessionUser = auth?.user();
   const connectionUserId = connection.metadata.user_id;
   const connectionWorkspaceId = connection.metadata.workspace_id;
-  const sessionWorkspaceId =
-    auth?.workspace()?.sId ?? options.sessionWorkspaceId;
   const expectedNonce = connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY];
 
   if (
-    !sessionUserId ||
+    !auth ||
+    !sessionUser ||
     !isString(connectionUserId) ||
-    sessionUserId !== connectionUserId
+    sessionUser.sId !== connectionUserId
   ) {
     return new Err({
       code: "connection_ownership_mismatch",
@@ -418,16 +420,32 @@ function assertFinalizeOwnership({
     });
   }
 
-  if (
-    !sessionWorkspaceId ||
-    !isString(connectionWorkspaceId) ||
-    sessionWorkspaceId !== connectionWorkspaceId
-  ) {
-    return new Err({
-      code: "connection_ownership_mismatch",
-      message:
-        "Failed to finalize connection: authenticated workspace does not own this connection",
-    });
+  const workspaceMismatch = new Err<OAuthError>({
+    code: "connection_ownership_mismatch",
+    message:
+      "Failed to finalize connection: authenticated workspace does not own this connection",
+  });
+
+  if (!isString(connectionWorkspaceId)) {
+    return workspaceMismatch;
+  }
+
+  // The session is bound to the workspace picked at login, which is not necessarily the one the
+  // connection was started from, so resolve membership on the connection's workspace instead.
+  const connectionWorkspaceAuth =
+    auth.workspace()?.sId === connectionWorkspaceId
+      ? auth
+      : await Authenticator.fromUserIdAndWorkspaceId(
+          sessionUser.sId,
+          connectionWorkspaceId
+        );
+
+  if (connectionWorkspaceAuth.workspace()) {
+    if (!connectionWorkspaceAuth.isUser()) {
+      return workspaceMismatch;
+    }
+  } else if (options.sessionWorkspaceId !== connectionWorkspaceId) {
+    return workspaceMismatch;
   }
 
   if (!oauthFinalizeNoncesMatch(expectedNonce, options.finalizeNonce)) {
@@ -438,7 +456,7 @@ function assertFinalizeOwnership({
     });
   }
 
-  return new Ok(undefined);
+  return new Ok(connectionWorkspaceAuth);
 }
 
 export type FinalizeConnectionResult =
@@ -450,14 +468,14 @@ export type FinalizeConnectionResult =
  * `auth` MAY be null or carry no workspace: the callback session can reference a
  * workspace unknown to this region. Finalization MUST NOT call
  * workspace-requiring accessors for audit logging. Ownership MUST still be
- * verified via `auth.user()` and `sessionWorkspaceId` (see
- * `oauth-finalize-requires-ownership`); missing identity fails closed rather than
- * skipping the check. The `oauth.authorized` audit event is emitted when a
- * workspace is present; otherwise a warning is logged since no audit target exists.
+ * verified (see `oauth-finalize-requires-ownership`); missing identity fails
+ * closed rather than skipping the check. The `oauth.authorized` audit event is
+ * emitted on the connection's workspace when it exists in this region; otherwise
+ * a warning is logged since no audit target exists.
  *
- * Architectural note: a Dust session with neither `auth.workspace()` nor a
- * `sessionWorkspaceId` claim cannot be safely bound to a connection's
- * `workspace_id`. We fail closed in that case rather than weakening ownership.
+ * Architectural note: when the connection's workspace is unknown to this region,
+ * membership cannot be checked, so a session without a `sessionWorkspaceId`
+ * claim cannot be bound to the connection's `workspace_id` and fails closed.
  * Legitimate cross-region callbacks still work because they retain the workspace
  * claim on the session cookie even when the workspace row is absent locally.
  */
@@ -509,7 +527,7 @@ export async function finalizeConnection(
 
   const connection = connectionRes.value.connection;
 
-  const ownershipRes = assertFinalizeOwnership({
+  const ownershipRes = await assertFinalizeOwnership({
     auth,
     connection,
     options,
@@ -526,6 +544,7 @@ export async function finalizeConnection(
     );
     return ownershipRes;
   }
+  const connectionWorkspaceAuth = ownershipRes.value;
 
   // GitHub-only: legacy installs (App already on the account/org) often return
   // installation_id without a user OAuth code. Continue via /login/oauth/authorize
@@ -615,13 +634,16 @@ export async function finalizeConnection(
     }
   }
 
-  if (auth && auth.workspace()) {
+  if (connectionWorkspaceAuth.workspace()) {
     // No req available in this library function — context defaults to auth.clientIp().
     void emitAuditLogEvent({
-      auth,
+      auth: connectionWorkspaceAuth,
       action: "oauth.authorized",
       targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget(
+          "workspace",
+          connectionWorkspaceAuth.getNonNullableWorkspace()
+        ),
       ],
       metadata: {
         provider: String(provider),
