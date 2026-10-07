@@ -8,6 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE,
   FREE_BYOK_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -22,13 +23,14 @@ import {
   AUTO_MODEL_CONFIG,
 } from "@app/types/assistant/models/auto";
 import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
+import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import type { PlanType } from "@app/types/plan";
+import type { PlanGatewayType, PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
@@ -62,7 +64,12 @@ function createMockPlan(
   {
     hasAdvancedModelAccess = false,
     isByok = false,
-  }: { hasAdvancedModelAccess?: boolean; isByok?: boolean } = {}
+    gateway = null,
+  }: {
+    hasAdvancedModelAccess?: boolean;
+    isByok?: boolean;
+    gateway?: PlanGatewayType | null;
+  } = {}
 ): PlanType {
   return renderPlanFromModel({
     plan: {
@@ -70,6 +77,7 @@ function createMockPlan(
       code,
       hasAdvancedModelAccess,
       isByok,
+      gateway,
     },
   });
 }
@@ -111,6 +119,23 @@ describe("isModelAvailable", () => {
         region: TEST_REGION,
       })
     ).toBe(true);
+  });
+
+  it("reports only models served by Edgee as available on the Edgee plan", () => {
+    const plan = createMockPlan(CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE, {
+      gateway: "edgee",
+    });
+    const isAvailable = (model: ModelConfigurationType) =>
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      });
+
+    expect(isAvailable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)).toBe(true);
+    expect(isAvailable(GPT_5_6_LUNA_MODEL_CONFIG)).toBe(false);
+    expect(isAvailable(AUTO_MODEL_CONFIG)).toBe(false);
   });
 
   it("should return false for an EAP model on a BYOK plan, true otherwise", () => {
