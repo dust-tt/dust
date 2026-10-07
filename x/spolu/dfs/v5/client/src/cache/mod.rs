@@ -142,7 +142,6 @@ struct Inner {
     temporary: Arc<Semaphore>,
     temporary_peak: AtomicUsize,
     write_slots: Arc<Semaphore>,
-    flight_slots: Arc<Semaphore>,
     group_slots: Arc<Semaphore>,
     changed: tokio::sync::Notify,
 }
@@ -237,8 +236,7 @@ impl CachedClient {
             content_slots: Arc::new(Semaphore::new(2)),
             pending: Default::default(),
             write_slots: Arc::new(Semaphore::new(16)),
-            flight_slots: Arc::new(Semaphore::new(config.write_concurrency)),
-            group_slots: Arc::new(Semaphore::new(writeback::MAX_GROUPS)),
+            group_slots: Arc::new(Semaphore::new(config.write_concurrency)),
             changed: Default::default(),
             expires: Instant::now() + Duration::from_secs(session.expires_at - seconds),
             root: session.root_id,

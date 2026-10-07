@@ -24,17 +24,6 @@ impl Drop for Refresh<'_> {
     }
 }
 
-pub(in crate::cache) struct DirectoryRefresh<'a> {
-    inner: &'a Inner,
-    gate: Arc<Gate>,
-}
-impl Drop for DirectoryRefresh<'_> {
-    fn drop(&mut self) {
-        self.gate.refreshes.fetch_sub(1, Ordering::AcqRel);
-        self.inner.changed.notify_one();
-    }
-}
-
 impl Pending {
     pub(in crate::cache) fn expire(&mut self, id: &ObjectRef) {
         if let Some(node) = self.objects.get_mut(id) {
@@ -65,38 +54,12 @@ impl Pending {
 
 impl Inner {
     /// @cc [owner:spolu,label:concurrency;performance] stabilize-directory-publication
-    /// A raced listing MUST await captured in-flight groups with dispatch enabled. It MAY pause new
-    /// dispatch only once no group is in flight, so queued edits can meet their buffering deadlines.
-    /// During the final snapshot, queued edits MUST remain visible through the overlay. The pause
-    /// MUST survive installation/projection and release on success, error or cancellation.
-    pub(in crate::cache) async fn stabilize_directory(
-        &self,
-        id: &ObjectRef,
-        gate: Arc<Gate>,
-    ) -> Result<DirectoryRefresh<'_>> {
+    /// A raced listing MUST dispatch and await its captured directory edits before retrying, with
+    /// dispatch enabled throughout. It MUST NOT hold accepted edits behind a listing RPC or extend
+    /// their deadlines. The caller MUST hold the directory gate to exclude new namespace edits.
+    pub(in crate::cache) async fn stabilize_directory(&self, id: &ObjectRef) -> Result<()> {
         let _wait = self.rpc.measure("wait.directory_inflight");
-        loop {
-            let inflight: Vec<_> = {
-                let pending = self.pending.lock();
-                let inflight: Vec<_> = pending
-                    .objects
-                    .get(id)
-                    .into_iter()
-                    .flat_map(|node| &node.pending)
-                    .filter_map(|id| pending.groups.get(id))
-                    .filter(|group| group.inflight)
-                    .map(|group| group.receipt.clone())
-                    .collect();
-                if inflight.is_empty() {
-                    gate.refreshes.fetch_add(1, Ordering::AcqRel);
-                    return Ok(DirectoryRefresh { inner: self, gate });
-                }
-                inflight
-            };
-            for receipt in inflight {
-                receipt.wait().await?;
-            }
-        }
+        self.flush(id).await
     }
 
     fn begin_refresh(&self, id: &ObjectRef) -> Result<Option<Refresh<'_>>> {

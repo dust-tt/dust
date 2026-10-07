@@ -132,10 +132,11 @@ Listing validation accepts only real-directory tokens. Virtual root and `/shared
 `List`: their visibility is not covered by one physical directory's listing counter.
 
 Each page is a coherent FDB snapshot, but traversal across pages does not promise one long-lived
-snapshot. Local namespace overlays and generations fence every install/revalidation. Keep v4's
-listing-race stabilization: await captured in-flight namespace edits with dispatch enabled, then
-pause only for the final snapshot after those groups finish. Retain queued edits in the overlay,
-and never force unrelated files to publish just to refresh a directory. Readdir cursor suffixes
+snapshot. Local namespace overlays and generations fence every install/revalidation. On a listing
+race, dispatch and await the directory's captured namespace edits before
+retrying its snapshot, with dispatch enabled throughout. Hold the directory gate against new local
+namespace edits; never block accepted edits behind a listing RPC or force unrelated files to publish.
+Retain local overlays while edits are pending. Readdir cursor suffixes
 reuse the covering cached page with its original token and expiry.
 
 Fence page read versions against locally committed changes to their directory and returned objects.
@@ -212,8 +213,13 @@ edit cannot be dispatched by its deadline, fail it explicitly through the deferr
 never extend its deadline or silently leave it queued. Already submitted RPCs retain their normal
 outcome/timeout handling.
 
-Initially retain 128 in-flight groups, 16 envelopes, and a conservative 1 MiB envelope/group budget.
-Return capacity as individual results arrive. Independent files do not share a transaction merely
+Initially retain at most 128 queued and in-flight groups combined, 16 envelopes, and a conservative
+1 MiB envelope/group budget. Reserve a group slot and an envelope before accepting a new group;
+when ready groups share a batch, retain one envelope and release the extra reservations immediately.
+When every envelope is reserved, bypass coalescing for eligible groups so admission does not wait
+on an idle batching timer; dependencies, refresh pauses and byte limits still apply.
+Refresh of a membership-only parent's attributes must not pause independent child groups.
+Return group capacity as individual results arrive. Independent files do not share a transaction merely
 because they share a request. Client dependencies preserve ordering for overlapping namespace edits.
 
 `fsync(id)` captures and awaits a finite prefix of that object's edits, across its handles, plus

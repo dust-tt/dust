@@ -49,17 +49,36 @@ GCP FDB or provision/delete cloud resources. No builds/tests overlap timed workl
 The current v5 runtime compiles and passes unit tests, the real-FDB contract suite and unprivileged
 mounted checks. The retained/transient memory audit is recorded in [MEMORY.md](MEMORY.md); scratch
 admission and peak metrics are implemented. Release mounted validation and the full local benchmark
-passed on 2026-10-07: all 24 timed checks, both content hash passes and cleanup. Untar took 7.302 s,
-with 0.018 s remaining durable drain. Peak accounted memory was 359.62 MiB; peak RSS was 220.30 MiB.
+passed on 2026-10-07: all 24 timed checks, both content hash passes and cleanup. After the cleanup
+fix, untar took 6.402 s with 0.014 s remaining durable drain. Peak accounted memory was 362.75 MiB; peak RSS was 218.75 MiB.
 The [report](bench/RESULTS.md) records the table, comparison, source/binary hashes and configuration.
 The first failed untar led to bounded per-object commit fences, with a conservative fallback floor
 when records are discarded. Related/unrelated commit and eviction regressions pass.
-The same source passed GCP tests, clippy, release mounted checks and the full benchmark: 24 timed
+The original v5 source passed GCP tests, clippy, release mounted checks and the full benchmark: 24 timed
 checks, both content hash passes and cleanup. Untar took 14.660 s plus 0.088 s durable drain.
 Peak accounted client memory was 360.54 MiB; peak RSS was 221.00 MiB. The [GCP report](gcp/RESULTS.md)
 records topology, hashes and comparison. FDB remained healthy with unchanged configuration, and
 interactive services returned to their exact prior active states. Both results emails were sent.
 The final audit is checking the design's additional scale and workload validation requirements.
+The [synthetic permission-tree measurements](bench/SCALE.md) completed all six 1M/10M/100M cases,
+including the later distributed-path access benchmark. At 100M objects the tree accounts for
+6.37–6.38 GiB; checked authorization averages 1.20–1.88 µs on one thread at depths 8/64, excluding
+FDB/RPC. All six runs completed and restored interactive services.
+The supplemental GCP run `extended-20261007-a` completed its timed Git, 5,000-entry directory,
+sparse-file and two-client shared-parent cases, but failed recursive cleanup of the large directory
+with `ENOTEMPTY` and deferred `Unavailable` writeback errors. It is not a passing validation run.
+Creating the 5,000 empty files took 394.679 s; listing and statting them from the other client took
+0.838 s. The [cleanup investigation](bench/CLEANUP.md) identified dispatch pauses and admission that
+allowed accepted edits to expire behind saturated RPC capacity. The safety fix passed focused 5,000-file
+cleanup tests both locally and on GCP. Its first local rerun exposed a 22.149 s untar regression from
+idle coalescing while all envelope reservations were occupied. Bypassing coalescing under capacity
+pressure restored untar to 6.416 s including drain, with all 24 checks passing. That exact build then
+passed both 5,000-file removal methods again (24.340 s / 24.333 s, zero deferred errors). The warm
+no-match scan's slower sample did not reproduce in a focused repeat; both samples are retained in
+the local report. The final scheduling change has not had a full GCP benchmark rerun.
+Reports and logs for the original failure remain at
+`/var/log/dfs-bench/v5/extended-20261007-a` on the workload VM. The driver exited with code 1 and
+restored every pre-existing interactive service state, with no restoration errors.
 
 Implemented:
 
@@ -79,8 +98,11 @@ Implemented:
   defers before effects. Metrics expose retained/accounted/scratch peaks; reports collect RSS too.
 - Writeback admission waits for prerequisite progress before accepting a third dependent group;
   directory removal awaits its captured child edits before acceptance. Independent siblings no
-  longer serialize on membership-only parent overlaps. Listing stabilization leaves dispatch
-  enabled while awaiting earlier commits, then pauses only during its final snapshot. These changes
+  longer serialize on membership-only parent overlaps. Listing stabilization dispatches and awaits
+  captured directory edits before retrying its snapshot, with dispatch enabled throughout. Parent
+  attribute refresh pauses only primary edits, leaving independent child groups dispatchable.
+  Queued and in-flight groups share 128 admission slots; every new group reserves an RPC envelope
+  before acknowledgment, and batching releases redundant reservations. These changes
   preserve the 200 ms queue deadline through deep creation and repeated recursive dirty cleanup.
 - Dense IDs are wired throughout protobuf, FDB records/values, caches, write queues and inode tables.
   `ObjectId` contains exactly 16 inline UUIDv4 bytes; `ObjectRef` adds a projection tag. Revisions are
@@ -211,4 +233,5 @@ inactive `dfs-play-mount` inactive and restored the active v2 server and v3 serv
 
 Remaining audit: reconcile the design's 1M/10M/100M tree memory measurements, Git/large-directory/
 shared-parent/independent-client workloads and feed/authorization telemetry with existing evidence.
-Do not claim those broader measurements from the 10k-file jd suite. Implementation is uncommitted.
+Do not claim those broader measurements from the 10k-file jd suite. The focused cleanup and tree
+measurements are recorded separately in the reports linked above.

@@ -61,7 +61,7 @@ struct Group {
     _pins: Vec<Arc<Gate>>,
     _charge: Arc<OwnedSemaphorePermit>,
     _slot: OwnedSemaphorePermit,
-    _flight: Option<OwnedSemaphorePermit>,
+    envelope: Option<OwnedSemaphorePermit>,
 }
 struct Dirty {
     base: Option<Attr>,
@@ -75,6 +75,16 @@ struct Dirty {
     _refresh_memory: Option<OwnedSemaphorePermit>,
 }
 impl Group {
+    /// @cc [owner:spolu,label:concurrency;performance] primary-refresh-dispatch-pause
+    /// Metadata refresh MAY pause edits to its primary object or a replaced object. Refreshing a
+    /// membership-only parent MUST NOT block independent child groups or consume their deadlines.
+    fn refreshing(&self) -> bool {
+        self.participants.iter().zip(&self._pins).any(|(id, gate)| {
+            (id == &self.target || self.deleted.contains(id))
+                && gate.refreshes.load(Ordering::Acquire) != 0
+        })
+    }
+
     fn primary(&self) -> &ObjectRef {
         match self
             .operations
@@ -95,34 +105,21 @@ pub(super) struct Pending {
     sync_errors: BTreeMap<ObjectRef, ErrorCode>,
     next: u64,
     retired: std::collections::VecDeque<ObjectRef>,
-    envelope_wait: Option<Instant>,
     last_primary: Option<ObjectRef>,
-    flight_wait: Option<Instant>,
 }
 impl Pending {
-    fn ready(&self) -> bool {
-        self.groups.values().any(|g| {
-            !g.inflight
-                && (g.forced || Instant::now() >= g.ready)
-                && g.dependencies
-                    .iter()
-                    .all(|d| matches!(*d.result.borrow(), Some(Ok(()))))
-        })
-    }
     /// @cc [owner:spolu,label:performance;concurrency] fair-ready-groups
     /// Selection MUST preserve explicit dependencies and rotate across ready primary objects.
     /// Independent groups MUST remain separate. Membership-only parent overlaps MUST NOT serialize
-    /// sibling groups. Fsync MAY bypass coalescing, never dependencies, refresh pauses or byte limits.
-    fn select(&self, limit: usize) -> (Vec<u64>, Vec<(u64, ErrorCode)>) {
+    /// sibling groups. Fsync and exhausted admission capacity MAY bypass coalescing, never
+    /// dependencies, refresh pauses or byte limits. Reserved dispatch capacity MUST NOT sit idle
+    /// solely for coalescing while all envelope reservations are occupied.
+    fn select(&self, limit: usize, capacity_full: bool) -> (Vec<u64>, Vec<(u64, ErrorCode)>) {
         let now = Instant::now();
         let mut queues: BTreeMap<&ObjectRef, std::collections::VecDeque<&Group>> = BTreeMap::new();
         let mut failed = Vec::new();
         for group in self.groups.values().filter(|g| !g.inflight) {
-            if group
-                ._pins
-                .iter()
-                .any(|g| g.refreshes.load(Ordering::Acquire) != 0)
-            {
+            if group.refreshing() {
                 continue;
             }
             let mut ready = true;
@@ -139,7 +136,7 @@ impl Pending {
                     }
                 }
             }
-            if ready && (group.forced || now >= group.ready) {
+            if ready && (capacity_full || group.forced || now >= group.ready) {
                 queues.entry(group.primary()).or_default().push_back(group);
             }
         }
@@ -904,6 +901,10 @@ impl Inner {
     /// Admission MUST reserve dirty memory before RAM acknowledgement and update the local view
     /// atomically. Coalescing MUST preserve edit order and the first edit's dispatch deadline.
     /// Dependencies MUST include required namespace edits without chaining unrelated sibling files.
+    /// Queued and in-flight groups MUST share the configured concurrency admission limit, so a
+    /// saturated server applies backpressure before acknowledging more buffered edits.
+    /// Each new group MUST reserve an RPC envelope before acknowledgment. Combining ready groups
+    /// MAY share one reservation and return the extras; no accepted group may wait for an envelope.
     /// A new group whose prerequisite still awaits another prerequisite MUST wait for that finite
     /// prefix before acceptance. Directory removal MUST await its captured child edits before
     /// acceptance. Inline probes MUST defer before forcing either prefix.
@@ -979,17 +980,27 @@ impl Inner {
             .map(|(id, _)| self.gate(id))
             .collect::<Result<Vec<_>>>()?;
         let mut slot = None;
+        let mut envelope = None;
         let (mut pending, merge) = loop {
             {
                 let pending = self.pending.lock();
                 let merge = pending.merge_target(&target, &edit, bytes, bindings.is_empty());
-                if merge.is_some() || slot.is_some() {
+                if merge.is_some() || (slot.is_some() && envelope.is_some()) {
                     break (pending, merge);
                 }
             }
             let _wait = self.rpc.measure("wait.group_slot");
             slot = Some(
                 self.group_slots
+                    .clone()
+                    .acquire_owned()
+                    .await
+                    .map_err(|_| status(ErrorCode::Unavailable))?,
+            );
+            drop(_wait);
+            let _wait = self.rpc.measure("wait.envelope_admission");
+            envelope = Some(
+                self.write_slots
                     .clone()
                     .acquire_owned()
                     .await
@@ -1087,7 +1098,7 @@ impl Inner {
                 _pins: pins,
                 _charge: charge.clone(),
                 _slot: slot.ok_or_else(|| status(ErrorCode::Internal))?,
-                _flight: None,
+                envelope,
             };
             pending.groups.insert(id, group);
         }
@@ -1184,10 +1195,26 @@ impl Inner {
                             >= group.accepted
                                 + Duration::from_millis(self.config.max_write_delay_ms)
                 })
-                .map(|group| group.id)
+                .map(|group| {
+                    let reason = if group.refreshing() {
+                        "writeback.expired_refresh"
+                    } else if group
+                        .dependencies
+                        .iter()
+                        .any(|receipt| receipt.result.borrow().is_none())
+                    {
+                        "writeback.expired_dependency"
+                    } else {
+                        "writeback.expired_ready"
+                    };
+                    (group.id, reason)
+                })
                 .collect()
         };
-        for id in expired {
+        for (id, reason) in expired {
+            self.rpc
+                .record("writeback.dispatch_expired", Duration::ZERO, true);
+            self.rpc.record(reason, Duration::ZERO, true);
             self.finish(id, Err(ErrorCode::Unavailable));
         }
         {
@@ -1221,43 +1248,26 @@ impl Inner {
                 pending.retired.shrink_to_fit();
             }
         }
-        let Ok(permit) = self.write_slots.clone().try_acquire_owned() else {
-            let mut pending = self.pending.lock();
-            if pending.ready() {
-                pending.envelope_wait.get_or_insert_with(Instant::now);
-            }
-            return;
-        };
-        let capacity = self.flight_slots.available_permits().min(32);
-        if capacity == 0 {
-            let mut pending = self.pending.lock();
-            if pending.ready() {
-                pending.flight_wait.get_or_insert_with(Instant::now);
-            }
-            return;
-        }
-        let failed;
+        let mut permit = None;
+        let mut failed;
         let mut groups = Vec::new();
         {
             let mut pending = self.pending.lock();
-            if let Some(started) = pending.envelope_wait.take() {
-                self.rpc
-                    .record("writeback.envelope_blocked", started.elapsed(), false);
-            }
-            if let Some(started) = pending.flight_wait.take() {
-                self.rpc
-                    .record("writeback.flight_blocked", started.elapsed(), false);
-            }
-            let (selected, rejected) = pending.select(capacity);
+            let (selected, rejected) =
+                pending.select(32, self.write_slots.available_permits() == 0);
             failed = rejected;
             for id in selected {
-                let Ok(flight) = self.flight_slots.clone().try_acquire_owned() else {
-                    break;
-                };
                 let Some(group) = pending.groups.get_mut(&id) else {
                     continue;
                 };
-                group._flight = Some(flight);
+                let Some(envelope) = group.envelope.take() else {
+                    failed.push((id, ErrorCode::Internal));
+                    continue;
+                };
+                // A batch needs one envelope; return the other pre-admission reservations now.
+                if permit.is_none() {
+                    permit = Some(envelope);
+                }
                 group.inflight = true;
                 let dispatched = Instant::now();
                 let dependencies_done = group

@@ -180,7 +180,6 @@ impl Inner {
         let wait = self.rpc.measure("wait.object_gate");
         let _guard = gate.mutex.lock().await;
         drop(wait);
-        let mut refresh = None;
         for _ in 0..4 {
             self.active()?;
             let generation = gate.generation.load(Ordering::Acquire);
@@ -237,12 +236,7 @@ impl Inner {
                 }
             }
             self.rpc.record("cache.page_raced", Duration::ZERO, false);
-            if refresh.is_none() {
-                refresh = Some(
-                    self.stabilize_directory(&r.directory_id, gate.clone())
-                        .await?,
-                );
-            }
+            self.stabilize_directory(&r.directory_id).await?;
         }
         self.rpc
             .record("cache.page_retry_exhausted", Duration::ZERO, true);

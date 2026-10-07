@@ -45,7 +45,10 @@ The RPC semaphore permits four non-mutation calls. The 4 MiB + 64 KiB message ce
 8 MiB decoder allocation after capacity growth, with the remaining allowance for bounded request
 and transport buffers. Decoded filesystem payloads use the operation scratch allowance above.
 Mutation envelopes are at most 1 MiB and retain their dirty-copy reservations; at most 16 envelopes
-and 128 independent groups can be in flight. No mutation response contains file content.
+and 128 independent groups can be retained across queued and in-flight work. New groups reserve
+both capacities before acknowledgment; exhausted envelope capacity bypasses coalescing for eligible
+groups. Batching retains one envelope reservation and releases the extras. No mutation response
+contains file content.
 
 `dfs_memory_metrics` reports retained reservations, their observed peak, the configured limit,
 the fixed transient reservation, and scratch use/peak. The accounted peak includes the entire

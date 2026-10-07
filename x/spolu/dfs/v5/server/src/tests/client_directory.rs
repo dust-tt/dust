@@ -189,9 +189,114 @@ pub(super) fn contracts(endpoint: &str, key: &str, tenant: &Tenant, state: &Stat
     page_ahead(endpoint, key, &observer, &tenant.root_id)?;
     revoked_ancestor(endpoint, &observer, tenant)?;
     listing_during_publication(endpoint, key, &observer, &tenant.root_id, state)?;
+    for (concurrency, blocked) in [(2, 2), (128, 16)] {
+        deletion_admission(
+            endpoint,
+            key,
+            &observer,
+            &tenant.root_id,
+            state,
+            concurrency,
+            blocked,
+        )?;
+    }
     for related in [false, true] {
         listing_commit_fences(endpoint, key, &observer, &tenant.root_id, state, related)?;
     }
+    Ok(())
+}
+
+fn deletion_admission(
+    endpoint: &str,
+    key: &str,
+    observer: &BlockingClient,
+    root: &ObjectRef,
+    state: &State,
+    concurrency: usize,
+    blocked: usize,
+) -> Result<()> {
+    let directory = observer
+        .create(create(
+            root,
+            &format!("deletion-admission-{concurrency}"),
+            true,
+        ))?
+        .object
+        .context("directory")?;
+    let files = (0..=blocked)
+        .map(|index| {
+            let name = format!("file-{index}");
+            observer
+                .create(create(&directory.id, &name, false))?
+                .object
+                .context("file")
+                .map(|attr| (name, attr.id))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let client = CachedClient::connect(
+        endpoint,
+        key,
+        CacheConfig {
+            write_concurrency: concurrency,
+            ..Default::default()
+        },
+    )?;
+    client.list(listing(&directory.id))?;
+    let pause = Arc::new(Pause {
+        entered: Default::default(),
+        release: Semaphore::new(0),
+    });
+    for (_, id) in &files[..blocked] {
+        state.pauses.lock().insert(*id, pause.clone());
+    }
+    let remove = |index: usize| {
+        client.remove_at(
+            directory.id,
+            files[index].0.clone(),
+            RemoveRequest {
+                object_id: files[index].1,
+                directory: false,
+            },
+        )
+    };
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    for index in 0..blocked {
+        remove(index)?;
+        // Wait for each request separately so the envelope case occupies all sixteen streams.
+        runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(3), pause.entered.notified()).await
+        })?;
+    }
+    let probe = ::dfs_client::inline::probe(|| remove(blocked));
+    assert!(::dfs_client::inline::is_deferred(
+        &probe.err().context("defer admission")?
+    ));
+    std::thread::scope(|scope| -> Result<()> {
+        let third = scope.spawn(|| remove(blocked));
+        // Network stalls may exceed W; the next unlink must wait before RAM acknowledgment.
+        std::thread::sleep(Duration::from_millis(300));
+        let held = !third.is_finished();
+        let visible = observer.stat_one(object(&files[blocked].1));
+        for (_, id) in &files[..blocked] {
+            state.pauses.lock().remove(id);
+        }
+        pause.release.add_permits(blocked);
+        third
+            .join()
+            .map_err(|_| anyhow::anyhow!("unlink panicked"))??;
+        assert!(
+            held,
+            "saturated dispatch must apply backpressure before acknowledgment"
+        );
+        visible?;
+        Ok(())
+    })?;
+    client.fsync(object(&directory.id))?;
+    assert!(observer.list(listing(&directory.id))?.entries.is_empty());
+    assert_eq!(calls(&client, "writeback.dispatch_expired"), 0);
+    assert_eq!(calls(&client, "writeback.error.unavailable"), 0);
     Ok(())
 }
 
@@ -260,7 +365,7 @@ fn listing_during_publication(
         client.fsync(object(&files[0].1))?;
         pause.release.add_permits(1);
         entered()?;
-        // The retry must pause only this directory, leaving other objects free to publish.
+        // A retry slower than W must not hold accepted deletions behind its response.
         let writer = scope.spawn(|| client.fsync(object(&files[1].1)));
         client.write(WriteRequest {
             object_id: unrelated.id,
@@ -268,20 +373,36 @@ fn listing_during_publication(
             ..Default::default()
         })?;
         let independent = client.fsync(object(&unrelated.id));
-        std::thread::sleep(Duration::from_millis(50));
-        let still_queued = !writer.is_finished();
+        std::thread::sleep(Duration::from_millis(300));
+        let writer_finished = writer.is_finished();
         let visible_on_server = observer.stat_one(object(&files[1].1));
         state.list_reply_pauses.lock().remove(&directory.id);
         pause.release.add_permits(16);
         let page = reader
             .join()
             .map_err(|_| anyhow::anyhow!("list panicked"))??;
-        writer
+        let deletion = writer
             .join()
-            .map_err(|_| anyhow::anyhow!("fsync panicked"))??;
+            .map_err(|_| anyhow::anyhow!("fsync panicked"))?;
         independent?;
-        assert!(still_queued && visible_on_server.is_ok());
-        assert!(page.entries.is_empty(), "queued unlinks must remain hidden");
+        assert_eq!(
+            calls(&client, "writeback.error.unavailable"),
+            0,
+            "a slow listing must not expire already accepted unlinks"
+        );
+        deletion?;
+        assert!(
+            writer_finished,
+            "deletion must finish before the listing reply"
+        );
+        assert_eq!(
+            code(&visible_on_server.err().context("deleted file")?),
+            ErrorCode::NotFound
+        );
+        assert!(
+            page.entries.is_empty(),
+            "committed unlinks must remain hidden"
+        );
         Ok(())
     })?;
     assert_eq!(calls(&client, "cache.page_raced"), 1);
