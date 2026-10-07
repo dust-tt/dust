@@ -2,5 +2,5 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];
-  skills?: SkillWithoutInstructionsAndToolsType[];
+  skills: SkillWithoutInstructionsAndToolsType[];
 };
