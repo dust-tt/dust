@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -520,9 +521,10 @@ export const activationManagementPlugin = createPlugin({
       return new Err(new Error("Keep that under 512 characters."));
     }
 
-    if (auth.plan()?.isByok && !overrideChecks) {
+    const plan = auth.plan();
+    if (plan && usesCustomerCredentials(plan) && !overrideChecks) {
       return new Err(
-        new Error("BYOK workspaces cannot be nudged by Activation.")
+        new Error("BYOK and gateway workspaces cannot be nudged by Activation.")
       );
     }
 

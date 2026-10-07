@@ -7,6 +7,7 @@ import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -166,7 +167,8 @@ export async function isEligibleForNudge(
     return true;
   }
 
-  if (auth.plan()?.isByok) {
+  const plan = auth.plan();
+  if (plan && usesCustomerCredentials(plan)) {
     return false;
   }
 

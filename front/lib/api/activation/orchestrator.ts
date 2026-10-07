@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/activation/nudge";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -55,7 +56,8 @@ export async function determineEligibleActivationUsers(
     overrideChecks?: boolean;
   } = {}
 ): Promise<Result<OrchestratorResult, Error>> {
-  if (auth.plan()?.isByok && !overrideChecks) {
+  const plan = auth.plan();
+  if (plan && usesCustomerCredentials(plan) && !overrideChecks) {
     return new Ok({ eligible: [], skipped: [] });
   }
 

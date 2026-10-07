@@ -1,3 +1,4 @@
+import assert from "assert";
 import { determineEligibleActivationUsers } from "@app/lib/api/activation/orchestrator";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
@@ -47,10 +48,18 @@ beforeEach(() => {
   );
 });
 
-async function makeWorkspaceWithPod({ byok = false }: { byok?: boolean } = {}) {
+async function makeWorkspaceWithPod({
+  byok = false,
+  edgee = false,
+}: {
+  byok?: boolean;
+  edgee?: boolean;
+} = {}) {
   const workspace = byok
     ? await WorkspaceFactory.byok()
-    : await WorkspaceFactory.basic();
+    : edgee
+      ? await WorkspaceFactory.edgee()
+      : await WorkspaceFactory.basic();
   const owner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, owner, { role: "admin" });
 
@@ -111,6 +120,15 @@ describe("determineEligibleActivationUsers", () => {
     if (result.isErr()) {
       throw result.error;
     }
+    expect(result.value.eligible).toEqual([]);
+    expect(mockEvaluateActivation).not.toHaveBeenCalled();
+  });
+
+  it("returns no candidates for an Edgee workspace", async () => {
+    const { auth } = await makeWorkspaceWithPod({ edgee: true });
+
+    const result = await determineEligibleActivationUsers(auth);
+    assert(result.isOk(), "eligibility should be computed");
     expect(result.value.eligible).toEqual([]);
     expect(mockEvaluateActivation).not.toHaveBeenCalled();
   });
