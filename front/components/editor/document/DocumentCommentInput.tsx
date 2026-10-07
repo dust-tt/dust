@@ -77,7 +77,7 @@ export const DocumentCommentInput = ({
     reason: string;
     value: string;
   } | null>(null);
-  // A refusal shows only while the text it was raised on stays as it is.
+  // Typing clears a refusal; this also hides it once the host changes the text, such as on Escape.
   const suggestError =
     refusedSuggestion?.value === value ? refusedSuggestion.reason : null;
   const trimmed = value.trim();
@@ -149,7 +149,10 @@ export const DocumentCommentInput = ({
             aria-busy={pending}
             minRows={1}
             resize="none"
-            onChange={(event) => onChange(event.target.value)}
+            onChange={(event) => {
+              setRefusedSuggestion(null);
+              onChange(event.target.value);
+            }}
             onKeyDown={(event) => {
               if (event.nativeEvent.isComposing) {
                 return;
