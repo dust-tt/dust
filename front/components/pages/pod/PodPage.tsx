@@ -34,19 +34,21 @@ import {
   Settings01,
   Spinner,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo } from "react";
 
 const SYSTEM_TAB_TRIGGERS = {
   conversations: {
-    label: "Conversations",
+    label: msg`Conversations`,
     icon: MessageChatSquare,
   },
   tasks: {
-    label: "Tasks",
+    label: msg`Tasks`,
     icon: CheckCircle,
   },
   files: {
-    label: "Files",
+    label: msg`Files`,
     icon: Folder,
   },
 } as const;
@@ -57,6 +59,7 @@ const MISSING_FILE_TAB_TRIGGER_CLASSNAME = cn(
 );
 
 export function PodPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user } = useAuth();
   const podId = useActivePodId();
@@ -147,10 +150,14 @@ export function PodPage() {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">Pod not found</h2>
+          <h2 className="text-lg font-semibold">
+            <Trans>Pod not found</Trans>
+          </h2>
           <p className="text-muted-foreground">
-            The Pod you&apos;re looking for doesn&apos;t exist or you don&apos;t
-            have access to it.
+            <Trans>
+              The Pod you&apos;re looking for doesn&apos;t exist or you
+              don&apos;t have access to it.
+            </Trans>
           </p>
         </div>
       </div>
@@ -187,7 +194,7 @@ export function PodPage() {
                       value={item.id}
                       icon={trigger.icon}
                     >
-                      {trigger.label}
+                      {t(trigger.label)}
                     </NavTabPillTrigger>
                   );
                 }
@@ -225,7 +232,7 @@ export function PodPage() {
               />
             )}
             <NavTabPillTrigger value="settings" icon={Settings01}>
-              Settings
+              <Trans>Settings</Trans>
             </NavTabPillTrigger>
           </NavTabPillList>
 

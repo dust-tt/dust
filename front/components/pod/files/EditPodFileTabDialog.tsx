@@ -22,6 +22,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface EditPodFileTabDialogProps {
@@ -47,6 +48,7 @@ export function EditPodFileTabDialog({
   isOpen,
   onClose,
 }: EditPodFileTabDialogProps) {
+  const { t } = useLingui();
   const isCreate = mode === "create";
   const { addFileTab, updateFileTab, removeFileTab } = usePodFileTabs({
     owner,
@@ -116,7 +118,11 @@ export function EditPodFileTabDialog({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            {isCreate ? "Add file tab" : "Edit file tab"}
+            {isCreate ? (
+              <Trans>Add file tab</Trans>
+            ) : (
+              <Trans>Edit file tab</Trans>
+            )}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
@@ -135,7 +141,7 @@ export function EditPodFileTabDialog({
                   variant="outline"
                   icon={IconComponent}
                   disabled={!isEditor}
-                  tooltip="Change icon"
+                  tooltip={t`Change icon`}
                 />
               </PopoverTrigger>
               <PopoverContent
@@ -163,7 +169,7 @@ export function EditPodFileTabDialog({
               onChange={(e) => setTitle(e.target.value)}
               maxLength={MAX_POD_FILE_TAB_TITLE_LENGTH}
               disabled={!isEditor}
-              placeholder="Tab title"
+              placeholder={t`Tab title`}
               containerClassName="flex-1"
             />
           </div>
@@ -173,14 +179,14 @@ export function EditPodFileTabDialog({
             isCreate
               ? undefined
               : {
-                  label: "Remove tab",
+                  label: t`Remove tab`,
                   variant: "warning",
                   onClick: () => void handleRemove(),
                   disabled: !isEditor || isSaving,
                 }
           }
           rightButtonProps={{
-            label: isCreate ? "Add tab" : "Save",
+            label: isCreate ? t`Add tab` : t`Save`,
             variant: "primary",
             onClick: () => void handleSave(),
             disabled: !isEditor || isSaving || !title.trim(),

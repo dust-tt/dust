@@ -1,6 +1,7 @@
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Pin02 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface PinPodBannerButtonProps {
   owner: LightWorkspaceType;
@@ -21,6 +22,7 @@ export function PinPodBannerButton({
   fileName,
   hidden,
 }: PinPodBannerButtonProps) {
+  const { t } = useLingui();
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: spaceId,
@@ -39,7 +41,7 @@ export function PinPodBannerButton({
       icon={Pin02}
       variant={pinnedAsBanner ? "highlight-ghost" : "ghost"}
       label={""}
-      tooltip={pinnedAsBanner ? "Unpin from Pod banner" : "Pin as Pod banner"}
+      tooltip={pinnedAsBanner ? t`Unpin from Pod banner` : t`Pin as Pod banner`}
       onClick={() =>
         void togglePin(framePath, {
           fileName,

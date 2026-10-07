@@ -18,6 +18,7 @@ import {
   DropdownTooltipTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import { PodNotificationMenu } from "./settings/PodNotificationMenu";
 
@@ -40,6 +41,7 @@ export function PodHeaderActions({
   podName,
   user,
 }: PodHeaderActionsProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
 
   const handleLeaveSuccess = useCallback(() => {
@@ -87,24 +89,24 @@ export function PodHeaderActions({
                 icon={DotsHorizontal}
                 variant="ghost"
                 size="sm"
-                tooltip="Pod options"
+                tooltip={t`Pod options`}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent collisionPadding={8}>
               {!canLeavePod ? (
                 <DropdownTooltipTrigger
-                  description="You are the last editor of this Pod and cannot leave it."
+                  description={t`You are the last editor of this Pod and cannot leave it.`}
                   side="left"
                 >
                   <DropdownMenuItem
-                    label="Leave the Pod"
+                    label={t`Leave the Pod`}
                     icon={XClose}
                     disabled={true}
                   />
                 </DropdownTooltipTrigger>
               ) : (
                 <DropdownMenuItem
-                  label="Leave the Pod"
+                  label={t`Leave the Pod`}
                   icon={XClose}
                   onClick={openLeaveDialog}
                 />
