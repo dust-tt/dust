@@ -1,0 +1,235 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:58+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Connect account"
+msgstr "Connect account"
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Dust needs access to {serverDisplayName} to complete this action."
+msgstr "Dust needs access to {serverDisplayName} to complete this action."
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Dust needs access to this service to complete this action."
+msgstr "Dust needs access to this service to complete this action."
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Once connected, {serverDisplayName} will remain connected for future requests."
+msgstr "Once connected, {serverDisplayName} will remain connected for future requests."
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Once connected, this service will remain connected for future requests."
+msgstr "Once connected, this service will remain connected for future requests."
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Waiting for <0>{triggeringUserName}</0> to connect their account."
+msgstr "Waiting for <0>{triggeringUserName}</0> to connect their account."
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Decline"
+msgstr "Decline"
+
+#: front/components/actions/blocked/PersonalAuthenticationCard.tsx
+msgid "Connect {serverDisplayName}"
+msgstr "Connect {serverDisplayName}"
+
+#: front/components/actions/blocked/SandboxFunctionToolApprovalCard.tsx
+msgid "Failed to assess action approval. Please try again."
+msgstr "Failed to assess action approval. Please try again."
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Approval {current} of {total}"
+msgstr "Approval {current} of {total}"
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Review details"
+msgstr "Review details"
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Allow {agentName} to use {serverName}?"
+msgstr "Allow {agentName} to use {serverName}?"
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Waiting for <0>{triggeringUserName}</0> to confirm."
+msgstr "Waiting for <0>{triggeringUserName}</0> to confirm."
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Always allow"
+msgstr "Always allow"
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Allow all inputs this session"
+msgstr "Allow all inputs this session"
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Run this tool for the rest of this session without asking again, whatever the inputs. Nothing is saved afterwards."
+msgstr "Run this tool for the rest of this session without asking again, whatever the inputs. Nothing is saved afterwards."
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Allow once"
+msgstr "Allow once"
+
+#: front/components/actions/blocked/ToolValidationCard.tsx
+msgid "Allow"
+msgstr "Allow"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to {description}?"
+msgstr "Allow agent to {description}?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow all the interactions with this tab"
+msgstr "Allow all the interactions with this tab"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to add a domain to the Computer?"
+msgstr "Allow agent to add a domain to the Computer?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to create tasks?"
+msgstr "Allow agent to create tasks?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{count, plural, one {Allow agent to create # task?} other {Allow agent to create # tasks?}}"
+msgstr "{count, plural, one {Allow agent to create # task?} other {Allow agent to create # tasks?}}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to create tasks"
+msgstr "Always allow agents to create tasks"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to update tasks?"
+msgstr "Allow agent to update tasks?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{count, plural, one {Allow agent to mark # task as done?} other {Allow agent to mark # tasks as done?}}"
+msgstr "{count, plural, one {Allow agent to mark # task as done?} other {Allow agent to mark # tasks as done?}}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{count, plural, one {Allow agent to update # task ({doneCount} marked as done)?} other {Allow agent to update # tasks ({doneCount} marked as done)?}}"
+msgstr "{count, plural, one {Allow agent to update # task ({doneCount} marked as done)?} other {Allow agent to update # tasks ({doneCount} marked as done)?}}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{count, plural, one {Allow agent to update # task?} other {Allow agent to update # tasks?}}"
+msgstr "{count, plural, one {Allow agent to update # task?} other {Allow agent to update # tasks?}}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to update tasks"
+msgstr "Always allow agents to update tasks"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to edit Pod information?"
+msgstr "Allow agent to edit Pod information?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgctxt "Pod field"
+msgid "title"
+msgstr "title"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgctxt "Pod field"
+msgid "description"
+msgstr "description"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgctxt "Pod field"
+msgid "access"
+msgstr "access"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgctxt "Pod field"
+msgid "pinned frame"
+msgstr "pinned frame"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to update Pod {fieldList}?"
+msgstr "Allow agent to update Pod {fieldList}?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to edit Pod information"
+msgstr "Always allow agents to edit Pod information"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to update Pod members?"
+msgstr "Allow agent to update Pod members?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to add {addCount} and remove {removeCount} Pod users?"
+msgstr "Allow agent to add {addCount} and remove {removeCount} Pod users?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{addCount, plural, one {Allow agent to add # Pod user?} other {Allow agent to add # Pod users?}}"
+msgstr "{addCount, plural, one {Allow agent to add # Pod user?} other {Allow agent to add # Pod users?}}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{removeCount, plural, one {Allow agent to remove # Pod user?} other {Allow agent to remove # Pod users?}}"
+msgstr "{removeCount, plural, one {Allow agent to remove # Pod user?} other {Allow agent to remove # Pod users?}}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to update Pod members"
+msgstr "Always allow agents to update Pod members"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to set the Pod default agent?"
+msgstr "Allow agent to set the Pod default agent?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to reset the Pod default agent to @dust?"
+msgstr "Allow agent to reset the Pod default agent to @dust?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to set the Pod default agent to @{agentName}?"
+msgstr "Allow agent to set the Pod default agent to @{agentName}?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to set the Pod default agent"
+msgstr "Always allow agents to set the Pod default agent"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to schedule a wake-up?"
+msgstr "Allow agent to schedule a wake-up?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to list wake-ups?"
+msgstr "Allow agent to list wake-ups?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow agent to cancel a wake-up?"
+msgstr "Allow agent to cancel a wake-up?"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Allow every time an agent uses the “{toolName}” tool"
+msgstr "Allow every time an agent uses the “{toolName}” tool"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "“{argName}” is {displayValue}"
+msgstr "“{argName}” is {displayValue}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to {toolName} only for {value}"
+msgstr "Always allow agents to {toolName} only for {value}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "{previous} and {label}"
+msgstr "{previous} and {label}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to {toolName} only when {conditions}"
+msgstr "Always allow agents to {toolName} only when {conditions}"
+
+#: front/components/actions/blocked/toolValidationLabels.ts
+msgid "Always allow agents to {toolName}"
+msgstr "Always allow agents to {toolName}"

@@ -6,10 +6,14 @@ import {
   DEFAULT_MCP_SERVER_ICON,
 } from "@app/lib/actions/constants";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { i18n } from "@app/lib/i18n/i18n";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 vi.mock(import("@app/types/oauth/client/setup"), () => ({
   setupOAuthConnection: vi.fn(),
@@ -98,6 +102,7 @@ describe("submitCreateMCPServerDialogForm", () => {
         needsCustomName: true,
         nameConflict: null,
         existingViewNames: ["Candidate"],
+        t: translate,
       })
     ).toBe("Name is required.");
   });
