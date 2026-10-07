@@ -1,9 +1,12 @@
 import { useLiveSession } from "@app/hooks/useLiveSession";
 import { Server } from "@hocuspocus/server";
 import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const DOCUMENT_NAME = "w_1:notes.md";
+const USER = { id: "u_1", name: "Daph", color: "#0ea5e9" };
+// Stable across renders, as the file panel's is: a new one would start a new connection.
+const getTicket = async () => "ticket";
 
 // Hocuspocus reads a port of 0 as none and falls back to 80, so the free port goes through the
 // configuration. No signal handlers in tests.
@@ -22,19 +25,20 @@ describe("useLiveSession", () => {
     await server.destroy();
   });
 
-  function renderSession() {
+  function renderSession(tickets: () => Promise<string> = getTicket) {
     return renderHook(() =>
       useLiveSession({
         url: `ws://127.0.0.1:${server.address.port}`,
         documentName: DOCUMENT_NAME,
-        token: "u_1",
-        user: { name: "Daph", color: "#0ea5e9" },
+        getTicket: tickets,
+        user: USER,
       })
     );
   }
 
-  it("takes a fresh connection when the server closes the document", async () => {
-    const { result, unmount } = renderSession();
+  it("takes a fresh connection, with a fresh ticket, when the server closes the document", async () => {
+    const tickets = vi.fn(async () => "ticket");
+    const { result, unmount } = renderSession(tickets);
     await waitFor(() => expect(result.current.status).toBe("live"));
     const first = result.current.connection;
 
@@ -48,8 +52,24 @@ describe("useLiveSession", () => {
       },
       { timeout: 3_000 }
     );
+    expect(tickets).toHaveBeenCalledTimes(2);
     unmount();
   });
+
+  it("retries when no ticket can be fetched", async () => {
+    const tickets = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error("Service unavailable."))
+      .mockResolvedValue("ticket");
+    const { result, unmount } = renderSession(tickets);
+
+    await waitFor(() => expect(result.current.status).toBe("refused"));
+    await waitFor(() => expect(result.current.status).toBe("live"), {
+      timeout: 3_000,
+    });
+    unmount();
+  });
+
   it("waits longer between attempts while the server stays down", async () => {
     const { port } = server.address;
     await server.destroy();
@@ -67,8 +87,8 @@ describe("useLiveSession", () => {
         useLiveSession({
           url: `ws://127.0.0.1:${port}`,
           documentName: DOCUMENT_NAME,
-          token: "u_1",
-          user: { name: "Daph", color: "#0ea5e9" },
+          getTicket,
+          user: USER,
         })
       );
       await new Promise((resolve) => setTimeout(resolve, 4_500));

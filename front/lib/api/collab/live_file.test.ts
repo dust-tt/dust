@@ -9,9 +9,9 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
-import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { writeUserFile } from "@app/tests/utils/user_files";
 import {
   BODY_FRAGMENT_NAME,
   parseLiveDocumentName,
@@ -33,36 +33,6 @@ vi.mock("@app/lib/api/files/file_system_ops", async (importActual) => {
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-async function writeUserFile(
-  auth: Authenticator,
-  name: string,
-  text: string,
-  contentType = "text/markdown"
-) {
-  const path = `user-${auth.getNonNullableUser().sId}/${name}`;
-  const dustFs = await DustFileSystem.forUser(auth);
-  if (dustFs.isErr()) {
-    throw dustFs.error;
-  }
-  const written = await writeCanonicalFileContent(
-    auth,
-    dustFs.value,
-    path,
-    new TextEncoder().encode(text),
-    contentType
-  );
-  if (written.isErr()) {
-    throw written.error;
-  }
-  // The storage mock does not keep the type a file was written with.
-  fileStorageMock.setFileMetadata((gcsPath) =>
-    gcsPath.endsWith(`/${name}`)
-      ? { contentType, size: String(text.length) }
-      : null
-  );
-  return path;
-}
 
 describe("live document names", () => {
   it("round trip a workspace and a path containing the separator", () => {
@@ -188,7 +158,7 @@ describe("checkpointLiveDocument", () => {
     const path = await writeUserFile(auth, "notes.md", text);
     const file = await openLiveFile(auth, path);
     if (file.isErr()) {
-      throw new Error(file.error);
+      throw new Error(file.error.message);
     }
     const loaded = await loadLiveDocument(file.value);
     if (loaded.isErr()) {

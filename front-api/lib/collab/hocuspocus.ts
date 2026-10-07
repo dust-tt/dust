@@ -4,11 +4,13 @@ import {
   loadLiveDocument,
   openLiveFile,
 } from "@app/lib/api/collab/live_file";
+import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import logger from "@app/logger/logger";
 import { parseLiveDocumentName } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
@@ -45,6 +47,38 @@ function logUnexpected(
 }
 
 /**
+ * @cc [owner:PopDaph,label:security] live-connection-auth
+ * A connection MUST open only with a ticket redeemed for the workspace and the file its document
+ * name carries, for a user still a member of that workspace, and for a file `openLiveFile` still
+ * opens for them.
+ */
+export async function authenticateConnection(
+  parsed: { workspaceId: string; canonicalPath: string },
+  token: string
+): Promise<Result<LiveFile, string>> {
+  const ticket = await redeemLiveTicket(token);
+  if (
+    !ticket ||
+    ticket.workspaceId !== parsed.workspaceId ||
+    ticket.canonicalPath !== parsed.canonicalPath
+  ) {
+    return new Err("Invalid or expired ticket.");
+  }
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    ticket.userId,
+    parsed.workspaceId
+  );
+  if (!auth.isUser()) {
+    return new Err("Not a member of this workspace.");
+  }
+  const file = await openLiveFile(auth, parsed.canonicalPath);
+  if (file.isErr()) {
+    return new Err(file.error.message);
+  }
+  return new Ok(file.value);
+}
+
+/**
  * @cc [owner:PopDaph,label:error-handling] hocuspocus-hook-protocol
  * These hooks follow Hocuspocus's protocol, an exception to `no-catching-own-errors` and
  * `no-parameter-mutation` limited to them: a hook MUST reject a connection, a load or a store by
@@ -67,26 +101,13 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const sessions = new WeakMap<Document, LiveSession>();
 
   return new Hocuspocus<LiveFile>({
-    // Dev token: the user id. The document name carries the workspace and the file.
+    // The token is a ticket minted by front-api for this user, workspace and file.
     async onAuthenticate({ documentName, token, connectionConfig }) {
       const parsed = parseLiveDocumentName(documentName);
       if (!parsed) {
         refuse(documentName, "Invalid document name.");
       }
-      const auth = await Authenticator.fromUserIdAndWorkspaceId(
-        token,
-        parsed.workspaceId
-      ).catch(
-        logUnexpected(
-          { documentName, workspaceId: parsed.workspaceId },
-          "Collab authentication failed"
-        )
-      );
-      if (!auth.isUser()) {
-        refuse(documentName, "Not a member of this workspace.");
-      }
-
-      const file = await openLiveFile(auth, parsed.canonicalPath).catch(
+      const file = await authenticateConnection(parsed, token).catch(
         logUnexpected(
           { documentName, workspaceId: parsed.workspaceId },
           "Collab authentication failed"

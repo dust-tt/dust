@@ -42,7 +42,8 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
 
   const url = live?.url;
   const documentName = live?.documentName;
-  const token = live?.token;
+  const userId = live?.user.id;
+  const getTicket = live?.getTicket;
 
   // Another document or user: what is shown belongs to the previous one.
   useEffect(
@@ -53,14 +54,14 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
       setConnection(null);
       setStatus("connecting");
     },
-    [url, documentName, token]
+    [url, documentName, userId, getTicket]
   );
 
   useEffect(() => {
     if (
       url === undefined ||
       documentName === undefined ||
-      token === undefined
+      getTicket === undefined
     ) {
       return;
     }
@@ -101,7 +102,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
     const provider = new HocuspocusProvider({
       url,
       name: documentName,
-      token,
+      token: getTicket,
       document,
       onSynced: ({ state }) => {
         if (!state || synced || closed) {
@@ -117,7 +118,11 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
       onDisconnect: onLost,
       // Also sent alone, without a disconnect, when the server closes the document.
       onClose: onLost,
-      onAuthenticationFailed: () => setStatus("refused"),
+      // A refused or unfetchable ticket: retried with the same backoff, access may come back.
+      onAuthenticationFailed: () => {
+        setStatus("refused");
+        onLost();
+      },
     });
 
     return () => {
@@ -127,7 +132,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         close();
       }
     };
-  }, [url, documentName, token, attempt]);
+  }, [url, documentName, userId, getTicket, attempt]);
 
   // Closed after the swap has rendered, so no editor is left bound to a destroyed document.
   useEffect(() => {

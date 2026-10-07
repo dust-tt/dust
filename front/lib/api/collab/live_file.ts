@@ -20,6 +20,12 @@ export interface LiveFile {
   canWrite: boolean;
 }
 
+/** Why a file cannot open in a live session. */
+export interface LiveFileError {
+  code: "invalid_path" | "unavailable" | "not_markdown" | "too_large";
+  message: string;
+}
+
 /**
  * @cc [owner:PopDaph,label:security] live-file-access
  * A live file MUST open only for a file that exists, whose stored type is Markdown by
@@ -32,36 +38,45 @@ export interface LiveFile {
 export async function openLiveFile(
   auth: Authenticator,
   canonicalPath: string
-): Promise<Result<LiveFile, string>> {
+): Promise<Result<LiveFile, LiveFileError>> {
   const workspace = auth.workspace();
   if (!workspace) {
-    return new Err("No workspace.");
+    return new Err({ code: "unavailable", message: "No workspace." });
   }
   // A trailing slash survives normalization but names the same file.
   if (
     DustFileSystem.normalizeScopedPath(canonicalPath) !== canonicalPath ||
     canonicalPath.endsWith("/")
   ) {
-    return new Err("Open the file by its normalized path.");
+    return new Err({
+      code: "invalid_path",
+      message: "Open the file by its normalized path.",
+    });
   }
 
   const dustFs = await DustFileSystem.fromScopedPath(auth, canonicalPath);
   if (dustFs.isErr()) {
-    return new Err(dustFs.error.message);
+    return new Err({ code: "unavailable", message: dustFs.error.message });
   }
   const stat = await dustFs.value.stat(canonicalPath);
   if (stat.isErr()) {
-    return new Err(stat.error.message);
+    return new Err({ code: "unavailable", message: stat.error.message });
   }
   if (stat.value === null) {
-    return new Err("File not found.");
+    return new Err({ code: "unavailable", message: "File not found." });
   }
   // Directories have their own type, so they are refused here too.
   if (!isMarkdownContentType(stripMimeParameters(stat.value.contentType))) {
-    return new Err("Only Markdown files open in a live session.");
+    return new Err({
+      code: "not_markdown",
+      message: "Only Markdown files open in a live session.",
+    });
   }
   if (stat.value.sizeBytes > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
-    return new Err("This file is too large to edit live.");
+    return new Err({
+      code: "too_large",
+      message: "This file is too large to edit live.",
+    });
   }
 
   return new Ok({

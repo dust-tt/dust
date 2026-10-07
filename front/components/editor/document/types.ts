@@ -65,8 +65,9 @@ export interface DocumentProps {
 export interface DocumentLiveSession {
   url: string;
   documentName: string;
-  token: string;
-  user: { name: string; color: string };
+  /** Fetches a one-time ticket for each connection; throws when access is refused. */
+  getTicket: () => Promise<string>;
+  user: { id: string; name: string; color: string };
 }
 
 /** Where a live document's connection stands, shown in place of the save status. */
