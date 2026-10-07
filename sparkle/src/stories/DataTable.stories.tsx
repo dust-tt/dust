@@ -39,7 +39,6 @@ import {
 
 const meta = {
   title: "Data Display/DataTable",
-  tags: ["a11y-issues"],
   component: DataTable,
   parameters: {
     docs: {

@@ -13,7 +13,6 @@ import {
 
 const meta: Meta<typeof ActionCard> = {
   title: "Product/Agent/ActionCard",
-  tags: ["a11y-issues"],
   component: ActionCard,
   parameters: {
     docs: {

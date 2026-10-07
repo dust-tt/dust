@@ -18,7 +18,6 @@ import {
 
 const meta = {
   title: "Lab/HoveringBar",
-  tags: ["a11y-issues"],
   component: HoveringBar,
   parameters: {
     docs: {

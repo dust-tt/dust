@@ -16,7 +16,6 @@ import {
 
 const meta: Meta<typeof AssistantCard> = {
   title: "Product/Agent/AssistantCard",
-  tags: ["a11y-issues"],
   component: AssistantCard,
   parameters: {
     docs: {
