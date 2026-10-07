@@ -111,6 +111,7 @@ export const DocumentCommentInput = ({
   const [options] = useState(() => ({
     extensions: commentInputExtensions({
       placeholder,
+      suggestionLabel: t`Suggested change`,
       hostExtensions: extensions,
       onSubmit: submitRef,
     }),

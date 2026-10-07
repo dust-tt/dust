@@ -34,6 +34,11 @@ msgid "Close"
 msgstr "Close"
 
 #: front/components/editor/document/DocumentCommentInput.tsx
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Suggested change"
+msgstr "Suggested change"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
 msgid "Suggest a change"
 msgstr "Suggest a change"
 
@@ -79,10 +84,6 @@ msgid "Unverified"
 msgstr "Unverified"
 
 #: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Suggested change"
-msgstr "Suggested change"
-
-#: front/components/editor/document/DocumentCommentsPanel.tsx
 msgid "Apply"
 msgstr "Apply"
 
@@ -101,14 +102,6 @@ msgstr "With:"
 #: front/components/editor/document/DocumentCommentsPanel.tsx
 msgid "Deletes the text."
 msgstr "Deletes the text."
-
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Reply"
-msgstr "Reply"
-
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Reply…"
-msgstr "Reply…"
 
 #: front/components/editor/document/DocumentCommentsPanel.tsx
 msgid "New comment"
@@ -138,6 +131,14 @@ msgstr "Resolve"
 #: front/components/editor/document/DocumentCommentsPanel.tsx
 msgid "Delete comment"
 msgstr "Delete comment"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Reply"
+msgstr "Reply"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Reply…"
+msgstr "Reply…"
 
 #: front/components/editor/document/DocumentCommentsPanel.tsx
 msgid "Comments"
