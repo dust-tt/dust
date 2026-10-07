@@ -1,7 +1,12 @@
-import { loadLiveDocument, openLiveFile } from "@app/lib/api/collab/live_file";
+import {
+  checkpointLiveDocument,
+  loadLiveDocument,
+  openLiveFile,
+} from "@app/lib/api/collab/live_file";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,8 +17,18 @@ import {
   parseLiveDocumentName,
   toLiveDocumentName,
 } from "@app/types/collab";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
+
+vi.mock("@app/lib/api/files/file_system_ops", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/files/file_system_ops")>();
+  return {
+    ...actual,
+    writeCanonicalFileContent: vi.fn(actual.writeCanonicalFileContent),
+  };
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -77,12 +92,13 @@ describe("openLiveFile and loadLiveDocument", () => {
     }
     expect(file.value.canWrite).toBe(true);
 
-    const live = await loadLiveDocument(file.value);
-    expect(live.isOk()).toBe(true);
-    if (live.isOk()) {
+    const loaded = await loadLiveDocument(file.value);
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isOk()) {
       expect(
-        live.value.doc.getXmlFragment(BODY_FRAGMENT_NAME).toString()
+        loaded.value.live.doc.getXmlFragment(BODY_FRAGMENT_NAME).toString()
       ).toContain("Hello.");
+      expect(loaded.value.checkpoint.content).toBe("# Notes\n\nHello.\n");
     }
   });
 
@@ -163,5 +179,85 @@ describe("openLiveFile and loadLiveDocument", () => {
     const path = await writeUserFile(owner, "notes.md", "# Notes\n");
 
     expect((await openLiveFile(other, path)).isErr()).toBe(true);
+  });
+});
+
+describe("checkpointLiveDocument", () => {
+  async function loadUserFile(text: string) {
+    const { authenticator: auth } = await createResourceTest({});
+    const path = await writeUserFile(auth, "notes.md", text);
+    const file = await openLiveFile(auth, path);
+    if (file.isErr()) {
+      throw new Error(file.error);
+    }
+    const loaded = await loadLiveDocument(file.value);
+    if (loaded.isErr()) {
+      throw new Error(loaded.error);
+    }
+    vi.mocked(writeCanonicalFileContent).mockClear();
+    return { auth, file: file.value, ...loaded.value };
+  }
+
+  function typeInto(live: { doc: Y.Doc }, text: string) {
+    const paragraph = new Y.XmlElement("paragraph");
+    paragraph.insert(0, [new Y.XmlText(text)]);
+    const body = live.doc.getXmlFragment(BODY_FRAGMENT_NAME);
+    body.insert(body.length, [paragraph]);
+  }
+
+  it("does not write a document that has not changed", async () => {
+    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
+
+    const result = await checkpointLiveDocument(file, live, checkpoint);
+    expect(result.isOk() && result.value).toEqual(checkpoint);
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+
+  it("writes an edit to the file", async () => {
+    const { auth, file, live, checkpoint } = await loadUserFile("# Notes\n");
+    typeInto(live, "Edited.");
+
+    const result = await checkpointLiveDocument(file, live, checkpoint);
+    expect(result.isOk() && result.value.content).toContain("Edited.");
+
+    const reopened = await openLiveFile(auth, file.canonicalPath);
+    expect(reopened.isOk()).toBe(true);
+    if (reopened.isOk()) {
+      const reloaded = await loadLiveDocument(reopened.value);
+      expect(reloaded.isOk() && reloaded.value.checkpoint.content).toContain(
+        "Edited."
+      );
+    }
+  });
+
+  it("writes conditional on the last revision and returns the new one", async () => {
+    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
+    typeInto(live, "Edited.");
+    vi.mocked(writeCanonicalFileContent).mockResolvedValueOnce(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await checkpointLiveDocument(file, live, {
+      ...checkpoint,
+      revision: "7",
+    });
+    expect(result.isOk() && result.value.revision).toBe("8");
+    expect(vi.mocked(writeCanonicalFileContent).mock.calls[0][5]).toBe("7");
+  });
+
+  it("fails when the file changed since its last revision", async () => {
+    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
+    typeInto(live, "Edited.");
+    vi.mocked(writeCanonicalFileContent).mockResolvedValueOnce(
+      new Err(
+        new WriteCanonicalFileContentError("revision_conflict", "File changed.")
+      )
+    );
+
+    const result = await checkpointLiveDocument(file, live, {
+      ...checkpoint,
+      revision: "7",
+    });
+    expect(result.isErr()).toBe(true);
   });
 });

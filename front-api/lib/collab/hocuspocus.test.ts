@@ -1,54 +1,163 @@
-import { loadLiveDocument } from "@app/lib/api/collab/live_file";
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
-import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LiveFile } from "@app/lib/api/collab/live_file";
+import {
+  checkpointLiveDocument,
+  loadLiveDocument,
+} from "@app/lib/api/collab/live_file";
+import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { DfmComment } from "@app/lib/markdown/dfm";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import { Err, Ok } from "@app/types/shared/result";
+import {
+  createCollabHocuspocus,
+  UNLOAD_GRACE_PERIOD_MS,
+} from "@front-api/lib/collab/hocuspocus";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
 vi.mock("@app/lib/api/collab/live_file", async (importActual) => ({
   ...(await importActual<typeof import("@app/lib/api/collab/live_file")>()),
   loadLiveDocument: vi.fn(),
+  checkpointLiveDocument: vi.fn(),
 }));
 
 const DOCUMENT_NAME = "w1:user-u1/notes.md";
+const SOURCE = "# Notes\n\nHello.\n";
+const COMMENTS: DfmComment[] = [];
+
+async function liveFile(canWrite: boolean): Promise<LiveFile> {
+  const { authenticator: auth, workspace } = await createResourceTest({});
+  const dustFs = await DustFileSystem.forUser(auth);
+  if (dustFs.isErr()) {
+    throw dustFs.error;
+  }
+  return {
+    auth,
+    workspaceId: workspace.sId,
+    canonicalPath: `user-${auth.getNonNullableUser().sId}/notes.md`,
+    dustFs: dustFs.value,
+    canWrite,
+  };
+}
+
+function typeInto(doc: Y.Doc, text: string) {
+  const paragraph = new Y.XmlElement("paragraph");
+  paragraph.insert(0, [new Y.XmlText(text)]);
+  const body = doc.getXmlFragment(BODY_FRAGMENT_NAME);
+  body.insert(body.length, [paragraph]);
+}
 
 describe("createCollabHocuspocus", () => {
   beforeEach(() => {
-    // Every read of the file rebuilds the document, with new Yjs identities.
-    vi.mocked(loadLiveDocument).mockImplementation(async () =>
-      dfmToYDoc("# Notes\n\nHello.\n")
+    vi.mocked(loadLiveDocument).mockImplementation(async () => {
+      const live = dfmToYDoc(SOURCE);
+      if (live.isErr()) {
+        throw new Error(live.error);
+      }
+      const content = yDocToDfm(live.value);
+      if (content.isErr()) {
+        throw new Error(content.error);
+      }
+      return new Ok({
+        live: { doc: live.value.doc, comments: COMMENTS },
+        checkpoint: { revision: "1", content: content.value },
+      });
+    });
+    vi.mocked(checkpointLiveDocument).mockImplementation(
+      async (_file, _live, last) =>
+        new Ok({
+          revision: String(Number(last.revision) + 1),
+          content: "written",
+        })
     );
   });
 
-  it("keeps an unedited document's identities across an unload", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    // What a browser's connection does: load, then leave without editing, which unloads the
-    // document without storing it.
-    const open = () =>
-      hocuspocus.createDocument(
-        DOCUMENT_NAME,
-        new Request("http://localhost/collab"),
-        "socket",
-        { readOnly: false, isAuthenticated: true }
-      );
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-    const first = await open();
-    // The browser keeps its copy while it reconnects.
-    const client = new Y.Doc();
-    Y.applyUpdate(client, Y.encodeStateAsUpdate(first));
-    await hocuspocus.unloadDocument(first);
+  it("checkpoints each edit with the loaded threads, after the last revision written", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    // Faked once the database is set up, which needs real timers.
+    vi.useFakeTimers();
+
+    for (const text of ["First.", "Second."]) {
+      const connection = await hocuspocus.openDirectConnection(
+        DOCUMENT_NAME,
+        writer
+      );
+      await connection.transact((doc) => typeInto(doc, text));
+      await connection.disconnect();
+    }
+
+    const calls = vi.mocked(checkpointLiveDocument).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toBe(writer);
+    expect(calls[0][1].comments).toBe(COMMENTS);
+    expect(calls.map(([, , last]) => last.revision)).toEqual(["1", "2"]);
+    expect(loadLiveDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a document for the grace period, then reads the file again", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS - 1);
+    expect(hocuspocus.getDocumentsCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
     expect(hocuspocus.getDocumentsCount()).toBe(0);
 
-    const second = await open();
-    Y.applyUpdate(second, Y.encodeStateAsUpdate(client));
+    const reopened = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    expect(loadLiveDocument).toHaveBeenCalledTimes(2);
+    await reopened.disconnect();
+  });
 
-    const paragraphs = second
-      .getXmlFragment("body")
-      .toArray()
-      .filter(
-        (node) => node instanceof Y.XmlElement && node.nodeName === "paragraph"
-      );
-    expect(paragraphs).toHaveLength(1);
-    expect(loadLiveDocument).toHaveBeenCalledTimes(1);
-    await hocuspocus.unloadDocument(second);
+  it("keeps a document whose checkpoint failed after the grace period", async () => {
+    vi.mocked(checkpointLiveDocument).mockResolvedValue(
+      new Err("This file changed since it was loaded.")
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
+    expect(hocuspocus.getDocumentsCount()).toBe(1);
+  });
+
+  it("refuses to checkpoint an edit made without write access", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const reader = await liveFile(false);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      reader
+    );
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    expect(checkpointLiveDocument).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
+    expect(hocuspocus.getDocumentsCount()).toBe(1);
   });
 });
