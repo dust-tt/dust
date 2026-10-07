@@ -198,7 +198,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
-    // The co-edition live session server, reached through the proxy's /collab route. Started on
+    // The co-edition live session server, reached through the proxy's /api/collab route. Started on
     // demand: only co-edition work needs it.
     buildCommand: (env) =>
       `COLLAB_HOSTNAME=localhost COLLAB_PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,

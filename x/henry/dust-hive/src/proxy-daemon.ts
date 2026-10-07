@@ -5,8 +5,8 @@
 //
 // Routing:
 //   /__hive/healthz → 200 ok (proxy's own health)
-//   /collab/*       → collab (co-edition live session server, WebSocket)
 //   /m/api/*        → marketing (Next.js dev server, internally rewrites to /api/*)
+//   /api/collab/*   → collab (co-edition live session server, WebSocket)
 //   /api/*          → front-api (Hono+Next hybrid)
 //   *               → marketing
 //
@@ -35,9 +35,9 @@ type ProxyPorts = { "front-api": number; marketing: number; collab?: number };
 // (e.g. `/m/api/*`) must come before less specific ones (e.g. `/api/*`).
 const ROUTES: ReadonlyArray<{ pattern: RegExp; target: Target }> = [
   { pattern: /^\/m\/api(\/.*)?$/, target: "marketing" }, // /m/api/*
+  { pattern: /^\/api\/collab(\/.*)?$/, target: "collab" }, // /api/collab/*
   { pattern: /^\/api(\/.*)?$/, target: "front-api" }, //   /api/*
   { pattern: /^\/oauth(\/.*)?$/, target: "front-api" }, // /oauth/*
-  { pattern: /^\/collab(\/.*)?$/, target: "collab" }, // /collab/*
 ];
 
 const DEFAULT_TARGET: Target = "marketing";
