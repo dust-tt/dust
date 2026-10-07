@@ -194,7 +194,9 @@ export async function readAgentDocument(
  * An edit MUST replace exactly `expectedReplacements` occurrences of `oldString` in the body of
  * the source `readAgentDocument` returns, or, with an empty `oldString`, write `newString` as
  * the body of a document whose body is empty or blank, and refuse an empty `oldString` otherwise.
- * Line breaks MAY be normalized to `\n` and trailing ones dropped from the edited body. It MUST
+ * Line breaks in the source and `oldString` MUST be matched normalized to `\n`, so a passage
+ * quoted from a CRLF source still matches; they MAY be normalized to `\n` and trailing ones
+ * dropped from the edited body. It MUST
  * leave the front matter, the comment threads and the set of comment anchors unchanged,
  * refusing otherwise. The write MUST be conditional on the revision read, and a file whose
  * storage returns no revision MUST be refused; on a conflict it MUST start over from a fresh
@@ -253,10 +255,12 @@ export async function editAgentDocument(
     }
     const { body } = document.value;
 
+    // The codec normalizes the body's line breaks to `\n`, so a passage quoted from a source
+    // stored with CRLF line endings only matches once normalized the same way.
     const replaced = replaceInBody({
-      text,
+      text: text.replaceAll("\r\n", "\n"),
       body,
-      oldString,
+      oldString: oldString.replaceAll("\r\n", "\n"),
       newString,
       expectedReplacements,
     });

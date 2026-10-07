@@ -144,6 +144,19 @@ describe("editAgentDocument", () => {
     );
   });
 
+  it("matches a passage quoted from a source stored with CRLF line endings", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(
+      stored("# Spec\r\n\r\nalpha\r\nbeta\r\n", "7")
+    );
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await edit("alpha\r\nbeta", "gamma");
+    expect(result.isOk() && result.value.replacements).toBe(1);
+    expect(written(0).content).toBe("# Spec\n\ngamma\n");
+  });
+
   it.each([
     ["removes an anchor", ":comment-end{id=c1}", ""],
     [
