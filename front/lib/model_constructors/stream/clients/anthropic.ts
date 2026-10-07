@@ -120,6 +120,7 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     input: AnthropicStreamRequest
   ): AsyncGenerator<BetaRawMessageStreamEvent> {
     this.lastCacheMissReason = undefined;
+    this.recordRequestToolNames(input.tools);
 
     const stream = this.client.beta.messages.stream(input);
 

@@ -22,7 +22,10 @@ import {
   logToolSearchQuery,
   logToolSearchResult,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/tool_search_logging";
-import { isAnthropicFileDownloadError } from "@app/lib/model_constructors/sdk/anthropic_ai/errors";
+import {
+  isAnthropicFileDownloadError,
+  rejectedToolSchemaIndex,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/errors";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
@@ -432,7 +435,8 @@ function isApiError(err: unknown): err is APIError {
 
 function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: APIError
+  error: APIError,
+  requestToolNames?: string[]
 ): ErrorEvent {
   // Anthropic can intermittently fail to download a signed image URL included in a long agent run and returns HTTP 400 with "Unable to download the file".
   // Classify only this exact Anthropic diagnostic as a retryable server error.
@@ -450,10 +454,20 @@ function apiErrorToErrorEvent(
     });
   }
 
+  // Anthropic names a rejected tool schema by index into the `tools` we sent.
+  // Resolve it here, where the request is known, and carry the name up: the
+  // user-facing copy needs the model's display name, which lives in the llms
+  // layer this one cannot import.
+  const schemaIndex = rejectedToolSchemaIndex(error);
+  const rejectedToolName =
+    schemaIndex !== null ? requestToolNames?.[schemaIndex] : undefined;
+
   // Mid-stream SSE `error` events surface as an `APIError` with no HTTP status;
   // the old router defaulted those to 500, so mirror that here.
   return buildHttpStatusErrorEvent({
-    metadata,
+    metadata: rejectedToolName
+      ? { ...metadata, content: { ...metadata.content, rejectedToolName } }
+      : metadata,
     status: error.status ?? 500,
     provider: "Anthropic",
     detail: error.message,
@@ -465,7 +479,8 @@ function apiErrorToErrorEvent(
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: unknown
+  error: unknown,
+  requestToolNames?: string[]
 ): ErrorEvent {
   // Invalid tool-call JSON is an expected, retryable model-output failure. Its
   // source stays unknown because malformed output alone cannot distinguish a
@@ -506,7 +521,7 @@ export function streamErrorToErrorEvent(
     });
   }
   if (isApiError(error)) {
-    return apiErrorToErrorEvent(metadata, error);
+    return apiErrorToErrorEvent(metadata, error, requestToolNames);
   }
 
   return classifyStreamError({

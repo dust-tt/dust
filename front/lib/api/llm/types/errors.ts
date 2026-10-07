@@ -32,9 +32,13 @@ export type LLMErrorType =
 export interface LLMErrorInfo {
   type: LLMErrorType;
   message: string;
+  userFacingMessage?: string;
   isRetryable: boolean;
   originalError?: unknown;
   errorSource: ErrorSource;
+  // Set when the provider rejected a tool's input schema and the endpoint could
+  // attribute it to a tool it sent.
+  rejectedToolName?: string;
 }
 
 export function handleGenericError(
