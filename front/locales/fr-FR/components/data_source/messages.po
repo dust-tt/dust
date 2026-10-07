@@ -794,7 +794,7 @@ msgstr "Afficher"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Labels can be set to filter data source retrieval."
-msgstr "Les libellés permettent de filtrer la récupération dans la source de données."
+msgstr "Les étiquettes permettent de filtrer la récupération dans la source de données."
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Add label"
