@@ -3,6 +3,9 @@ import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/deta
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Globe01 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 type EgressStatus = "added" | "already_allowed" | "unknown";
@@ -25,6 +28,7 @@ export function MCPSandboxAddEgressDomainDetails({
   toolParams,
   toolOutput,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const domain =
     typeof toolParams.domain === "string" ? toolParams.domain : null;
   const reason =
@@ -41,9 +45,16 @@ export function MCPSandboxAddEgressDomainDetails({
   const isRunning = toolOutput === null;
   const status = useMemo(() => parseStatus(rawOutputText), [rawOutputText]);
 
-  const actionName = isRunning
-    ? `Requesting access to ${domain ?? "domain"}`
-    : `Request access to ${domain ?? "domain"}`;
+  let actionName: string;
+  if (domain) {
+    actionName = isRunning
+      ? t`Requesting access to ${domain}`
+      : t`Request access to ${domain}`;
+  } else {
+    actionName = isRunning
+      ? t`Requesting access to domain`
+      : t`Request access to domain`;
+  }
 
   return (
     <ActionDetailsWrapper
@@ -77,20 +88,24 @@ interface EgressViewProps {
   isRunning: boolean;
 }
 
-function statusLabel(status: EgressStatus, isRunning: boolean): string {
+function statusLabel(
+  t: (descriptor: MessageDescriptor) => string,
+  status: EgressStatus,
+  isRunning: boolean
+): string {
   if (isRunning) {
-    return "Pending user approval…";
+    return t(msg`Pending user approval…`);
   }
   switch (status) {
     case "added":
-      return "Added to Computer allowlist";
+      return t(msg`Added to Computer allowlist`);
     case "already_allowed":
-      return "Already allowed";
+      return t(msg`Already allowed`);
     case "unknown":
-      return "Not added";
+      return t(msg`Not added`);
     default:
       assertNeverAndIgnore(status);
-      return "Not added";
+      return t(msg`Not added`);
   }
 }
 
@@ -100,42 +115,56 @@ function ConversationView({
   status,
   isRunning,
 }: EgressViewProps) {
+  const { t } = useLingui();
   return (
     <div className="flex flex-col gap-1 pl-6 text-sm">
       {domain && (
         <div>
-          <span className="text-muted-foreground">Domain: </span>
+          <span className="text-muted-foreground">
+            <Trans>Domain:</Trans>{" "}
+          </span>
           <span className="font-mono">{domain}</span>
         </div>
       )}
       {reason && (
         <div>
-          <span className="text-muted-foreground">Reason: </span>
+          <span className="text-muted-foreground">
+            <Trans>Reason:</Trans>{" "}
+          </span>
           <span>{reason}</span>
         </div>
       )}
       <div>
-        <span className="text-muted-foreground">Status: </span>
-        <span>{statusLabel(status, isRunning)}</span>
+        <span className="text-muted-foreground">
+          <Trans>Status:</Trans>{" "}
+        </span>
+        <span>{statusLabel(t, status, isRunning)}</span>
       </div>
     </div>
   );
 }
 
 function SidebarView({ domain, reason, status, isRunning }: EgressViewProps) {
+  const { t } = useLingui();
   return (
     <div className="flex flex-col gap-4 py-4 pl-6 text-sm">
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground">Domain</span>
+        <span className="font-medium text-foreground">
+          <Trans>Domain</Trans>
+        </span>
         <span className="font-mono">{domain ?? "—"}</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground">Reason</span>
+        <span className="font-medium text-foreground">
+          <Trans>Reason</Trans>
+        </span>
         <span>{reason ?? "—"}</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground">Status</span>
-        <span>{statusLabel(status, isRunning)}</span>
+        <span className="font-medium text-foreground">
+          <Trans>Status</Trans>
+        </span>
+        <span>{statusLabel(t, status, isRunning)}</span>
       </div>
     </div>
   );

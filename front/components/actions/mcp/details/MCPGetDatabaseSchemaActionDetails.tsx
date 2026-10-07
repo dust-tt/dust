@@ -18,11 +18,13 @@ import {
   CollapsibleTrigger,
   Table,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function MCPGetDatabaseSchemaActionDetails({
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   // Extract different types of outputs
   const schemaBlocks =
     toolOutput?.filter(isDatabaseSchemaResourceType).map((o) => o.resource) ??
@@ -35,8 +37,8 @@ export function MCPGetDatabaseSchemaActionDetails({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? "Getting database schema"
-          : "Get database schema"
+          ? t`Getting database schema`
+          : t`Get database schema`
       }
       visual={Table}
     >
@@ -68,7 +70,9 @@ function DatabaseSchemaSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="font-medium text-foreground">Database Schema</span>
+        <span className="font-medium text-foreground">
+          <Trans>Database schema</Trans>
+        </span>
         <div className="py-2">
           {schemas.map((schema, idx) => (
             <CodeBlock
@@ -88,7 +92,7 @@ function DatabaseSchemaSection({
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
         <span className="text-sm font-semibold text-foreground">
-          Database Schema
+          <Trans>Database schema</Trans>
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -118,7 +122,9 @@ function ExampleRowsSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="font-medium text-foreground">Sample Data</span>
+        <span className="font-medium text-foreground">
+          <Trans>Sample data</Trans>
+        </span>
         <div className="py-2">
           {examples.map((example, idx) => (
             <CodeBlock
@@ -138,7 +144,7 @@ function ExampleRowsSection({
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
         <span className="text-sm font-semibold text-foreground">
-          Sample Data
+          <Trans>Sample data</Trans>
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>

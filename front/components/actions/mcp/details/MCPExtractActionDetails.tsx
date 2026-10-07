@@ -1,4 +1,5 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { renderLastTimeFrame } from "@app/components/actions/mcp/details/input_rendering";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExtractQueryResourceType,
@@ -15,6 +16,7 @@ import {
   Icon,
   Scan,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
@@ -47,6 +49,7 @@ export function MCPExtractActionDetails({
   displayContext,
   owner,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
@@ -61,13 +64,15 @@ export function MCPExtractActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={
-        displayContext === "conversation" ? "Extracting data" : "Extract data"
+        displayContext === "conversation" ? t`Extracting data` : t`Extract data`
       }
       visual={Scan}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground">Query</span>
+          <span className="text-sm font-semibold text-foreground">
+            <Trans>Query</Trans>
+          </span>
           <MCPExtractActionQuery
             toolParams={toolParams}
             queryResource={queryResource}
@@ -76,7 +81,9 @@ export function MCPExtractActionDetails({
 
         {jsonSchema && (
           <div>
-            <span className="font-medium text-foreground">Schema</span>
+            <span className="font-medium text-foreground">
+              <Trans>Schema</Trans>
+            </span>
             <div className="py-2">
               <CodeBlock
                 className="language-json max-h-60 overflow-y-auto"
@@ -90,7 +97,9 @@ export function MCPExtractActionDetails({
 
         {displayContext !== "conversation" && (
           <div>
-            <span className="font-medium text-foreground">Results</span>
+            <span className="font-medium text-foreground">
+              <Trans>Results</Trans>
+            </span>
             <MCPExtractActionResults
               owner={owner}
               resultResource={resultResource}
@@ -106,6 +115,7 @@ function MCPExtractActionQuery({
   toolParams,
   queryResource,
 }: MCPExtractActionQueryProps) {
+  const { t } = useLingui();
   const timeFrameParam = toolParams?.timeFrame;
 
   if (queryResource) {
@@ -119,12 +129,16 @@ function MCPExtractActionQuery({
   // Fallback: Format timeframe description from params.
   const timeFrameAsString =
     timeFrameParam && isTimeFrame(timeFrameParam)
-      ? `the last ${timeFrameParam.duration > 1 ? `${timeFrameParam.duration} ${timeFrameParam.unit}s` : timeFrameParam.unit}`
-      : "all time";
+      ? renderLastTimeFrame(t, timeFrameParam)
+      : null;
 
   return (
     <p className="text-sm font-normal text-muted-foreground">
-      Extracted from documents over {timeFrameAsString}.
+      {timeFrameAsString ? (
+        <Trans>Extracted from documents {timeFrameAsString}.</Trans>
+      ) : (
+        <Trans>Extracted from documents over all time.</Trans>
+      )}
     </p>
   );
 }
@@ -138,7 +152,7 @@ function MCPExtractActionResults({
   if (!resultResource) {
     return (
       <div className="text-sm text-muted-foreground">
-        No data was extracted.
+        <Trans>No data was extracted.</Trans>
       </div>
     );
   }
@@ -179,7 +193,9 @@ function MCPExtractActionResults({
 
       {resultResource.snippet && (
         <div>
-          <span className="font-medium text-foreground">Preview</span>
+          <span className="font-medium text-foreground">
+            <Trans>Preview</Trans>
+          </span>
           <div className="py-2">
             <CodeBlock
               className="language-json max-h-60 overflow-y-auto"

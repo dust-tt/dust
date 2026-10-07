@@ -4,12 +4,14 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { UserQuestionSchema } from "@app/lib/actions/types";
 import { parseUserQuestionAnswer } from "@app/lib/actions/user_question";
 import { Check, Icon, MessageCircle01 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function MCPAskUserQuestionActionDetails({
   toolOutput,
   toolParams,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const parsed = UserQuestionSchema.safeParse(toolParams);
   const userQuestion = parsed.success ? parsed.data : null;
 
@@ -24,8 +26,8 @@ export function MCPAskUserQuestionActionDetails({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? "Asking a question"
-          : "Asked a question"
+          ? t`Asking a question`
+          : t`Asked a question`
       }
       visual={MessageCircle01}
     >
@@ -74,7 +76,7 @@ export function MCPAskUserQuestionActionDetails({
           </div>
           {isDeclined && (
             <div className="text-sm text-foreground">
-              User declined to answer
+              <Trans>User declined to answer</Trans>
             </div>
           )}
         </div>

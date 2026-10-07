@@ -6,12 +6,14 @@ import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { isString } from "@app/types/shared/utils/general";
 import { Zap } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export function MCPToolsetsEnableActionDetails({
   owner,
   toolParams,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const { toolsetId } = toolParams;
   const resolvedToolsetId = isString(toolsetId) ? toolsetId : null;
 
@@ -33,7 +35,7 @@ export function MCPToolsetsEnableActionDetails({
     ? getMcpServerViewDisplayName(mcpServerView)
     : null;
   const visual = mcpServerView ? getIcon(mcpServerView.server.icon) : Zap;
-  const actionName = toolName ? `Enable ${toolName} tool` : "Enable tool";
+  const actionName = toolName ? t`Enable ${toolName} tool` : t`Enable tool`;
 
   return (
     <ActionDetailsWrapper

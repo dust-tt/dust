@@ -6,12 +6,14 @@ import { isToolsetsResultResourceType } from "@app/lib/actions/mcp_internal_acti
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { Chip, Zap } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export function MCPListToolsActionDetails({
   owner,
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const { spaces } = useSpaces({
     kinds: ["global"],
     workspaceId: owner.sId,
@@ -29,7 +31,7 @@ export function MCPListToolsActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={
-        displayContext === "conversation" ? `Listing tools` : `List tools`
+        displayContext === "conversation" ? t`Listing tools` : t`List tools`
       }
       visual={Zap}
     >
