@@ -20,10 +20,6 @@ const CONVERSATION_AGENT_SUGGESTION_KINDS = [
 export type ConversationAgentSuggestionKind =
   (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
 
-// `create` targets a not-yet-created placeholder agent, so there is no configuration to fetch.
-export const DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS: ConversationAgentSuggestionKind[] =
-  ["create"];
-
 function isConversationAgentSuggestionKind(
   kind: string
 ): kind is ConversationAgentSuggestionKind {
