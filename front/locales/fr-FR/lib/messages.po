@@ -362,6 +362,14 @@ msgid "The API key doesn't have the required scope."
 msgstr "La clé API n’a pas le périmètre requis."
 
 #: front/lib/api_error_messages.ts
+msgid "Admin API keys already read the analytics of every group."
+msgstr "Les clés API admin lisent déjà les statistiques de tous les groupes."
+
+#: front/lib/api_error_messages.ts
+msgid "Analytics access can only be granted on manual or provisioned groups."
+msgstr "L’accès aux statistiques ne peut être accordé que sur des groupes manuels ou provisionnés."
+
+#: front/lib/api_error_messages.ts
 msgid "Transcripts configuration not found."
 msgstr "Configuration des transcriptions introuvable."
 

@@ -335,14 +335,14 @@ describe("POST /api/w/:wId/keys — analytics groups", () => {
     expect(res.status).toBe(201);
     const created: KeyType = (await res.json()).key;
     const expectedGroupIds = [manual.sId, provisioned.sId].toSorted();
-    expect(created.analyticsGroups.map((g) => g.sId).toSorted()).toEqual(
+    expect(created.analyticsGroups.map((g) => g.id).toSorted()).toEqual(
       expectedGroupIds
     );
 
     const listRes = await honoApp.request(`/api/w/${workspace.sId}/keys`);
     const { keys }: { keys: KeyType[] } = await listRes.json();
     const listed = keys.find((k) => k.id === created.id);
-    expect(listed?.analyticsGroups.map((g) => g.sId).toSorted()).toEqual(
+    expect(listed?.analyticsGroups.map((g) => g.id).toSorted()).toEqual(
       expectedGroupIds
     );
 
@@ -376,7 +376,9 @@ describe("POST /api/w/:wId/keys — analytics groups", () => {
     });
 
     expect(res.status).toBe(400);
-    expect((await res.json()).error.type).toBe("invalid_request_error");
+    expect((await res.json()).error.type).toBe(
+      "admin_key_analytics_groups_not_allowed"
+    );
     expect(
       await KeyResource.fetchByName(
         await Authenticator.internalAdminForWorkspace(workspace.sId),
@@ -397,7 +399,9 @@ describe("POST /api/w/:wId/keys — analytics groups", () => {
     });
 
     expect(res.status).toBe(400);
-    expect((await res.json()).error.type).toBe("invalid_request_error");
+    expect((await res.json()).error.type).toBe(
+      "analytics_group_kind_not_supported"
+    );
   });
 
   it("rejects an unknown group id", async () => {

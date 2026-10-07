@@ -91,6 +91,12 @@ app.post(
             status_code: 404,
             api_error: { type: "group_not_found", message },
           });
+        case "admin_key_analytics_groups_not_allowed":
+        case "analytics_group_kind_not_supported":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: code, message },
+          });
         case "limit_reached":
           return apiError(ctx, {
             status_code: 429,

@@ -16,7 +16,7 @@ import {
 } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { GroupType } from "@app/types/groups";
+import type { LightGroupType } from "@app/types/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -373,7 +373,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   private toJSON(
     requestingUserModelId: ModelId,
     spaces: SpaceType[],
-    analyticsGroups: GroupType[],
+    analyticsGroups: LightGroupType[],
     isSpendCapped: boolean
   ): KeyType {
     // We only display the full secret key to the admin who created it, and only
@@ -495,7 +495,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   private static async listAnalyticsGroupsByKeyModelId(
     auth: Authenticator,
     keys: KeyResource[]
-  ): Promise<Map<ModelId, GroupType[]>> {
+  ): Promise<Map<ModelId, LightGroupType[]>> {
     const groupModelIds = [...new Set(keys.flatMap((key) => key.groupIds))];
     if (groupModelIds.length === 0) {
       return new Map();
@@ -517,10 +517,10 @@ export class KeyResource extends BaseResource<KeyModel> {
     const targetByModelId = new Map(
       targets
         .filter((group) => auth.can("read", group))
-        .map((group) => [group.id, group.toJSON()])
+        .map((group) => [group.id, group.toLightJSON()])
     );
 
-    const targetsByGroupModelId = new Map<ModelId, GroupType[]>();
+    const targetsByGroupModelId = new Map<ModelId, LightGroupType[]>();
     for (const grant of grants) {
       const target = targetByModelId.get(grant.resourceId);
       if (!target) {
@@ -541,7 +541,7 @@ export class KeyResource extends BaseResource<KeyModel> {
             .flatMap(
               (groupModelId) => targetsByGroupModelId.get(groupModelId) ?? []
             )
-            .map((group) => [group.sId, group])
+            .map((group) => [group.id, group])
         );
 
         return [

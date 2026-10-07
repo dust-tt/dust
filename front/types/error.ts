@@ -105,6 +105,8 @@ const API_ERROR_TYPES = [
   // Key:
   "key_not_found",
   "insufficient_key_scope",
+  "admin_key_analytics_groups_not_allowed",
+  "analytics_group_kind_not_supported",
   // Labs:
   "transcripts_configuration_not_found",
   "transcripts_configuration_default_not_allowed",

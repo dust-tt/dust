@@ -29,6 +29,8 @@ type CreateApiKeyErrorCode =
   | "name_conflict"
   | "unauthorized"
   | "group_not_found"
+  | "admin_key_analytics_groups_not_allowed"
+  | "analytics_group_kind_not_supported"
   | "limit_reached"
   | "metronome_error";
 
@@ -108,8 +110,7 @@ async function resolveApiKeyGroups(
 /**
  * @cc [owner:fabiencelier,label:security;product] analytics-groups
  * `analyticsGroupIds` MUST be empty for an `admin` key, which already reads every group's analytics,
- * and fail with `invalid_request_error` otherwise. Every id MUST resolve in the workspace to a
- * manual or provisioned group.
+ * and fail with otherwise. Every id MUST resolve in the workspace to a manual or provisioned group.
  */
 async function resolveAnalyticsGroups(
   auth: Authenticator,
@@ -125,7 +126,7 @@ async function resolveAnalyticsGroups(
   if (role === "admin") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "admin_key_analytics_groups_not_allowed",
         "An admin API key already reads the analytics of every group."
       )
     );
@@ -140,7 +141,7 @@ async function resolveAnalyticsGroups(
   if (!groupsRes.value.every((group) => isCapEligibleGroupKind(group.kind))) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "analytics_group_kind_not_supported",
         "Analytics access can only be granted on manual or provisioned groups."
       )
     );
