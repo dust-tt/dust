@@ -10,6 +10,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
+import { Trans } from "@lingui/react/macro";
 
 import Block from "./Block";
 
@@ -98,7 +99,9 @@ export function While({
           </div>
         </div>
         <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
-          <div className="flex flex-initial items-center">condition :</div>
+          <div className="flex flex-initial items-center">
+            <Trans>condition:</Trans>
+          </div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
               <SuspensedCodeEditor

@@ -17,6 +17,7 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 import Block from "./Block";
 
@@ -53,6 +54,7 @@ export default function Search({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
     disabled: readOnly,
@@ -115,7 +117,9 @@ export default function Search({
     >
       <div className="flex w-full flex-col gap-4">
         <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-          <div className="flex flex-initial">provider:</div>
+          <div className="flex flex-initial">
+            <Trans>provider:</Trans>
+          </div>
           {/* Owner has zero search providers */}
           {!isProvidersLoading &&
             !readOnly &&
@@ -126,7 +130,7 @@ export default function Search({
                     <Button
                       variant="outline"
                       href={`/w/${owner.sId}/developers/providers?t=providers`}
-                      label="Setup provider"
+                      label={t`Setup provider`}
                       disabled={readOnly}
                     />
                   ) : (
@@ -137,7 +141,7 @@ export default function Search({
                         "border-white text-muted-foreground"
                       )}
                     >
-                      Provider not available
+                      <Trans>Provider not available</Trans>
                     </div>
                   ))}
               </div>
@@ -149,7 +153,7 @@ export default function Search({
                 <Button
                   isSelect
                   variant="outline"
-                  label={currentProvider?.providerId ?? "Select provider"}
+                  label={currentProvider?.providerId ?? t`Select provider`}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -165,7 +169,9 @@ export default function Search({
           )}
         </div>
         <div className="flex flex-col gap-2">
-          <Label>Num</Label>
+          <Label>
+            <Trans context="number of results, field label">Num</Trans>
+          </Label>
           <Input
             type="text"
             placeholder=""
@@ -175,7 +181,9 @@ export default function Search({
           />
         </div>
         <div className="flex flex-col gap-2">
-          <Label>Query</Label>
+          <Label>
+            <Trans>Query</Trans>
+          </Label>
 
           <Input
             type="text"

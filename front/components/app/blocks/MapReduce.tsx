@@ -7,6 +7,7 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Input, Label } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 import Block from "./Block";
 
@@ -74,7 +75,9 @@ export function Map({
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col lg:flex-row lg:space-x-4">
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-            <Label>From</Label>
+            <Label>
+              <Trans context="source block, field label">From</Trans>
+            </Label>
             <div className="flex flex-initial font-normal">
               <Input
                 type="text"
@@ -85,7 +88,9 @@ export function Map({
             </div>
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-            <Label>Repeat</Label>
+            <Label>
+              <Trans>Repeat</Trans>
+            </Label>
             <div className="flex flex-initial font-normal">
               <Input
                 type="text"
