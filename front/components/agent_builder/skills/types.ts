@@ -1,6 +1,5 @@
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 
 type SheetStateType =
@@ -37,6 +36,15 @@ export type InfoState<
 };
 
 /**
+ * Capabilities sheet: skill info page. The page fetches the skill itself from `skillId`.
+ */
+export type SkillInfoState = SheetStateBase<"info"> & {
+  kind: "skill";
+  skillId: string;
+  hasPreviousPage: boolean;
+};
+
+/**
  * Capabilities sheet: tool configuration/edit page.
  */
 export type ConfigurationState = EditableSheetStateBase<"configuration"> & {
@@ -54,7 +62,7 @@ export type KnowledgeState = EditableSheetStateBase<"knowledge"> & {
 
 export type CapabilitiesSheetState =
   | SelectionState
-  | InfoState<"skill", SkillWithRelationsType>
+  | SkillInfoState
   | InfoState<"tool", BuilderAction>
   | ConfigurationState;
 

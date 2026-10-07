@@ -22,7 +22,6 @@ import { isConfigurationState } from "@app/components/agent_builder/skills/types
 import { getDefaultFormValues } from "@app/components/shared/tools_picker/formDefaults";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -205,13 +204,11 @@ export function useCapabilitiesPageAndFooter({
 
         return {
           page: {
-            title: sheetState.capability.name,
-            description: sheetState.capability.userFacingDescription,
+            title: t`Skill details`,
             id: sheetState.state,
-            icon: getSkillIcon(sheetState.capability.icon),
             content: (
               <SkillInfoPage
-                skill={sheetState.capability}
+                skillId={sheetState.skillId}
                 owner={owner}
                 user={user}
                 onClose={handleClose}

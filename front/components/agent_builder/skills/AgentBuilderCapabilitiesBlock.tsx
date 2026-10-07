@@ -1,4 +1,3 @@
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
   AgentBuilderSkillsType,
@@ -29,7 +28,6 @@ import {
   SKILL_AVATAR_BACKGROUND_COLOR,
   SKILL_AVATAR_ICON_COLOR,
 } from "@app/lib/skill";
-import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import {
@@ -107,7 +105,6 @@ export function AgentBuilderCapabilitiesBlock({
   const { t } = useLingui();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
-  const { owner } = useAgentBuilderContext();
 
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const {
@@ -192,16 +189,6 @@ export function AgentBuilderCapabilitiesBlock({
       })
     );
   };
-
-  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
-    onSuccess: ({ skill }) =>
-      setSheetState({
-        state: "info",
-        kind: "skill",
-        capability: skill,
-        hasPreviousPage: false,
-      }),
-  });
 
   const handleCapabilitiesSave = useCallback(
     ({
@@ -335,9 +322,14 @@ export function AgentBuilderCapabilitiesBlock({
                 key={field.id}
                 skill={field}
                 onRemove={() => void handleRemoveSkill(index, field)}
-                onClick={() => {
-                  void fetchSkillWithRelations(field.sId);
-                }}
+                onClick={() =>
+                  setSheetState({
+                    state: "info",
+                    kind: "skill",
+                    skillId: field.sId,
+                    hasPreviousPage: false,
+                  })
+                }
               />
             ))}
             {actionFields.map((field, index) => (

@@ -54,20 +54,9 @@ msgid "Tools that allow agents to retrieve data and take actions."
 msgstr "Tools that allow agents to retrieve data and take actions."
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/SkillCard.tsx
+#: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
 msgid "Skill details"
 msgstr "Skill details"
-
-#: front/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage.tsx
-msgid "Info"
-msgstr "Info"
-
-#: front/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage.tsx
-msgid "Editors"
-msgstr "Editors"
-
-#: front/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage.tsx
-msgid "Last edited {editedAt} by {editedBy}"
-msgstr "Last edited {editedAt} by {editedBy}"
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
 msgid "Add capabilities"
