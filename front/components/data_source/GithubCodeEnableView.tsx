@@ -1,8 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
-import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -20,6 +19,7 @@ export function GithubCodeEnableView({
   dataSource: DataSourceType;
 }) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { configValue, mutateConfig } = useConnectorConfig({
     owner,
     dataSource,
@@ -27,7 +27,6 @@ export function GithubCodeEnableView({
   });
   const codeSyncEnabled = configValue === "true";
 
-  const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
   const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
@@ -47,11 +46,10 @@ export function GithubCodeEnableView({
       setLoading(false);
     } else {
       setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to enable GitHub code sync`,
-        description: err.error.message,
+        error: err,
       });
     }
     return true;

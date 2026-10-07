@@ -18,7 +18,10 @@ import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -39,7 +42,6 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import type { FileUseCase } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
@@ -261,6 +263,7 @@ export const SpaceDataSourceViewContentList = ({
   useCaseForDocument,
 }: SpaceDataSourceViewContentListProps) => {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -407,11 +410,10 @@ export const SpaceDataSourceViewContentList = ({
         }
 
         if (!res.ok) {
-          const rawError: { error: APIError } = await res.json();
-          sendNotification({
+          const rawError: unknown = await res.json();
+          sendApiErrorNotification({
             title: t`Error while adding data to space`,
-            description: rawError.error.message,
-            type: "error",
+            error: rawError,
           });
         } else {
           sendNotification({
@@ -436,6 +438,7 @@ export const SpaceDataSourceViewContentList = ({
       owner.sId,
       sendNotification,
       t,
+      sendApiErrorNotification,
     ]
   );
 
