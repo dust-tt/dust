@@ -1350,7 +1350,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
       );
 
-      outputItems.push(...batchResults.flat());
+      outputItems = batchResults.flat();
     }
 
     const outputItemsByActionId = new Map<
