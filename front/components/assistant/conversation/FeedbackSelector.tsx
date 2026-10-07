@@ -1,4 +1,5 @@
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -78,7 +79,7 @@ function getFeedbackSchema(
     const hasAnswer =
       showPredefinedAnswers &&
       data.selectedAnswer.length > 0 &&
-      data.selectedAnswer !== t(OTHER_ANSWER);
+      data.selectedAnswer !== OTHER_ANSWER.id;
     const hasContent = data.feedbackContent.trim().length > 0;
     if (!hasAnswer && !hasContent) {
       ctx.addIssue({
@@ -101,6 +102,16 @@ const DEFAULT_FEEDBACK_FORM_VALUES: FeedbackFormValues = {
   isConversationShared: true,
 };
 
+/**
+ * @cc [owner:sfriquet,label:product] reason-stable-key
+ * The selected predefined reason MUST be held in form state by its descriptor `id`, never by its
+ * translated label, so that selection and the "Other" check survive a locale change.
+ */
+/**
+ * @cc [owner:sfriquet,label:product] reason-in-default-locale
+ * The selected predefined reason MUST be submitted in `feedbackContent` as its `DEFAULT_LOCALE`
+ * text, whatever the active locale, so that stored feedback stays in one language.
+ */
 export function FeedbackSelector({
   feedback,
   onSubmitThumb,
@@ -181,7 +192,12 @@ export function FeedbackSelector({
       return;
     }
 
-    const predefinedAnswer = data.selectedAnswer.trim();
+    const selectedDescriptor = FEEDBACK_PREDEFINED_ANSWERS.find(
+      (descriptor) => descriptor.id === data.selectedAnswer
+    );
+    const predefinedAnswer = selectedDescriptor
+      ? defaultLocaleI18n._(selectedDescriptor)
+      : "";
     const details = data.feedbackContent.trim();
 
     const feedbackContent =
@@ -290,30 +306,27 @@ export function FeedbackSelector({
                             <div className="overflow-hidden">
                               <div className="mb-3 flex flex-wrap gap-2">
                                 {FEEDBACK_PREDEFINED_ANSWERS.map(
-                                  (answerDescriptor) => {
-                                    const answer = t(answerDescriptor);
-                                    return (
-                                      <Button
-                                        key={answer}
-                                        label={answer}
-                                        size="xs"
-                                        variant={
+                                  (answerDescriptor) => (
+                                    <Button
+                                      key={answerDescriptor.id}
+                                      label={t(answerDescriptor)}
+                                      size="xs"
+                                      variant={
+                                        selectedAnswerField.field.value ===
+                                        answerDescriptor.id
+                                          ? "primary"
+                                          : "outline"
+                                      }
+                                      onClick={() => {
+                                        selectedAnswerField.field.onChange(
                                           selectedAnswerField.field.value ===
-                                          answer
-                                            ? "primary"
-                                            : "outline"
-                                        }
-                                        onClick={() => {
-                                          selectedAnswerField.field.onChange(
-                                            selectedAnswerField.field.value ===
-                                              answer
-                                              ? ""
-                                              : answer
-                                          );
-                                        }}
-                                      />
-                                    );
-                                  }
+                                            answerDescriptor.id
+                                            ? ""
+                                            : answerDescriptor.id
+                                        );
+                                      }}
+                                    />
+                                  )
                                 )}
                               </div>
                             </div>
