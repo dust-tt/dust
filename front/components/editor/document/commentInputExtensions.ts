@@ -15,7 +15,9 @@ const textOf = (content: JSONContent[] | undefined) =>
  * @cc [owner:tdraier,label:product] comment-suggestion-code-block
  * A code block whose language is `suggestion` MUST be written as `suggestionBlock` of its
  * text, so it reads back through `readMessageSuggestions` as that text whatever backticks it
- * contains, and MUST show as a suggested change rather than as code.
+ * contains, and MUST show as a suggested change rather than as code. A text `suggestionBlock`
+ * refuses as out of bounds MUST still be written as one fenced block, without throwing, and the
+ * codec's own bounds check then refuses the message.
  */
 const CommentCodeBlock = CodeBlock.extend({
   renderHTML({ node, HTMLAttributes }) {
@@ -65,10 +67,10 @@ const CommentCodeBlock = CodeBlock.extend({
         return block.value;
       }
     }
-    const longestRun = Math.max(
-      0,
-      ...(text.match(/`+/g) ?? []).map((run) => run.length)
-    );
+    let longestRun = 0;
+    for (const run of text.match(/`+/g) ?? []) {
+      longestRun = Math.max(longestRun, run.length);
+    }
     const fence = "`".repeat(Math.max(3, longestRun + 1));
     return `${fence}${language}\n${text}\n${fence}`;
   },

@@ -107,6 +107,26 @@ describe("commentInputExtensions", () => {
     );
   });
 
+  it("writes an out-of-bounds suggestion as one fenced block the codec refuses", () => {
+    const field = createEditor();
+    const suggestion = "`a".repeat(130_000);
+
+    field.commands.setContent({
+      type: "doc",
+      content: [
+        {
+          type: "codeBlock",
+          attrs: { language: "suggestion" },
+          content: [{ type: "text", text: suggestion }],
+        },
+      ],
+    });
+
+    const markdown = field.getMarkdown().trim();
+    expect(markdown.startsWith("```suggestion\n")).toBe(true);
+    expect(readMessageSuggestions(markdown).isErr()).toBe(true);
+  });
+
   it("reads a suggestion block from Markdown as a suggestion code block", () => {
     const field = createEditor();
 
