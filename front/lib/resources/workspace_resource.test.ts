@@ -43,6 +43,42 @@ vi.mock("@app/lib/api/redis", async () => {
         }
         return keys.length;
       }),
+      // cacheWithRedis invalidation (and generation-guarded writes) use Lua eval.
+      // Keep this mock's inMemoryCache in sync; redisMock.cacheClient.eval uses a
+      // separate store and would leave stale entries here.
+      eval: vi.fn(
+        async (
+          script: string,
+          { keys, arguments: args }: { keys: string[]; arguments: string[] }
+        ) => {
+          if (script.includes('key .. ":generation"')) {
+            for (const key of keys) {
+              inMemoryCache.delete(key);
+              deletedKeys.push(key);
+              const genKey = `${key}:generation`;
+              const next = String(Number(inMemoryCache.get(genKey) ?? "0") + 1);
+              inMemoryCache.set(genKey, next);
+            }
+            return keys.length;
+          }
+
+          if (script.includes("current ~= ARGV[1]")) {
+            const [valueKey, genKey] = keys;
+            const [expectedGen, value] = args;
+            if (!valueKey || !genKey) {
+              return 0;
+            }
+            const current = inMemoryCache.get(genKey) ?? "";
+            if (current !== expectedGen) {
+              return 0;
+            }
+            inMemoryCache.set(valueKey, value);
+            return 1;
+          }
+
+          return 1;
+        }
+      ),
     })),
   };
 });
