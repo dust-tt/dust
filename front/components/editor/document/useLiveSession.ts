@@ -17,12 +17,15 @@ export interface LiveConnection {
 
 let nextConnectionId = 0;
 
+const RECONNECT_DELAY_MS = 1_000;
+
 /**
  * @cc [owner:PopDaph,label:product] document-live-reconnect
  * A shared document MUST be shown only once it has synced with the server. After a disconnect,
- * its connection MUST NOT reconnect: the server may hold another copy of the document by then,
- * and merging the old one into it would duplicate the content. A fresh document and connection
- * MUST take over, and the old document stays on screen, read-only, until the new one has synced.
+ * or the server closing the document, its connection MUST NOT reconnect: the server may hold
+ * another copy of the document by then, and merging the old one into it would duplicate the
+ * content. A fresh document and connection MUST take over, and the old document stays on
+ * screen, read-only, until the new one has synced.
  * Joining another document, or as another user, MUST close the current connection at once.
  */
 export function useLiveSession(live: DocumentLiveSession | undefined): {
@@ -62,6 +65,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
     // Disconnected: no more updates. Destroyed: the document is gone too.
     let closed = false;
     let destroyed = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     const close = () => {
       if (destroyed) {
         return;
@@ -72,6 +76,21 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         provider.destroy();
       }
       document.destroy();
+    };
+    // The provider's own retry outlives its destroy, so a fresh one always takes over instead.
+    const onLost = () => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      provider.destroy();
+      if (synced) {
+        setStatus("offline");
+      }
+      retry = setTimeout(
+        () => setAttempt((current) => current + 1),
+        RECONNECT_DELAY_MS
+      );
     };
     const provider = new HocuspocusProvider({
       url,
@@ -88,20 +107,14 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         setConnection(next);
         setStatus("live");
       },
-      onDisconnect: () => {
-        if (!synced || closed) {
-          // Never synced: nothing to merge, the provider keeps retrying on its own.
-          return;
-        }
-        closed = true;
-        provider.destroy();
-        setStatus("offline");
-        setAttempt((current) => current + 1);
-      },
+      onDisconnect: onLost,
+      // Also sent alone, without a disconnect, when the server closes the document.
+      onClose: onLost,
       onAuthenticationFailed: () => setStatus("refused"),
     });
 
     return () => {
+      clearTimeout(retry);
       // The shown connection outlives its effect: it closes once replaced, or on unmount.
       if (shownRef.current?.provider !== provider) {
         close();

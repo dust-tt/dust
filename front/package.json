@@ -238,6 +238,7 @@
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
     "@google-cloud/storage": "^7.11.2",
+    "@hocuspocus/server": "^4.7.0",
     "@lingui/babel-plugin-lingui-macro": "6.4.0",
     "@lingui/cli": "6.4.0",
     "@lingui/format-po": "6.4.0",

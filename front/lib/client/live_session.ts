@@ -1,3 +1,5 @@
+import { rand } from "@app/lib/utils/seeded_random";
+
 /**
  * @cc [owner:PopDaph,label:product] live-session-dev-only
  * The live session URL MUST be null outside development builds, whatever the environment
@@ -21,9 +23,5 @@ const CARET_COLORS = [
 
 /** A stable caret color per user, so others recognize them across sessions. */
 export function liveCaretColor(userId: string): string {
-  let hash = 0;
-  for (const char of userId) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  return CARET_COLORS[hash % CARET_COLORS.length];
+  return CARET_COLORS[Math.floor(rand(userId)() * CARET_COLORS.length)];
 }
