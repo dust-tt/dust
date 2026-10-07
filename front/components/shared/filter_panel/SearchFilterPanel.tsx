@@ -76,10 +76,7 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
   const { t } = useLingui();
   const { user } = useAuth();
   const categoryLabels = useMemo(() => getSearchFilterCategoryLabels(t), [t]);
-  const searchPlaceholders = useMemo(
-    () => getSearchFilterSearchPlaceholders(t),
-    [t]
-  );
+  const searchPlaceholders = getSearchFilterSearchPlaceholders(t);
 
   return (
     <FilterPanel
