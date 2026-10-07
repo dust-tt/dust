@@ -108,6 +108,14 @@ export type AgentSearchSort = (typeof AGENT_SEARCH_SORTS)[number];
 export const AGENT_SEARCH_SORT_ORDERS = ["asc", "desc"] as const;
 export type AgentSearchSortOrder = (typeof AGENT_SEARCH_SORT_ORDERS)[number];
 
+export const AGENT_SEARCH_SELECTION_MODES = [
+  "all",
+  "favorites_only",
+  "favorites_or_all",
+] as const;
+export type AgentSearchSelectionMode =
+  (typeof AGENT_SEARCH_SELECTION_MODES)[number];
+
 export interface AgentSearchListItemType {
   sId: string;
   status: AgentConfigurationStatus;
@@ -137,6 +145,7 @@ export type SearchAgentsResponseBody = {
   })[];
   total: number;
   hasMore: boolean;
+  isFavoritesOnly: boolean;
   facets: {
     editors?: (Pick<UserType, "sId" | "fullName" | "image"> & {
       count: number;
