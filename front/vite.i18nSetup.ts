@@ -7,19 +7,29 @@ import { afterEach, vi } from "vitest";
 // Wrap every rendered tree in the app's Lingui providers (front's and sparkle's), composing with any
 // wrapper the test passes.
 vi.mock("@testing-library/react", async (importOriginal) => {
-  const [actual, { createElement }, { AppI18nProvider }] = await Promise.all([
+  const [
+    actual,
+    { createElement },
+    { I18nProvider },
+    { SparkleLocaleProvider },
+  ] = await Promise.all([
     importOriginal<typeof import("@testing-library/react")>(),
     import("react"),
-    import("@app/components/app/AppI18nProvider"),
+    import("@lingui/react"),
+    import("@app/components/app/SparkleLocaleProvider"),
   ]);
 
   const withI18n =
     (Wrapper?: JSXElementConstructor<{ children: ReactNode }>) =>
     ({ children }: { children: ReactNode }) =>
       createElement(
-        AppI18nProvider,
-        null,
-        Wrapper ? createElement(Wrapper, null, children) : children
+        I18nProvider,
+        { i18n },
+        createElement(
+          SparkleLocaleProvider,
+          null,
+          Wrapper ? createElement(Wrapper, null, children) : children
+        )
       );
 
   const render = (ui: ReactNode, options?: RenderOptions) =>
