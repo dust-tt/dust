@@ -56,6 +56,7 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { useLingui } from "@lingui/react/macro";
 import { useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
@@ -343,10 +344,12 @@ export function ConversationContainerVirtuoso({
     ]
   );
 
-  const [greeting, setGreeting] = useState<string>("");
+  const [greetingMessage, setGreetingMessage] =
+    useState<MessageDescriptor | null>(null);
   useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
+    setGreetingMessage(getRandomGreetingForName(user.firstName));
   }, [user]);
+  const greeting = greetingMessage ? t(greetingMessage) : "";
 
   const shouldReduceMotion = useReducedMotion();
 
