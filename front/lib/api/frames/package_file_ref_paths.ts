@@ -18,45 +18,31 @@ function posixExtname(filePath: string): string {
 }
 
 /**
- * Extensions we treat as Frame package assets loadable via useFile (not UI modules).
- * Source of truth for formats is `FILE_FORMATS` / `contentTypeFromFileName` in
- * `front/types/files.ts`; this is the non-`code` asset subset used for extraction.
+ * Source/module extensions denied for share extraction / viz prefetch.
+ * Any other real extension is extractable; FS verification under packageRoot
+ * is the real gate for allowlist membership.
  */
-const FRAME_PACKAGE_ASSET_EXTENSIONS = new Set([
-  ".csv",
-  ".tsv",
-  ".json",
-  ".txt",
-  ".md",
-  ".markdown",
-  ".pdf",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".svg",
-  ".bmp",
-  ".ico",
-  ".xml",
-  ".yaml",
-  ".yml",
-  ".html",
-  ".htm",
-  ".css",
-  ".mp3",
-  ".mp4",
-  ".wav",
-  ".webm",
+const FRAME_PACKAGE_SOURCE_MODULE_EXTENSIONS = new Set([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
 ]);
 
-function hasFramePackageAssetExtension(relativePath: string): boolean {
+/**
+ * True when `relativePath` has a real, non-source/module extension suitable for
+ * package-relative useFile extraction (e.g. `.csv`, `.something`). Rejects
+ * extension-less paths, trailing-dot junk, and source/module extensions.
+ */
+function hasExtractableFramePackageExtension(relativePath: string): boolean {
   const ext = posixExtname(relativePath).toLowerCase();
   // Reject empty, trailing-dot (`foo.` → `.`), and junk like `.tsx:116:6`.
   if (!ext || ext === "." || ext.includes(":") || ext.includes(" ")) {
     return false;
   }
-  return FRAME_PACKAGE_ASSET_EXTENSIONS.has(ext);
+  return !FRAME_PACKAGE_SOURCE_MODULE_EXTENSIONS.has(ext);
 }
 
 /**
@@ -104,8 +90,10 @@ export function parseFramePackageRelativePath(value: string): string | null {
 }
 
 /**
- * Extraction rule: only the `./asset.ext` form. Publish rewrite emits this; bare paths and
- * UI copy / source-location strings are ignored.
+ * Extraction rule: only the `./path.ext` form with a real, non-source/module
+ * extension. Publish rewrite emits this; bare paths, UI copy, source-location
+ * strings, and source/module imports are ignored. FS verification under
+ * packageRoot remains the allowlist membership gate.
  */
 export function parseExtractableFramePackageRelativePath(
   value: string
@@ -116,7 +104,7 @@ export function parseExtractableFramePackageRelativePath(
   }
 
   const relativePath = parseFramePackageRelativePath(trimmed);
-  if (!relativePath || !hasFramePackageAssetExtension(relativePath)) {
+  if (!relativePath || !hasExtractableFramePackageExtension(relativePath)) {
     return null;
   }
 

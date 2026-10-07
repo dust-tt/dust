@@ -32,13 +32,16 @@ describe("isFramePackageRelativePath", () => {
 });
 
 describe("parseExtractableFramePackageRelativePath", () => {
-  it("requires ./ plus a known asset extension", () => {
+  // Extraction denylist is intentional; FS verification remains the allowlist gate.
+  it("requires ./ plus a real non-source/module extension", () => {
     expect(parseExtractableFramePackageRelativePath("hello world")).toBeNull();
     expect(
       parseExtractableFramePackageRelativePath("fil_TOO_SHORT")
     ).toBeNull();
+    expect(parseExtractableFramePackageRelativePath("./foo")).toBeNull();
     expect(parseExtractableFramePackageRelativePath("./Chart")).toBeNull();
     expect(parseExtractableFramePackageRelativePath("./Chart.tsx")).toBeNull();
+    expect(parseExtractableFramePackageRelativePath("./foo.js")).toBeNull();
     expect(parseExtractableFramePackageRelativePath("data.csv")).toBeNull();
     expect(
       parseExtractableFramePackageRelativePath("assets/logo.png")
@@ -49,6 +52,9 @@ describe("parseExtractableFramePackageRelativePath", () => {
     expect(parseExtractableFramePackageRelativePath("./assets/logo.png")).toBe(
       "assets/logo.png"
     );
+    expect(
+      parseExtractableFramePackageRelativePath("./assets/file.something")
+    ).toBe("assets/file.something");
   });
 
   it("rejects UI copy and source-location strings", () => {
