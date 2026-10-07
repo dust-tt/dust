@@ -11,6 +11,7 @@ import type {
   PatchMCPServerBody,
   PatchMCPServerResponseBody,
 } from "@app/lib/api/mcp";
+import { emitMCPServerCredentialsUpdatedAuditLog } from "@app/lib/api/mcp/audit";
 import { withWorkspaceConnectionRequirement } from "@app/lib/api/mcp_oauth_prerequisites";
 import { PatchMCPServerBodySchema } from "@app/lib/api/mcp_schemas";
 import type { Authenticator } from "@app/lib/auth";
@@ -270,6 +271,10 @@ async function handleRemotePatch(
       }
       return assertNever(update.error.code);
     }
+    emitMCPServerCredentialsUpdatedAuditLog(auth, server.toJSON(), {
+      sharedSecret: body.sharedSecret !== undefined,
+      customHeaders: body.customHeaders !== undefined,
+    });
   } else if ("meta" in body) {
     const update = await server.updateMetadata(auth, {
       meta: body.meta,
@@ -335,6 +340,10 @@ async function handleInternalPatch(
       }
       throw upsertResult.error;
     }
+    emitMCPServerCredentialsUpdatedAuditLog(auth, server.toJSON(), {
+      sharedSecret: body.sharedSecret !== undefined,
+      customHeaders: body.customHeaders !== undefined,
+    });
   }
 
   return ctx.json({ success: true as const, server: server.toJSON() });

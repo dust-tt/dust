@@ -1,3 +1,7 @@
+import {
+  emitMCPServerOAuthSettingsUpdatedAuditLog,
+  getMCPServerOAuthSettings,
+} from "@app/lib/api/mcp/audit";
 import type {
   GetMCPServerViewResponseBody,
   PatchMCPServerViewResponseBody,
@@ -97,6 +101,7 @@ app.patch(
     }
 
     const mcpServerId = systemView.mcpServerId;
+    const oauthSettingsBefore = getMCPServerOAuthSettings(systemView);
 
     if ("oAuthUseCase" in body) {
       const updateResult = await updateOAuthUseCaseForMCPServerViews(auth, {
@@ -164,9 +169,15 @@ app.patch(
       });
     }
 
+    const serverView = updatedSystemView.toJSON();
+    emitMCPServerOAuthSettingsUpdatedAuditLog(auth, serverView.server, {
+      before: oauthSettingsBefore,
+      after: getMCPServerOAuthSettings(updatedSystemView),
+    });
+
     return ctx.json({
       success: true as const,
-      serverView: updatedSystemView.toJSON(),
+      serverView,
     });
   }
 );
