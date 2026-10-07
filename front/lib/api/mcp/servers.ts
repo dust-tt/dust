@@ -1,9 +1,13 @@
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
-import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  requiresBearerTokenConfiguration,
+} from "@app/lib/actions/mcp_helper";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,
   getInternalMCPServerMetadata,
+  getInternalMCPServerNameFromSId,
   isInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -11,6 +15,11 @@ import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_action
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
+import type { McpServerCatalogIdentity } from "@app/lib/api/audit/mcp_server_catalog";
+import {
+  mcpServerCatalogIdentity,
+  recordMcpServerCreated,
+} from "@app/lib/api/audit/mcp_server_catalog";
 import type {
   MCPServerType,
   MCPServerTypeWithViews,
@@ -213,6 +222,16 @@ export async function createRemoteMCPServer(
     viewName: normalizedViewName,
   });
 
+  recordMcpServerCreated(
+    auth,
+    mcpServerCatalogIdentity({
+      serverType: "remote",
+      sId: newRemoteMCPServer.sId,
+      serverName: name,
+      viewName: normalizedViewName ?? null,
+    })
+  );
+
   if (connectionId) {
     // We create a connection to the remote MCP server to allow the user to use
     // the MCP server in the future. The connection is of type "workspace"
@@ -332,6 +351,17 @@ export async function createInternalMCPServer(
     }
   );
 
+  recordMcpServerCreated(
+    auth,
+    mcpServerCatalogIdentity({
+      serverType: "internal",
+      sId: newInternalMCPServer.id,
+      serverName: name,
+      viewName: viewName ?? null,
+      internalName: name,
+    })
+  );
+
   if (connectionId) {
     // For personal tools, automatically create a personal connection for the
     // admin so they don't need to re-authenticate when they first use the tool.
@@ -390,6 +420,34 @@ export async function createInternalMCPServer(
   }
 
   return new Ok(newInternalMCPServer.toJSON());
+}
+
+export async function loadMcpServerCatalogIdentity(
+  auth: Authenticator,
+  server: { readonly sId: string; readonly name: string }
+): Promise<McpServerCatalogIdentity> {
+  const serverType = getServerTypeAndIdFromSId(server.sId).serverType;
+  const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+    auth,
+    server.sId
+  );
+  const serverName = view ? view.getServerDisplayMetadata().name : server.name;
+  const viewName = view?.name ?? null;
+  if (serverType === "internal") {
+    return mcpServerCatalogIdentity({
+      serverType: "internal",
+      sId: server.sId,
+      serverName,
+      viewName,
+      internalName: getInternalMCPServerNameFromSId(server.sId) ?? serverName,
+    });
+  }
+  return mcpServerCatalogIdentity({
+    serverType: "remote",
+    sId: server.sId,
+    serverName,
+    viewName,
+  });
 }
 
 async function checkNameConflictInGlobalSpace(

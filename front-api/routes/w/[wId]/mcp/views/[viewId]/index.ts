@@ -1,3 +1,8 @@
+import {
+  recordMcpServerUpdated,
+  type McpServerCatalogChange,
+} from "@app/lib/api/audit/mcp_server_catalog";
+import { loadMcpServerCatalogIdentity } from "@app/lib/api/mcp/servers";
 import type {
   GetMCPServerViewResponseBody,
   PatchMCPServerViewResponseBody,
@@ -97,6 +102,7 @@ app.patch(
     }
 
     const mcpServerId = systemView.mcpServerId;
+    let change: McpServerCatalogChange | null = null;
 
     if ("oAuthUseCase" in body) {
       const updateResult = await updateOAuthUseCaseForMCPServerViews(auth, {
@@ -108,6 +114,11 @@ app.patch(
       if (updateResult.isErr()) {
         return respondToUpdateError(ctx, updateResult.error.code);
       }
+      change = {
+        kind: "oauth" as const,
+        oauthUseCase: body.oAuthUseCase,
+        scopeChanged: body.oauthScope !== undefined,
+      };
     } else if ("isRestrictedToSkills" in body) {
       const updateResult = await systemView.updateIsRestrictedToSkills(
         auth,
@@ -116,7 +127,15 @@ app.patch(
       if (updateResult.isErr()) {
         return respondToUpdateError(ctx, updateResult.error.code);
       }
+      change = {
+        kind: "restriction" as const,
+        isRestrictedToSkills: body.isRestrictedToSkills,
+      };
     } else if ("name" in body && "description" in body) {
+      const before = await loadMcpServerCatalogIdentity(auth, {
+        sId: mcpServerId,
+        name: systemView.getServerDisplayMetadata().name,
+      });
       const updateResult = await updateNameAndDescriptionForMCPServerViews(
         auth,
         {
@@ -138,6 +157,11 @@ app.patch(
         }
         return respondToUpdateError(ctx, updateResult.error.code);
       }
+      change = {
+        kind: "display" as const,
+        fields: ["name", "description"] as const,
+        previousName: before.displayName,
+      };
     }
 
     const updatedSystemView = await MCPServerViewResource.fetchById(
@@ -162,6 +186,17 @@ app.patch(
           message: "MCP Server View not found after update",
         },
       });
+    }
+
+    if (change) {
+      recordMcpServerUpdated(
+        auth,
+        await loadMcpServerCatalogIdentity(auth, {
+          sId: updatedSystemView.mcpServerId,
+          name: updatedSystemView.getServerDisplayMetadata().name,
+        }),
+        change
+      );
     }
 
     return ctx.json({

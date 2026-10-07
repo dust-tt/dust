@@ -1,4 +1,5 @@
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { recordMcpServerToolSettingsUpdated } from "@app/lib/api/audit/mcp_server_catalog";
 import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/lib/api/mcp";
 import { UpdateMCPToolSettingsBodySchema } from "@app/lib/api/mcp_schemas";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -46,6 +47,8 @@ app.patch(
       permission: permission ?? "high",
       enabled: enabled ?? true,
     });
+
+    recordMcpServerToolSettingsUpdated(auth, { serverId, toolCount: 1 });
 
     return ctx.json({ success: true });
   }

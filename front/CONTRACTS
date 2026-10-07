@@ -470,6 +470,22 @@ schema file, re-register with WorkOS after merge and before deploy:
 `npx tsx front/admin/register_audit_log_schemas.ts --execute --changed`. The CI test enforces
 that the `AuditAction` union and schema files stay consistent.
 
+@cc [label:audit-logging;mcp] audit-mcp-server-catalog
+`mcp_server.created`, `mcp_server.updated`, and `mcp_server.deleted` are emitted only through
+`recordMcpServerCreated`, `recordMcpServerUpdated`, and `recordMcpServerDeleted` in
+`front/lib/api/audit/mcp_server_catalog.ts`.
+
+Admin Tool create (`createRemoteMCPServer`, `createInternalMCPServer`), server PATCH, system-view
+PATCH, and server DELETE must call those recorders after the write succeeds. `mcp_server.created`
+is recorded when `makeNew` commits, including when a later `includeGlobal` step fails.
+
+Do not emit these actions from Temporal sync, manual POST `/sync`, JIT auto views, sunset
+migrations, poke URL edits, space `mcp_views` POST or DELETE, client Redis registration, teardown
+cascades, or connection `Model.destroy` inside server delete. Metadata must not contain secret
+values, header maps, meta maps, remote URLs, or OAuth scope strings. Credential edits record
+`set` or `cleared` only. `mcp_server.deleted` records `space_count` as the number of non-system
+spaces the server was in.
+
 @cc [label:mcp] internal-mcp-server-structure
 Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and separate metadata,
 tool implementation, and server wiring:

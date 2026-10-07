@@ -1,8 +1,4 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import { recordMcpServerToolSettingsUpdated } from "@app/lib/api/audit/mcp_server_catalog";
 import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/lib/api/mcp";
 import { UpdateMCPToolsSettingsBodySchema } from "@app/lib/api/mcp_schemas";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -62,17 +58,9 @@ app.patch(
       }
     }
 
-    void emitAuditLogEvent({
-      auth,
-      action: "mcp_server.tool_settings_updated",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        server_id: serverId,
-        tool_count: String(tools.length),
-      },
+    recordMcpServerToolSettingsUpdated(auth, {
+      serverId,
+      toolCount: tools.length,
     });
 
     return ctx.json({ success: true });
