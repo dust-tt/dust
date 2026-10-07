@@ -25,8 +25,9 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
 /**
  * @cc [owner:PopDaph,label:product] document-ui-fixed
- * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply editor
- * instances, extensions, or toolbar configuration. Inline controls MUST require a nonempty
+ * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply the
+ * document editor's instance, extensions, or toolbar configuration; `commentInputExtensions`
+ * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
  * text selection. Block commands MUST require an editable document and a typed `/`.
  * className MUST apply only to the outer container.
  */
@@ -60,6 +61,7 @@ export const Document = ({
   signCommentMessage,
   verifyCommentMessage,
   renderCommentBody,
+  commentInputExtensions,
 }: DocumentProps) => {
   const {
     editor,
@@ -206,6 +208,7 @@ export const Document = ({
           id={panelId}
           comments={comments}
           renderCommentBody={renderCommentBody}
+          commentInputExtensions={commentInputExtensions}
           mountPortalContainer={mountPortalContainer}
           renderAuthorAvatar={renderCommentAuthorAvatar}
         />

@@ -1,4 +1,6 @@
 import { Document } from "@app/components/editor/document";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
@@ -32,7 +34,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -344,6 +346,18 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
     owner,
     filePath: editor.path,
   });
+  const commentInputExtensions = useMemo(
+    () => [
+      MentionExtension.configure({
+        owner,
+        suggestion: createMentionSuggestion({
+          owner,
+          select: { agents: true, users: true },
+        }),
+      }),
+    ],
+    [owner]
+  );
 
   return (
     <Document
@@ -358,6 +372,7 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       renderCommentBody={(body) => (
         <CommentBodyMarkdown owner={owner} body={body} />
       )}
+      commentInputExtensions={commentInputExtensions}
       badge={<CoEditionBadge />}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
