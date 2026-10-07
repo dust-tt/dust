@@ -39,7 +39,7 @@ async function callConsoleApi(
   { adminToken, organizationId }: EdgeeOrganizationAccess,
   path: string,
   init: { method: "GET" | "POST" | "DELETE"; body?: unknown }
-): Promise<Result<Response, Error>> {
+): Promise<Result<unknown, Error>> {
   const url = `${EDGEE_CONSOLE_API_URL}/v1/organizations/${encodeURIComponent(organizationId)}${path}`;
 
   try {
@@ -60,7 +60,8 @@ async function callConsoleApi(
       );
     }
 
-    return new Ok(response);
+    const text = await response.text();
+    return new Ok(text ? JSON.parse(text) : null);
   } catch (err) {
     return new Err(
       new Error(
@@ -92,7 +93,7 @@ export async function createEdgeeGatewayApiKey({
     return res;
   }
 
-  const parsed = CreatedApiKeyResponseSchema.safeParse(await res.value.json());
+  const parsed = CreatedApiKeyResponseSchema.safeParse(res.value);
   if (!parsed.success) {
     return new Err(
       new Error("Edgee Console API returned an unexpected api key shape")
