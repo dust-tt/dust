@@ -12,12 +12,12 @@ export type McpServerCatalogIdentity =
   | {
       readonly serverType: "remote";
       readonly sId: string;
-      readonly displayName: string;
+      readonly catalogName: string;
     }
   | {
       readonly serverType: "internal";
       readonly sId: string;
-      readonly displayName: string;
+      readonly catalogName: string;
       readonly internalName: string;
     };
 
@@ -76,43 +76,69 @@ export function mcpServerCatalogIdentity(
   input: McpServerCatalogNameInput
 ): McpServerCatalogIdentity {
   const trimmed = input.viewName?.trim() ?? "";
-  const displayName = trimmed.length > 0 ? trimmed : input.serverName;
+  const catalogName = trimmed.length > 0 ? trimmed : input.serverName;
   if (input.serverType === "internal") {
     return {
       serverType: "internal",
       sId: input.sId,
-      displayName,
+      catalogName,
       internalName: input.internalName,
     };
   }
   return {
     serverType: "remote",
     sId: input.sId,
-    displayName,
+    catalogName,
   };
 }
 
+function secretWriteKind(
+  value: string | null | undefined
+): McpServerSecretChange | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null || value.length === 0) {
+    return "cleared";
+  }
+  return "set";
+}
+
+function headersWriteKind(
+  headers: readonly { key: string; value: string }[] | null | undefined
+): McpServerSecretChange | undefined {
+  if (headers === undefined) {
+    return undefined;
+  }
+  if (headers === null || headers.length === 0) {
+    return "cleared";
+  }
+  return "set";
+}
+
 export function credentialsChange(input: {
-  readonly sharedSecret?: McpServerSecretChange;
-  readonly customHeaders?: McpServerSecretChange;
+  readonly sharedSecret?: string | null;
+  readonly customHeaders?: readonly { key: string; value: string }[] | null;
 }): McpServerCredentialsChange | null {
-  if (input.sharedSecret !== undefined && input.customHeaders !== undefined) {
+  const sharedSecretChange = secretWriteKind(input.sharedSecret);
+  const customHeadersChange = headersWriteKind(input.customHeaders);
+  if (sharedSecretChange !== undefined && customHeadersChange !== undefined) {
     return {
       kind: "credentials",
-      sharedSecretChange: input.sharedSecret,
-      customHeadersChange: input.customHeaders,
+      sharedSecretChange,
+      customHeadersChange,
     };
   }
-  if (input.sharedSecret !== undefined) {
+  if (sharedSecretChange !== undefined) {
     return {
       kind: "credentials",
-      sharedSecretChange: input.sharedSecret,
+      sharedSecretChange,
     };
   }
-  if (input.customHeaders !== undefined) {
+  if (customHeadersChange !== undefined) {
     return {
       kind: "credentials",
-      customHeadersChange: input.customHeaders,
+      customHeadersChange,
     };
   }
   return null;
@@ -123,7 +149,7 @@ function projectCreatedMetadata(
 ): Record<string, string> {
   const metadata: Record<string, string> = {
     server_type: identity.serverType,
-    server_name: identity.displayName,
+    server_name: identity.catalogName,
   };
   if (identity.serverType === "internal") {
     metadata.internal_name = identity.internalName;
@@ -194,7 +220,7 @@ export function recordMcpServerCreated(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("mcp_server", {
         sId: identity.sId,
-        name: identity.displayName,
+        name: identity.catalogName,
       }),
     ],
     context: getAuditLogContext(auth),
@@ -214,7 +240,7 @@ export function recordMcpServerUpdated(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("mcp_server", {
         sId: identity.sId,
-        name: identity.displayName,
+        name: identity.catalogName,
       }),
     ],
     context: getAuditLogContext(auth),
@@ -225,7 +251,7 @@ export function recordMcpServerUpdated(
 export function recordMcpServerDeleted(
   auth: Authenticator,
   identity: McpServerCatalogIdentity,
-  spaceCount: number
+  nonSystemSpaceCount: number
 ): void {
   void emitAuditLogEvent({
     auth,
@@ -234,13 +260,13 @@ export function recordMcpServerDeleted(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("mcp_server", {
         sId: identity.sId,
-        name: identity.displayName,
+        name: identity.catalogName,
       }),
     ],
     context: getAuditLogContext(auth),
     metadata: {
       ...projectCreatedMetadata(identity),
-      space_count: String(spaceCount),
+      space_count: String(nonSystemSpaceCount),
     },
   });
 }

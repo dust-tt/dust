@@ -8,7 +8,6 @@ import {
   recordMcpServerDeleted,
   recordMcpServerUpdated,
   type McpServerCatalogChange,
-  type McpServerSecretChange,
 } from "@app/lib/api/audit/mcp_server_catalog";
 import type {
   DeleteMCPServerResponseBody,
@@ -198,7 +197,7 @@ app.delete(
       loadMcpServerCatalogIdentity(auth, catalogRef),
       MCPServerViewResource.listByMCPServer(auth, catalogRef.sId),
     ]);
-    const spaceCount = views.filter(
+    const nonSystemSpaceCount = views.filter(
       (view) => view.space.kind !== "system"
     ).length;
 
@@ -219,7 +218,7 @@ app.delete(
       }
     }
 
-    recordMcpServerDeleted(auth, identity, spaceCount);
+    recordMcpServerDeleted(auth, identity, nonSystemSpaceCount);
 
     return ctx.json({ deleted: true });
   }
@@ -296,12 +295,8 @@ async function handleRemotePatch(
       return assertNever(update.error.code);
     }
     change = credentialsChange({
-      sharedSecret: secretWriteKind(
-        "sharedSecret" in body ? body.sharedSecret : undefined
-      ),
-      customHeaders: headersWriteKind(
-        "customHeaders" in body ? body.customHeaders : undefined
-      ),
+      sharedSecret: "sharedSecret" in body ? body.sharedSecret : undefined,
+      customHeaders: "customHeaders" in body ? body.customHeaders : undefined,
     });
   } else if ("meta" in body) {
     const update = await server.updateMetadata(auth, {
@@ -382,12 +377,8 @@ async function handleInternalPatch(
     }
 
     const change = credentialsChange({
-      sharedSecret: secretWriteKind(
-        "sharedSecret" in body ? body.sharedSecret : undefined
-      ),
-      customHeaders: headersWriteKind(
-        "customHeaders" in body ? body.customHeaders : undefined
-      ),
+      sharedSecret: "sharedSecret" in body ? body.sharedSecret : undefined,
+      customHeaders: "customHeaders" in body ? body.customHeaders : undefined,
     });
     if (change) {
       recordMcpServerUpdated(
@@ -402,30 +393,6 @@ async function handleInternalPatch(
   }
 
   return ctx.json({ success: true as const, server: server.toJSON() });
-}
-
-function secretWriteKind(
-  value: string | null | undefined
-): McpServerSecretChange | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value === null || value.length === 0) {
-    return "cleared";
-  }
-  return "set";
-}
-
-function headersWriteKind(
-  headers: readonly { key: string; value: string }[] | null | undefined
-): McpServerSecretChange | undefined {
-  if (headers === undefined) {
-    return undefined;
-  }
-  if (headers === null || headers.length === 0) {
-    return "cleared";
-  }
-  return "set";
 }
 
 function respondUnauthorizedUpdate(ctx: Context) {

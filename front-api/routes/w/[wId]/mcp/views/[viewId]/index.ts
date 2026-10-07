@@ -160,7 +160,7 @@ app.patch(
       change = {
         kind: "display" as const,
         fields: ["name", "description"] as const,
-        previousName: before.displayName,
+        previousName: before.catalogName,
       };
     }
 
