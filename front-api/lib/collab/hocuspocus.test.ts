@@ -564,5 +564,13 @@ describe("comment threads in a live session", () => {
     });
     expect(refused.isErr() && refused.error).toBe("thread_changed");
     expect(theirs.getThreads()).toEqual([THREAD, created]);
+
+    const invalid = await mine.send({
+      type: "add",
+      commentId: "c3",
+      body: "",
+    });
+    expect(invalid.isErr() && invalid.error).toBe("unavailable");
+    expect(applyLiveCommentCommand).toHaveBeenCalledTimes(2);
   }, 15_000);
 });

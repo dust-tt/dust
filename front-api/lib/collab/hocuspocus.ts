@@ -21,6 +21,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
+import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
 
@@ -36,6 +37,19 @@ interface LiveSession {
 
 const serverMessage = (message: LiveCommentServerMessage) =>
   JSON.stringify(message);
+
+const unavailableResult = (requestId: string) =>
+  serverMessage({
+    type: "result",
+    requestId,
+    error: "unavailable",
+    comment: null,
+  });
+
+const commandRequestSchema = z.object({
+  type: z.literal("command"),
+  requestId: z.string().min(1),
+});
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -110,7 +124,10 @@ export async function authenticateConnection(
  * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
  * connection of the document and the document stored through that connection, so the checkpoint
- * writes them. A message that is not a valid client message MUST be ignored.
+ * writes them. A command its document unloaded before it finished MUST change nothing. Every
+ * command carrying a request id MUST be answered, as `unavailable` when it is invalid, failed or
+ * outlived its document, and a failing command MUST NOT stop the later ones. Any other message
+ * that is not a valid client message MUST be ignored.
  */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const sessions = new WeakMap<Document, LiveSession>();
@@ -257,6 +274,12 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         : null;
       if (!session || !message?.success) {
         logger.warn({ documentName }, "Collab stateless message ignored");
+        const request = json.isOk()
+          ? commandRequestSchema.safeParse(json.value)
+          : null;
+        if (request?.success) {
+          connection.sendStateless(unavailableResult(request.data.requestId));
+        }
         return;
       }
       if (message.data.type === "threads") {
@@ -268,7 +291,16 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
 
       const { requestId, command } = message.data;
       const file: LiveFile = connection.context;
-      session.commentCommands = session.commentCommands.then(async () => {
+      const logFailure = (err: unknown) =>
+        logger.error(
+          {
+            err: normalizeError(err),
+            documentName,
+            workspaceId: file.workspaceId,
+          },
+          "Collab comment command failed"
+        );
+      const run = async () => {
         let result: Awaited<ReturnType<typeof applyLiveCommentCommand>>;
         try {
           result = await applyLiveCommentCommand(
@@ -277,15 +309,14 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
             command
           );
         } catch (err) {
-          logger.error(
-            {
-              err: normalizeError(err),
-              documentName,
-              workspaceId: file.workspaceId,
-            },
-            "Collab comment command failed"
-          );
+          logFailure(err);
           result = new Err("unavailable");
+        }
+        // Unloaded while the command waited or ran: a reload reads the file into a new document,
+        // and storing this one would cancel that document's debounced store, keyed by name.
+        if (document.isDestroyed) {
+          connection.sendStateless(unavailableResult(requestId));
+          return;
         }
         if (result.isErr()) {
           connection.sendStateless(
@@ -320,7 +351,10 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           lastContext: file,
           lastTransactionOrigin: undefined,
         });
-      });
+      };
+      session.commentCommands = session.commentCommands
+        .then(run)
+        .catch(logFailure);
     },
   });
 
