@@ -69,6 +69,14 @@ export function formatRelativeTime(
   return new Intl.RelativeTimeFormat(locale, options).format(value, unit);
 }
 
+export function formatList(
+  values: string[],
+  options?: Intl.ListFormatOptions,
+  locale: SupportedLocale | undefined = activeFormatLocale
+): string {
+  return new Intl.ListFormat(locale, options).format(values);
+}
+
 export function formatCurrency(
   amountCurrencyUnits: number,
   currency: string,
