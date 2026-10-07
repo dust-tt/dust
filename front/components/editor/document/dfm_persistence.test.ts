@@ -9,6 +9,7 @@ import {
   withDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import { describeDocumentError } from "@app/components/editor/document/errors";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
@@ -34,7 +35,7 @@ const COMMENT: DfmComment = {
 function load(source: string) {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
-    throw new Error(describeDocumentError(loaded.error));
+    throw new Error(describeDocumentError(loaded.error, defaultLocaleI18n.t));
   }
   return loaded.value;
 }
@@ -43,7 +44,7 @@ function roundTrip(source: string): string {
   const { envelope, content } = load(source);
   const saved = saveDfm(envelope, content);
   if (saved.isErr()) {
-    throw new Error(describeDocumentError(saved.error));
+    throw new Error(describeDocumentError(saved.error, defaultLocaleI18n.t));
   }
   return saved.value;
 }
@@ -211,7 +212,9 @@ describe("loadDfm", () => {
 
     expect(loaded.isErr()).toBe(true);
     if (loaded.isErr()) {
-      expect(describeDocumentError(loaded.error)).toContain(reason);
+      expect(
+        describeDocumentError(loaded.error, defaultLocaleI18n.t)
+      ).toContain(reason);
     }
   });
 });

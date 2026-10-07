@@ -9,6 +9,7 @@ import {
   ENVELOPE_MAP_NAME,
   yDocToDfm,
 } from "@app/lib/api/collab/ydoc";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err } from "@app/types/shared/result";
@@ -18,10 +19,12 @@ import * as Y from "yjs";
 const savedByEditor = (source: string) => {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
-    throw new Error(describeDocumentError(loaded.error));
+    throw new Error(describeDocumentError(loaded.error, defaultLocaleI18n.t));
   }
   const saved = saveDfm(loaded.value.envelope, loaded.value.content);
-  return saved.isErr() ? new Err(describeDocumentError(saved.error)) : saved;
+  return saved.isErr()
+    ? new Err(describeDocumentError(saved.error, defaultLocaleI18n.t))
+    : saved;
 };
 
 describe("dfmToYDoc and yDocToDfm", () => {
@@ -139,7 +142,9 @@ describe("dfmToYDoc and yDocToDfm", () => {
     expect(editor.isErr()).toBe(true);
     expect(live.isErr()).toBe(true);
     if (live.isErr() && editor.isErr()) {
-      expect(live.error).toBe(describeDocumentError(editor.error));
+      expect(live.error).toBe(
+        describeDocumentError(editor.error, defaultLocaleI18n.t)
+      );
     }
   });
 

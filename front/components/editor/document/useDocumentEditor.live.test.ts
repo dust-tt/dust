@@ -2,8 +2,10 @@ import { documentSchema } from "@app/components/editor/document/content";
 import { loadDfm } from "@app/components/editor/document/dfm_persistence";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
 import { withoutDocumentJSONComments } from "@app/components/editor/document/DocumentComments";
+import { describeDocumentError } from "@app/components/editor/document/errors";
 import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -16,7 +18,7 @@ import * as Y from "yjs";
 function sharedDocumentFor(source: string) {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
-    throw new Error(loaded.error);
+    throw new Error(describeDocumentError(loaded.error, defaultLocaleI18n.t));
   }
   const document = new Y.Doc();
   prosemirrorJSONToYXmlFragment(

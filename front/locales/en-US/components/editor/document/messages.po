@@ -307,6 +307,50 @@ msgstr "Divider"
 msgid "Separate sections"
 msgstr "Separate sections"
 
+#: front/components/editor/document/errors.ts
+msgid "The Markdown uses formatting the editor cannot keep."
+msgstr "The Markdown uses formatting the editor cannot keep."
+
+#: front/components/editor/document/errors.ts
+msgid "The Markdown could not be parsed."
+msgstr "The Markdown could not be parsed."
+
+#: front/components/editor/document/errors.ts
+msgid "The Markdown would not read back the same after editing."
+msgstr "The Markdown would not read back the same after editing."
+
+#: front/components/editor/document/errors.ts
+msgid "Comment \"{commentId}\" starts or ends on text the editor cannot highlight."
+msgstr "Comment \"{commentId}\" starts or ends on text the editor cannot highlight."
+
+#: front/components/editor/document/errors.ts
+msgid "Comment anchor \"{commentId}\" is not paired where the editor reads it."
+msgstr "Comment anchor \"{commentId}\" is not paired where the editor reads it."
+
+#: front/components/editor/document/errors.ts
+msgid "Comment anchor \"{commentId}\" is never closed where the editor reads it."
+msgstr "Comment anchor \"{commentId}\" is never closed where the editor reads it."
+
+#: front/components/editor/document/errors.ts
+msgid "Comment \"{commentId}\" covers no text the editor can highlight."
+msgstr "Comment \"{commentId}\" covers no text the editor can highlight."
+
+#: front/components/editor/document/errors.ts
+msgid "A comment is anchored where the editor cannot show it."
+msgstr "A comment is anchored where the editor cannot show it."
+
+#: front/components/editor/document/errors.ts
+msgid "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
+msgstr "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
+
+#: front/components/editor/document/errors.ts
+msgid "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again."
+msgstr "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again."
+
+#: front/components/editor/document/errors.ts
+msgid "{message} (line {line})"
+msgstr "{message} (line {line})"
+
 #: front/components/editor/document/extensions.ts
 msgid "Untitled"
 msgstr "Untitled"
@@ -362,50 +406,6 @@ msgstr "This suggestion can't be saved in this document."
 #: front/components/editor/document/useDocumentEditor.ts
 msgid "Could not save. Your changes are still here. Try again."
 msgstr "Could not save. Your changes are still here. Try again."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "The Markdown uses formatting the editor cannot keep."
-msgstr "The Markdown uses formatting the editor cannot keep."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "The Markdown could not be parsed."
-msgstr "The Markdown could not be parsed."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "The Markdown would not read back the same after editing."
-msgstr "The Markdown would not read back the same after editing."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "Comment \"{commentId}\" starts or ends on text the editor cannot highlight."
-msgstr "Comment \"{commentId}\" starts or ends on text the editor cannot highlight."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "Comment anchor \"{commentId}\" is not paired where the editor reads it."
-msgstr "Comment anchor \"{commentId}\" is not paired where the editor reads it."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "Comment anchor \"{commentId}\" is never closed where the editor reads it."
-msgstr "Comment anchor \"{commentId}\" is never closed where the editor reads it."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "Comment \"{commentId}\" covers no text the editor can highlight."
-msgstr "Comment \"{commentId}\" covers no text the editor can highlight."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "A comment is anchored where the editor cannot show it."
-msgstr "A comment is anchored where the editor cannot show it."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
-msgstr "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again."
-msgstr "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again."
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "{message} (line {line})"
-msgstr "{message} (line {line})"
 
 #: front/components/editor/document/useDocumentEditor.ts
 msgid "Document content"

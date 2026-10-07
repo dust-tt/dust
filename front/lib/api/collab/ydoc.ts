@@ -10,6 +10,7 @@ import {
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import { describeDocumentError } from "@app/components/editor/document/errors";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
@@ -40,7 +41,7 @@ export interface LiveDocument {
  * @cc [owner:PopDaph,label:product] co-edition-ydoc-round-trip
  * `yDocToDfm(dfmToYDoc(source))` MUST return what `saveDfm` returns for the same file loaded
  * with `loadDfm`, and `dfmToYDoc` MUST refuse a file `loadDfm` refuses, with the same reason.
- * Their reasons are `describeDocumentError` of the editor's errors.
+ * Their reasons are `describeDocumentError` of the editor's errors, in the default locale.
  */
 /**
  * @cc [owner:PopDaph,label:architecture;security] co-edition-threads-outside-ydoc
@@ -50,7 +51,7 @@ export interface LiveDocument {
 export function dfmToYDoc(source: string): Result<LiveDocument, string> {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
-    return new Err(describeDocumentError(loaded.error));
+    return new Err(describeDocumentError(loaded.error, defaultLocaleI18n.t));
   }
   const { envelope, content } = loaded.value;
 
@@ -90,5 +91,7 @@ export function yDocToDfm({
     envelope.data,
     withDocumentJSONComments(content, comments)
   );
-  return saved.isErr() ? new Err(describeDocumentError(saved.error)) : saved;
+  return saved.isErr()
+    ? new Err(describeDocumentError(saved.error, defaultLocaleI18n.t))
+    : saved;
 }
