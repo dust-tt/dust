@@ -6,4 +6,6 @@ export type Credentials = {
   MISTRAL_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
   XAI_API_KEY?: string;
+  // Gateway key of the calling user (or of the workspace) on Edgee-routed workspaces.
+  EDGEE_API_KEY?: string;
 };

@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const EDGEE_CONSOLE_API_URL = "https://api.edgee.app";
-export const EDGEE_GATEWAY_BASE_URL = "https://edgee.io";
 
 // Stored in the OAuth service under the `edgee` provider, one per workspace.
 export const EdgeeAdminCredentialsSchema = z.object({

@@ -26,6 +26,7 @@ export type LLMCredentialsType = {
   AI21_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
   AGENT_PLATFORM_PROJECT_ID?: string;
+  EDGEE_API_KEY?: string;
 };
 
 export type ProviderCredentialType = {
