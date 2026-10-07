@@ -12,6 +12,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Input, TextArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   forwardRef,
@@ -24,25 +26,21 @@ import {
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-function useSnowflakeKeypairFormSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.object({
-        account: z.string().min(1, t`Account is required.`),
-        username: z.string().min(1, t`Username is required.`),
-        role: z.string().min(1, t`Role is required.`),
-        warehouse: z.string().min(1, t`Warehouse is required.`),
-        privateKey: z.string().min(1, t`Private key is required.`),
-        privateKeyPassphrase: z.string().optional(),
-      }),
-    [t]
-  );
+function getSnowflakeKeypairFormSchema(
+  t: (descriptor: MessageDescriptor) => string
+) {
+  return z.object({
+    account: z.string().min(1, t(msg`Account is required.`)),
+    username: z.string().min(1, t(msg`Username is required.`)),
+    role: z.string().min(1, t(msg`Role is required.`)),
+    warehouse: z.string().min(1, t(msg`Warehouse is required.`)),
+    privateKey: z.string().min(1, t(msg`Private key is required.`)),
+    privateKeyPassphrase: z.string().optional(),
+  });
 }
 
 type SnowflakeKeypairFormValues = z.infer<
-  ReturnType<typeof useSnowflakeKeypairFormSchema>
+  ReturnType<typeof getSnowflakeKeypairFormSchema>
 >;
 
 interface SnowflakeKeypairCredentialFormProps {
@@ -55,7 +53,10 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   SnowflakeKeypairCredentialFormProps
 >(function SnowflakeKeypairCredentialForm({ owner, onValidityChange }, ref) {
   const { t } = useLingui();
-  const snowflakeKeypairFormSchema = useSnowflakeKeypairFormSchema();
+  const snowflakeKeypairFormSchema = useMemo(
+    () => getSnowflakeKeypairFormSchema(t),
+    [t]
+  );
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);

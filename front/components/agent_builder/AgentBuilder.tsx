@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { useAgentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { getAgentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
@@ -217,7 +217,10 @@ function AgentBuilderForm({
     newAgentDefaultModel,
   ]);
 
-  const agentBuilderFormSchema = useAgentBuilderFormSchema();
+  const agentBuilderFormSchema = useMemo(
+    () => getAgentBuilderFormSchema(t),
+    [t]
+  );
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues,

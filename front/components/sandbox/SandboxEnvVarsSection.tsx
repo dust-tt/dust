@@ -81,96 +81,98 @@ function labelForKind(kind: SandboxEnvVarKind): MessageDescriptor | null {
   }
 }
 
-function useFormSchema() {
-  const { t } = useLingui();
+function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z
+    .object({
+      name: z
+        .string()
+        .min(
+          1,
+          t(
+            msg`Uppercase letters, digits and underscores. Up to 64 characters after the prefix.`
+          )
+        )
+        .regex(
+          ENV_VAR_NAME_SUFFIX_REGEX,
+          t(
+            msg`Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters.`
+          )
+        ),
+      value: z.string().min(1, t(msg`Value is required.`)),
+      kind: z.enum(SANDBOX_ENV_VAR_KINDS),
+      allowedDomainsText: z.string(),
+    })
+    .superRefine((data, ctx) => {
+      const valueBytes = new TextEncoder().encode(data.value).length;
 
-  return useMemo(
-    () =>
-      z
-        .object({
-          name: z
-            .string()
-            .min(
-              1,
-              t`Uppercase letters, digits and underscores. Up to 64 characters after the prefix.`
-            )
-            .regex(
-              ENV_VAR_NAME_SUFFIX_REGEX,
-              t`Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters.`
-            ),
-          value: z.string().min(1, t`Value is required.`),
-          kind: z.enum(SANDBOX_ENV_VAR_KINDS),
-          allowedDomainsText: z.string(),
-        })
-        .superRefine((data, ctx) => {
-          const valueBytes = new TextEncoder().encode(data.value).length;
-
-          switch (data.kind) {
-            case "config": {
-              if (data.value.includes("\u0000")) {
-                ctx.addIssue({
-                  code: "custom",
-                  path: ["value"],
-                  message: t`Values cannot contain NUL bytes.`,
-                });
-              }
-              if (valueBytes > MAX_VALUE_BYTES) {
-                ctx.addIssue({
-                  code: "custom",
-                  path: ["value"],
-                  message: t`Values cannot exceed 32 KiB.`,
-                });
-              }
-              return;
-            }
-
-            case "https_secret": {
-              if (/[\u0000-\u001F\u007F]/.test(data.value)) {
-                ctx.addIssue({
-                  code: "custom",
-                  path: ["value"],
-                  message: t`HTTPS secret values cannot contain ASCII control bytes.`,
-                });
-              }
-              if (valueBytes > MAX_HTTPS_SECRET_VALUE_BYTES) {
-                const maxKiB = MAX_HTTPS_SECRET_VALUE_BYTES / 1_024;
-                ctx.addIssue({
-                  code: "custom",
-                  path: ["value"],
-                  message: t`HTTPS secret values cannot exceed ${maxKiB} KiB.`,
-                });
-              }
-
-              const allowedDomains = parseAllowedDomainsText(
-                data.allowedDomainsText
-              );
-              if (allowedDomains.length === 0) {
-                ctx.addIssue({
-                  code: "custom",
-                  path: ["allowedDomainsText"],
-                  message: t`HTTPS secrets require at least one allowed domain.`,
-                });
-                return;
-              }
-
-              const normalizedDomains =
-                normalizeHttpsSecretAllowedDomains(allowedDomains);
-              if (normalizedDomains.isErr()) {
-                ctx.addIssue({
-                  code: "custom",
-                  path: ["allowedDomainsText"],
-                  message: normalizedDomains.error.message,
-                });
-              }
-              return;
-            }
+      switch (data.kind) {
+        case "config": {
+          if (data.value.includes("\u0000")) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["value"],
+              message: t(msg`Values cannot contain NUL bytes.`),
+            });
           }
-        }),
-    [t]
-  );
+          if (valueBytes > MAX_VALUE_BYTES) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["value"],
+              message: t(msg`Values cannot exceed 32 KiB.`),
+            });
+          }
+          return;
+        }
+
+        case "https_secret": {
+          if (/[\u0000-\u001F\u007F]/.test(data.value)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["value"],
+              message: t(
+                msg`HTTPS secret values cannot contain ASCII control bytes.`
+              ),
+            });
+          }
+          if (valueBytes > MAX_HTTPS_SECRET_VALUE_BYTES) {
+            const maxKiB = MAX_HTTPS_SECRET_VALUE_BYTES / 1_024;
+            ctx.addIssue({
+              code: "custom",
+              path: ["value"],
+              message: t(msg`HTTPS secret values cannot exceed ${maxKiB} KiB.`),
+            });
+          }
+
+          const allowedDomains = parseAllowedDomainsText(
+            data.allowedDomainsText
+          );
+          if (allowedDomains.length === 0) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["allowedDomainsText"],
+              message: t(
+                msg`HTTPS secrets require at least one allowed domain.`
+              ),
+            });
+            return;
+          }
+
+          const normalizedDomains =
+            normalizeHttpsSecretAllowedDomains(allowedDomains);
+          if (normalizedDomains.isErr()) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["allowedDomainsText"],
+              message: normalizedDomains.error.message,
+            });
+          }
+          return;
+        }
+      }
+    });
 }
 
-type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 const WORKSPACE_ENV_VARS_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this workspace.`;
 const POD_ENV_VARS_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers.`;
@@ -203,7 +205,7 @@ export function SandboxEnvVarsSection({
   canEdit,
 }: SandboxEnvVarsSectionProps) {
   const { t } = useLingui();
-  const formSchema = useFormSchema();
+  const formSchema = useMemo(() => getFormSchema(t), [t]);
   const nameHelperText = t`Uppercase letters, digits and underscores. Up to 64 characters after the prefix.`;
   const allowedDomainsHelperText = t`Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.`;
   const savedAsMessage = (domains: string) => t`Will be saved as ${domains}.`;

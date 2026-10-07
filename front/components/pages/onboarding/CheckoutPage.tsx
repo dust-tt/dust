@@ -63,19 +63,13 @@ function getStripePromise() {
   return stripePromise;
 }
 
-function useCouponFormSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.object({
-        couponCode: z.string().min(1, t`Please enter a promotion code`),
-      }),
-    [t]
-  );
+function getCouponFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    couponCode: z.string().min(1, t(msg`Please enter a promotion code`)),
+  });
 }
 
-type CouponFormValues = z.infer<ReturnType<typeof useCouponFormSchema>>;
+type CouponFormValues = z.infer<ReturnType<typeof getCouponFormSchema>>;
 
 type CheckoutPhase =
   | "card_capture" // Phase 1 — Stripe setup iframe
@@ -223,7 +217,7 @@ export function CheckoutPage() {
     // pending: keep polling
   }, [isActivating, checkoutPayment, mutateAuthContext]);
 
-  const couponFormSchema = useCouponFormSchema();
+  const couponFormSchema = useMemo(() => getCouponFormSchema(t), [t]);
   const {
     register: registerCoupon,
     handleSubmit: handleCouponSubmit,

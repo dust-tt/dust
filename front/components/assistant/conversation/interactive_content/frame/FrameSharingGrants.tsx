@@ -14,13 +14,16 @@ import {
 } from "@app/types/sharing_grants";
 import { Button, Globe01, Input, ListGroup, Spinner } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-function getRecipientsSchema(recipientCountMessage: string) {
+function getRecipientsSchema(t: (descriptor: MessageDescriptor) => string) {
+  const maxRecipients = MAX_EMAILS_OR_DOMAINS_PER_INVITE;
   return z
     .string()
     .transform((raw, ctx) => {
@@ -28,13 +31,12 @@ function getRecipientsSchema(recipientCountMessage: string) {
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean);
-      if (
-        recipients.length === 0 ||
-        recipients.length > MAX_EMAILS_OR_DOMAINS_PER_INVITE
-      ) {
+      if (recipients.length === 0 || recipients.length > maxRecipients) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: recipientCountMessage,
+          message: t(
+            msg`Add between 1 and ${maxRecipients} email addresses or domains.`
+          ),
         });
         return z.NEVER;
       }
@@ -65,6 +67,31 @@ function getRecipientsSchema(recipientCountMessage: string) {
     .pipe(addSharingGrantsSchema);
 }
 
+function getFormSchema({
+  canGrantDomains,
+  canInviteExternal,
+  t,
+}: {
+  canGrantDomains: boolean;
+  canInviteExternal: boolean;
+  t: (descriptor: MessageDescriptor) => string;
+}) {
+  return z.object({
+    recipients: getRecipientsSchema(t).superRefine(({ domains }, ctx) => {
+      if (!canGrantDomains && domains?.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: canInviteExternal
+            ? t(
+                msg`Add individual email addresses. Domain sharing is not available.`
+              )
+            : t(msg`Only workspace member email addresses can be added.`),
+        });
+      }
+    }),
+  });
+}
+
 interface FrameSharingGrantsProps {
   sharing: SharingGrantsResponse | undefined;
   canInviteExternal: boolean;
@@ -92,21 +119,10 @@ export function FrameSharingGrants({
   const inputId = useId();
   const errorId = `${inputId}-error`;
   const canGrantDomains = sharing?.canGrantDomains ?? false;
-  const maxRecipients = MAX_EMAILS_OR_DOMAINS_PER_INVITE;
-  const formSchema = z.object({
-    recipients: getRecipientsSchema(
-      t`Add between 1 and ${maxRecipients} email addresses or domains.`
-    ).superRefine(({ domains }, ctx) => {
-      if (!canGrantDomains && domains?.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: canInviteExternal
-            ? t`Add individual email addresses. Domain sharing is not available.`
-            : t`Only workspace member email addresses can be added.`,
-        });
-      }
-    }),
-  });
+  const formSchema = useMemo(
+    () => getFormSchema({ canGrantDomains, canInviteExternal, t }),
+    [canGrantDomains, canInviteExternal, t]
+  );
   const {
     register,
     handleSubmit,
