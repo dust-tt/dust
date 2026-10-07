@@ -1,5 +1,6 @@
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type { ParsedUrlQuery } from "querystring";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -87,7 +88,7 @@ export function getPaginationParams(
 // For `z.preprocess`: parses a query param like `parseInt` ("10.5" -> 10, "abc" -> NaN, which
 // `z.number()` rejects).
 export function parseIntParam(v: unknown): unknown {
-  return typeof v === "string" ? parseInt(v, 10) : v;
+  return isString(v) ? parseInt(v, 10) : v;
 }
 
 export const SortingParamsCodec = z.array(
