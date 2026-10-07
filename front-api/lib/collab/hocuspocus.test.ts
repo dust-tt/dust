@@ -465,6 +465,8 @@ async function serve(hocuspocus: ReturnType<typeof createCollabHocuspocus>) {
   };
 }
 
+// TODO(co-edition): cover commands applied one at a time per document, a message that is not a
+// client message, a command whose document unloads before it finishes, and a closed channel.
 describe("comment threads in a live session", () => {
   const THREAD: DfmComment = {
     id: "c1",
