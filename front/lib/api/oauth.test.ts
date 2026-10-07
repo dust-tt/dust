@@ -250,9 +250,12 @@ describe("finalizeConnection", () => {
 
     expect(res.isOk()).toBe(true);
     if (res.isOk()) {
-      expect(res.value.metadata).not.toHaveProperty(
-        OAUTH_FINALIZE_NONCE_METADATA_KEY
-      );
+      expect(res.value.type).toBe("finalized");
+      if (res.value.type === "finalized") {
+        expect(res.value.connection.metadata).not.toHaveProperty(
+          OAUTH_FINALIZE_NONCE_METADATA_KEY
+        );
+      }
     }
     expect(mocks.finalizeConnection).toHaveBeenCalledOnce();
   });
