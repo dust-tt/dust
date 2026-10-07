@@ -2,7 +2,10 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { Readable } from "node:stream";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { addAgentComment } from "@app/lib/api/files/dfm_agent_comments";
+import {
+  addAgentComment,
+  replyToAgentComment,
+} from "@app/lib/api/files/dfm_agent_comments";
 import {
   readCanonicalFileContent,
   WriteCanonicalFileContentError,
@@ -252,6 +255,141 @@ describe("addAgentComment", () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
     const result = await comment(other, dustFs);
+    expect(result.isErr() && result.error.code).toBe("not_available");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+});
+
+describe("replyToAgentComment", () => {
+  let auth: Authenticator;
+  let dustFs: DustFileSystem;
+
+  const reply = (commentId = "c1") =>
+    replyToAgentComment(auth, dustFs, {
+      agent: AGENT,
+      scopedPath: PATH,
+      commentId,
+      reply: "Because Monday is a holiday.\r\n",
+    });
+
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    auth = (await createResourceTest({})).authenticator;
+    const fileSystem = await DustFileSystem.forConversations(auth, []);
+    if (fileSystem.isErr()) {
+      throw fileSystem.error;
+    }
+    dustFs = fileSystem.value;
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    vi.spyOn(config, "getDfmCommentSigningKey").mockReturnValue(
+      privateKey.export({ format: "der", type: "pkcs8" }).toString("base64")
+    );
+  });
+
+  it("appends one message signed for the agent after the thread's last one", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    expect((await reply()).isOk()).toBe(true);
+
+    const { content, revision } = written(0);
+    expect(revision).toBe("7");
+    const before = parseDfm(SOURCE);
+    const after = parseDfm(content);
+    if (before.isErr() || after.isErr()) {
+      throw new Error("Unparsable document.");
+    }
+    expect(after.value.body).toBe(before.value.body);
+    const [thread] = after.value.comments;
+    const [first, message] = thread.messages;
+    expect(thread).toMatchObject({ id: "c1", status: "open" });
+    expect(first).toEqual(before.value.comments[0].messages[0]);
+    expect(message).toMatchObject({
+      author: { kind: "agent", id: AGENT.sId, name: "@reviewer" },
+      body: "Because Monday is a holiday.",
+    });
+    expect(
+      verify(
+        null,
+        Buffer.from(
+          messageSignaturePayload({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            filePath: PATH,
+            commentId: "c1",
+            position: 1,
+            previous: first,
+            message,
+          }),
+          "utf8"
+        ),
+        publicKey,
+        Buffer.from(message.signature ?? "", "base64url")
+      )
+    ).toBe(true);
+  });
+
+  it("signs again after the last message of a thread that changed on retry", async () => {
+    const replied = SOURCE.replace(
+      "Why Friday?\n:::\n",
+      'Why Friday?\n\n::message{author=user:usr_yuka name="Yuka" at=2026-10-05T12:01:00.000Z}\n\nAnd why not Thursday?\n:::\n'
+    );
+    vi.mocked(readCanonicalFileContent)
+      .mockResolvedValueOnce(stored(SOURCE, "7"))
+      .mockResolvedValueOnce(stored(replied, "9"));
+    vi.mocked(writeCanonicalFileContent)
+      .mockResolvedValueOnce(conflict())
+      .mockResolvedValueOnce(new Ok({ created: false, revision: "10" }));
+
+    expect((await reply()).isOk()).toBe(true);
+
+    const after = parseDfm(written(1).content);
+    if (after.isErr()) {
+      throw new Error("Unparsable document.");
+    }
+    const messages = after.value.comments[0].messages;
+    expect(messages).toHaveLength(3);
+    expect(
+      verify(
+        null,
+        Buffer.from(
+          messageSignaturePayload({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            filePath: PATH,
+            commentId: "c1",
+            position: 2,
+            previous: messages[1],
+            message: messages[2],
+          }),
+          "utf8"
+        ),
+        publicKey,
+        Buffer.from(messages[2].signature ?? "", "base64url")
+      )
+    ).toBe(true);
+  });
+
+  it("refuses a thread missing from the document without writing", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+
+    const result = await reply("c404");
+
+    expect(result.isErr() && result.error.code).toBe("comment_not_found");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+
+  it("refuses to reply without co_edition", async () => {
+    const other = (await createResourceTest({})).authenticator;
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+
+    const result = await replyToAgentComment(other, dustFs, {
+      agent: AGENT,
+      scopedPath: PATH,
+      commentId: "c1",
+      reply: "Hello.",
+    });
+
     expect(result.isErr() && result.error.code).toBe("not_available");
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });

@@ -4,7 +4,10 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { DOCUMENTS_TOOLS_METADATA } from "@app/lib/api/actions/servers/documents/metadata";
 import { getDustFileSystemForAgentLoop } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import { addAgentComment } from "@app/lib/api/files/dfm_agent_comments";
+import {
+  addAgentComment,
+  replyToAgentComment,
+} from "@app/lib/api/files/dfm_agent_comments";
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
@@ -46,6 +49,46 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
       {
         type: "text",
         text: `Added comment \`${added.value.commentId}\` on "${quote}" in \`${path}\`.`,
+      },
+    ]);
+  },
+  reply_to_comment: async (
+    { path, comment_id, reply },
+    { auth, runContext }
+  ) => {
+    if (!isAgentLoopRunContext(runContext)) {
+      return new Err(
+        new MCPError("No conversation context available.", { tracked: false })
+      );
+    }
+
+    const dustFs = await getDustFileSystemForAgentLoop(
+      auth,
+      runContext.conversation,
+      [path]
+    );
+    if (dustFs.isErr()) {
+      return dustFs;
+    }
+
+    const replied = await replyToAgentComment(auth, dustFs.value, {
+      agent: runContext.agentConfiguration,
+      scopedPath: path,
+      commentId: comment_id,
+      reply,
+    });
+    if (replied.isErr()) {
+      return new Err(
+        new MCPError(replied.error.message, {
+          tracked: replied.error.code === "storage_failed",
+        })
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text",
+        text: `Replied in comment \`${comment_id}\` in \`${path}\`.`,
       },
     ]);
   },

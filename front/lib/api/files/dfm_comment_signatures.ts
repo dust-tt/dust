@@ -52,7 +52,24 @@ export class DfmCommentSignatureError extends Error {
   }
 }
 
-type SignedMessageFields = Pick<DfmMessage, "author" | "createdAt" | "body">;
+export type SignedMessageFields = Pick<
+  DfmMessage,
+  "author" | "createdAt" | "body"
+>;
+
+const isValidThreadPlace = (
+  position: number,
+  previous: SignedMessageFields | null
+) =>
+  Number.isInteger(position) &&
+  position >= 0 &&
+  (position === 0) === (previous === null);
+
+const invalidPositionError = () =>
+  new DfmCommentSignatureError(
+    "invalid_position",
+    "This comment's place in its thread is not valid."
+  );
 
 let signingKey: { encoded: string; key: KeyObject } | null = null;
 
@@ -135,17 +152,8 @@ export async function signDfmCommentMessage(
     );
   }
 
-  if (
-    !Number.isInteger(position) ||
-    position < 0 ||
-    (position === 0) !== (previous === null)
-  ) {
-    return new Err(
-      new DfmCommentSignatureError(
-        "invalid_position",
-        "This comment's place in its thread is not valid."
-      )
-    );
+  if (!isValidThreadPlace(position, previous)) {
+    return new Err(invalidPositionError());
   }
 
   return signMessage(auth, {
@@ -164,12 +172,13 @@ export async function signDfmCommentMessage(
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-signing-by-agent
  * A message signed for an agent MUST be attributed to `agent:<sId>` of the given agent
- * configuration, named `@<agent name>`, at the current time, as the first message of a new
- * thread in the file at `filePath`. Callers MUST pass the agent running the tool, never one
- * named by the tool input, and MUST store the message only through a write to `filePath` that
- * passed its own write-access check, never return it otherwise. It MUST be refused outside a
- * workspace with `co_edition` or when the codec cannot write it. Without a signing key it MUST
- * be returned unsigned.
+ * configuration, named `@<agent name>`, at the current time, at `position` in its thread after
+ * `previous` (the first message of a new thread at position 0, with no previous), in the file at
+ * `filePath`. Callers MUST pass the agent running the tool, never one named by the tool input,
+ * and MUST store the message only through a write to `filePath` that passed its own
+ * write-access check, never return it otherwise. It MUST be refused outside a workspace with
+ * `co_edition`, at a place in the thread that is not valid, or when the codec cannot write it.
+ * Without a signing key it MUST be returned unsigned.
  */
 export async function signDfmAgentCommentMessage(
   auth: Authenticator,
@@ -177,11 +186,15 @@ export async function signDfmAgentCommentMessage(
     agent,
     filePath,
     commentId,
+    position,
+    previous,
     body,
   }: {
     agent: Pick<LightAgentConfigurationType, "sId" | "name">;
     filePath: string;
     commentId: string;
+    position: number;
+    previous: SignedMessageFields | null;
     body: string;
   }
 ): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
@@ -193,12 +206,15 @@ export async function signDfmAgentCommentMessage(
       )
     );
   }
+  if (!isValidThreadPlace(position, previous)) {
+    return new Err(invalidPositionError());
+  }
 
   return signMessage(auth, {
     filePath,
     commentId,
-    position: 0,
-    previous: null,
+    position,
+    previous,
     message: {
       author: { kind: "agent", id: agent.sId, name: `@${agent.name}` },
       createdAt: new Date().toISOString(),
@@ -493,8 +509,9 @@ export interface MarkdownCommentsCheck {
  * `unreadable_file`, never count as absent; one deleted before it could be read counts as absent.
  * Other writes, such as archive extraction and sandbox or plain agent file writes, are not
  * validated: what they bring can only read as unverified, since signatures bind the file and the
- * thread order. The one exception is `documents.add_comment`, which adds a message the server
- * itself signs for the running agent (`dfm-comment-signing-by-agent`).
+ * thread order. The exceptions are `documents.add_comment` and `documents.reply_to_comment`,
+ * which add a message the server itself signs for the running agent
+ * (`dfm-comment-signing-by-agent`).
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,

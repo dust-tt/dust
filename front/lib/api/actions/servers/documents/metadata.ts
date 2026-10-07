@@ -9,6 +9,14 @@ import { z } from "zod";
 
 export const DOCUMENTS_SERVER_NAME = "documents" as const;
 export const DOCUMENTS_ADD_COMMENT_ACTION_NAME = "add_comment" as const;
+export const DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME =
+  "reply_to_comment" as const;
+
+const COMMENT_BODY_DESCRIPTION =
+  "No line may start with `::`. To propose new wording for the commented passage, add a " +
+  "fenced code block whose language is `suggestion` holding the Markdown that replaces exactly " +
+  "the commented passage (not the sentence around it), empty to delete it. Mention a user with " +
+  "`:mention_user[Name]{sId=<user id>}`.";
 
 export const DOCUMENTS_TOOLS_METADATA = [
   {
@@ -46,7 +54,7 @@ export const DOCUMENTS_TOOLS_METADATA = [
         .string()
         .trim()
         .min(1)
-        .describe("The comment, in Markdown. No line may start with `::`."),
+        .describe(`The comment, in Markdown. ${COMMENT_BODY_DESCRIPTION}`),
     },
     stake: "never_ask",
     displayLabels: {
@@ -56,11 +64,47 @@ export const DOCUMENTS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
+  {
+    name: DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME,
+    description:
+      "Reply in an existing comment thread of a Markdown document, such as one that mentions " +
+      "you. The reply is attributed to you, signed by Dust so readers see it as verified, and " +
+      "shows under the thread's last message in the document editor. " +
+      "Never write comment directives by hand with a file edit: they would read as unverified.",
+    schema: {
+      path: z
+        .string()
+        .describe(
+          `Scoped path of the Markdown document as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`pod-<id>/spec.md\`).`
+        ),
+      comment_id: z
+        .string()
+        .min(1)
+        .describe(
+          "Id of the comment thread to reply in, as given where the comment was shared with you."
+        ),
+      reply: z
+        .string()
+        .trim()
+        .min(1)
+        .describe(`The reply, in Markdown. ${COMMENT_BODY_DESCRIPTION}`),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Replying to comment",
+      done: "Replied to comment",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
 ] as const;
 
 /** Whether the tool changes the file at its `path`, so a client showing it must refetch. */
 export function isDocumentsWritingTool(toolName: string): boolean {
-  return toolName === DOCUMENTS_ADD_COMMENT_ACTION_NAME;
+  return (
+    toolName === DOCUMENTS_ADD_COMMENT_ACTION_NAME ||
+    toolName === DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME
+  );
 }
 
 export const DOCUMENTS_SERVER = {
