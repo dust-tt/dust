@@ -6,6 +6,7 @@ import {
   createSelectSpacesSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { compareForAutocompleteSort } from "@app/lib/utils";
 import type {
   InputBarSlashCommand,
   InputBarSlashCommandId,
@@ -104,8 +105,13 @@ export function filterInputBarSlashCommandItems(
   query: string
 ): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.length === 0) {
+    return items;
+  }
 
-  return items.filter((item) =>
-    matchesInputBarSlashCommandItem(item, normalizedQuery)
-  );
+  return items
+    .filter((item) => matchesInputBarSlashCommandItem(item, normalizedQuery))
+    .toSorted((a, b) =>
+      compareForAutocompleteSort(normalizedQuery, a.label, b.label)
+    );
 }

@@ -215,6 +215,18 @@ describe("buildInputBarSlashCommandItems", () => {
       })
     ).toEqual([]);
   });
+
+  it("ranks label matches before description matches", () => {
+    const [first] = buildInputBarSlashCommandItems({
+      commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
+      includePickModel: true,
+      includeSelectSpaces: false,
+      query: "p",
+    });
+
+    expect(getInputBarSlashCommandItemId(first)).toBe("pick-model");
+  });
 });
 
 describe("resolveSlashSubMenuFromQuery", () => {

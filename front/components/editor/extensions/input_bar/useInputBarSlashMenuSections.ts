@@ -71,23 +71,19 @@ export function useInputBarSlashMenuSections({
     ]
   );
 
-  const { capabilityItems, isLoading, resolvedQuery } =
-    useInputBarSlashCommandCapabilities({
-      disabled: isAttachOnly,
-      owner,
-      query,
-    });
+  const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
+    disabled: isAttachOnly,
+    owner,
+    query,
+  });
 
   const sections = useMemo(
     () =>
       buildSlashCommandSections({
-        commandItems: filterInputBarSlashCommandItems(
-          allCommandItems,
-          resolvedQuery
-        ),
+        commandItems: filterInputBarSlashCommandItems(allCommandItems, query),
         capabilityItems,
       }),
-    [allCommandItems, capabilityItems, resolvedQuery]
+    [allCommandItems, capabilityItems, query]
   );
 
   // The browser is the whole menu, so the file upload command rides along at its root.
