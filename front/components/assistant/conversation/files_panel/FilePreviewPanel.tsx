@@ -30,6 +30,7 @@ import { contentTypeFromFileName } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Download01, Icon, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
@@ -40,6 +41,7 @@ export function FilePreviewPanel({
   conversation,
   owner,
 }: FilePreviewPanelProps) {
+  const { t } = useLingui();
   const { data, closePanel } = useConversationSidePanelContext();
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
@@ -217,7 +219,7 @@ export function FilePreviewPanel({
       >
         {recordCounts && (
           <div className="pb-2 text-xs text-muted-foreground">
-            {formatRecordCounts(recordCounts)}
+            {formatRecordCounts(recordCounts, t)}
           </div>
         )}
         <FilePreviewBody

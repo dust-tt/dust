@@ -18,6 +18,7 @@ import {
   Folder,
   Tree,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface FolderTreeNodeProps {
@@ -35,13 +36,15 @@ function FolderTreeNode({
   onSelect,
   selectedPath,
 }: FolderTreeNodeProps) {
+  const { t } = useLingui();
+  const nodeName = node.name;
   const hasChildren = node.children.length > 0;
   const isCurrentLocation = node.path === currentParentPath;
 
   return (
     <Tree.Item
       isNavigatable
-      label={isCurrentLocation ? `${node.name} (current location)` : node.name}
+      label={isCurrentLocation ? t`${nodeName} (current location)` : nodeName}
       visual={Folder}
       type={hasChildren ? "node" : "leaf"}
       isSelected={selectedPath === node.path}
@@ -81,6 +84,7 @@ export function MoveFileToFolderDialog({
   onClose,
   onMove,
 }: MoveFileToFolderDialogProps) {
+  const { t } = useLingui();
   const currentParentPath = useMemo(() => {
     if (!file) {
       return "";
@@ -96,8 +100,8 @@ export function MoveFileToFolderDialog({
   );
 
   const destinationLabel = useMemo(
-    () => formatFolderDestinationLabel(selectedPath, folderTree),
-    [folderTree, selectedPath]
+    () => formatFolderDestinationLabel(selectedPath, folderTree, t),
+    [folderTree, selectedPath, t]
   );
 
   useEffect(() => {
@@ -119,6 +123,8 @@ export function MoveFileToFolderDialog({
 
   const canMove = selectedPath !== currentParentPath;
   const hasFolders = folderTree.length > 0;
+  const fileName = file?.fileName;
+  const rootFolderLabel = t(ROOT_FOLDER_LABEL);
 
   return (
     <Dialog
@@ -132,11 +138,14 @@ export function MoveFileToFolderDialog({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            {file ? `Move "${file.fileName}"` : "Move file"}
+            {fileName !== undefined ? t`Move "${fileName}"` : t`Move file`}
           </DialogTitle>
           <DialogDescription>
-            Move to: {destinationLabel}
-            {selectedPath === currentParentPath ? " (current location)" : ""}
+            {selectedPath === currentParentPath ? (
+              <Trans>Move to: {destinationLabel} (current location)</Trans>
+            ) : (
+              <Trans>Move to: {destinationLabel}</Trans>
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -149,8 +158,8 @@ export function MoveFileToFolderDialog({
               isNavigatable
               label={
                 currentParentPath === ""
-                  ? `${ROOT_FOLDER_LABEL} (current location)`
-                  : ROOT_FOLDER_LABEL
+                  ? t`${rootFolderLabel} (current location)`
+                  : rootFolderLabel
               }
               visual={Folder}
               type={hasFolders ? "node" : "leaf"}
@@ -177,13 +186,13 @@ export function MoveFileToFolderDialog({
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{
-            label: "Move here",
+            label: t`Move here`,
             variant: "primary",
             onClick: handleMove,
             disabled: !canMove,
           }}
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
         />

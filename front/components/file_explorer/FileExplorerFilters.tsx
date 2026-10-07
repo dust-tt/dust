@@ -1,19 +1,22 @@
 import type { FileExplorerFilter } from "@app/components/file_explorer/types";
 import { Button } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 const FILTER_CHIPS: {
   value: FileExplorerFilter;
-  label: string;
+  label: MessageDescriptor;
 }[] = [
-  { value: "all", label: "All" },
-  { value: "nodes", label: "Knowledge" },
-  { value: "tables", label: "Tables" },
-  { value: "frames", label: "Frames" },
-  { value: "texts", label: "Texts" },
-  { value: "folders", label: "Folders" },
-  { value: "images", label: "Images" },
-  { value: "code", label: "Code" },
+  { value: "all", label: msg({ message: "All", context: "file filter" }) },
+  { value: "nodes", label: msg`Knowledge` },
+  { value: "tables", label: msg`Tables` },
+  { value: "frames", label: msg`Frames` },
+  { value: "texts", label: msg`Texts` },
+  { value: "folders", label: msg`Folders` },
+  { value: "images", label: msg`Images` },
+  { value: "code", label: msg({ message: "Code", context: "file filter" }) },
 ];
 
 interface FileExplorerFiltersProps {
@@ -27,6 +30,7 @@ export function FileExplorerFilters({
   onActiveChange,
   counts,
 }: FileExplorerFiltersProps) {
+  const { t } = useLingui();
   // "All" stays pinned first. Remaining chips are sorted by count desc, ties broken by the
   // canonical order defined in FILTER_CHIPS.
   const orderedChips = useMemo(() => {
@@ -51,7 +55,7 @@ export function FileExplorerFilters({
             key={value}
             size="xs"
             variant={active === value ? "primary" : "outline"}
-            label={label}
+            label={t(label)}
             isCounter={count !== undefined}
             counterValue={count !== undefined ? String(count) : undefined}
             onClick={() => onActiveChange(value)}

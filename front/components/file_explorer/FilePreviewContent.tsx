@@ -28,6 +28,9 @@ import {
   ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useContext } from "react";
 
@@ -36,9 +39,8 @@ const MAX_TEXT_CHARS = 100_000;
 export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 export const CUT_TEXT_SAVE_REFUSED = {
-  title: "File too long to save here",
-  description:
-    "It grew too long to edit here. Copy your changes, then reopen the file.",
+  title: msg`File too long to save here`,
+  description: msg`It grew too long to edit here. Copy your changes, then reopen the file.`,
 };
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
@@ -110,7 +112,7 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
   if (lines.length < 2) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No data to preview.
+        <Trans>No data to preview.</Trans>
       </p>
     );
   }
@@ -169,18 +171,18 @@ function AudioPreview({ fileUrl, fileId, owner }: AudioPreviewProps) {
   return (
     <div className="flex flex-col gap-4">
       <audio controls className="w-full" src={fileUrl}>
-        Your browser does not support the audio element.
+        <Trans>Your browser does not support the audio element.</Trans>
       </audio>
       {transcript ? (
         <div className="flex flex-col gap-2">
           <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Transcript
+            <Trans>Transcript</Trans>
           </h4>
           <Markdown content={transcript} isStreaming={false} />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          No transcript available.
+          <Trans>No transcript available.</Trans>
         </p>
       )}
     </div>
@@ -195,15 +197,29 @@ interface UseFilePreviewContentParams {
   enabled: boolean;
 }
 
-export function formatRecordCounts({
-  displayed,
-  total,
-}: {
-  displayed: number;
-  total: number;
-}): string {
-  const suffix = total > MAX_CSV_ROWS ? " (truncated)" : "";
-  return `Showing ${displayed} of ${total} records${suffix}`;
+export function formatRecordCounts(
+  {
+    displayed,
+    total,
+  }: {
+    displayed: number;
+    total: number;
+  },
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  return total > MAX_CSV_ROWS
+    ? t(
+        msg`Showing ${displayed} of ${plural(total, {
+          one: "# record",
+          other: "# records",
+        })} (truncated)`
+      )
+    : t(
+        msg`Showing ${displayed} of ${plural(total, {
+          one: "# record",
+          other: "# records",
+        })}`
+      );
 }
 
 export interface FilePreviewContentData {

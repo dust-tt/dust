@@ -7,6 +7,8 @@ import {
   isInteractiveContentType,
 } from "@app/types/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 import type {
   FileEntry,
@@ -23,26 +25,36 @@ import type {
 
 export const MIN_FILES_FOR_SEARCH = 10;
 
-export const ROOT_FOLDER_LABEL = "All files";
+export const ROOT_FOLDER_LABEL = msg`All files`;
 
 /**
  * Category display configuration, ordered by priority.
  */
 export const CATEGORY_CONFIG: {
   value: FilePanelCategory;
-  singular: string;
-  plural: string;
+  singular: MessageDescriptor;
+  plural: MessageDescriptor;
 }[] = [
-  { value: "frame", singular: "Frame", plural: "Frames" },
-  { value: "slideshow", singular: "Slideshow", plural: "Slideshows" },
-  { value: "image", singular: "Image", plural: "Images" },
-  { value: "document", singular: "Document", plural: "Documents" },
-  { value: "pdf", singular: "PDF", plural: "PDFs" },
-  { value: "table", singular: "Table", plural: "Tables" },
-  { value: "audio", singular: "Audio", plural: "Audio" },
-  { value: "knowledge", singular: "Knowledge", plural: "Knowledge" },
-  { value: "other", singular: "File", plural: "Other" },
+  { value: "frame", singular: msg`Frame`, plural: msg`Frames` },
+  { value: "slideshow", singular: msg`Slideshow`, plural: msg`Slideshows` },
+  { value: "image", singular: msg`Image`, plural: msg`Images` },
+  { value: "document", singular: msg`Document`, plural: msg`Documents` },
+  { value: "pdf", singular: msg`PDF`, plural: msg`PDFs` },
+  { value: "table", singular: msg`Table`, plural: msg`Tables` },
+  {
+    value: "audio",
+    singular: msg({ message: "Audio", context: "file category" }),
+    plural: msg({ message: "Audio", context: "file category, plural" }),
+  },
+  { value: "knowledge", singular: msg`Knowledge`, plural: msg`Knowledge` },
+  {
+    value: "other",
+    singular: msg`File`,
+    plural: msg({ message: "Other", context: "file category" }),
+  },
 ];
+
+const DEFAULT_FILE_CATEGORY_LABEL = msg`File`;
 
 /**
  * Maps a tree node (file or folder) to its explorer filter bucket. Audio files (and any other
@@ -178,7 +190,8 @@ export function compareTreeNodesForSort(
  * Aligns with {@link getCategoryFromContentType}.
  */
 export function getSingularFileCategoryLabelForContentType(
-  contentType: string
+  contentType: string,
+  t: (descriptor: MessageDescriptor) => string
 ): string {
   const category: FilePanelCategory = isInteractiveContentType(contentType)
     ? contentType === frameSlideshowContentType
@@ -186,7 +199,7 @@ export function getSingularFileCategoryLabelForContentType(
       : "frame"
     : getCategoryFromContentType(contentType);
   const config = CATEGORY_CONFIG.find((c) => c.value === category);
-  return config?.singular ?? "File";
+  return t(config?.singular ?? DEFAULT_FILE_CATEGORY_LABEL);
 }
 
 /**
@@ -485,13 +498,15 @@ export function countFoldersInTree(nodes: FileSystemTreeNode[]): number {
 /** Human-readable breadcrumb for a folder path in the move dialog. */
 export function formatFolderDestinationLabel(
   folderPath: string,
-  folderTree: FileSystemTreeNode[]
+  folderTree: FileSystemTreeNode[],
+  t: (descriptor: MessageDescriptor) => string
 ): string {
+  const rootLabel = t(ROOT_FOLDER_LABEL);
   if (!folderPath) {
-    return ROOT_FOLDER_LABEL;
+    return rootLabel;
   }
 
-  const labels = [ROOT_FOLDER_LABEL];
+  const labels = [rootLabel];
   let nodes = folderTree;
   let current = "";
   for (const part of folderPath.split("/")) {

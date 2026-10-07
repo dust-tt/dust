@@ -9,6 +9,7 @@ import logger from "@app/logger/logger";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 type FolderDownloadEntry = Exclude<FileExplorerDownloadEntry, FileEntry>;
@@ -25,6 +26,7 @@ export function useFileExplorerDownload({
   owner: LightWorkspaceType;
   getFileResponse: (path: string) => Promise<Response>;
 }): (entry: FileExplorerDownloadEntry) => Promise<void> {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const onFileDownload = useFileDownload({ getFileResponse });
 
@@ -63,12 +65,12 @@ export function useFileExplorerDownload({
         );
         sendNotification({
           type: "error",
-          title: "Failed to download the folder.",
-          description: "An error occurred while downloading. Please try again.",
+          title: t`Failed to download the folder.`,
+          description: t`An error occurred while downloading. Please try again.`,
         });
       }
     },
-    [owner, sendNotification]
+    [owner, sendNotification, t]
   );
 
   return useCallback(

@@ -8,6 +8,7 @@ import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdo
 import { formatFileSize } from "@app/lib/i18n/format";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 
 export function filePreviewLayoutClassName(
   category: FilePreviewCategory
@@ -43,6 +44,7 @@ export function FilePreviewBody({
   owner,
   preview,
 }: FilePreviewBodyProps) {
+  const { t } = useLingui();
   const {
     category,
     hasError,
@@ -54,10 +56,11 @@ export function FilePreviewBody({
   } = preview;
 
   if (isTooLarge) {
+    const fileSize = formatFileSize(sizeBytes, { decimals: 1 });
     return (
       <FilePreviewFallback
         download={download}
-        message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 })}).`}
+        message={t`This file is too large to preview (${fileSize}).`}
       />
     );
   }
@@ -67,7 +70,7 @@ export function FilePreviewBody({
     return (
       <FilePreviewFallback
         download={download}
-        message="Unable to preview this file."
+        message={t`Unable to preview this file.`}
       />
     );
   }

@@ -11,6 +11,7 @@ import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -72,6 +73,7 @@ export function useMarkdownFileEditor({
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   const initKeyRef = useRef<string | null>(null);
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
   const { hasFeature } = useFeatureFlags();
@@ -134,7 +136,7 @@ export function useMarkdownFileEditor({
 
   const writeFile = async (content: string): Promise<DocumentSaveResult> => {
     if (!owner || !editablePath) {
-      return new Err("This file cannot be edited.");
+      return new Err(t`This file cannot be edited.`);
     }
     const result = await writeFileContentByPath({
       owner,
@@ -166,7 +168,11 @@ export function useMarkdownFileEditor({
       return;
     }
     if (isTruncated) {
-      sendNotification({ type: "error", ...CUT_TEXT_SAVE_REFUSED });
+      sendNotification({
+        type: "error",
+        title: t(CUT_TEXT_SAVE_REFUSED.title),
+        description: t(CUT_TEXT_SAVE_REFUSED.description),
+      });
       return;
     }
     setIsSaving(true);
@@ -174,11 +180,11 @@ export function useMarkdownFileEditor({
       const result = await writeFile(draft);
       if (result.isOk()) {
         await adoptWritten(draft);
-        sendNotification({ type: "success", title: "File saved" });
+        sendNotification({ type: "success", title: t`File saved` });
       } else {
         sendNotification({
           type: "error",
-          title: "Failed to save file",
+          title: t`Failed to save file`,
           description: result.error,
         });
       }

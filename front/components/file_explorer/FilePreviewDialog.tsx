@@ -24,6 +24,7 @@ import {
   Download01,
   Icon,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface FilePreviewDialogProps {
@@ -47,6 +48,7 @@ export function FilePreviewDialog({
   onNext,
   owner,
 }: FilePreviewDialogProps) {
+  const { t } = useLingui();
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
@@ -133,7 +135,7 @@ export function FilePreviewDialog({
                 />
               )}
               <span className={cn("line-clamp-1 leading-5", "text-foreground")}>
-                {entry?.fileName ?? "Preview Data"}
+                {entry?.fileName ?? t`Preview data`}
               </span>
             </div>
           </DialogTitle>
@@ -145,7 +147,7 @@ export function FilePreviewDialog({
                   "text-muted-foreground"
                 )}
               >
-                {formatRecordCounts(recordCounts)}
+                {formatRecordCounts(recordCounts, t)}
               </span>
             )}
           </div>
@@ -189,7 +191,7 @@ export function FilePreviewDialog({
                 icon={ChevronLeft}
                 onClick={onPrev}
                 disabled={!onPrev || holdsNavigation}
-                tooltip="Previous"
+                tooltip={t`Previous`}
               />
               <Button
                 variant="outline"
@@ -197,13 +199,13 @@ export function FilePreviewDialog({
                 icon={ChevronRight}
                 onClick={onNext}
                 disabled={!onNext || holdsNavigation}
-                tooltip="Next"
+                tooltip={t`Next`}
               />
             </div>
             {markdown.canEdit && !markdown.richEditor ? (
               <div className="flex items-center gap-2">
                 <Button
-                  label="Save"
+                  label={t`Save`}
                   variant="highlight"
                   size="sm"
                   isLoading={markdown.isSaving}
@@ -211,7 +213,7 @@ export function FilePreviewDialog({
                   onClick={() => void markdown.save()}
                 />
                 <Button
-                  label="Revert"
+                  label={t`Revert`}
                   variant="outline"
                   size="sm"
                   disabled={!markdown.isDirty || markdown.isSaving}
@@ -221,7 +223,7 @@ export function FilePreviewDialog({
                   variant="outline"
                   size="sm"
                   icon={Download01}
-                  label={isDownloading ? "Downloading…" : "Download"}
+                  label={isDownloading ? t`Downloading…` : t`Download`}
                   onClick={handleDownload}
                   disabled={!entry || isDownloading || markdown.isDirty}
                 />
@@ -231,7 +233,7 @@ export function FilePreviewDialog({
                 variant="outline"
                 size="sm"
                 icon={Download01}
-                label={isDownloading ? "Downloading…" : "Download"}
+                label={isDownloading ? t`Downloading…` : t`Download`}
                 onClick={handleDownload}
                 disabled={!entry || isDownloading}
               />

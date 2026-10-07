@@ -9,13 +9,17 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const RENAME_DIALOG_TITLES: Record<RenameMountItem["kind"], string> = {
-  file: "Rename file",
-  folder: "Rename folder",
-  frame: "Rename Frame",
-};
+const RENAME_DIALOG_TITLES: Record<RenameMountItem["kind"], MessageDescriptor> =
+  {
+    file: msg`Rename file`,
+    folder: msg`Rename folder`,
+    frame: msg`Rename Frame`,
+  };
 
 function splitFileName(fileName: string): {
   baseName: string;
@@ -52,6 +56,7 @@ export function RenameFileDialog({
   owner,
   item,
 }: RenameFileDialogProps) {
+  const { t } = useLingui();
   const [name, setName] = useState<string>("");
   const [isRenaming, setIsRenaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -118,14 +123,14 @@ export function RenameFileDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {RENAME_DIALOG_TITLES[item?.kind ?? "file"]}
+            {t(RENAME_DIALOG_TITLES[item?.kind ?? "file"])}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {item?.kind !== "file" ? (
             <Input
               ref={inputRef}
-              placeholder="Enter new name..."
+              placeholder={t`Enter new name...`}
               value={name}
               disabled={isRenaming}
               onChange={(e) => setName(e.target.value)}
@@ -140,7 +145,7 @@ export function RenameFileDialog({
             <div className="flex items-center gap-1">
               <Input
                 ref={inputRef}
-                placeholder="Enter new file name..."
+                placeholder={t`Enter new file name...`}
                 value={name}
                 disabled={isRenaming}
                 onChange={(e) => setName(e.target.value)}
@@ -161,14 +166,14 @@ export function RenameFileDialog({
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{
-            label: "Rename",
+            label: t`Rename`,
             variant: "primary",
             onClick: handleRename,
             disabled: !displayName.trim() || isRenaming,
             isLoading: isRenaming,
           }}
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             disabled: isRenaming,
           }}

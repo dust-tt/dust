@@ -36,6 +36,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -95,6 +96,7 @@ export function FileExplorer({
   getExtraFileMenuItems,
   virtualScopeRoots,
 }: FileExplorerProps) {
+  const { t } = useLingui();
   const defaultPreferences = useMemo<FileExplorerScopedPreferences>(
     () => ({ viewMode: defaultViewMode, sortMode: "last-modified" }),
     [defaultViewMode]
@@ -167,7 +169,7 @@ export function FileExplorer({
         getExtraFileMenuItems?.(entry) ?? [];
       if (entry.kind === "frame_package") {
         items.push({
-          label: "View source",
+          label: t`View source`,
           icon: FolderOpen,
           onClick: (e) => {
             e.stopPropagation();
@@ -177,7 +179,7 @@ export function FileExplorer({
         });
         if (onRename) {
           items.push({
-            label: "Rename",
+            label: t`Rename`,
             icon: Edit04,
             onClick: (e) => {
               e.stopPropagation();
@@ -187,7 +189,7 @@ export function FileExplorer({
         }
         if (onDelete && (canDelete?.(entry) ?? true)) {
           items.push({
-            label: "Delete",
+            label: t`Delete`,
             icon: Trash01,
             variant: "warning",
             onClick: (e) => {
@@ -200,7 +202,7 @@ export function FileExplorer({
       }
       if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
-          label: "Rename",
+          label: t`Rename`,
           icon: Edit04,
           onClick: (e) => {
             e.stopPropagation();
@@ -215,7 +217,7 @@ export function FileExplorer({
         isFileExplorerMovableFile(entry)
       ) {
         items.push({
-          label: "Move to…",
+          label: t`Move to…`,
           icon: FolderOpen,
           onClick: (e) => {
             e.stopPropagation();
@@ -226,7 +228,7 @@ export function FileExplorer({
       }
       if (onDelete && (canDelete?.(entry) ?? true)) {
         items.push({
-          label: entry.kind === "node" ? "Remove" : "Delete",
+          label: entry.kind === "node" ? t`Remove` : t`Delete`,
           icon: Trash01,
           variant: "warning",
           onClick: (e) => {
@@ -244,6 +246,7 @@ export function FileExplorer({
       onDelete,
       onMoveFile,
       onRename,
+      t,
       totalFolderCount,
     ]
   );

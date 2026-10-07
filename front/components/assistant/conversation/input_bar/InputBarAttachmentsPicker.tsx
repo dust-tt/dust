@@ -59,6 +59,7 @@ import {
   UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
@@ -228,8 +229,12 @@ const ProjectFileItem = ({
   isDisabled,
   onCheckedChange,
 }: ProjectFileItemProps) => {
+  const { t } = useLingui();
   const FileIcon = getFileTypeIcon(item.contentType, item.title);
-  const fileKind = getSingularFileCategoryLabelForContentType(item.contentType);
+  const fileKind = getSingularFileCategoryLabelForContentType(
+    item.contentType,
+    t
+  );
   const description = projectName
     ? `${fileKind} in "${projectName}" knowledge`
     : `${fileKind} in Pod knowledge`;

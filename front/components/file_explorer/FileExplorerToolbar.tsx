@@ -14,15 +14,21 @@ import {
   List,
   SearchInput,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 const SORT_ITEMS: Record<
   FileExplorerSortMode,
-  { label: string; icon: React.ComponentType<{ className?: string }> }
+  {
+    label: MessageDescriptor;
+    icon: React.ComponentType<{ className?: string }>;
+  }
 > = {
-  "last-modified": { label: "Last modified", icon: Clock },
-  "name-asc": { label: "Name A → Z", icon: ArrowDown },
-  "name-desc": { label: "Name Z → A", icon: ArrowUp },
+  "last-modified": { label: msg`Last modified`, icon: Clock },
+  "name-asc": { label: msg`Name A → Z`, icon: ArrowDown },
+  "name-desc": { label: msg`Name Z → A`, icon: ArrowUp },
 };
 
 interface ViewToggleProps {
@@ -31,6 +37,7 @@ interface ViewToggleProps {
 }
 
 function ViewToggle({ value, onValueChange }: ViewToggleProps) {
+  const { t } = useLingui();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -38,13 +45,19 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
           variant="outline"
           size="sm"
           icon={value === "grid" ? List : CheckDone01}
-          tooltip="Layout"
+          tooltip={t`Layout`}
           isSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem label="Grid" onClick={() => onValueChange("grid")} />
-        <DropdownMenuItem label="List" onClick={() => onValueChange("list")} />
+        <DropdownMenuItem
+          label={t({ message: "Grid", context: "file explorer layout" })}
+          onClick={() => onValueChange("grid")}
+        />
+        <DropdownMenuItem
+          label={t({ message: "List", context: "file explorer layout" })}
+          onClick={() => onValueChange("list")}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -56,8 +69,10 @@ interface SortDropdownProps {
 }
 
 function SortDropdown({ value, onValueChange }: SortDropdownProps) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const current = SORT_ITEMS[value];
+  const currentLabel = t(current.label);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -65,8 +80,8 @@ function SortDropdown({ value, onValueChange }: SortDropdownProps) {
           variant="outline"
           size="sm"
           icon={current.icon}
-          label={isMobile ? undefined : current.label}
-          tooltip={isMobile ? current.label : undefined}
+          label={isMobile ? undefined : currentLabel}
+          tooltip={isMobile ? currentLabel : undefined}
           isSelect
         />
       </DropdownMenuTrigger>
@@ -77,7 +92,7 @@ function SortDropdown({ value, onValueChange }: SortDropdownProps) {
             <DropdownMenuItem
               key={mode}
               icon={item.icon}
-              label={item.label}
+              label={t(item.label)}
               onClick={() => onValueChange(mode)}
             />
           );
@@ -106,11 +121,12 @@ export function FileExplorerToolbar({
   onSortModeChange,
   toolbarExtraActions,
 }: FileExplorerToolbarProps) {
+  const { t } = useLingui();
   return (
     <div className="flex shrink-0 items-center gap-2">
       <SearchInput
         name="file-explorer-search"
-        placeholder="Search files"
+        placeholder={t`Search files`}
         value={searchQuery}
         onChange={onSearchQueryChange}
         className="flex-1"

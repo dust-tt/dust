@@ -19,6 +19,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface SandboxImageCardProps {
@@ -85,6 +86,7 @@ export function SandboxTab({
   owner,
   onFileClick,
 }: SandboxTabProps) {
+  const { t } = useLingui();
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId,
     owner,
@@ -165,7 +167,9 @@ export function SandboxTab({
             }
             return (
               <div key={value}>
-                <div className="heading-sm pb-2 text-foreground">{plural}</div>
+                <div className="heading-sm pb-2 text-foreground">
+                  {t(plural)}
+                </div>
                 <CardGrid>
                   {categoryFiles.map((entry) => {
                     if (value === "image") {

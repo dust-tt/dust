@@ -34,6 +34,8 @@ msgstr ""
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 #: front/components/data_source/TableUploadOrEditModal.tsx
 #: front/components/data_source/ZendeskTagFilters.tsx
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+#: front/components/file_explorer/RenameFileDialog.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/me/UserAutomationsTable.tsx
@@ -291,6 +293,7 @@ msgstr "Politique d’utilisation équitable de Dust"
 
 #: front/components/NodePathTooltip.tsx
 #: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/file_explorer/FileExplorerFilters.tsx
 #: front/components/spaces/spaceCategoryLabels.ts
 msgid "Folders"
 msgstr "Dossiers"
@@ -496,6 +499,7 @@ msgstr "Comment les autres membres du workspace vous voient"
 #: front/components/data_source/ZendeskConfigView.tsx
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 #: front/components/data_source/gong/GongOptionComponent.tsx
+#: front/components/file_explorer/FilePreviewDialog.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
@@ -2414,6 +2418,7 @@ msgstr "Vous ne pourrez pas rajouter cette compétence, car elle n’est accessi
 
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/file_explorer/FileExplorer.tsx
 #: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/settings/BrandingSection.tsx
 msgid "Remove"
@@ -3397,6 +3402,7 @@ msgstr "Les modifications que vous allez effectuer casseront les agents existant
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 #: front/components/data_source/DeleteStaticDataSourceDialog.tsx
 #: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+#: front/components/file_explorer/FileExplorer.tsx
 #: front/components/groups/WorkspaceGroupsList.tsx
 #: front/components/me/UserAutomationsTable.tsx
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
@@ -4738,6 +4744,341 @@ msgstr "Toutes les connaissances"
 msgid "In \"{scopeLabel}\""
 msgstr "Dans « {scopeLabel} »"
 
+#: front/components/file_explorer/CoEditionBadge.tsx
+msgid "This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+msgstr "Cet éditeur de fichiers Markdown est en cours de développement dans le cadre de l’initiative Co-edition. Il n’est activé que sur le workspace Dust pendant sa conception."
+
+#: front/components/file_explorer/CoEditionBadge.tsx
+msgid "Co-edition · WIP · Dust only"
+msgstr "Co-edition · En cours · Dust uniquement"
+
+#: front/components/file_explorer/FileExplorer.tsx
+msgid "View source"
+msgstr "Voir la source"
+
+#: front/components/file_explorer/FileExplorer.tsx
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename"
+msgstr "Renommer"
+
+#: front/components/file_explorer/FileExplorer.tsx
+#: front/components/file_explorer/FileExplorerBreadcrumb.tsx
+msgid "Move to…"
+msgstr "Déplacer vers…"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgctxt "file filter"
+msgid "All"
+msgstr "Tous"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/utils.ts
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Knowledge"
+msgstr "Connaissances"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/utils.ts
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Tables"
+msgstr "Tables"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/utils.ts
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Frames"
+msgstr "Frames"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgid "Texts"
+msgstr "Textes"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Images"
+msgstr "Images"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgctxt "file filter"
+msgid "Code"
+msgstr "Code"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Downloading…"
+msgstr "Téléchargement…"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/FilePreviewDialog.tsx
+#: front/components/file_explorer/FilePreviewFallback.tsx
+msgid "Download"
+msgstr "Télécharger"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgctxt "folder with no items"
+msgid "Empty"
+msgstr "Vide"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgid "{childCount, plural, one {# item} other {# items}}"
+msgstr "{childCount, plural, one {# élément} other {# éléments}}"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgid "Nothing to see here"
+msgstr "Rien à afficher ici"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Last modified"
+msgstr "Dernière modification"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Name A → Z"
+msgstr "Nom A → Z"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Name Z → A"
+msgstr "Nom Z → A"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Layout"
+msgstr "Disposition"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgctxt "file explorer layout"
+msgid "Grid"
+msgstr "Grille"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgctxt "file explorer layout"
+msgid "List"
+msgstr "Liste"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Search files"
+msgstr "Rechercher des fichiers"
+
+#: front/components/file_explorer/FilePreviewBody.tsx
+msgid "This file is too large to preview ({fileSize})."
+msgstr "Ce fichier est trop volumineux pour être prévisualisé ({fileSize})."
+
+#: front/components/file_explorer/FilePreviewBody.tsx
+msgid "Unable to preview this file."
+msgstr "Impossible de prévisualiser ce fichier."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "File too long to save here"
+msgstr "Fichier trop long pour être enregistré ici"
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "It grew too long to edit here. Copy your changes, then reopen the file."
+msgstr "Il est devenu trop long pour être modifié ici. Copiez vos modifications, puis rouvrez le fichier."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "No data to preview."
+msgstr "Aucune donnée à prévisualiser."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Your browser does not support the audio element."
+msgstr "Votre navigateur ne prend pas en charge l’élément audio."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Transcript"
+msgstr "Transcription"
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "No transcript available."
+msgstr "Aucune transcription disponible."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Showing {displayed} of {total, plural, one {# record} other {# records}} (truncated)"
+msgstr "{total, plural, one {Affichage de {displayed} sur # enregistrement (tronqué)} other {Affichage de {displayed} sur # enregistrements (tronqué)}}"
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Showing {displayed} of {total, plural, one {# record} other {# records}}"
+msgstr "{total, plural, one {Affichage de {displayed} sur # enregistrement} other {Affichage de {displayed} sur # enregistrements}}"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Preview data"
+msgstr "Aperçu des données"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Previous"
+msgstr "Précédent"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "Next"
+msgstr "Prochain"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Revert"
+msgstr "Annuler les modifications"
+
+#: front/components/file_explorer/MarkdownFilePreview.tsx
+msgctxt "markdown file view mode"
+msgid "Preview"
+msgstr "Aperçu"
+
+#: front/components/file_explorer/MarkdownFilePreview.tsx
+msgctxt "markdown file view mode"
+msgid "Edit"
+msgstr "Modifier"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "{nodeName} (current location)"
+msgstr "{nodeName} (emplacement actuel)"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move \"{fileName}\""
+msgstr "Déplacer « {fileName} »"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move file"
+msgstr "Déplacer le fichier"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move to: {destinationLabel} (current location)"
+msgstr "Déplacer vers : {destinationLabel} (emplacement actuel)"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move to: {destinationLabel}"
+msgstr "Déplacer vers : {destinationLabel}"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "{rootFolderLabel} (current location)"
+msgstr "{rootFolderLabel} (emplacement actuel)"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move here"
+msgstr "Déplacer ici"
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Unable to load file. You can download it instead."
+msgstr "Impossible de charger le fichier. Vous pouvez le télécharger à la place."
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Page {currentPage} of {numPages}"
+msgstr "Page {currentPage} sur {numPages}"
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Zoom out"
+msgstr "Zoom arrière"
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Zoom in"
+msgstr "Zoom avant"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename file"
+msgstr "Renommer le fichier"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename folder"
+msgstr "Renommer le dossier"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename Frame"
+msgstr "Renommer la Frame"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Enter new name..."
+msgstr "Saisissez le nouveau nom..."
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Enter new file name..."
+msgstr "Saisissez le nouveau nom du fichier..."
+
+#: front/components/file_explorer/useFileDownload.ts
+msgid "Failed to download the file."
+msgstr "Impossible de télécharger le fichier."
+
+#: front/components/file_explorer/useFileDownload.ts
+#: front/components/file_explorer/useFileExplorerDownload.ts
+msgid "An error occurred while downloading. Please try again."
+msgstr "Une erreur s’est produite lors du téléchargement. Réessayez."
+
+#: front/components/file_explorer/useFileExplorerDownload.ts
+msgid "Failed to download the folder."
+msgstr "Impossible de télécharger le dossier."
+
+#: front/components/file_explorer/useMarkdownFileEditor.ts
+msgid "This file cannot be edited."
+msgstr "Ce fichier ne peut pas être modifié."
+
+#: front/components/file_explorer/useMarkdownFileEditor.ts
+msgid "File saved"
+msgstr "Fichier enregistré"
+
+#: front/components/file_explorer/useMarkdownFileEditor.ts
+msgid "Failed to save file"
+msgstr "Impossible d’enregistrer le fichier"
+
+#: front/components/file_explorer/useRichMarkdownEditor.ts
+msgid "This file changed while you were editing. Copy your changes, then reopen the file."
+msgstr "Ce fichier a changé pendant que vous le modifiiez. Copiez vos modifications, puis rouvrez le fichier."
+
+#: front/components/file_explorer/utils.ts
+msgid "All files"
+msgstr "Tous les fichiers"
+
+#: front/components/file_explorer/utils.ts
+msgid "Slideshow"
+msgstr "Diaporama"
+
+#: front/components/file_explorer/utils.ts
+msgid "Slideshows"
+msgstr "Diaporamas"
+
+#: front/components/file_explorer/utils.ts
+msgid "Image"
+msgstr "Image"
+
+#: front/components/file_explorer/utils.ts
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Documents"
+msgstr "Documents"
+
+#: front/components/file_explorer/utils.ts
+msgid "Document"
+msgstr "Document"
+
+#: front/components/file_explorer/utils.ts
+msgid "PDF"
+msgstr "PDF"
+
+#: front/components/file_explorer/utils.ts
+msgid "PDFs"
+msgstr "PDF"
+
+#: front/components/file_explorer/utils.ts
+msgid "Table"
+msgstr "Table"
+
+#: front/components/file_explorer/utils.ts
+msgctxt "file category"
+msgid "Audio"
+msgstr "Audio"
+
+#: front/components/file_explorer/utils.ts
+msgctxt "file category, plural"
+msgid "Audio"
+msgstr "Audio"
+
+#: front/components/file_explorer/utils.ts
+msgid "File"
+msgstr "Fichier"
+
+#: front/components/file_explorer/utils.ts
+msgctxt "file category"
+msgid "Other"
+msgstr "Autre"
+
 #: front/components/groups/GroupDialog.tsx
 msgid "Edit group"
 msgstr "Modifier le groupe"
@@ -5162,10 +5503,6 @@ msgstr "Type de planification"
 #: front/components/me/UserWakeUpsTable.tsx
 msgid "once"
 msgstr "une fois"
-
-#: front/components/me/UserWakeUpsTable.tsx
-msgid "Next"
-msgstr "Prochain"
 
 #: front/components/me/UserWakeUpsTable.tsx
 msgid "Failed to load your wake-ups."
@@ -6505,10 +6842,6 @@ msgstr "Les groupes attribués ici se gèrent dans <0>Membres → Groupes</0>"
 msgid "Features"
 msgstr "Fonctionnalités"
 
-#: front/components/pages/workspace/governance/GovernancePage.tsx
-msgid "Frames"
-msgstr "Frames"
-
 #: front/components/pages/workspace/governance/GovernancePageLayout.tsx
 msgid "Manage what members can do in your workspace"
 msgstr "Gérez ce que les membres peuvent faire dans votre workspace"
@@ -7637,10 +7970,6 @@ msgstr "Affiche les compétences auxquelles vous avez accès en tant qu’admini
 msgid "Guidelines"
 msgstr "Consignes"
 
-#: front/components/skills/SkillInfoTab.tsx
-msgid "Knowledge"
-msgstr "Connaissances"
-
 #: front/components/skills/SkillSearchActionsMenu.tsx
 msgid "Could not load actions. Retry"
 msgstr "Impossible de charger les actions. Réessayer"
@@ -8437,14 +8766,6 @@ msgstr "Document"
 msgctxt "content type filter"
 msgid "Table"
 msgstr "Table"
-
-#: front/components/spaces/SpaceDataSourceViewContentList.tsx
-msgid "Documents"
-msgstr "Documents"
-
-#: front/components/spaces/SpaceDataSourceViewContentList.tsx
-msgid "Tables"
-msgstr "Tables"
 
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 msgctxt "all content types"
