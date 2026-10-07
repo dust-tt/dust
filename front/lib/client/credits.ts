@@ -56,6 +56,17 @@ export function formatCreditValue(credits: number, t: Translate): string {
   );
 }
 
+export function formatAvgCreditValue(credits: number, t: Translate): string {
+  const displayedCredits = roundCredits(credits);
+  const formattedCredits = formatAvgCredits(credits);
+  return t(
+    msg`${plural(displayedCredits, {
+      one: `${formattedCredits} credit`,
+      other: `${formattedCredits} credits`,
+    })}`
+  );
+}
+
 export function toolUsageLabel(callCount: number, t: Translate): string {
   return t(msg`${plural(callCount, { one: "# use", other: "# uses" })}`);
 }

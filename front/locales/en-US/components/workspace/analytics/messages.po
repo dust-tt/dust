@@ -225,12 +225,8 @@ msgid "Pool"
 msgstr "Pool"
 
 #: front/components/workspace/analytics/creditsTableCells.tsx
-msgid "{formattedCredits} credits"
-msgstr "{formattedCredits} credits"
-
-#: front/components/workspace/analytics/creditsTableCells.tsx
-msgid "{averageCredits} credits / message"
-msgstr "{averageCredits} credits / message"
+msgid "{averageCredits} / message"
+msgstr "{averageCredits} / message"
 
 #: front/components/workspace/analytics/sourceOriginLabels.ts
 msgid "Conversation"

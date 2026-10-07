@@ -170,16 +170,22 @@ describe("UI locale", () => {
   it.each([
     [
       "en-GB",
-      ["Today", "Yesterday", "Last Sunday", "02/09/2026"],
-      ["Today at 09:30:00", "Last Sunday at 09:30:00", "Tomorrow at 00:00"],
+      ["Today", "Yesterday", "Last Sunday", "Saturday", "02/09/2026"],
+      [
+        "Today at 09:30:00",
+        "Last Sunday at 09:30:00",
+        "Tomorrow at 00:00",
+        "Saturday at 15:00",
+      ],
     ],
     [
       "fr-FR",
-      ["Aujourd’hui", "Hier", "dimanche dernier", "02/09/2026"],
+      ["Aujourd’hui", "Hier", "Dimanche dernier", "Samedi", "02/09/2026"],
       [
         "Aujourd’hui à 09:30:00",
-        "dimanche dernier à 09:30:00",
+        "Dimanche dernier à 09:30:00",
         "Demain à 00:00",
+        "Samedi à 15:00",
       ],
     ],
   ] as const)("formats in %s once active", async (locale, dates, dateTimes) => {
@@ -188,12 +194,14 @@ describe("UI locale", () => {
       formatCalendarDate(new Date(2026, 8, 10, 9, 30, 0), translate),
       formatCalendarDate(new Date(2026, 8, 9, 9, 30, 0), translate),
       formatCalendarDate(new Date(2026, 8, 6, 15, 0, 0), translate),
+      formatCalendarDate(new Date(2026, 8, 12, 15, 0, 0), translate),
       formatCalendarDate(new Date(2026, 8, 2, 15, 0, 0), translate),
     ]).toEqual(dates);
     expect([
       formatCalendarDateTime(new Date(2026, 8, 10, 9, 30, 0), translate),
       formatCalendarDateTime(new Date(2026, 8, 6, 9, 30, 0), translate),
       formatCalendarDateTime(new Date(2026, 8, 11, 0, 0, 30), translate),
+      formatCalendarDateTime(new Date(2026, 8, 12, 15, 0, 0), translate),
     ]).toEqual(dateTimes);
   });
 

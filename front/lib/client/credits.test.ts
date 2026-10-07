@@ -1,7 +1,14 @@
 import { setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
+import type { MessageDescriptor } from "@lingui/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatAvgCredits, formatRelativeResetDay } from "./credits";
+import {
+  formatAvgCredits,
+  formatAvgCreditValue,
+  formatRelativeResetDay,
+} from "./credits";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 describe("formatAvgCredits", () => {
   beforeEach(() => {
@@ -20,6 +27,26 @@ describe("formatAvgCredits", () => {
   ])("formats %s with exactly one decimal", (credits, expected) => {
     expect(formatAvgCredits(credits)).toBe(expected);
   });
+});
+
+describe("formatAvgCreditValue", () => {
+  afterEach(() => {
+    setFormatLocale(undefined);
+  });
+
+  it.each([
+    ["en-US", [0.2, 1.46, 2], ["0.2 credits", "1.5 credits", "2.0 credits"]],
+    ["fr-FR", [0.2, 1.46, 2], ["0,2 crédit", "1,5 crédit", "2,0 crédits"]],
+  ] as const)(
+    "formats with one decimal and pluralizes on the displayed value in %s",
+    async (locale, credits, expected) => {
+      setFormatLocale(locale);
+      i18n.loadAndActivate({ locale, messages: await loadCatalog(locale) });
+      expect(credits.map((c) => formatAvgCreditValue(c, translate))).toEqual(
+        expected
+      );
+    }
+  );
 });
 
 describe("formatRelativeResetDay", () => {

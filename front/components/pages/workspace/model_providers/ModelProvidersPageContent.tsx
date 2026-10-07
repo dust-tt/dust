@@ -7,6 +7,8 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import {
@@ -63,7 +65,11 @@ export function ModelProvidersPageContent({
   );
 
   const describeModels = (modelConfigurations: ModelConfigurationType[]) =>
-    modelConfigurations.map(({ displayName }) => displayName).join(", ");
+    formatList(
+      modelConfigurations.map(({ displayName }) => displayName),
+      { type: "conjunction" },
+      getActiveLocale()
+    );
 
   // BYOK keys belong to the serving provider.
   const modelsDescriptionByProvider: Partial<

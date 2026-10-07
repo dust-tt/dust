@@ -1,6 +1,10 @@
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import {
+  formatCreditsCompact,
+  formatCreditValue,
+} from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   Avatar,
   DustLogoSquare,
@@ -8,7 +12,7 @@ import {
   ProgressBar,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps, ReactNode } from "react";
 
 interface AvatarNameCellProps {
@@ -91,7 +95,7 @@ export function CostShareCell({ share }: { share: number }) {
     <div className="flex items-center gap-2">
       <ProgressBar className="w-24" percentage={percentage} />
       <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
-        {percentage}%
+        {formatNumber(percentage / 100, { style: "percent" })}
       </span>
     </div>
   );
@@ -106,21 +110,17 @@ export function CreditsCell({
   // message (credits / messageCount).
   messageCount?: number;
 }) {
+  const { t } = useLingui();
   const showAvg = messageCount !== undefined && messageCount > 0;
-  const formattedCredits = formatCredits(credits);
-  const averageCredits = showAvg ? formatCredits(credits / messageCount) : null;
+  const averageCredits = showAvg
+    ? formatCreditValue(credits / messageCount, t)
+    : null;
   return (
     <Tooltip
       label={
         <div className="flex flex-col">
-          <span>
-            <Trans>{formattedCredits} credits</Trans>
-          </span>
-          {showAvg && (
-            <span>
-              <Trans>{averageCredits} credits / message</Trans>
-            </span>
-          )}
+          <span>{formatCreditValue(credits, t)}</span>
+          {showAvg && <span>{t`${averageCredits} / message`}</span>}
         </div>
       }
       tooltipTriggerAsChild

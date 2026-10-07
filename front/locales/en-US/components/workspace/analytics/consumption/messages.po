@@ -299,16 +299,12 @@ msgid "Used this period"
 msgstr "Used this period"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{formattedTotalCredits} credits"
-msgstr "{formattedTotalCredits} credits"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "{usedPercentage}% of {capCredits} cap"
 msgstr "{usedPercentage}% of {capCredits} cap"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{formattedAverageCost} credits / message"
-msgstr "{formattedAverageCost} credits / message"
+msgid "{averageCost} / message"
+msgstr "{averageCost} / message"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Top agent"
@@ -331,16 +327,8 @@ msgid "Total cost"
 msgstr "Total cost"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{totalCost} credits"
-msgstr "{totalCost} credits"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Avg. cost/msg"
 msgstr "Avg. cost/msg"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{formattedAverageCost} credits"
-msgstr "{formattedAverageCost} credits"
 
 #: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Messages"

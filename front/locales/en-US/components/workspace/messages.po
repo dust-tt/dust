@@ -244,8 +244,8 @@ msgid "Coupon applied!"
 msgstr "Coupon applied!"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "<0>{bonusCreditsFormatted} credits</0> have been added to your pool."
-msgstr "<0>{bonusCreditsFormatted} credits</0> have been added to your pool."
+msgid "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has been added to your pool.} other {<1>{bonusCreditsFormatted} credits</1> have been added to your pool.}}"
+msgstr "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has been added to your pool.} other {<1>{bonusCreditsFormatted} credits</1> have been added to your pool.}}"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -339,10 +339,6 @@ msgid "Amount"
 msgstr "Amount"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "{addedCreditsFormatted} credits"
-msgstr "{addedCreditsFormatted} credits"
-
-#: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
 msgstr "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
 
@@ -387,8 +383,8 @@ msgid "Manage invoices"
 msgstr "Manage invoices"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Add {addedCreditsFormatted} credits"
-msgstr "Add {addedCreditsFormatted} credits"
+msgid "Add {addedCredits, plural, one {{addedCreditsFormatted} credit} other {{addedCreditsFormatted} credits}}"
+msgstr "Add {addedCredits, plural, one {{addedCreditsFormatted} credit} other {{addedCreditsFormatted} credits}}"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/TopUpsHistoryTable.tsx

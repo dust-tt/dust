@@ -25,6 +25,7 @@ import {
   formatCurrencyAmount,
   formatCurrencyAmountCents,
 } from "@app/lib/metronome/amounts";
+import { getPriceAsString } from "@app/lib/plans/pricing";
 import {
   formatDate as formatDatePattern,
   formatDurationString,
@@ -201,6 +202,22 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       expect(formatAmount(123457, "USD")).toBe(EXPECTED[locale].usd);
       expect(formatAmount(123450, "eur")).toBe(EXPECTED[locale].eur);
       expect(formatAmount(5, "gbp")).toBe(EXPECTED[locale].seatGbp);
+    });
+
+    it("getPriceAsString", () => {
+      setFormatLocale(locale);
+      expect(getPriceAsString({ currency: "usd", priceInCents: 123457 })).toBe(
+        EXPECTED[locale].usd
+      );
+      expect(getPriceAsString({ currency: "eur", priceInCents: 123450 })).toBe(
+        EXPECTED[locale].eur
+      );
+      expect(getPriceAsString({ currency: "gbp", priceInCents: 5 })).toBe(
+        EXPECTED[locale].seatGbp
+      );
+      expect(
+        getPriceAsString({ currency: "usd", priceInMicroUsd: 1_234_570_000 })
+      ).toBe(EXPECTED[locale].usd);
     });
   });
 
@@ -464,7 +481,7 @@ describe("format locale resolution", () => {
 
   it.each([
     ["en-US", "€1,234.50", "1.5 KB", false],
-    ["fr-FR", "1\u202f234,50\u00a0€", "1,5 KB", true],
+    ["fr-FR", "1\u202f234,50\u00a0€", "1,5 Ko", true],
   ] as const)(
     "formats money, sizes and hour cycle in %s once set",
     (locale, currency, fileSize, twentyFourHour) => {
@@ -474,6 +491,17 @@ describe("format locale resolution", () => {
       expect(prefersTwentyFourHourTime()).toBe(twentyFourHour);
     }
   );
+
+  it.each([
+    ["en-US", ["0 B", "1.5 KB", "5.00 MB", "3.00 GB"]],
+    ["en-GB", ["0 B", "1.5 KB", "5.00 MB", "3.00 GB"]],
+    ["fr-FR", ["0 o", "1,5 Ko", "5,00 Mo", "3,00 Go"]],
+  ] as const)("formats file size units in %s once set", (locale, expected) => {
+    setFormatLocale(locale);
+    expect(
+      [0, 1536, 5244114, 3221225472].map((bytes) => formatFileSize(bytes))
+    ).toEqual(expected);
+  });
 
   it.each([
     ["en-US", "09/23/2025, 3:37 PM", "yesterday"],

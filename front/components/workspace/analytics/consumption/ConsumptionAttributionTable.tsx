@@ -165,7 +165,11 @@ function PercentageChangeCell({ percentage }: { percentage: number | null }) {
         visual={percentage >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
         size="xs"
       />
-      <span>{Math.round(Math.abs(percentage))}%</span>
+      <span>
+        {formatNumber(Math.round(Math.abs(percentage)) / 100, {
+          style: "percent",
+        })}
+      </span>
     </div>
   );
 }
@@ -199,7 +203,6 @@ function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
   }
 
   const roundedPercentage = Math.round(percentage);
-  const sign = roundedPercentage > 0 ? "+" : "";
 
   return (
     <div
@@ -209,8 +212,10 @@ function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
       )}
     >
       <span>
-        {sign}
-        {roundedPercentage}%
+        {formatNumber(roundedPercentage / 100, {
+          style: "percent",
+          signDisplay: "exceptZero",
+        })}
       </span>
     </div>
   );

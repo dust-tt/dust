@@ -25,6 +25,8 @@ import type {
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import {
   mutateWorkspaceInvitations,
   sendInvitations,
@@ -74,7 +76,11 @@ const useGetEmailsListAndError = (
 
     const invalidEmails = inviteEmailsList.filter((e) => !isEmailValid(e));
     if (invalidEmails.length > 0) {
-      const invalidEmailsList = invalidEmails.join(", ");
+      const invalidEmailsList = formatList(
+        invalidEmails,
+        { type: "conjunction" },
+        getActiveLocale()
+      );
       return {
         inviteEmailsList: null,
         emailError: t`Invalid email addresses: ${invalidEmailsList}`,
