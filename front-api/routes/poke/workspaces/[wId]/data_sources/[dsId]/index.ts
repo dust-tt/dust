@@ -1,4 +1,9 @@
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -96,6 +101,21 @@ app.delete(
           assertNever(delRes.error.code);
       }
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "datasource.deleted_admin",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("data_source", dataSource),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        data_source_name: dataSource.name,
+        provider: dataSource.connectorProvider ?? "folder",
+        deleted_by: auth.getPokePrincipal().email,
+      },
+    });
 
     return ctx.json(delRes.value);
   }
