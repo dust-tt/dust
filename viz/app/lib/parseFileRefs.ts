@@ -14,37 +14,16 @@ const SCOPED_PREFIX_CONVERSATION = "conversation";
 const SCOPED_PREFIX_POD = "pod";
 const SCOPED_PREFIX_PROJECT = "project";
 
-// Source of truth for supported file extensions is `FILE_FORMATS` /
-// `contentTypeFromFileName` in `front/types/files.ts`. Viz cannot import that
-// module, so this list is a hand-maintained subset of non-`code` asset
-// extensions used to classify package-relative useFile paths. Keep it aligned
-// when adding formats there; exclude `cat: "code"` (e.g. .ts/.tsx/.js).
-const FRAME_PACKAGE_ASSET_EXTENSIONS = new Set([
-  ".csv",
-  ".tsv",
-  ".json",
-  ".txt",
-  ".md",
-  ".markdown",
-  ".pdf",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".svg",
-  ".bmp",
-  ".ico",
-  ".xml",
-  ".yaml",
-  ".yml",
-  ".html",
-  ".htm",
-  ".css",
-  ".mp3",
-  ".mp4",
-  ".wav",
-  ".webm",
+// Mirrors front `package_file_ref_paths`: deny source/module extensions only;
+// any other real extension is extractable. FS verification under packageRoot
+// is the real allowlist gate.
+const FRAME_PACKAGE_SOURCE_MODULE_EXTENSIONS = new Set([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
 ]);
 
 function isScopedPath(value: string): boolean {
@@ -100,7 +79,11 @@ function parseFramePackageRelativePath(value: string): string | null {
   return withoutDot;
 }
 
-function hasFramePackageAssetExtension(relativePath: string): boolean {
+/**
+ * Mirrors front `hasExtractableFramePackageExtension`: real extension that is
+ * not a source/module extension.
+ */
+function hasExtractableFramePackageExtension(relativePath: string): boolean {
   const extIdx = relativePath.lastIndexOf(".");
   if (extIdx <= 0 || relativePath.includes("/", extIdx)) {
     return false;
@@ -109,10 +92,10 @@ function hasFramePackageAssetExtension(relativePath: string): boolean {
   if (!ext || ext === "." || ext.includes(":") || ext.includes(" ")) {
     return false;
   }
-  return FRAME_PACKAGE_ASSET_EXTENSIONS.has(ext);
+  return !FRAME_PACKAGE_SOURCE_MODULE_EXTENSIONS.has(ext);
 }
 
-/** Mirrors front `parseExtractableFramePackageRelativePath` — requires `./` + asset ext. */
+/** Mirrors front `parseExtractableFramePackageRelativePath` — requires `./` + extractable ext. */
 function parseExtractableFramePackageRelativePath(
   value: string
 ): string | null {
@@ -121,7 +104,7 @@ function parseExtractableFramePackageRelativePath(
     return null;
   }
   const relativePath = parseFramePackageRelativePath(trimmed);
-  if (!relativePath || !hasFramePackageAssetExtension(relativePath)) {
+  if (!relativePath || !hasExtractableFramePackageExtension(relativePath)) {
     return null;
   }
   return relativePath;
@@ -202,7 +185,8 @@ export function extractFileRefs(code: string): FileRef[] {
       ) {
         addScopedOrFileId(node.text);
 
-        // Only `./asset.ext` (publish rewrite form). Bare paths and UI copy are ignored.
+        // Only `./path.ext` (publish rewrite form). Bare paths, UI copy, and
+        // source/module extensions are ignored.
         if (!isModuleSpecifierLiteral(node)) {
           const relativePath = parseExtractableFramePackageRelativePath(
             node.text
