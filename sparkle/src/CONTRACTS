@@ -1,0 +1,8 @@
+@cc [owner:ykmsd,label:product;react] sparkle-owned-text-translated
+Every user-visible string that sparkle supplies itself (JSX text, default labels, placeholders,
+tooltips, `aria-label`, `alt`) in a non-story file MUST go through a Lingui macro with the English
+text as the message, and a sentence MUST be a single message. A prop default MUST be resolved in the
+component body (`label ?? t\`Next\``), and the prop documented with `@default`. Text passed in
+by the consumer through props is the consumer's to translate. Brand names, keyboard symbols and
+user content MUST NOT be wrapped. Catalog freshness and completeness are enforced by
+`npm run i18n:check`.

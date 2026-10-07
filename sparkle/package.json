@@ -5,14 +5,25 @@
     "node": ">=24.16.0"
   },
   "scripts": {
-    "build": "npm run clean:dist && npm run tailwind && npm run build:esm",
+    "prebuild": "npm run i18n:compile",
+    "build": "npm run clean:dist && npm run build:assets && npm run build:esm",
     "build:watch": "npm run build && touch dist/.build-complete",
     "clean:dist": "mkdir -p dist && find dist -mindepth 1 -delete",
+    "build:assets": "npm run tailwind && npm run copy:esm",
     "tailwind": "npx @tailwindcss/cli -i ./src/styles/tailwind.css -o dist/sparkle.css",
-    "build:esm": "npm run copy:esm && tsgo && tsc-alias",
     "copy:esm": "copyfiles -u 1 src/**/*.css src/**/*.svg src/**/*.png src/**/*.json dist/esm",
+    "build:esm": "npm run build:types && npm run build:js && npm run build:aliases",
+    "build:types": "tsgo --emitDeclarationOnly",
+    "build:js": "babel src --out-dir dist/esm --extensions .ts,.tsx --ignore 'src/**/*.d.ts' --config-file ./babel.esm.json --source-maps",
+    "build:aliases": "tsc-alias",
+    "i18n:extract": "lingui extract --clean",
+    "i18n:compile": "lingui compile",
+    "i18n:check": "npm run i18n:extract && git diff --exit-code -- src/locales && npm run i18n:compile -- --strict",
+    "prestorybook": "npm run i18n:compile",
     "storybook": "storybook dev -p 6006",
+    "prebuild-storybook": "npm run i18n:compile",
     "build-storybook": "storybook build",
+    "pretest:unit": "npm run i18n:compile",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "a11y:sync": "node scripts/sync-a11y-tags.mjs",
     "watch": "npm-watch"
@@ -20,8 +31,8 @@
   "watch": {
     "build:watch": {
       "patterns": ["src"],
-      "extensions": "ts,tsx,css",
-      "ignore": ""
+      "extensions": "ts,tsx,css,po",
+      "ignore": "src/locales/*/messages.ts"
     }
   },
   "nodemonConfig": {
@@ -36,6 +47,11 @@
       "import": "./dist/esm/index.js",
       "default": "./dist/esm/index.js"
     },
+    "./i18n": {
+      "types": "./dist/esm/lib/i18n/index.d.ts",
+      "import": "./dist/esm/lib/i18n/index.js",
+      "default": "./dist/esm/lib/i18n/index.js"
+    },
     "./dist/esm/*": {
       "types": "./dist/esm/*.d.ts",
       "import": "./dist/esm/*.js",
@@ -48,7 +64,16 @@
   "files": ["dist/", "src/", "!src/stories/"],
   "sideEffects": ["src/index_with_tw_base.ts", "*.css"],
   "devDependencies": {
+    "@babel/cli": "^7.29.0",
+    "@babel/core": "^7.29.0",
+    "@babel/plugin-transform-react-jsx": "^7.29.7",
+    "@babel/preset-typescript": "^7.28.5",
+    "@lingui/babel-plugin-lingui-macro": "6.4.0",
+    "@lingui/cli": "6.4.0",
+    "@lingui/format-po": "6.4.0",
+    "@lingui/vite-plugin": "6.4.0",
     "@radix-ui/react-focus-scope": "^1.0.3",
+    "@rolldown/plugin-babel": "^0.2.4",
     "@storybook/addon-a11y": "10.5.8",
     "@storybook/addon-docs": "10.5.8",
     "@storybook/addon-mcp": "0.7.0",
@@ -102,6 +127,8 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",
+    "@lingui/core": "6.4.0",
+    "@lingui/react": "6.4.0",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-collapsible": "^1.1.3",
