@@ -14,8 +14,6 @@ import type { DiscoverySuggestionSection } from "@app/components/assistant/conve
 import {
   trackDiscoverItemDetailsOpen,
   trackDiscoverItemSelect,
-  trackDiscoverySuggestionClick,
-  trackDiscoverySuggestionView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { getSkillIcon, isDustProvidedSkill } from "@app/lib/skill";
@@ -352,27 +350,6 @@ function DiscoverSection({
   onFindMore,
 }: DiscoverSectionProps) {
   const { t } = useLingui();
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    items.forEach((item) => {
-      trackDiscoverySuggestionView({
-        section,
-        itemKind: item.kind,
-        itemId: getItemId(item),
-      });
-    });
-  }, [isLoading, items, section]);
-
-  const trackClick = (item: CatalogItem) =>
-    trackDiscoverySuggestionClick({
-      section,
-      itemKind: item.kind,
-      itemId: getItemId(item),
-    });
-
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -407,13 +384,11 @@ function DiscoverSection({
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
               onUse={() => {
-                trackClick(item);
                 trackDiscoverItemSelect({ source: section, item });
                 onUse(item);
               }}
               onPin={onPin && (() => onPin(item))}
               onDetails={() => {
-                trackClick(item);
                 trackDiscoverItemDetailsOpen({ source: section, item });
                 onDetails(item);
               }}
