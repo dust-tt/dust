@@ -49,7 +49,6 @@ export const PreviewPanelProvider = ({
     };
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value: PreviewPanelContextType = useMemo(
     () => ({
       isPreviewPanelOpen,

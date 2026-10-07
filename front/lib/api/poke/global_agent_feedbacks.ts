@@ -124,7 +124,7 @@ export async function listGlobalAgentFeedbacks({
   // WORKSPACE_ISOLATION_BYPASS: Poke super-admin query across all workspaces
   // to aggregate global agent feedback for internal review.
   const feedbackRows = await AgentMessageFeedbackModelWithBypass.findAll({
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
     where,
     include: [
@@ -156,7 +156,7 @@ export async function listGlobalAgentFeedbacks({
   // Batch-fetch conversation sIds.
   const conversationIds = [...new Set(rows.map((r) => r.conversationId))];
   const conversations = await ConversationModelWithBypass.findAll({
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
     attributes: ["id", "sId"],
     where: { id: conversationIds },
@@ -166,7 +166,7 @@ export async function listGlobalAgentFeedbacks({
   // Batch-fetch message sIds.
   const agentMessageIds = rows.map((r) => r.agentMessageId);
   const messages = await MessageModelWithBypass.findAll({
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
     attributes: ["sId", "agentMessageId"],
     where: { agentMessageId: agentMessageIds },

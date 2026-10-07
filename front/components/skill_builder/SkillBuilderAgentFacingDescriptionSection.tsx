@@ -6,13 +6,13 @@ import {
 import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkillsDisplay";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { Button, cn, ReverseLeft } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useState } from "react";
@@ -24,6 +24,7 @@ const MIN_DESCRIPTION_LENGTH = 10;
 const DESCRIPTION_EDITOR_SIZE = "h-60 max-h-96";
 
 export function SkillBuilderAgentFacingDescriptionSection() {
+  const { t } = useLingui();
   const { owner, skillId } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -122,6 +123,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     return () => {
       descriptionField.ref(null);
     };
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [descriptionField.ref, editor]);
 
   useEffect(() => {
@@ -192,10 +194,10 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
         <div className="space-y-1">
           <h3 className="heading-lg font-semibold text-foreground">
-            {SKILL_INVOCATION_LABEL}
+            <Trans>When to use this skill</Trans>
           </h3>
           <p className="text-sm text-muted-foreground">
-            Tell the agent when it should use this skill.
+            <Trans>Tell the agent when it should use this skill.</Trans>
           </p>
         </div>
         {descriptionDiffers && (
@@ -204,7 +206,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
             size="sm"
             icon={ReverseLeft}
             onClick={restoreDescription}
-            label="Restore description"
+            label={t`Restore description`}
             disabled={isReadOnly}
           />
         )}

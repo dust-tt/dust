@@ -1,3 +1,10 @@
+import {
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Pagination,
+} from "@dust-tt/sparkle";
 import { Grid, H1, P } from "@marketing/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
@@ -10,13 +17,6 @@ import type {
 } from "@marketing/lib/contentful/types";
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
-import {
-  Chip,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Pagination,
-} from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -170,7 +170,7 @@ function FilterSection({
   );
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function CustomerStoriesListing({
   stories,
   filterOptions,

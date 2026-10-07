@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from "react";
 export interface MarkdownRichEditor {
   /** Changes when the editor must reopen on new content; use it as the component key. */
   mountKey: string;
+  /** Scoped path of the file the editor writes. */
+  path: string;
   initialContent: string;
   onSave: (content: string) => Promise<DocumentSaveResult>;
   onStateChange: (state: DocumentDraftState) => void;
@@ -148,9 +150,10 @@ export function useRichMarkdownEditor({
   };
 
   const richEditor =
-    opens && source !== undefined
+    opens && source !== undefined && entryPath !== undefined
       ? {
           mountKey: `${entryPath}:${version}`,
+          path: entryPath,
           initialContent: base ?? source,
           onSave: save,
           onStateChange: setDraft,

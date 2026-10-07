@@ -1,3 +1,6 @@
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { AgentBuilderVisual } from "@marketing/components/home/content/Skip/AgentBuilderVisual";
 import { CareerAdvantageVisual } from "@marketing/components/home/content/Skip/CareerAdvantageVisual";
 import { skipConfig } from "@marketing/components/home/content/Skip/config/skipConfig";
@@ -5,9 +8,6 @@ import { FeatureSection } from "@marketing/components/home/content/SqAgent/Featu
 import { SqAgentHeroSection } from "@marketing/components/home/content/SqAgent/SqAgentHeroSection";
 import { SqCtaSection } from "@marketing/components/home/content/SqAgent/SqCtaSection";
 import { SqTestimonialsSection } from "@marketing/components/home/content/SqAgent/SqTestimonialsSection";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import type { ReactElement } from "react";
 
 const SECTION_VISUALS = [<CareerAdvantageVisual />, <AgentBuilderVisual />];
@@ -22,7 +22,7 @@ export async function getStaticProps() {
   };
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function SkipLandingPage() {
   return (
     <>

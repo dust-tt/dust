@@ -42,7 +42,7 @@ export async function resolveOptionalAuth(
   }
 
   const auth = await Authenticator.fromSession(session, workspaceId);
-  // biome-ignore lint/plugin/noDirectRoleCheck: helper function with custom auth flow, not a route handler
+  // oxlint-disable-next-line dust/noDirectRoleCheck -- helper function with custom auth flow, not a route handler
   if (!auth.isUser()) {
     return null;
   }

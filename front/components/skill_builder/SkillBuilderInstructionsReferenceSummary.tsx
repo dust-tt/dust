@@ -17,6 +17,7 @@ import {
   cn,
   File02,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -129,6 +130,7 @@ export function SkillBuilderInstructionsReferenceSummary({
   onReferenceClick,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
+  const { t } = useLingui();
   const [isExpand, setIsExpand] = useState(false);
   const [overflowThresholdHeight, setOverflowThresholdHeight] = useState(
     DEFAULT_OVERFLOW_THRESHOLD_HEIGHT
@@ -198,24 +200,18 @@ export function SkillBuilderInstructionsReferenceSummary({
   const referenceItems = useMemo(
     () =>
       [
-        ...knowledgeReferences.map(
-          (item): ReferenceSummaryItem => ({
-            ...item,
-            kind: "knowledge",
-          })
-        ),
-        ...skillReferences.map(
-          (skill): ReferenceSummaryItem => ({
-            ...skill,
-            kind: "skill",
-          })
-        ),
-        ...toolReferences.map(
-          (tool): ReferenceSummaryItem => ({
-            ...tool,
-            kind: "tool",
-          })
-        ),
+        ...knowledgeReferences.map((item): ReferenceSummaryItem => ({
+          ...item,
+          kind: "knowledge",
+        })),
+        ...skillReferences.map((skill): ReferenceSummaryItem => ({
+          ...skill,
+          kind: "skill",
+        })),
+        ...toolReferences.map((tool): ReferenceSummaryItem => ({
+          ...tool,
+          kind: "tool",
+        })),
       ].toSorted(compareReferenceSummaryItems),
     [knowledgeReferences, skillReferences, toolReferences]
   );
@@ -231,7 +227,6 @@ export function SkillBuilderInstructionsReferenceSummary({
     }
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: referenceItems.length triggers re-measurement
   useEffect(() => {
     if (contentRef.current) {
       setIsOverflow(contentRef.current.scrollHeight > overflowThresholdHeight);
@@ -257,7 +252,7 @@ export function SkillBuilderInstructionsReferenceSummary({
       {isOverflow && (
         <div className="flex justify-end">
           <Button
-            label={`See ${isExpand ? "less" : "more"}`}
+            label={isExpand ? t`See less` : t`See more`}
             onClick={() => setIsExpand((prev) => !prev)}
             icon={isExpand ? ChevronUp : ChevronDown}
             variant="ghost-secondary"

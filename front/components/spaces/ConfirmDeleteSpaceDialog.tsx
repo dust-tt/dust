@@ -14,6 +14,8 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
@@ -28,6 +30,7 @@ export function ConfirmDeleteSpaceDialog({
   spaceInfoByCategory,
   isDeleting,
 }: ConfirmDeleteSpaceDialogProps) {
+  const { t } = useLingui();
   const uniqueAgentNames = spaceInfoByCategory
     ? [
         ...new Set(
@@ -52,6 +55,8 @@ export function ConfirmDeleteSpaceDialog({
   const spaceName = `${getSpaceName(space)}`;
   const hasAgents = uniqueAgentNames.length > 0;
   const hasSkills = uniqueSkillNames.length > 0;
+  const agentCount = uniqueAgentNames.length;
+  const skillCount = uniqueSkillNames.length;
 
   return (
     <Dialog>
@@ -61,13 +66,13 @@ export function ConfirmDeleteSpaceDialog({
             icon={Trash01}
             size="xs"
             variant="warning"
-            label="Delete space"
+            label={t`Delete space`}
           />
         </div>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{`Deleting ${getSpaceName(space)}`}</DialogTitle>
+          <DialogTitle>{t`Deleting ${spaceName}`}</DialogTitle>
         </DialogHeader>
         {isDeleting ? (
           <div className="flex justify-center py-8">
@@ -80,33 +85,39 @@ export function ConfirmDeleteSpaceDialog({
                 <ContentMessage
                   variant="warning"
                   // TODO: change to show names of public agents and then number of unpublished agents
-                  title={`${uniqueAgentNames.length} agent${uniqueAgentNames.length === 1 ? "" : "s"}
-                    use${uniqueAgentNames.length === 1 ? "s" : ""} tools that depend on this space
-                    and will be impacted by its deletion`}
+                  title={t`${plural(agentCount, {
+                    one: "# agent uses tools that depend on this space and will be impacted by its deletion",
+                    other:
+                      "# agents use tools that depend on this space and will be impacted by its deletion",
+                  })}`}
                 />
               )}
               {hasSkills && (
                 <ContentMessage
                   variant="warning"
-                  title={`${uniqueSkillNames.length} skill${uniqueSkillNames.length === 1 ? "" : "s"}
-                    depend${uniqueSkillNames.length === 1 ? "s" : ""} on this space
-                    and will be impacted by its deletion`}
+                  title={t`${plural(skillCount, {
+                    one: "# skill depends on this space and will be impacted by its deletion",
+                    other:
+                      "# skills depend on this space and will be impacted by its deletion",
+                  })}`}
                 />
               )}
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Are you sure you want to permanently delete space {spaceName}?
-                  This action cannot be undone.
+                  <Trans>
+                    Are you sure you want to permanently delete space{" "}
+                    {spaceName}? This action cannot be undone.
+                  </Trans>
                 </p>
               </div>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: t`Delete`,
                 variant: "warning",
                 onClick: async () => {
                   void handleDelete();

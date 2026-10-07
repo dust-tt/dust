@@ -115,7 +115,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
-    stage: "self_serve",
+    stage: "ask_owner",
     owner: "fontanierh",
   },
   claude_4_opus_feature: {
@@ -472,7 +472,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   discovery_homepage: {
     description: "New homepage optimized for skill and agents discovery",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "adrsimon",
   },
   localisation: {

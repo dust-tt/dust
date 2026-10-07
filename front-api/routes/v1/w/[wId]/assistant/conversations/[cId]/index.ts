@@ -121,6 +121,7 @@ const app = publicApiApp();
  *                 properties:
  *                   title:
  *                     type: string
+ *                     maxLength: 512
  *     responses:
  *       200:
  *         description: Conversation updated successfully.
@@ -160,7 +161,7 @@ app.get(
           }
         : undefined;
 
-    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+    // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       cId,

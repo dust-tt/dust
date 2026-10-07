@@ -1,14 +1,16 @@
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { SpaceSelectionSheet } from "@app/components/shared/SpaceSelectionSheet";
-import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Button, Planet } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 export function SkillBuilderRequestedSpacesSection() {
+  const { t } = useLingui();
   const { field: additionalSpacesField } = useController<
     SkillBuilderFormData,
     "additionalSpaces"
@@ -62,16 +64,21 @@ export function SkillBuilderRequestedSpacesSection() {
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground">
-            Data and access
+            <Trans>Data and access</Trans>
           </h3>
           <p className="text-sm text-muted-foreground">
-            Adding spaces or pods will make the data from each of them available
-            to the skill. Only members of all the spaces and pods listed will
-            have access to the skill.
+            <Trans>
+              Adding spaces or pods will make the data from each of them
+              available to the skill. Only members of all the spaces and pods
+              listed will have access to the skill.
+            </Trans>
           </p>
         </div>
         <Button
-          label="Manage"
+          label={t({
+            message: "Manage",
+            context: "button, manage the spaces of a skill",
+          })}
           icon={Planet}
           variant="outline"
           disabled={isReadOnly || !areSpaceRequirementsReady}

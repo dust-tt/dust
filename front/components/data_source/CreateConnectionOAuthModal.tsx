@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 type CreateConnectionOAuthModalProps = {
@@ -27,6 +28,7 @@ export function CreateConnectionOAuthModal({
   onClose,
   onConfirm,
 }: CreateConnectionOAuthModalProps) {
+  const { t } = useLingui();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
@@ -36,7 +38,8 @@ export function CreateConnectionOAuthModal({
       connectorProviderConfiguration.connectorProvider
     ];
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  const providerName = connectorProviderConfiguration.name;
+
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);
@@ -56,16 +59,16 @@ export function CreateConnectionOAuthModal({
     >
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Connection Setup</SheetTitle>
+          <SheetTitle>
+            <Trans>Connection setup</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="pt-8">
             <Page.Vertical gap="lg" align="stretch">
-              <Page.Header
-                title={`Connecting ${connectorProviderConfiguration.name}`}
-              />
+              <Page.Header title={t`Connecting ${providerName}`} />
               <Button
-                label="Read our guide"
+                label={t`Read our guide`}
                 size="xs"
                 variant="outline"
                 href={connectorUIConfiguration.guideLink ?? ""}
@@ -77,35 +80,41 @@ export function CreateConnectionOAuthModal({
                 <>
                   <div className="flex flex-col gap-y-2">
                     <div className="copy-sm grow text-muted-foreground">
-                      <strong>Disclosure</strong>
+                      <strong>
+                        <Trans>Disclosure</Trans>
+                      </strong>
                     </div>
                     <div className="copy-sm font-normal text-muted-foreground">
-                      Dust's use of information received from the Google APIs
-                      will adhere to{" "}
-                      <Hoverable
-                        variant="highlight"
-                        href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
-                      >
-                        Google API Services User Data Policy
-                      </Hoverable>
-                      , including the Limited Use requirements.
+                      <Trans>
+                        Dust's use of information received from the Google APIs
+                        will adhere to{" "}
+                        <Hoverable
+                          variant="highlight"
+                          href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
+                        >
+                          Google API Services User Data Policy
+                        </Hoverable>
+                        , including the Limited Use requirements.
+                      </Trans>
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-y-2">
                     <div className="copy-sm grow font-medium text-muted-foreground">
-                      Notice on data processing
+                      <Trans>Notice on data processing</Trans>
                     </div>
                     <div className="copy-sm font-normal text-muted-foreground">
-                      By connecting Google Drive, you acknowledge and agree that
-                      within your Google Drive, the data contained in the files
-                      and folders that you choose to synchronize with Dust will
-                      be transmitted to third-party entities, including but not
-                      limited to Artificial Intelligence (AI) model providers,
-                      for the purpose of processing and analysis. This process
-                      is an integral part of the functionality of our service
-                      and is subject to the terms outlined in our Privacy Policy
-                      and Terms of Service.
+                      <Trans>
+                        By connecting Google Drive, you acknowledge and agree
+                        that within your Google Drive, the data contained in the
+                        files and folders that you choose to synchronize with
+                        Dust will be transmitted to third-party entities,
+                        including but not limited to Artificial Intelligence
+                        (AI) model providers, for the purpose of processing and
+                        analysis. This process is an integral part of the
+                        functionality of our service and is subject to the terms
+                        outlined in our Privacy Policy and Terms of Service.
+                      </Trans>
                     </div>
                   </div>
                 </>
@@ -114,7 +123,7 @@ export function CreateConnectionOAuthModal({
               {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
                   <div className="copy-sm grow font-medium text-muted-foreground">
-                    Limitations
+                    <Trans>Limitations</Trans>
                   </div>
                   <div className="copy-sm font-normal text-muted-foreground">
                     {connectorUIConfiguration.limitations}
@@ -143,11 +152,11 @@ export function CreateConnectionOAuthModal({
                     disabled={!isExtraConfigValid || isLoading}
                     label={
                       isLoading
-                        ? "Connecting..."
+                        ? t`Connecting...`
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Acknowledge and connect"
-                          : "Connect"
+                          ? t`Acknowledge and connect`
+                          : t`Connect`
                     }
                   />
                 </div>

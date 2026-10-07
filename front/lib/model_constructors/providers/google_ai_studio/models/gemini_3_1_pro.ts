@@ -27,9 +27,7 @@ const configSchema = googleAiStudioConfigSchema.extend({
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithGoogleGeminiThreeDotOneProConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class GoogleGeminiThreeDotOnePro extends Base {
     static readonly model = GEMINI_3_1_PRO;

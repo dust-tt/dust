@@ -11,11 +11,14 @@ import { getDataSourceViewRootNode } from "@app/lib/content_nodes";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ChevronRight, DotsHorizontal } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 
 export const NAVIGATE_KNOWLEDGE_BROWSER_ACTION = "navigate-knowledge-browser";
 export const LOAD_MORE_KNOWLEDGE_BROWSER_ACTION = "load-more-knowledge-browser";
 
 const LOAD_MORE_KNOWLEDGE_BROWSER_ID = "knowledge-browser-load-more";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 const KNOWLEDGE_BROWSER_ITEM_KINDS: KnowledgeBrowserItem["kind"][] = [
   "space",
@@ -110,7 +113,8 @@ export function toKnowledgeBrowserSlashCommands(
   items: KnowledgeBrowserItem[],
   {
     onAttachNode,
-  }: { onAttachNode?: (node: DataSourceViewContentNode) => void } = {}
+    t,
+  }: { onAttachNode?: (node: DataSourceViewContentNode) => void; t: Translate }
 ): SlashCommand[] {
   return items.map((item) => {
     if (item.kind === "node" && !item.expandable) {
@@ -140,7 +144,7 @@ export function toKnowledgeBrowserSlashCommands(
       // The menu names a pod's own data source by its files; the row keeps the stored name.
       label:
         item.kind === "data_source"
-          ? getBrowsableDataSourceViewTitle(item.dataSourceView)
+          ? getBrowsableDataSourceViewTitle(item.dataSourceView, t)
           : item.title,
     };
   });
@@ -162,7 +166,7 @@ export function getLoadMoreKnowledgeBrowserSlashCommand({
 // The root lists spaces under a heading and pods under a second one, like the Agent Builder.
 export function buildRootBrowseSections(
   items: KnowledgeBrowserItem[],
-  { isLoading }: { isLoading: boolean }
+  { isLoading, t }: { isLoading: boolean; t: Translate }
 ): SlashCommandSection[] {
   const spaceItems = items.filter(
     (item) => item.kind === "space" && item.group === "spaces"
@@ -173,15 +177,15 @@ export function buildRootBrowseSections(
   // While loading, the spaces heading stays in place with placeholder rows under it.
   const sections: SlashCommandSection[] = [
     {
-      label: KNOWLEDGE_BROWSER_GROUP_LABELS.spaces,
-      items: toKnowledgeBrowserSlashCommands(spaceItems),
+      label: t(KNOWLEDGE_BROWSER_GROUP_LABELS.spaces),
+      items: toKnowledgeBrowserSlashCommands(spaceItems, { t }),
       isLoading,
     },
   ];
   if (podItems.length > 0) {
     sections.push({
-      label: KNOWLEDGE_BROWSER_GROUP_LABELS.pods,
-      items: toKnowledgeBrowserSlashCommands(podItems),
+      label: t(KNOWLEDGE_BROWSER_GROUP_LABELS.pods),
+      items: toKnowledgeBrowserSlashCommands(podItems, { t }),
     });
   }
   return sections;
@@ -194,13 +198,15 @@ export function buildBrowseCommands(
     onAttachNode,
     hasMore,
     isLoadingMore,
+    t,
   }: {
     onAttachNode: (node: DataSourceViewContentNode) => void;
     hasMore: boolean;
     isLoadingMore: boolean;
+    t: Translate;
   }
 ): SlashCommand[] {
-  const commands = toKnowledgeBrowserSlashCommands(items, { onAttachNode });
+  const commands = toKnowledgeBrowserSlashCommands(items, { onAttachNode, t });
   if (hasMore) {
     commands.push(
       getLoadMoreKnowledgeBrowserSlashCommand({ isLoading: isLoadingMore })

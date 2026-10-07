@@ -2,13 +2,13 @@ import { resolveSlackPendingUserMessage } from "@connectors/connectors/slack/bot
 import {
   makeErrorBlock,
   makeMarkdownBlock,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
 import {
   SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
   streamConversationToSlack,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { resolveSlackBotInfo } from "@connectors/connectors/slack/lib/bot_identity";
 import {

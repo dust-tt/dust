@@ -19,6 +19,7 @@ import {
   Input,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { MouseEvent } from "react";
 import { useState } from "react";
 
@@ -38,6 +39,7 @@ export function GroupDialog({
   groupId = null,
   onCreated,
 }: GroupDialogProps) {
+  const { t } = useLingui();
   const isEdit = groupId !== null;
 
   const { group, members, managers, isGroupLoading } = useGroup({
@@ -60,7 +62,7 @@ export function GroupDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="xl" height="lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit group" : "New group"}</DialogTitle>
+          <DialogTitle>{isEdit ? t`Edit group` : t`New group`}</DialogTitle>
         </DialogHeader>
         {isReady ? (
           <GroupForm
@@ -112,6 +114,7 @@ function GroupForm({
   onCreated,
   onClose,
 }: GroupFormProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
@@ -153,6 +156,7 @@ function GroupForm({
     canAssignManagers &&
     (selectedManagers.length !== initialManagerIds.size ||
       selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
+  const selectedMemberCount = selectedMemberIds.size;
   const shouldDisableButton =
     (readOnly && !canAssignManagers) ||
     isSubmitting ||
@@ -224,17 +228,19 @@ function GroupForm({
             <ContentMessage
               variant="warning"
               icon={InfoCircle}
-              title="Managed by admins"
+              title={t`Managed by admins`}
               size="sm"
             >
-              This group grants the Admin role. Only workspace admins can change
-              its members.
+              <Trans>
+                This group grants the Admin role. Only workspace admins can
+                change its members.
+              </Trans>
             </ContentMessage>
           )}
           <Input
             name="group-name"
-            label="Group name"
-            placeholder="e.g. Sales"
+            label={t`Group name`}
+            placeholder={t`e.g. Sales`}
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={readOnly || !canEditDetails}
@@ -243,7 +249,7 @@ function GroupForm({
           <div className="flex flex-col gap-2">
             {hasFeature("group_management") && (
               <h3 className="text-sm font-semibold">
-                Group members ({selectedMemberIds.size})
+                <Trans>Group members ({selectedMemberCount})</Trans>
               </h3>
             )}
             <MemberSelectionTable
@@ -273,9 +279,9 @@ function GroupForm({
         </div>
       </DialogContainer>
       <DialogFooter
-        leftButtonProps={{ label: "Cancel", variant: "ghost" }}
+        leftButtonProps={{ label: t`Cancel`, variant: "ghost" }}
         rightButtonProps={{
-          label: groupId ? "Save" : "Create",
+          label: groupId ? t`Save` : t`Create`,
           variant: "primary",
           onClick: handleSubmit,
           disabled: shouldDisableButton,

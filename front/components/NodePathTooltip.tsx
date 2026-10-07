@@ -9,6 +9,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React, { useEffect, useState } from "react";
 
 interface NodePathTooltipProps {
@@ -24,6 +25,7 @@ export function NodePathTooltip({
   owner,
   children,
 }: NodePathTooltipProps) {
+  const { t } = useLingui();
   const { fullPath, isLoading } = useNodePath({
     node,
     owner,
@@ -35,7 +37,7 @@ export function NodePathTooltip({
 
   const providerName = connectorProvider
     ? CONNECTOR_CONFIGURATIONS[connectorProvider].name
-    : "Folders";
+    : t`Folders`;
 
   const path = [
     providerName,

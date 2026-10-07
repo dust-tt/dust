@@ -20,7 +20,7 @@ export async function fetchAgentMetadata(
   }
 
   const readReplica = getFrontReplicaDbConnection();
-  // biome-ignore lint/plugin/noRawSql: Matches existing Activity Report query pattern.
+  // oxlint-disable-next-line dust/noRawSql -- Matches existing Activity Report query pattern.
   const agents = await readReplica.query<AgentMetaRow>(
     `
     SELECT ac."sId",

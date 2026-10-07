@@ -1702,20 +1702,18 @@ const wideColumns: ColumnDef<UsageRow>[] = [
       />
     ),
   },
-  ...MONTHS.map(
-    (month, monthIndex): ColumnDef<UsageRow> => ({
-      id: month.toLowerCase(),
-      header: month,
-      accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
-      meta: { type: "numeric" },
-      cell: (info) => (
-        <DataTable.NumericCellContent
-          value={info.getValue<number>()}
-          locale="en-US"
-        />
-      ),
-    })
-  ),
+  ...MONTHS.map((month, monthIndex): ColumnDef<UsageRow> => ({
+    id: month.toLowerCase(),
+    header: month,
+    accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
+    meta: { type: "numeric" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.getValue<number>()}
+        locale="en-US"
+      />
+    ),
+  })),
 ];
 
 /**

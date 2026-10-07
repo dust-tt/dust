@@ -1,7 +1,8 @@
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { formatCurrency } from "@app/lib/i18n/format";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
-import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
+import { isSupportedCurrency } from "@app/types/currency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
@@ -24,6 +25,7 @@ import {
   Spinner,
   XCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
@@ -64,6 +66,7 @@ export function BuyCreditDialog({
   creditPurchaseLimits,
   paygUsage,
 }: BuyCreditDialogProps) {
+  const { t } = useLingui();
   const [amountDollars, setAmountDollars] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedNonRefundable, setAcceptedNonRefundable] = useState(false);
@@ -142,7 +145,6 @@ export function BuyCreditDialog({
 
   const effectiveDiscount = discountPercent || 0;
   const displayCurrency = isSupportedCurrency(currency) ? currency : "usd";
-  const currencySymbol = CURRENCY_SYMBOLS[displayCurrency];
   const needsConversion = displayCurrency !== "usd";
 
   // Calculate conversion using Stripe pricing data
@@ -173,7 +175,7 @@ export function BuyCreditDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
             <p className="text-sm text-muted-foreground">
-              Processing purchase...
+              <Trans>Processing purchase...</Trans>
             </p>
           </div>
         );
@@ -184,14 +186,14 @@ export function BuyCreditDialog({
             <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground">
-                Credits purchased successfully!
+                <Trans>Credits purchased successfully!</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your credits are now available.
+                <Trans>Your credits are now available.</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-semibold">
-                  Invoice has been sent by email.
+                  <Trans>Invoice has been sent by email.</Trans>
                 </span>
               </p>
             </div>
@@ -204,11 +206,13 @@ export function BuyCreditDialog({
             <Icon visual={LinkExternal01} size="lg" className="text-primary" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground">
-                Payment confirmation required
+                <Trans>Payment confirmation required</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Please complete the payment to finalize your credit purchase or
-                contact support to cancel pending invoices.
+                <Trans>
+                  Please complete the payment to finalize your credit purchase
+                  or contact support to cancel pending invoices.
+                </Trans>
               </p>
             </div>
           </div>
@@ -220,13 +224,13 @@ export function BuyCreditDialog({
             <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground">
-                Something went wrong
+                <Trans>Something went wrong</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {errorMessage}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Please contact support if the issue persists.
+                <Trans>Please contact support if the issue persists.</Trans>
               </p>
             </div>
           </div>
@@ -239,10 +243,12 @@ export function BuyCreditDialog({
               <ContentMessage
                 variant="info"
                 icon={InfoCircle}
-                title="You still have pay-as-you-go capacity"
+                title={t`You still have pay-as-you-go capacity`}
               >
-                You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your
-                pay-as-you-go cap.
+                <Trans>
+                  You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of
+                  your pay-as-you-go cap.
+                </Trans>
               </ContentMessage>
             )}
             <div className="flex flex-col gap-2">
@@ -250,7 +256,7 @@ export function BuyCreditDialog({
                 htmlFor="amount"
                 className="text-sm font-medium text-foreground"
               >
-                Credits amount
+                <Trans>Credits amount</Trans>
               </label>
               <div className="flex flex-col gap-1">
                 <div className="relative">
@@ -272,7 +278,9 @@ export function BuyCreditDialog({
                 </div>
                 {amountExceedsMax && (
                   <span className="text-xs text-foreground-warning">
-                    Maximum purchase amount is {maxAmountFormatted}
+                    <Trans>
+                      Maximum purchase amount is {maxAmountFormatted}
+                    </Trans>
                   </span>
                 )}
               </div>
@@ -281,44 +289,47 @@ export function BuyCreditDialog({
             {isValidAmount && !amountExceedsMax && (
               <div className="flex flex-col gap-1 rounded-md border border-border bg-muted-background p-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Credits</span>
+                  <span className="text-muted-foreground">
+                    <Trans>Credits</Trans>
+                  </span>
                   <span className="font-medium text-foreground">
-                    ${parsedAmount.toFixed(2)}
+                    {formatCurrency(parsedAmount, "usd")}
                   </span>
                 </div>
                 {needsConversion && (
                   <div className="flex justify-between">
                     <span></span>
                     <span className="text-muted-foreground">
-                      {currencySymbol}
-                      {creditsInCurrency.toFixed(2)}
+                      {formatCurrency(creditsInCurrency, displayCurrency)}
                     </span>
                   </div>
                 )}
                 {effectiveDiscount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      Discount ({effectiveDiscount}%)
+                      <Trans>Discount ({effectiveDiscount}%)</Trans>
                     </span>
                     <span className="font-medium text-success-500">
-                      -{currencySymbol}
-                      {discountInCurrency.toFixed(2)}
+                      -{formatCurrency(discountInCurrency, displayCurrency)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tax</span>
                   <span className="text-muted-foreground">
-                    Calculated on invoice
+                    <Trans>Tax</Trans>
+                  </span>
+                  <span className="text-muted-foreground">
+                    <Trans>Calculated on invoice</Trans>
                   </span>
                 </div>
                 <div className="mt-1 flex justify-between border-t border-border pt-2">
-                  <span className="font-medium text-foreground">Total</span>
                   <span className="font-medium text-foreground">
-                    {currencySymbol}
-                    {totalInCurrency.toFixed(2)}
+                    <Trans>Total</Trans>
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {formatCurrency(totalInCurrency, displayCurrency)}
                     <span className="ml-1 text-xs text-muted-foreground">
-                      (excl. tax)
+                      <Trans>(excl. tax)</Trans>
                     </span>
                   </span>
                 </div>
@@ -327,27 +338,34 @@ export function BuyCreditDialog({
 
             {maxAmountFormatted && (
               <p className="text-xs text-muted-foreground">
-                Purchase up to {maxAmountFormatted} worth of credits.
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
-                  className="text-action-500 hover:underline"
-                >
-                  Contact support
-                </a>{" "}
-                if you need more.
+                <Trans>
+                  Purchase up to {maxAmountFormatted} worth of credits.{" "}
+                  <a
+                    href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
+                    className="text-action-500 hover:underline"
+                  >
+                    Contact support
+                  </a>{" "}
+                  if you need more.
+                </Trans>
               </p>
             )}
 
             <div className="text-xs text-muted-foreground">
               {isEnterprise ? (
                 <p>
-                  Credits will be added immediately, will be invoiced at the end
-                  of your billing cycle, and expire one year after purchase.
+                  <Trans>
+                    Credits will be added immediately, will be invoiced at the
+                    end of your billing cycle, and expire one year after
+                    purchase.
+                  </Trans>
                 </p>
               ) : (
                 <p>
-                  Credits will be charged immediately, and expire one year after
-                  purchase.
+                  <Trans>
+                    Credits will be charged immediately, and expire one year
+                    after purchase.
+                  </Trans>
                 </p>
               )}
             </div>
@@ -359,22 +377,24 @@ export function BuyCreditDialog({
                   onCheckedChange={() => setAcceptedTerms(!acceptedTerms)}
                 />
                 <span className="text-sm text-foreground">
-                  I agree to the{" "}
-                  <Hoverable
-                    href="https://dust.tt/terms"
-                    variant="highlight"
-                    target="_blank"
-                  >
-                    Terms & Conditions
-                  </Hoverable>{" "}
-                  and{" "}
-                  <Hoverable
-                    href="https://dust.tt/privacy"
-                    variant="highlight"
-                    target="_blank"
-                  >
-                    Privacy Policy
-                  </Hoverable>
+                  <Trans>
+                    I agree to the{" "}
+                    <Hoverable
+                      href="https://dust.tt/terms"
+                      variant="highlight"
+                      target="_blank"
+                    >
+                      Terms & Conditions
+                    </Hoverable>{" "}
+                    and{" "}
+                    <Hoverable
+                      href="https://dust.tt/privacy"
+                      variant="highlight"
+                      target="_blank"
+                    >
+                      Privacy Policy
+                    </Hoverable>
+                  </Trans>
                 </span>
               </label>
 
@@ -386,7 +406,9 @@ export function BuyCreditDialog({
                   }
                 />
                 <span className="text-sm text-foreground">
-                  I understand credits are non-refundable after purchase
+                  <Trans>
+                    I understand credits are non-refundable after purchase
+                  </Trans>
                 </span>
               </label>
             </div>
@@ -401,12 +423,12 @@ export function BuyCreditDialog({
         return (
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               disabled: true,
             }}
             rightButtonProps={{
-              label: "Processing...",
+              label: t`Processing...`,
               variant: "primary",
               disabled: true,
             }}
@@ -416,7 +438,7 @@ export function BuyCreditDialog({
         return (
           <DialogFooter
             rightButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "primary",
               onClick: resetModalStateAndClose,
             }}
@@ -426,12 +448,12 @@ export function BuyCreditDialog({
         return (
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Go to payment",
+              label: t`Go to payment`,
               variant: "primary",
               onClick: () => {
                 if (paymentUrl) {
@@ -445,12 +467,12 @@ export function BuyCreditDialog({
         return (
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Manage invoices",
+              label: t`Manage invoices`,
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -462,12 +484,12 @@ export function BuyCreditDialog({
         return (
           <DialogFooter>
             <Button
-              label="Cancel"
+              label={t`Cancel`}
               variant="outline"
               onClick={resetModalStateAndClose}
             />
             <Button
-              label="Purchase credits"
+              label={t`Purchase credits`}
               variant="primary"
               onClick={handlePurchase}
               disabled={!canPurchase}
@@ -487,20 +509,26 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase programmatic credits</DialogTitle>
+            <DialogTitle>
+              <Trans>Purchase programmatic credits</Trans>
+            </DialogTitle>
             <DialogDescription>
-              Credit purchases are not available during your trial period.
+              <Trans>
+                Credit purchases are not available during your trial period.
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Credit purchases become available once you upgrade to a paid
-                plan. If you need credits during your trial, please contact our
-                support team.
+                <Trans>
+                  Credit purchases become available once you upgrade to a paid
+                  plan. If you need credits during your trial, please contact
+                  our support team.
+                </Trans>
               </p>
               <Button
-                label={`Contact ${SUPPORT_EMAIL}`}
+                label={t`Contact ${SUPPORT_EMAIL}`}
                 variant="outline"
                 onClick={() =>
                   window.open(
@@ -513,7 +541,7 @@ export function BuyCreditDialog({
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
@@ -533,20 +561,24 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase programmatic credits</DialogTitle>
+            <DialogTitle>
+              <Trans>Purchase programmatic credits</Trans>
+            </DialogTitle>
             <DialogDescription>
-              Credit purchases require an active subscription.
+              <Trans>Credit purchases require an active subscription.</Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Please ensure your subscription is active and your payment
-                method is up to date. If you need assistance, please contact our
-                support team.
+                <Trans>
+                  Please ensure your subscription is active and your payment
+                  method is up to date. If you need assistance, please contact
+                  our support team.
+                </Trans>
               </p>
               <Button
-                label={`Contact ${SUPPORT_EMAIL}`}
+                label={t`Contact ${SUPPORT_EMAIL}`}
                 variant="outline"
                 onClick={() =>
                   window.open(
@@ -559,7 +591,7 @@ export function BuyCreditDialog({
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
@@ -579,35 +611,39 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase programmatic credits</DialogTitle>
+            <DialogTitle>
+              <Trans>Purchase programmatic credits</Trans>
+            </DialogTitle>
             <DialogDescription>
-              You have pending credit purchases awaiting payment.
+              <Trans>You have pending credit purchases awaiting payment.</Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Please complete your pending payment before making a new
-                purchase or contact support to cancel your pending payments.{" "}
+                <Trans>
+                  Please complete your pending payment before making a new
+                  purchase or contact support to cancel your pending payments.
+                </Trans>{" "}
                 <a
                   href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2ce28599d94180f69e02e90280c309b4"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-action-500 hover:underline"
                 >
-                  Learn more
+                  <Trans>Learn more</Trans>
                 </a>
               </p>
             </div>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
             rightButtonProps={{
-              label: "Manage invoices",
+              label: t`Manage invoices`,
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -629,20 +665,26 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase programmatic credits</DialogTitle>
+            <DialogTitle>
+              <Trans>Purchase programmatic credits</Trans>
+            </DialogTitle>
             <DialogDescription>
-              You've reached your credit limit for this billing cycle.
+              <Trans>
+                You've reached your credit limit for this billing cycle.
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Your credit purchase limit resets at the start of your next
-                billing cycle. If you need additional credits before then,
-                please contact our support team.
+                <Trans>
+                  Your credit purchase limit resets at the start of your next
+                  billing cycle. If you need additional credits before then,
+                  please contact our support team.
+                </Trans>
               </p>
               <Button
-                label={`Contact ${SUPPORT_EMAIL}`}
+                label={t`Contact ${SUPPORT_EMAIL}`}
                 variant="outline"
                 onClick={() =>
                   window.open(
@@ -655,7 +697,7 @@ export function BuyCreditDialog({
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
@@ -673,9 +715,11 @@ export function BuyCreditDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Purchase programmatic credits</DialogTitle>
+          <DialogTitle>
+            <Trans>Purchase programmatic credits</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Purchase credits for programmatic API usage.
+            <Trans>Purchase credits for programmatic API usage.</Trans>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>{renderContent()}</DialogContainer>

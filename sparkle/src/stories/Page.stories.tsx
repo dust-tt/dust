@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
+import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 import {
   Avatar,
   Button,
@@ -11,7 +12,6 @@ import {
   Icon,
   Page,
 } from "../index_with_tw_base";
-import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Layout/Page",

@@ -1,5 +1,5 @@
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -29,6 +29,7 @@ import {
   DataTableSkeleton,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
@@ -87,6 +88,7 @@ export const SpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { frontendListFilterQuery } = React.useContext(SpaceSearchContext);
   const { q: searchParam } = useQueryParams(["q"]);
@@ -126,7 +128,10 @@ export const SpaceActionsList = ({
   };
 
   const onRemoveServer = async (sId: string) => {
-    await removeFromSpace(serverViews.find((view) => view.sId === sId)!, space);
+    await removeFromSpace(
+      serverViews.find((view) => view.sId === sId)!,
+      space
+    );
     await mutateMCPServerViews();
     await mutateActivableMCPServerViews();
   };
@@ -171,7 +176,7 @@ export const SpaceActionsList = ({
               isAdmin
                 ? [
                     {
-                      label: "Remove tools from space",
+                      label: t`Remove tools from space`,
                       onClick: async () => onRemoveServer(info.row.original.id),
                       kind: "item",
                     },

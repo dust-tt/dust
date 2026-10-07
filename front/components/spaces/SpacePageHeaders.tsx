@@ -4,6 +4,7 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Trans } from "@lingui/react/macro";
 import React from "react";
 
 export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
@@ -29,28 +30,33 @@ export function SpacePageHeader({
       if (category === "managed" && !dataSourceView) {
         return (
           <>
-            Here you can authorize Connections and control what data Dust can
-            access. Once connected, data can be distributed to Open Spaces
-            (accessible to all workspace members) or Restricted Spaces (limited
-            access). <br />
-            Need help? Check out our{" "}
-            <LinkWrapper
-              href="https://docs.dust.tt/docs/data"
-              className="text-highlight"
-              target="_blank"
-            >
-              guide
-            </LinkWrapper>
-            .
+            <Trans>
+              Here you can authorize Connections and control what data Dust can
+              access. Once connected, data can be distributed to Open Spaces
+              (accessible to all workspace members) or Restricted Spaces
+              (limited access).
+            </Trans>{" "}
+            <br />
+            <Trans>
+              Need help? Check out our{" "}
+              <LinkWrapper
+                href="https://docs.dust.tt/docs/data"
+                className="text-highlight"
+                target="_blank"
+              >
+                guide
+              </LinkWrapper>
+              .
+            </Trans>
           </>
         );
       } else if (category === "triggers") {
         return (
-          <>
+          <Trans>
             Here you can add new trigger sources to your workspace. Once
             created, those sources can be used in the Agent Builder to trigger
             Agents.
-          </>
+          </Trans>
         );
       } else {
         return null;

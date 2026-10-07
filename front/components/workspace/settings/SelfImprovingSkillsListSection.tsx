@@ -1,10 +1,9 @@
 import {
-  capUnitLabel,
   normalizeCapInput,
-  SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL,
+  useCapUnitLabel,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits } from "@app/lib/client/credits";
-import { compareStrings } from "@app/lib/i18n/format";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillReinforcement } from "@app/lib/swr/skill_configurations";
@@ -24,6 +23,7 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CellContext,
   ColumnDef,
@@ -68,24 +68,23 @@ function isReinforcementEnabled(
   return reinforcement !== "off";
 }
 
+type ColumnHeader = ColumnDef<RowData, unknown>["header"];
+
 function getColumns(
-  unit: ReinforcementBillingUnit
+  unit: ReinforcementBillingUnit,
+  capUnit: string,
+  headers: {
+    name: string;
+    editors: string;
+    enabled: string;
+    currentlySpent: ColumnHeader;
+    cap: ColumnHeader;
+    lockState: string;
+  }
 ): ColumnDef<RowData, unknown>[] {
-  // "(credits)" goes on its own line: the single-line header is too wide and
-  // overlaps the neighboring columns.
-  const headerWithUnit = (label: string) =>
-    unit === "awu_credits"
-      ? () => (
-          <>
-            {label}
-            <br />
-            (credits)
-          </>
-        )
-      : `${label} ($)`;
   return [
     {
-      header: "Name",
+      header: headers.name,
       accessorKey: "name",
       cell: (info: CellContext<RowData, unknown>) => {
         const SkillAvatar = getSkillAvatarIcon(info.row.original);
@@ -103,7 +102,7 @@ function getColumns(
       meta: { className: "w-40 @lg:w-full" },
     },
     {
-      header: "Editors",
+      header: headers.editors,
       accessorKey: "editors",
       cell: (info: CellContext<RowData, unknown>) => {
         const editors = info.row.original.editors;
@@ -121,7 +120,7 @@ function getColumns(
       meta: { className: "w-32" },
     },
     {
-      header: "Enabled",
+      header: headers.enabled,
       accessorKey: "enabled",
       cell: (info: CellContext<RowData, unknown>) => {
         const {
@@ -147,7 +146,7 @@ function getColumns(
       meta: { className: "w-24" },
     },
     {
-      header: headerWithUnit("Currently Spent"),
+      header: headers.currentlySpent,
       accessorKey: "currentSpent",
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.BasicCellContent
@@ -157,7 +156,7 @@ function getColumns(
       meta: { className: "w-32" },
     },
     {
-      header: headerWithUnit("Cap"),
+      header: headers.cap,
       accessorKey: "savedCapValue",
       cell: (info: CellContext<RowData, unknown>) => {
         const { sId, savedCapValue, capPlaceholder, onCapSave } =
@@ -169,7 +168,7 @@ function getColumns(
               inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
               value={savedCapValue}
               placeholder={capPlaceholder}
-              unit={capUnitLabel(unit)}
+              unit={capUnit}
               normalizeValue={(value) => normalizeCapInput(value, unit)}
               onSave={onCapSave}
             />
@@ -179,7 +178,7 @@ function getColumns(
       meta: { className: unit === "awu_credits" ? "w-48" : "w-40" },
     },
     {
-      header: "Lock State",
+      header: headers.lockState,
       accessorKey: "lock",
       cell: (info: CellContext<RowData, unknown>) => {
         const { lock, pendingLock, isLockUpdating, onToggleLock } =
@@ -209,7 +208,9 @@ function formatDollars(value: number): string {
 }
 
 function formatSpend(value: number, unit: ReinforcementBillingUnit): string {
-  return unit === "awu_credits" ? formatCredits(value) : formatDollars(value);
+  return unit === "awu_credits"
+    ? formatCredits(value)
+    : formatNumber(value, { maximumFractionDigits: 2 });
 }
 
 // Plain (unformatted) value for cap inputs: thousands separators would not
@@ -242,7 +243,9 @@ export function SelfImprovingSkillsListSection({
   owner,
   defaultCapPerSkill,
 }: SelfImprovingSkillsListSectionProps) {
+  const { t } = useLingui();
   const unit = useReinforcementBillingUnit({ owner });
+  const capUnit = useCapUnitLabel(unit);
   const { skills, isSkillsLoading } = useSkillsReinforcementSettings({ owner });
   const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId } =
     useSkillsSelfImprovingSpend({ owner });
@@ -387,9 +390,41 @@ export function SelfImprovingSkillsListSection({
     [skills, spentBySkillId]
   );
 
-  const columns = useMemo(() => getColumns(unit), [unit]);
+  const columns = useMemo(
+    () =>
+      getColumns(unit, capUnit, {
+        name: t`Name`,
+        editors: t`Editors`,
+        enabled: t`Enabled`,
+        // "(credits)" goes on its own line: the single-line header is too wide and
+        // overlaps the neighboring columns.
+        currentlySpent:
+          unit === "awu_credits"
+            ? () => (
+                <Trans>
+                  Currently Spent
+                  <br />
+                  (credits)
+                </Trans>
+              )
+            : t`Currently Spent ($)`,
+        cap:
+          unit === "awu_credits"
+            ? () => (
+                <Trans>
+                  Cap
+                  <br />
+                  (credits)
+                </Trans>
+              )
+            : t`Cap ($)`,
+        lockState: t`Lock State`,
+      }),
+    [t, unit, capUnit]
+  );
 
-  const defaultCapPlaceholder = `${capInputValueFromSaved(defaultCapPerSkill, unit)} (default)`;
+  const defaultCapValue = capInputValueFromSaved(defaultCapPerSkill, unit);
+  const defaultCapPlaceholder = t`${defaultCapValue} (default)`;
 
   const rows: RowData[] = useMemo(
     () =>
@@ -449,10 +484,10 @@ export function SelfImprovingSkillsListSection({
 
   return (
     <Page.Vertical align="stretch" gap="md">
-      <Page.SectionHeader title={SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL} />
+      <Page.SectionHeader title={t`Skills`} />
       <SearchInput
         name="skill-search"
-        placeholder="Search skills..."
+        placeholder={t`Search skills...`}
         value={filter}
         onChange={setFilter}
       />
@@ -461,7 +496,9 @@ export function SelfImprovingSkillsListSection({
           <Spinner />
         </div>
       ) : rows.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No active skills.</div>
+        <div className="text-sm text-muted-foreground">
+          <Trans>No active skills.</Trans>
+        </div>
       ) : (
         <DataTable
           data={rows}

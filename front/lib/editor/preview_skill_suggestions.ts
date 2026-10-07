@@ -19,6 +19,7 @@ type PreviewedSkillFields = Pick<
   | "userFacingDescription"
   | "instructions"
   | "instructionsHtml"
+  | "fileAttachments"
 >;
 
 interface PreviewSkillSuggestionsInput {
@@ -50,6 +51,7 @@ export function previewSkillSuggestions({
       userFacingDescription,
       instructions: skill.instructions,
       instructionsHtml: instructions,
+      fileAttachments: skill.fileAttachments,
     });
   }
 
@@ -64,14 +66,21 @@ export function previewSkillSuggestions({
     agentFacingDescription,
     userFacingDescription,
     instructionEdits,
+    files,
   } = edits.value;
 
+  const removedFileIds = new Set(files?.removeFileIds);
   const fields = {
     name: name ?? skill.name,
     availability: availability ?? skill.availability,
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
+    // Added files have no id until the suggestion is applied: the details view lists them from the
+    // suggestions themselves.
+    fileAttachments: skill.fileAttachments.filter(
+      (file) => !removedFileIds.has(file.fileId)
+    ),
   };
 
   if (!instructionEdits?.length) {

@@ -344,6 +344,56 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
   });
 });
 
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - hidden agent", () => {
+  it("returns 403 to a manager who can list but not read the agent", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+      method: "PATCH",
+    });
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Instructions rewritten by a manager",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: agentOwner.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(403);
+
+    const unchanged = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
+    expect((await unchanged?.fetchInstructions())?.instructions).toBe(
+      agent.instructions
+    );
+  });
+});
+
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - archived agent", () => {
   it("rejects updates until the agent is restored", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
@@ -834,5 +884,41 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - global agents", 
     });
     expect(agentConfiguration.instructions).toContain("@help");
     expect(Array.isArray(agentConfiguration.actions)).toBe(true);
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - name length", () => {
+  it("rejects an agent name longer than 512 characters", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: "A".repeat(513),
+        description: agent.description,
+        instructions: "Test instructions",
+        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+        status: "active",
+        scope: "hidden",
+        model: {
+          providerId: "anthropic",
+          modelId: "claude-sonnet-5",
+          temperature: 0.5,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(400);
   });
 });

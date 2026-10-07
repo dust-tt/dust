@@ -1,5 +1,3 @@
-import { mockAgents } from "./agents";
-import { mockSpaces } from "./spaces";
 import type {
   Conversation,
   ConversationItem,
@@ -7,6 +5,8 @@ import type {
   ConversationSpeaker,
   ConversationWorkState,
 } from "./types";
+import { mockAgents } from "./agents";
+import { mockSpaces } from "./spaces";
 import { mockUsers } from "./users";
 
 // Helper function to get random user IDs

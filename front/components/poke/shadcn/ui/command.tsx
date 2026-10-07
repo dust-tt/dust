@@ -105,7 +105,6 @@ const CommandDialog = ({
   }, [open, onOpenChange, selectedIndex]);
 
   // Reset selection when dialog opens/closes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     setSelectedIndex(0);
   }, [open]);

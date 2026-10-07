@@ -14,8 +14,9 @@ const TooltipPortal = TooltipPrimitive.Portal;
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
-interface TooltipContentProps
-  extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {
+interface TooltipContentProps extends React.ComponentPropsWithoutRef<
+  typeof TooltipPrimitive.Content
+> {
   /** Renders the content in a portal (defaults to true); disable to keep it in the DOM flow. */
   mountPortal?: boolean;
   /** Element to portal into, overriding the enclosing sheet container detection. */

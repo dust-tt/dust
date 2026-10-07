@@ -508,10 +508,34 @@ describe("sandbox image registry", () => {
           "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.67/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
+          'echo "477b99e0660301bff644368e53bc3e00be4f57a1ed5c11d46a8f67e33f88b940  /tmp/dsbx" | sha256sum -c -'
+        ),
+        expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
         ),
       ])
     );
+  });
+
+  test("installs the pinned apply_patch release", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "https://github.com/dust-tt/dust/releases/download/apply-patch-v0.1.0/apply_patch-linux-x86_64"
+        ),
+        expect.stringContaining(
+          'echo "f08b6f40545dfcbe87ed46b5b92eda7d182bdd6b98743bdda0613a7148d07ab3  /tmp/apply_patch" | sha256sum -c -'
+        ),
+      ])
+    );
+  });
+
+  test("verifies released binaries against repo-pinned hashes only", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands.join("\n")).not.toContain("checksums-sha256.txt");
   });
 
   test("installs the pinned dbt Cloud CLI release to /opt/bin", () => {

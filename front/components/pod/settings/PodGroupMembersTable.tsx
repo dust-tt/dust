@@ -1,5 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { getGroupKindChip } from "@app/components/groups/GroupKinds";
+import { useGroupKindChip } from "@app/components/groups/GroupKinds";
 import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
@@ -40,6 +40,7 @@ export function PodGroupMembersTable({
 }: PodGroupMembersTableProps) {
   const doUpdate = useUpdateSpace({ owner });
   const confirm = useContext(ConfirmContext);
+  const getGroupKindChip = useGroupKindChip();
 
   const removeGroup = useCallback(
     async (groupId: string) => {
@@ -152,7 +153,7 @@ export function PodGroupMembersTable({
           ]
         : []),
     ],
-    [confirm, isEditor, removeGroup]
+    [confirm, getGroupKindChip, isEditor, removeGroup]
   );
 
   return (

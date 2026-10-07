@@ -2,8 +2,6 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
-import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
-import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import {
   agentColumn,
@@ -13,6 +11,8 @@ import {
   poolColumn,
   typeColumn,
 } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
+import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
@@ -52,6 +52,7 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
   PaginationState,
@@ -70,7 +71,12 @@ interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   onToggleStatus: () => void;
 }
 
-function RunningCell({ row }: { row: TriggerRowData }) {
+interface RunningCellProps {
+  row: TriggerRowData;
+}
+
+function RunningCell({ row }: RunningCellProps) {
+  const { t } = useLingui();
   switch (row.displayStatus) {
     case "enabled":
     case "disabled":
@@ -88,8 +94,8 @@ function RunningCell({ row }: { row: TriggerRowData }) {
         <Tooltip
           label={
             row.displayStatus === "relocating"
-              ? "Disabled while the workspace is being relocated."
-              : "Disabled following a plan downgrade."
+              ? t`Disabled while the workspace is being relocated.`
+              : t`Disabled following a plan downgrade.`
           }
           trigger={
             // A disabled SliderToggle needs a wrapper to be a valid Tooltip
@@ -166,7 +172,7 @@ function buildColumns({
     nameColumn(),
     {
       id: "owner",
-      header: "Owner",
+      header: () => <Trans>Owner</Trans>,
       enableSorting: false,
       meta: { className: "w-36", headerAlign: "left" },
       cell: (info) => (
@@ -181,7 +187,7 @@ function buildColumns({
     poolColumn(),
     {
       id: "status",
-      header: "Enabled",
+      header: () => <Trans>Enabled</Trans>,
       enableSorting: false,
       meta: { className: "w-16" },
       cell: (info) => (
@@ -209,6 +215,7 @@ export function AutomationsTriggersTable({
   onFilterChange,
   onAgentClick,
 }: AutomationsTriggersTableProps) {
+  const { t } = useLingui();
   const workspaceId = owner.sId;
   const triggersFilter = useMemo(
     () => toAutomationsTriggersFilter(filter),
@@ -323,12 +330,14 @@ export function AutomationsTriggersTable({
       const nextStatus = currentStatus === "enabled" ? "disabled" : "enabled";
 
       if (nextStatus === "disabled") {
+        const triggerName = trigger.name;
+        const ownerName = trigger.owner.name;
         const confirmed = await confirm({
-          title: "Disable this automation?",
-          message: `"${trigger.name}" will stop running for ${trigger.owner.name}. A manager or admin will be able to re-enable it.`,
+          title: t`Disable this automation?`,
+          message: t`"${triggerName}" will stop running for ${ownerName}. A manager or admin will be able to re-enable it.`,
           validateVariant: "warning",
-          validateLabel: "Disable",
-          cancelLabel: "Cancel",
+          validateLabel: t`Disable`,
+          cancelLabel: t`Cancel`,
         });
         if (!confirmed) {
           return;
@@ -356,7 +365,7 @@ export function AutomationsTriggersTable({
         return next;
       });
     },
-    [confirm, updateTriggerStatus]
+    [confirm, updateTriggerStatus, t]
   );
 
   const handleSetExecutionMode = useCallback(
@@ -494,7 +503,7 @@ export function AutomationsTriggersTable({
           <div className="flex items-center gap-2">
             <SearchInput
               name="automations-triggers-search"
-              placeholder="Search…"
+              placeholder={t`Search…`}
               value={inputValue}
               onChange={setValue}
               className="flex-1"
@@ -548,7 +557,7 @@ export function AutomationsTriggersTable({
           <Button
             size="sm"
             variant="primary"
-            label="Set pool"
+            label={t`Set pool`}
             onClick={() => setIsBulkPoolOpen(true)}
           />
         </BulkSelectionBar>
@@ -592,6 +601,7 @@ function TriggersTableBody({
   rowSelection,
   onRowSelectionChange,
 }: TriggersTableBodyProps) {
+  const { t } = useLingui();
   const columns = useMemo(
     () => buildColumns({ expandedRowId, showSelectionColumn }),
     [expandedRowId, showSelectionColumn]
@@ -617,17 +627,18 @@ function TriggersTableBody({
   if (isError) {
     return (
       <div className="text-sm text-muted-foreground">
-        Failed to load triggers.
+        <Trans>Failed to load triggers.</Trans>
       </div>
     );
   }
 
   if (!isLoading && rows.length === 0) {
+    const trimmedSearch = search.trim();
     return (
       <div className="text-sm text-muted-foreground">
-        {search.trim()
-          ? `No results for "${search.trim()}". Only items with usage data appear here.`
-          : "No automation ran over this period."}
+        {trimmedSearch
+          ? t`No results for "${trimmedSearch}". Only items with usage data appear here.`
+          : t`No automation ran over this period.`}
       </div>
     );
   }

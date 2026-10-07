@@ -1,14 +1,24 @@
+import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/mentions_queue/config";
-import { makeMentionsWorkflowId } from "@app/temporal/mentions_queue/helpers";
-import { handleMentionsWorkflow } from "@app/temporal/mentions_queue/workflows";
+import {
+  makeDocumentCommentMentionWorkflowId,
+  makeMentionsWorkflowId,
+} from "@app/temporal/mentions_queue/helpers";
+import {
+  documentCommentMentionWorkflow,
+  handleMentionsWorkflow,
+} from "@app/temporal/mentions_queue/workflows";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowIdReusePolicy,
+} from "@temporalio/client";
 
 export async function launchHandleMentionsWorkflow({
   authType,
@@ -51,6 +61,44 @@ export async function launchHandleMentionsWorkflow({
       );
     }
 
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchDocumentCommentMentionWorkflow({
+  authType,
+  documentPath,
+  newMessage,
+}: {
+  authType: AuthenticatorType;
+  documentPath: string;
+  newMessage: NewCommentMessage;
+}): Promise<Result<undefined, Error>> {
+  const { workspaceId } = authType;
+  const workflowId = makeDocumentCommentMentionWorkflowId({
+    workspaceId,
+    documentPath,
+    newMessage,
+  });
+
+  try {
+    const client = await getTemporalClientForFrontNamespace();
+    await client.workflow.start(documentCommentMentionWorkflow, {
+      args: [authType, { documentPath, newMessage }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      // A message brought again by a concurrent or later save is not posted again.
+      workflowIdReusePolicy: WorkflowIdReusePolicy.REJECT_DUPLICATE,
+      memo: {
+        workspaceId,
+        documentPath,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      return new Ok(undefined);
+    }
     return new Err(normalizeError(e));
   }
 }

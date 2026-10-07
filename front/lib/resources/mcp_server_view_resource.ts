@@ -85,9 +85,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MCPServerViewResource
-  extends ReadonlyAttributesType<MCPServerViewModel> {}
+export interface MCPServerViewResource extends ReadonlyAttributesType<MCPServerViewModel> {}
 
 type AffectedAgent = Pick<
   Attributes<AgentConfigurationModel>,
@@ -132,7 +130,6 @@ const HYDRATION_TTL_MS = 30 * 60 * 1000;
 // racing on the same checks and inserts.
 const inflightHydrations = new Map<ModelId, Promise<void>>();
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStaticSoftDeletable<MCPServerViewModel> =
     MCPServerViewModel;

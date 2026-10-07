@@ -1,6 +1,6 @@
+import { ChevronUp, Separator } from "@dust-tt/sparkle";
 import { H2, P } from "@marketing/components/home/ContentComponents";
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
-import { ChevronUp, Separator } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export interface SecurityFeature {

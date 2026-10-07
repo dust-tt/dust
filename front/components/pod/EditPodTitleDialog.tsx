@@ -4,6 +4,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useCheckPodName } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { MAX_POD_NAME_LENGTH } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -116,6 +117,7 @@ export const EditPodTitleDialog = ({
             ref={inputRef}
             placeholder="Enter new name..."
             value={title}
+            maxLength={MAX_POD_NAME_LENGTH}
             onChange={(e) => {
               setTitle(e.target.value);
               setNameToCheck(e.target.value);

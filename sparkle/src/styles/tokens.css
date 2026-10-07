@@ -467,7 +467,6 @@
   --color-slider-toggle-bg-idle: var(--color-stone-700);
 }
 
-
 /* Display utilities for swapping light/dark content without dark: variant */
 .light-only {
   display: block;

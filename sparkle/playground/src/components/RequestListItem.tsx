@@ -1,9 +1,10 @@
 import { Avatar } from "@dust-tt/sparkle";
 
-import { ConversationListItem } from "./ConversationListItem";
 import { cn } from "@sparkle/lib/utils";
 import type { ReactNode } from "react";
+import { ConversationListItem } from "./ConversationListItem";
 
+import type { AdminRequest } from "../data/types";
 import {
   getResolverLabel,
   REQUEST_OUTCOME_LABELS,
@@ -15,7 +16,6 @@ import {
   type RowBadge,
 } from "../data/rowBadges";
 import { formatRowTime } from "../data/time";
-import type { AdminRequest } from "../data/types";
 import { getUserById } from "../data/users";
 import { AvatarCounter } from "./AvatarCounter";
 import { Counter } from "./Counter";

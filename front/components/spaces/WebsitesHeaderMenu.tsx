@@ -3,6 +3,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Settings01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type WebsitesHeaderMenuProps = {
@@ -18,6 +19,7 @@ export const WebsitesHeaderMenu = ({
   canWriteInSpace,
   dataSourceView,
 }: WebsitesHeaderMenuProps) => {
+  const { t } = useLingui();
   const [showEditWebsiteModal, setShowEditWebsiteModal] = useState(false);
 
   return (
@@ -34,7 +36,7 @@ export const WebsitesHeaderMenu = ({
       />
       <Button
         size="sm"
-        label="Edit Website"
+        label={t`Edit website`}
         icon={Settings01}
         variant="primary"
         onClick={() => {

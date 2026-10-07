@@ -27,20 +27,33 @@ enum TranscribeTokenService {
 /// (live, in-progress) and `committed_transcript` (finalized segment) messages. Commits
 /// are automatic via server-side VAD; we send one manual commit on stop to flush the tail.
 final class ScribeRealtimeClient {
-    var onPartial: ((String) -> Void)?
-    var onCommitted: ((String) -> Void)?
-    var onError: ((String) -> Void)?
+    enum CommitStrategy: String {
+        case vad
+        case manual
+    }
+
+    enum Event {
+        case sessionStarted
+        case partial(String)
+        case committed(String)
+        case error(String)
+        case disconnected
+    }
+
+    var onEvent: ((Event) -> Void)?
 
     private let token: String
     private let baseUri: String
+    private let commitStrategy: CommitStrategy
     private let sampleRateHz = 16000
 
     private var task: URLSessionWebSocketTask?
     private var isClosed = false
 
-    init(token: String, baseUri: String) {
+    init(token: String, baseUri: String, commitStrategy: CommitStrategy) {
         self.token = token
         self.baseUri = baseUri
+        self.commitStrategy = commitStrategy
     }
 
     func connect() throws {
@@ -50,7 +63,7 @@ final class ScribeRealtimeClient {
         components.queryItems = [
             URLQueryItem(name: "model_id", value: "scribe_v2_realtime"),
             URLQueryItem(name: "token", value: token),
-            URLQueryItem(name: "commit_strategy", value: "vad"),
+            URLQueryItem(name: "commit_strategy", value: commitStrategy.rawValue),
             URLQueryItem(name: "audio_format", value: "pcm_16000"),
         ]
         guard let url = components.url else { throw APIError.invalidURL }
@@ -93,10 +106,9 @@ final class ScribeRealtimeClient {
               let data = try? JSONSerialization.data(withJSONObject: object),
               let json = String(data: data, encoding: .utf8)
         else { return }
-        task.send(.string(json)) { error in
-            if let error {
-                logger.error("Scribe send failed: \(error)")
-            }
+        task.send(.string(json)) { [weak self] error in
+            guard let error else { return }
+            self?.reportDisconnect(error)
         }
     }
 
@@ -110,9 +122,16 @@ final class ScribeRealtimeClient {
                 }
                 receiveNext()
             case let .failure(error):
-                onError?("Transcription connection lost: \(error.localizedDescription)")
+                reportDisconnect(error)
             }
         }
+    }
+
+    private func reportDisconnect(_ error: Error) {
+        guard !isClosed else { return }
+        isClosed = true
+        logger.error("Scribe connection lost: \(error)")
+        onEvent?(.disconnected)
     }
 
     private func handle(_ text: String) {
@@ -123,16 +142,56 @@ final class ScribeRealtimeClient {
 
         switch type {
         case "partial_transcript":
-            if let value = json["text"] as? String { onPartial?(value) }
+            if let value = json["text"] as? String { onEvent?(.partial(value)) }
         case "committed_transcript", "committed_transcript_with_timestamps":
-            if let value = json["text"] as? String { onCommitted?(value) }
+            if let value = json["text"] as? String { onEvent?(.committed(value)) }
         case "session_started":
-            break
+            onEvent?(.sessionStarted)
         default:
             // Every error variant (auth_error, quota_exceeded, …) carries an `error` field.
             if let errorMessage = json["error"] as? String {
-                onError?(errorMessage)
+                onEvent?(.error(errorMessage))
             }
+        }
+    }
+}
+
+/**
+ * @cc [owner:adrsimon,label:product] replay-uncommitted-audio
+ * Every chunk passed to `send` MUST stay pending until `markCommitted` or `reset`, and `attach`
+ * MUST send all pending chunks to the new client, in capture order, before any later chunk.
+ */
+final class ScribeAudioRelay {
+    private let lock = NSLock()
+    private var pending: [String] = []
+    private var client: ScribeRealtimeClient?
+
+    func send(_ chunk: String) {
+        lock.withLock {
+            pending.append(chunk)
+            client?.sendAudio(base64: chunk)
+        }
+    }
+
+    func attach(_ client: ScribeRealtimeClient) {
+        lock.withLock {
+            self.client = client
+            pending.forEach { client.sendAudio(base64: $0) }
+        }
+    }
+
+    func detach() {
+        lock.withLock { client = nil }
+    }
+
+    func markCommitted() {
+        lock.withLock { pending.removeAll() }
+    }
+
+    func reset() {
+        lock.withLock {
+            pending.removeAll()
+            client = nil
         }
     }
 }

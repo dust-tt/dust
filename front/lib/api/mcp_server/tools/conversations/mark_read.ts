@@ -27,7 +27,7 @@ export function registerConversationsMarkReadTool(server: McpServer) {
     },
     async (auth, { conversationId, read }) => {
       const conversationRes =
-        // biome-ignore lint/plugin/noExpensiveConversationFetch: need unread + actionRequired
+        // oxlint-disable-next-line dust/noExpensiveConversationFetch -- need unread + actionRequired
         await ConversationResource.fetchConversationWithParticipantState(
           auth,
           conversationId

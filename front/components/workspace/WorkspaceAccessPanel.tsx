@@ -1,8 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
-import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import SSOConnection from "@app/components/workspace/SSOConnection";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
@@ -26,14 +26,12 @@ import {
   Separator,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
-
-export const DOMAIN_VERIFICATION_TITLE = "Domain Verification";
-export const ADD_DOMAIN_LABEL = "Add Domain";
 
 interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -110,16 +108,19 @@ function DomainVerification({
   isDomainsLoading,
   owner,
 }: DomainVerificationProps) {
+  const { t } = useLingui();
   return (
     <WorkspaceSection
       icon={Globe01}
-      title={DOMAIN_VERIFICATION_TITLE}
+      title={t`Domain Verification`}
       sectionId={ADMIN_SECTION_IDS.identity.domain}
     >
       <Page.P variant="secondary">
-        Verify your company domains to enable Single Sign-On (SSO), automatic
-        workspace enrollment for team members, and secure connections to your
-        internal MCP servers.
+        <Trans>
+          Verify your company domains to enable Single Sign-On (SSO), automatic
+          workspace enrollment for team members, and secure connections to your
+          internal MCP servers.
+        </Trans>
       </Page.P>
       {isDomainsLoading ? (
         <LoadingBlock className="h-32 w-full rounded-xl" />
@@ -127,7 +128,7 @@ function DomainVerification({
         <EmptyCTA
           action={
             <Button
-              label={ADD_DOMAIN_LABEL}
+              label={t`Add Domain`}
               variant="primary"
               icon={Plus}
               href={addDomainLink}
@@ -167,36 +168,42 @@ function DomainVerificationTable({
   workspaceVerifiedDomains,
   owner,
 }: DomainVerificationTableProps) {
+  const { t } = useLingui();
   const confirm = React.useContext(ConfirmContext);
   const { doRemoveWorkspaceDomain } = useRemoveWorkspaceDomain({ owner });
 
   const handleDeleteDomain = React.useCallback(
     async (domain: string) => {
       const confirmed = await confirm({
-        title: "Delete Domain",
+        title: t`Delete Domain`,
         message: (
           <div>
-            Are you sure you want to delete the domain "{domain}"?
+            <Trans>
+              Are you sure you want to delete the domain "{domain}"?
+            </Trans>
             <div className="mt-2">
-              <b>This action cannot be undone.</b>
+              <b>
+                <Trans>This action cannot be undone.</Trans>
+              </b>
             </div>
           </div>
         ),
-        validateLabel: "Delete",
+        validateLabel: t`Delete`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       });
 
       if (confirmed) {
         await doRemoveWorkspaceDomain(domain);
       }
     },
-    [confirm, doRemoveWorkspaceDomain]
+    [confirm, doRemoveWorkspaceDomain, t]
   );
 
   const columns = React.useMemo(
     () => [
       {
-        header: "Domain",
+        header: t`Domain`,
         accessorKey: "domain",
         classname: "text-xs font-medium",
         cell: ({ row }: CellContext<DomainRowData, string>) => {
@@ -204,19 +211,19 @@ function DomainVerificationTable({
         },
       },
       {
-        header: "Status",
+        header: t`Status`,
         accessorKey: "status",
         cell: ({ getValue, row }: CellContext<DomainRowData, string>) => {
           const status = getValue();
           const workspaceVerifiedDomain = row.original.workspaceVerifiedDomain;
           let chipColor: "success" | "info" | "warning" = "info";
-          let label: string = "Pending";
+          let label: string = t`Pending`;
           if (workspaceVerifiedDomain && status === "verified") {
             chipColor = "success";
-            label = "Verified";
+            label = t`Verified`;
           } else if (status === "failed") {
             chipColor = "warning";
-            label = "Failed";
+            label = t`Failed`;
           }
 
           return <Chip color={chipColor} label={label} size="xs" />;
@@ -233,13 +240,13 @@ function DomainVerificationTable({
               size="xs"
               variant="ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
-              tooltip="Delete domain"
+              tooltip={t`Delete domain`}
             />
           );
         },
       },
     ],
-    [handleDeleteDomain]
+    [handleDeleteDomain, t]
   );
 
   const data: DomainRowData[] = React.useMemo(() => {
@@ -258,7 +265,7 @@ function DomainVerificationTable({
       {addDomainLink && (
         <div>
           <Button
-            label={ADD_DOMAIN_LABEL}
+            label={t`Add Domain`}
             variant="primary"
             href={addDomainLink}
             icon={Plus}

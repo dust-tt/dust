@@ -13,8 +13,8 @@ import {
 } from "@app/lib/api/llm/simulated_failure_model";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { redisMock } from "@app/tests/utils/mocks/redis";
+import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("simulated failure model control", () => {

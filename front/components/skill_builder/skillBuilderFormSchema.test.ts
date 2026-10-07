@@ -1,14 +1,16 @@
-import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
 } from "@app/lib/skills/labels";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 describe("skill description validation", () => {
+  const { result: schema } = renderHook(() => useSkillBuilderFormSchema());
   const resolver = zodResolver(
-    skillBuilderFormSchema.pick({
+    schema.current.pick({
       agentFacingDescription: true,
       userFacingDescription: true,
     })
@@ -32,20 +34,20 @@ describe("skill description validation", () => {
     expect(result.values).toEqual(values);
   });
 
-  it.each([
-    "agentFacingDescription",
-    "userFacingDescription",
-  ] as const)("returns an RHF field error for an oversized %s", async (field) => {
-    const result = await resolver(
-      { ...values, [field]: "a".repeat(maxLengths[field] + 1) },
-      undefined,
-      { fields: {}, shouldUseNativeValidation: false }
-    );
+  it.each(["agentFacingDescription", "userFacingDescription"] as const)(
+    "returns an RHF field error for an oversized %s",
+    async (field) => {
+      const result = await resolver(
+        { ...values, [field]: "a".repeat(maxLengths[field] + 1) },
+        undefined,
+        { fields: {}, shouldUseNativeValidation: false }
+      );
 
-    expect(result.errors).toMatchObject({
-      [field]: {
-        message: `Description must be ${maxLengths[field]} characters or less`,
-      },
-    });
-  });
+      expect(result.errors).toMatchObject({
+        [field]: {
+          message: `Description must be ${maxLengths[field]} characters or less`,
+        },
+      });
+    }
+  );
 });

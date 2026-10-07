@@ -1,0 +1,1243 @@
+use super::*;
+use anyhow::{Context, Result};
+use dfs_protocol::{
+    BLOCK_SIZE,
+    error::code,
+    rpc::{dfs_server::Dfs, *},
+};
+use std::{sync::atomic::Ordering, time::Duration};
+use tonic::Request;
+
+fn request<T>(key: &str, body: T) -> Result<Request<T>> {
+    let mut request = Request::new(body);
+    request
+        .metadata_mut()
+        .insert("authorization", format!("Bearer {key}").parse()?);
+    Ok(request)
+}
+struct Fixture {
+    api: api::Api,
+    owner: Session,
+    tenant: Tenant,
+    config: storage::StorageConfig,
+}
+impl Fixture {
+    async fn new() -> Result<Self> {
+        Self::configured(cache::CacheConfig::default()).await
+    }
+    async fn configured(cache_config: cache::CacheConfig) -> Result<Self> {
+        let config = storage::StorageConfig {
+            fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
+            fdb_prefix: format!("dfs-v3-test-{}", uuid::Uuid::new_v4().simple()),
+        };
+        let server_key = "ab".repeat(32);
+        let state = State::new(
+            storage::Storage::open(&config).await?,
+            &server_key,
+            cache_config,
+        )?;
+        let api = api::Api(state);
+        let tenant = api
+            .create_tenant(request(
+                &server_key,
+                CreateTenantRequest {
+                    tenant_id: "test".into(),
+                    root_grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let owner = api
+            .create_session(request(
+                &tenant.tenant_key,
+                CreateSessionRequest {
+                    tenant_id: tenant.tenant_id.clone(),
+                    grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        Ok(Self {
+            api,
+            owner,
+            tenant,
+            config,
+        })
+    }
+    async fn peer(&self) -> Result<(api::Api, Session)> {
+        let state = State::new(
+            storage::Storage::open(&self.config).await?,
+            &"ab".repeat(32),
+            cache::CacheConfig::default(),
+        )?;
+        let api = api::Api(state);
+        let session = api
+            .create_session(request(
+                &self.tenant.tenant_key,
+                CreateSessionRequest {
+                    tenant_id: self.tenant.tenant_id.clone(),
+                    grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        Ok((api, session))
+    }
+    async fn create(&self, parent: &str, name: &str, directory: bool) -> Result<Object> {
+        self.api
+            .create(request(
+                &self.owner.session_key,
+                CreateRequest {
+                    parent_id: parent.into(),
+                    name: name.into(),
+                    directory,
+                    mode: 0o755,
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("create object")
+    }
+    async fn write(&self, id: &str, offset: u64, data: Vec<u8>) -> Result<Object> {
+        self.api
+            .write(request(
+                &self.owner.session_key,
+                WriteRequest {
+                    object_id: id.into(),
+                    offset,
+                    data,
+                    append: false,
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("write object")
+    }
+    async fn read(&self, id: &str) -> Result<ReadResponse> {
+        Ok(self
+            .api
+            .read(request(
+                &self.owner.session_key,
+                ReadRequest {
+                    object_id: id.into(),
+                    offset: 0,
+                    length: 3 * BLOCK_SIZE as u32,
+                },
+            )?)
+            .await?
+            .into_inner())
+    }
+    async fn sync(&self, id: &str) -> Result<Object> {
+        Ok(self
+            .api
+            .fsync(request(
+                &self.owner.session_key,
+                ObjectRequest {
+                    object_id: id.into(),
+                },
+            )?)
+            .await?
+            .into_inner())
+    }
+    async fn clean(self) -> Result<()> {
+        self.api
+            .0
+            .storage
+            .transact(|_| async {
+                let mut b = storage::WriteBatch::new();
+                b.clear(vec![], vec![255]);
+                Ok((b, ()))
+            })
+            .await?;
+        Ok(())
+    }
+}
+
+#[test]
+fn local_filesystem_contracts() -> Result<()> {
+    network::run(async {
+        ram_acceptance_and_sparse_publication()
+            .await
+            .context("RAM/sparse")?;
+        grants_namespace_and_tenant_isolation()
+            .await
+            .context("grants/namespace")?;
+        directory_pages_preserve_snapshot_and_grants()
+            .await
+            .context("directory pages")?;
+        independent_servers_and_deleted_writer()
+            .await
+            .context("independent writers")?;
+        create_bundles_initial_writes_without_merging_siblings()
+            .await
+            .context("create bundling")?;
+        sibling_publications_preserve_file_writes()
+            .await
+            .context("sibling publication conflicts")?;
+        lost_commit_reply_is_not_replayed()
+            .await
+            .context("ambiguous publication")?;
+        expired_fdb_read_refreshes_before_cache_ttl()
+            .await
+            .context("early FDB expiry")?;
+        retained_blocks_revalidate_revisions_and_holes()
+            .await
+            .context("retained block revisions")?;
+        retained_partial_write_still_validates_publication()
+            .await
+            .context("retained write conflict")?;
+        retained_blocks_evict_and_reload()
+            .await
+            .context("retained block eviction")?;
+        indexed_views_preserve_cuts_and_truncation()
+            .await
+            .context("indexed snapshot cuts")?;
+        indexed_acceptance_rejects_later_namespace_changes()
+            .await
+            .context("indexed local conflicts")?;
+        capacity_and_cold_recovery()
+            .await
+            .context("capacity/restart")?;
+        remote_namespace_and_grants_expire()
+            .await
+            .context("remote namespace/grants")?;
+        expired_pending_is_discarded()
+            .await
+            .context("publication deadline")?;
+        Ok(())
+    })
+}
+async fn listed(view: &read::View, directory: &str, limit: u32) -> Result<Vec<(String, String)>> {
+    let mut after = None;
+    let mut entries = Vec::new();
+    for _ in 0..100 {
+        let page = view.list(directory, after.as_deref(), limit).await?;
+        assert!(page.entries.len() <= limit as usize);
+        if let Some(cursor) = &page.next_after {
+            assert_eq!(Some(cursor), page.entries.last().map(|entry| &entry.name));
+            assert!(after.as_ref().is_none_or(|previous| previous < cursor));
+        }
+        for entry in page.entries {
+            entries.push((entry.name, entry.object.context("Listing object")?.id));
+        }
+        after = page.next_after;
+        if after.is_none() {
+            view.snapshot.valid()?;
+            return Ok(entries);
+        }
+    }
+    anyhow::bail!("Directory pagination did not finish")
+}
+
+async fn directory_pages_preserve_snapshot_and_grants() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let folder = f.create(&f.tenant.root_id, "folder", true).await?;
+    let directory = f.create(&folder.id, "deep", true).await?;
+    let mut expected = Vec::new();
+    for n in 0..40 {
+        let name = format!("file-{n:02}");
+        let object = f.create(&directory.id, &name, false).await?;
+        expected.push((name, object.id));
+    }
+    // Use an empty read cache over durable children before introducing RAM namespace changes.
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let before = read::View::from_snapshot(
+        f.api.0.cache.snapshot().await?,
+        &f.tenant.tenant_id,
+        f.owner.grants.iter().cloned().collect(),
+    )
+    .await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.api
+        .rename(request(
+            &f.owner.session_key,
+            RenameRequest {
+                object_id: expected[0].1.clone(),
+                parent_id: directory.id.clone(),
+                name: "renamed".into(),
+                replace: false,
+            },
+        )?)
+        .await?;
+    f.api
+        .remove(request(
+            &f.owner.session_key,
+            RemoveRequest {
+                object_id: expected[1].1.clone(),
+                directory: false,
+            },
+        )?)
+        .await?;
+    let added = f.create(&directory.id, "added", false).await?;
+    for limit in [1, 7, 100] {
+        assert_eq!(listed(&before, &directory.id, limit).await?, expected);
+    }
+    expected[0].0 = "renamed".into();
+    expected.remove(1);
+    expected.push(("added".into(), added.id));
+    expected.sort();
+    let after = read::View::from_snapshot(
+        f.api.0.cache.snapshot().await?,
+        &f.tenant.tenant_id,
+        f.owner.grants.iter().cloned().collect(),
+    )
+    .await?;
+    assert_eq!(listed(&after, &directory.id, 7).await?, expected);
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+
+    // The virtual entry must respect page limits even with a reserved physical name and hidden rows.
+    let mut visible = vec![("shared".to_owned(), "shared".to_owned())];
+    let mut all = vec![("folder".to_owned(), folder.id)];
+    for name in ["alpha", "shared", "zeta"] {
+        let object = f.create(&f.tenant.root_id, name, true).await?;
+        if name == "shared" {
+            continue;
+        }
+        visible.push((name.into(), object.id.clone()));
+        f.api
+            .update_grants(request(
+                &f.tenant.tenant_key,
+                UpdateGrantsRequest {
+                    tenant_id: f.tenant.tenant_id.clone(),
+                    object_id: object.id,
+                    changes: vec![GrantChange {
+                        grant: "reader".into(),
+                        attached: true,
+                    }],
+                },
+            )?)
+            .await?;
+    }
+    visible.sort();
+    all.extend(visible.clone());
+    all.sort();
+    for (grant, expected) in [("reader", visible), ("owner", all)] {
+        let view = read::View::from_snapshot(
+            f.api.0.cache.snapshot().await?,
+            &f.tenant.tenant_id,
+            [grant.to_owned()].into(),
+        )
+        .await?;
+        assert_eq!(listed(&view, "root", 1).await?, expected);
+    }
+    f.api.0.cache.drain().await?;
+    f.clean().await
+}
+
+async fn ram_acceptance_and_sparse_publication() -> Result<()> {
+    let f = Fixture::new().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    let file = f.create(&f.tenant.root_id, "ram", false).await?;
+    f.write(&file.id, 0, b"prefix".to_vec()).await?;
+    f.write(&file.id, BLOCK_SIZE as u64 + 2, b"tail".to_vec())
+        .await?;
+    let accepted = f.sync(&file.id).await?;
+    assert_eq!(accepted.size, BLOCK_SIZE as u64 + 6);
+    let data = f.read(&file.id).await?;
+    assert_eq!(data.data.len(), data.size as usize);
+    assert_eq!(&data.data[..6], b"prefix");
+    assert!(data.data[6..BLOCK_SIZE + 2].iter().all(|v| *v == 0));
+    assert_eq!(&data.data[BLOCK_SIZE + 2..], b"tail");
+    let keys = keys::Keys::new(&f.tenant.tenant_id)?;
+    assert!(
+        f.api.0.storage.get(keys.object(&file.id)?).await?.is_none(),
+        "fsync persisted despite paused publisher"
+    );
+    f.api
+        .update(request(
+            &f.owner.session_key,
+            UpdateRequest {
+                object_id: file.id.clone(),
+                size: Some(3),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    f.api
+        .update(request(
+            &f.owner.session_key,
+            UpdateRequest {
+                object_id: file.id.clone(),
+                size: Some(BLOCK_SIZE as u64 + 9),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    let data = f.read(&file.id).await?;
+    assert_eq!(&data.data[..3], b"pre");
+    assert!(data.data[3..].iter().all(|v| *v == 0));
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+    let (peer, session) = f.peer().await?;
+    let committed = peer
+        .read(request(
+            &session.session_key,
+            ReadRequest {
+                object_id: file.id.clone(),
+                offset: 0,
+                length: 3 * BLOCK_SIZE as u32,
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(committed, data);
+    peer.0.drain().await?;
+    f.clean().await
+}
+async fn grants_namespace_and_tenant_isolation() -> Result<()> {
+    let f = Fixture::new().await?;
+    let directory = f.create(&f.tenant.root_id, "folder", true).await?;
+    let file = f.create(&directory.id, "file", false).await?;
+    f.api
+        .update_grants(request(
+            &f.tenant.tenant_key,
+            UpdateGrantsRequest {
+                tenant_id: f.tenant.tenant_id.clone(),
+                object_id: directory.id.clone(),
+                changes: vec![GrantChange {
+                    grant: "reader".into(),
+                    attached: true,
+                }],
+            },
+        )?)
+        .await?;
+    let reader = f
+        .api
+        .create_session(request(
+            &f.tenant.tenant_key,
+            CreateSessionRequest {
+                tenant_id: f.tenant.tenant_id.clone(),
+                grants: vec!["reader".into()],
+            },
+        )?)
+        .await?
+        .into_inner();
+    let shared = f
+        .api
+        .list(request(
+            &reader.session_key,
+            ListRequest {
+                directory_id: "shared".into(),
+                limit: 100,
+                ..Default::default()
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(shared.entries.len(), 1);
+    assert_eq!(shared.entries[0].name, format!("folder--{}", directory.id));
+    f.api
+        .stat(request(
+            &reader.session_key,
+            ObjectRequest {
+                object_id: file.id.clone(),
+            },
+        )?)
+        .await?;
+    f.api
+        .update_grants(request(
+            &f.tenant.tenant_key,
+            UpdateGrantsRequest {
+                tenant_id: f.tenant.tenant_id.clone(),
+                object_id: directory.id.clone(),
+                changes: vec![GrantChange {
+                    grant: "reader".into(),
+                    attached: false,
+                }],
+            },
+        )?)
+        .await?;
+    let denied = f
+        .api
+        .stat(request(
+            &reader.session_key,
+            ObjectRequest {
+                object_id: file.id.clone(),
+            },
+        )?)
+        .await
+        .err()
+        .context("revocation ignored")?;
+    assert_eq!(code(&denied), ErrorCode::NotFound);
+    f.api
+        .rename(request(
+            &f.owner.session_key,
+            RenameRequest {
+                object_id: file.id.clone(),
+                parent_id: f.tenant.root_id.clone(),
+                name: "moved".into(),
+                replace: false,
+            },
+        )?)
+        .await?;
+    let moved = f
+        .api
+        .lookup(request(
+            &f.owner.session_key,
+            LookupRequest {
+                parent_id: f.tenant.root_id.clone(),
+                name: "moved".into(),
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(moved.id, file.id);
+    f.api
+        .remove(request(
+            &f.owner.session_key,
+            RemoveRequest {
+                object_id: directory.id,
+                directory: true,
+            },
+        )?)
+        .await?;
+    f.api.0.cache.drain().await?;
+    let other = f
+        .api
+        .create_tenant(request(
+            &"ab".repeat(32),
+            CreateTenantRequest {
+                tenant_id: "other".into(),
+                root_grants: vec!["owner".into()],
+            },
+        )?)
+        .await?
+        .into_inner();
+    let other_session = f
+        .api
+        .create_session(request(
+            &other.tenant_key,
+            CreateSessionRequest {
+                tenant_id: other.tenant_id,
+                grants: vec!["owner".into()],
+            },
+        )?)
+        .await?
+        .into_inner();
+    let denied = f
+        .api
+        .stat(request(
+            &other_session.session_key,
+            ObjectRequest { object_id: file.id },
+        )?)
+        .await
+        .err()
+        .context("cross tenant access")?;
+    assert_eq!(code(&denied), ErrorCode::NotFound);
+    f.clean().await
+}
+async fn independent_servers_and_deleted_writer() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "race", false).await?;
+    f.write(&file.id, 0, b"first".to_vec()).await?;
+    f.api.0.cache.drain().await?;
+    let (peer, session) = f.peer().await?;
+    peer.read(request(
+        &session.session_key,
+        ReadRequest {
+            object_id: file.id.clone(),
+            offset: 0,
+            length: 100,
+        },
+    )?)
+    .await?;
+    f.write(&file.id, 0, b"other".to_vec()).await?;
+    f.api.0.cache.drain().await?;
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    let updated = peer
+        .read(request(
+            &session.session_key,
+            ReadRequest {
+                object_id: file.id.clone(),
+                offset: 0,
+                length: 100,
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(updated.data, b"other");
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.write(&file.id, 0, b"loser".to_vec()).await?;
+    f.sync(&file.id).await?;
+    peer.remove(request(
+        &session.session_key,
+        RemoveRequest {
+            object_id: file.id.clone(),
+            directory: false,
+        },
+    )?)
+    .await?;
+    peer.0.cache.drain().await?;
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    assert!(f.api.0.cache.drain().await.is_err());
+    assert!(f.sync(&file.id).await.is_err());
+    let keys = keys::Keys::new(&f.tenant.tenant_id)?;
+    assert!(f.api.0.storage.get(keys.object(&file.id)?).await?.is_none());
+    let absent = f
+        .api
+        .stat(request(
+            &f.owner.session_key,
+            ObjectRequest { object_id: file.id },
+        )?)
+        .await
+        .err()
+        .context("resurrected object")?;
+    assert_eq!(code(&absent), ErrorCode::NotFound);
+    f.clean().await
+}
+async fn expired_pending_is_discarded() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "deadline", false).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.write(&file.id, 0, b"tentative".to_vec()).await?;
+    f.sync(&file.id).await?;
+    tokio::time::sleep(Duration::from_millis(520)).await;
+    assert!(f.sync(&file.id).await.is_err());
+    assert!(f.read(&file.id).await?.data.is_empty());
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.clean().await
+}
+
+async fn create_bundles_initial_writes_without_merging_siblings() -> Result<()> {
+    let f = Fixture::new().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    let first = f.create(&f.tenant.root_id, "first", false).await?;
+    f.write(&first.id, 0, b"one".to_vec()).await?;
+    f.write(&first.id, 3, b"two".to_vec()).await?;
+    f.sync(&first.id).await?;
+    let second = f.create(&f.tenant.root_id, "second", false).await?;
+    f.write(&second.id, 0, b"other".to_vec()).await?;
+    assert_eq!(f.api.0.cache.commits(), 0);
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+    assert_eq!(
+        f.api.0.cache.commits(),
+        2,
+        "Each create absorbs only its own initial writes."
+    );
+    assert_eq!(f.read(&first.id).await?.data, b"onetwo");
+    assert_eq!(f.read(&second.id).await?.data, b"other");
+    // A file edit's authorization may read the parent while a sibling create modifies that parent.
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.write(&first.id, 0, b"new".to_vec()).await?;
+    f.create(&f.tenant.root_id, "third", false).await?;
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+    assert_eq!(f.read(&first.id).await?.data, b"newtwo");
+    f.clean().await
+}
+
+async fn sibling_publications_preserve_file_writes() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let parent = f.create(&f.tenant.root_id, "busy", true).await?;
+    let file = f.create(&parent.id, "existing", false).await?;
+    f.api.0.cache.drain().await?;
+    // Sibling creates change the parent metadata used to validate the existing file's ancestry.
+    // These are separate transactions; repeated definite conflicts must not discard valid writes.
+    for i in 0u64..300 {
+        f.create(&parent.id, &format!("sibling-{i}"), false).await?;
+        f.write(&file.id, i * 8, i.to_be_bytes().to_vec()).await?;
+        tokio::time::sleep(Duration::from_millis(1)).await;
+    }
+    f.api.0.cache.drain().await?;
+    f.sync(&file.id).await?;
+    let expected: Vec<u8> = (0u64..300).flat_map(u64::to_be_bytes).collect();
+    assert_eq!(f.read(&file.id).await?.data, expected);
+    let (peer, session) = f.peer().await?;
+    assert_eq!(
+        peer.read(request(
+            &session.session_key,
+            ReadRequest {
+                object_id: file.id,
+                offset: 0,
+                length: 2400,
+            },
+        )?)
+        .await?
+        .into_inner()
+        .data,
+        expected
+    );
+    f.clean().await
+}
+
+async fn lost_commit_reply_is_not_replayed() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "unknown", false).await?;
+    let other = f.create(&f.tenant.root_id, "independent", false).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.write(&file.id, 0, b"committed".to_vec()).await?;
+    f.sync(&file.id).await?;
+    f.api
+        .0
+        .cache
+        .lose_commit_reply
+        .store(true, Ordering::Release);
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    assert!(f.api.0.cache.drain().await.is_err());
+    assert!(f.sync(&file.id).await.is_err());
+    // An unknown reply forces an authoritative reload, not replay or resurrection of the overlay.
+    assert_eq!(f.read(&file.id).await?.data, b"committed");
+    let before = f.api.0.cache.commits();
+    f.write(&other.id, 0, b"unaffected".to_vec()).await?;
+    f.sync(&other.id).await?;
+    assert!(
+        f.api.0.cache.drain().await.is_err(),
+        "The original receipt remains."
+    );
+    assert_eq!(f.api.0.cache.commits(), before + 1);
+    let (peer, session) = f.peer().await?;
+    assert_eq!(
+        peer.read(request(
+            &session.session_key,
+            ReadRequest {
+                object_id: file.id,
+                offset: 0,
+                length: 100,
+            }
+        )?)
+        .await?
+        .into_inner()
+        .data,
+        b"committed"
+    );
+    f.clean().await
+}
+
+async fn capacity_and_cold_recovery() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        cache_mib: 16,
+        dirty_mib: 1,
+        ..Default::default()
+    })
+    .await?;
+    let file = f.create(&f.tenant.root_id, "durable", false).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    assert!(
+        f.write(&file.id, 0, vec![1; dfs_protocol::MAX_IO])
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        f.sync(&file.id).await?.size,
+        0,
+        "Capacity fails before acceptance."
+    );
+    let pending = f.create(&f.tenant.root_id, "ram-only", false).await?;
+    f.write(&pending.id, 0, b"lost".to_vec()).await?;
+    f.sync(&pending.id).await?;
+    let (peer, session) = f.peer().await?;
+    drop(f);
+    let result = peer
+        .stat(request(
+            &session.session_key,
+            ObjectRequest {
+                object_id: pending.id,
+            },
+        )?)
+        .await;
+    assert_eq!(
+        code(&result.err().context("Recovered uncommitted RAM")?),
+        ErrorCode::NotFound
+    );
+    assert_eq!(
+        peer.stat(request(
+            &session.session_key,
+            ObjectRequest { object_id: file.id }
+        )?)
+        .await?
+        .into_inner()
+        .size,
+        0
+    );
+    peer.0
+        .storage
+        .transact(|_| async {
+            let mut b = storage::WriteBatch::new();
+            b.clear(vec![], vec![255]);
+            Ok((b, ()))
+        })
+        .await?;
+    Ok(())
+}
+async fn remote_namespace_and_grants_expire() -> Result<()> {
+    let f = Fixture::new().await?;
+    let directory = f.create(&f.tenant.root_id, "visible", true).await?;
+    let file = f.create(&directory.id, "file", false).await?;
+    f.write(&file.id, 0, b"private".to_vec()).await?;
+    f.api
+        .update_grants(request(
+            &f.tenant.tenant_key,
+            UpdateGrantsRequest {
+                tenant_id: f.tenant.tenant_id.clone(),
+                object_id: directory.id.clone(),
+                changes: vec![GrantChange {
+                    grant: "reader".into(),
+                    attached: true,
+                }],
+            },
+        )?)
+        .await?;
+    f.api.0.cache.drain().await?;
+    let (peer, owner) = f.peer().await?;
+    let reader = peer
+        .create_session(request(
+            &f.tenant.tenant_key,
+            CreateSessionRequest {
+                tenant_id: f.tenant.tenant_id.clone(),
+                grants: vec!["reader".into()],
+            },
+        )?)
+        .await?
+        .into_inner();
+    let content = peer
+        .read(request(
+            &reader.session_key,
+            ReadRequest {
+                object_id: file.id.clone(),
+                offset: 0,
+                length: 100,
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(content.data, b"private");
+    assert_eq!(
+        peer.0.cache.block_metrics().1,
+        1,
+        "Warm content before revocation."
+    );
+    assert!(
+        peer.lookup(request(
+            &owner.session_key,
+            LookupRequest {
+                parent_id: f.tenant.root_id.clone(),
+                name: "moved".into(),
+            }
+        )?)
+        .await
+        .is_err()
+    );
+    f.api
+        .rename(request(
+            &f.owner.session_key,
+            RenameRequest {
+                object_id: directory.id.clone(),
+                parent_id: f.tenant.root_id.clone(),
+                name: "moved".into(),
+                replace: false,
+            },
+        )?)
+        .await?;
+    f.api
+        .update_grants(request(
+            &f.tenant.tenant_key,
+            UpdateGrantsRequest {
+                tenant_id: f.tenant.tenant_id.clone(),
+                object_id: directory.id.clone(),
+                changes: vec![GrantChange {
+                    grant: "reader".into(),
+                    attached: false,
+                }],
+            },
+        )?)
+        .await?;
+    f.api.0.cache.drain().await?;
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    assert_eq!(
+        peer.lookup(request(
+            &owner.session_key,
+            LookupRequest {
+                parent_id: f.tenant.root_id.clone(),
+                name: "moved".into(),
+            }
+        )?)
+        .await?
+        .into_inner()
+        .id,
+        directory.id
+    );
+    assert_eq!(
+        code(
+            &peer
+                .read(request(
+                    &reader.session_key,
+                    ReadRequest {
+                        object_id: file.id,
+                        offset: 0,
+                        length: 100
+                    }
+                )?)
+                .await
+                .err()
+                .context("Stale inherited grant")?
+        ),
+        ErrorCode::NotFound
+    );
+    assert!(
+        peer.list(request(
+            &reader.session_key,
+            ListRequest {
+                directory_id: "shared".into(),
+                limit: 100,
+                ..Default::default()
+            }
+        )?)
+        .await?
+        .into_inner()
+        .entries
+        .is_empty()
+    );
+    f.clean().await
+}
+
+async fn retained_blocks_revalidate_revisions_and_holes() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "retained", false).await?;
+    f.write(&file.id, (2 * BLOCK_SIZE - 4) as u64, b"tail".to_vec())
+        .await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let initial = f.read(&file.id).await?;
+    assert!(initial.data[..2 * BLOCK_SIZE - 4].iter().all(|v| *v == 0));
+    assert_eq!(&initial.data[2 * BLOCK_SIZE - 4..], b"tail");
+    let before = f.api.0.cache.block_metrics();
+    assert_eq!(
+        before.1, 2,
+        "A real block and a proven hole enter the cache."
+    );
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    assert_eq!(f.read(&file.id).await?.data, initial.data);
+    let reused = f.api.0.cache.block_metrics();
+    assert_eq!(reused.0, before.0 + 2);
+    assert_eq!(
+        reused.1, before.1,
+        "Refresh must not reload unchanged block bytes."
+    );
+
+    let (peer, session) = f.peer().await?;
+    peer.write(request(
+        &session.session_key,
+        WriteRequest {
+            object_id: file.id.clone(),
+            offset: 0,
+            data: b"head".to_vec(),
+            append: false,
+        },
+    )?)
+    .await?;
+    peer.0.cache.drain().await?;
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    let changed = f.read(&file.id).await?;
+    assert_eq!(&changed.data[..4], b"head");
+    assert_eq!(&changed.data[2 * BLOCK_SIZE - 4..], b"tail");
+    assert_eq!(
+        f.api.0.cache.block_metrics().1,
+        reused.1 + 2,
+        "A changed revision must not reuse a cached block or hole."
+    );
+
+    for size in [5, (2 * BLOCK_SIZE) as u64] {
+        peer.update(request(
+            &session.session_key,
+            UpdateRequest {
+                object_id: file.id.clone(),
+                size: Some(size),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    }
+    peer.0.cache.drain().await?;
+    tokio::time::sleep(Duration::from_millis(510)).await;
+    let extended = f.read(&file.id).await?;
+    assert_eq!(extended.size, (2 * BLOCK_SIZE) as u64);
+    assert_eq!(&extended.data[..4], b"head");
+    assert!(
+        extended.data[4..].iter().all(|v| *v == 0),
+        "Old retained tails must not return."
+    );
+    f.clean().await
+}
+
+async fn retained_partial_write_still_validates_publication() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.tenant.root_id, "conflict", false).await?;
+    f.write(&file.id, 0, b"original".to_vec()).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    assert_eq!(f.read(&file.id).await?.data, b"original");
+    let before = f.api.0.cache.block_metrics().0;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.write(&file.id, 1, b"X".to_vec()).await?;
+    assert_eq!(f.api.0.cache.block_metrics().0, before + 1);
+    assert_eq!(f.read(&file.id).await?.data, b"oXiginal");
+    let (peer, session) = f.peer().await?;
+    peer.write(request(
+        &session.session_key,
+        WriteRequest {
+            object_id: file.id.clone(),
+            offset: 0,
+            data: b"winning!".to_vec(),
+            append: false,
+        },
+    )?)
+    .await?;
+    peer.0.cache.drain().await?;
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    assert!(f.api.0.cache.drain().await.is_err());
+    assert!(f.sync(&file.id).await.is_err());
+    assert_eq!(f.read(&file.id).await?.data, b"winning!");
+    f.clean().await
+}
+
+async fn retained_blocks_evict_and_reload() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        cache_mib: 16,
+        dirty_mib: 8,
+        ..Default::default()
+    })
+    .await?;
+    let mut files = Vec::new();
+    for index in 0..5u8 {
+        let file = f
+            .create(&f.tenant.root_id, &format!("large-{index}"), false)
+            .await?;
+        for offset in (0..4 * dfs_protocol::MAX_IO).step_by(dfs_protocol::MAX_IO) {
+            f.write(&file.id, offset as u64, vec![index; dfs_protocol::MAX_IO])
+                .await?;
+        }
+        f.api.0.cache.drain().await?;
+        // Allow acknowledged journal charges to retire before testing clean-cache pressure.
+        tokio::time::sleep(Duration::from_millis(1010)).await;
+        files.push(file);
+    }
+    for (index, file) in files.iter().enumerate() {
+        f.api.0.cache.invalidate_base().await;
+        for offset in (0..4 * dfs_protocol::MAX_IO).step_by(dfs_protocol::MAX_IO) {
+            let data = f
+                .api
+                .read(request(
+                    &f.owner.session_key,
+                    ReadRequest {
+                        object_id: file.id.clone(),
+                        offset: offset as u64,
+                        length: dfs_protocol::MAX_IO as u32,
+                    },
+                )?)
+                .await?
+                .into_inner();
+            assert_eq!(data.data, vec![index as u8; dfs_protocol::MAX_IO]);
+        }
+    }
+    let before = f.api.0.cache.block_metrics();
+    assert!(
+        before.2 > 0,
+        "Clean blocks must be evicted under the shared byte budget."
+    );
+    f.api.0.cache.invalidate_base().await;
+    assert!(f.read(&files[0].id).await?.data.iter().all(|v| *v == 0));
+    assert!(
+        f.api.0.cache.block_metrics().1 > before.1,
+        "Evicted blocks reload from FDB."
+    );
+    f.clean().await
+}
+
+async fn expired_fdb_read_refreshes_before_cache_ttl() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let warm = f.create(&f.tenant.root_id, "warm", false).await?;
+    let cold = f.create(&f.tenant.root_id, "cold", false).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    f.sync(&warm.id).await?;
+    let old = f.api.0.cache.expire_read_transaction().await?;
+    assert!(
+        !old.expired(),
+        "The native error has not been observed yet."
+    );
+    let object = f
+        .api
+        .stat(request(
+            &f.owner.session_key,
+            ObjectRequest {
+                object_id: cold.id.clone(),
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert!(
+        old.expired(),
+        "The cold read must encounter native FDB expiry."
+    );
+    assert_eq!(object.id, cold.id);
+    f.clean().await
+}
+
+async fn indexed_views_preserve_cuts_and_truncation() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let file = f.create(&f.tenant.root_id, "cuts", false).await?;
+    f.write(&file.id, 0, vec![7; 3 * BLOCK_SIZE]).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let keys = keys::Keys::new(&f.tenant.tenant_id)?;
+    let original = f.api.0.cache.snapshot().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.api
+        .update(request(
+            &f.owner.session_key,
+            UpdateRequest {
+                object_id: file.id.clone(),
+                size: Some((BLOCK_SIZE + 3) as u64),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    let truncated = f.api.0.cache.snapshot().await?;
+    f.write(&file.id, (2 * BLOCK_SIZE + 2) as u64, b"tail".to_vec())
+        .await?;
+    let extended = f.api.0.cache.snapshot().await?;
+    let block = keys.block(&file.id, 2)?;
+    assert_eq!(
+        original
+            .get(&block)
+            .await?
+            .context("Original block")?
+            .as_ref(),
+        vec![7; BLOCK_SIZE]
+    );
+    assert!(
+        truncated.get(&block).await?.is_none(),
+        "A later write must not enter an earlier cut."
+    );
+    assert_eq!(
+        extended
+            .get(&block)
+            .await?
+            .context("Extended block")?
+            .as_ref(),
+        b"\0\0tail"
+    );
+    for (snapshot, expected) in [
+        (&original, vec![BLOCK_SIZE; 3]),
+        (&truncated, vec![BLOCK_SIZE, 3]),
+        (&extended, vec![BLOCK_SIZE, 3, 6]),
+    ] {
+        let start = keys.data(&file.id)?;
+        let mut scan = snapshot
+            .scan(start.clone()..keys::prefix_end(&start))
+            .await?;
+        let mut lengths = Vec::new();
+        while let Some(row) = scan.next().await? {
+            lengths.push(row.value.len());
+        }
+        assert_eq!(
+            lengths, expected,
+            "Range reads must preserve the same cut and clear ordering."
+        );
+        snapshot.valid()?;
+    }
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let data = f.read(&file.id).await?;
+    assert_eq!(data.size, (2 * BLOCK_SIZE + 6) as u64);
+    assert!(
+        data.data[BLOCK_SIZE + 3..2 * BLOCK_SIZE + 2]
+            .iter()
+            .all(|v| *v == 0)
+    );
+    assert_eq!(&data.data[2 * BLOCK_SIZE + 2..], b"tail");
+    f.clean().await
+}
+
+async fn indexed_acceptance_rejects_later_namespace_changes() -> Result<()> {
+    let f = Fixture::new().await?;
+    let snapshot = f.api.0.cache.snapshot().await?;
+    let view = read::View::from_snapshot(
+        snapshot.clone(),
+        &f.tenant.tenant_id,
+        f.owner.grants.iter().cloned().collect(),
+    )
+    .await?;
+    let (edit, candidate) = view
+        .create(CreateRequest {
+            parent_id: f.tenant.root_id.clone(),
+            name: "same".into(),
+            mode: 0o644,
+            ..Default::default()
+        })
+        .await?;
+    let candidate = candidate.object.context("Candidate")?;
+    let winner = f.create(&f.tenant.root_id, "same", false).await?;
+    let page = view.list(&f.tenant.root_id, None, 100).await?;
+    assert!(
+        !page.entries.iter().any(|e| e.name == "same"),
+        "Later membership must not enter a pinned listing."
+    );
+    let session = f
+        .api
+        .0
+        .sessions
+        .get(&request(&f.owner.session_key, Empty {})?)
+        .await?;
+    let scope = std::collections::BTreeSet::from([
+        view.keys.object(&f.tenant.root_id)?,
+        view.keys.object(&candidate.id)?,
+    ]);
+    let error = f
+        .api
+        .0
+        .cache
+        .accept(
+            &snapshot,
+            edit.batch,
+            scope,
+            false,
+            Some(view.keys.object(&candidate.id)?),
+            &session,
+        )
+        .err()
+        .context("Accepted a stale create")?;
+    assert!(cache::is_retry(&error));
+    assert_eq!(
+        f.api
+            .lookup(request(
+                &f.owner.session_key,
+                LookupRequest {
+                    parent_id: f.tenant.root_id.clone(),
+                    name: "same".into()
+                }
+            )?)
+            .await?
+            .into_inner()
+            .id,
+        winner.id
+    );
+    f.api.0.cache.drain().await?;
+    f.clean().await
+}

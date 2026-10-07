@@ -13,6 +13,7 @@ import {
   formatCreditValue,
 } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import {
@@ -57,6 +58,7 @@ function ConsumptionBurnUpTooltip({
   active,
   payload,
 }: TooltipContentProps<number, string>) {
+  const { t } = useLingui();
   const datum = payload?.[0]?.payload;
   if (!active || !isBurnUpPoint(datum) || datum.actual === null) {
     return null;
@@ -65,7 +67,7 @@ function ConsumptionBurnUpTooltip({
   const rows = [
     {
       key: BURNUP_ACTUAL_KEY,
-      label: "Actual consumption",
+      label: t`Actual consumption`,
       value: formatCredits(datum.actual),
       colorClassName: ACTUAL_COLOR,
     },
@@ -73,7 +75,7 @@ function ConsumptionBurnUpTooltip({
       ? [
           {
             key: BURNUP_TARGET_KEY,
-            label: "Target consumption",
+            label: t`Target consumption`,
             value: formatCredits(datum.target),
             colorClassName: TARGET_COLOR,
           },
@@ -82,6 +84,8 @@ function ConsumptionBurnUpTooltip({
   ];
 
   const delta = datum.target !== null ? datum.actual - datum.target : null;
+  const deltaAmount =
+    delta !== null ? formatCreditValue(Math.abs(delta)) : null;
 
   return (
     <ChartTooltipCard
@@ -89,7 +93,9 @@ function ConsumptionBurnUpTooltip({
       rows={rows}
       footer={
         delta !== null
-          ? `${formatCreditValue(Math.abs(delta))} ${delta > 0 ? "ahead of" : "behind"} target`
+          ? delta > 0
+            ? t`${deltaAmount} ahead of target`
+            : t`${deltaAmount} behind target`
           : undefined
       }
     />
@@ -113,6 +119,7 @@ export function ConsumptionBurnUpChart({
   emptyMessage,
   additionalControls,
 }: ConsumptionBurnUpChartProps) {
+  const { t } = useLingui();
   const chartData = useMemo<BurnUpPoint[]>(() => {
     const points = timeseries?.points ?? [];
     const partialTimestamp = findPartialTimestamp(points);
@@ -138,14 +145,14 @@ export function ConsumptionBurnUpChart({
   const legendItems: LegendItem[] = [
     {
       key: BURNUP_ACTUAL_KEY,
-      label: "Actual consumption",
+      label: t`Actual consumption`,
       colorClassName: ACTUAL_COLOR,
     },
     ...(capCredits !== null
       ? [
           {
             key: BURNUP_TARGET_KEY,
-            label: "Target consumption",
+            label: t`Target consumption`,
             colorClassName: TARGET_COLOR,
           },
         ]
@@ -161,7 +168,7 @@ export function ConsumptionBurnUpChart({
       additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
-        isTimeseriesError ? "Failed to load consumption." : undefined
+        isTimeseriesError ? t`Failed to load consumption.` : undefined
       }
       emptyMessage={!isTimeseriesLoading && !hasData ? emptyMessage : undefined}
       height={CHART_HEIGHT}
@@ -192,7 +199,7 @@ export function ConsumptionBurnUpChart({
           tickMargin={8}
           tickFormatter={formatCreditsCompact}
           label={{
-            value: "Credits",
+            value: t`Credits`,
             angle: -90,
             position: "insideLeft",
             className: "fill-muted-foreground text-xs",
@@ -206,7 +213,7 @@ export function ConsumptionBurnUpChart({
         {capCredits !== null && (
           <Line
             dataKey={BURNUP_TARGET_KEY}
-            name="Target consumption"
+            name={t`Target consumption`}
             className={TARGET_COLOR}
             stroke="currentColor"
             strokeWidth={1}
@@ -219,7 +226,7 @@ export function ConsumptionBurnUpChart({
         )}
         <Line
           dataKey={BURNUP_ACTUAL_KEY}
-          name="Actual consumption"
+          name={t`Actual consumption`}
           className={ACTUAL_COLOR}
           stroke="currentColor"
           strokeWidth={2}

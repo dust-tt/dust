@@ -273,32 +273,34 @@ describe("relocation transfer job pool", () => {
     expect(sts.runTransferJob).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    false,
-    true,
-  ])("recovers a lost run with stale job metadata and done=%s", async (done) => {
-    for (let index = 0; index < 20; index++) {
-      expect((await service.startPooledTransfer(request(index))).isOk()).toBe(
+  it.each([false, true])(
+    "recovers a lost run with stale job metadata and done=%s",
+    async (done) => {
+      for (let index = 0; index < 20; index++) {
+        expect((await service.startPooledTransfer(request(index))).isOk()).toBe(
+          true
+        );
+      }
+      finishOperations();
+      const run = sts.runTransferJob.getMockImplementation()!;
+      sts.runTransferJob.mockImplementationOnce(async ({ jobName }) => {
+        const previous = structuredClone(jobs.get(jobName)!);
+        const [operation] = await run({ jobName });
+        operation.done = done;
+        jobs.set(jobName, previous);
+        throw new Error("Connection lost after STS accepted the run");
+      });
+      expect((await service.startPooledTransfer(request(20))).isErr()).toBe(
         true
       );
-    }
-    finishOperations();
-    const run = sts.runTransferJob.getMockImplementation()!;
-    sts.runTransferJob.mockImplementationOnce(async ({ jobName }) => {
-      const previous = structuredClone(jobs.get(jobName)!);
-      const [operation] = await run({ jobName });
-      operation.done = done;
-      jobs.set(jobName, previous);
-      throw new Error("Connection lost after STS accepted the run");
-    });
-    expect((await service.startPooledTransfer(request(20))).isErr()).toBe(true);
 
-    const retry = await service.startPooledTransfer(request(20));
-    expect(retry.isOk() && retry.value).toBe("transferOperations/test-20");
-    expect(sts.listOperationsAsync).toHaveBeenCalledTimes(1);
-    expect(sts.updateTransferJob).toHaveBeenCalledTimes(1);
-    expect(sts.runTransferJob).toHaveBeenCalledTimes(21);
-  });
+      const retry = await service.startPooledTransfer(request(20));
+      expect(retry.isOk() && retry.value).toBe("transferOperations/test-20");
+      expect(sts.listOperationsAsync).toHaveBeenCalledTimes(1);
+      expect(sts.updateTransferJob).toHaveBeenCalledTimes(1);
+      expect(sts.runTransferJob).toHaveBeenCalledTimes(21);
+    }
+  );
 
   it("starts an already configured job when the first run never reached STS", async () => {
     sts.runTransferJob.mockRejectedValueOnce(new Error("Connection refused"));
@@ -388,51 +390,55 @@ describe("relocation transfer job pool", () => {
     { stage: "assignment", delayedWrite: 1 },
     { stage: "configuration", delayedWrite: 2 },
     { stage: "completion", delayedWrite: 3 },
-  ])("rejects a queued $stage write after another worker takes the lock", async ({
-    delayedWrite,
-  }) => {
-    const redis = await getRedisStreamClient({ origin: "lock" });
-    const evalCommand = redis.eval.bind(redis);
-    const queued = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    let writeCount = 0;
-    vi.spyOn(redis, "eval").mockImplementation(async (...args) => {
-      const script = args[0];
-      if (typeof script === "string" && script.includes('redis.call("hset"')) {
-        writeCount++;
-        if (writeCount === delayedWrite) {
-          queued.resolve();
-          await release.promise;
+  ])(
+    "rejects a queued $stage write after another worker takes the lock",
+    async ({ delayedWrite }) => {
+      const redis = await getRedisStreamClient({ origin: "lock" });
+      const evalCommand = redis.eval.bind(redis);
+      const queued = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      let writeCount = 0;
+      vi.spyOn(redis, "eval").mockImplementation(async (...args) => {
+        const script = args[0];
+        if (
+          typeof script === "string" &&
+          script.includes('redis.call("hset"')
+        ) {
+          writeCount++;
+          if (writeCount === delayedWrite) {
+            queued.resolve();
+            await release.promise;
+          }
         }
+        return evalCommand(...args);
+      });
+
+      const oldAttempt = service.startPooledTransfer(request(0));
+      await queued.promise;
+      let otherRequest;
+      try {
+        // Expire the old lease while its Redis command is still queued.
+        await redis.pExpire(`lock:${poolKey}`, 0);
+        otherRequest = await service.startPooledTransfer(request(1));
+      } finally {
+        release.resolve();
       }
-      return evalCommand(...args);
-    });
+      const stale = await oldAttempt;
+      expect(stale.isErr() && stale.error.message).toContain("lock expired");
+      expect(otherRequest.isOk()).toBe(true);
+      expect(await redis.hGet(poolKey, "pending")).toBe("");
 
-    const oldAttempt = service.startPooledTransfer(request(0));
-    await queued.promise;
-    let otherRequest;
-    try {
-      // Expire the old lease while its Redis command is still queued.
-      await redis.pExpire(`lock:${poolKey}`, 0);
-      otherRequest = await service.startPooledTransfer(request(1));
-    } finally {
-      release.resolve();
+      const retry = await service.startPooledTransfer(request(0));
+      expect(retry.isOk()).toBe(true);
+      if (retry.isOk() && otherRequest.isOk()) {
+        expect(retry.value).not.toBe(otherRequest.value);
+        expect(specs.get(retry.value)?.gcsDataSource?.path).toBe("source-0/");
+        expect(specs.get(otherRequest.value)?.gcsDataSource?.path).toBe(
+          "source-1/"
+        );
+      }
     }
-    const stale = await oldAttempt;
-    expect(stale.isErr() && stale.error.message).toContain("lock expired");
-    expect(otherRequest.isOk()).toBe(true);
-    expect(await redis.hGet(poolKey, "pending")).toBe("");
-
-    const retry = await service.startPooledTransfer(request(0));
-    expect(retry.isOk()).toBe(true);
-    if (retry.isOk() && otherRequest.isOk()) {
-      expect(retry.value).not.toBe(otherRequest.value);
-      expect(specs.get(retry.value)?.gcsDataSource?.path).toBe("source-0/");
-      expect(specs.get(otherRequest.value)?.gcsDataSource?.path).toBe(
-        "source-1/"
-      );
-    }
-  });
+  );
 
   it("does not refresh the deadline after a delayed lock acquisition reply", async () => {
     const redis = await getRedisStreamClient({ origin: "lock" });

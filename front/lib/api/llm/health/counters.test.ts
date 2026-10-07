@@ -195,37 +195,37 @@ describe("model health counters", () => {
   it.each([
     { outcome: "recovery_started", modelId: "claude-sonnet-4-6" },
     { outcome: "already_degraded", modelId: "claude-opus-4-6" },
-  ] as const)("holds a $outcome endpoint until the workflow's next probe", async ({
-    outcome,
-    modelId,
-  }) => {
-    const endpoint = { ...ENDPOINT, modelId } as const;
-    const error = providerError("overloaded_error");
-    const degradedSinceMs = NOW.getTime() - MIN_DEGRADED_DURATION_MS * 0.9;
-    vi.mocked(evaluateEndpoint).mockResolvedValue({
-      outcome,
-      degradedSinceMs,
-    });
+  ] as const)(
+    "holds a $outcome endpoint until the workflow's next probe",
+    async ({ outcome, modelId }) => {
+      const endpoint = { ...ENDPOINT, modelId } as const;
+      const error = providerError("overloaded_error");
+      const degradedSinceMs = NOW.getTime() - MIN_DEGRADED_DURATION_MS * 0.9;
+      vi.mocked(evaluateEndpoint).mockResolvedValue({
+        outcome,
+        degradedSinceMs,
+      });
 
-    await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+      await recordLLMAttempt({ endpoint, outcome: error, now: NOW });
+      expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
 
-    // Nothing can change before that probe, so re-reading the window until
-    // then would only earn a rejected start, from every pod.
-    await recordLLMAttempt({
-      endpoint,
-      outcome: error,
-      now: new Date(degradedSinceMs + MIN_DEGRADED_DURATION_MS - 1),
-    });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+      // Nothing can change before that probe, so re-reading the window until
+      // then would only earn a rejected start, from every pod.
+      await recordLLMAttempt({
+        endpoint,
+        outcome: error,
+        now: new Date(degradedSinceMs + MIN_DEGRADED_DURATION_MS - 1),
+      });
+      expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
 
-    await recordLLMAttempt({
-      endpoint,
-      outcome: error,
-      now: new Date(degradedSinceMs + MIN_DEGRADED_DURATION_MS),
-    });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
-  });
+      await recordLLMAttempt({
+        endpoint,
+        outcome: error,
+        now: new Date(degradedSinceMs + MIN_DEGRADED_DURATION_MS),
+      });
+      expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
+    }
+  );
 
   it("keeps the usual cadence when the workflow start time is unknown", async () => {
     const endpoint = { ...ENDPOINT, modelId: "claude-fable-5" } as const;

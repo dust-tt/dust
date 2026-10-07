@@ -20,7 +20,7 @@ app.get(
     const { tId: templateId } = ctx.req.valid("param");
 
     const template = await TemplateResource.fetchByExternalId(templateId);
-    if (!template || !template.isPublished()) {
+    if (!template) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

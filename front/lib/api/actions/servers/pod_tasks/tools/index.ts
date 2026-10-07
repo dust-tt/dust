@@ -8,6 +8,7 @@ import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   getPod,
+  getWritablePodContext,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
@@ -283,7 +284,7 @@ export function createProjectTasksTools(
 
     [CREATE_TASKS_TOOL_NAME]: async ({ creatorType, tasks, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
+        const contextRes = await getWritablePodContext(auth, {
           toolContext,
           dustPod,
         });
@@ -399,7 +400,7 @@ export function createProjectTasksTools(
 
     [UPDATE_TASKS_TOOL_NAME]: async ({ tasks, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
+        const contextRes = await getWritablePodContext(auth, {
           toolContext,
           dustPod,
         });
@@ -468,7 +469,7 @@ export function createProjectTasksTools(
       dustPod,
     }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
+        const contextRes = await getWritablePodContext(auth, {
           toolContext,
           dustPod,
         });

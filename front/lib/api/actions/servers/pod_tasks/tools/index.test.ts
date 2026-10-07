@@ -512,4 +512,41 @@ describe("update_tasks", () => {
     expect(refreshed?.text).toBe("Secret foreign task");
     expect(refreshed?.status).toBe("todo");
   });
+
+  it("rejects updates in an open Pod the caller is not a member of", async () => {
+    const {
+      workspace,
+      user,
+      globalGroup,
+      authenticator: auth,
+    } = await createResourceTest({
+      role: "user",
+    });
+    const openPod = await SpaceFactory.project(workspace);
+    await SpaceFactory.attachGroup(openPod, globalGroup, "project_viewer");
+    await auth.refresh();
+
+    const row = await ProjectTaskResource.makeNew(
+      auth,
+      makeTodoBlob(openPod.id, user.id, { text: "Open Pod task" })
+    );
+
+    const result = await getUpdateTasksTool(auth).handler(
+      {
+        tasks: [{ taskId: row.sId, text: "Hijacked", status: "done" }],
+        dustPod: {
+          uri: makePodConfigurationURI(workspace.sId, openPod.sId),
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+        },
+      },
+      makeExtra(auth)
+    );
+
+    assert(result.isErr());
+    expect(result.error.message).toContain("write permissions");
+
+    const refreshed = await ProjectTaskResource.fetchBySId(auth, row.sId);
+    expect(refreshed?.text).toBe("Open Pod task");
+    expect(refreshed?.status).toBe("todo");
+  });
 });

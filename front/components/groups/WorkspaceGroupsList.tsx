@@ -2,10 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
-import {
-  displayRoleCapitalized,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
@@ -17,7 +14,6 @@ import {
   isRegularManualGroupKind,
   MANAGEABLE_GROUP_KINDS,
 } from "@app/types/groups";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -30,12 +26,15 @@ import {
   DropdownMenuPortal,
   DropdownMenuTrigger,
   EmptyCTA,
+  Hoverable,
   Plus,
   SearchInput,
   Spinner,
   Trash01,
   Users01,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -57,118 +56,8 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
-const columns: ColumnDef<GroupRowData>[] = [
-  {
-    id: "name",
-    accessorKey: "name",
-    header: "Name",
-    meta: { className: "w-full" },
-    cell: ({ row }) => {
-      const { name, memberCount } = row.original;
-      return (
-        <DataTable.CellContent
-          icon={Users01}
-          description={`${memberCount} member${pluralize(memberCount)}`}
-        >
-          {name}
-        </DataTable.CellContent>
-      );
-    },
-  },
-  {
-    id: "managers",
-    header: "Group Manager",
-    meta: { className: "w-[240px]" },
-    cell: ({ row }) => {
-      const { managers } = row.original;
-      if (managers.length === 0) {
-        return <DataTable.CellContent>-</DataTable.CellContent>;
-      }
-      return (
-        <DataTable.CellContent
-          className="gap-2"
-          avatarStack={{
-            items: managers.map(({ fullName, image }) => ({
-              name: fullName,
-              visual: image ?? undefined,
-              isRounded: true,
-            })),
-            maxVisibleAvatars: MAX_VISIBLE_MANAGERS,
-            hasMagnifier: false,
-          }}
-        >
-          {managers.length === 1 && managers[0].fullName}
-        </DataTable.CellContent>
-      );
-    },
-  },
-  {
-    id: "kind",
-    header: "",
-    meta: { className: "w-[240px]" },
-    cell: ({ row }) => {
-      const { kind, grantedRole } = row.original;
-      const { label, color } = getGroupKindChip(kind);
-      return (
-        <DataTable.CellContent>
-          <div className="flex flex-row items-center gap-1">
-            <Chip size="xs" color={color} label={label} />
-            {grantedRole && (
-              <Chip
-                size="xs"
-                color={ROLES_DATA[grantedRole].color}
-                label={displayRoleCapitalized(grantedRole)}
-              />
-            )}
-          </div>
-        </DataTable.CellContent>
-      );
-    },
-  },
-  {
-    id: "actions",
-    header: "",
-    meta: { className: "w-12" },
-    cell: ({ row }) => {
-      const { onDelete } = row.original;
-      if (!onDelete) {
-        return null;
-      }
-      return (
-        <DataTable.CellContent>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                icon={DotsHorizontal}
-                size="mini"
-                variant="ghost-secondary"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent
-                align="end"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <DropdownMenuItem
-                  label="Delete"
-                  icon={Trash01}
-                  variant="warning"
-                  onClick={onDelete}
-                />
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
-        </DataTable.CellContent>
-      );
-    },
-  },
-];
-const columnsWithoutManagers = columns.filter(
-  (column) => column.id !== "managers"
-);
-
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const { subscription, isManager } = useAuth();
   const isGroupManagementEnabled = hasFeature("group_management");
@@ -198,6 +87,124 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { doDeleteGroup } = useDeleteGroup({ owner });
   const { hasPermission } = useWorkspacePermissions();
 
+  const columns: ColumnDef<GroupRowData>[] = useMemo(
+    () => [
+      {
+        id: "name",
+        accessorKey: "name",
+        header: t`Name`,
+        meta: { className: "w-full" },
+        cell: ({ row }) => {
+          const { name, memberCount } = row.original;
+          return (
+            <DataTable.CellContent
+              icon={Users01}
+              description={t`${plural(memberCount, {
+                one: "# member",
+                other: "# members",
+              })}`}
+            >
+              {name}
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        id: "managers",
+        header: t`Group Manager`,
+        meta: { className: "w-[240px]" },
+        cell: ({ row }) => {
+          const { managers } = row.original;
+          if (managers.length === 0) {
+            return <DataTable.CellContent>-</DataTable.CellContent>;
+          }
+          return (
+            <DataTable.CellContent
+              className="gap-2"
+              avatarStack={{
+                items: managers.map(({ fullName, image }) => ({
+                  name: fullName,
+                  visual: image ?? undefined,
+                  isRounded: true,
+                })),
+                maxVisibleAvatars: MAX_VISIBLE_MANAGERS,
+                hasMagnifier: false,
+              }}
+            >
+              {managers.length === 1 && managers[0].fullName}
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        id: "kind",
+        header: "",
+        meta: { className: "w-[240px]" },
+        cell: ({ row }) => {
+          const { kind, grantedRole } = row.original;
+          const { label, color } = getGroupKindChip(kind);
+          return (
+            <DataTable.CellContent>
+              <div className="flex flex-row items-center gap-1">
+                <Chip size="xs" color={color} label={t(label)} />
+                {grantedRole && (
+                  <Chip
+                    size="xs"
+                    color={ROLES_DATA[grantedRole].color}
+                    label={t(ROLE_LABELS[grantedRole])}
+                  />
+                )}
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: { className: "w-12" },
+        cell: ({ row }) => {
+          const { onDelete } = row.original;
+          if (!onDelete) {
+            return null;
+          }
+          return (
+            <DataTable.CellContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    icon={DotsHorizontal}
+                    size="mini"
+                    variant="ghost-secondary"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuContent
+                    align="end"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DropdownMenuItem
+                      label={t`Delete`}
+                      icon={Trash01}
+                      variant="warning"
+                      onClick={onDelete}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenuPortal>
+              </DropdownMenu>
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ],
+    [t]
+  );
+  const columnsWithoutManagers = useMemo(
+    () => columns.filter((column) => column.id !== "managers"),
+    [columns]
+  );
+
   const openCreateDialog = () => {
     setEditedGroupId(null);
     setIsDialogOpen(true);
@@ -206,16 +213,16 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const handleDeleteGroup = useCallback(
     async (groupId: string, groupName: string) => {
       const confirmed = await confirm({
-        title: "Delete group",
-        message: `Are you sure you want to delete ${groupName}? This action cannot be undone.`,
-        validateLabel: "Delete",
+        title: t`Delete group`,
+        message: t`Are you sure you want to delete ${groupName}? This action cannot be undone.`,
+        validateLabel: t`Delete`,
         validateVariant: "warning",
       });
       if (confirmed) {
         await doDeleteGroup({ groupId, groupName });
       }
     },
-    [confirm, doDeleteGroup]
+    [confirm, doDeleteGroup, t]
   );
 
   const rows = useMemo<GroupRowData[]>(() => {
@@ -253,13 +260,19 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   return (
     <div className="flex flex-col gap-4">
       {isScimAllowed && hasPermission("admin", "security") && (
-        <LinkedSectionNotice
-          description="User provisioning is configured in"
-          linkLabel="IT & Security → User provisioning"
-          onLinkClick={() =>
-            void router.push(`/w/${owner.sId}/identity-and-provisioning`)
-          }
-        />
+        <LinkedSectionNotice>
+          <Trans>
+            User provisioning is configured in{" "}
+            <Hoverable
+              variant="primary"
+              onClick={() =>
+                void router.push(`/w/${owner.sId}/identity-and-provisioning`)
+              }
+            >
+              IT & Security → User provisioning
+            </Hoverable>
+          </Trans>
+        </LinkedSectionNotice>
       )}
       {isGroupsLoading && (
         <div className="flex items-center justify-center py-8">
@@ -271,7 +284,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
           <>
             <div className="flex flex-row gap-2">
               <SearchInput
-                placeholder="Search groups"
+                placeholder={t`Search groups`}
                 value={searchTerm}
                 name="search"
                 onChange={setSearchTerm}
@@ -280,7 +293,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               {isManager && (
                 <Button
                   icon={Plus}
-                  label="Create group"
+                  label={t`Create group`}
                   onClick={openCreateDialog}
                 />
               )}
@@ -302,12 +315,12 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               isManager ? (
                 <Button
                   icon={Plus}
-                  label="Create group"
+                  label={t`Create group`}
                   onClick={openCreateDialog}
                 />
               ) : undefined
             }
-            message="You don’t have any groups yet."
+            message={t`You don’t have any groups yet.`}
           />
         ))}
       <GroupDialog

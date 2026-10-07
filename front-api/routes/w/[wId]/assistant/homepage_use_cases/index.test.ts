@@ -64,9 +64,8 @@ async function getUseCases(workspaceId: string) {
 
 describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
   beforeEach(async () => {
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],

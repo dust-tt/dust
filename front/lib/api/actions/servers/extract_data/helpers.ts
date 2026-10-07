@@ -141,7 +141,6 @@ export async function generateProcessToolOutput({
   >
 > {
   const schemaNames = Object.keys(jsonSchema?.properties ?? {}).join("_");
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const stem = (
     jsonSchema?.title ||
     schemaNames ||

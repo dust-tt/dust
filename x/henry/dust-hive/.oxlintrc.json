@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "import", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "eslint/complexity": ["error", { "max": 20 }],
+    "eslint/no-unused-vars": [
+      "error",
+      { "ignoreRestSiblings": true, "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }
+    ],
+    "eslint/prefer-const": "error",
+    "eslint/no-control-regex": "error",
+    "unicorn/no-array-for-each": "warn",
+    "unicorn/prefer-node-protocol": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "error",
+    "oxc/no-accumulating-spread": "error"
+  },
+  "ignorePatterns": ["node_modules/**", "dist/**"]
+}

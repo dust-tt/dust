@@ -25,31 +25,43 @@ import {
   TextArea,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useMemo } from "react";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-export const CreateWebhookSourceSchema = WebhookSourcesSchema.extend({
-  autoGenerate: z.boolean().default(true),
-})
-  .refine(
-    ({ provider, subscribedEvents }) =>
-      !provider || subscribedEvents.length > 0,
-    {
-      message: "Subscribed events must not be empty.",
-      path: ["subscribedEvents"],
-    }
-  )
-  .refine(
-    (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
-    {
-      message: "Secret is required",
-      path: ["secret"],
-    }
+export function useCreateWebhookSourceSchema() {
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      WebhookSourcesSchema.extend({
+        name: z.string().min(1, t`Name is required`),
+        autoGenerate: z.boolean().default(true),
+      })
+        .refine(
+          ({ provider, subscribedEvents }) =>
+            !provider || subscribedEvents.length > 0,
+          {
+            message: t`Subscribed events must not be empty.`,
+            path: ["subscribedEvents"],
+          }
+        )
+        .refine(
+          (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
+          {
+            message: t`Secret is required`,
+            path: ["secret"],
+          }
+        ),
+    [t]
   );
+}
 
 export type CreateWebhookSourceFormData = z.infer<
-  typeof CreateWebhookSourceSchema
+  ReturnType<typeof useCreateWebhookSourceSchema>
 >;
 
 export type RemoteProviderData = Record<string, unknown>;
@@ -71,6 +83,7 @@ export function CreateWebhookSourceFormContent({
   onRemoteProviderDataChange,
   onPresetReadyToSubmitChange,
 }: CreateWebhookSourceFormContentProps) {
+  const { t } = useLingui();
   const selectedEvents = useWatch({
     control: form.control,
     name: "subscribedEvents",
@@ -84,8 +97,8 @@ export function CreateWebhookSourceFormContent({
         render={({ field, fieldState }) => (
           <Input
             {...field}
-            label="Name"
-            placeholder="Name..."
+            label={t`Name`}
+            placeholder={t`Name...`}
             isError={fieldState.error !== undefined}
             message={fieldState.error?.message}
             messageStatus="error"
@@ -98,12 +111,14 @@ export function CreateWebhookSourceFormContent({
         name="description"
         render={({ field }) => (
           <div className="space-y-2">
-            <Label htmlFor="trigger-description">Description (optional)</Label>
+            <Label htmlFor="trigger-description">
+              <Trans>Description (optional)</Trans>
+            </Label>
             <TextArea
               {...field}
               id="trigger-description"
               rows={3}
-              placeholder="Help your team understand when to use this trigger."
+              placeholder={t`Help your team understand when to use this trigger.`}
             />
           </div>
         )}
@@ -116,12 +131,16 @@ export function CreateWebhookSourceFormContent({
           render={({ fieldState }) => {
             const allEvents = WEBHOOK_PRESETS[provider].events;
             const allSelected = selectedEvents.length === allEvents.length;
+            const selectedCount = selectedEvents.length;
             const dropDownLabel =
-              selectedEvents.length === 0
-                ? "Select events"
+              selectedCount === 0
+                ? t`Select events`
                 : allSelected
-                  ? `All events (${selectedEvents.length}) selected`
-                  : `${selectedEvents.length} event${selectedEvents.length > 1 ? "s" : ""} selected`;
+                  ? t`All events (${selectedCount}) selected`
+                  : t`${plural(selectedCount, {
+                      one: "# event selected",
+                      other: "# events selected",
+                    })}`;
 
             const handleSelectAll = () => {
               form.setValue(
@@ -140,9 +159,11 @@ export function CreateWebhookSourceFormContent({
 
             return (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="subscribedEvents">Events to watch</Label>
+                <Label htmlFor="subscribedEvents">
+                  <Trans>Events to watch</Trans>
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  Choose which events will activate this trigger
+                  <Trans>Choose which events will activate this trigger</Trans>
                 </p>
                 <div>
                   <DropdownMenu>
@@ -156,7 +177,7 @@ export function CreateWebhookSourceFormContent({
                     <DropdownMenuContent className="w-72" align="start">
                       <div className="flex gap-2 p-2">
                         <Button
-                          label="Select all"
+                          label={t`Select all`}
                           icon={ListSelect}
                           variant="primary"
                           size="xs"
@@ -164,7 +185,7 @@ export function CreateWebhookSourceFormContent({
                           disabled={allSelected}
                         />
                         <Button
-                          label="Unselect all"
+                          label={t`Unselect all`}
                           icon={XClose}
                           variant="primary"
                           size="xs"
@@ -227,18 +248,27 @@ export function CreateWebhookSourceFormContent({
       {!provider && (
         <div>
           <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger label="Advanced settings" variant="secondary" />
+            <CollapsibleTrigger
+              label={t`Advanced settings`}
+              variant="secondary"
+            />
             <CollapsibleContent>
               <div className="flex flex-col space-y-2">
-                <Label>Secret</Label>
+                <Label>
+                  <Trans>Secret</Trans>
+                </Label>
                 <p className="mt-1 text-sm text-muted-foreground">
                   <i>
-                    Note: You will be able to see and copy this secret for the
-                    first 10 minutes after creating the webhook.
+                    <Trans>
+                      Note: You will be able to see and copy this secret for the
+                      first 10 minutes after creating the webhook.
+                    </Trans>
                   </i>
                 </p>
                 <div className="mb-3 flex items-center justify-between">
-                  <Label>Auto-generate</Label>
+                  <Label>
+                    <Trans>Auto-generate</Trans>
+                  </Label>
                   <Controller
                     control={form.control}
                     name="autoGenerate"
@@ -266,7 +296,7 @@ export function CreateWebhookSourceFormContent({
                           {...field}
                           id="secret"
                           type="password"
-                          placeholder="Secret for validation..."
+                          placeholder={t`Secret for validation...`}
                           isError={form.formState.errors.secret !== undefined}
                           message={form.formState.errors.secret?.message}
                           messageStatus="error"
@@ -281,8 +311,8 @@ export function CreateWebhookSourceFormContent({
                   render={({ field }) => (
                     <Input
                       {...field}
-                      label="Signature Header"
-                      placeholder="Signature header..."
+                      label={t`Signature header`}
+                      placeholder={t`Signature header...`}
                       isError={
                         form.formState.errors.signatureHeader !== undefined
                       }
@@ -292,7 +322,9 @@ export function CreateWebhookSourceFormContent({
                   )}
                 />
                 <div className="flex items-center justify-between space-y-2">
-                  <Label>Signature Algorithm</Label>
+                  <Label>
+                    <Trans>Signature algorithm</Trans>
+                  </Label>
                   <Controller
                     control={form.control}
                     name="signatureAlgorithm"
@@ -302,7 +334,7 @@ export function CreateWebhookSourceFormContent({
                           <Button
                             label={field.value}
                             variant="outline"
-                            // biome-ignore lint/plugin/noCssImportant: legacy [no-css-important]
+                            // oxlint-disable-next-line dust/noCssImportant -- legacy [no-css-important]
                             className="mt-0!"
                             icon={ChevronDown}
                           />

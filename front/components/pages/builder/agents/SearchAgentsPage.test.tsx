@@ -175,6 +175,13 @@ async function setup({
       ],
       models: [{ modelId: "claude-sonnet-5", count: 1 }],
       tags: [],
+      mcpServerViews: ["slack-view-1", "slack-view-2"].map((sId) => ({
+        sId,
+        mcpServerId: "slack",
+        name: "Slack",
+        icon: "SlackLogo",
+        count: 1,
+      })),
     },
   };
   const fetcherWithBody = vi.fn(
@@ -743,91 +750,103 @@ describe("search-backed Manage Agents", () => {
       editorIds: [editor.sId],
     });
 
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    const toolCheckbox = await screen.findByRole("checkbox", { name: "Slack" });
+    await userEvent.click(toolCheckbox);
+    const toolFacetBody = fetcherWithBody.mock.calls
+      .map(([[, body]]) => body)
+      .filter((body) => body.limit === 0)
+      .at(-1);
+    expect(toolFacetBody).toMatchObject({ facets: ["mcpServerViews"] });
+    expect(toolFacetBody).not.toHaveProperty("mcpServerViewIds");
+
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(screen.getByText(`${editor.fullName} (You)`)).toBeInTheDocument();
+    expect(screen.getByText("Slack")).toBeInTheDocument();
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["hidden"],
         editorIds: [editor.sId],
         modelIds: ["claude-sonnet-5"],
+        mcpServerViewIds: ["slack-view-1", "slack-view-2"],
         offset: 0,
       })
     );
   });
 
-  it.each([
-    "all",
-    "default",
-  ] as const)("ignores hidden Dust filters when starting on the %s tab", async (tabId) => {
-    const { fetcherWithBody, mount } = await setup();
-    const hash = serializeFilterHash(
-      {
-        tabId,
-        selection: {
-          access: { hidden: "Not published" },
-          editor: { "other-editor": "Alice Other" },
-          tag: { "workspace-tag": "Workspace tag" },
-          skill: { "workspace-skill": "Workspace skill" },
-          space: { "workspace-space": "Workspace space" },
-          usage: { "1-5": "1–5 active users" },
-          model: { "claude-sonnet-5": "Sonnet" },
+  it.each(["all", "default"] as const)(
+    "ignores hidden Dust filters when starting on the %s tab",
+    async (tabId) => {
+      const { fetcherWithBody, mount } = await setup();
+      const hash = serializeFilterHash(
+        {
+          tabId,
+          selection: {
+            access: { hidden: "Not published" },
+            editor: { "other-editor": "Alice Other" },
+            tag: { "workspace-tag": "Workspace tag" },
+            skill: { "workspace-skill": "Workspace skill" },
+            space: { "workspace-space": "Workspace space" },
+            usage: { "1-5": "1–5 active users" },
+            model: { "claude-sonnet-5": "Sonnet" },
+          },
         },
-      },
-      "all"
-    );
-    window.history.replaceState({}, "", `/#?search=${hash}`);
-    mount();
-    if (tabId === "all") {
-      await screen.findByRole("button", { name: /Weekly report/ });
-      await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
-    }
-    await screen.findByRole("switch", { name: "Default Dust" });
-    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
-      scope: ["global"],
-      modelIds: ["claude-sonnet-5"],
-    });
-    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
-    await userEvent.click(
-      await screen.findByRole("checkbox", {
-        name: getModelFilterDisplayName("claude-sonnet-5"),
-      })
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
-    await waitFor(() =>
-      expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds")
-    );
-
-    const dustRequests = fetcherWithBody.mock.calls
-      .map(([[, body]]) => body)
-      .filter((body) => body.scope?.includes("global"));
-    for (const body of dustRequests) {
-      for (const key of [
-        "editorIds",
-        "tagIds",
-        "skillIds",
-        "spaceIds",
-        "activeUsersCount",
-      ]) {
-        expect(body).not.toHaveProperty(key);
+        "all"
+      );
+      window.history.replaceState({}, "", `/#?search=${hash}`);
+      mount();
+      if (tabId === "all") {
+        await screen.findByRole("button", { name: /Weekly report/ });
+        await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
       }
-      if (body.limit === 0) {
-        expect(body).toMatchObject({ facets: ["models"] });
-      }
-    }
-
-    await userEvent.click(screen.getByRole("tab", { name: "Workspace" }));
-    await waitFor(() =>
+      await screen.findByRole("switch", { name: "Default Dust" });
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
-        scope: ["hidden"],
-        editorIds: ["other-editor"],
-        tagIds: ["workspace-tag"],
-        skillIds: ["workspace-skill"],
-        spaceIds: ["workspace-space"],
-        activeUsersCount: { min: 1, max: 5 },
-      })
-    );
-    expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds");
-  });
+        scope: ["global"],
+        modelIds: ["claude-sonnet-5"],
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: getModelFilterDisplayName("claude-sonnet-5"),
+        })
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+      await waitFor(() =>
+        expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds")
+      );
+
+      const dustRequests = fetcherWithBody.mock.calls
+        .map(([[, body]]) => body)
+        .filter((body) => body.scope?.includes("global"));
+      for (const body of dustRequests) {
+        for (const key of [
+          "editorIds",
+          "tagIds",
+          "skillIds",
+          "spaceIds",
+          "activeUsersCount",
+        ]) {
+          expect(body).not.toHaveProperty(key);
+        }
+        if (body.limit === 0) {
+          expect(body).toMatchObject({ facets: ["models"] });
+        }
+      }
+
+      await userEvent.click(screen.getByRole("tab", { name: "Workspace" }));
+      await waitFor(() =>
+        expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+          scope: ["hidden"],
+          editorIds: ["other-editor"],
+          tagIds: ["workspace-tag"],
+          skillIds: ["workspace-skill"],
+          spaceIds: ["workspace-space"],
+          activeUsersCount: { min: 1, max: 5 },
+        })
+      );
+      expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds");
+    }
+  );
 
   it("only shows model filters on the Dust tab", async () => {
     const { mount } = await setup();

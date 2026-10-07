@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;
@@ -91,13 +92,16 @@ export default function WorkspacePicker({
   user,
   workspace,
 }: WorkspacePickerProps) {
+  const { t } = useLingui();
   return (
     <div className="flex flex-row items-center gap-1 px-3 py-2">
-      <Label className="text-xs text-muted-foreground">Workspace:</Label>
+      <Label className="text-xs text-muted-foreground">
+        <Trans>Workspace:</Trans>
+      </Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            label={workspace ? workspace.name : "Select workspace"}
+            label={workspace ? workspace.name : t`Select workspace`}
             variant="ghost"
             size="xs"
             isSelect

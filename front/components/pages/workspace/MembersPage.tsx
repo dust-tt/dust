@@ -37,6 +37,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 const MEMBERS_TABS = ["members", "groups", "roles"] as const;
 type MembersTab = (typeof MEMBERS_TABS)[number];
@@ -48,6 +49,7 @@ type MembersTab = (typeof MEMBERS_TABS)[number];
  * groups may be fewer than their visible groups; provisioned and admin-granting groups remain visible.
  */
 export function MembersPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription, user, isManager, isAdmin } = useAuth();
   const { tab, setTab } = useAdminPageTab<MembersTab>(MEMBERS_TABS, "members");
@@ -57,17 +59,17 @@ export function MembersPage() {
     <AdminPageContainer>
       <div className="flex flex-col gap-6">
         <Page.Header
-          title="Members"
-          description="Manage team members and their roles."
+          title={t`Members`}
+          description={t`Manage team members and their roles.`}
         />
         <Tabs
           value={activeTab}
           onValueChange={(value) => setTab(value as MembersTab)}
         >
           <TabsList className="mb-6">
-            <TabsTrigger value="members" label="Members" />
-            <TabsTrigger value="groups" label="Groups" />
-            {isAdmin && <TabsTrigger value="roles" label="Roles" />}
+            <TabsTrigger value="members" label={t`Members`} />
+            <TabsTrigger value="groups" label={t`Groups`} />
+            {isAdmin && <TabsTrigger value="roles" label={t`Roles`} />}
           </TabsList>
           <TabsContent value="members" className="flex flex-col gap-4">
             <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.members}>
@@ -193,6 +195,7 @@ function DirectorySyncSection() {
 // security governance capabilities that used to live in that page's
 // "Billing and security" section.
 function MembersRolesTab() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { groups, isGroupsLoading, isGroupsError } = useGroups({
     owner,
@@ -231,7 +234,7 @@ function MembersRolesTab() {
       <RoleProvisioningSection owner={owner} groups={groups} />
       <GovernanceSettingSection
         sectionId={ADMIN_SECTION_IDS.governance.billing}
-        label="Billing and security"
+        label={t`Billing and security`}
         icon={Lock01}
       >
         {billingAndSecurityPermissions.map((governancePermission) => (

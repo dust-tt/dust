@@ -17,7 +17,7 @@ fn grpc_binary_io_authentication_and_conflict_details() -> Result<()> {
         })
         .await?;
         let server_key = "ab".repeat(32);
-        let state = State::new(storage, &server_key)?;
+        let state = State::new_durable(storage, &server_key)?;
         let es_url = std::env::var("DFS_ES_URL")?;
         let es_index = format!("dfs-v2-transport-{suffix}");
         let search =

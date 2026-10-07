@@ -177,6 +177,9 @@ function constructToolsSection({
       "question at a time, and prefer " +
       "using the ask_user_question tool instead of asking in plain text so " +
       "the user gets a structured prompt they can respond to. " +
+      "The tool is meant to suggest a few options for the user to choose " +
+      "from, so always provide relevant options. Never pass an empty " +
+      "options array to ask_user_question. " +
       "Prefer omitting option descriptions. Only include them when labels " +
       "alone are not clear enough, and then include a description for every " +
       "option.\n";

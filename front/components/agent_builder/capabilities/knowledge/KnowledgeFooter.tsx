@@ -12,7 +12,6 @@ import { useNodePath } from "@app/hooks/useNodePath";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   Collapsible,
@@ -23,6 +22,7 @@ import {
   LoadingBlock,
   XClose,
 } from "@dust-tt/sparkle";
+import { Plural, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 function KnowledgeFooterItemReadablePath({
@@ -104,15 +104,20 @@ function KnowledgeFooterItem({
 }
 
 export function KnowledgeFooter() {
+  const { t } = useLingui();
   const { field } = useSourcesFormController();
   const [isOpen, setOpen] = useState(field.value.in.length > 0);
+  const selectionCount = field.value.in.length;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
       <CollapsibleTrigger>
         <span className="heading-sm text-muted-foreground">
-          Selection ({field.value.in.length} item
-          {pluralize(field.value.in.length)})
+          <Plural
+            value={selectionCount}
+            one="Selection (# item)"
+            other="Selection (# items)"
+          />
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -123,7 +128,7 @@ export function KnowledgeFooter() {
                 <KnowledgeFooterItem key={item.path} item={item} />
               ))
             ) : (
-              <ContextItem title="No selection" visual={null} />
+              <ContextItem title={t`No selection`} visual={null} />
             )}
           </ContextItem.List>
         </div>

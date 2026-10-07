@@ -32,7 +32,7 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 

@@ -31,8 +31,7 @@ import { col, fn, Op } from "sequelize";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface ZendeskConfigurationResource
-  extends ReadonlyAttributesType<ZendeskConfigurationModel> {}
+export interface ZendeskConfigurationResource extends ReadonlyAttributesType<ZendeskConfigurationModel> {}
 
 export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurationModel> {
   static model: ModelStatic<ZendeskConfigurationModel> =
@@ -231,8 +230,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
   }
 }
 
-export interface ZendeskBrandResource
-  extends ReadonlyAttributesType<ZendeskBrandModel> {}
+export interface ZendeskBrandResource extends ReadonlyAttributesType<ZendeskBrandModel> {}
 
 export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
   static model: ModelStatic<ZendeskBrandModel> = ZendeskBrandModel;
@@ -490,8 +488,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
   }
 }
 
-export interface ZendeskCategoryResource
-  extends ReadonlyAttributesType<ZendeskCategoryModel> {}
+export interface ZendeskCategoryResource extends ReadonlyAttributesType<ZendeskCategoryModel> {}
 
 export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> {
   static model: ModelStatic<ZendeskCategoryModel> = ZendeskCategoryModel;
@@ -608,6 +605,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     return categories.map((category) => category.get().brandId);
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product;security] only-unselected-categories
+   * Returns only IDs of categories of the brand with `permission: "none"`. It MUST NOT return a
+   * category with `permission: "read"`: the garbage collector deletes every category returned.
+   */
   static async fetchCategoriesNotSelectedInBrand({
     connectorId,
     brandId,
@@ -619,7 +621,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
   }): Promise<number[]> {
     const categories = await ZendeskCategoryModel.findAll({
       attributes: ["categoryId"],
-      where: { connectorId, brandId, permission: "read" },
+      where: { connectorId, brandId, permission: "none" },
       ...(batchSize && { limit: batchSize }),
     });
     return categories.map((category) => category.get().categoryId);
@@ -748,8 +750,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
   }
 }
 
-export interface ZendeskTicketResource
-  extends ReadonlyAttributesType<ZendeskTicketModel> {}
+export interface ZendeskTicketResource extends ReadonlyAttributesType<ZendeskTicketModel> {}
 
 export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
   static model: ModelStatic<ZendeskTicketModel> = ZendeskTicketModel;
@@ -945,8 +946,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
   }
 }
 
-export interface ZendeskArticleResource
-  extends ReadonlyAttributesType<ZendeskArticleModel> {}
+export interface ZendeskArticleResource extends ReadonlyAttributesType<ZendeskArticleModel> {}
 
 export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
   static model: ModelStatic<ZendeskArticleModel> = ZendeskArticleModel;

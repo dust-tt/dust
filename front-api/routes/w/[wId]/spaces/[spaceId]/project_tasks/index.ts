@@ -157,7 +157,7 @@ app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
 
 app.post(
   "/",
-  withSpace({ requireCanRead: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", PostProjectTaskBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

@@ -20,8 +20,8 @@ import { DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib
 import { DustAnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
 import { DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
-import { DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v_four_dot_one_flash_global_fireworks";
 import { DustDeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
+import { DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v_four_dot_one_flash_global_fireworks";
 import { DustGoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_1_flash_lite_global_agent_platform";
 import { DustGoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_1_flash_lite_global_google_ai_studio";
 import { DustGoogleGeminiThreeDotOneProGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_1_pro_global_agent_platform";
@@ -40,6 +40,8 @@ import { DustGoogleGeminiThreeDotEightFlashEuropeAgentPlatformStream } from "@ap
 import { DustGoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_8_flash_global_agent_platform";
 import { DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_8_flash_global_google_ai_studio";
 import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_codestral_eu_mistral";
+import { DustMistralMistralLarge4EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_4_eu_mistral";
+import { DustMistralMistralLarge4GlobalMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_4_global_mistral";
 import { DustMistralMistralLargeEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { DustMistralMistralMedium35EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { DustMistralMistralSmallEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_small_eu_mistral";
@@ -196,6 +198,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustMistralCodestralEuropeMistralStream,
   [DustMistralMistralLargeEuropeMistralStream.id]:
     DustMistralMistralLargeEuropeMistralStream,
+  [DustMistralMistralLarge4EuropeMistralStream.id]:
+    DustMistralMistralLarge4EuropeMistralStream,
+  [DustMistralMistralLarge4GlobalMistralStream.id]:
+    DustMistralMistralLarge4GlobalMistralStream,
   [DustMistralMistralMedium35EuropeMistralStream.id]:
     DustMistralMistralMedium35EuropeMistralStream,
   [DustMistralMistralSmallEuropeMistralStream.id]:

@@ -25,6 +25,14 @@ describe("anchorComment", () => {
     ]);
   });
 
+  it("counts occurrences without overlap", () => {
+    const anchored = unwrap(
+      anchorComment({ body: "aaaa", id: "c1", quote: "aa", nth: 2 })
+    );
+
+    expect(anchored).toBe("aa:comment-start{id=c1}aa:comment-end{id=c1}");
+  });
+
   it("picks the nth occurrence", () => {
     const anchored = unwrap(
       anchorComment({ body, id: "c2", quote: "Snow", nth: 2 })
@@ -207,6 +215,11 @@ describe("anchorComment", () => {
       "a quote whose markers would nest one emphasis inside another",
       { body: "*a*b*c*", id: "c1", quote: "a" },
       "changing the document structure",
+    ],
+    [
+      "a quote inside a link destination",
+      { body: "aaaa [x](aaaa)", id: "c1", quote: "aa", nth: 3 },
+      "a link would change",
     ],
     [
       "a quote right after a backslash",

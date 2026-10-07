@@ -174,6 +174,12 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   "databricks sql": "data",
   "databricks genie": "data",
   qonto: "productivity",
+  clay: "crm",
+  clickup: "productivity",
+  fullenrich: "crm",
+  "superhuman docs (coda)": "productivity",
+  pandadoc: "productivity",
+  "pandadoc (europe)": "productivity",
 };
 
 // Category mapping for connectors

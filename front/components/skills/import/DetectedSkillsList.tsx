@@ -15,17 +15,20 @@ import {
   PuzzlePiece01,
   ScrollableDataTable,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const STATUS_CHIP_LABEL: Record<
   Exclude<DetectedSkillStatus, "ready">,
-  string
+  MessageDescriptor
 > = {
-  name_conflict: "Skill name already in use",
-  skill_already_exists: "Override existing skill",
-  invalid: "Invalid skill format",
+  name_conflict: msg`Skill name already in use`,
+  skill_already_exists: msg`Override existing skill`,
+  invalid: msg`Invalid skill format`,
 };
 
 interface SkillRowData {
@@ -65,13 +68,15 @@ function renderDetectedSkillSkeletonCell(columnId: string, rowIndex: number) {
   }
 }
 
-function getColumns(): ColumnDef<SkillRowData>[] {
+function getColumns(
+  t: (descriptor: MessageDescriptor) => string
+): ColumnDef<SkillRowData>[] {
   return [
     createSelectionColumn<SkillRowData>(),
     {
       id: "name",
       accessorKey: "name",
-      header: "Skill name",
+      header: t(msg`Skill name`),
       cell: (info: SkillCellInfo) => (
         <DataTable.CellContent icon={PuzzlePiece01}>
           {info.row.original.name}
@@ -84,7 +89,7 @@ function getColumns(): ColumnDef<SkillRowData>[] {
     {
       id: "status",
       accessorKey: "status",
-      header: "Status",
+      header: t(msg`Status`),
       cell: (info: SkillCellInfo) => {
         const { status } = info.row.original;
         if (status === "ready") {
@@ -92,7 +97,7 @@ function getColumns(): ColumnDef<SkillRowData>[] {
         }
         return (
           <Chip
-            label={STATUS_CHIP_LABEL[status]}
+            label={t(STATUS_CHIP_LABEL[status])}
             size="xs"
             color={status === "skill_already_exists" ? "info" : "warning"}
           />
@@ -116,6 +121,7 @@ export function DetectedSkillsList({
   isDetecting,
   detectError,
 }: DetectedSkillsListProps) {
+  const { t } = useLingui();
   const { control, setValue } = useFormContext<ImportFormValues>();
   const { field: selectedField } = useController({
     name: "selectedSkillNames",
@@ -131,7 +137,7 @@ export function DetectedSkillsList({
     [detectedSkills]
   );
 
-  const columns = useMemo(() => getColumns(), []);
+  const columns = useMemo(() => getColumns(t), [t]);
   const skeletonColumns = useMemo(
     () =>
       columns.map((column) => {
@@ -179,7 +185,7 @@ export function DetectedSkillsList({
   return (
     <>
       {isDetecting && (
-        <div role="status" aria-label="Detecting skills" aria-busy="true">
+        <div role="status" aria-label={t`Detecting skills`} aria-busy="true">
           <div aria-hidden="true">
             <ScrollableDataTable
               data={DETECTED_SKILLS_SKELETON_ROWS}
@@ -191,7 +197,7 @@ export function DetectedSkillsList({
       )}
       {detectError && (
         <ContentMessage
-          title="Detection failed"
+          title={t`Detection failed`}
           icon={InfoCircle}
           variant="warning"
           size="lg"

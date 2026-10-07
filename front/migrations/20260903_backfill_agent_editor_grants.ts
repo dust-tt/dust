@@ -241,7 +241,7 @@ async function fetchAgentWorkspaceIds(): Promise<ModelId[]> {
     group: ["workspaceId"],
     raw: true,
     // WORKSPACE_ISOLATION_BYPASS: This query finds the workspaces the migration must process.
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 

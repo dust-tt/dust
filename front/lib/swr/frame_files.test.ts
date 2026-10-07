@@ -44,29 +44,32 @@ describe("Frame file access", () => {
     ],
     ["pod/notes.json", "/api/w/w_test/files/path/pod-p_test/notes.json"],
     ["project/notes.json", "/api/w/w_test/files/path/pod-p_test/notes.json"],
-  ])("preserves reads by %s without granting writes outside the package", async (path, url) => {
-    clientFetch.mockResolvedValue(
-      new Response("{}", {
-        headers: {
-          [DUST_FILE_REVISION_HEADER]: "123",
-          [DUST_FILE_CAN_WRITE_HEADER]: "true",
-        },
-      })
-    );
-    const { result } = renderHook(() =>
-      useFrameFiles({
-        ...options,
-        conversationId: "c_test",
-        spaceId: "p_test",
-      })
-    );
+  ])(
+    "preserves reads by %s without granting writes outside the package",
+    async (path, url) => {
+      clientFetch.mockResolvedValue(
+        new Response("{}", {
+          headers: {
+            [DUST_FILE_REVISION_HEADER]: "123",
+            [DUST_FILE_CAN_WRITE_HEADER]: "true",
+          },
+        })
+      );
+      const { result } = renderHook(() =>
+        useFrameFiles({
+          ...options,
+          conversationId: "c_test",
+          spaceId: "p_test",
+        })
+      );
 
-    await expect(result.current.readFile(path)).resolves.toMatchObject({
-      fileBlob: expect.any(Blob),
-      canWrite: false,
-    });
-    expect(clientFetch).toHaveBeenCalledExactlyOnceWith(url);
-  });
+      await expect(result.current.readFile(path)).resolves.toMatchObject({
+        fileBlob: expect.any(Blob),
+        canWrite: false,
+      });
+      expect(clientFetch).toHaveBeenCalledExactlyOnceWith(url);
+    }
+  );
 
   it("requires a package root for package-relative reads and writes", async () => {
     const { result } = renderHook(() =>
@@ -86,51 +89,50 @@ describe("Frame file access", () => {
     expect(clientFetch).not.toHaveBeenCalled();
   });
 
-  it.each([
-    null,
-    '"123"',
-    'W/"123"',
-  ])("saves with the file revision independently of ETag %s", async (etag) => {
-    clientFetch.mockResolvedValueOnce(
-      new Response("{}", {
-        headers: {
-          "Content-Type": "application/json",
-          [DUST_FILE_REVISION_HEADER]: "123",
-          ...(etag && { ETag: etag }),
-          [DUST_FILE_CAN_WRITE_HEADER]: "true",
-        },
-      })
-    );
-    const { result } = renderHook(() => useFrameFiles(options));
-    const loaded = await result.current.readFile(edit.path);
-    expect(loaded.revision).toBe(edit.revision);
-    expect(loaded.canWrite).toBe(true);
-    expect(loaded.fileBlob).toMatchObject({
-      size: 2,
-      type: "application/json",
-    });
+  it.each([null, '"123"', 'W/"123"'])(
+    "saves with the file revision independently of ETag %s",
+    async (etag) => {
+      clientFetch.mockResolvedValueOnce(
+        new Response("{}", {
+          headers: {
+            "Content-Type": "application/json",
+            [DUST_FILE_REVISION_HEADER]: "123",
+            ...(etag && { ETag: etag }),
+            [DUST_FILE_CAN_WRITE_HEADER]: "true",
+          },
+        })
+      );
+      const { result } = renderHook(() => useFrameFiles(options));
+      const loaded = await result.current.readFile(edit.path);
+      expect(loaded.revision).toBe(edit.revision);
+      expect(loaded.canWrite).toBe(true);
+      expect(loaded.fileBlob).toMatchObject({
+        size: 2,
+        type: "application/json",
+      });
 
-    clientFetch.mockResolvedValueOnce(
-      new Response(null, {
-        headers: { [DUST_FILE_REVISION_HEADER]: "124", ETag: 'W/"124"' },
-      })
-    );
-    await expect(result.current.writeFile(edit)).resolves.toEqual({
-      success: true,
-      revision: "124",
-    });
-    expect(clientFetch).toHaveBeenLastCalledWith(
-      "/api/w/w_test/files/path/conversation-c_test/report/notes.json",
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          [DUST_IF_REVISION_MATCH_HEADER]: "123",
-        },
-        body: edit.content,
-      }
-    );
-  });
+      clientFetch.mockResolvedValueOnce(
+        new Response(null, {
+          headers: { [DUST_FILE_REVISION_HEADER]: "124", ETag: 'W/"124"' },
+        })
+      );
+      await expect(result.current.writeFile(edit)).resolves.toEqual({
+        success: true,
+        revision: "124",
+      });
+      expect(clientFetch).toHaveBeenLastCalledWith(
+        "/api/w/w_test/files/path/conversation-c_test/report/notes.json",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            [DUST_IF_REVISION_MATCH_HEADER]: "123",
+          },
+          body: edit.content,
+        }
+      );
+    }
+  );
 
   it("encodes package paths and keeps files without revision metadata read-only", async () => {
     clientFetch.mockResolvedValue(new Response("{}"));
@@ -142,27 +144,26 @@ describe("Frame file access", () => {
     expect(file.canWrite).toBe(false);
   });
 
-  it.each([
-    null,
-    "",
-    'W/"123"',
-  ])("keeps files with missing or invalid revision %s read-only even with an ETag", async (revision) => {
-    clientFetch.mockResolvedValue(
-      new Response("{}", {
-        headers: {
-          ETag: '"123"',
-          [DUST_FILE_CAN_WRITE_HEADER]: "true",
-          ...(revision !== null && { [DUST_FILE_REVISION_HEADER]: revision }),
-        },
-      })
-    );
-    const { result } = renderHook(() => useFrameFiles(options));
-    await expect(result.current.readFile(edit.path)).resolves.toMatchObject({
-      fileBlob: expect.any(Blob),
-      revision: null,
-      canWrite: false,
-    });
-  });
+  it.each([null, "", 'W/"123"'])(
+    "keeps files with missing or invalid revision %s read-only even with an ETag",
+    async (revision) => {
+      clientFetch.mockResolvedValue(
+        new Response("{}", {
+          headers: {
+            ETag: '"123"',
+            [DUST_FILE_CAN_WRITE_HEADER]: "true",
+            ...(revision !== null && { [DUST_FILE_REVISION_HEADER]: revision }),
+          },
+        })
+      );
+      const { result } = renderHook(() => useFrameFiles(options));
+      await expect(result.current.readFile(edit.path)).resolves.toMatchObject({
+        fileBlob: expect.any(Blob),
+        revision: null,
+        canWrite: false,
+      });
+    }
+  );
 
   it.each([
     "../outside.json",
@@ -182,29 +183,29 @@ describe("Frame file access", () => {
     expect(clientFetch).not.toHaveBeenCalled();
   });
 
-  it.each([
-    "report.v2",
-    "manifest.json",
-  ])("preserves the package directory %s for reads and writes", async (folderName) => {
-    const { result } = renderHook(() =>
-      useFrameFiles({
-        ...options,
-        packageRoot: `conversation-c_test/${folderName}`,
-      })
-    );
-    clientFetch.mockResolvedValue(
-      new Response(null, { headers: { [DUST_FILE_REVISION_HEADER]: "124" } })
-    );
-    await result.current.readFile(edit.path);
-    expect(clientFetch).toHaveBeenCalledWith(
-      `/api/w/w_test/files/path/conversation-c_test/${folderName}/notes.json`
-    );
-    await result.current.writeFile(edit);
-    expect(clientFetch).toHaveBeenCalledWith(
-      `/api/w/w_test/files/path/conversation-c_test/${folderName}/notes.json`,
-      expect.objectContaining({ method: "PUT" })
-    );
-  });
+  it.each(["report.v2", "manifest.json"])(
+    "preserves the package directory %s for reads and writes",
+    async (folderName) => {
+      const { result } = renderHook(() =>
+        useFrameFiles({
+          ...options,
+          packageRoot: `conversation-c_test/${folderName}`,
+        })
+      );
+      clientFetch.mockResolvedValue(
+        new Response(null, { headers: { [DUST_FILE_REVISION_HEADER]: "124" } })
+      );
+      await result.current.readFile(edit.path);
+      expect(clientFetch).toHaveBeenCalledWith(
+        `/api/w/w_test/files/path/conversation-c_test/${folderName}/notes.json`
+      );
+      await result.current.writeFile(edit);
+      expect(clientFetch).toHaveBeenCalledWith(
+        `/api/w/w_test/files/path/conversation-c_test/${folderName}/notes.json`,
+        expect.objectContaining({ method: "PUT" })
+      );
+    }
+  );
 
   it("returns conflicts without retrying the write", async () => {
     clientFetch.mockResolvedValue(new Response(null, { status: 412 }));
@@ -229,43 +230,42 @@ describe("Frame file access", () => {
     expect(clientFetch).not.toHaveBeenCalled();
   });
 
-  it.each([
-    false,
-    true,
-  ])("respects API write permission %s", async (canWrite) => {
-    clientFetch.mockResolvedValue(
-      new Response("{}", {
-        headers: {
-          [DUST_FILE_REVISION_HEADER]: "123",
-          [DUST_FILE_CAN_WRITE_HEADER]: String(canWrite),
-        },
-      })
-    );
-    const { result } = renderHook(() => useFrameFiles(options));
-    await expect(result.current.readFile(edit.path)).resolves.toMatchObject({
-      canWrite,
-    });
-  });
+  it.each([false, true])(
+    "respects API write permission %s",
+    async (canWrite) => {
+      clientFetch.mockResolvedValue(
+        new Response("{}", {
+          headers: {
+            [DUST_FILE_REVISION_HEADER]: "123",
+            [DUST_FILE_CAN_WRITE_HEADER]: String(canWrite),
+          },
+        })
+      );
+      const { result } = renderHook(() => useFrameFiles(options));
+      await expect(result.current.readFile(edit.path)).resolves.toMatchObject({
+        canWrite,
+      });
+    }
+  );
 
-  it.each([
-    null,
-    "",
-    'W/"124"',
-  ])("does not confirm a save with missing or invalid revision %s", async (revision) => {
-    clientFetch.mockResolvedValue(
-      new Response(null, {
-        headers: {
-          ETag: '"124"',
-          ...(revision !== null && { [DUST_FILE_REVISION_HEADER]: revision }),
-        },
-      })
-    );
-    const { result } = renderHook(() => useFrameFiles(options));
-    await expect(result.current.writeFile(edit)).resolves.toMatchObject({
-      success: false,
-      error: { code: "save_failed" },
-    });
-  });
+  it.each([null, "", 'W/"124"'])(
+    "does not confirm a save with missing or invalid revision %s",
+    async (revision) => {
+      clientFetch.mockResolvedValue(
+        new Response(null, {
+          headers: {
+            ETag: '"124"',
+            ...(revision !== null && { [DUST_FILE_REVISION_HEADER]: revision }),
+          },
+        })
+      );
+      const { result } = renderHook(() => useFrameFiles(options));
+      await expect(result.current.writeFile(edit)).resolves.toMatchObject({
+        success: false,
+        error: { code: "save_failed" },
+      });
+    }
+  );
 
   it("surfaces permissions revoked by the file API", async () => {
     clientFetch.mockResolvedValue(new Response(null, { status: 403 }));

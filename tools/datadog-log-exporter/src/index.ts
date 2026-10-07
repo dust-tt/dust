@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { setTimeout as sleep } from "node:timers/promises";
 import { promises as fsp } from "node:fs";
 import fs from "node:fs";
 import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { Args, LogEvent, LogsResponse, StateFile } from "./types.js";
 
 function parseDuration(str: string): number {

@@ -1,4 +1,5 @@
 import { Page, SliderToggle } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 interface RestrictedAccessHeaderProps {
@@ -15,10 +16,12 @@ export function RestrictedAccessHeader({
   restrictedDescription,
   unrestrictedDescription,
 }: RestrictedAccessHeaderProps) {
+  const { t } = useLingui();
+
   return (
     <>
       <div className="flex w-full items-center justify-between overflow-visible">
-        <Page.SectionHeader title="Restricted Access" />
+        <Page.SectionHeader title={t`Restricted access`} />
         <SliderToggle selected={isRestricted} onClick={onToggle} />
       </div>
       <div className="flex flex-col gap-y-1">

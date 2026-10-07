@@ -8,8 +8,8 @@ import { spaRedirect } from "./middlewares/spa_redirect";
 import { unhandledErrorHandler } from "./middlewares/utils";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";
-import { loginApp } from "./routes/auth/login";
 import { authContextApp } from "./routes/auth-context";
+import { loginApp } from "./routes/auth/login";
 import { createNewWorkspaceApp } from "./routes/create-new-workspace";
 import debugApp from "./routes/debug";
 import docApp from "./routes/doc";
@@ -99,6 +99,6 @@ honoApp.route("/mcp", mcpApp);
 honoApp.route("/", mcpWellKnownApp);
 honoApp.route("/api", apiApp);
 // PostHog reverse proxy lives at the domain root (not under /api), matching
-// the `/subtle1` rewrites in front/next.config.js.
+// the `/subtle1` api_host the PostHog trackers point at.
 honoApp.route("/subtle1", subtle1App);
 honoApp.onError(unhandledErrorHandler);

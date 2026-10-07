@@ -58,11 +58,10 @@ export function isDismissibleAudience(audience: UseCaseAudience): boolean {
  * workspace. An empty list imposes no requirement. A `workspacePermission` requirement resolves
  * only when the user holds that workspace permission.
  */
-export interface HomepageUseCaseDefinition
-  extends Omit<
-    HomepageUseCaseType,
-    "skills" | "tools" | "tier" | "isDismissible"
-  > {
+export interface HomepageUseCaseDefinition extends Omit<
+  HomepageUseCaseType,
+  "skills" | "tools" | "tier" | "isDismissible"
+> {
   audience: UseCaseAudience;
   requires: UseCaseRequirement[];
 }

@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface ConsumptionExportPanelProps {
@@ -49,6 +50,7 @@ export function ConsumptionExportPanel({
   workspaceId,
   exportBody,
 }: ConsumptionExportPanelProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [hasAttemptedAutoStart, setHasAttemptedAutoStart] = useState(false);
   const {
@@ -109,7 +111,7 @@ export function ConsumptionExportPanel({
       <PopoverTrigger asChild>
         <Button
           icon={Download01}
-          label="Download raw data"
+          label={t`Download raw data`}
           variant="outline"
           size="sm"
         />
@@ -117,10 +119,10 @@ export function ConsumptionExportPanel({
       <PopoverContent align="end" className="w-80 p-3">
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-foreground">
-            Raw data exports
+            <Trans>Raw data exports</Trans>
           </span>
           <span className="text-xs text-muted-foreground">
-            Exports are kept for a maximum of 7 days.
+            <Trans>Exports are kept for a maximum of 7 days.</Trans>
           </span>
           {isConsumptionExportsLoading ? (
             <div className="flex justify-center py-4">
@@ -129,7 +131,7 @@ export function ConsumptionExportPanel({
           ) : isConsumptionExportsError ? (
             <div className="flex items-center justify-center py-4">
               <span className="text-sm text-muted-foreground">
-                Could not load exports.
+                <Trans>Could not load exports.</Trans>
               </span>
             </div>
           ) : exports.length > 0 ? (
@@ -145,14 +147,14 @@ export function ConsumptionExportPanel({
           ) : hasAutoStartFailed ? (
             <div className="flex items-center justify-center py-4">
               <span className="text-sm text-muted-foreground">
-                The export failed to generate.
+                <Trans>The export failed to generate.</Trans>
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 py-4">
               <Spinner size="sm" />
               <span className="text-sm text-muted-foreground">
-                Generating your export…
+                <Trans>Generating your export…</Trans>
               </span>
             </div>
           )}
@@ -160,13 +162,13 @@ export function ConsumptionExportPanel({
             <div className="flex items-center gap-2">
               <Spinner size="xs" />
               <span className="text-xs text-muted-foreground">
-                Generating a new export…
+                <Trans>Generating a new export…</Trans>
               </span>
             </div>
           )}
           <Button
             icon={Plus}
-            label="New export"
+            label={t`New export`}
             variant="outline"
             size="sm"
             disabled={isGenerating || isStarting}

@@ -12,6 +12,8 @@ import type {
   SkillSearchFacet,
   SkillSearchFilters,
 } from "@app/types/api/skills";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export const SKILL_FILTER_CATEGORIES = [
   "availability",
@@ -68,15 +70,26 @@ export function toSkillSearchFilterFacets(
 export const SKILL_SEARCH_TABS = [
   {
     id: "all",
-    label: "Workspace",
+    label: msg`Workspace`,
     filters: { status: ["active"], codeDefinedOnly: false },
   },
   {
     id: "default",
-    label: "Dust",
+    label: msg({
+      message: "Dust",
+      context: "tab of the skills provided by Dust",
+    }),
     filters: { status: ["active"], codeDefinedOnly: true },
   },
-  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
-] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
+  {
+    id: "archived",
+    label: msg`Archived`,
+    filters: { status: ["archived"] },
+  },
+] satisfies {
+  id: string;
+  label: MessageDescriptor;
+  filters: SkillSearchFilters;
+}[];
 
 export const SKILL_SEARCH_TAB_IDS = SKILL_SEARCH_TABS.map(({ id }) => id);

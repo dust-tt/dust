@@ -11,12 +11,29 @@ import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { classNames } from "@app/lib/utils";
 import type { RunRunType, RunStatus } from "@app/types/run";
 import { Button, Spinner } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 const TABS = [
-  { name: "Design", runType: "local", ownerOwnly: true },
-  { name: "API", runType: "deploy", ownerOwnly: false },
-] as { name: string; runType: RunRunType; ownerOwnly: boolean }[];
+  {
+    name: msg({ message: "Design", context: "tab of the app runs" }),
+    runType: "local",
+    ownerOwnly: true,
+  },
+  {
+    name: msg({ message: "API", context: "tab of the app runs" }),
+    runType: "deploy",
+    ownerOwnly: false,
+  },
+] as { name: MessageDescriptor; runType: RunRunType; ownerOwnly: boolean }[];
+
+const RUN_STATUS_LABELS: Record<RunStatus["run"], MessageDescriptor> = {
+  running: msg({ message: "running", context: "app run status" }),
+  succeeded: msg({ message: "succeeded", context: "app run status" }),
+  errored: msg({ message: "errored", context: "app run status" }),
+};
 
 const inputCount = (status: RunStatus) => {
   for (let i = 0; i < status.blocks.length; i++) {
@@ -30,6 +47,7 @@ const inputCount = (status: RunStatus) => {
 };
 
 export function RunsPage() {
+  const { t } = useLingui();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const wIdTarget = useSearchParam("wIdTarget");
@@ -51,7 +69,11 @@ export function RunsPage() {
   const [offset, setOffset] = useState(0);
 
   const [tabs, setTabs] = useState(
-    [] as { name: string; runType: RunRunType; ownerOwnly: boolean }[]
+    [] as {
+      name: MessageDescriptor;
+      runType: RunRunType;
+      ownerOwnly: boolean;
+    }[]
   );
 
   useEffect(() => {
@@ -71,6 +93,7 @@ export function RunsPage() {
     wIdTarget
   );
 
+  const first = offset + 1;
   let last = offset + limit;
   if (offset + limit > total) {
     last = total;
@@ -92,10 +115,10 @@ export function RunsPage() {
   return (
     <>
       <div className="mt-8 flex">
-        <nav className="flex" aria-label="Tabs">
+        <nav className="flex" aria-label={t`Tabs`}>
           {tabs.map((tab, tabIdx) => (
             <a
-              key={tab.name}
+              key={tab.runType}
               className={classNames(
                 tab.runType == runType
                   ? "border-border bg-primary-700 text-primary-50 hover:bg-primary-800"
@@ -106,7 +129,7 @@ export function RunsPage() {
               )}
               onClick={() => setRunType(tab.runType)}
             >
-              <div className="flex items-center">{tab.name}</div>
+              <div className="flex items-center">{t(tab.name)}</div>
             </a>
           ))}
         </nav>
@@ -125,7 +148,7 @@ export function RunsPage() {
                   setOffset(0);
                 }
               }}
-              label="Previous"
+              label={t({ message: "Previous", context: "pagination button" })}
             />
           </div>
           <div className="ml-2 flex">
@@ -138,7 +161,7 @@ export function RunsPage() {
                   setOffset(offset + limit);
                 }
               }}
-              label="Next"
+              label={t({ message: "Next", context: "pagination button" })}
             />
           </div>
         </div>
@@ -146,75 +169,88 @@ export function RunsPage() {
 
       {runs.length > 0 ? (
         <div className="mt-4 flex flex-auto pl-1 text-sm text-muted-foreground">
-          Showing runs {offset + 1} - {last} of {total} runs
+          {t`Showing runs ${first} - ${last} of ${plural(total, {
+            one: "# run",
+            other: "# runs",
+          })}`}
         </div>
       ) : null}
 
       <div className="mt-4">
         <ul role="list" className="space-y-4">
-          {runs.map((run) => (
-            <li key={run.run_id} className="px-0">
-              <div className="rounded border border-border px-4 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-initial">
-                    <LinkWrapper
-                      href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
-                      className="block"
-                    >
-                      <p className="truncate font-mono text-base text-highlight-500">
-                        {run.run_id.slice(0, 8)}...
-                        {run.run_id.slice(-8)}
-                      </p>
-                    </LinkWrapper>
-                  </div>
-                  <div className="ml-2 flex flex-shrink-0">
-                    <p
-                      className={classNames(
-                        "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                        run.status.run == "succeeded"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      )}
-                    >
-                      {run.status.run}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 flex justify-between">
-                  <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-muted-foreground">
-                    {run.status.blocks.map((block) => (
-                      <span
-                        key={`${block.block_type}-${block.name}`}
+          {runs.map((run) => {
+            const runInputCount = inputCount(run.status);
+            return (
+              <li key={run.run_id} className="px-0">
+                <div className="rounded border border-border px-4 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-initial">
+                      <LinkWrapper
+                        href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
+                        className="block"
+                      >
+                        <p className="truncate font-mono text-base text-highlight-500">
+                          {run.run_id.slice(0, 8)}...
+                          {run.run_id.slice(-8)}
+                        </p>
+                      </LinkWrapper>
+                    </div>
+                    <div className="ml-2 flex flex-shrink-0">
+                      <p
                         className={classNames(
-                          "rounded-md px-1 text-sm font-semibold",
-                          block.status == "succeeded"
-                            ? "bg-primary-100"
-                            : "bg-red-100"
+                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                          run.status.run == "succeeded"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                         )}
                       >
-                        {block.name}
-                      </span>
-                    ))}
-                    <span className="ml-2 pt-1 font-mono text-xs text-muted-foreground">
-                      ({inputCount(run.status)} inputs)
-                    </span>
+                        {t(RUN_STATUS_LABELS[run.status.run])}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground sm:mt-0">
-                    <p>{timeAgoFrom(run.created)}</p>
+                  <div className="mt-2 flex justify-between">
+                    <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-muted-foreground">
+                      {run.status.blocks.map((block) => (
+                        <span
+                          key={`${block.block_type}-${block.name}`}
+                          className={classNames(
+                            "rounded-md px-1 text-sm font-semibold",
+                            block.status == "succeeded"
+                              ? "bg-primary-100"
+                              : "bg-red-100"
+                          )}
+                        >
+                          {block.name}
+                        </span>
+                      ))}
+                      <span className="ml-2 pt-1 font-mono text-xs text-muted-foreground">
+                        {t`(${plural(runInputCount, {
+                          one: "# input",
+                          other: "# inputs",
+                        })})`}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground sm:mt-0">
+                      <p>{timeAgoFrom(run.created)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
           {runs.length == 0 ? (
             <div className="mt-10 flex flex-col items-center justify-center text-sm text-muted-foreground">
-              <p>No runs found</p>
+              <p>
+                <Trans>No runs found</Trans>
+              </p>
               {runType == "local" ? (
                 <p className="mt-2">
-                  Runs triggered from Dust will appear here.
+                  <Trans>Runs triggered from Dust will appear here.</Trans>
                 </p>
               ) : (
-                <p className="mt-2">Runs triggered by API will appear here.</p>
+                <p className="mt-2">
+                  <Trans>Runs triggered by API will appear here.</Trans>
+                </p>
               )}
             </div>
           ) : null}

@@ -1045,25 +1045,25 @@ describe("SandboxFunctionInvocationResource", () => {
     });
   });
 
-  it.each([
-    "errored",
-    "succeeded",
-  ] as const)("does not execute an invocation with terminal status %s", async (status) => {
-    const { authenticator, sandbox, invocation } = await setupExecutionTest();
-    const execSpy = vi.spyOn(sandbox, "exec");
+  it.each(["errored", "succeeded"] as const)(
+    "does not execute an invocation with terminal status %s",
+    async (status) => {
+      const { authenticator, sandbox, invocation } = await setupExecutionTest();
+      const execSpy = vi.spyOn(sandbox, "exec");
 
-    if (status === "errored") {
-      await invocation.fail(new Error("execution failed"));
-    } else {
-      await invocation.succeed({ commentId: "comment-1" });
+      if (status === "errored") {
+        await invocation.fail(new Error("execution failed"));
+      } else {
+        await invocation.succeed({ commentId: "comment-1" });
+      }
+
+      const result = await invocation.execute(authenticator);
+
+      expect(result.isOk()).toBe(true);
+      expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
+      expect(execSpy).not.toHaveBeenCalled();
     }
-
-    const result = await invocation.execute(authenticator);
-
-    expect(result.isOk()).toBe(true);
-    expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
-    expect(execSpy).not.toHaveBeenCalled();
-  });
+  );
 
   it("clears user identity when the executor differs from the invocation user", async () => {
     const { workspace, sandbox, invocation } = await setupExecutionTest();
@@ -1502,5 +1502,40 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     }
     expect(result.value.status).toBe("errored");
     expect((await loadedPoke(result.value)).error?.message).toContain("boom");
+  });
+});
+
+describe("SandboxFunctionInvocationResource.deleteAllForWorkspace", () => {
+  it("deletes every invocation of the workspace and leaves other workspaces alone", async () => {
+    const { authenticator, sandboxFunction } = await setupExecutionTest();
+    await SandboxFunctionInvocationResource.makeNew(authenticator, {
+      sandboxFunction,
+      input: { message: "second" },
+    });
+    const {
+      authenticator: otherAuthenticator,
+      sandboxFunction: otherSandboxFunction,
+      invocation: otherInvocation,
+    } = await setupExecutionTest();
+
+    const deletedCount =
+      await SandboxFunctionInvocationResource.deleteAllForWorkspace(
+        authenticator
+      );
+
+    expect(deletedCount).toBe(2);
+    expect(
+      await SandboxFunctionInvocationResource.listRecent(authenticator, {
+        sandboxFunction,
+        limit: 10,
+      })
+    ).toHaveLength(0);
+    const otherInvocations = await SandboxFunctionInvocationResource.listRecent(
+      otherAuthenticator,
+      { sandboxFunction: otherSandboxFunction, limit: 10 }
+    );
+    expect(otherInvocations.map((item) => item.sId)).toEqual([
+      otherInvocation.sId,
+    ]);
   });
 });

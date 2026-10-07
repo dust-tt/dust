@@ -7,6 +7,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import type { Space } from "../data/types";
+import type {
+  PodSettingsMember,
+  PodTabCustomization,
+} from "./podSettingsShared";
 import {
   DEFAULT_POD_AGENTS_MD,
   DEFAULT_POD_SKILL_IDS,
@@ -18,15 +23,10 @@ import {
   type PodGroup,
   type PodNotificationCondition,
 } from "../data";
-import type { Space } from "../data/types";
 import { PodSettingsAdvancedTab } from "./PodSettingsAdvancedTab";
 import { PodSettingsCustomizationTab } from "./PodSettingsCustomizationTab";
 import { PodSettingsGeneralTab } from "./PodSettingsGeneralTab";
 import { PodSettingsParticipantsTab } from "./PodSettingsParticipantsTab";
-import type {
-  PodSettingsMember,
-  PodTabCustomization,
-} from "./podSettingsShared";
 
 const POD_SETTINGS_TABS = [
   { value: "general", label: "General" },

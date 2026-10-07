@@ -27,6 +27,8 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 
 const PAGE_SIZE = 50;
@@ -61,6 +63,7 @@ interface LevelData {
   nodes: DataSourceViewContentNode[];
   isTopLevelInView: boolean;
   excludeNonRemoteDatabaseTables: boolean;
+  t: (descriptor: MessageDescriptor) => string;
 }
 
 function buildLevelItems(
@@ -72,7 +75,7 @@ function buildLevelItems(
       return buildSpaceItems(data.spaces);
     case "space":
       return data.spaceCategories
-        ? buildCategoryItems(data.spaceCategories, data.hasFeature)
+        ? buildCategoryItems(data.spaceCategories, data.hasFeature, data.t)
         : emptyArray();
     case "category":
       return buildDataSourceViewItems(data.dataSourceViews, {
@@ -84,6 +87,7 @@ function buildLevelItems(
         isTopLevelInView: data.isTopLevelInView,
         excludeNonRemoteDatabaseTables: data.excludeNonRemoteDatabaseTables,
         spaceName: data.spaceName,
+        t: data.t,
       });
     default:
       assertNeverAndIgnore(level);
@@ -213,6 +217,7 @@ export function useKnowledgeBrowserItems({
   viewType,
   excludeNonRemoteDatabaseTables = false,
 }: UseKnowledgeBrowserItemsParams): UseKnowledgeBrowserItemsResult {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const { isDark } = useTheme();
 
@@ -251,6 +256,7 @@ export function useKnowledgeBrowserItems({
         nodes: children.nodes,
         isTopLevelInView: children.isTopLevelInView,
         excludeNonRemoteDatabaseTables,
+        t,
       }),
     [
       categories.spaceCategories,
@@ -262,6 +268,7 @@ export function useKnowledgeBrowserItems({
       level,
       space?.name,
       spaces,
+      t,
       views.dataSourceViews,
       viewType,
     ]

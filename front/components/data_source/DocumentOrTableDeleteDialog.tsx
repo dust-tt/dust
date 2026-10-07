@@ -16,7 +16,8 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import capitalize from "lodash/capitalize";
+import { select } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface DocumentOrTableDeleteDialogProps {
@@ -32,6 +33,7 @@ export const DocumentOrTableDeleteDialog = ({
   contentNode,
   onDeleteSuccess,
 }: DocumentOrTableDeleteDialogProps) => {
+  const { t } = useLingui();
   const [isLoading, setIsLoading] = useState(false);
   const params = useQueryParams(["viewType", DocumentDeletionKey]);
   const isOpen =
@@ -75,10 +77,20 @@ export const DocumentOrTableDeleteDialog = ({
         throw new Error(`Failed to delete ${contentNode.type}`);
       }
 
+      const contentNodeType = contentNode.type;
+      const contentNodeTitle = contentNode.title;
       sendNotification({
         type: "success",
-        title: `${capitalize(contentNode.type)} deletion submitted`,
-        description: `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, it will complete shortly.`,
+        title: t`${select(contentNodeType, {
+          document: "Document deletion submitted",
+          table: "Table deletion submitted",
+          other: "Folder deletion submitted",
+        })}`,
+        description: t`${select(contentNodeType, {
+          document: `Deletion of document ${contentNodeTitle} is ongoing, it will complete shortly.`,
+          table: `Deletion of table ${contentNodeTitle} is ongoing, it will complete shortly.`,
+          other: `Deletion of folder ${contentNodeTitle} is ongoing, it will complete shortly.`,
+        })}`,
       });
 
       if (onDeleteSuccess) {
@@ -87,15 +99,35 @@ export const DocumentOrTableDeleteDialog = ({
 
       closeDialog();
     } catch {
+      const contentNodeType = contentNode.type;
       sendNotification({
         type: "error",
-        title: `Error deleting ${contentNode.type}`,
-        description: `An error occurred while deleting your ${contentNode.type}.`,
+        title: t`${select(contentNodeType, {
+          document: "Error deleting document",
+          table: "Error deleting table",
+          other: "Error deleting folder",
+        })}`,
+        description: t`${select(contentNodeType, {
+          document: "An error occurred while deleting your document.",
+          table: "An error occurred while deleting your table.",
+          other: "An error occurred while deleting your folder.",
+        })}`,
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const contentNodeType = contentNode?.type;
+  const contentNodeTitle = contentNode?.title;
+  const deleteConfirmationMessage =
+    contentNodeType && contentNodeTitle
+      ? t`${select(contentNodeType, {
+          document: `Are you sure you want to delete document '${contentNodeTitle}'?`,
+          table: `Are you sure you want to delete table '${contentNodeTitle}'?`,
+          other: `Are you sure you want to delete folder '${contentNodeTitle}'?`,
+        })}`
+      : t`Are you sure you want to delete?`;
 
   return (
     <Dialog
@@ -110,12 +142,10 @@ export const DocumentOrTableDeleteDialog = ({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm deletion</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete
-            {contentNode?.type ? ` ${contentNode.type}` : ""}
-            {contentNode?.title ? ` '${contentNode.title}'` : ""}?
-          </DialogDescription>
+          <DialogTitle>
+            <Trans>Confirm deletion</Trans>
+          </DialogTitle>
+          <DialogDescription>{deleteConfirmationMessage}</DialogDescription>
         </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -124,15 +154,17 @@ export const DocumentOrTableDeleteDialog = ({
         ) : (
           <>
             <DialogContainer>
-              <b>This action cannot be undone.</b>
+              <b>
+                <Trans>This action cannot be undone.</Trans>
+              </b>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: t`Delete`,
                 variant: "warning",
                 onClick: async () => {
                   void handleDelete();

@@ -4,8 +4,8 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -75,25 +75,25 @@ describe.each([
   ["input bar", useInputBarSlashCommandCapabilities],
   ["skill builder", useSkillBuilderSlashCommandCapabilities],
 ] as const)("%s slash capabilities", (_name, useCapabilities) => {
-  it.each([
-    "",
-    "   ",
-  ])("uses only the search endpoint for alphabetical favorites with query %j", async (query) => {
-    const { owner, fetcher, fetcherWithBody, wrapper } = await setup();
-    const { result } = renderHook(() => useCapabilities({ owner, query }), {
-      wrapper,
-    });
+  it.each(["", "   "])(
+    "uses only the search endpoint for alphabetical favorites with query %j",
+    async (query) => {
+      const { owner, fetcher, fetcherWithBody, wrapper } = await setup();
+      const { result } = renderHook(() => useCapabilities({ owner, query }), {
+        wrapper,
+      });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.capabilityItems.map((item) => item.id)).toEqual([
-      "beta",
-      "zulu",
-    ]);
-    expect(fetcherWithBody).toHaveBeenCalledOnce();
-    expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(
-      false
-    );
-  });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.capabilityItems.map((item) => item.id)).toEqual([
+        "beta",
+        "zulu",
+      ]);
+      expect(fetcherWithBody).toHaveBeenCalledOnce();
+      expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(
+        false
+      );
+    }
+  );
 
   it("uses the existing search when there are no favorites", async () => {
     const { owner, fetcherWithBody, wrapper } = await setup(false);

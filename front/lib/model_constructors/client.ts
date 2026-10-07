@@ -28,12 +28,7 @@ export abstract class Client<C extends InputConfig = InputConfig> {
     A extends Host,
     R extends Region,
     M extends Model,
-  >(this: {
-    lab: P;
-    host: A;
-    region: R;
-    model: M;
-  }): `${P}/${M}/${R}/${A}` {
+  >(this: { lab: P; host: A; region: R; model: M }): `${P}/${M}/${R}/${A}` {
     return `${this.lab}/${this.model}/${this.region}/${this.host}`;
   }
 }

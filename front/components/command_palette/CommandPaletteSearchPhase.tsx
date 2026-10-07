@@ -127,21 +127,36 @@ export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
   }
 }
 
+export interface CommandPaletteActionOptions {
+  /** Agents get no actions phase: selecting one only starts a conversation. */
+  hideAgentActions: boolean;
+  /** Skills get no actions phase: selecting one only adds it to the message. */
+  hideSkillActions: boolean;
+  /** Members get no actions phase: selecting one only starts a conversation. */
+  hideMemberActions: boolean;
+}
+
 /** True when Right arrow / the row chevron should open the actions phase. */
 export function commandPaletteItemHasActions(
-  item: CommandPaletteItem
+  item: CommandPaletteItem,
+  {
+    hideAgentActions,
+    hideSkillActions,
+    hideMemberActions,
+  }: CommandPaletteActionOptions
 ): item is Extract<
   CommandPaletteItem,
   { kind: "agent" | "member" | "skill" | "pod" }
 > {
   switch (item.kind) {
     case "agent":
+      return !hideAgentActions;
     case "member":
+      return !hideMemberActions;
     case "pod":
       return true;
     case "skill":
-      // Without edit access the only action is view details (the default).
-      return item.skill.canAdministrate;
+      return !hideSkillActions;
     case "action":
     case "conversation":
     case "setting":
@@ -171,6 +186,7 @@ interface CommandPaletteSearchPhaseProps {
   hasMoreSkills: boolean;
   hasMoreSettings: boolean;
   canSearchSettings: boolean;
+  actionOptions: CommandPaletteActionOptions;
   selectedCategory: CommandPaletteFilter;
   onSelectedCategoryChange: (category: CommandPaletteFilter) => void;
   isLoading: boolean;
@@ -335,19 +351,19 @@ function getFlatItems(
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
-    ...members.map(
-      (member): CommandPaletteItem => ({ kind: "member", member })
-    ),
+    ...members.map((member): CommandPaletteItem => ({
+      kind: "member",
+      member,
+    })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
-    ...conversations.map(
-      (conversation): CommandPaletteItem => ({
-        kind: "conversation",
-        conversation,
-      })
-    ),
-    ...settings.map(
-      (setting): CommandPaletteItem => ({ kind: "setting", setting })
-    ),
+    ...conversations.map((conversation): CommandPaletteItem => ({
+      kind: "conversation",
+      conversation,
+    })),
+    ...settings.map((setting): CommandPaletteItem => ({
+      kind: "setting",
+      setting,
+    })),
   ];
 }
 
@@ -406,6 +422,7 @@ export function CommandPaletteSearchPhase({
   hasMoreSkills,
   hasMoreSettings,
   canSearchSettings,
+  actionOptions,
   selectedCategory,
   onSelectedCategoryChange,
   isLoading,
@@ -615,7 +632,7 @@ export function CommandPaletteSearchPhase({
         break;
       case "ArrowRight": {
         const item = flatItems[selectedIndex];
-        if (item && commandPaletteItemHasActions(item)) {
+        if (item && commandPaletteItemHasActions(item, actionOptions)) {
           e.preventDefault();
           onOpenActions(item);
         }
@@ -722,7 +739,7 @@ export function CommandPaletteSearchPhase({
                   onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                   onOpenActions={
-                    commandPaletteItemHasActions(item)
+                    commandPaletteItemHasActions(item, actionOptions)
                       ? () => onOpenActions(item)
                       : undefined
                   }
@@ -767,7 +784,11 @@ export function CommandPaletteSearchPhase({
                 isSelected={selectedIndex === i}
                 onClick={() => onItemSelect({ kind: "agent", agent })}
                 onMouseMove={() => onSelectedIndexChange(i)}
-                onOpenActions={() => onOpenActions({ kind: "agent", agent })}
+                onOpenActions={
+                  actionOptions.hideAgentActions
+                    ? undefined
+                    : () => onOpenActions({ kind: "agent", agent })
+                }
               >
                 <CommandPaletteItemContent item={{ kind: "agent", agent }} />
               </ItemRow>
@@ -801,7 +822,7 @@ export function CommandPaletteSearchPhase({
                   onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                   onOpenActions={
-                    commandPaletteItemHasActions(item)
+                    commandPaletteItemHasActions(item, actionOptions)
                       ? () => onOpenActions(item)
                       : undefined
                   }
@@ -834,8 +855,10 @@ export function CommandPaletteSearchPhase({
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "member", member })}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                  onOpenActions={() =>
-                    onOpenActions({ kind: "member", member })
+                  onOpenActions={
+                    actionOptions.hideMemberActions
+                      ? undefined
+                      : () => onOpenActions({ kind: "member", member })
                   }
                 >
                   <CommandPaletteItemContent

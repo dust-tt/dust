@@ -42,7 +42,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-import { unescape } from "html-escaper";
+import unescape from "lodash/unescape";
 
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(
@@ -207,7 +207,6 @@ async function buildReplyContext(params: {
   }
 
   // Determine recipients
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const headers = originalMessage.payload?.headers || [];
   const originalFrom = getHeaderValue(headers, "From");
   const originalDate = getHeaderValue(headers, "Date");
@@ -215,7 +214,6 @@ async function buildReplyContext(params: {
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
   const originalSubject = getHeaderValue(headers, "Subject") ?? null;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const replyTo = params.to?.length ? params.to : originalFrom?.split(", ");
   const replyCc = params.cc?.length
     ? params.cc

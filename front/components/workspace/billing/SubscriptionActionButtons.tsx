@@ -13,8 +13,10 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 function CancelMetronomeSubscriptionDialog() {
+  const { t } = useLingui();
   const {
     subscription,
     periodEndLabel,
@@ -40,17 +42,22 @@ function CancelMetronomeSubscriptionDialog() {
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Cancel your subscription</DialogTitle>
+          <DialogTitle>
+            <Trans>Cancel your subscription</Trans>
+          </DialogTitle>
           <DialogDescription>
             {isImmediateCancellation ? (
-              "Your subscription will end immediately."
+              <Trans>Your subscription will end immediately.</Trans>
             ) : periodEndLabel ? (
-              <>
+              <Trans>
                 Your plan will remain active until{" "}
                 <span className="font-bold">{periodEndLabel}</span>.
-              </>
+              </Trans>
             ) : (
-              "Your plan will remain active until the end of the current billing period."
+              <Trans>
+                Your plan will remain active until the end of the current
+                billing period.
+              </Trans>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -61,60 +68,72 @@ function CancelMetronomeSubscriptionDialog() {
             </div>
           ) : isImmediateCancellation ? (
             <ContentMessage size="sm" variant="highlight">
-              This ends your subscription right away and cannot be undone.
+              <Trans>
+                This ends your subscription right away and cannot be undone.
+              </Trans>
             </ContentMessage>
           ) : (
             <div className="flex flex-col gap-4">
               {periodEndLabel && (
                 <ContentMessage size="sm" variant="highlight">
-                  You can resume your subscription any time before{" "}
-                  {periodEndLabel} with no interruption to your plan.
+                  <Trans>
+                    You can resume your subscription any time before{" "}
+                    {periodEndLabel} with no interruption to your plan.
+                  </Trans>
                 </ContentMessage>
               )}
               <div className="flex flex-col gap-3">
                 <div className="text-sm font-semibold text-foreground">
-                  What happens next
+                  <Trans>What happens next</Trans>
                 </div>
                 <div className="flex flex-col gap-3">
                   <div>
                     <div className="text-sm font-semibold text-foreground">
                       {shortDate
-                        ? `Until ${shortDate}`
-                        : "Until your plan ends"}
+                        ? t`Until ${shortDate}`
+                        : t`Until your plan ends`}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Everything works exactly as it does today. You keep full
-                      access to your workspace.
+                      <Trans>
+                        Everything works exactly as it does today. You keep full
+                        access to your workspace.
+                      </Trans>
                     </div>
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-foreground">
                       {shortDate
-                        ? `After ${shortDate}`
-                        : "After your plan ends"}
+                        ? t`After ${shortDate}`
+                        : t`After your plan ends`}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Your workspace becomes read-only. Members keep their
-                      accounts and can still sign in to view content.
+                      <Trans>
+                        Your workspace becomes read-only. Members keep their
+                        accounts and can still sign in to view content.
+                      </Trans>
                     </div>
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-foreground">
-                      Your data
+                      <Trans>Your data</Trans>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Agents, conversations, and connected data sources are
-                      preserved for 30 days. Reactivate any time during that
-                      window.
+                      <Trans>
+                        Agents, conversations, and connected data sources are
+                        preserved for 30 days. Reactivate any time during that
+                        window.
+                      </Trans>
                     </div>
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-foreground">
-                      Invoices
+                      <Trans>Invoices</Trans>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Past invoices remain available indefinitely from this
-                      page.
+                      <Trans>
+                        Past invoices remain available indefinitely from this
+                        page.
+                      </Trans>
                     </div>
                   </div>
                 </div>
@@ -124,11 +143,11 @@ function CancelMetronomeSubscriptionDialog() {
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Keep my subscription",
+            label: t`Keep my subscription`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Cancel Subscription",
+            label: t`Cancel subscription`,
             variant: "warning",
             onClick: cancelSubscription,
           }}
@@ -139,6 +158,7 @@ function CancelMetronomeSubscriptionDialog() {
 }
 
 function ReactivateMetronomeSubscriptionDialog() {
+  const { t } = useLingui();
   const {
     subscriptionEndLabel,
     isReactivatingSubscription,
@@ -157,16 +177,21 @@ function ReactivateMetronomeSubscriptionDialog() {
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Resume your subscription</DialogTitle>
+          <DialogTitle>
+            <Trans>Resume your subscription</Trans>
+          </DialogTitle>
           <DialogDescription>
             {subscriptionEndLabel ? (
-              <>
+              <Trans>
                 Your plan is scheduled to end on{" "}
                 <span className="font-bold">{subscriptionEndLabel}</span>.
                 Resuming now keeps everything active without interruption.
-              </>
+              </Trans>
             ) : (
-              "Resuming your subscription will keep everything active without interruption."
+              <Trans>
+                Resuming your subscription will keep everything active without
+                interruption.
+              </Trans>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -177,18 +202,20 @@ function ReactivateMetronomeSubscriptionDialog() {
             </div>
           ) : (
             <ContentMessage size="sm" variant="highlight">
-              Your billing cycle will continue as normal and you will not be
-              charged again until the next billing date.
+              <Trans>
+                Your billing cycle will continue as normal and you will not be
+                charged again until the next billing date.
+              </Trans>
             </ContentMessage>
           )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Resume subscription",
+            label: t`Resume subscription`,
             variant: "highlight",
             onClick: reactivateSubscription,
           }}
@@ -199,6 +226,7 @@ function ReactivateMetronomeSubscriptionDialog() {
 }
 
 export function SubscriptionActionButtons() {
+  const { t } = useLingui();
   const {
     canCancelSubscription,
     canReactivateSubscription,
@@ -214,7 +242,7 @@ export function SubscriptionActionButtons() {
       <ReactivateMetronomeSubscriptionDialog />
       {canReactivateSubscription ? (
         <Button
-          label="Resume subscription"
+          label={t`Resume subscription`}
           size="sm"
           variant="highlight"
           disabled={isReactivatingSubscription}
@@ -228,7 +256,7 @@ export function SubscriptionActionButtons() {
         />
       ) : canCancelSubscription ? (
         <Button
-          label="Cancel subscription"
+          label={t`Cancel subscription`}
           size="sm"
           variant="outline"
           disabled={isCancellingSubscription}

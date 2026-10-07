@@ -4,7 +4,7 @@
 
 **CRITICAL**: Always run `bun run check` before committing. This runs typecheck, lint, and tests. Never commit code that fails these checks.
 
-**IMPORTANT**: Always use `bun run` commands from within the `x/henry/dust-hive` directory. Do NOT run `tsc`, `biome`, or other tools directly - use the npm scripts which ensure correct configuration.
+**IMPORTANT**: Always use `bun run` commands from within the `x/henry/dust-hive` directory. Do NOT run `tsc`, `oxlint`, `oxfmt`, or other tools directly - use the npm scripts which ensure correct configuration.
 
 ```bash
 # Before committing - run ALL checks (MANDATORY)
@@ -12,16 +12,16 @@ bun run check        # Runs: typecheck → lint → test
 
 # Individual checks (use these, not direct tool invocations)
 bun run typecheck    # tsc --noEmit
-bun run lint         # biome check . (includes formatting + import sorting)
-bun run lint:fix     # biome check --write . (auto-fix issues)
-bun run format       # biome format --write .
+bun run lint         # oxlint . && oxfmt --check . (lint + formatting + import sorting)
+bun run lint:fix     # oxlint --fix . && oxfmt . (auto-fix issues)
+bun run format       # oxfmt .
 bun run test         # bun test
 ```
 
 **Why use `bun run` instead of direct commands?**
-- `bun run lint` runs `biome check` which enforces formatting, import sorting, AND linting
-- Running `biome lint` directly misses formatting and import organization errors
-- The scripts ensure you're using the project's biome/typescript config
+- `bun run lint` runs `oxlint` and `oxfmt --check`, which enforce linting, formatting AND import sorting
+- Running `oxlint` directly misses formatting and import organization errors
+- The scripts ensure you're using the project's oxlint/oxfmt/typescript config
 
 **Always fix lint/type errors immediately** - don't accumulate them.
 
@@ -29,7 +29,7 @@ bun run test         # bun test
 
 - **Runtime**: Bun
 - **Language**: TypeScript (strict mode)
-- **Linting/Formatting**: Biome (strict rules)
+- **Linting/Formatting**: oxlint + oxfmt (strict rules)
 - **Testing**: Bun test
 - **Terminal UI**: Zellij or tmux (viewer only, configurable via settings)
 - **Process Management**: CLI-managed daemons with PID files

@@ -2,11 +2,7 @@ import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/gove
 import { usePrivateConversationUrlsToggle } from "@app/hooks/usePrivateConversationUrlsToggle";
 import type { WorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
-
-export const PRIVATE_CONVERSATION_URLS_LABEL =
-  "Private conversation URLs by default";
-export const PRIVATE_CONVERSATION_URLS_DESCRIPTION =
-  "Whether conversation URLs are private by default, limiting access to participants";
+import { useLingui } from "@lingui/react/macro";
 
 interface PrivateConversationUrlsToggleProps {
   owner: WorkspaceType;
@@ -15,13 +11,14 @@ interface PrivateConversationUrlsToggleProps {
 export function PrivateConversationUrlsToggle({
   owner,
 }: PrivateConversationUrlsToggleProps) {
+  const { t } = useLingui();
   const { isEnabled, isChanging, doTogglePrivateConversationUrls } =
     usePrivateConversationUrlsToggle({ owner });
 
   return (
     <GovernanceSettingRowLayout
-      label={PRIVATE_CONVERSATION_URLS_LABEL}
-      description={PRIVATE_CONVERSATION_URLS_DESCRIPTION}
+      label={t`Private conversation URLs by default`}
+      description={t`Whether conversation URLs are private by default, limiting access to participants`}
       action={
         <SliderToggle
           selected={isEnabled}

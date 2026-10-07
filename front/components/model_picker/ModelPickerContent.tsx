@@ -1,6 +1,6 @@
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import { ModelPickerMakersView } from "@app/components/model_picker/ModelPickerMakersView";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
-import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
   ModelPickerSelectionModel,

@@ -229,6 +229,14 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "get_agent_feedback": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_agent_insights": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "suggest": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -432,6 +440,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     "query": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
+    },
+  },
+  "documents": {
+    "add_comment": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
     },
   },
   "exa_people_and_company": {
@@ -2801,6 +2815,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "building_agents_and_skills": {
     "describe_agent": "never_ask",
     "describe_skill": "never_ask",
+    "get_agent_feedback": "never_ask",
+    "get_agent_insights": "never_ask",
     "suggest": "never_ask",
   },
   "clari_copilot": {
@@ -2864,6 +2880,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "find": "never_ask",
     "list": "never_ask",
     "query": "never_ask",
+  },
+  "documents": {
+    "add_comment": "never_ask",
   },
   "exa_people_and_company": {
     "search_companies": "never_ask",

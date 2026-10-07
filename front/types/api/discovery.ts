@@ -1,3 +1,4 @@
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GROUP_PINNED_ITEM_TYPES } from "@app/types/discovery";
 import { z } from "zod";
 
@@ -6,6 +7,8 @@ export type DiscoveryAgentType = {
   name: string;
   description: string;
   pictureUrl: string;
+  scope: AgentConfigurationScope;
+  lastAuthors: readonly string[];
 };
 
 export type DiscoverySkillType = {
@@ -13,6 +16,8 @@ export type DiscoverySkillType = {
   name: string;
   description: string;
   icon: string | null;
+  editors: string[];
+  editedBy: number | null;
 };
 
 type DiscoveryPinType = {

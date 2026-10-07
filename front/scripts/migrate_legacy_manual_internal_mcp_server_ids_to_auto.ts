@@ -221,7 +221,7 @@ async function scanAffectedWorkspaces(
       limit: SCAN_BATCH_SIZE,
       raw: true,
       // WORKSPACE_ISOLATION_BYPASS: Global scan to find workspaces with legacy views.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: migration script
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- migration script
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

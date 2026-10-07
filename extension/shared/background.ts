@@ -91,11 +91,79 @@ const toTabInfo = (tabs: chrome.tabs.Tab[]): TabInfo[] =>
       : []
   );
 
+const BLACKLISTED_TAB_INTERACTION_ERROR =
+  "You are not allowed to interact with this tab: its domain is blocked for this workspace.";
+
+// Keeps a blacklisted tab listable while dropping everything that reveals its content.
+const redactBlacklistedTab = (tab: TabInfo): TabInfo => ({
+  tabId: tab.tabId,
+  title: "",
+  url: new URL(tab.url).origin,
+  active: tab.active,
+});
+
 // Tabs captured at send time so tab tools stay anchored to what the user saw
 // when they sent, not where they navigated while the agent was processing.
 let currentTurnTabSnapshot: TabInfo[] | null = null;
 
-const shouldDisableContextMenuForDomain = async (
+const getBlacklistedDomains = async (
+  platform: PlatformService
+): Promise<string[]> => {
+  const token = await platform.auth.getAccessToken();
+  const cellInfo = await platform.auth.getCellInfoFromStorage();
+  const selectedWorkspace = await platform.auth.getSelectedWorkspace();
+
+  if (!token || !cellInfo || !selectedWorkspace) {
+    return [];
+  }
+
+  try {
+    const storageKey = `${EXTENSION_CONFIG_CACHE_PREFIX}${cellInfo.url}:${selectedWorkspace}`;
+
+    const cached = await platform.storage.get<ExtensionConfigCache>(storageKey);
+
+    if (
+      cached &&
+      Date.now() - cached.timestampMs < EXTENSION_CONFIG_CACHE_TTL_MS
+    ) {
+      return cached.blacklistedDomains;
+    }
+
+    const res = await fetch(
+      `${cellInfo.url}/api/w/${selectedWorkspace}/extension/config`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "omit",
+      }
+    );
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json();
+    const blacklistedDomains: string[] = data.blacklistedDomains ?? [];
+    await platform.storage.set<ExtensionConfigCache>(storageKey, {
+      blacklistedDomains,
+      timestampMs: Date.now(),
+    });
+    return blacklistedDomains;
+  } catch {
+    return [];
+  }
+};
+
+const isUrlBlacklisted = (
+  url: string,
+  blacklistedDomains: string[]
+): boolean => {
+  const hostname = new URL(url).hostname;
+  return blacklistedDomains.some((d) =>
+    d.startsWith("http://") || d.startsWith("https://")
+      ? url.startsWith(d)
+      : hostname.endsWith(d)
+  );
+};
+
+const isUrlBlacklistedForWorkspace = async (
   url: string,
   platform: PlatformService
 ): Promise<boolean> => {
@@ -107,53 +175,7 @@ const shouldDisableContextMenuForDomain = async (
     return true;
   }
 
-  const token = await platform.auth.getAccessToken();
-  const cellInfo = await platform.auth.getCellInfoFromStorage();
-  const selectedWorkspace = await platform.auth.getSelectedWorkspace();
-
-  if (!token || !cellInfo || !selectedWorkspace) {
-    return false;
-  }
-
-  try {
-    const storageKey = `${EXTENSION_CONFIG_CACHE_PREFIX}${cellInfo.url}:${selectedWorkspace}`;
-    let blacklistedDomains: string[];
-
-    const cached = await platform.storage.get<ExtensionConfigCache>(storageKey);
-
-    if (
-      cached &&
-      Date.now() - cached.timestampMs < EXTENSION_CONFIG_CACHE_TTL_MS
-    ) {
-      blacklistedDomains = cached.blacklistedDomains;
-    } else {
-      const res = await fetch(
-        `${cellInfo.url}/api/w/${selectedWorkspace}/extension/config`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "omit",
-        }
-      );
-      if (!res.ok) {
-        return false;
-      }
-      const data = await res.json();
-      blacklistedDomains = data.blacklistedDomains ?? [];
-      await platform.storage.set<ExtensionConfigCache>(storageKey, {
-        blacklistedDomains,
-        timestampMs: Date.now(),
-      });
-    }
-
-    const hostname = new URL(url).hostname;
-    return blacklistedDomains.some((d) =>
-      d.startsWith("http://") || d.startsWith("https://")
-        ? url.startsWith(d)
-        : hostname.endsWith(d)
-    );
-  } catch {
-    return false;
-  }
+  return isUrlBlacklisted(url, await getBlacklistedDomains(platform));
 };
 
 const toggleContextMenus = (isDisabled: boolean) => {
@@ -187,10 +209,7 @@ export const registerContextMenuTabListeners = (
 ): void => {
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === "complete" && tab.url) {
-      const isDisabled = await shouldDisableContextMenuForDomain(
-        tab.url,
-        platform
-      );
+      const isDisabled = await isUrlBlacklistedForWorkspace(tab.url, platform);
       toggleContextMenus(isDisabled);
     }
   });
@@ -198,10 +217,7 @@ export const registerContextMenuTabListeners = (
   chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     if (tab.url) {
-      const isDisabled = await shouldDisableContextMenuForDomain(
-        tab.url,
-        platform
-      );
+      const isDisabled = await isUrlBlacklistedForWorkspace(tab.url, platform);
       toggleContextMenus(isDisabled);
     }
   });
@@ -619,7 +635,7 @@ export const registerMessageListener = (platform: PlatformService) => {
 
             if (
               tab.url &&
-              (await shouldDisableContextMenuForDomain(tab.url, platform))
+              (await isUrlBlacklistedForWorkspace(tab.url, platform))
             ) {
               sendResponse({
                 url: tab.url || "",
@@ -882,9 +898,15 @@ export const registerMessageListener = (platform: PlatformService) => {
 
         case "LIST_TABS":
           void (async () => {
-            const tabs =
+            const allTabs =
               currentTurnTabSnapshot ??
               toTabInfo(await chrome.tabs.query({ currentWindow: true }));
+            const blacklistedDomains = await getBlacklistedDomains(platform);
+            const tabs = allTabs.map((t) =>
+              isUrlBlacklisted(t.url, blacklistedDomains)
+                ? redactBlacklistedTab(t)
+                : t
+            );
             sendResponse({ success: true, tabs });
           })();
           return true;
@@ -962,6 +984,16 @@ export const registerMessageListener = (platform: PlatformService) => {
         case "GET_ELEMENTS":
           chrome.tabs.query({ currentWindow: true }, async (tabs) => {
             const tab = tabs.find((t) => t.id === message.tabId);
+            if (
+              tab?.url &&
+              (await isUrlBlacklistedForWorkspace(tab.url, platform))
+            ) {
+              sendResponse({
+                elements: "",
+                error: BLACKLISTED_TAB_INTERACTION_ERROR,
+              });
+              return;
+            }
             try {
               const result = await getPageElements(tab);
 
@@ -992,6 +1024,16 @@ export const registerMessageListener = (platform: PlatformService) => {
         case "CLICK_ELEMENT":
           chrome.tabs.query({ currentWindow: true }, async (tabs) => {
             const tab = tabs.find((t) => t.id === message.tabId);
+            if (
+              tab?.url &&
+              (await isUrlBlacklistedForWorkspace(tab.url, platform))
+            ) {
+              sendResponse({
+                success: false,
+                error: BLACKLISTED_TAB_INTERACTION_ERROR,
+              });
+              return;
+            }
             try {
               const result = await clickPageElement(tab, message.elementId);
 
@@ -1037,6 +1079,16 @@ export const registerMessageListener = (platform: PlatformService) => {
         case "TYPE_TEXT":
           chrome.tabs.query({ currentWindow: true }, async (tabs) => {
             const tab = tabs.find((t) => t.id === message.tabId);
+            if (
+              tab?.url &&
+              (await isUrlBlacklistedForWorkspace(tab.url, platform))
+            ) {
+              sendResponse({
+                success: false,
+                error: BLACKLISTED_TAB_INTERACTION_ERROR,
+              });
+              return;
+            }
             try {
               const result = await typeText(
                 tab,
@@ -1087,6 +1139,16 @@ export const registerMessageListener = (platform: PlatformService) => {
         case "DELETE_TEXT":
           chrome.tabs.query({ currentWindow: true }, async (tabs) => {
             const tab = tabs.find((t) => t.id === message.tabId);
+            if (
+              tab?.url &&
+              (await isUrlBlacklistedForWorkspace(tab.url, platform))
+            ) {
+              sendResponse({
+                success: false,
+                error: BLACKLISTED_TAB_INTERACTION_ERROR,
+              });
+              return;
+            }
             try {
               const result = await typeText(
                 tab,

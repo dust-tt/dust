@@ -16,6 +16,14 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import type { ReactNode } from "react";
 
+import type {
+  AdminRequest,
+  RequestCredit,
+  RequestDocument,
+  RequestRole,
+  RequestTarget,
+  User,
+} from "../data/types";
 import { getAgentById } from "../data/agents";
 import { getIconForFileType } from "../data/dataSources";
 import {
@@ -27,14 +35,6 @@ import {
   SEAT_CHIP_COLORS,
   SEAT_TYPE_LABELS,
 } from "../data/requests";
-import type {
-  AdminRequest,
-  RequestCredit,
-  RequestDocument,
-  RequestRole,
-  RequestTarget,
-  User,
-} from "../data/types";
 import { getUserById } from "../data/users";
 
 /** Credits are shown in full, the way the product prints them. */

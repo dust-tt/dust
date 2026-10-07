@@ -1,7 +1,6 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { APIKeysPageContent } from "@app/components/pages/workspace/developers/APIKeysPage";
-import { API_KEYS_PAGE_TITLE } from "@app/components/pages/workspace/developers/apiKeysAdminSearchEntries";
 import { SecretsPageContent } from "@app/components/pages/workspace/developers/SecretsPage";
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
@@ -18,12 +17,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const DEVELOPERS_TABS = ["keys", "secrets", "env"] as const;
 type DevelopersTab = (typeof DEVELOPERS_TABS)[number];
 
 export function DevelopersPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { isComputerEnabled } = useComputerAdminAccess();
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
@@ -40,21 +41,23 @@ export function DevelopersPage() {
   return (
     <AdminPageContainer>
       <Page.Vertical gap="xl" align="stretch">
-        <Page.Header title="Developers" />
+        <Page.Header title={t`Developers`} />
         <Tabs
           value={activeTab}
           onValueChange={(value) => setTab(value as DevelopersTab)}
         >
           <TabsList className="mb-6">
-            <TabsTrigger value="keys" label="API keys" />
-            <TabsTrigger value="secrets" label="Secrets" />
+            <TabsTrigger value="keys" label={t`API keys`} />
+            <TabsTrigger value="secrets" label={t`Secrets`} />
             {isComputerEnabled && (
-              <TabsTrigger value="env" label="Computer environment" />
+              <TabsTrigger value="env" label={t`Computer environment`} />
             )}
           </TabsList>
           <TabsContent value="keys" className="flex flex-col gap-4">
             <div className="flex w-full items-center justify-between gap-4">
-              <Page.H variant="h4">{API_KEYS_PAGE_TITLE}</Page.H>
+              <Page.H variant="h4">
+                <Trans>Dust API Keys</Trans>
+              </Page.H>
               <ConsumptionPeriodSelector
                 period={period}
                 onPeriodChange={setPeriod}

@@ -7,8 +7,10 @@ export type FrameTheme = Partial<Record<`--${string}`, string | number>>;
 
 type FrameStyle = CSSProperties & FrameTheme;
 
-export interface FrameRootProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "style"> {
+export interface FrameRootProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "style"
+> {
   children: ReactNode;
   theme?: FrameTheme;
   style?: FrameStyle;

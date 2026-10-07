@@ -5,9 +5,7 @@ import {
 import { CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeOpusFourDotEightConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustClaudeOpusFourDotEight extends Base {
     static readonly displayName = "Claude Opus 4.8";

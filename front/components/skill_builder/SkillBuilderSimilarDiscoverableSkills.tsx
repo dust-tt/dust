@@ -7,6 +7,7 @@ import type {
   SkillAvailability,
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -18,6 +19,7 @@ const DISCOVERABLE_AVAILABILITIES: SkillAvailability[] = ["users_and_agents"];
 // Skills available to members and agents are auto-discovered by agents, so a duplicate there is
 // more harmful than elsewhere: we surface the overlap with that subset specifically.
 export function SkillBuilderSimilarDiscoverableSkills() {
+  const { t } = useLingui();
   const { owner, skillId } = useSkillBuilderContext();
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
@@ -87,8 +89,8 @@ export function SkillBuilderSimilarDiscoverableSkills() {
       owner={owner}
       similarSkills={similarSkills}
       isLoading={isLoading}
-      loadingLabel="Checking for similar skills available to members and agents..."
-      title="Similar skills already available to members and agents"
+      loadingLabel={t`Checking for similar skills available to members and agents...`}
+      title={t`Similar skills already available to members and agents`}
     />
   );
 }

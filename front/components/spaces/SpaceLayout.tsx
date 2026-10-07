@@ -21,6 +21,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -29,6 +30,7 @@ interface SpaceLayoutProps {
 }
 
 export function SpaceLayout({ children }: SpaceLayoutProps) {
+  const { t } = useLingui();
   const params = usePathParams();
   const spaceId = params.spaceId;
 
@@ -101,7 +103,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
                 <div>
                   <Chip
                     color="warning"
-                    label="You are not a member of this space."
+                    label={t`You are not a member of this space.`}
                     size="sm"
                     icon={InfoCircle}
                   />
@@ -136,16 +138,18 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
         >
           <DialogContent size="md" isAlertDialog>
             <DialogHeader hideButton>
-              <DialogTitle>You can't create more spaces.</DialogTitle>
+              <DialogTitle>
+                <Trans>You can't create more spaces.</Trans>
+              </DialogTitle>
             </DialogHeader>
             <DialogContainer>
               {isEnterprise
-                ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
-                : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
+                ? t`We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more.`
+                : t`The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more.`}
             </DialogContainer>
             <DialogFooter
               rightButtonProps={{
-                label: "Ok",
+                label: t`Ok`,
                 variant: "outline",
                 onClick: closeSpaceCreationModal,
               }}

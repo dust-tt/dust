@@ -12,7 +12,7 @@ import type {
 import type { SnowflakeCredentials } from "@app/types/oauth/lib";
 import { isValidSnowflakeAccount } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpen01,
@@ -31,6 +31,7 @@ import {
   SheetTitle,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
@@ -58,6 +59,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   onSuccess: _onSuccess,
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionSnowflakeModalProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +82,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     CONNECTOR_UI_CONFIGURATIONS[
       connectorProviderConfiguration.connectorProvider
     ];
+
+  const providerName = connectorProviderConfiguration.name;
 
   const normalizedCredentials = (): SnowflakeCredentials => {
     // Trim only user-entered identifiers; leave password/private key as-is.
@@ -158,7 +162,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     if (!isValidSnowflakeAccount(normalized.account)) {
       setError(
-        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
+        t`Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname).`
       );
       setIsLoading(false);
       return;
@@ -180,7 +184,9 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     );
 
     if (!createCredentialsRes.ok) {
-      setError("Failed to create connection: cannot verify those credentials.");
+      setError(
+        t`Failed to create connection: cannot verify those credentials.`
+      );
       setIsLoading(false);
       return;
     }
@@ -201,11 +207,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         isConnectorsAPIError(maybeConnectorsError) &&
         maybeConnectorsError.type === "invalid_request_error"
       ) {
-        setError(
-          `Failed to create Snowflake connection: ${maybeConnectorsError.message}`
-        );
+        const errorMessage = maybeConnectorsError.message;
+        setError(t`Failed to create Snowflake connection: ${errorMessage}`);
       } else {
-        setError(`Failed to create Snowflake connection: ${err.error.message}`);
+        const errorMessage = err.error.message;
+        setError(t`Failed to create Snowflake connection: ${errorMessage}`);
       }
 
       setIsLoading(false);
@@ -232,7 +238,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     if (!isValidSnowflakeAccount(normalized.account)) {
       setError(
-        "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
+        t`Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname).`
       );
       setIsLoading(false);
       return;
@@ -254,7 +260,9 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     );
 
     if (!credentialsRes.ok) {
-      setError("Failed to update connection: cannot verify those credentials.");
+      setError(
+        t`Failed to update connection: cannot verify those credentials.`
+      );
       setIsLoading(false);
       return;
     }
@@ -283,11 +291,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         isConnectorsAPIError(maybeConnectorsError) &&
         maybeConnectorsError.type === "invalid_request_error"
       ) {
-        setError(
-          `Failed to update Snowflake connection: ${maybeConnectorsError.message}`
-        );
+        const errorMessage = maybeConnectorsError.message;
+        setError(t`Failed to update Snowflake connection: ${errorMessage}`);
       } else {
-        setError(`Failed to update Snowflake connection: ${err.error.message}`);
+        const errorMessage = err.error.message;
+        setError(t`Failed to update Snowflake connection: ${errorMessage}`);
       }
 
       return;
@@ -307,14 +315,14 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 visual={connectorUIConfiguration.getLogoComponent(isDark)}
               />
             </span>
-            Connecting {connectorProviderConfiguration.name}
+            <Trans>Connecting {providerName}</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
               <Button
-                label="Read our guide"
+                label={t`Read our guide`}
                 size="sm"
                 href={connectorUIConfiguration.guideLink ?? ""}
                 target="_blank"
@@ -326,7 +334,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
                   <div className="grow text-sm font-medium text-muted-foreground">
-                    Limitations
+                    <Trans>Limitations</Trans>
                   </div>
                   <div className="text-sm font-normal text-muted-foreground">
                     {connectorUIConfiguration.limitations}
@@ -335,7 +343,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               )}
             </div>
 
-            <Page.SectionHeader title="Snowflake Credentials" />
+            <Page.SectionHeader title={t`Snowflake credentials`} />
 
             {error && (
               <Chip color="warning" size="sm">
@@ -346,7 +354,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
             <div className="w-full space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Authentication Method
+                  <Trans>Authentication method</Trans>
                 </label>
                 <RadioGroup
                   name="authType"
@@ -357,16 +365,16 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 >
                   <RadioGroupItem
                     value="password"
-                    label="Username & Password"
+                    label={t`Username & password`}
                   />
                   <RadioGroupItem
                     value="keypair"
-                    label="Key Pair Authentication"
+                    label={t`Key pair authentication`}
                   />
                 </RadioGroup>
               </div>
               <Input
-                label="Snowflake Account identifier"
+                label={t`Snowflake account identifier`}
                 name="account_identifier"
                 value={credentials.account}
                 placeholder="au12345.us-east-1"
@@ -378,13 +386,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               {credentials.account.trim().length > 0 &&
                 !isValidSnowflakeAccount(credentials.account) && (
                   <div className="text-xs text-warning">
-                    Invalid format. Use an account identifier like{" "}
-                    <span className="font-mono">abc123.us-east-1</span> or{" "}
-                    <span className="font-mono">myorg-myaccount</span>.
+                    <Trans>
+                      Invalid format. Use an account identifier like{" "}
+                      <span className="font-mono">abc123.us-east-1</span> or{" "}
+                      <span className="font-mono">myorg-myaccount</span>.
+                    </Trans>
                   </div>
                 )}
               <Input
-                label="Role"
+                label={t`Role`}
                 name="role"
                 value={credentials.role}
                 placeholder="dev_role"
@@ -394,7 +404,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 }}
               />
               <Input
-                label="Warehouse"
+                label={t`Warehouse`}
                 name="warehouse"
                 value={credentials.warehouse}
                 placeholder="dev_warehouse"
@@ -404,7 +414,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 }}
               />
               <Input
-                label="Username"
+                label={t`Username`}
                 name="username"
                 value={credentials.username}
                 placeholder="dev_user"
@@ -415,7 +425,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               />
               {authType === "password" ? (
                 <Input
-                  label="Password"
+                  label={t`Password`}
                   name="password"
                   type="password"
                   value={"password" in credentials ? credentials.password : ""}
@@ -433,7 +443,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 <>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Private Key (PEM format)
+                      <Trans>Private key (PEM format)</Trans>
                     </label>
                     <TextArea
                       name="privateKey"
@@ -455,7 +465,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     />
                   </div>
                   <Input
-                    label="Private Key Passphrase (optional)"
+                    label={t`Private key passphrase (optional)`}
                     name="privateKeyPassphrase"
                     type="password"
                     value={
@@ -464,7 +474,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                           credentials.private_key_passphrase || ""
                         : ""
                     }
-                    placeholder="Leave empty if key is not encrypted"
+                    placeholder={t`Leave empty if key is not encrypted`}
                     onChange={(e) => {
                       setCredentials({
                         ...credentials,
@@ -476,11 +486,23 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     }}
                   />
                   <div className="text-sm text-muted-foreground">
-                    <p className="mb-2">To use key-pair authentication:</p>
+                    <p className="mb-2">
+                      <Trans>To use key-pair authentication:</Trans>
+                    </p>
                     <ol className="ml-4 list-decimal space-y-1">
-                      <li>Generate an RSA key pair (minimum 2048 bits)</li>
-                      <li>Register the public key with your Snowflake user</li>
-                      <li>Paste the private key above in PEM format</li>
+                      <li>
+                        <Trans>
+                          Generate an RSA key pair (minimum 2048 bits)
+                        </Trans>
+                      </li>
+                      <li>
+                        <Trans>
+                          Register the public key with your Snowflake user
+                        </Trans>
+                      </li>
+                      <li>
+                        <Trans>Paste the private key above in PEM format</Trans>
+                      </li>
                     </ol>
                   </div>
                 </>
@@ -490,11 +512,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading ? "Saving..." : "Save",
+            label: isLoading ? t`Saving...` : t`Save`,
             onClick: async (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();

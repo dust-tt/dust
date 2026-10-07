@@ -24,7 +24,10 @@ jobs:
         uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
 
       - name: Install cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        # Pinned to a cross-rs/cross commit (main as of 2026-09-24; the last release,
+        # v0.2.5, is from 2023) with --locked, so every release build runs the same
+        # toolchain code. When bumping the rev, re-resolve the image digest below.
+        run: cargo install cross --locked --git https://github.com/cross-rs/cross --rev 74e99b2223de06166f8cdcc1af7f1308ec52baf4
 
       - name: Get version
         id: version
@@ -47,14 +50,20 @@ jobs:
 
       - name: Build with cross
         working-directory: cli/dust-sandbox
+        env:
+          # Digest of ghcr.io/cross-rs/x86_64-unknown-linux-musl:main, the image the
+          # pinned cross rev would otherwise pull by mutable tag.
+          CROSS_TARGET_X86_64_UNKNOWN_LINUX_MUSL_IMAGE: ghcr.io/cross-rs/x86_64-unknown-linux-musl@sha256:664b119c13833d07bbbfb60f17cfa6f8b4e7d730bf30aad31dd803887ecd7e39
         run: cross build --release --target x86_64-unknown-linux-musl
 
       - name: Prepare release artifacts
+        id: artifacts
         run: |
           mkdir -p artifacts
           cp cli/dust-sandbox/target/x86_64-unknown-linux-musl/release/dsbx artifacts/dsbx-linux-x86_64
           cd artifacts
           sha256sum dsbx-linux-x86_64 > checksums-sha256.txt
+          echo "sha256=$(cut -d" " -f1 checksums-sha256.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
@@ -65,6 +74,8 @@ jobs:
             ## dsbx CLI v${{ steps.version.outputs.version }}
 
             **Commit**: ${{ github.sha }}
+
+            **SHA-256** (`dsbx-linux-x86_64`): `${{ steps.artifacts.outputs.sha256 }}`. Pin it as `DSBX_CLI_SHA256` in `front/lib/api/sandbox/image/registry.ts`.
 
             ### Download
 

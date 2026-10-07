@@ -112,7 +112,8 @@ export type SkillDetailsSection =
   | "description"
   | "when_to_use"
   | "guidelines"
-  | "editors";
+  | "editors"
+  | "files";
 
 export function getEditedSkillSections(
   suggestions: SkillSuggestionType[]
@@ -124,6 +125,7 @@ export function getEditedSkillSections(
         sections.add("description");
         break;
       case "editors":
+      case "files":
       case "name":
       case "availability":
         sections.add(suggestion.kind);

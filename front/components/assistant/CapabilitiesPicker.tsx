@@ -91,16 +91,36 @@ type CapabilityPickerItem = CapabilityPickerSearchItem & {
   icon: DropdownMenuItemProps["icon"];
 };
 
-function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
+interface CapabilitiesPickerLoadingProps {
+  count?: number;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:react] loading-rows-match-skill-items
+ * Loading rows must match the padding, avatar size and text line heights of
+ * skill rows in CapabilitiesPickerItemsList and must not be interactive.
+ */
+export function CapabilitiesPickerLoading({
+  count = 5,
+}: CapabilitiesPickerLoadingProps) {
   return (
-    <div className="py-1">
+    <div aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={`capabilities-picker-loading-${i}`} className="px-1 py-1">
-          <div className="flex items-center gap-3 rounded-md p-2">
-            <LoadingBlock className="h-5 w-5 rounded-full" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <LoadingBlock className="h-4 w-[80%]" />
-              <LoadingBlock className="h-3 w-[60%]" />
+        <div
+          key={`capabilities-picker-loading-${i}`}
+          className="flex items-center gap-2.5 p-2"
+        >
+          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex h-5 items-center">
+              <LoadingBlock
+                className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"}
+              />
+            </div>
+            <div className="flex h-4 items-center">
+              <LoadingBlock
+                className={i % 2 === 0 ? "h-3 w-full" : "h-3 w-4/5"}
+              />
             </div>
           </div>
         </div>
@@ -414,12 +434,12 @@ export function CapabilitiesPicker({
         switch (item.kind) {
           case "skill": {
             const SkillAvatar = getSkillAvatarIcon(item.skill);
-            return { ...item, icon: <SkillAvatar size="xs" /> };
+            return { ...item, icon: <SkillAvatar size="sm" /> };
           }
           case "tool":
-            return { ...item, icon: getAvatar(item.serverView.server, "xs") };
+            return { ...item, icon: getAvatar(item.serverView.server, "sm") };
           case "uninstalled_tool":
-            return { ...item, icon: getAvatar(item.server, "xs") };
+            return { ...item, icon: getAvatar(item.server, "sm") };
           default:
             return assertNever(item);
         }

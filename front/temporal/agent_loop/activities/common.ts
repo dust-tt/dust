@@ -878,6 +878,7 @@ export async function finalizeGracefulStop(
 const CREDIT_STOP_ERROR_TITLES: Record<UserBlockedReason, string> = {
   credits_exhausted: "Workspace out of credits",
   user_cap_reached: "Personal usage cap reached",
+  group_limit_reached: "Group usage limit reached",
   no_seat: "No seat assigned",
 };
 
@@ -895,6 +896,10 @@ export function creditStopMessage(
       return isAdmin
         ? "You have reached your personal usage cap. You can adjust user caps on the usage page."
         : "You have reached your personal usage cap. Please contact your administrator to increase it.";
+    case "group_limit_reached":
+      return isAdmin
+        ? "Your group has reached its usage limit. You can adjust group limits on the usage page."
+        : "Your group has reached its usage limit. Please contact your group managers or administrator to increase it.";
     case "no_seat":
       return isAdmin
         ? "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."

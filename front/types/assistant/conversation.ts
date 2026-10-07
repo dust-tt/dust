@@ -548,6 +548,7 @@ const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
+  dfmDocumentPath?: string;
   useFileSystem?: boolean;
   /** Selects the database-backed filesystem for a fresh standalone conversation. */
   useDatabaseFileSystem?: boolean;
@@ -793,6 +794,7 @@ export type SubmitMessageError = {
     | "plan_limit_reached_error"
     | "credits_exhausted_error"
     | "user_cap_reached_error"
+    | "group_limit_reached_error"
     | "no_seat_error"
     | "content_too_large";
   title: string;

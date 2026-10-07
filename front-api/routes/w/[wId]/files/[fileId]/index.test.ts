@@ -1,11 +1,12 @@
 import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -819,5 +820,60 @@ describe("POST /api/w/:wId/files/:fileId", () => {
         message: "You cannot edit files in that space.",
       },
     });
+  });
+});
+
+describe("unattached conversation files on /api/w/:wId/files/:fileId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fileStorageMock.reset();
+  });
+
+  async function setupUnattachedFile() {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "draft.txt",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: null,
+    });
+
+    return { auth, workspace, file };
+  }
+
+  it("lets the uploader read their own unattached file", async () => {
+    const { workspace, file } = await setupUnattachedFile();
+
+    const response = await honoApp.request(
+      fileUrl(workspace, file.sId, "?action=view")
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("does not let another workspace member read, inspect or delete it", async () => {
+    const { auth, workspace, file } = await setupUnattachedFile();
+    // Signs in as another member of the same workspace.
+    await createPrivateApiMockRequest({ workspace, role: "user" });
+
+    const viewResponse = await honoApp.request(
+      fileUrl(workspace, file.sId, "?action=view")
+    );
+    expect(viewResponse.status).toBe(404);
+
+    const metadataResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/files/${file.sId}/metadata`
+    );
+    expect(metadataResponse.status).toBe(404);
+
+    const deleteResponse = await honoApp.request(fileUrl(workspace, file.sId), {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status).toBe(404);
+    expect(await FileResource.fetchById(auth, file.sId)).not.toBeNull();
   });
 });

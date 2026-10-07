@@ -98,6 +98,7 @@ export type KnownModelLLMId =
   | "claude-sonnet-5"
   | "claude-sonnet-5-5"
   | "mistral-large-latest"
+  | "mistral-large-4"
   | "mistral-medium"
   | "mistral-medium-3-5"
   | "mistral-small-latest"
@@ -2019,6 +2020,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "plan_message_limit_exceeded"
   | "credits_exhausted"
   | "user_cap_reached"
+  | "group_limit_reached"
   | "plugin_execution_failed"
   | "plugin_not_found"
   | "provider_auth_error"
@@ -2456,7 +2458,9 @@ export const PatchConversationRequestSchema = z.union([
     read: z.boolean(),
   }),
   z.object({
-    title: z.string(),
+    title: z
+      .string()
+      .max(512, "Conversation title must be at most 512 characters."),
   }),
 ]);
 
@@ -3284,6 +3288,10 @@ const AnalyticsDateSchema = z.string().refine(isRealCalendarDate, {
   message: "Date must be a real calendar day in YYYY-MM-DD format",
 });
 
+// The server holds every exported message in memory. Mirrors MAX_MESSAGES_EXPORT_DAYS in
+// front/lib/api/analytics/export_tables.ts.
+const MAX_MESSAGES_EXPORT_DAYS = 90;
+
 export const GetAnalyticsExportRequestSchema = z
   .object({
     table: AnalyticsExportTableSchema,
@@ -3294,7 +3302,19 @@ export const GetAnalyticsExportRequestSchema = z
   })
   .refine((d) => d.startDate <= d.endDate, {
     message: "startDate must be before or equal to endDate",
-  });
+  })
+  .refine(
+    (d) => {
+      if (d.table !== "messages") {
+        return true;
+      }
+      const diffMs = Date.parse(d.endDate) - Date.parse(d.startDate);
+      return diffMs <= MAX_MESSAGES_EXPORT_DAYS * 24 * 60 * 60 * 1000;
+    },
+    {
+      message: `Time range must not exceed ${MAX_MESSAGES_EXPORT_DAYS} days for the messages table`,
+    }
+  );
 
 export type GetAnalyticsExportRequestType = z.infer<
   typeof GetAnalyticsExportRequestSchema
@@ -3626,6 +3646,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
+  | "AirtableLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"
   | "AsanaLogo"
@@ -3635,6 +3656,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ToolsIcon"
   | "CanvaLogo"
   | "ClariLogo"
+  | "ClayLogo"
+  | "ClickUpLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "ContentsquareLogo"
@@ -3646,6 +3669,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "FigmaLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
+  | "FullEnrichLogo"
   | "GammaLogo"
   | "GcalLogo"
   | "GithubLogo"
@@ -3674,6 +3698,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "NetSuiteLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "PaddleLogo"
+  | "PandaDocLogo"
   | "PowerBiLogo"
   | "PraizLogo"
   | "ProductboardLogo"
@@ -3693,6 +3719,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "SuperhumanLogo"
   | "TerminalSquareIcon"
   | "UkgLogo"
   | "ValTownLogo"
@@ -4180,8 +4207,17 @@ export interface GetSpaceMembersResponseBody {
   users: Pick<UserType, "sId" | "email">[];
 }
 
+// Seat type with `_yearly` variants collapsed onto their base tier.
+export const BaseSeatTypeSchema = FlexibleEnumSchema<
+  "none" | "free" | "workspace" | "pro" | "max"
+>();
+
+export type BaseSeatType = z.infer<typeof BaseSeatTypeSchema>;
+
 export interface GetWorkspaceMembersResponseBody {
-  users: Pick<UserType, "sId" | "id" | "email">[];
+  users: (Pick<UserType, "sId" | "id" | "email"> & {
+    seatType?: BaseSeatType;
+  })[];
 }
 
 const RichMentionSchema = z.object({

@@ -1,5 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
+import { resolveSkillFileAttachments } from "@app/lib/api/skills/apply_skill_suggestions";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -10,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
+  pruneConflictingSkillFilesSuggestions,
   pruneSupersededSingletonSkillSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -27,6 +29,7 @@ import type {
   SkillCreateSuggestionType,
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
+  SkillFilesSuggestionType,
   SkillInstructionEditItemType,
   SkillNameSuggestionType,
   SkillSuggestionData,
@@ -35,6 +38,7 @@ import type {
 import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isFilesSkillSuggestion,
 } from "@app/types/suggestions/skill_suggestion";
 
 // Validators shared by the single-change `suggest_skill_*` tools and the `suggest` tool. They run
@@ -183,6 +187,36 @@ export async function validateSkillEditorsSuggestion(
   return new Ok({ addUserIds, removeUserIds });
 }
 
+export async function validateSkillFilesSuggestion(
+  auth: Authenticator,
+  skill: SkillResource,
+  {
+    addFilePaths,
+    removeFileIds,
+  }: { addFilePaths: string[]; removeFileIds: string[] }
+): Promise<Result<SkillFilesSuggestionType, MCPError>> {
+  if (addFilePaths.length === 0 && removeFileIds.length === 0) {
+    return new Err(
+      new MCPError(
+        "Provide at least one file in `addFilePaths` or `removeFileIds`."
+      )
+    );
+  }
+
+  const files = {
+    addFilePaths: [...new Set(addFilePaths)],
+    removeFileIds: [...new Set(removeFileIds)],
+  };
+  const validation = await resolveSkillFileAttachments(auth, skill, files, {
+    upload: false,
+  });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
+  }
+
+  return new Ok(files);
+}
+
 export function validateSkillDeletionSuggestion(
   auth: Authenticator,
   skill: SkillResource
@@ -236,6 +270,11 @@ export async function pruneSupersededSkillSuggestions(
     case "editors":
       if (isEditorsSkillSuggestion(created)) {
         await pruneConflictingSkillEditorsSuggestions(auth, skill, [created]);
+      }
+      return;
+    case "files":
+      if (isFilesSkillSuggestion(created)) {
+        await pruneConflictingSkillFilesSuggestions(auth, skill, [created]);
       }
       return;
     case "create":

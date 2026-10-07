@@ -33,9 +33,7 @@ const configSchema = fireworksConfigSchema.extend({
 });
 
 export function WithMoonshotAiKimiK3Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class MoonshotAiKimiK3 extends Base {
     static readonly model = KIMI_K3;

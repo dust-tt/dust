@@ -1,4 +1,5 @@
 import type { DocumentSaveResult } from "@app/components/editor/document";
+import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreviewContent";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
@@ -9,7 +10,6 @@ import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -25,6 +25,8 @@ interface UseMarkdownFileEditorParams {
   isTooLarge: boolean;
   /** The preview text was cut; an editor fed with it would save a truncated file. */
   isTruncated: boolean;
+  /** The mount accepts writes from this user; no editor opens otherwise. */
+  canWrite: boolean;
   owner: LightWorkspaceType | undefined;
   /** The file text as fetched, for the rich editor. The processed text is trimmed. */
   rawContent: string | null;
@@ -56,6 +58,7 @@ export function useMarkdownFileEditor({
   isContentLoading,
   isTooLarge,
   isTruncated,
+  canWrite,
   owner,
   rawContent,
   processedContent,
@@ -77,7 +80,8 @@ export function useMarkdownFileEditor({
     entryPath && owner && parseCanonicalScopedPath(entryPath)
       ? entryPath
       : null;
-  const canEdit = category === "markdown" && !!editablePath && !isTooLarge;
+  const canOpenEditor =
+    category === "markdown" && !!editablePath && !isTooLarge && canWrite;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
@@ -89,6 +93,8 @@ export function useMarkdownFileEditor({
   }
 
   const isPlainDirty = draft !== savedContent;
+  // Saving cut preview text would truncate the file. An open draft stays so it can be copied.
+  const canEdit = canOpenEditor && (!isTruncated || isPlainDirty);
 
   useEffect(() => {
     if (
@@ -130,17 +136,13 @@ export function useMarkdownFileEditor({
     if (!owner || !editablePath) {
       return new Err("This file cannot be edited.");
     }
-    try {
-      await writeFileContentByPath({
-        owner,
-        canonicalPath: editablePath,
-        content,
-        contentType: "text/markdown",
-      });
-      return new Ok(undefined);
-    } catch (e) {
-      return new Err(normalizeError(e).message);
-    }
+    const result = await writeFileContentByPath({
+      owner,
+      canonicalPath: editablePath,
+      content,
+      contentType: "text/markdown",
+    });
+    return result.isOk() ? new Ok(undefined) : new Err(result.error.message);
   };
 
   /**
@@ -163,6 +165,10 @@ export function useMarkdownFileEditor({
     if (!isPlainDirty || isSaving) {
       return;
     }
+    if (isTruncated) {
+      sendNotification({ type: "error", ...CUT_TEXT_SAVE_REFUSED });
+      return;
+    }
     setIsSaving(true);
     try {
       const result = await writeFile(draft);
@@ -182,7 +188,8 @@ export function useMarkdownFileEditor({
   };
 
   const rich = useRichMarkdownEditor({
-    enabled: hasFeature("co_edition") && canEdit,
+    // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
+    enabled: hasFeature("co_edition") && canOpenEditor,
     entryPath,
     isActive,
     rawContent,

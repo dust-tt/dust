@@ -3,6 +3,7 @@
 // imports, so it can be loaded by server and worker code (e.g.
 // skill_instructions_html) without dragging the editor's React NodeView chain
 // or @dust-tt/sparkle into the import graph (the worker bundle forbids sparkle).
+
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";

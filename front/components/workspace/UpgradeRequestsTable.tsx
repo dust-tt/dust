@@ -18,6 +18,7 @@ import {
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -62,8 +63,6 @@ function UpgradeRequestSkeletonCell({
 
 const nameColumn = buildMemberNameColumn<RowData>();
 
-const REASON_LABEL = "Reached credit limit";
-
 function seatAwuCredits(
   seatType: MembershipSeatType | null,
   seatPlans: SeatPlanResponseBody
@@ -96,7 +95,7 @@ const reasonColumn: ColumnDef<RowData, string> = {
           className="line-clamp-2 text-sm text-muted-foreground"
           title={reason ?? undefined}
         >
-          {reason || REASON_LABEL}
+          {reason || <Trans>Reached credit limit</Trans>}
         </span>
       </DataTable.CellContent>
     );
@@ -127,11 +126,13 @@ function buildActionsColumn({
   onUpgradePlan,
   onEditLimit,
   onDeny,
+  labels,
 }: {
   seatPlans?: SeatPlanResponseBody;
   onUpgradePlan?: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
+  labels: { deny: string; upgradePlan: string; editLimit: string };
 }): ColumnDef<RowData, string> {
   return {
     id: "actions" as const,
@@ -160,7 +161,7 @@ function buildActionsColumn({
             size="sm"
             variant="warning-secondary"
             icon={XClose}
-            label="Deny"
+            label={labels.deny}
             onClick={() => onDeny(request)}
           />
           {canUpgradePlan && (
@@ -168,14 +169,14 @@ function buildActionsColumn({
               size="sm"
               variant="highlight-secondary"
               icon={Check}
-              label="Upgrade plan"
+              label={labels.upgradePlan}
               onClick={() => onUpgradePlan?.(request)}
             />
           )}
           <Button
             size="sm"
             variant="outline"
-            label="Edit limit"
+            label={labels.editLimit}
             onClick={() => onEditLimit(request)}
           />
         </div>
@@ -206,6 +207,7 @@ export function UpgradeRequestsTable({
   onEditLimit,
   onDeny,
 }: UpgradeRequestsTableProps) {
+  const { t } = useLingui();
   const rows: RowData[] = useMemo(
     () =>
       requests.map((request) => ({
@@ -230,9 +232,14 @@ export function UpgradeRequestsTable({
         onUpgradePlan,
         onEditLimit,
         onDeny,
+        labels: {
+          deny: t`Deny`,
+          upgradePlan: t`Upgrade plan`,
+          editLimit: t`Edit limit`,
+        },
       }),
     ],
-    [seatPlans, onUpgradePlan, onEditLimit, onDeny]
+    [seatPlans, onUpgradePlan, onEditLimit, onDeny, t]
   );
 
   if (isLoading) {
@@ -248,7 +255,7 @@ export function UpgradeRequestsTable({
     return (
       <div className="flex w-full justify-center py-8">
         <span className="text-sm text-muted-foreground">
-          No pending upgrade requests.
+          <Trans>No pending upgrade requests.</Trans>
         </span>
       </div>
     );

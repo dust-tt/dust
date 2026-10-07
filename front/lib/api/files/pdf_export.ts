@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { canAccessFrame } from "@app/lib/api/files/frame_access";
 import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,7 +8,6 @@ import {
   isEnterprisePlanPrefix,
   isFriendsAndFamilyPlan,
 } from "@app/lib/plans/plan_codes";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import {
@@ -58,14 +58,9 @@ export async function exportInteractiveContentFileAsPdf(
     });
   }
 
-  if (file.useCaseMetadata?.conversationId) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
-      return new Err({ type: "file_not_found", message: "File not found." });
-    }
+  const canAccess = await canAccessFrame(auth, file);
+  if (!canAccess) {
+    return new Err({ type: "file_not_found", message: "File not found." });
   }
 
   if (file.isFrameV2) {

@@ -629,14 +629,15 @@ export async function connectToMCPServer(
           } = await createMCPProxyConfig(auth, url);
 
           try {
+            const authProvider = new MCPOAuthProvider(token);
             const req = {
               requestInit: {
                 // Include stored custom headers
                 headers: customHeaders ?? {},
                 dispatcher,
               },
-              authProvider: new MCPOAuthProvider(token),
-              fetch: proxyFetch,
+              authProvider,
+              fetch: authProvider.wrapFetch(proxyFetch),
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);

@@ -25,15 +25,11 @@ function makePresentation(
       base.table = {
         rows: e.tableCells.length,
         columns: e.tableCells[0]?.length ?? 0,
-        tableRows: e.tableCells.map(
-          (row): slides_v1.Schema$TableRow => ({
-            tableCells: row.map(
-              (text): slides_v1.Schema$TableCell => ({
-                text: { textElements: [{ textRun: { content: text } }] },
-              })
-            ),
-          })
-        ),
+        tableRows: e.tableCells.map((row): slides_v1.Schema$TableRow => ({
+          tableCells: row.map((text): slides_v1.Schema$TableCell => ({
+            text: { textElements: [{ textRun: { content: text } }] },
+          })),
+        })),
       };
     } else if (e.group) {
       base.elementGroup = { children: e.group.map(makeElement) };
@@ -54,21 +50,19 @@ function makePresentation(
   }
   return {
     presentationId: "pres1",
-    slides: slides.map(
-      (s): slides_v1.Schema$Page => ({
-        objectId: s.objectId,
-        pageElements: (s.elements ?? []).map(makeElement),
-        slideProperties: s.notesObjectId
-          ? {
-              notesPage: {
-                notesProperties: {
-                  speakerNotesObjectId: s.notesObjectId,
-                },
+    slides: slides.map((s): slides_v1.Schema$Page => ({
+      objectId: s.objectId,
+      pageElements: (s.elements ?? []).map(makeElement),
+      slideProperties: s.notesObjectId
+        ? {
+            notesPage: {
+              notesProperties: {
+                speakerNotesObjectId: s.notesObjectId,
               },
-            }
-          : undefined,
-      })
-    ),
+            },
+          }
+        : undefined,
+    })),
   };
 }
 

@@ -5,7 +5,6 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { GetJoinResponseBody, OnboardingType } from "@app/lib/signup";
 import { getSignInUrl } from "@app/lib/signup";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -60,9 +59,7 @@ app.get(
       });
     }
 
-    const workspace = renderLightWorkspaceType({
-      workspace: workspaceResource,
-    });
+    const workspace = workspaceResource.toPublicJSON();
     const workspaceDomains = await workspaceResource.getVerifiedDomains();
 
     const token = isString(t) ? t : null;
@@ -115,9 +112,17 @@ app.get(
           );
         }
 
-        if (result.value) {
-          invitationEmail = result.value.inviteEmail;
+        if (result.value?.workspaceId !== workspaceResource.id) {
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "workspace_not_found",
+              message: "The workspace was not found.",
+            },
+          });
         }
+
+        invitationEmail = result.value.inviteEmail;
         break;
       }
       case "domain_invite_link":

@@ -17,8 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
+  LoadingBlock,
   Robot,
-  Spinner,
   XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -39,6 +39,7 @@ interface AgentPickerProps {
   onOpenChange?: (open: boolean) => void;
   selectedAgentId?: string | null;
   onDeselect?: () => void;
+  favoritesFirst?: boolean;
 }
 
 /**
@@ -46,6 +47,8 @@ interface AgentPickerProps {
  * The open, enabled picker MUST search agents in alphabetical order.
  * A selected match MUST stay first, including a supplied selection beyond the
  * first search page when the query is blank.
+ * With favoritesFirst, the search MUST rank the user's favorites first (see
+ * `agent-search-favorites-first`), right after the selection.
  */
 export function AgentPicker({
   owner,
@@ -62,6 +65,7 @@ export function AgentPicker({
   onOpenChange,
   selectedAgentId,
   onDeselect,
+  favoritesFirst = false,
 }: AgentPickerProps) {
   const clientType = useClientType();
   const isMobile = useIsMobile();
@@ -78,6 +82,7 @@ export function AgentPicker({
     sortBy: "name",
     sortOrder: "asc",
     permissionFiltering: "strict",
+    favoritesFirst,
     disabled: !isOpen || disabled,
   });
   const selected =
@@ -128,7 +133,7 @@ export function AgentPicker({
             <DropdownMenuSearchbar
               autoFocus={!isMobile}
               name="search-agents"
-              placeholder="Search Agents"
+              placeholder="Search for agents"
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
@@ -148,6 +153,7 @@ export function AgentPicker({
                   <CreateAgentDropdown
                     owner={owner}
                     dataGtmLocation="homepage"
+                    label="Create"
                   />
                 )
               }
@@ -157,12 +163,20 @@ export function AgentPicker({
         }
       >
         {isAgentsLoading ? (
-          <div
-            role="status"
-            aria-label="Loading agents"
-            className="flex items-center justify-center py-4"
-          >
-            <Spinner size="sm" />
+          <div role="status" aria-label="Loading agents">
+            <div aria-hidden="true">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div
+                  key={`agent-picker-loading-${i}`}
+                  className="flex items-center gap-2.5 px-2 py-1"
+                >
+                  <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
+                  <LoadingBlock
+                    className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : isAgentsError ? (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">

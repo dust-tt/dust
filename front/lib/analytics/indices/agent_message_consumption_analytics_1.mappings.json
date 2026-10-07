@@ -90,6 +90,9 @@
         },
         "seat_type": {
           "type": "keyword"
+        },
+        "limit_group_id": {
+          "type": "keyword"
         }
       }
     },

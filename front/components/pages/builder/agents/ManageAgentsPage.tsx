@@ -1,8 +1,6 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
-import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
 import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
@@ -11,11 +9,19 @@ import {
   AGENT_SEARCH_TABS,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
-import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
+import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
+import {
+  ManageTrackingContext,
+  trackManageDetails,
+  useManageTracking,
+  useTrackManageResults,
+} from "@app/components/pages/builder/manageTracking";
 import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
@@ -43,6 +49,7 @@ import {
   Page,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -52,6 +59,7 @@ const AGENT_SEARCH_PAGE_SIZE = 25;
 type SearchTabId = (typeof AGENT_SEARCH_TABS)[number]["id"];
 
 interface AgentsListProps {
+  isFilterLoading: boolean;
   readOnly?: boolean;
   searchEndpoint?: string;
   renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
@@ -69,6 +77,7 @@ type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
  * as custom agents. Read-only views MUST retain their search endpoint and expose no toggles.
  */
 function AgentsList({
+  isFilterLoading,
   readOnly = false,
   searchEndpoint,
   renderActions,
@@ -77,6 +86,15 @@ function AgentsList({
   permissionFiltering,
   onSelect,
 }: AgentsListProps) {
+  const { t } = useLingui();
+  const tracking = useManageTracking();
+  const handleSelect = useCallback(
+    (agentId: string) => {
+      trackManageDetails(tracking, agentId);
+      onSelect(agentId);
+    },
+    [tracking, onSelect]
+  );
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   // Selected rows are kept by id across pages, with the item needed by batch actions.
@@ -129,6 +147,17 @@ function AgentsList({
     sortOrder,
   });
 
+  useTrackManageResults({
+    queryKey,
+    searchTerm,
+    total,
+    disabled:
+      isFilterLoading ||
+      isAgentsLoading ||
+      isAgentsError ||
+      tablePagination.pageIndex !== 0,
+  });
+
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
   const canSelect = useCallback(
     (agent: AgentSearchItem) =>
@@ -165,9 +194,11 @@ function AgentsList({
           role="alert"
           className="flex items-center justify-between gap-4 py-4"
         >
-          <span>Could not load agents. Please try again.</span>
+          <span>
+            <Trans>Could not load agents. Please try again.</Trans>
+          </span>
           <Button
-            label="Retry"
+            label={t`Retry`}
             variant="outline"
             isLoading={isAgentsValidating}
             disabled={isAgentsValidating}
@@ -184,7 +215,7 @@ function AgentsList({
           readOnly={readOnly}
           renderActions={renderActions}
           agents={agents}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           onRefresh={mutate}
           pagination={tablePagination}
           // The table reports its pagination on every render; storing an unchanged value would
@@ -226,8 +257,8 @@ function AgentsList({
         <EmptyCTA
           message={
             searchTerm.trim()
-              ? "No agents match your search."
-              : "No agents to show."
+              ? t`No agents match your search.`
+              : t`No agents to show.`
           }
           action={null}
         />
@@ -281,6 +312,7 @@ export function ManageAgentsPage({
   onSelect,
   renderActions,
 }: ManageAgentsPageProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -328,7 +360,7 @@ export function ManageAgentsPage({
     isAdmin &&
     selectedTab === "all";
   useSetContentWidth("wide");
-  useSetPageTitle("Dust - Manage Agents");
+  useSetPageTitle(t`Dust - Manage agents`);
 
   // Only admins may list the agents they neither edit nor share a space with. Archived agents
   // are listed unrestricted for admins, as in the legacy page.
@@ -363,12 +395,12 @@ export function ManageAgentsPage({
   const searchInput = (
     <div className="w-full md:w-1/2">
       <label htmlFor="agent-search" className="sr-only">
-        Search agents
+        <Trans>Search agents</Trans>
       </label>
       <SearchInput
         id="agent-search"
         name="agent-search"
-        placeholder="Search for agents"
+        placeholder={t`Search for agents`}
         value={searchTerm}
         onChange={setSearchTerm}
         className="w-full"
@@ -376,14 +408,22 @@ export function ManageAgentsPage({
     </div>
   );
 
+  const tracking = useMemo(
+    () =>
+      readOnly ? null : { entity_type: "agent" as const, tab: selectedTab },
+    [readOnly, selectedTab]
+  );
+
   return (
-    <>
+    <ManageTrackingContext.Provider value={tracking}>
       <div className="flex w-full flex-col gap-6 pb-4">
         {showHeader && (
           <Page.Header
             title={
               <div className="flex w-full flex-wrap items-center justify-between gap-4">
-                <Page.H>Manage Agents</Page.H>
+                <Page.H>
+                  <Trans>Manage agents</Trans>
+                </Page.H>
                 {!readOnly && hasPermission("create", "agent") && (
                   <CreateAgentDropdown
                     owner={owner}
@@ -392,7 +432,7 @@ export function ManageAgentsPage({
                 )}
               </div>
             }
-            description="Build and manage agents that work with your team's knowledge and tools."
+            description={t`Build and manage agents that work with your team's knowledge and tools.`}
             noTopPadding
           />
         )}
@@ -457,7 +497,7 @@ export function ManageAgentsPage({
                       key: "hidden-agents",
                       label: (
                         <span className="min-w-0 truncate text-xs font-bold">
-                          Hidden agents
+                          <Trans>Hidden agents</Trans>
                         </span>
                       ),
                       onRemove: () => setShowHiddenAgents(false),
@@ -471,6 +511,7 @@ export function ManageAgentsPage({
             }}
           />
           <AgentsList
+            isFilterLoading={isSelectionLoading}
             readOnly={readOnly}
             searchEndpoint={searchEndpoint}
             renderActions={renderActions}
@@ -490,6 +531,6 @@ export function ManageAgentsPage({
           onClose={() => setDetailedAgentId(null)}
         />
       )}
-    </>
+    </ManageTrackingContext.Provider>
   );
 }

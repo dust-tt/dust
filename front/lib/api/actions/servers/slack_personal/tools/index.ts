@@ -89,7 +89,6 @@ export async function getSlackAIEnablementStatus({
   try {
     // Use assistant.search.info to detect if Slack AI is enabled at workspace level.
     // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean.
-    // eslint-disable-next-line no-restricted-globals
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -157,7 +156,6 @@ const slackSearch = async (
     channel_types: "public_channel,private_channel,mpim,im",
   });
 
-  // eslint-disable-next-line no-restricted-globals
   const resp = await fetch(
     `https://slack.com/api/assistant.search.context?${params.toString()}`,
     {
@@ -254,18 +252,16 @@ function buildSearchResults<T>(
     content: (match: T) => string;
   }
 ): SearchResultResourceType[] {
-  return matches.map(
-    (match, index): SearchResultResourceType => ({
-      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-      uri: extractors.permalink(match) ?? "",
-      text: extractors.text(match),
-      id: extractors.id(match),
-      source: { provider: "slack" },
-      tags: [],
-      ref: refs[index] ?? "",
-      chunks: [stripNullBytes(extractors.content(match))],
-    })
-  );
+  return matches.map((match, index): SearchResultResourceType => ({
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+    uri: extractors.permalink(match) ?? "",
+    text: extractors.text(match),
+    id: extractors.id(match),
+    source: { provider: "slack" },
+    tags: [],
+    ref: refs[index] ?? "",
+    chunks: [stripNullBytes(extractors.content(match))],
+  }));
 }
 
 // Best-effort detection of Slack user IDs (U* or W* for enterprise grid).
@@ -1213,7 +1209,6 @@ export function createSlackPersonalTools(
     ? rawTools
     : rawTools.map((tool) => {
         if (tool.name === "post_message" || tool.name === "schedule_message") {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { show_sent_by_footer: _stripped, ...schemaWithoutFooter } =
             tool.schema;
           return { ...tool, schema: schemaWithoutFooter };

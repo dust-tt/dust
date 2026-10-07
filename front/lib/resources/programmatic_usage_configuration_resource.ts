@@ -11,11 +11,8 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ProgrammaticUsageConfigurationResource
-  extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
+export interface ProgrammaticUsageConfigurationResource extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProgrammaticUsageConfigurationResource extends BaseResource<ProgrammaticUsageConfigurationModel> {
   static model: ModelStaticWorkspaceAware<ProgrammaticUsageConfigurationModel> =
     ProgrammaticUsageConfigurationModel;

@@ -2,9 +2,7 @@ import { forceTemperatureToOne } from "@app/lib/llms/stream/types/configuration"
 import { GEMINI_3_7_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export function WithDustGoogleGeminiThreeDotSevenFlashConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGoogleGeminiThreeDotSevenFlash extends Base {
     static readonly displayName = "Gemini 3.7 Flash";

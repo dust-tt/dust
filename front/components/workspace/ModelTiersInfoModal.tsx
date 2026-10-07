@@ -19,20 +19,23 @@ import {
   InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 const TIER_PRESENTATION: Record<
   ModelsTierName,
-  { priceClassName: string; costLabel: string }
+  { priceClassName: string; costLabel: MessageDescriptor }
 > = {
   cost_efficient: {
     priceClassName: "text-emerald-500",
-    costLabel: "lowest cost",
+    costLabel: msg`lowest cost`,
   },
-  balanced: { priceClassName: "text-blue-500", costLabel: "medium cost" },
-  premium: { priceClassName: "text-amber-500", costLabel: "high cost" },
-  ultra: { priceClassName: "text-rose-500", costLabel: "highest cost" },
+  balanced: { priceClassName: "text-blue-500", costLabel: msg`medium cost` },
+  premium: { priceClassName: "text-amber-500", costLabel: msg`high cost` },
+  ultra: { priceClassName: "text-rose-500", costLabel: msg`highest cost` },
 };
 
 interface InfoSectionProps {
@@ -56,14 +59,17 @@ interface TierCardProps {
 }
 
 function TierCard({ tier }: TierCardProps) {
-  const { priceClassName, costLabel } = TIER_PRESENTATION[tier.name];
+  const { t } = useLingui();
+  const { priceClassName } = TIER_PRESENTATION[tier.name];
+  const costLabel = t(TIER_PRESENTATION[tier.name].costLabel);
+  const tierName = tier.displayName;
 
   return (
     <Collapsible>
       <div className="rounded-2xl border border-border bg-muted-background dark:border-border-dark dark:bg-muted-background-night">
         <CollapsibleTrigger
           hideChevron
-          aria-label={`Open ${tier.displayName} tier (${costLabel})`}
+          aria-label={t`Open ${tierName} tier (${costLabel})`}
           className="w-full rounded-2xl p-4 text-left"
         >
           <div className="flex w-full items-center gap-3">
@@ -96,16 +102,18 @@ function TierCard({ tier }: TierCardProps) {
         <CollapsibleContent>
           <div className="flex flex-col px-4 pb-2">
             <div className="flex items-center justify-between gap-3 border-t border-border py-2 dark:border-border-dark">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
-                Model
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+                <Trans>Model</Trans>
               </span>
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
-                Reasoning effort
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+                <Trans>Reasoning effort</Trans>
               </span>
             </div>
             {tier.models.length === 0 ? (
               <div className="border-t border-border py-3 text-sm text-muted-foreground dark:border-border-dark dark:text-muted-foreground-night">
-                No model in this tier is available in this workspace.
+                <Trans>
+                  No model in this tier is available in this workspace.
+                </Trans>
               </div>
             ) : (
               tier.models.map((model) => (
@@ -133,6 +141,7 @@ interface ModelTiersInfoDialogProps {
 }
 
 function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { models, isModelsLoading } = useModels({ owner, disabled: !isOpen });
   const tiers = useMemo(
@@ -144,7 +153,9 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>How model tiers work</DialogTitle>
+          <DialogTitle>
+            <Trans>How model tiers work</Trans>
+          </DialogTitle>
         </DialogHeader>
         {/* Content-sized scroll region: min-h-0 lets it shrink below its content
             so it scrolls once it hits the dialog's max-height, while staying
@@ -152,28 +163,39 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
         <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 py-4">
           <div className="flex flex-col gap-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
             <p>
-              Model tiers group models and reasoning efforts by typical usage
-              cost. Higher tiers include more capable, more expensive
-              combinations.
+              <Trans>
+                Model tiers group models and reasoning efforts by typical usage
+                cost. Higher tiers include more capable, more expensive
+                combinations.
+              </Trans>
             </p>
-            <InfoSection title="What each tier includes">
-              Each tier includes a range of models and reasoning efforts with
-              similar usage costs. Reasoning effort is how much work a model
-              does before it answers: a higher effort can give better results on
-              complex tasks, but usually costs more.
+            <InfoSection title={t`What each tier includes`}>
+              <Trans>
+                Each tier includes a range of models and reasoning efforts with
+                similar usage costs. Reasoning effort is how much work a model
+                does before it answers: a higher effort can give better results
+                on complex tasks, but usually costs more.
+              </Trans>
             </InfoSection>
-            <InfoSection title="Why costs differ">
-              Usage cost depends on both the model and its reasoning effort. We
-              compare each combination on representative tasks rather than on
-              the model's token price alone. Raising the reasoning effort by one
-              step usually increases the cost by about 30%.
+            <InfoSection title={t`Why costs differ`}>
+              <Trans>
+                Usage cost depends on both the model and its reasoning effort.
+                We compare each combination on representative tasks rather than
+                on the model's token price alone. Raising the reasoning effort
+                by one step usually increases the cost by about 30%.
+              </Trans>
             </InfoSection>
-            <InfoSection title="How access limits work">
-              A member can use the tier they are assigned and every lower-cost
-              tier: access to Standard also includes Basic.
+            <InfoSection title={t`How access limits work`}>
+              <Trans>
+                A member can use the tier they are assigned and every lower-cost
+                tier: access to Standard also includes Basic.
+              </Trans>
             </InfoSection>
-            <InfoSection title="See what's included">
-              Select a tier to see the models and reasoning efforts it includes.
+            <InfoSection title={t`See what's included`}>
+              <Trans>
+                Select a tier to see the models and reasoning efforts it
+                includes.
+              </Trans>
             </InfoSection>
           </div>
           {isModelsLoading ? (
@@ -200,6 +222,7 @@ interface ModelTiersInfoButtonProps {
 // Info (ⓘ) affordance that opens the "How model tiers work" modal. Drop it next
 // to any "Models tier" label (column headers, settings pickers).
 export function ModelTiersInfoButton({ className }: ModelTiersInfoButtonProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -208,7 +231,7 @@ export function ModelTiersInfoButton({ className }: ModelTiersInfoButtonProps) {
         variant="ghost"
         size="xs"
         icon={InfoCircle}
-        tooltip="How model tiers work"
+        tooltip={t`How model tiers work`}
         className={className}
         onClick={(event) => {
           event.stopPropagation();

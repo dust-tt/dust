@@ -17,12 +17,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import type { Space } from "../data/types";
 import {
   POD_NOTIFICATION_OPTIONS,
   type PodNotificationCondition,
   TAKEN_POD_NAMES,
 } from "../data";
-import type { Space } from "../data/types";
 import { formatDate } from "./podSettingsShared";
 
 export interface PodSettingsGeneralTabProps {

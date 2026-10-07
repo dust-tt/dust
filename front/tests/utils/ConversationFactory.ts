@@ -218,7 +218,7 @@ export class ConversationFactory {
     // Sequelize's `silent: true` suppresses both the automatic updatedAt and any
     // explicitly-provided value for managed timestamp fields, so the column never
     // gets updated. Raw SQL is the only reliable way to backdate timestamps in tests.
-    // biome-ignore lint/plugin/noRawSql: see comment above
+    // oxlint-disable-next-line dust/noRawSql -- see comment above
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
       {
@@ -252,7 +252,7 @@ export class ConversationFactory {
         },
       },
     });
-    // biome-ignore lint/plugin/noRawSql: Raw SQL is the only reliable way to backdate timestamps in tests.
+    // oxlint-disable-next-line dust/noRawSql -- Raw SQL is the only reliable way to backdate timestamps in tests.
     await frontSequelize.query(
       `UPDATE agent_step_contents SET "createdAt" = :createdAt, "updatedAt" = :createdAt WHERE id = :id AND "workspaceId" = :workspaceId`,
       {

@@ -1,20 +1,19 @@
-import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import {
+  ManageTrackingContext,
+  trackManageDetails,
+  useManageTracking,
+  useTrackManageResults,
+} from "@app/components/pages/builder/manageTracking";
 import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
-import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
-import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
-import {
-  BatchAvailabilityDialog,
-  SkillsBatchEditBar,
-} from "@app/components/skills/SkillsBatchEdit";
 import {
   SKILL_FILTER_CATEGORIES,
   SKILL_FILTER_CATEGORY_FACET,
@@ -23,6 +22,13 @@ import {
   toSkillSearchFilterFacets,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
+import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
+import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
+import {
+  BatchAvailabilityDialog,
+  SkillsBatchEditBar,
+} from "@app/components/skills/SkillsBatchEdit";
+import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -52,9 +58,10 @@ import {
   Page,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
 
@@ -65,6 +72,7 @@ function canBatchEditSkill(skill: SkillListItemType) {
 }
 
 interface SkillsListProps {
+  isFilterLoading: boolean;
   readOnly?: boolean;
   searchEndpoint?: string;
   searchTerm: string;
@@ -74,6 +82,7 @@ interface SkillsListProps {
 }
 
 function SkillsList({
+  isFilterLoading,
   readOnly = false,
   searchEndpoint,
   searchTerm,
@@ -81,6 +90,15 @@ function SkillsList({
   permissionFiltering,
   onSelect,
 }: SkillsListProps) {
+  const { t } = useLingui();
+  const tracking = useManageTracking();
+  const handleSelect = useCallback(
+    (skillId: string) => {
+      trackManageDetails(tracking, skillId);
+      onSelect(skillId);
+    },
+    [tracking, onSelect]
+  );
   const owner = useWorkspace();
   const { hasPermission } = useWorkspacePermissions();
   const canSetAvailability = hasPermission("publish", "skill");
@@ -133,6 +151,17 @@ function SkillsList({
       sortBy,
       sortOrder,
     });
+
+  useTrackManageResults({
+    queryKey,
+    searchTerm,
+    total,
+    disabled:
+      isFilterLoading ||
+      isSkillsLoading ||
+      isSkillsError ||
+      tablePagination.pageIndex !== 0,
+  });
 
   // Prefer the freshly loaded row so batch actions see the skill's current state.
   const pageSkillsById = new Map(skills.map((skill) => [skill.sId, skill]));
@@ -196,9 +225,11 @@ function SkillsList({
           role="alert"
           className="flex items-center justify-between gap-4 py-4"
         >
-          <span>Could not load skills. Please try again.</span>
+          <span>
+            <Trans>Could not load skills. Please try again.</Trans>
+          </span>
           <Button
-            label="Retry"
+            label={t`Retry`}
             variant="outline"
             onClick={() => void mutate()}
           />
@@ -212,7 +243,7 @@ function SkillsList({
           owner={owner}
           readOnly={readOnly}
           skills={skills}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           onRefresh={mutate}
           pagination={tablePagination}
           setPagination={(next) => {
@@ -252,8 +283,8 @@ function SkillsList({
         <EmptyCTA
           message={
             searchTerm.trim()
-              ? "No skills match your search."
-              : "No skills to show."
+              ? t`No skills match your search.`
+              : t`No skills to show.`
           }
           action={null}
         />
@@ -300,6 +331,7 @@ export function ManageSkillsPage({
   searchActions,
   onSelect,
 }: ManageSkillsPageProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -348,17 +380,17 @@ export function ManageSkillsPage({
   const filter = resolveFilter(toSkillSearchFilterFacets(selectionFacets));
   const searchFilters = toSkillSearchFilters(filter);
   useSetContentWidth("wide");
-  useSetPageTitle("Dust - Manage Skills");
+  useSetPageTitle(t`Dust - Manage skills`);
 
   const searchInput = (
     <div className="w-full md:w-1/2">
       <label htmlFor="skill-search" className="sr-only">
-        Search skills
+        <Trans>Search skills</Trans>
       </label>
       <SearchInput
         id="skill-search"
         name="skill-search"
-        placeholder="Search for skills"
+        placeholder={t`Search for skills`}
         value={searchTerm}
         onChange={setSearchTerm}
         className="w-full"
@@ -366,14 +398,22 @@ export function ManageSkillsPage({
     </div>
   );
 
+  const tracking = useMemo(
+    () =>
+      readOnly ? null : { entity_type: "skill" as const, tab: selectedTab },
+    [readOnly, selectedTab]
+  );
+
   return (
-    <>
+    <ManageTrackingContext.Provider value={tracking}>
       <div className="flex w-full flex-col gap-6 pb-4">
         {showHeader && (
           <Page.Header
             title={
               <div className="flex w-full flex-wrap items-center justify-between gap-4">
-                <Page.H>Manage Skills</Page.H>
+                <Page.H>
+                  <Trans>Manage skills</Trans>
+                </Page.H>
                 {!readOnly && hasPermission("create", "skill") && (
                   <CreateSkillButton
                     owner={owner}
@@ -382,7 +422,7 @@ export function ManageSkillsPage({
                 )}
               </div>
             }
-            description="Reusable packages of instructions and tools that agents can share."
+            description={t`Reusable packages of instructions and tools that agents can share.`}
             noTopPadding
           />
         )}
@@ -406,7 +446,11 @@ export function ManageSkillsPage({
               }}
             >
               {SKILL_SEARCH_TABS.map((tab) => (
-                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+                <ButtonsSwitch
+                  key={tab.id}
+                  value={tab.id}
+                  label={t(tab.label)}
+                />
               ))}
             </ButtonsSwitchList>
             <SkillFilterPanel
@@ -446,7 +490,7 @@ export function ManageSkillsPage({
                       key: "hidden-skills",
                       label: (
                         <span className="min-w-0 truncate text-xs font-bold">
-                          Hidden skills
+                          <Trans>Hidden skills</Trans>
                         </span>
                       ),
                       onRemove: () => setShowHiddenSkills(false),
@@ -460,6 +504,7 @@ export function ManageSkillsPage({
             }}
           />
           <SkillsList
+            isFilterLoading={isSelectionLoading}
             readOnly={readOnly}
             searchEndpoint={searchEndpoint}
             key={`${owner.sId}-${activeTab.id}`}
@@ -485,6 +530,6 @@ export function ManageSkillsPage({
           showFavoriteButton
         />
       )}
-    </>
+    </ManageTrackingContext.Provider>
   );
 }

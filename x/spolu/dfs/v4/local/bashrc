@@ -1,0 +1,20 @@
+case $- in
+    *i*) ;;
+    *) return ;;
+esac
+
+HISTCONTROL=ignoreboth
+HISTSIZE=10000
+HISTFILESIZE=20000
+shopt -s histappend checkwinsize
+
+alias ls='ls --color=auto'
+alias ll='ls -alh --color=auto'
+alias la='ls -A --color=auto'
+export PAGER=less
+
+PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
+
+if [ -r /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi

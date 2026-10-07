@@ -1,7 +1,8 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { CATEGORY_LABELS } from "@app/components/spaces/spaceCategoryLabels";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
@@ -30,6 +31,9 @@ import {
   Terminal,
   Upload01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import React from "react";
@@ -46,12 +50,13 @@ type RowData = {
 type Info = CellContext<RowData, unknown>;
 
 const getTableColumns = (
+  t: (descriptor: MessageDescriptor) => string,
   onAgentClick: (agentId: string | null) => void,
   onSkillClick: (skillId: string | null) => void
 ) => {
   return [
     {
-      header: "Name",
+      header: t(msg`Name`),
       accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.CellContent
@@ -63,7 +68,7 @@ const getTableColumns = (
       ),
     },
     {
-      header: "Used by",
+      header: t(msg`Used by`),
       accessorFn: (row: RowData) => row.usage.count,
       meta: {
         className: "w-24",
@@ -98,6 +103,7 @@ export const SpaceCategoriesList = ({
   owner,
   space,
 }: SpaceCategoriesListProps) => {
+  const { t } = useLingui();
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
@@ -121,7 +127,7 @@ export const SpaceCategoriesList = ({
             ? {
                 category,
                 ...spaceInfo.categories[category],
-                name: CATEGORY_DETAILS[category].label,
+                name: t(CATEGORY_LABELS[category]),
                 icon: CATEGORY_DETAILS[category].icon,
                 onClick: () => onSelect(category),
               }
@@ -156,7 +162,7 @@ export const SpaceCategoriesList = ({
         onButtonClick &&
         (space.kind === "regular" || space.kind === "global") && (
           <Button
-            label="Space settings"
+            label={t`Space settings`}
             icon={Settings01}
             onClick={onButtonClick}
             variant="outline"
@@ -164,40 +170,40 @@ export const SpaceCategoriesList = ({
         )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Add data" icon={Plus} />
+          <Button label={t`Add data`} icon={Plus} />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem
             disabled={!isAdmin && !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed?modal=managed`}
             icon={CloudArrowLeftRight}
-            label="Connected Data"
+            label={t`Connected data`}
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
             icon={Upload01}
-            label="Upload Data"
+            label={t`Upload data`}
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/website?modal=website`}
             icon={Globe01}
-            label="Scrape a website"
+            label={t`Scrape a website`}
           />
           {hasFeature("legacy_dust_apps") && (
             <DropdownMenuItem
               disabled={!canAdministrateApps || !canWriteInSpace}
               href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
               icon={Terminal}
-              label="Create a Dust App"
+              label={t`Create a Dust App`}
             />
           )}
           <DropdownMenuItem
             disabled={!isAdmin}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions?modal=tools`}
             icon={MCP_SPECIFICATION.cardIcon}
-            label="Tools"
+            label={t`Tools`}
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -234,7 +240,7 @@ export const SpaceCategoriesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns(setAgentId, setSkillId)}
+          columns={getTableColumns(t, setAgentId, setSkillId)}
           className="pb-4"
           columnsBreakpoints={{
             usage: "md",

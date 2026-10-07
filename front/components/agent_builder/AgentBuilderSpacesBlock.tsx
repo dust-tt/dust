@@ -1,13 +1,14 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { SpaceSelectionSheet } from "@app/components/shared/SpaceSelectionSheet";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import { Button, Planet } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -18,6 +19,7 @@ interface AgentBuilderSpacesBlockProps {
 export function AgentBuilderSpacesBlock({
   initialRequestedSpaceIds,
 }: AgentBuilderSpacesBlockProps) {
+  const { t } = useLingui();
   const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
@@ -118,15 +120,19 @@ export function AgentBuilderSpacesBlock({
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="heading-lg text-foreground">Data and access</h2>
+          <h2 className="heading-lg text-foreground">
+            <Trans>Data and access</Trans>
+          </h2>
           <p className="text-sm text-muted-foreground max-w-9/10">
-            Adding spaces or pods will make the data from each of them available
-            to the agent. Only members of all the spaces and pods listed will
-            have access to the agent.
+            <Trans>
+              Adding spaces or pods will make the data from each of them
+              available to the agent. Only members of all the spaces and pods
+              listed will have access to the agent.
+            </Trans>
           </p>
         </div>
         <Button
-          label="Manage"
+          label={t`Manage`}
           icon={Planet}
           variant="outline"
           onClick={handleOpenSheet}

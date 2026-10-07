@@ -4,15 +4,18 @@ import {
   buildNodeItems,
   buildSpaceItems,
   getKnowledgeBrowserEntryLabel,
-  POD_FILES_TITLE,
 } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import { i18n } from "@app/lib/i18n/i18n";
 import {
   makeDataSourceViewFixture as makeDataSourceView,
   makeContentNodeFixture as makeNode,
   makeSpaceFixture as makeSpace,
 } from "@app/tests/utils/content_node_test_fixtures";
 import type { RichSpaceType } from "@app/types/api/spaces";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 const usage: RichSpaceType["categories"][string]["usage"] = {
   count: 0,
@@ -50,7 +53,8 @@ describe("buildCategoryItems", () => {
         apps: { usage, count: 1 },
         actions: { usage, count: 1 },
       },
-      () => true
+      () => true,
+      translate
     );
 
     expect(items.map((item) => item.category)).toEqual(["managed", "website"]);
@@ -59,7 +63,8 @@ describe("buildCategoryItems", () => {
   it("drops categories whose feature flag is off", () => {
     const items = buildCategoryItems(
       { managed: { usage, count: 1 }, folder: { usage, count: 1 } },
-      (flag) => flag === undefined
+      (flag) => flag === undefined,
+      translate
     );
 
     expect(items.map((item) => item.category)).toEqual(["managed", "folder"]);
@@ -121,6 +126,7 @@ describe("buildNodeItems", () => {
   it("keeps every node and reports expandability", () => {
     const items = buildNodeItems([doc, sheet, folder], {
       isTopLevelInView: true,
+      t: translate,
     });
     expect(items.map((item) => [item.id, item.expandable])).toEqual([
       ["doc", false],
@@ -142,7 +148,7 @@ describe("buildNodeItems", () => {
         makeNode("one", { type: "folder", expandable: true, childrenCount: 1 }),
         makeNode("empty", { type: "folder", expandable: true }),
       ],
-      { isTopLevelInView: true, spaceName: "Series C" }
+      { isTopLevelInView: true, spaceName: "Series C", t: translate }
     );
     expect(items.map((item) => item.description)).toEqual([
       "Series C · Updated 6d ago",
@@ -157,6 +163,7 @@ describe("buildNodeItems", () => {
     const items = buildNodeItems([doc, sheet, folder], {
       isTopLevelInView: true,
       excludeNonRemoteDatabaseTables: true,
+      t: translate,
     });
     expect(items.map((item) => item.id)).toEqual(["doc", "folder"]);
   });
@@ -169,29 +176,43 @@ describe("getKnowledgeBrowserEntryLabel", () => {
       connectorProvider: "dust_project",
       connectorId: "c3",
     });
-    expect(getKnowledgeBrowserEntryLabel({ type: "root" })).toBe("All");
+    expect(getKnowledgeBrowserEntryLabel({ type: "root" }, translate)).toBe(
+      "All"
+    );
     expect(
-      getKnowledgeBrowserEntryLabel({
-        type: "space",
-        space: makeSpace({ sId: "space1", name: "Series C" }),
-      })
+      getKnowledgeBrowserEntryLabel(
+        {
+          type: "space",
+          space: makeSpace({ sId: "space1", name: "Series C" }),
+        },
+        translate
+      )
     ).toBe("Series C");
     expect(
-      getKnowledgeBrowserEntryLabel({ type: "category", category: "managed" })
-    ).toBe("Connected Data");
+      getKnowledgeBrowserEntryLabel(
+        { type: "category", category: "managed" },
+        translate
+      )
+    ).toBe("Connected data");
     expect(
-      getKnowledgeBrowserEntryLabel({
-        type: "data_source",
-        dataSourceView: podFiles,
-        tagsFilter: null,
-      })
-    ).toBe(POD_FILES_TITLE);
+      getKnowledgeBrowserEntryLabel(
+        {
+          type: "data_source",
+          dataSourceView: podFiles,
+          tagsFilter: null,
+        },
+        translate
+      )
+    ).toBe("Pod files");
     expect(
-      getKnowledgeBrowserEntryLabel({
-        type: "node",
-        node: makeNode("onboarding"),
-        tagsFilter: null,
-      })
+      getKnowledgeBrowserEntryLabel(
+        {
+          type: "node",
+          node: makeNode("onboarding"),
+          tagsFilter: null,
+        },
+        translate
+      )
     ).toBe("onboarding");
   });
 });

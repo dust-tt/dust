@@ -111,7 +111,6 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
     }
   ): Promise<ExtraConfigType> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
     if (isString(restConfig.selected_sites)) {

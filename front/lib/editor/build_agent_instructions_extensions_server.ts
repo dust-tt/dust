@@ -3,6 +3,7 @@
 // React or sparkle imports, so server code can convert agent instructions between markdown and
 // block HTML. Agent instructions differ from skill ones by the `instructionBlock` sections
 // (`<role>…</role>`), which the skill schema treats as plain text.
+
 import { InstructionBlockNode } from "@app/components/editor/extensions/agent_builder/InstructionBlockNode";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";

@@ -130,7 +130,6 @@ export const ComposerInput = React.forwardRef<
 
   const [active, setActive] = useState<ActiveSuggestionState | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: value drives the resize.
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) {

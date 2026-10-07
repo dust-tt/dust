@@ -1,8 +1,8 @@
 // @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { parseSkillTag } from "@app/lib/skills/format";
 import type { Logger } from "@app/logger/logger";

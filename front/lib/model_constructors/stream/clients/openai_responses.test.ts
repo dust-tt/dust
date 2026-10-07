@@ -68,13 +68,16 @@ describe("OpenAIResponsesStream flex support declarations", () => {
     });
   });
 
-  it.each(
-    standardOnlyEndpoints
-  )("accepts the config but does not request flex on %s", (_id, Endpoint) => {
-    expect(buildPayload(Endpoint, { serviceTier: "flex" })).not.toMatchObject({
-      service_tier: "flex",
-    });
-  });
+  it.each(standardOnlyEndpoints)(
+    "accepts the config but does not request flex on %s",
+    (_id, Endpoint) => {
+      expect(buildPayload(Endpoint, { serviceTier: "flex" })).not.toMatchObject(
+        {
+          service_tier: "flex",
+        }
+      );
+    }
+  );
 });
 
 function textDelta(delta: string): ResponseStreamEvent {

@@ -1,4 +1,7 @@
 import { Code01, CodeSquare01, Heading01 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import type {
@@ -36,10 +39,12 @@ export interface BlockSuggestion {
   ) => void;
 }
 
-const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
+const BLOCK_SUGGESTIONS: (Omit<BlockSuggestion, "label"> & {
+  label: MessageDescriptor;
+})[] = [
   {
     id: "heading",
-    label: "Heading",
+    label: msg`Heading`,
     icon: Heading01,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
@@ -47,7 +52,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   },
   {
     id: "xml-block",
-    label: "XML Tag",
+    label: msg`XML tag`,
     icon: Code01,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).insertInstructionBlock().run();
@@ -55,7 +60,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   },
   {
     id: "code-block",
-    label: "Code Block",
+    label: msg`Code block`,
     icon: CodeSquare01,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).setCodeBlock().run();
@@ -79,10 +84,20 @@ export type BlockInsertDropdownView = Pick<
 export const useBlockInsertDropdown = (
   editorRef: MutableRefObject<ReactEditor | null>
 ) => {
+  const { t } = useLingui();
+  const blockSuggestions: BlockSuggestion[] = useMemo(
+    () =>
+      BLOCK_SUGGESTIONS.map((suggestion) => ({
+        ...suggestion,
+        label: t(suggestion.label),
+      })),
+    [t]
+  );
+
   const [state, setState] = useState<BlockInsertDropdownState>({
     isOpen: false,
     query: "",
-    suggestions: BLOCK_SUGGESTIONS,
+    suggestions: blockSuggestions,
     selectedIndex: 0,
     triggerRect: null,
   });
@@ -95,11 +110,11 @@ export const useBlockInsertDropdown = (
 
   const filterSuggestions = useCallback(
     (query: string, isInInstructionBlock: boolean) => {
-      let suggestions = BLOCK_SUGGESTIONS;
+      let suggestions = blockSuggestions;
 
       // Filter out XML block suggestion if we're already inside an instruction block
       if (isInInstructionBlock) {
-        suggestions = BLOCK_SUGGESTIONS.filter(
+        suggestions = blockSuggestions.filter(
           (item) => item.id !== "xml-block"
         );
       }
@@ -113,7 +128,7 @@ export const useBlockInsertDropdown = (
         item.label.toLowerCase().includes(lowerQuery)
       );
     },
-    []
+    [blockSuggestions]
   );
 
   const updateQuery = useCallback(

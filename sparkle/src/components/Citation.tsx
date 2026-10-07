@@ -190,8 +190,7 @@ const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
 );
 CitationGrid.displayName = "CitationGrid";
 
-interface CitationCloseProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface CitationCloseProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
@@ -328,8 +327,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
 );
 CitationTitle.displayName = "CitationTitle";
 
-interface CitationDescriptionProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface CitationDescriptionProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 

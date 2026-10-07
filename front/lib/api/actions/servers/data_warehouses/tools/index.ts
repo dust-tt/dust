@@ -30,7 +30,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     const effectiveNodeId = !!nodeId ? nodeId : null;
     const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
     const dataSourceConfigurationsResult =
@@ -86,7 +85,6 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     const effectiveRootNodeId = !!rootNodeId ? rootNodeId : null;
     const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
     const dataSourceConfigurationsResult =

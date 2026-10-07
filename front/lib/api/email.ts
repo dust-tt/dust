@@ -12,7 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 
 let sgMailClient: typeof sgMail | null = null;
 
@@ -84,14 +84,14 @@ export async function sendReactivateSubscriptionEmail(
 
 export async function sendAdminSubscriptionPaymentFailedEmail(
   email: string,
-  customerPortailUrl: string | null
+  manageSubscriptionUrl: string
 ): Promise<void> {
   await sendEmailWithTemplate({
     to: email,
     from: config.getSupportEmailAddress(),
     subject: `[Dust] Your payment has failed`,
     body: `
-      <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
+      <p>Your payment has failed. Please visit ${manageSubscriptionUrl} to update your payment information.</p>
       <p>
         Please note: your workspace will be downgraded after 3 failed payment retries. This will trigger the removal of any feature attached to the paid plan you were on, and the permanent deletion of connections and the data associated with them. Any agent that are linked to connections will also be removed.
       </p>

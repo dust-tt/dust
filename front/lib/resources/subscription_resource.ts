@@ -128,11 +128,7 @@ type CachedSubscription = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SubscriptionResource
-  extends ReadonlyAttributesType<SubscriptionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface SubscriptionResource extends ReadonlyAttributesType<SubscriptionModel> {}
 export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static model: ModelStaticWorkspaceAware<SubscriptionModel> =
     SubscriptionModel;
@@ -329,7 +325,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       attributes: ["workspaceId"],
       where: { planId, status: "active" },
       // WORKSPACE_ISOLATION_BYPASS: We need to invalidate caches across all workspaces on this plan.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -486,7 +482,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           status: "active",
         },
         // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
@@ -562,7 +558,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       order: [["createdAt", "DESC"]],
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -683,7 +679,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       where: { stripeSubscriptionId },
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -696,7 +692,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const res = await this.model.findOne({
       where: { metronomeContractId },
       // WORKSPACE_ISOLATION_BYPASS: Used to check across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -745,7 +741,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Internal use to actively down the callstack get the list
       // of workspaces that are active
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
@@ -794,7 +790,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       // WORKSPACE_ISOLATION_BYPASS: Internal use to compute the (small,
       // non-free) workspace id set to exclude for poke's "free" plan-type
       // filter, across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
@@ -821,7 +817,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: Internal maintenance script that reconciles
       // stranded subscriptions across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [PlanModel],
     });
@@ -1376,7 +1372,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Billing flows supply a trusted subscription ID before its
       // workspace is resolved by this query.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!subscription) {
@@ -1557,13 +1553,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return {
       status: this.status ?? "active",
       sId: this.sId || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       stripeSubscriptionId: this.stripeSubscriptionId || null,
       metronomeContractId: this.metronomeContractId ?? null,
       startDate: this.startDate?.getTime() || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       endDate: this.endDate?.getTime() || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       paymentFailingSince: this.paymentFailingSince?.getTime() || null,
       plan: this.getPlan(),
       requestCancelAt: this.requestCancelAt?.getTime() ?? null,

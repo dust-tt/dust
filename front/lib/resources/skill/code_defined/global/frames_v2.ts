@@ -654,6 +654,9 @@ the share scope or grant access to recipients. The CLI can only retrieve an exis
 dsbx frame share-link /files/<scope>/<frame-folder>
 \`\`\`
 
+For a legacy single-file Frame, pass its entry file instead:
+\`dsbx frame share-link /files/<scope>/<file_name>.tsx\`.
+
 This command is read-only. It never creates sharing state, changes the scope, or adds or removes
 recipients. It returns the stable Frame ID, current share scope, and existing share URL. If no share
 link exists, ask the user to configure sharing in the Dust UI.

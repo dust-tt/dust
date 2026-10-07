@@ -1,8 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ModelPicker } from "@app/components/model_picker/ModelPicker";
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
@@ -18,6 +18,7 @@ import {
   DialogTitle,
   File04,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React from "react";
 import { useController } from "react-hook-form";
 
@@ -29,9 +30,7 @@ function getResponseFormatError(value: string): string | null {
   return result.isValid ? null : result.errorMessage;
 }
 
-const RESPONSE_FORMAT_PLACEHOLDER = `Example:
-
-{
+const RESPONSE_FORMAT_EXAMPLE = `{
   "type": "json_schema",
   "json_schema": {
     "name": "YourSchemaName",
@@ -55,6 +54,7 @@ function StructuredResponseFormatDialog({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
 
   const { field: responseFormatField } = useController<
@@ -75,17 +75,19 @@ function StructuredResponseFormatDialog({
       <DialogContent size="xl" height="lg">
         <DialogHeader>
           <DialogTitle visual={<File04 />}>
-            Structured response format
+            <Trans>Structured response format</Trans>
           </DialogTitle>
           <DialogDescription>
-            Specify a JSON schema to get responses in a consistent structure.{" "}
+            <Trans>
+              Specify a JSON schema to get responses in a consistent structure.
+            </Trans>{" "}
             <a
               href="https://docs.dust.tt/docs/structured-output-format"
               target="_blank"
               rel="noreferrer"
               className="underline"
             >
-              See documentation
+              <Trans>See documentation</Trans>
             </a>
           </DialogDescription>
         </DialogHeader>
@@ -93,7 +95,9 @@ function StructuredResponseFormatDialog({
           <SuspensedCodeEditor
             data-color-mode={isDark ? "dark" : "light"}
             value={currentValue}
-            placeholder={RESPONSE_FORMAT_PLACEHOLDER}
+            placeholder={t`Example:
+
+${RESPONSE_FORMAT_EXAMPLE}`}
             name="responseFormat"
             onChange={(e) => setTempResponseFormat(e.target.value)}
             minHeight={400}
@@ -116,7 +120,7 @@ function StructuredResponseFormatDialog({
         <DialogFooter
           className="pt-2"
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: () => {
               setTempResponseFormat(null);
@@ -124,7 +128,7 @@ function StructuredResponseFormatDialog({
             },
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             disabled: !!validationError,
             onClick: () => {
               if (tempResponseFormat !== null) {
@@ -141,6 +145,7 @@ function StructuredResponseFormatDialog({
 }
 
 export function AdvancedSettings() {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
 
   const [isResponseFormatDialogOpen, setIsResponseFormatDialogOpen] =
@@ -200,14 +205,14 @@ export function AdvancedSettings() {
         }}
       />
       <Button
-        label="JSON Response"
+        label={t`JSON response`}
         variant="outline"
         size="sm"
         disabled={!supportsResponseFormat}
         tooltip={
           !supportsResponseFormat
-            ? "Pick a specific model that supports structured response format (JSON schema)"
-            : "Will constrain the model to a specific JSON schema"
+            ? t`Pick a specific model that supports structured response format (JSON schema)`
+            : t`Will constrain the model to a specific JSON schema`
         }
         onClick={() => {
           setIsResponseFormatDialogOpen(true);

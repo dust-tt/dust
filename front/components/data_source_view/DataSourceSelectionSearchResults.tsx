@@ -35,6 +35,8 @@ import {
   Spinner,
   useSheetViewport,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -71,11 +73,12 @@ function SearchWarningMessage({
 }: {
   warningCode: SearchWarningCode;
 }) {
+  const { t } = useLingui();
   switch (warningCode) {
     case "truncated-query-clauses":
       return (
         <ContentMessage
-          title="Search results are partial due to the large amount of data."
+          title={t`Search results are partial due to the large amount of data.`}
           variant="golden"
           icon={InfoCircle}
           className="w-full"
@@ -196,6 +199,7 @@ export function DataSourceSelectionSearchResults({
   displaySelectAllButton = false,
   renderLayout = defaultRenderLayout,
 }: DataSourceSelectionSearchResultsProps) {
+  const { t } = useLingui();
   const [accumulatedResults, setAccumulatedResults] = useState<
     DataSourceViewContentNode[]
   >([]);
@@ -212,7 +216,6 @@ export function DataSourceSelectionSearchResults({
     tablePagination,
   } = useCursorPaginationForDataTable(PAGE_SIZE);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when search query changes
   useEffect(() => {
     resetPagination();
     setAccumulatedResults([]);
@@ -347,14 +350,20 @@ export function DataSourceSelectionSearchResults({
 
   const summaryLabel = useMemo(() => {
     if (displayResultsCount === 0 && !isSearchPending) {
-      return "0 results found";
+      return t`0 results found`;
     }
 
     const displayTotal = displayResultsCount ?? 0;
-    const resultLabel = displayTotal === 1 ? "result" : "results";
-    const base = `Showing ${loadedCount} of ${displayTotal} ${resultLabel}`;
-    return hasMore ? `${base} · scroll for more` : base;
-  }, [displayResultsCount, hasMore, isSearchPending, loadedCount]);
+    return hasMore
+      ? t`Showing ${loadedCount} of ${plural(displayTotal, {
+          one: "# result",
+          other: "# results",
+        })} · scroll for more`
+      : t`Showing ${loadedCount} of ${plural(displayTotal, {
+          one: "# result",
+          other: "# results",
+        })}`;
+  }, [displayResultsCount, hasMore, isSearchPending, loadedCount, t]);
 
   const warning = warningCode ? (
     <SearchWarningMessage warningCode={warningCode} />
@@ -373,7 +382,7 @@ export function DataSourceSelectionSearchResults({
         <Button
           variant="ghost"
           size="xs"
-          label="Select all"
+          label={t`Select all`}
           onClick={onSelectAll}
         />
       )}
@@ -385,13 +394,14 @@ export function DataSourceSelectionSearchResults({
       warning,
       summary: (
         <div className="text-end text-sm text-muted-foreground">
-          0 results found
+          <Trans>0 results found</Trans>
         </div>
       ),
       list: (
         <div className="flex items-center justify-center p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            No matching results found. Try different search terms.
+            <Trans>No matching results found.</Trans>{" "}
+            <Trans>Try different search terms.</Trans>
           </p>
         </div>
       ),
@@ -409,8 +419,12 @@ export function DataSourceSelectionSearchResults({
       <ScrollSearchToTop />
       <div className="flex items-center gap-3 p-3 text-sm font-medium text-muted-foreground">
         <div className="w-5" />
-        <div className="min-w-0 flex-1">Name</div>
-        <div className="hidden min-w-0 flex-1 truncate sm:block">Location</div>
+        <div className="min-w-0 flex-1">
+          <Trans>Name</Trans>
+        </div>
+        <div className="hidden min-w-0 flex-1 truncate sm:block">
+          <Trans>Location</Trans>
+        </div>
       </div>
       <Separator />
       {accumulatedResults.map((node) => {

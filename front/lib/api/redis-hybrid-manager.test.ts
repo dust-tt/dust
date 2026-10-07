@@ -1,5 +1,5 @@
-import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const redis = vi.hoisted(() => ({
@@ -189,67 +189,69 @@ describe("RedisHybridManager", () => {
       subscription.unsubscribe();
     }
   });
-  it.each([
-    "reversed",
-    "delayed",
-  ])("returns stream order and resumes without replay when notifications are %s", async (notificationOrder) => {
-    const first = { id: "1-0", message: { payload: "first" } };
-    const second = { id: "2-0", message: { payload: "second" } };
-    const third = { id: "3-0", message: { payload: "third" } };
-    const initialRead = Promise.withResolvers<null>();
-    let publish: (event: EventPayload) => void = () => undefined;
-    redis.subscriptionClient.subscribe.mockImplementation(
-      async (
-        channel: string,
-        onMessage: (message: string, channel: string) => void
-      ) => {
-        publish = (event) => onMessage(JSON.stringify(event), channel);
+  it.each(["reversed", "delayed"])(
+    "returns stream order and resumes without replay when notifications are %s",
+    async (notificationOrder) => {
+      const first = { id: "1-0", message: { payload: "first" } };
+      const second = { id: "2-0", message: { payload: "second" } };
+      const third = { id: "3-0", message: { payload: "third" } };
+      const initialRead = Promise.withResolvers<null>();
+      let publish: (event: EventPayload) => void = () => undefined;
+      redis.subscriptionClient.subscribe.mockImplementation(
+        async (
+          channel: string,
+          onMessage: (message: string, channel: string) => void
+        ) => {
+          publish = (event) => onMessage(JSON.stringify(event), channel);
+        }
+      );
+      const persisted = [first, second];
+      redis.streamClient.xRead
+        .mockImplementationOnce(() => initialRead.promise)
+        .mockImplementation(async (_options, { id }: { id: string }) => [
+          {
+            name: "history",
+            messages: persisted.filter(
+              (event) =>
+                event.id.localeCompare(id, undefined, { numeric: true }) > 0
+            ),
+          },
+        ]);
+      const read = (lastEventId: string | null) =>
+        getRedisEventsBatch({
+          channel: `out-of-order-${notificationOrder}`,
+          origin: "message_events_long_poll",
+          lastEventId,
+          signal: new AbortController().signal,
+        });
+
+      const pending = read(null);
+      await vi.waitFor(() =>
+        expect(redis.streamClient.xRead).toHaveBeenCalled()
+      );
+      initialRead.resolve(null);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      publish(second);
+      if (notificationOrder === "reversed") {
+        publish(first);
       }
-    );
-    const persisted = [first, second];
-    redis.streamClient.xRead
-      .mockImplementationOnce(() => initialRead.promise)
-      .mockImplementation(async (_options, { id }: { id: string }) => [
-        {
-          name: "history",
-          messages: persisted.filter(
-            (event) =>
-              event.id.localeCompare(id, undefined, { numeric: true }) > 0
-          ),
-        },
-      ]);
-    const read = (lastEventId: string | null) =>
-      getRedisEventsBatch({
-        channel: `out-of-order-${notificationOrder}`,
-        origin: "message_events_long_poll",
-        lastEventId,
-        signal: new AbortController().signal,
-      });
 
-    const pending = read(null);
-    await vi.waitFor(() => expect(redis.streamClient.xRead).toHaveBeenCalled());
-    initialRead.resolve(null);
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    publish(second);
-    if (notificationOrder === "reversed") {
+      const batch = await pending;
+      expect(batch).toEqual([first, second]);
+      persisted.push(third);
+      const next = read(batch.at(-1)?.id ?? null);
+      await vi.waitFor(() =>
+        expect(redis.subscriptionClient.subscribe).toHaveBeenCalledTimes(2)
+      );
       publish(first);
+      expect(await next).toEqual([third]);
+      expect(redis.streamClient.xRead).toHaveBeenLastCalledWith(
+        expect.anything(),
+        { key: `stream:out-of-order-${notificationOrder}`, id: "2-0" },
+        { COUNT: 50 }
+      );
     }
-
-    const batch = await pending;
-    expect(batch).toEqual([first, second]);
-    persisted.push(third);
-    const next = read(batch.at(-1)?.id ?? null);
-    await vi.waitFor(() =>
-      expect(redis.subscriptionClient.subscribe).toHaveBeenCalledTimes(2)
-    );
-    publish(first);
-    expect(await next).toEqual([third]);
-    expect(redis.streamClient.xRead).toHaveBeenLastCalledWith(
-      expect.anything(),
-      { key: `stream:out-of-order-${notificationOrder}`, id: "2-0" },
-      { COUNT: 50 }
-    );
-  });
+  );
   it("releases a poll subscription when reading awakened events fails", async () => {
     const failure = new Error("Redis history unavailable");
     redis.subscriptionClient.subscribe.mockImplementation(

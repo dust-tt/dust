@@ -21,14 +21,15 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { EnrichedSpaceType } from "@app/types/space";
+import { isFilesSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AttachmentChip, File02, Separator, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
@@ -45,6 +46,7 @@ export function SkillInfoTab({
   spaces,
   showDescription = true,
 }: SkillInfoTabProps) {
+  const { t } = useLingui();
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const editedSections = useEditedSkillSections();
   const previewSuggestions = useSkillSuggestionPreview();
@@ -68,12 +70,24 @@ export function SkillInfoTab({
     setKnowledgeItems(items);
   }, []);
 
+  // Files a previewed suggestion adds have no id until it is applied, so they are not part of the
+  // skill's attachments.
+  const addedFilePaths = useMemo(
+    () =>
+      previewSuggestions
+        .filter(isFilesSkillSuggestion)
+        .flatMap((s) => s.suggestion.addFilePaths),
+    [previewSuggestions]
+  );
+  const hasFiles =
+    skill.fileAttachments.length > 0 || addedFilePaths.length > 0;
+
   const hasInstructions = !!skill.instructions || !!skill.instructionsHtml;
 
   const showSeparator =
     hasInstructions ||
     knowledgeItems.length > 0 ||
-    skill.fileAttachments.length > 0 ||
+    hasFiles ||
     sortedMCPServerViews.length > 0 ||
     showChildSkills ||
     showDiscoverableSkills ||
@@ -98,7 +112,7 @@ export function SkillInfoTab({
         <div className="relative flex flex-col gap-4">
           {editedSections.has("when_to_use") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">
-            {SKILL_INVOCATION_LABEL}
+            <Trans>When to use this skill</Trans>
           </div>
           <SkillDescriptionReadOnlyEditor
             content={skill.agentFacingDescription}
@@ -109,7 +123,7 @@ export function SkillInfoTab({
       {hasInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <DetailsSectionHeading
-            label="Guidelines"
+            label={t`Guidelines`}
             isEdited={editedSections.has("guidelines")}
           />
           {/* Remounts the instructions editor on preview change, since it only reads its content once. */}
@@ -125,7 +139,9 @@ export function SkillInfoTab({
       )}
       {knowledgeItems.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Knowledge</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Knowledge</Trans>
+          </div>
           <div className="flex flex-wrap gap-2">
             {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
               <KnowledgeChip
@@ -138,9 +154,12 @@ export function SkillInfoTab({
           </div>
         </div>
       )}
-      {skill.fileAttachments.length > 0 && (
-        <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Files</div>
+      {hasFiles && (
+        <div className="relative flex flex-col gap-4">
+          {editedSections.has("files") && <EditedSectionBar />}
+          <div className="heading-lg text-foreground">
+            <Trans>Files</Trans>
+          </div>
           <div className="flex flex-wrap gap-2">
             {skill.fileAttachments.map((file) => (
               <AttachmentChip
@@ -151,12 +170,23 @@ export function SkillInfoTab({
                 size="xs"
               />
             ))}
+            {addedFilePaths.map((filePath) => (
+              <AttachmentChip
+                key={filePath}
+                label={filePath.split("/").pop() ?? filePath}
+                icon={{ visual: File02 }}
+                color="primary"
+                size="xs"
+              />
+            ))}
           </div>
         </div>
       )}
       {showChildSkills && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Skills</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Skills</Trans>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {childSkills.map((childSkill) => {
               const SkillAvatar = getSkillAvatarIcon(childSkill);
@@ -180,7 +210,9 @@ export function SkillInfoTab({
       )}
       {sortedMCPServerViews.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Tools</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Tools</Trans>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {sortedMCPServerViews.map((view) => (
               <Tooltip

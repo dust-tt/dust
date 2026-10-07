@@ -6,10 +6,7 @@ import type {
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
 import type { ModelConfig } from "@app/types/assistant/models/types";
-import type {
-  CreateTemplateFormType,
-  TemplateTagCodeType,
-} from "@app/types/assistant/templates";
+import type { CreateTemplateFormType } from "@app/types/assistant/templates";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -24,7 +21,7 @@ export type PokeFetchAssistantTemplateResponse = ReturnType<
  * update) on top.
  */
 export function buildSharedTemplateAttributes(
-  body: CreateTemplateFormType & { tags: TemplateTagCodeType[] },
+  body: CreateTemplateFormType,
   model: Pick<ModelConfig, "modelId" | "providerId">
 ) {
   return {
@@ -58,7 +55,6 @@ export async function pullTemplatesFromMainRegion(): Promise<
   Result<{ count: number }, PullTemplatesError>
 > {
   const mainRegionUrl = config.getDustRegionSyncMasterUrl();
-  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(`${mainRegionUrl}/api/templates`, {
     method: "GET",
   });
@@ -72,7 +68,6 @@ export async function pullTemplatesFromMainRegion(): Promise<
   let count = 0;
 
   for (const templateFromList of templatesResponse.templates) {
-    // eslint-disable-next-line no-restricted-globals
     const templateResponse = await fetch(
       `${mainRegionUrl}/api/templates/${templateFromList.sId}`,
       { method: "GET" }

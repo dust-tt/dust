@@ -3,11 +3,11 @@ import type { Logger } from "@app/logger/logger";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { UserToolApprovalModel } from "@app/lib/resources/storage/models/user";
 import {
   dangerouslyMakeSIdWithCustomFirstPrefix,
   LEGACY_REGION_BIT,
 } from "@app/lib/resources/string_ids";
-import { UserToolApprovalModel } from "@app/lib/resources/storage/models/user";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 

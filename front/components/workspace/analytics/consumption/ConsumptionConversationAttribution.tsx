@@ -6,7 +6,9 @@ import type { ConsumptionTopConversationRow } from "@app/lib/api/analytics/consu
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { ArrowRight, Button, DataTable, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 type ConversationAttributionRow = ConsumptionTopConversationRow & {
   onOpen: () => void;
@@ -14,51 +16,6 @@ type ConversationAttributionRow = ConsumptionTopConversationRow & {
   // stays scoped to the explicit action cell.
   onClick?: never;
 };
-
-const CONVERSATION_COLUMNS: ColumnDef<ConversationAttributionRow>[] = [
-  {
-    id: "conversation",
-    header: "Conversation",
-    cell: ({ row }) => (
-      <DataTable.CellContent className="w-full justify-start text-left">
-        <span className="truncate text-sm">
-          {row.original.title || "Untitled conversation"}
-        </span>
-      </DataTable.CellContent>
-    ),
-    enableSorting: false,
-  },
-  {
-    id: "totalCredits",
-    header: "Total Credits",
-    cell: ({ row }) => <CreditsCell credits={row.original.totalCredits} />,
-    enableSorting: false,
-    meta: {
-      className: "w-32 text-right",
-      headerAlign: "right",
-    },
-  },
-  {
-    id: "open",
-    header: "",
-    enableSorting: false,
-    meta: { className: "w-12 p-0", headerAlign: "right" },
-    cell: ({ row }) => {
-      const title = row.original.title || "Untitled conversation";
-      return (
-        <Button
-          icon={ArrowRight}
-          variant="ghost-secondary"
-          size="xs"
-          className="h-12 w-full rounded-none"
-          tooltip="Open conversation"
-          aria-label={`Open ${title}`}
-          onClick={row.original.onOpen}
-        />
-      );
-    },
-  },
-];
 
 export interface ConsumptionConversationAttributionProps {
   workspaceId: string;
@@ -75,7 +32,55 @@ export function ConsumptionConversationAttribution({
   disabled,
   onNavigate,
 }: ConsumptionConversationAttributionProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
+  const columns = useMemo<ColumnDef<ConversationAttributionRow>[]>(
+    () => [
+      {
+        id: "conversation",
+        header: t`Conversation`,
+        cell: ({ row }) => (
+          <DataTable.CellContent className="w-full justify-start text-left">
+            <span className="truncate text-sm">
+              {row.original.title || t`Untitled conversation`}
+            </span>
+          </DataTable.CellContent>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "totalCredits",
+        header: t`Total Credits`,
+        cell: ({ row }) => <CreditsCell credits={row.original.totalCredits} />,
+        enableSorting: false,
+        meta: {
+          className: "w-32 text-right",
+          headerAlign: "right",
+        },
+      },
+      {
+        id: "open",
+        header: "",
+        enableSorting: false,
+        meta: { className: "w-12 p-0", headerAlign: "right" },
+        cell: ({ row }) => {
+          const title = row.original.title || t`Untitled conversation`;
+          return (
+            <Button
+              icon={ArrowRight}
+              variant="ghost-secondary"
+              size="xs"
+              className="h-12 w-full rounded-none"
+              tooltip={t`Open conversation`}
+              aria-label={t`Open ${title}`}
+              onClick={row.original.onOpen}
+            />
+          );
+        },
+      },
+    ],
+    [t]
+  );
   const { conversations, isTopConversationsLoading, isTopConversationsError } =
     useConsumptionTopConversations({
       workspaceId,
@@ -87,7 +92,7 @@ export function ConsumptionConversationAttribution({
   if (isTopConversationsError) {
     return (
       <div className="text-sm text-muted-foreground">
-        Failed to load attribution.
+        <Trans>Failed to load attribution.</Trans>
       </div>
     );
   }
@@ -103,7 +108,7 @@ export function ConsumptionConversationAttribution({
   if (conversations.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        No consumption over this period.
+        <Trans>No consumption over this period.</Trans>
       </div>
     );
   }
@@ -123,7 +128,7 @@ export function ConsumptionConversationAttribution({
   return (
     <DataTable<ConversationAttributionRow>
       data={rows}
-      columns={CONVERSATION_COLUMNS}
+      columns={columns}
       getRowId={(row) => row.conversationId}
     />
   );

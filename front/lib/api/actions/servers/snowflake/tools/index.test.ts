@@ -132,26 +132,27 @@ describe("Snowflake tools", () => {
     snowflakeClientConstructed.count = 0;
   });
 
-  it.each([
-    401, 403,
-  ])("returns a personal authentication error for HTTP %s", async (statusCode) => {
-    listDatabasesMock.mockResolvedValue(
-      new Err(createRequestFailedError(statusCode))
-    );
-    const { authenticator } = await createResourceTest({ role: "admin" });
-
-    const result = await getListDatabasesTool().handler(
-      {},
-      createTestExtra(authenticator)
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toEqual(
-        makePersonalAuthenticationError("snowflake").content
+  it.each([401, 403])(
+    "returns a personal authentication error for HTTP %s",
+    async (statusCode) => {
+      listDatabasesMock.mockResolvedValue(
+        new Err(createRequestFailedError(statusCode))
       );
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await getListDatabasesTool().handler(
+        {},
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual(
+          makePersonalAuthenticationError("snowflake").content
+        );
+      }
     }
-  });
+  );
 
   it("keeps non-authentication failures as MCP errors", async () => {
     listDatabasesMock.mockResolvedValue(new Err(createRequestFailedError(500)));
@@ -198,32 +199,32 @@ describe("Snowflake tools", () => {
       label: "a non-snowflake provider",
       provider: "bigquery" as const,
     },
-  ])("refuses a key-pair login for $label", async ({
-    workspaceId,
-    provider,
-  }) => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "user",
-    });
-    mockCredential({
-      workspaceId: workspaceId ?? workspace.sId,
-      provider,
-    });
+  ])(
+    "refuses a key-pair login for $label",
+    async ({ workspaceId, provider }) => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      mockCredential({
+        workspaceId: workspaceId ?? workspace.sId,
+        provider,
+      });
 
-    const result = await getListDatabasesTool().handler(
-      {},
-      createTestExtra(authenticator, credentialAuthInfo("cred_stolen"))
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "Snowflake connection not configured. Please connect your Snowflake account."
+      const result = await getListDatabasesTool().handler(
+        {},
+        createTestExtra(authenticator, credentialAuthInfo("cred_stolen"))
       );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "Snowflake connection not configured. Please connect your Snowflake account."
+        );
+      }
+      expect(snowflakeClientConstructed.count).toBe(0);
+      expect(listDatabasesMock).not.toHaveBeenCalled();
     }
-    expect(snowflakeClientConstructed.count).toBe(0);
-    expect(listDatabasesMock).not.toHaveBeenCalled();
-  });
+  );
 
   it("refuses a snowflake credential that is not a key pair", async () => {
     const { authenticator, workspace } = await createResourceTest({

@@ -10,6 +10,7 @@ import {
 } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { EnrichedSpaceType } from "@app/types/space";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo } from "react";
 
 interface DataSourceSpaceSelectorProps {
@@ -19,6 +20,7 @@ interface DataSourceSpaceSelectorProps {
 export function DataSourceSpaceSelector({
   spaces,
 }: DataSourceSpaceSelectorProps) {
+  const { t } = useLingui();
   const { removeNode, setSpaceEntry } = useDataSourceBuilderContext();
 
   const confirm = useContext(ConfirmContext);
@@ -41,10 +43,11 @@ export function DataSourceSpaceSelector({
     async (item: DataSourceListItem, selectionState: boolean | "partial") => {
       // Spaces only show checkboxes for partial selections to unselect all
       if (selectionState === "partial") {
+        const itemTitle = item.title;
         const confirmed = await confirm({
-          title: "Are you sure?",
-          message: `Do you want to unselect all of "${item.title}"?`,
-          validateLabel: "Unselect all",
+          title: t`Are you sure?`,
+          message: t`Do you want to unselect all of "${itemTitle}"?`,
+          validateLabel: t`Unselect all`,
           validateVariant: "warning",
         });
         if (confirmed) {
@@ -52,13 +55,13 @@ export function DataSourceSpaceSelector({
         }
       }
     },
-    [confirm, removeNode]
+    [confirm, removeNode, t]
   );
 
   return (
     <div className="flex h-full flex-col">
       <div className="heading-sm bg-muted-background p-2 text-foreground">
-        {KNOWLEDGE_BROWSER_GROUP_LABELS.spaces}:
+        {t(KNOWLEDGE_BROWSER_GROUP_LABELS.spaces)}:
       </div>
       <DataSourceList
         items={spaceItems}
@@ -68,7 +71,7 @@ export function DataSourceSpaceSelector({
       {projectItems.length > 0 && (
         <>
           <div className="heading-sm bg-muted-background p-2 text-foreground">
-            {KNOWLEDGE_BROWSER_GROUP_LABELS.pods}:
+            {t(KNOWLEDGE_BROWSER_GROUP_LABELS.pods)}:
           </div>
           <DataSourceList
             items={projectItems}

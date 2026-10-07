@@ -1,6 +1,6 @@
 import { AgentModel } from "@app/lib/models/agent/agent";
-import { backfillAgentHeadFields } from "@app/migrations/20260915_backfill_agent_head_fields";
 import baseLogger from "@app/logger/logger";
+import { backfillAgentHeadFields } from "@app/migrations/20260915_backfill_agent_head_fields";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";

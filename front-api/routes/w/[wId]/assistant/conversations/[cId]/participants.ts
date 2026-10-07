@@ -162,7 +162,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const isAlreadyParticipant =
     await ConversationResource.isConversationParticipant(auth, {
       conversation,
-      user,
+      user: u,
     });
 
   if (isAlreadyParticipant) {

@@ -9,6 +9,7 @@ import type { UsageType } from "@app/lib/metronome/types";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { destroyAllForWorkspaceInBatches } from "@app/lib/resources/storage/destroy_in_batches";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import type { RunUsageState } from "@app/lib/resources/storage/models/runs";
 import {
@@ -92,9 +93,7 @@ type FetchRunOptions<T extends boolean> = {
   offset?: number;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RunResource extends ReadonlyAttributesType<RunModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RunResource extends BaseResource<RunModel> {
   static model: ModelStatic<RunModel> = RunModel;
 
@@ -186,7 +185,6 @@ export class RunResource extends BaseResource<RunModel> {
     workspace: LightWorkspaceType,
     options: FetchRunOptions<T>
   ): Promise<T extends true ? RunResourceWithApp[] : RunResource[]> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
     const { where, includes, includeDeleted, ...opts } =
       this.getOptions(options);
 
@@ -407,25 +405,11 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace();
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
-    assert(typeof workspace.id === "number");
-    await RunUsageModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        runId: {
-          [Op.in]: Sequelize.literal(
-            // Sequelize prevents other safer constructs due to typing with the destroy method.
-            // `workspace.id` cannot cannot be user provided + assert above.
-            `(SELECT id FROM runs WHERE "workspaceId" = '${workspace.id}')`
-          ),
-        },
-      },
-    });
+    await destroyAllForWorkspaceInBatches(RunUsageModel, { workspaceModelId });
 
-    return this.model.destroy({
-      where: { workspaceId: workspace.id },
-    });
+    return destroyAllForWorkspaceInBatches(this.model, { workspaceModelId });
   }
 
   async delete(

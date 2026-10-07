@@ -18,6 +18,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface SpaceManagedActionsViewsModelProps {
@@ -35,6 +36,7 @@ export default function SpaceManagedActionsViewsModel({
   shouldOpenMenu,
   onOpenMenuHandled,
 }: SpaceManagedActionsViewsModelProps) {
+  const { t } = useLingui();
   const [searchText, setSearchText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const { serverViews, isMCPServerViewsLoading } =
@@ -64,7 +66,7 @@ export default function SpaceManagedActionsViewsModel({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button label="Add Tools" variant="primary" icon={Plus} size="sm" />
+        <Button label={t`Add tools`} variant="primary" icon={Plus} size="sm" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -74,7 +76,7 @@ export default function SpaceManagedActionsViewsModel({
           <DropdownMenuSearchbar
             autoFocus
             className="flex-grow"
-            placeholder="Search tools..."
+            placeholder={t`Search tools...`}
             name="search"
             value={searchText}
             onChange={setSearchText}
@@ -88,7 +90,7 @@ export default function SpaceManagedActionsViewsModel({
           </div>
         )}
         {!isMCPServerViewsLoading && serverViews.length <= 0 && (
-          <DropdownMenuItem label="No more tools to add" disabled />
+          <DropdownMenuItem label={t`No more tools to add`} disabled />
         )}
         {serverViews
           .filter((serverView) => filterMCPServerView(serverView, searchText))

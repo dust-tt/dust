@@ -12,6 +12,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import { useMemo } from "react";
@@ -47,6 +48,7 @@ export function SecretSection({
 }: {
   customDescription?: string;
 }) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -93,7 +95,7 @@ export function SecretSection({
   if (isSecretsLoading) {
     return (
       <ConfigurationSectionContainer
-        title="Select a Secret"
+        title={t`Select a secret`}
         error={fieldState.error?.message}
       >
         <div className="flex h-40 w-full items-center justify-center">
@@ -105,9 +107,9 @@ export function SecretSection({
 
   if (isSecretsError) {
     return (
-      <ConfigurationSectionContainer title="Select a Secret">
+      <ConfigurationSectionContainer title={t`Select a secret`}>
         <ContentMessage
-          title="Failed to load secrets"
+          title={t`Failed to load secrets`}
           icon={InfoCircle}
           variant="warning"
           size="sm"
@@ -120,16 +122,16 @@ export function SecretSection({
 
   return (
     <ConfigurationSectionContainer
-      title="Select a Secret"
+      title={t`Select a secret`}
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground">
           {customDescription ?? (
-            <>
+            <Trans>
               The agent will use the selected secret to authenticate with the
               service. The secret value will be securely injected at runtime.
-            </>
+            </Trans>
           )}
         </div>
 
@@ -147,7 +149,7 @@ export function SecretSection({
                 size="sm"
                 icon={PencilIcon}
                 onClick={handleEditClick}
-                label="Change"
+                label={t`Change`}
               />
             </div>
           </Card>
@@ -157,8 +159,10 @@ export function SecretSection({
               <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
                 <KeyIcon className="h-8 w-8 text-muted-foreground" />
                 <div className="text-sm text-muted-foreground">
-                  No secrets found. Create a secret in your workspace settings
-                  first.
+                  <Trans>
+                    No secrets found. Create a secret in your workspace settings
+                    first.
+                  </Trans>
                 </div>
               </div>
             ) : (

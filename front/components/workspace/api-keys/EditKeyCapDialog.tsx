@@ -2,7 +2,7 @@ import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSectio
 import {
   dollarsToMicroUsd,
   microUsdToDollarsString,
-  monthlyCapDollarsSchema,
+  useMonthlyCapDollarsSchema,
 } from "@app/components/workspace/api-keys/utils";
 import type { KeyType } from "@app/types/key";
 import {
@@ -15,15 +15,24 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useEffect, useMemo } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
-const formSchema = z.object({
-  capValueDollars: monthlyCapDollarsSchema,
-});
+function useFormSchema() {
+  const monthlyCapDollarsSchema = useMonthlyCapDollarsSchema();
 
-type FormValues = z.infer<typeof formSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        capValueDollars: monthlyCapDollarsSchema,
+      }),
+    [monthlyCapDollarsSchema]
+  );
+}
+
+type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
 
 interface EditKeyCapDialogProps {
   keyData: KeyType;
@@ -40,6 +49,8 @@ export function EditKeyCapDialog({
   onSave,
   isSaving,
 }: EditKeyCapDialogProps) {
+  const { t } = useLingui();
+  const formSchema = useFormSchema();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
@@ -62,6 +73,8 @@ export function EditKeyCapDialog({
     await onSave(dollarsToMicroUsd(dollars));
   };
 
+  const keyName = keyData.name;
+
   return (
     <Sheet
       open={isOpen}
@@ -73,12 +86,14 @@ export function EditKeyCapDialog({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Edit Monthly Cap - {keyData.name}</SheetTitle>
+          <SheetTitle>
+            <Trans>Edit Monthly Cap - {keyName}</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <FormProvider {...form}>
             <BaseFormFieldSection
-              title="Monthly cap (USD)"
+              title={t`Monthly cap (USD)`}
               fieldName="capValueDollars"
             >
               {({ registerRef, registerProps, onChange, errorMessage }) => (
@@ -86,7 +101,7 @@ export function EditKeyCapDialog({
                   ref={registerRef}
                   {...registerProps}
                   onChange={onChange}
-                  placeholder="Leave empty for unlimited"
+                  placeholder={t`Leave empty for unlimited`}
                   isError={!!errorMessage}
                   message={errorMessage}
                   messageStatus="error"
@@ -97,12 +112,12 @@ export function EditKeyCapDialog({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: handleSubmit(onSubmit),
             disabled: isSaving || !formState.isValid,

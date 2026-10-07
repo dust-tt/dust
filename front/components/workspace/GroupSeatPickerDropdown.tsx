@@ -1,8 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
+import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
-import { formatNumber } from "@app/lib/i18n/format";
 import {
   useGroupSeatMappingPreview,
   useUpdateGroupGrantedSeatType,
@@ -16,6 +15,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useContext, useState } from "react";
 
 // The dropdown value used for "grant no seat" (clears the mapping). Distinct from
@@ -46,6 +47,7 @@ export function GroupSeatPickerDropdown({
   grantableSeatTypes,
   seatPlans,
 }: GroupSeatPickerDropdownProps) {
+  const { t } = useLingui();
   const { doUpdateGroupGrantedSeatType, isUpdating } =
     useUpdateGroupGrantedSeatType({ owner });
   const { doFetchGroupSeatMappingPreview } = useGroupSeatMappingPreview({
@@ -60,7 +62,9 @@ export function GroupSeatPickerDropdown({
 
   const label = grantedSeatType
     ? seatTypeDisplayName(grantedSeatType)
-    : "No seat";
+    : t`No seat`;
+
+  const reviewSeatName = reviewSeat ? seatTypeDisplayName(reviewSeat) : null;
 
   const handleSelect = async (
     value: GroupGrantableSeatType | typeof NO_SEAT
@@ -74,13 +78,16 @@ export function GroupSeatPickerDropdown({
       }
       // Clearing the mapping downgrades members (deferred to period end), so
       // confirm and show how many are affected before applying.
+      const seatName = seatTypeDisplayName(grantedSeatType);
       const confirmed = await confirm({
-        title: "Remove group seat",
-        message: `Members of ${groupName} will lose their ${seatTypeDisplayName(
-          grantedSeatType
-        )} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${formatNumber(memberCount)} member${memberCount === 1 ? "" : "s"}.`,
-        validateLabel: "Remove seat",
+        title: t`Remove group seat`,
+        message: t`Members of ${groupName} will lose their ${seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${plural(
+          memberCount,
+          { one: "# member", other: "# members" }
+        )}.`,
+        validateLabel: t`Remove seat`,
         validateVariant: "warning",
+        cancelLabel: t`Cancel`,
       });
       if (confirmed) {
         await doUpdateGroupGrantedSeatType({
@@ -112,7 +119,7 @@ export function GroupSeatPickerDropdown({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width)">
           <DropdownMenuCheckboxItem
-            label="No seat"
+            label={t`No seat`}
             checked={grantedSeatType === null}
             onCheckedChange={(checked) => {
               if (checked) {
@@ -138,7 +145,7 @@ export function GroupSeatPickerDropdown({
         <BulkChangeSeatModal
           isOpen
           onClose={() => setReviewSeat(null)}
-          title={`Grant ${seatTypeDisplayName(reviewSeat)} to ${groupName}`}
+          title={t`Grant ${reviewSeatName} to ${groupName}`}
           memberCount={memberCount}
           selectedMembers={[]}
           seatPlans={seatPlans}

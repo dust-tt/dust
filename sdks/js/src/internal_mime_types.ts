@@ -45,7 +45,9 @@ function generateConnectorRelativeMimeTypes<
         .toLowerCase()}`,
     }),
     {} as {
-      [K in T[number]]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<
+      [
+        K in T[number]
+      ]: `application/vnd.dust.${WithoutUnderscores<P>}.${Lowercase<
         UnderscoreToDash<K>
       >}`;
     }

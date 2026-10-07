@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
@@ -53,6 +54,7 @@ export function WorkspaceMembersSection({
   perSeatPricing,
   hasAvailableSeats,
 }: WorkspaceMembersSectionProps) {
+  const { t } = useLingui();
   const { isManager } = useAuth();
   const canInvite = isManager && isManualInvitationsEnabled;
   const [view, setView] = useState("members");
@@ -84,7 +86,7 @@ export function WorkspaceMembersSection({
       <div className="flex flex-row gap-2">
         <SearchInput
           placeholder={
-            isProvisioningEnabled ? "Search" : "Search members (email)"
+            isProvisioningEnabled ? t`Search` : t`Search members (email)`
           }
           value={searchTerm}
           name="search"
@@ -98,14 +100,14 @@ export function WorkspaceMembersSection({
                 variant="outline"
                 isSelect
                 className="w-32 shrink-0 justify-between"
-                label={getRoleFilterLabel(roleFilter)}
+                label={t(getRoleFilterLabel(roleFilter))}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               {ROLE_FILTER_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
-                  label={option.label}
+                  label={t(option.label)}
                   onClick={() => setRoleFilter(option.value)}
                 />
               ))}
@@ -127,12 +129,12 @@ export function WorkspaceMembersSection({
         <ButtonsSwitchList defaultValue="members" size="xs" className="w-fit">
           <ButtonsSwitch
             value="members"
-            label="Members"
+            label={t`Members`}
             onClick={() => setView("members")}
           />
           <ButtonsSwitch
             value="invitations"
-            label="Invitations"
+            label={t`Invitations`}
             onClick={() => setView("invitations")}
           />
         </ButtonsSwitchList>
@@ -205,7 +207,6 @@ function WorkspaceMembersList({
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
     setSelectedMember(null);
   }, [setSelectedMember]);

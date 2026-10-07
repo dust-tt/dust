@@ -106,28 +106,27 @@ describe("useFileExplorerDownload", () => {
       canonicalPath: "conversation-c1/status",
       fileName: "status.zip",
     },
-  ])("starts the $label archive download", async ({
-    entry,
-    canonicalPath,
-    fileName,
-  }) => {
-    const { result } = renderHook(() =>
-      useFileExplorerDownload({
+  ])(
+    "starts the $label archive download",
+    async ({ entry, canonicalPath, fileName }) => {
+      const { result } = renderHook(() =>
+        useFileExplorerDownload({
+          owner,
+          getFileResponse: mockGetFileResponse,
+        })
+      );
+
+      await act(async () => result.current(entry));
+
+      expect(mockPrepareFolderArchiveDownload).toHaveBeenCalledWith({
         owner,
-        getFileResponse: mockGetFileResponse,
-      })
-    );
-
-    await act(async () => result.current(entry));
-
-    expect(mockPrepareFolderArchiveDownload).toHaveBeenCalledWith({
-      owner,
-      canonicalPath,
-    });
-    expect(clickedAnchor?.href).toBe("https://api.example.com/archive.zip");
-    expect(clickedAnchor?.download).toBe(fileName);
-    expect(clickedAnchor?.isConnected).toBe(false);
-  });
+        canonicalPath,
+      });
+      expect(clickedAnchor?.href).toBe("https://api.example.com/archive.zip");
+      expect(clickedAnchor?.download).toBe(fileName);
+      expect(clickedAnchor?.isConnected).toBe(false);
+    }
+  );
 
   it("shows an error when the archive preflight fails", async () => {
     const error = new Error("Folder is too large");

@@ -229,4 +229,21 @@ describe("POST /api/w/:wId/spaces", () => {
       },
     });
   });
+
+  it("rejects a pod name longer than 256 characters", async () => {
+    mockCreateSpaceAndGroup.mockClear();
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const response = await postSpace(workspace, {
+      name: "p".repeat(257),
+      isRestricted: true,
+      spaceKind: "project",
+      memberIds: [],
+    });
+
+    expect(response.status).toBe(400);
+    expect(mockCreateSpaceAndGroup).not.toHaveBeenCalled();
+  });
 });

@@ -2,9 +2,7 @@ import { dropForceTool } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_INKLING_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustThinkingMachinesInklingConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustThinkingMachinesInkling extends Base {
     static readonly displayName = "Inkling";

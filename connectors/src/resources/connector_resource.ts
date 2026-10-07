@@ -5,9 +5,8 @@ import type {
   ConnectorProviderModelMapping,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/resources/connector/strategy";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
@@ -31,8 +30,7 @@ import type {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface ConnectorResource
-  extends ReadonlyAttributesType<ConnectorModel> {}
+export interface ConnectorResource extends ReadonlyAttributesType<ConnectorModel> {}
 export class ConnectorResource extends BaseResource<ConnectorModel> {
   static model: ModelStatic<ConnectorModel> = ConnectorModel;
 

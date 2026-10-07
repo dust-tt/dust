@@ -157,7 +157,6 @@ export const AgentGrid = ({
 
   const [itemsPage, setItemsPage] = useState(0);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const nextPage = useCallback(() => {
     setItemsPage(itemsPage + 1);
   }, [setItemsPage, itemsPage]);

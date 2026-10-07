@@ -19,21 +19,15 @@ import {
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
-export const ALLOW_SELF_IMPROVING_SKILLS_LABEL = "Allow self-improving skills";
-export const ENABLE_BATCH_PROCESSING_LABEL = "Enable batch processing";
-export const DEFAULT_COST_CAP_PER_SKILL_LABEL = "Default cost cap per skill";
-export const GLOBAL_SPENDING_CAP_LABEL = "Global spending cap";
-export const SELF_IMPROVING_SETTINGS_SECTION_LABEL = "Settings";
-export const SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL = "Skills";
-export const SELF_IMPROVING_CONSUMPTION_SECTION_LABEL =
-  "Current period consumption";
+export function useCapUnitLabel(unit: ReinforcementBillingUnit): string {
+  const { t } = useLingui();
 
-export function capUnitLabel(unit: ReinforcementBillingUnit): string {
   switch (unit) {
     case "awu_credits":
-      return "credits";
+      return t`credits`;
     case "micro_usd":
       return "$";
     default:
@@ -78,6 +72,7 @@ export function SelfImprovingSkillsSettingsSection({
   showToggles = true,
   showCaps = true,
 }: SelfImprovingSkillsSettingsSectionProps) {
+  const { t } = useLingui();
   const { isEnabled, isChanging, doToggleReinforcement } =
     useSelfImprovingToggle({ owner });
 
@@ -87,11 +82,11 @@ export function SelfImprovingSkillsSettingsSection({
   // components eventually render a ContextItem. Keep list children flat.
   return (
     <Page.Vertical align="stretch" gap="md">
-      <Page.SectionHeader title={SELF_IMPROVING_SETTINGS_SECTION_LABEL} />
+      <Page.SectionHeader title={t`Settings`} />
       <ContextItem.List>
         {showToggles ? (
           <ContextItem
-            title={ALLOW_SELF_IMPROVING_SKILLS_LABEL}
+            title={t`Allow self-improving skills`}
             visual={<></>}
             hasSeparatorIfLast={true}
             action={
@@ -102,7 +97,9 @@ export function SelfImprovingSkillsSettingsSection({
               />
             }
           >
-            <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
+            <ContextItem.Description
+              description={t`Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models.`}
+            />
           </ContextItem>
         ) : null}
         {showToggles ? <SelfImprovingBatchModeToggle owner={owner} /> : null}
@@ -123,12 +120,13 @@ export function SelfImprovingSkillsSettingsSection({
 function SelfImprovingBatchModeToggle({
   owner,
 }: SelfImprovingSkillsSettingsSectionProps) {
+  const { t } = useLingui();
   const { isEnabled, isChanging, doToggleBatchMode } =
     useSelfImprovingBatchModeToggle({ owner });
 
   return (
     <ContextItem
-      title={ENABLE_BATCH_PROCESSING_LABEL}
+      title={t`Enable batch processing`}
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
@@ -139,7 +137,9 @@ function SelfImprovingBatchModeToggle({
         />
       }
     >
-      <ContextItem.Description description="Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing." />
+      <ContextItem.Description
+        description={t`Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing.`}
+      />
     </ContextItem>
   );
 }
@@ -153,9 +153,11 @@ function SelfImprovementCapPerSkillItem({
   owner,
   onSaved,
 }: SelfImprovementCapPerSkillItemProps) {
+  const { t } = useLingui();
   const { unit, cap, saveCap } = useSelfImprovementCapPerSkillSetting({
     owner,
   });
+  const capUnit = useCapUnitLabel(unit);
   // InputWithSave displays `value` once editing ends, and `owner` is not
   // refetched after save: track the saved value locally.
   const [savedValue, setSavedValue] = useState<string>(() => String(cap));
@@ -183,7 +185,7 @@ function SelfImprovementCapPerSkillItem({
 
   return (
     <ContextItem
-      title={DEFAULT_COST_CAP_PER_SKILL_LABEL}
+      title={t`Default cost cap per skill`}
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
@@ -193,7 +195,7 @@ function SelfImprovementCapPerSkillItem({
             inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
             placeholder={String(defaultCap)}
             value={savedValue}
-            unit={capUnitLabel(unit)}
+            unit={capUnit}
             normalizeValue={(value) => normalizeCapInput(value, unit)}
             onSave={handleSave}
           />
@@ -201,7 +203,11 @@ function SelfImprovementCapPerSkillItem({
       }
     >
       <ContextItem.Description
-        description={`Maximum cost per skill per self-improvement run (in ${unit === "awu_credits" ? "credits" : "USD"}). Once reached, no further self-improvement runs are started for that skill.`}
+        description={
+          unit === "awu_credits"
+            ? t`Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill.`
+            : t`Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill.`
+        }
       />
     </ContextItem>
   );
@@ -211,9 +217,11 @@ function SelfImprovingCapItem({
   owner,
   onCapSaved,
 }: SelfImprovingSkillsSettingsSectionProps) {
+  const { t } = useLingui();
   const { unit, cap, saveCap } = useSelfImprovingCapSetting({
     owner,
   });
+  const capUnit = useCapUnitLabel(unit);
   // InputWithSave displays `value` once editing ends, and `owner` is not
   // refetched after save: track the saved value locally.
   const [savedValue, setSavedValue] = useState<string>(() => String(cap));
@@ -241,7 +249,7 @@ function SelfImprovingCapItem({
 
   return (
     <ContextItem
-      title={GLOBAL_SPENDING_CAP_LABEL}
+      title={t`Global spending cap`}
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
@@ -251,7 +259,7 @@ function SelfImprovingCapItem({
             inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
             placeholder={String(defaultCap)}
             value={savedValue}
-            unit={capUnitLabel(unit)}
+            unit={capUnit}
             normalizeValue={(value) => normalizeCapInput(value, unit)}
             onSave={handleSave}
           />
@@ -259,7 +267,11 @@ function SelfImprovingCapItem({
       }
     >
       <ContextItem.Description
-        description={`Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in ${unit === "awu_credits" ? "credits" : "USD"}) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month.`}
+        description={
+          unit === "awu_credits"
+            ? t`Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month.`
+            : t`Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month.`
+        }
       />
     </ContextItem>
   );

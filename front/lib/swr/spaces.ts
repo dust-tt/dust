@@ -78,7 +78,6 @@ export function useSpaces({
     { ...swrOptions, disabled }
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
@@ -305,16 +304,27 @@ export function useSpaceDataSourceView({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${dataSourceViewId}`,
+      `/api/w/${owner.sId}/spaces/${encodeURIComponent(spaceId ?? "")}/data_source_views/${encodeURIComponent(dataSourceViewId ?? "")}`,
       dataSourceViewsFetcher,
       { disabled }
     );
 
+  // Returned `dataSourceView` fields must matched the requested values
+  // Callers build further request URLs from the returned view.
+  const isMatchingView =
+    !!data &&
+    data.dataSourceView?.sId === dataSourceViewId &&
+    data.dataSourceView?.spaceId === spaceId;
+  const mismatchError =
+    data && !isMatchingView
+      ? new Error("Unexpected data source view in response.")
+      : undefined;
+
   return {
-    dataSourceView: data?.dataSourceView,
-    connector: data?.connector ?? null,
+    dataSourceView: isMatchingView ? data.dataSourceView : undefined,
+    connector: isMatchingView ? (data.connector ?? null) : null,
     isDataSourceViewLoading: !disabled && !error && !data,
-    isDataSourceViewError: error,
+    isDataSourceViewError: error ?? mismatchError,
     mutate,
     mutateRegardlessOfQueryParams,
   };
@@ -471,7 +481,7 @@ export function useUpdateFolder({
       return false;
     }
     const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${encodeURIComponent(spaceId)}/data_sources/${encodeURIComponent(dataSourceView.dataSource.sId)}`,
       {
         method: "PATCH",
         headers: {
@@ -526,7 +536,7 @@ export function useDeleteFolderOrWebsite({
       return false;
     }
     const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${encodeURIComponent(spaceId)}/data_sources/${encodeURIComponent(dataSourceView.dataSource.sId)}`,
       { method: "DELETE" }
     );
 

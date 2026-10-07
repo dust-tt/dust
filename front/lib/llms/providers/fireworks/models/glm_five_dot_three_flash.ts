@@ -2,9 +2,7 @@ import { dropForceTool } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustZAiGlm53FlashConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustZAiGlm53Flash extends Base {
     static readonly displayName = "GLM-5.3 Flash";

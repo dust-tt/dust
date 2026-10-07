@@ -1,3 +1,4 @@
+import { skillFileNameFromPath } from "@app/lib/api/skills/apply_skill_suggestions";
 import type { Authenticator } from "@app/lib/auth";
 import {
   buildDescendantMap,
@@ -13,6 +14,7 @@ import type {
   SkillEditorsSuggestionData,
   SkillEditSuggestionData,
   SkillEditSuggestionType,
+  SkillFilesSuggestionData,
   SkillInstructionEditItemType,
   SkillSuggestionKind,
   SkillSuggestionSource,
@@ -20,6 +22,7 @@ import type {
 import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isFilesSkillSuggestion,
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
 
@@ -201,6 +204,49 @@ export async function pruneConflictingSkillEditorsSuggestions(
     return (
       editors.addUserIds.some((id) => newAddUserIds.has(id)) ||
       editors.removeUserIds.some((id) => newRemoveUserIds.has(id))
+    );
+  });
+
+  await outdateSkillSuggestions(auth, toMarkOutdated);
+}
+
+export async function pruneConflictingSkillFilesSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource & SkillFilesSuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const newRemoveFileIds = new Set(
+    newSuggestions.flatMap((s) => s.suggestion.removeFileIds)
+  );
+  const newAddedFileNames = new Set(
+    newSuggestions.flatMap((s) =>
+      s.suggestion.addFilePaths.map(skillFileNameFromPath)
+    )
+  );
+
+  const pendingFilesSuggestions = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["files"],
+      sources: PRUNED_SOURCES,
+    })
+  ).filter(isFilesSkillSuggestion);
+
+  const toMarkOutdated = pendingFilesSuggestions.filter((row) => {
+    if (excluded.has(row.sId)) {
+      return false;
+    }
+    const { removeFileIds, addFilePaths } = row.suggestion;
+    if (removeFileIds.some((id) => newRemoveFileIds.has(id))) {
+      return true;
+    }
+    return addFilePaths.some((filePath) =>
+      newAddedFileNames.has(skillFileNameFromPath(filePath))
     );
   });
 

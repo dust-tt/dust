@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 BINARY = Path('/target/release') if Path('/target/release/dfs').exists() else ROOT / 'target/release'
 
 
+def fuse_binary():
+    return Path(os.environ.get('DFS_BENCH_FUSE_BINARY', str(BINARY / 'dfs-fuse')))
+
+
 def secret_file(path, value):
     with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as out:
         out.write(value)
@@ -88,7 +92,7 @@ def mounted(endpoint, key, directory, threads=8, metrics_path=None):
     key_file = secret_file(directory.parent / (directory.name + '.key'), key)
     log_path = directory.parent / (directory.name + '.log')
     with log_path.open('w') as log:
-        process = subprocess.Popen([str(BINARY / 'dfs-fuse'), '--endpoint', endpoint,
+        process = subprocess.Popen([str(fuse_binary()), '--endpoint', endpoint,
             '--session-key-file', str(key_file), '--threads', str(threads), str(directory)], stdout=log, stderr=log)
     try:
         deadline = time.monotonic() + 30

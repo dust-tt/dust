@@ -79,7 +79,7 @@ app.post(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+    // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
     const conversationRes = await getConversation(auth, cId);
     if (conversationRes.isErr()) {
       return apiErrorForConversation(ctx, conversationRes.error);

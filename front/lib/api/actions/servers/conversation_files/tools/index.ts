@@ -197,7 +197,6 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     }
 
     // Apply offset and limit.
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const start = offset || 0;
 
     if (start > totalLength) {

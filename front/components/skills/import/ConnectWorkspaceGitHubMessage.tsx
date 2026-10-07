@@ -6,6 +6,7 @@ import {
   ContentMessage,
   GithubLogo,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ConnectWorkspaceGitHubMessageProps {
   owner: LightWorkspaceType;
@@ -16,6 +17,7 @@ export function ConnectWorkspaceGitHubMessage({
   owner,
   onConnected,
 }: ConnectWorkspaceGitHubMessageProps) {
+  const { t } = useLingui();
   const { connectGitHub, isConnectingGitHub } = useConnectWorkspaceGitHub({
     owner,
   });
@@ -32,19 +34,21 @@ export function ConnectWorkspaceGitHubMessage({
       variant="primary"
       size="lg"
       icon={GithubLogo}
-      title="Connect GitHub to import from private repositories"
+      title={t`Connect GitHub to import from private repositories`}
     >
       <div className="flex flex-col gap-3">
         <span>
-          Connect a GitHub account to grant access. All workspace members will
-          share this connection.
+          <Trans>
+            Connect a GitHub account to grant access. All workspace members will
+            share this connection.
+          </Trans>
         </span>
         <div className="flex justify-end">
           <Button
             variant="highlight"
             size="sm"
             icon={CloudArrowLeftRight}
-            label="Connect GitHub"
+            label={t`Connect GitHub`}
             isLoading={isConnectingGitHub}
             disabled={isConnectingGitHub}
             onClick={() => {

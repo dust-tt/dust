@@ -7,6 +7,7 @@ import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export function ProPlansTable({
   owner,
@@ -23,6 +24,7 @@ export function ProPlansTable({
   display: PriceTableDisplay;
   setBillingPeriod: (billingPeriod: BillingPeriod) => void;
 }) {
+  const { t } = useLingui();
   const isBusiness = owner.metadata?.isBusiness ?? false;
 
   if (isBusiness) {
@@ -41,11 +43,11 @@ export function ProPlansTable({
     <div className={classNames("w-full sm:px-0", className)}>
       <Tabs
         defaultValue="monthly"
-        onValueChange={(t) => setBillingPeriod(t as BillingPeriod)}
+        onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
       >
         <TabsList>
-          <TabsTrigger value="monthly" label="Monthly Billing" />
-          <TabsTrigger value="yearly" label="Yearly Billing" />
+          <TabsTrigger value="monthly" label={t`Monthly Billing`} />
+          <TabsTrigger value="yearly" label={t`Yearly Billing`} />
         </TabsList>
         <div className="mt-8">
           <TabsContent value="monthly">

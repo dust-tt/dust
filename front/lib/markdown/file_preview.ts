@@ -4,7 +4,8 @@ import {
   isAllSupportedFileContentType,
   stripMimeParameters,
 } from "@app/types/files";
-import { escape, unescape } from "html-escaper";
+import escape from "lodash/escape";
+import unescape from "lodash/unescape";
 
 export const FILE_PREVIEW_DIRECTIVE_NAME = "preview_file";
 export const FILE_PREVIEW_COMPONENT_NAME = "file_preview";

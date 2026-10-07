@@ -20,6 +20,7 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import { cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -71,6 +72,7 @@ export const AdminTriggersList = ({
   filter,
   setAgentId,
 }: AdminTriggersListProps) => {
+  const { t } = useLingui();
   const [sheetMode, setSheetMode] = useState<WebhookSourceSheetMode | null>(
     null
   );
@@ -114,7 +116,7 @@ export const AdminTriggersList = ({
       {
         id: "name",
         accessorKey: "name",
-        header: "Name",
+        header: t`Name`,
         cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
@@ -128,14 +130,20 @@ export const AdminTriggersList = ({
         },
       },
       {
-        header: "Provider",
+        header: t`Provider`,
         accessorKey: "webhookSource.provider",
-        cell: (info) => (
-          <DataTable.BasicCellContent
-            className="capitalize"
-            label={info.row.original.webhookSource.provider ?? "custom"}
-          />
-        ),
+        cell: (info) => {
+          const { provider } = info.row.original.webhookSource;
+          return (
+            <DataTable.BasicCellContent
+              className={provider ? "capitalize" : undefined}
+              label={
+                provider ??
+                t({ message: "Custom", context: "webhook source provider" })
+              }
+            />
+          );
+        },
         sortingFn: (rowA, rowB) => {
           return compareStrings(
             rowA.original.webhookSource.provider ?? "custom",
@@ -147,7 +155,7 @@ export const AdminTriggersList = ({
         },
       },
       {
-        header: "Used by",
+        header: t`Used by`,
         accessorFn: (row) => row.webhookSource.usage?.count ?? 0,
         cell: (info) => (
           <DataTable.CellContent>
@@ -167,11 +175,11 @@ export const AdminTriggersList = ({
       {
         id: "access",
         accessorKey: "spaces",
-        header: "Access",
+        header: t`Access`,
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
           const accessibleTo = globalSpace
-            ? "Workspace"
+            ? t`Workspace`
             : info
                 .getValue()
                 .filter((s) => s.kind === "regular")
@@ -197,7 +205,10 @@ export const AdminTriggersList = ({
       {
         id: "by",
         accessorKey: "webhookSourceView.editedByUser",
-        header: "By",
+        header: t({
+          message: "By",
+          context: "table header, user who last edited",
+        }),
         enableSorting: false,
         cell: (info) => {
           const editedByUser =
@@ -218,7 +229,7 @@ export const AdminTriggersList = ({
       {
         id: "lastUpdated",
         accessorKey: "webhookSourceView.editedByUser.editedAt",
-        header: "Last updated",
+        header: t`Last updated`,
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
             label={formatTimestampToFriendlyDate(
@@ -240,7 +251,7 @@ export const AdminTriggersList = ({
     );
 
     return columns;
-  }, [setAgentId]);
+  }, [setAgentId, t]);
 
   const createWebhook = (provider: WebhookProvider | null) => {
     setSheetMode({ type: "create", provider });
@@ -270,7 +281,7 @@ export const AdminTriggersList = ({
       />
       {rows.length === 0 ? (
         <EmptyCTA
-          message="You don’t have any triggers yet."
+          message={t`You don’t have any triggers yet.`}
           action={
             <AddTriggerButton
               variant="outline"

@@ -19,10 +19,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface CouponRedemptionResource
-  extends ReadonlyAttributesType<CouponRedemptionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface CouponRedemptionResource extends ReadonlyAttributesType<CouponRedemptionModel> {}
 export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel> {
   static model: ModelStaticWorkspaceAware<CouponRedemptionModel> =
     CouponRedemptionModel;
@@ -213,7 +210,7 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     // WORKSPACE_ISOLATION_BYPASS: Poke global view — listing all redemptions
     // across workspaces for a single coupon for admin visibility.
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: { couponId: coupon.id },
       include: [{ model: UserModel, as: "redeemedByUser", required: false }],

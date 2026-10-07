@@ -1,7 +1,9 @@
+import { CommandPaletteProvider } from "@app/components/command_palette/CommandPaletteContext";
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { RouteChangeMesssage } from "@extension/shared/messages";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { ExtensionCommandPalette } from "@extension/ui/components/command_palette/ExtensionCommandPalette";
 import { ExtensionClientSideMCPServerProvider } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
 import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
 import { ExtensionQuickActionsProvider } from "@extension/ui/components/quick_actions/ExtensionQuickActionsProvider";
@@ -76,13 +78,16 @@ export const ProtectedRoute = () => {
         "bg-background text-foreground"
       )}
     >
-      <ExtensionQuickActionsProvider owner={workspace}>
-        <ExtensionClientSideMCPServerProvider>
-          <ExtensionInputBarProvider workspace={workspace}>
-            <Outlet />
-          </ExtensionInputBarProvider>
-        </ExtensionClientSideMCPServerProvider>
-      </ExtensionQuickActionsProvider>
+      <CommandPaletteProvider>
+        <ExtensionQuickActionsProvider owner={workspace}>
+          <ExtensionClientSideMCPServerProvider>
+            <ExtensionInputBarProvider workspace={workspace}>
+              <Outlet />
+              <ExtensionCommandPalette owner={workspace} user={user} />
+            </ExtensionInputBarProvider>
+          </ExtensionClientSideMCPServerProvider>
+        </ExtensionQuickActionsProvider>
+      </CommandPaletteProvider>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { MemberSelectionTable } from "@app/components/members/MemberSelectionTab
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface RestrictedAccessBodyProps {
@@ -23,6 +24,7 @@ export function RestrictedAccessBody({
   onGroupsUpdated,
   initialMembers,
 }: RestrictedAccessBodyProps) {
+  const { t } = useLingui();
   const [activeTab, setActiveTab] = useState("members");
 
   // Members and groups are not exclusive: the space's members are the ones picked here plus the
@@ -31,8 +33,8 @@ export function RestrictedAccessBody({
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
-        <TabsTrigger value="members" label="Members" />
-        <TabsTrigger value="groups" label="Groups" />
+        <TabsTrigger value="members" label={t`Members`} />
+        <TabsTrigger value="groups" label={t`Groups`} />
       </TabsList>
       <TabsContent value="members">
         <MemberSelectionTable

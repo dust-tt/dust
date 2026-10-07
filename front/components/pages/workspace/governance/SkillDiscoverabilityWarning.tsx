@@ -2,8 +2,9 @@ import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import { capabilityKey } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import { ContentMessage } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 // Making a skill discoverable is useless without also being able to pick its availability: whoever
 // can do the former should be able to do the latter. Returns who can make skills discoverable but
@@ -11,7 +12,7 @@ import { ContentMessage } from "@dust-tt/sparkle";
 function getDiscoverabilityWarningSubject(
   governancePermissions: GovernancePermissionsByKey,
   groups: GroupType[]
-): string | null {
+): "everyone" | string[] | null {
   const availability =
     governancePermissions[
       capabilityKey({ grantType: "publish", resourceType: "skill" })
@@ -30,7 +31,7 @@ function getDiscoverabilityWarningSubject(
     return null;
   }
   if (discoverability.scope !== "groups") {
-    return discoverability.scope === "everyone" ? "Everyone" : null;
+    return discoverability.scope === "everyone" ? "everyone" : null;
   }
 
   const availabilityGroupIds = new Set(
@@ -47,7 +48,7 @@ function getDiscoverabilityWarningSubject(
     return null;
   }
 
-  return `The group${pluralize(missingGroupNames.length)} ${missingGroupNames.join(", ")}`;
+  return missingGroupNames;
 }
 
 interface SkillDiscoverabilityWarningProps {
@@ -59,6 +60,7 @@ export const SkillDiscoverabilityWarning = ({
   governancePermissions,
   groups,
 }: SkillDiscoverabilityWarningProps) => {
+  const { t } = useLingui();
   const subject = getDiscoverabilityWarningSubject(
     governancePermissions,
     groups
@@ -68,12 +70,30 @@ export const SkillDiscoverabilityWarning = ({
     return null;
   }
 
+  if (subject === "everyone") {
+    return (
+      <div className="w-full p-4">
+        <ContentMessage variant="golden" size="lg">
+          <Trans>
+            Everyone can make skills discoverable, but only people who can
+            manage skill availability can act on it. Consider granting them
+            "Manage skill availability" to make this permission usable.
+          </Trans>
+        </ContentMessage>
+      </div>
+    );
+  }
+
+  const groupCount = subject.length;
+  const groupNames = subject.join(", ");
+
   return (
     <div className="w-full p-4">
       <ContentMessage variant="golden" size="lg">
-        {subject} can make skills discoverable, but only people who can manage
-        skill availability can act on it. Consider granting them "Manage skill
-        availability" to make this permission usable.
+        {t`${plural(groupCount, {
+          one: `The group ${groupNames} can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them "Manage skill availability" to make this permission usable.`,
+          other: `The groups ${groupNames} can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them "Manage skill availability" to make this permission usable.`,
+        })}`}
       </ContentMessage>
     </div>
   );

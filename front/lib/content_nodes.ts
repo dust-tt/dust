@@ -16,7 +16,7 @@ import type {
 } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   File02,

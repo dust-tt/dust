@@ -6,6 +6,7 @@ import type {
   SkillWithVersionType,
 } from "@app/types/assistant/skill_configuration";
 import { Button, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface SkillVersionHistoryPickerProps {
   skill: SkillType;
@@ -16,6 +17,7 @@ export function SkillVersionHistoryPicker({
   skill,
   skillHistory,
 }: SkillVersionHistoryPickerProps) {
+  const { t } = useLingui();
   const { owner } = useSkillBuilderContext();
   const { compareVersion, enterDiffMode, exitDiffMode } =
     useSkillVersionComparisonContext();
@@ -39,7 +41,7 @@ export function SkillVersionHistoryPicker({
           variant="outline"
           size="sm"
           onClick={exitDiffMode}
-          tooltip="Leave comparison mode"
+          tooltip={t`Leave comparison mode`}
         />
       )}
     </div>

@@ -1,8 +1,8 @@
-import { LandingEmailSignup } from "@marketing/components/home/content/Landing/LandingEmailSignup";
+import { Check, Clock, Icon, Lock01 } from "@dust-tt/sparkle";
 import { OpenDustButton } from "@marketing/components/home/OpenDustButton";
+import { LandingEmailSignup } from "@marketing/components/home/content/Landing/LandingEmailSignup";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@marketing/lib/cookies";
 import { TRACKING_AREAS } from "@marketing/lib/tracking";
-import { Check, Clock, Icon, Lock01 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";

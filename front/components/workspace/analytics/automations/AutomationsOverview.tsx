@@ -5,6 +5,8 @@ import { formatCredits } from "@app/lib/client/credits";
 import { formatNumber } from "@app/lib/i18n/format";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 interface AutomationsOverviewProps {
   owner: LightWorkspaceType;
@@ -15,6 +17,7 @@ export function AutomationsOverview({
   owner,
   period,
 }: AutomationsOverviewProps) {
+  const { t } = useLingui();
   const { overview, isOverviewLoading, isOverviewError } =
     useAutomationsOverview({ workspaceId: owner.sId, period });
 
@@ -29,27 +32,35 @@ export function AutomationsOverview({
   const { automationCredits, workspaceTotalCredits, triggers } = overview;
   const disabledCount = triggers.total - triggers.enabled;
   const memberPoolCount = triggers.total - triggers.workspacePool;
+  const workspaceShare =
+    workspaceTotalCredits > 0
+      ? Math.round((automationCredits / workspaceTotalCredits) * 100)
+      : null;
 
   return (
     <div className="flex items-stretch gap-6">
       <SummaryCard
-        label="Credits"
+        label={t`Credits`}
         value={formatCredits(automationCredits)}
         hint={
-          workspaceTotalCredits > 0
-            ? `${Math.round((automationCredits / workspaceTotalCredits) * 100)}% of workspace consumption`
+          workspaceShare !== null
+            ? t`${workspaceShare}% of workspace consumption`
             : null
         }
       />
       <SummaryCard
-        label="Triggers enabled"
+        label={t`Triggers enabled`}
         value={`${formatNumber(triggers.enabled)} / ${formatNumber(triggers.total)}`}
-        hint={disabledCount > 0 ? `${disabledCount} disabled` : null}
+        hint={
+          disabledCount > 0
+            ? t`${plural(disabledCount, { one: "# disabled", other: "# disabled" })}`
+            : null
+        }
       />
       <SummaryCard
-        label="Workspace pool"
+        label={t`Workspace pool`}
         value={`${formatNumber(triggers.workspacePool)} / ${formatNumber(triggers.total)}`}
-        hint={memberPoolCount > 0 ? `${memberPoolCount} on member pool` : null}
+        hint={memberPoolCount > 0 ? t`${memberPoolCount} on member pool` : null}
       />
     </div>
   );

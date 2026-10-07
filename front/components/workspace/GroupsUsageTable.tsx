@@ -14,6 +14,7 @@ import {
   LoadingBlock,
   Users01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -73,6 +74,7 @@ export function GroupsUsageTable({
   seatPlans,
   grantableSeatTypes,
 }: GroupsUsageTableProps) {
+  const { t } = useLingui();
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
@@ -100,7 +102,7 @@ export function GroupsUsageTable({
       {
         id: "name",
         accessorFn: (row) => row.name,
-        header: "Group",
+        header: t`Group`,
         cell: (info: GroupInfo) => (
           <DataTable.CellContent icon={Users01} className="capitalize">
             {info.row.original.name}
@@ -111,7 +113,7 @@ export function GroupsUsageTable({
       {
         id: "memberCount",
         accessorFn: (row) => String(row.memberCount),
-        header: "Members",
+        header: t`Members`,
         meta: { className: "w-[120px]" },
         cell: (info: GroupInfo) => (
           <DataTable.BasicCellContent
@@ -127,7 +129,7 @@ export function GroupsUsageTable({
         ? [
             {
               id: "grantedSeat",
-              header: "Granted seat",
+              header: t`Granted seat`,
               meta: { className: "hidden @2xl:table-cell @2xl:w-56" },
               cell: (info: GroupInfo) => (
                 <GroupSeatPickerDropdown
@@ -148,7 +150,7 @@ export function GroupsUsageTable({
         ? [
             {
               id: "cap",
-              header: "Spend limit",
+              header: t`Spend limit`,
               meta: { className: "hidden @3xl:table-cell @3xl:w-64" },
               cell: (info: GroupInfo) => (
                 <GroupSpendLimitCell
@@ -176,7 +178,7 @@ export function GroupsUsageTable({
               id: "modelTiers",
               header: () => (
                 <span className="flex items-center gap-1">
-                  Models tier
+                  <Trans>Models tier</Trans>
                   <ModelTiersInfoButton />
                 </span>
               ),
@@ -201,6 +203,7 @@ export function GroupsUsageTable({
       seatPlans,
       grantableSeatTypes,
       doUpdateGroupSpendLimit,
+      t,
     ]
   );
 
@@ -208,8 +211,10 @@ export function GroupsUsageTable({
     <div className="flex flex-col gap-3">
       {showSpendLimitColumn && (
         <span className="copy-sm text-muted-foreground">
-          A group's monthly spend limit applies to each of its members. When a
-          member belongs to several groups, the highest limit is used.
+          <Trans>
+            A group's monthly spend limit applies to each of its members. When a
+            member belongs to several groups, the highest limit is used.
+          </Trans>
         </span>
       )}
       {isGroupsLoading ? (

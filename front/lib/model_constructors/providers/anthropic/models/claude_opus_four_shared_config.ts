@@ -58,9 +58,7 @@ export type AnthropicOpusInputConfig = z.infer<typeof opusConfigSchema>;
 // identical, so each model file is a one-line binding of this factory.
 export function withAnthropicOpusConfig<const M extends Model>(modelId: M) {
   return function WithAnthropicOpusConfig<
-    TBase extends abstract new (
-      ...args: any[]
-    ) => object,
+    TBase extends abstract new (...args: any[]) => object,
   >(Base: TBase) {
     abstract class AnthropicClaudeOpus extends Base {
       // Narrow `Client`'s `["constructor"]` to this model's precise config so

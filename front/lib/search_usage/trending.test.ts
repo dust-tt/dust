@@ -408,25 +408,27 @@ describe("discovery trending candidates", () => {
     expect(search).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    "selection",
-    "metrics",
-  ] as const)("propagates an Elasticsearch failure from %s", async (stage) => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-    const error = new ElasticsearchError("connection_error", "Search failed");
-    if (stage === "selection") {
-      search.mockResolvedValue(new Err(error));
-    } else {
-      search
-        .mockResolvedValueOnce(
-          selectionResponse({ agents: ["candidate"], skills: [] })
-        )
-        .mockResolvedValueOnce(new Err(error));
+  it.each(["selection", "metrics"] as const)(
+    "propagates an Elasticsearch failure from %s",
+    async (stage) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const error = new ElasticsearchError("connection_error", "Search failed");
+      if (stage === "selection") {
+        search.mockResolvedValue(new Err(error));
+      } else {
+        search
+          .mockResolvedValueOnce(
+            selectionResponse({ agents: ["candidate"], skills: [] })
+          )
+          .mockResolvedValueOnce(new Err(error));
+      }
+
+      const result = await fetchDiscoveryTrendingCandidates(auth);
+
+      expect(result).toEqual(new Err(error));
+      expect(search).toHaveBeenCalledTimes(stage === "selection" ? 1 : 2);
     }
-
-    const result = await fetchDiscoveryTrendingCandidates(auth);
-
-    expect(result).toEqual(new Err(error));
-    expect(search).toHaveBeenCalledTimes(stage === "selection" ? 1 : 2);
-  });
+  );
 });

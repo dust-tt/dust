@@ -2,9 +2,7 @@ import { forceTemperatureToZero } from "@app/lib/llms/stream/types/configuration
 import { FIREWORKS_KIMI_K3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustMoonshotAiKimiK3Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustMoonshotAiKimiK3 extends Base {
     static readonly displayName = "Kimi K3";

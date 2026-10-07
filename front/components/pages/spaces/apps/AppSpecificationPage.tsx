@@ -5,6 +5,7 @@ import { dumpSpecification } from "@app/lib/specification";
 import { useApp } from "@app/lib/swr/apps";
 import type { SpecificationType } from "@app/types/app";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 export function AppSpecificationPage() {
@@ -50,7 +51,9 @@ export function AppSpecificationPage() {
 
   return (
     <div className="mt-8 flex flex-col gap-4">
-      <h3>Current specifications:</h3>
+      <h3>
+        <Trans>Current specifications:</Trans>
+      </h3>
       <div className="whitespace-pre font-mono text-sm text-foreground">
         {specification}
       </div>

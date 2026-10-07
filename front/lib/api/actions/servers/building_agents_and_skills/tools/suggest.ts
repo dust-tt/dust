@@ -47,6 +47,7 @@ import {
   validateSkillDeletionSuggestion,
   validateSkillEditorsSuggestion,
   validateSkillEditSuggestion,
+  validateSkillFilesSuggestion,
   validateSkillNameSuggestion,
   validateSkillUserFacingDescriptionSuggestion,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
@@ -467,6 +468,7 @@ async function planSkillEdit(
     availability,
     addEditorUserIds,
     removeEditorUserIds,
+    files: fileChanges,
   }: EditSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const skillRes = await fetchSkillForSuggestion(auth, skillId);
@@ -538,6 +540,20 @@ async function planSkillEdit(
       return validation;
     }
     rows.push({ kind: "editors", suggestion: validation.value });
+  }
+
+  if (
+    fileChanges?.addFilePaths !== undefined ||
+    fileChanges?.removeFileIds !== undefined
+  ) {
+    const validation = await validateSkillFilesSuggestion(auth, skill, {
+      addFilePaths: fileChanges.addFilePaths ?? [],
+      removeFileIds: fileChanges.removeFileIds ?? [],
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    rows.push({ kind: "files", suggestion: validation.value });
   }
 
   if (rows.length === 0) {
@@ -891,7 +907,7 @@ async function createPendingSkills(
   );
   const pendingSkills = await SkillResource.createPendings(
     auth,
-    skillCreations.length
+    skillCreations.map((change) => change.create.name)
   );
   if (pendingSkills.isErr()) {
     return new Err(new MCPError(pendingSkills.error.message));
@@ -1006,6 +1022,7 @@ function resolveSkillRow(
     case "name":
     case "delete":
     case "availability":
+    case "files":
       return row;
     default:
       assertNever(row);

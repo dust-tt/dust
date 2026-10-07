@@ -1,0 +1,113 @@
+syntax = "proto3";
+package dfs.v4;
+
+// Authentication is a bearer key in authorization metadata. Filesystem RPCs derive tenant and
+// grants from the session. Tenant/grant administration uses tenant or server authority.
+service Dfs {
+  rpc CreateTenant(CreateTenantRequest) returns (Tenant);
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+  rpc CurrentSession(Empty) returns (Session);
+  rpc CloseSession(Empty) returns (Empty);
+  rpc ListGrants(ListGrantsRequest) returns (GrantPage);
+  rpc UpdateGrants(UpdateGrantsRequest) returns (Object);
+  rpc Stat(ObjectRequest) returns (Object);
+  rpc StatMany(StatManyRequest) returns (StatManyResponse);
+  rpc Lookup(LookupRequest) returns (Object);
+  rpc List(ListRequest) returns (Page);
+  rpc Create(CreateRequest) returns (Mutation);
+  rpc Update(UpdateRequest) returns (Mutation);
+  rpc Rename(RenameRequest) returns (Mutation);
+  rpc Remove(RemoveRequest) returns (Mutation);
+  rpc Read(ReadRequest) returns (ReadResponse);
+  rpc Write(WriteRequest) returns (Mutation);
+  rpc Fsync(ObjectRequest) returns (Object);
+  rpc MutateBatch(MutateBatchRequest) returns (stream GroupResult);
+}
+message Empty {}
+message Timestamp { int64 seconds = 1; uint32 nanos = 2; }
+// Parent links remain private. IDs also accept root/shared for projected directories on reads.
+message Object {
+  string id = 1;
+  bool directory = 2;
+  uint64 size = 3;
+  string mime_type = 5;
+  map<string, bytes> xattrs = 6;
+  uint32 mode = 7;
+  Timestamp atime = 8;
+  Timestamp mtime = 9;
+  Timestamp ctime = 10;
+  bytes revision = 11;
+}
+message Mutation { Object object = 1; repeated Object related = 2; }
+message Entry { string name = 1; Object object = 2; }
+// A nonempty revision validates only directory membership, from the same snapshot as the entries.
+// Child attributes have independent revisions. Virtual root/shared projections return no revision.
+message Page {
+  repeated Entry entries = 1;
+  optional string next_after = 2;
+  bytes directory_revision = 3;
+}
+message CreateTenantRequest { string tenant_id = 1; repeated string root_grants = 2; }
+message Tenant { string tenant_id = 1; string root_id = 2; string tenant_key = 3; }
+message CreateSessionRequest { string tenant_id = 1; repeated string grants = 2; }
+message Session {
+  string id = 1; string tenant_id = 2; repeated string grants = 3;
+  string session_key = 4; uint64 expires_at = 5; string root_id = 6;
+}
+message ListGrantsRequest {
+  string tenant_id = 1; string object_id = 2; optional string after = 3; uint32 limit = 4;
+}
+message GrantPage { repeated string grants = 1; optional string next_after = 2; }
+message GrantChange { string grant = 1; bool attached = 2; }
+message UpdateGrantsRequest {
+  string tenant_id = 1; string object_id = 2;
+  repeated GrantChange changes = 4;
+}
+message ObjectRequest { string object_id = 1; }
+message StatManyRequest { repeated string object_ids = 1; }
+message StatResult { string object_id = 1; Object object = 2; ErrorDetails error = 3; }
+message StatManyResponse { repeated StatResult results = 1; }
+message LookupRequest { string parent_id = 1; string name = 2; }
+message ListRequest { string directory_id = 1; optional string after = 2; uint32 limit = 3; }
+message CreateRequest {
+  string parent_id = 1; string name = 2;
+  bool directory = 4; optional string mime_type = 5; uint32 mode = 6;
+  map<string, bytes> xattrs = 7;
+  string object_id = 8;
+}
+message XattrChange { string name = 1; optional bytes value = 2; }
+// A size patch is truncate. All requested changes are accepted as one coherent state.
+message UpdateRequest {
+  string object_id = 1;
+  optional string mime_type = 3; repeated XattrChange xattrs = 4;
+  optional uint32 mode = 5; Timestamp atime = 6; Timestamp mtime = 7; optional uint64 size = 8;
+}
+// Rename atomically changes both parents and the moved object, including any replacement.
+message RenameRequest {
+  string object_id = 1; string parent_id = 2; string name = 3; bool replace = 4;
+
+}
+message RemoveRequest { string object_id = 1; bool directory = 2; }
+message ReadRequest { string object_id = 1; uint64 offset = 2; uint32 length = 3; bytes revision = 4; }
+message ReadResponse { bytes data = 1; uint64 size = 3; bytes revision = 4; }
+message WriteRequest {
+  string object_id = 1; uint64 offset = 3; bytes data = 4; bool append = 5;
+}
+// Groups are independently atomic. Clients submit dependent groups only after prerequisites commit.
+message Edit {
+  oneof operation {
+    CreateRequest create = 1; UpdateRequest update = 2; WriteRequest write = 3;
+    RenameRequest rename = 4; RemoveRequest remove = 5;
+  }
+}
+message MutationGroup { uint64 id = 1; repeated Edit edits = 2; }
+message MutateBatchRequest { repeated MutationGroup groups = 1; }
+message GroupResult { uint64 id = 1; Mutation mutation = 2; ErrorDetails error = 3; }
+// Stable details for filesystem errno mapping; public messages never include private state.
+enum ErrorCode {
+  INTERNAL = 0; INVALID_INPUT = 1; NOT_FOUND = 2; FORBIDDEN = 3; UNAUTHENTICATED = 4;
+   ALREADY_EXISTS = 6; NOT_DIRECTORY = 7; IS_DIRECTORY = 8;
+  NOT_EMPTY = 9; CAPACITY = 10; UNAVAILABLE = 11; UNSUPPORTED = 12; NAME_TOO_LONG = 13;
+  STALE_VIEW = 14;
+}
+message ErrorDetails { ErrorCode code = 1; }

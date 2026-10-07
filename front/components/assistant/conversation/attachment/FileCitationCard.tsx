@@ -101,8 +101,10 @@ function renderFileCitationIcon(
   );
 }
 
-interface FileCitationChipProps
-  extends Omit<FileCitationCardPropsBase, "size" | "variant"> {
+interface FileCitationChipProps extends Omit<
+  FileCitationCardPropsBase,
+  "size" | "variant"
+> {
   href?: string;
   onClick?: () => void;
 }

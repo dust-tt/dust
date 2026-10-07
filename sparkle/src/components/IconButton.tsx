@@ -80,11 +80,10 @@ const iconButtonVariants = cva(
   }
 );
 
-export interface IconButtonProps
-  extends Omit<
-    React.ComponentPropsWithoutRef<typeof Button>,
-    "label" | "variant"
-  > {
+export interface IconButtonProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof Button>,
+  "label" | "variant"
+> {
   /** Visual style of the icon (color scheme for rest/hover/active states). */
   variant?: IconButtonVariantType;
   /** Invoked when the button is clicked. */

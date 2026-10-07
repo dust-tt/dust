@@ -31,6 +31,7 @@ export type WorkspaceLimit =
   | "credits_exhausted"
   | "pool_credits_exhausted"
   | "user_credits_exhausted"
+  | "group_limit_reached"
   | "no_seat";
 
 // Maps a raw API error.type string (from retry/edit endpoints) to the blocking
@@ -45,6 +46,8 @@ export function getWorkspaceLimitFromApiErrorType(
       return "pool_credits_exhausted";
     case "user_cap_reached":
       return "user_credits_exhausted";
+    case "group_limit_reached":
+      return "group_limit_reached";
     case "no_seat":
       return "no_seat";
     default:
@@ -64,6 +67,8 @@ export function getWorkspaceLimitForSubmitError(
       return "pool_credits_exhausted";
     case "user_cap_reached_error":
       return "user_credits_exhausted";
+    case "group_limit_reached_error":
+      return "group_limit_reached";
     case "no_seat_error":
       return "no_seat";
     case "user_not_found":
@@ -280,6 +285,19 @@ function getLimitPromptForCode(
         ),
       };
     }
+
+    case "group_limit_reached":
+      return {
+        title: "Group usage limit reached",
+        validateLabel: "Ok",
+        children: (
+          <Page.P>
+            {isAdmin
+              ? "Your group has reached its usage limit. You can adjust group limits on the usage page."
+              : "Your group has reached its usage limit. Please contact your group managers or administrator to increase it."}
+          </Page.P>
+        ),
+      };
 
     default:
       assertNeverAndIgnore(code);

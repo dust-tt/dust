@@ -6,7 +6,7 @@ import type {
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
-import { MCP_CLIENT_ID_METADATA_DOCUMENT_URL } from "@app/lib/api/mcp_server/urls";
+import { getMcpClientIdMetadataDocumentUrl } from "@app/lib/api/mcp_server/urls";
 import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -132,13 +132,10 @@ type RemoteMCPServerHeavyAttributesType = Pick<
 // Heavy attributes are not exposed directly: use their getters (`getCachedTools`, ...) after
 // listing them in `includeHeavyAttributes` at fetch time (none are fetched by default) or
 // after an explicit `hydrateHeavyAttributes`.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface RemoteMCPServerResource
-  extends Omit<
-    ReadonlyAttributesType<RemoteMCPServerModel>,
-    RemoteMCPServerHeavyAttributeType
-  > {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface RemoteMCPServerResource extends Omit<
+  ReadonlyAttributesType<RemoteMCPServerModel>,
+  RemoteMCPServerHeavyAttributeType
+> {}
 export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
   static model: ModelStaticWorkspaceAware<RemoteMCPServerModel> =
     RemoteMCPServerModel;
@@ -474,7 +471,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       order: [["id", "ASC"]],
       // WORKSPACE_ISOLATION_BYPASS: daily sync job iterates over all remote MCP servers across
       // workspaces (see front/temporal/remote_tools/activities.ts).
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -488,7 +485,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     const blob = await this.model.findByPk(id, {
       // WORKSPACE_ISOLATION_BYPASS: daily sync job resolves each server listed by
       // dangerouslyListAllServersIds before building an Authenticator for its workspace.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!blob) {
@@ -701,7 +698,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * applies: (1) outside development, when the authorization-server metadata
    * advertises `client_id_metadata_document_supported`, returns a public-client
    * metadata (`token_endpoint_auth_method: "none"`, no `client_secret`) whose
-   * `client_id` is `MCP_CLIENT_ID_METADATA_DOCUMENT_URL`; else (2) attempts
+   * `client_id` is `getMcpClientIdMetadataDocumentUrl()`; else (2) attempts
    * Dynamic Client Registration; else (3) fails with a `DustError` directing the
    * caller to Static OAuth. It never performs DCR when CIMD applies.
    */
@@ -831,7 +828,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         authorization_endpoint: metadata.authorization_endpoint,
         token_endpoint: metadata.token_endpoint,
         token_endpoint_auth_method: "none",
-        client_id: MCP_CLIENT_ID_METADATA_DOCUMENT_URL,
+        client_id: getMcpClientIdMetadataDocumentUrl(),
         resource: resource
           ? url.format(resource, { fragment: false })
           : undefined,

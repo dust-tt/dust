@@ -312,11 +312,11 @@ function useDataTableInstance<TData extends TBaseData>({
     ...(getRowLabel && { meta: { getRowLabel } }),
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: table is recreated every render, adding it would cause infinite re-runs
   useEffect(() => {
     if (filterColumn) {
       table.getColumn(filterColumn)?.setFilterValue(filter);
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [filter, filterColumn]);
 
   return table;

@@ -40,55 +40,59 @@ describe("validateActionFromEmail", () => {
     });
   });
 
-  it.each([
-    "interrupted",
-    "gracefully_stopped",
-  ] as const)("rejects resolving an action whose agent message is %s", async (status) => {
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent",
-    });
-    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
-      auth,
-      workspace,
-      conversationId: conversation.id,
-      rank: 0,
-      content: "Test message",
-    });
-    const messageRow = await ConversationFactory.createAgentMessageWithRank({
-      workspace,
-      conversationId: conversation.id,
-      rank: 1,
-      agentConfigurationId: agentConfig.sId,
-      agentConfigurationVersion: agentConfig.version,
-      parentId: userMessageRow.id,
-    });
-    const { action } = await AgentMCPActionFactory.create(auth, {
-      workspace,
-      conversationModelId: conversation.id,
-      agentMessageModelId: messageRow.agentMessageId!,
-    });
+  it.each(["interrupted", "gracefully_stopped"] as const)(
+    "rejects resolving an action whose agent message is %s",
+    async (status) => {
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+      const userMessageRow =
+        await ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversation.id,
+          rank: 0,
+          content: "Test message",
+        });
+      const messageRow = await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+      const { action } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: messageRow.agentMessageId!,
+      });
 
-    await ConversationFactory.setAgentMessageStatus({
-      workspace,
-      agentMessageModelId: messageRow.agentMessageId!,
-      status,
-    });
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: messageRow.agentMessageId!,
+        status,
+      });
 
-    const result = await validateActionFromEmail(auth, {
-      actionId: action.sId,
-      approvalState: "approved",
-    });
+      const result = await validateActionFromEmail(auth, {
+        actionId: action.sId,
+        approvalState: "approved",
+      });
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.code).toBe("action_not_blocked");
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("action_not_blocked");
+      }
+
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("blocked_validation_required");
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
-
-    const reloadedAction = await AgentMCPActionResource.fetchById(
-      auth,
-      action.sId
-    );
-    expect(reloadedAction?.status).toBe("blocked_validation_required");
-    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
-  });
+  );
 });

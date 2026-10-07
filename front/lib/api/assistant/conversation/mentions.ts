@@ -171,7 +171,7 @@ export async function resolveUserMentions(
       const isParticipant =
         await ConversationResource.isConversationParticipant(auth, {
           conversation,
-          user: user.toJSON(),
+          user,
         });
 
       // TODO: Alternative approach would be to always set pending_project_membership for
@@ -257,7 +257,7 @@ export async function validateUserMention(
     approvalState: "approved" | "rejected";
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({
@@ -484,7 +484,7 @@ export async function validateUserMention(
     auth,
     {
       conversation,
-      user: user.toJSON(),
+      user,
     }
   );
 
@@ -522,7 +522,7 @@ export async function dismissMention(
     id: string;
   }
 ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({

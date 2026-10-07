@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
@@ -32,7 +33,9 @@ interface ProviderInfoProps {
 function ProviderInfo({ providerId, logo }: ProviderInfoProps) {
   return (
     <div className="flex flex-col gap-2">
-      <Page.H variant="h6">Provider</Page.H>
+      <Page.H variant="h6">
+        <Trans>Provider</Trans>
+      </Page.H>
       <ContextItem
         title={PRETTIFIED_PROVIDER_NAMES[providerId]}
         visual={<Icon visual={logo} size="md" />}
@@ -45,7 +48,7 @@ function ProviderInfo({ providerId, logo }: ProviderInfoProps) {
             variant="highlight"
             className="font-normal text-sm"
           >
-            Documentation
+            <Trans>Documentation</Trans>
           </Hoverable>
         </ContextItem.Description>
       </ContextItem>
@@ -70,6 +73,7 @@ export function KeyConfigurationSheet({
   logo,
   apiKey: initialApiKey,
 }: KeyConfigurationSheetProps) {
+  const { t } = useLingui();
   const [apiKey, setApiKey] = useState("");
 
   const { saveProviderCredential, isSaving } = useSaveProviderCredential({
@@ -99,20 +103,24 @@ export function KeyConfigurationSheet({
     onOpenChange(open);
   };
 
+  const providerName = PRETTIFIED_PROVIDER_NAMES[providerId];
+
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>
-            Configure {PRETTIFIED_PROVIDER_NAMES[providerId]} API key
+            <Trans>Configure {providerName} API key</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <ProviderInfo providerId={providerId} logo={logo} />
           <div className="flex flex-col gap-2">
-            <Page.H variant="h6">Api key</Page.H>
+            <Page.H variant="h6">
+              <Trans>API key</Trans>
+            </Page.H>
             <Input
-              placeholder="Type an API Key"
+              placeholder={t`Type an API key`}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               disabled={isSaving}
@@ -122,13 +130,13 @@ export function KeyConfigurationSheet({
         <div className="flex flex-none flex-col gap-2">
           <div className="flex items-center justify-between border-t border-border p-3">
             <Button
-              label="Cancel"
+              label={t`Cancel`}
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isSaving}
             />
             <Button
-              label="Save"
+              label={t`Save`}
               onClick={handleSave}
               disabled={!apiKey.trim() || isSaving}
             />

@@ -143,8 +143,7 @@ export const NewConversationContainer = React.forwardRef<
 
 NewConversationContainer.displayName = "NewConversationContainer";
 
-interface NewConversationSectionHeadingProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationSectionHeadingProps extends React.HTMLAttributes<HTMLDivElement> {
   label?: string;
 }
 
@@ -161,8 +160,7 @@ export const NewConversationSectionHeading = React.forwardRef<
 
 NewConversationSectionHeading.displayName = "NewConversationSectionHeading";
 
-interface NewConversationActiveIndicatorProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationActiveIndicatorProps extends React.HTMLAttributes<HTMLDivElement> {
   type: MessageGroupType;
   action: string;
   name?: string;
@@ -209,8 +207,7 @@ const messageGroupVariants = cva("flex w-full flex-col gap-1", {
   },
 });
 
-interface NewConversationMessageGroupProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   type: MessageGroupType;
   avatar?: React.ComponentProps<typeof Avatar>;
   name?: string;
@@ -275,8 +272,7 @@ export const NewConversationMessageGroup = React.forwardRef<
 
 NewConversationMessageGroup.displayName = "NewConversationMessageGroup";
 
-interface NewConversationMessageGroupHeaderProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageGroupHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   groupType: MessageGroupType;
   avatar?: React.ComponentProps<typeof Avatar>;
   name?: string;
@@ -458,8 +454,10 @@ function useCollapsibleContent({
 
 type UserMessageType = "locutor" | "interlocutor";
 
-interface NewConversationUserMessageProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+interface NewConversationUserMessageProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   reactions?: MessageReactionData[];
@@ -786,8 +784,10 @@ NewConversationUserMessage.displayName = "NewConversationUserMessage";
 
 // --- Agent message ---
 
-interface NewConversationAgentMessageProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+interface NewConversationAgentMessageProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   onDelete?: () => void;
@@ -945,8 +945,7 @@ export const NewConversationAgentMessage = React.forwardRef<
 
 NewConversationAgentMessage.displayName = "NewConversationAgentMessage";
 
-interface NewConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
   reactions?: MessageReactionData[];
@@ -990,8 +989,7 @@ NewConversationMessageContent.displayName = "NewConversationMessageContent";
 
 // --- Pending validation block (ephemeral container: user + agent + Accept/Cancel) ---
 
-interface NewConversationPendingValidationBlockProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationPendingValidationBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   userMessageContent: React.ReactNode;
   agentMessageContent: React.ReactNode;
   userGroupHeader: {

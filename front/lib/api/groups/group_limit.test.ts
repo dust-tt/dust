@@ -2,25 +2,34 @@ import {
   makeGroupLimitAwuCreditsRateLimitKeyForGroup,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
-import * as workosAudit from "@app/lib/api/audit/workos_audit";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import { isUserBlocked } from "@app/lib/api/credits/access_control";
+import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
+import {
+  ElasticsearchError,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import {
   areGroupLimitsEnabled,
+  isGroupLimitReached,
   MAX_GROUP_LIMIT_AWU_CREDITS,
   recordGroupLimitUsage,
   resolveLimitGroupForUser,
   resolveLimitGroupsForUsers,
+  resyncGroupLimitCountersFromEsUsage,
   setGroupLimit,
 } from "@app/lib/api/groups/group_limit";
+import { setGroupSpendLimit } from "@app/lib/api/groups/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
-import * as planType from "@app/lib/metronome/plan_type";
-import type * as seatTypes from "@app/lib/metronome/seat_types";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import * as cycle from "@app/lib/spend_limits/cycle";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import {
+  expireRateLimiterKey,
   getFixedWindowCount,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
@@ -28,8 +37,8 @@ import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import {
   mockActiveContract,
@@ -40,52 +49,92 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { GroupLimit } from "@app/types/api/groups/group_limit";
 import type { WithAccessControl } from "@app/types/resource_permissions";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { UniqueConstraintError } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.unmock("@app/lib/api/redis");
 
-vi.mock("@app/lib/metronome/plan_type", async () => {
-  const actual = await vi.importActual<typeof planType>(
-    "@app/lib/metronome/plan_type"
-  );
-  return { ...actual, getActiveContract: vi.fn() };
+vi.mock(import("@app/lib/metronome/plan_type"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  getActiveContract: vi.fn(),
+}));
+
+vi.mock(import("@app/lib/metronome/seat_types"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  getProductSeatTypes: vi.fn(),
+}));
+
+vi.mock(import("@app/lib/api/audit/workos_audit"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  emitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock(import("@app/lib/spend_limits/cycle"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  resolveSpendLimitCycleBounds: vi.fn(),
+}));
+
+vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, searchConsumptionAnalytics: vi.fn() };
 });
 
-vi.mock("@app/lib/metronome/seat_types", async () => {
-  const actual = await vi.importActual<typeof seatTypes>(
-    "@app/lib/metronome/seat_types"
-  );
-  return { ...actual, getProductSeatTypes: vi.fn() };
-});
-
-vi.mock("@app/lib/api/audit/workos_audit", async () => {
-  const actual = await vi.importActual<typeof workosAudit>(
-    "@app/lib/api/audit/workos_audit"
-  );
-  return { ...actual, emitAuditLogEvent: vi.fn() };
-});
-
-vi.mock("@app/lib/spend_limits/cycle", async () => {
-  const actual = await vi.importActual<typeof cycle>(
-    "@app/lib/spend_limits/cycle"
-  );
-  return { ...actual, resolveSpendLimitCycleBounds: vi.fn() };
-});
+vi.mock(
+  import("@app/lib/api/credits/members_usage"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    resolveMetronomeCycle: vi.fn(),
+  })
+);
 
 const AUDIT_CONTEXT = { location: "127.0.0.1" };
 
+const CYCLE = {
+  cycleStart: new Date("2026-10-01T00:00:00Z"),
+  cycleEnd: new Date("2026-11-01T00:00:00Z"),
+};
+
 const BOUNDS = makeSpendLimitCycleWindowBounds(
-  new Date("2026-10-01T00:00:00Z"),
-  new Date("2026-11-01T00:00:00Z")
+  CYCLE.cycleStart,
+  CYCLE.cycleEnd
 );
 
 beforeEach(() => {
   mockActiveContract(POOL_ONLY_SEATS);
-  vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
-  vi.mocked(cycle.resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
+  vi.mocked(emitAuditLogEvent).mockResolvedValue(undefined);
+  vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
+  vi.mocked(resolveMetronomeCycle).mockResolvedValue(CYCLE);
+  mockConsumedByLimitGroup([]);
 });
+
+function mockConsumedByLimitGroup(
+  consumed: { group: GroupResource; microCredits: number }[]
+) {
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+    new Ok({
+      took: 1,
+      timed_out: false,
+      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      hits: { total: { value: 0, relation: "eq" }, hits: [] },
+      aggregations: {
+        by_limit_group: {
+          buckets: consumed.map(({ group, microCredits }) => ({
+            key: group.sId,
+            credits: { value: microCredits },
+          })),
+        },
+      },
+    })
+  );
+}
+
+function mockConsumptionReadFailure() {
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+    new Err(new ElasticsearchError("connection_error", "es down"))
+  );
+}
 
 async function setup({ withFlag = true }: { withFlag?: boolean } = {}) {
   const {
@@ -140,14 +189,11 @@ async function makeGroup(
   if (added.isErr()) {
     throw added.error;
   }
-  const reset = await setFixedWindowCount({
-    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
-    bounds: BOUNDS,
-    value: 0,
-    logger,
+  const expired = await expireRateLimiterKey({
+    key: `${makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group)}:${BOUNDS.label}`,
   });
-  if (reset.isErr()) {
-    throw reset.error;
+  if (expired.isErr()) {
+    throw expired.error;
   }
   return group;
 }
@@ -204,6 +250,22 @@ async function reload(auth: Authenticator, group: GroupResource) {
   };
 }
 
+async function setCounter(
+  workspace: LightWorkspaceType,
+  group: GroupResource,
+  microCredits: number
+) {
+  const result = await setFixedWindowCount({
+    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    bounds: BOUNDS,
+    value: microCredits,
+    logger,
+  });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
 async function groupUsage(
   workspace: LightWorkspaceType,
   group: GroupResource
@@ -253,7 +315,7 @@ describe("areGroupLimitsEnabled", () => {
   });
 
   it("is disabled when the active contract cannot be resolved", async () => {
-    vi.mocked(planType.getActiveContract).mockResolvedValue(null);
+    vi.mocked(getActiveContract).mockResolvedValue(null);
     const { auth } = await setup();
 
     expect(await areGroupLimitsEnabled(auth)).toBe(false);
@@ -265,7 +327,7 @@ describe("areGroupLimitsEnabled", () => {
     await FeatureFlagFactory.basic(auth, "group_limits");
 
     expect(await areGroupLimitsEnabled(auth)).toBe(false);
-    expect(planType.getActiveContract).not.toHaveBeenCalled();
+    expect(getActiveContract).not.toHaveBeenCalled();
   });
 });
 
@@ -492,7 +554,7 @@ describe("setGroupLimit", () => {
 
     await setLimit(auth, engineering, { kind: "limited", awuCredits: 12_000 });
 
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
+    expect(emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "group.group_limit_updated",
         metadata: {
@@ -808,7 +870,7 @@ describe("recordGroupLimitUsage", () => {
       [user],
       10_000
     );
-    vi.mocked(cycle.resolveSpendLimitCycleBounds).mockResolvedValue(null);
+    vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
 
     await recordGroupLimitUsage(auth, { user, agentMessageId, incrementBy: 3 });
 
@@ -835,5 +897,256 @@ describe("recordGroupLimitUsage", () => {
 
     expect(await groupUsage(workspace, engineering)).toBe(0);
     expect(await storedLimitGroupModelId(auth, agentMessageId)).toBeNull();
+  });
+});
+
+describe("group limit counter rebuild", () => {
+  it("seeds an absent counter from the analytics index before recording", async () => {
+    const { auth, workspace, user, agentMessageId } =
+      await setupWithAgentMessage();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    mockConsumedByLimitGroup([{ group: engineering, microCredits: 7_000_000 }]);
+
+    await recordGroupLimitUsage(auth, { user, agentMessageId, incrementBy: 3 });
+
+    expect(await groupUsage(workspace, engineering)).toBe(10);
+  });
+
+  it("does not reseed a live counter", async () => {
+    const { auth, workspace, user, agentMessageId } =
+      await setupWithAgentMessage();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    await recordGroupLimitUsage(auth, { user, agentMessageId, incrementBy: 3 });
+    mockConsumedByLimitGroup([
+      { group: engineering, microCredits: 100_000_000 },
+    ]);
+
+    await recordGroupLimitUsage(auth, { user, agentMessageId, incrementBy: 2 });
+
+    expect(await groupUsage(workspace, engineering)).toBe(5);
+  });
+
+  it("still records when the analytics index cannot be read", async () => {
+    const { auth, workspace, user, agentMessageId } =
+      await setupWithAgentMessage();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    mockConsumptionReadFailure();
+
+    await recordGroupLimitUsage(auth, { user, agentMessageId, incrementBy: 3 });
+
+    expect(await groupUsage(workspace, engineering)).toBe(3);
+  });
+});
+
+describe("resyncGroupLimitCountersFromEsUsage", () => {
+  it("overwrites every limited group's counter with its analytics-index total", async () => {
+    const { auth, workspace } = await setup();
+    const engineering = await makeGroup(auth, workspace, "Engineering", []);
+    const sales = await makeGroup(auth, workspace, "Sales", []);
+    const marketing = await makeGroup(auth, workspace, "Marketing", []);
+    await limit(auth, engineering, 10_000);
+    await limit(auth, sales, 6_000);
+    for (const group of [engineering, sales, marketing]) {
+      await setCounter(workspace, group, 4_000_000);
+    }
+    mockConsumedByLimitGroup([{ group: engineering, microCredits: 9_000_000 }]);
+
+    const result = await resyncGroupLimitCountersFromEsUsage(auth);
+
+    expect(result.isOk() && result.value.updatedGroupCount).toBe(2);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            {
+              terms: {
+                "user.limit_group_id": [engineering.sId, sales.sId],
+              },
+            },
+            {
+              range: {
+                completed_at: {
+                  gte: CYCLE.cycleStart.toISOString(),
+                  lte: CYCLE.cycleEnd.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      expect.objectContaining({ size: 0 })
+    );
+    expect(await groupUsage(workspace, engineering)).toBe(9);
+    expect(await groupUsage(workspace, sales)).toBe(0);
+    expect(await groupUsage(workspace, marketing)).toBe(4);
+  });
+
+  it("leaves the counters untouched when the analytics index cannot be read", async () => {
+    const { auth, workspace } = await setup();
+    const engineering = await makeGroup(auth, workspace, "Engineering", []);
+    await limit(auth, engineering, 10_000);
+    await setCounter(workspace, engineering, 4_000_000);
+    mockConsumptionReadFailure();
+
+    const result = await resyncGroupLimitCountersFromEsUsage(auth);
+
+    expect(result.isErr()).toBe(true);
+    expect(await groupUsage(workspace, engineering)).toBe(4);
+  });
+
+  it("does nothing when group limits are not enabled", async () => {
+    const { auth, workspace } = await setup({ withFlag: false });
+    const engineering = await makeGroup(auth, workspace, "Engineering", []);
+    await GroupFactory.withRawGroupLimit(engineering, {
+      groupLimitAwuCredits: 10_000,
+      groupLimitPriority: 1,
+    });
+    await setCounter(workspace, engineering, 4_000_000);
+
+    const result = await resyncGroupLimitCountersFromEsUsage(auth);
+
+    expect(result.isOk() && result.value.updatedGroupCount).toBe(0);
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
+    expect(await groupUsage(workspace, engineering)).toBe(4);
+  });
+});
+
+describe("isGroupLimitReached", () => {
+  it("does not block a member whose limit group is below its limit", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    await setCounter(workspace, engineering, 9_999_000_000);
+
+    expect(await isGroupLimitReached(auth, { user })).toBe(false);
+  });
+
+  it("blocks a member once their limit group reaches its limit", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    await setCounter(workspace, engineering, 10_000_000_000);
+
+    expect(await isGroupLimitReached(auth, { user })).toBe(true);
+  });
+
+  it("only looks at the member's limit group, not their other limited groups", async () => {
+    const { auth, workspace, user } = await setup();
+    await makeLimitedGroup(auth, workspace, "Engineering", [user], 10_000);
+    const sales = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Sales",
+      [user],
+      6_000
+    );
+    await setCounter(workspace, sales, 6_000_000_000);
+
+    expect(await isGroupLimitReached(auth, { user })).toBe(false);
+  });
+
+  it("does not block a member without a limit group", async () => {
+    const { auth, user } = await setup();
+
+    expect(await isGroupLimitReached(auth, { user })).toBe(false);
+  });
+
+  it("does not block when group limits are not enabled", async () => {
+    const { auth, workspace, user } = await setup({ withFlag: false });
+    const engineering = await makeGroup(auth, workspace, "Engineering", [user]);
+    await GroupFactory.withRawGroupLimit(engineering, {
+      groupLimitAwuCredits: 10_000,
+      groupLimitPriority: 1,
+    });
+    await setCounter(workspace, engineering, 10_000_000_000);
+
+    expect(await isGroupLimitReached(auth, { user })).toBe(false);
+  });
+
+  it("does not block when the billing cycle is unknown", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    await setCounter(workspace, engineering, 10_000_000_000);
+    vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
+
+    expect(await isGroupLimitReached(auth, { user })).toBe(false);
+  });
+});
+
+describe("isUserBlocked with a group limit", () => {
+  it("blocks a member whose limit group reached its limit, even with personal headroom left", async () => {
+    const { auth, workspace, user } = await setup();
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [user],
+      10_000
+    );
+    const perMemberLimit = await setGroupSpendLimit(auth, {
+      groupId: engineering.sId,
+      limit: { kind: "limited", awuCredits: 50_000 },
+      auditContext: AUDIT_CONTEXT,
+    });
+    if (perMemberLimit.isErr()) {
+      throw perMemberLimit.error;
+    }
+    await setCounter(workspace, engineering, 10_000_000_000);
+
+    expect(await isUserBlocked(auth, user)).toBe("group_limit_reached");
+  });
+
+  it("does not block a free seat in a limit group that reached its limit", async () => {
+    const { auth, workspace } = await setup();
+    const freeMember = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, freeMember, {
+      role: "user",
+      seatType: "free",
+    });
+    const engineering = await makeLimitedGroup(
+      auth,
+      workspace,
+      "Engineering",
+      [freeMember],
+      10_000
+    );
+    await setCounter(workspace, engineering, 10_000_000_000);
+
+    expect(await isUserBlocked(auth, freeMember)).toBeNull();
   });
 });

@@ -81,9 +81,8 @@ export function useMultipleDataSourceViewsContentNodes({
   const fetcherWithBodyRef = useRef(fetcherWithBody);
   fetcherWithBodyRef.current = fetcherWithBody;
 
-  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
-    DataSourceViewsAndNodes[]
-  >(emptyArray());
+  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] =
+    useState<DataSourceViewsAndNodes[]>(emptyArray());
   const [isNodesLoading, setIsNodesLoading] = useState(false);
   const [isNodesError, setIsNodesError] = useState(false);
   const [fetchGeneration, setFetchGeneration] = useState(0);
@@ -103,7 +102,6 @@ export function useMultipleDataSourceViewsContentNodes({
     [dataSourceViewsAndInternalIds, owner.sId, viewType]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchRequestKey encodes owner, viewType, and selection identity
   useEffect(() => {
     const fetchData = async () => {
       setIsNodesLoading(true);
@@ -144,7 +142,7 @@ export function useMultipleDataSourceViewsContentNodes({
               params.append("cursor", pageCursor);
             }
 
-            const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`;
+            const url = `/api/w/${owner.sId}/spaces/${encodeURIComponent(dataSourceView.spaceId)}/data_source_views/${encodeURIComponent(dataSourceView.sId)}/content-nodes?${params}`;
 
             const body = {
               internalIds,
@@ -212,6 +210,7 @@ export function useMultipleDataSourceViewsContentNodes({
       setIsNodesLoading(false);
       setIsNodesError(false);
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [fetchRequestKey, dataSourceViewsAndInternalIds, fetchGeneration]);
 
   const refetch = useCallback(() => {
@@ -313,7 +312,7 @@ const makeURLDataSourceViewContentNodes: ContentNodesURLBuilder = (
   { owner, dataSourceView },
   searchParams
 ) => {
-  return `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`;
+  return `/api/w/${owner.sId}/spaces/${encodeURIComponent(dataSourceView.spaceId)}/data_source_views/${encodeURIComponent(dataSourceView.sId)}/content-nodes?${searchParams}`;
 };
 
 export function useDataSourceViewContentNodes({
@@ -479,7 +478,7 @@ export function useDataSourceViewConnectorConfiguration({
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      : `/api/w/${owner.sId}/spaces/${encodeURIComponent(dataSourceView.spaceId)}/data_sources/${encodeURIComponent(dataSourceView.dataSource.sId)}/configuration`,
     dataSourceViewDocumentFetcher
   );
 

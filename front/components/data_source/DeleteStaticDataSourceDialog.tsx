@@ -11,6 +11,8 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface DeleteStaticDataSourceDialogProps {
@@ -28,6 +30,7 @@ export function DeleteStaticDataSourceDialog({
   isOpen,
   onClose,
 }: DeleteStaticDataSourceDialogProps) {
+  const { t } = useLingui();
   const [isLoading, setIsLoading] = useState(false);
   const { usage, isUsageLoading, isUsageError } = useDataSourceUsage({
     owner,
@@ -44,19 +47,24 @@ export function DeleteStaticDataSourceDialog({
 
   const message = useMemo(() => {
     if (isUsageLoading) {
-      return "Checking usage...";
+      return t`Checking usage...`;
     }
     if (isUsageError) {
-      return "Failed to check usage.";
+      return t`Failed to check usage.`;
     }
     if (!usage) {
-      return "No usage data available.";
+      return t`No usage data available.`;
     }
     if (usage.count > 0) {
-      return `${usage.count} agents currently use "${name}": ${usage.agents.map((a) => a.name).join(", ")}.`;
+      const agentCount = usage.count;
+      const agentNames = usage.agents.map((a) => a.name).join(", ");
+      return t`${plural(agentCount, {
+        one: `# agent currently uses "${name}": ${agentNames}.`,
+        other: `# agents currently use "${name}": ${agentNames}.`,
+      })}`;
     }
-    return `No agents are using "${name}".`;
-  }, [isUsageLoading, isUsageError, usage, name]);
+    return t`No agents are using "${name}".`;
+  }, [isUsageLoading, isUsageError, usage, name, t]);
 
   return (
     <Dialog
@@ -69,7 +77,9 @@ export function DeleteStaticDataSourceDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm deletion</DialogTitle>
+          <DialogTitle>
+            <Trans>Confirm deletion</Trans>
+          </DialogTitle>
         </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -79,15 +89,17 @@ export function DeleteStaticDataSourceDialog({
           <>
             <DialogContainer>
               {message}
-              <b>Are you sure you want to delete ?</b>
+              <b>
+                <Trans>Are you sure you want to delete?</Trans>
+              </b>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: t`Delete`,
                 variant: "warning",
                 onClick: async () => {
                   void onDelete();

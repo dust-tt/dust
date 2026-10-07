@@ -4,13 +4,12 @@ import { Extension, mergeAttributes, Mark } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
-import StarterKit from "@tiptap/starter-kit";
-import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import { EditorState, Plugin, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import StarterKit from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
-import tippy, { type Instance as TippyInstance } from "tippy.js";
 import React, {
   forwardRef,
   useEffect,
@@ -18,6 +17,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import tippy, { type Instance as TippyInstance } from "tippy.js";
 
 import {
   Avatar,

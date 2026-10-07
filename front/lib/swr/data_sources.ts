@@ -16,7 +16,7 @@ export function useDataSourceUsage({
   const { fetcher } = useFetcher();
   const usageFetcher: Fetcher<GetDataSourceUsageResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/data_sources/${dataSource.sId}/usage`,
+    `/api/w/${owner.sId}/data_sources/${encodeURIComponent(dataSource.sId)}/usage`,
     usageFetcher
   );
 

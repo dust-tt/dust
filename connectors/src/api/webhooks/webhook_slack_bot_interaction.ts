@@ -2,16 +2,16 @@ import {
   botAnswerUserQuestion,
   botReplaceMention,
   botValidateToolExecution,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/bot";
 import {
   getAuthResponseUrlRedisKey,
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
   SlackUserQuestionActionValueSchema,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
   getSlackClientForTeam,
@@ -19,6 +19,7 @@ import {
 } from "@connectors/connectors/slack/feedback_modal";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -271,6 +272,17 @@ const _webhookSlackBotInteractionsAPIHandler = async (
   }
 
   const payload = bodyValidation.right;
+
+  // See the same check in the Slack bot events webhook.
+  if (
+    await SlackConfigurationResource.isActiveBotTokenRevoked(payload.team.id)
+  ) {
+    logger.info(
+      { slackTeamId: payload.team.id },
+      "Ignoring Slack interaction: the bot's Slack token is revoked"
+    );
+    return;
+  }
 
   // Handle view submissions (modal submits)
   if (payload.type === "view_submission") {

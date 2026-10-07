@@ -715,7 +715,6 @@ export default function SwitchContractDialog({
   // repopulated the seats and reset the tier defaults, apply the template's own
   // fields on top. Placed after the seat-reset and tier-default effects so it
   // wins. No-op unless a template is pending.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSeats and selectedTier are intentional re-run triggers — this effect must fire once the package's seats/tier have settled, even though it reads neither directly.
   useEffect(() => {
     const pending = pendingTemplateRef.current;
     if (!pending) {

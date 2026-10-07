@@ -26,7 +26,7 @@ export interface MigrationLogger {
 async function ensureSchemaMigrationsTable(
   sequelize: Sequelize
 ): Promise<void> {
-  // biome-ignore lint/plugin/noRawSql: migration runner bootstraps its own table.
+  // oxlint-disable-next-line dust/noRawSql -- migration runner bootstraps its own table.
   await sequelize.query(
     `CREATE TABLE IF NOT EXISTS "schema_migrations" (
       "name"       VARCHAR(255) PRIMARY KEY,
@@ -44,7 +44,7 @@ class PhasedSequelizeStorage {
   ) {}
 
   async logMigration({ name }: { name: string }): Promise<void> {
-    // biome-ignore lint/plugin/noRawSql: schema_migrations is the migration runner's own ledger.
+    // oxlint-disable-next-line dust/noRawSql -- schema_migrations is the migration runner's own ledger.
     await this.sequelize.query(
       `INSERT INTO "schema_migrations" ("name", "phase") VALUES (:name, :phase)`,
       {
@@ -59,7 +59,7 @@ class PhasedSequelizeStorage {
   }
 
   async executed(): Promise<string[]> {
-    // biome-ignore lint/plugin/noRawSql: schema_migrations is the migration runner's own ledger.
+    // oxlint-disable-next-line dust/noRawSql -- schema_migrations is the migration runner's own ledger.
     const rows = await this.sequelize.query<{ name: string }>(
       `SELECT "name" FROM "schema_migrations" WHERE "phase" = :phase ORDER BY "name"`,
       {

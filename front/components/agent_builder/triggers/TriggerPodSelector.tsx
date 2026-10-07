@@ -11,6 +11,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 
 interface TriggerPodSelectorProps {
@@ -26,6 +27,7 @@ export function TriggerPodSelector({
   onChange,
   disabled,
 }: TriggerPodSelectorProps) {
+  const { t } = useLingui();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -73,7 +75,7 @@ export function TriggerPodSelector({
       <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
         <DropdownMenuTrigger asChild>
           <Button
-            label={selectedPod?.name ?? "My conversations (default)"}
+            label={selectedPod?.name ?? t`My conversations (default)`}
             icon={selectedPod ? getSpaceIcon(selectedPod) : undefined}
             variant="outline"
             size="xs"
@@ -85,7 +87,7 @@ export function TriggerPodSelector({
           dropdownHeaders={
             <DropdownMenuSearchbar
               name="pod-search"
-              placeholder="Search..."
+              placeholder={t`Search...`}
               value={searchQuery}
               onChange={setSearchQuery}
               autoFocus
@@ -93,13 +95,13 @@ export function TriggerPodSelector({
           }
         >
           <DropdownMenuItem
-            label="My conversations (default)"
-            description="Run in my conversations."
+            label={t`My conversations (default)`}
+            description={t`Run in my conversations.`}
             onClick={() => handleSelectPod(null)}
           />
           {isSpacesLoading ? (
             <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
-              Loading...
+              <Trans>Loading...</Trans>
             </div>
           ) : filteredPods.length > 0 ? (
             filteredPods.map((pod) => (
@@ -112,14 +114,14 @@ export function TriggerPodSelector({
                     ? pod.description.length > 50
                       ? `${pod.description.substring(0, 50)}...`
                       : pod.description
-                    : "No description available."
+                    : t`No description available.`
                 }
                 icon={getSpaceIcon(pod)}
               />
             ))
           ) : (
             <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
-              {searchQuery ? "No matches" : "No Pods"}
+              {searchQuery ? t`No matches` : t`No Pods`}
             </div>
           )}
         </DropdownMenuContent>

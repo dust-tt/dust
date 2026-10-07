@@ -32,9 +32,14 @@ import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { ConfluenceClientError, INTERNAL_MIME_TYPES } from "@connectors/types";
 import { removeNulls } from "@dust-tt/client";
+import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
+
+// Pages that Confluence keeps failing to return in time stop blocking the sync after this many
+// activity attempts.
+const MAX_PAGE_TIMEOUT_ATTEMPTS = 20;
 
 function getConfluencePageTitle(page: { title: string | null }): string {
   return page.title ?? "Untitled";
@@ -191,6 +196,13 @@ export async function upsertConfluencePageInDb(
  * Operates greedily by stopping if the page is restricted or if there is a version match
  * (unless the page was moved, in this case, we have to upsert because the parents have changed).
  */
+/**
+ * @cc [owner:philipperolet,label:backend] skip-page-after-repeated-timeouts
+ * When `getPageById` throws a `ConfluenceClientError` with `status` 504 on an activity attempt
+ * above `MAX_PAGE_TIMEOUT_ATTEMPTS`, the function MUST mark the stored page, if any, as visited,
+ * leave its stored version unchanged, and return `true`. The sync then goes on without deleting
+ * the page or its children, and the next sync fetches the page again.
+ */
 export async function confluenceCheckAndUpsertSinglePage({
   connector,
   dataSourceConfig,
@@ -274,9 +286,29 @@ export async function confluenceCheckAndUpsertSinglePage({
     return true;
   }
 
+  let page: ConfluencePageWithBodyType | null;
+  try {
+    page = await client.getPageById(pageId);
+  } catch (err) {
+    const { attempt } = Context.current().info;
+    const isRepeatedTimeout =
+      err instanceof ConfluenceClientError &&
+      err.status === 504 &&
+      attempt > MAX_PAGE_TIMEOUT_ATTEMPTS;
+    if (!isRepeatedTimeout) {
+      throw err;
+    }
+
+    localLogger.warn(
+      { attempt, error: err },
+      "Fetching the Confluence page keeps failing with a 504, skipping it until the next sync."
+    );
+    await markPageHasVisited({ connectorId, pageId, spaceId, visitedAtMs });
+    return true;
+  }
+
   // There is a small delta between the page being listed and the page being imported.
   // If the page has been deleted in the meantime, we should ignore it.
-  const page = await client.getPageById(pageId);
   if (!page) {
     localLogger.info("Confluence page not found.");
     // Return false to skip the child pages.

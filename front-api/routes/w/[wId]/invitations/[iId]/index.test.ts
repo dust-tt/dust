@@ -244,4 +244,44 @@ describe("POST /api/w/:wId/invitations/:iId", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).invitation.status).toBe("revoked");
   });
+
+  it.each([
+    { from: "revoked", to: "pending" },
+    { from: "consumed", to: "pending" },
+    { from: "consumed", to: "revoked" },
+  ] as const)(
+    "returns 404 when moving a $from invitation to $to",
+    async ({ from, to }) => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "manager",
+      });
+      const invitation = await MembershipInvitationFactory.create(workspace, {
+        inviteEmail: "not-pending@example.com",
+        status: from,
+        initialRole: "user",
+      });
+
+      const response = await honoApp.request(
+        invitationUrl(workspace.sId, invitation.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: to, initialRole: "user" }),
+        }
+      );
+
+      expect(response.status).toBe(404);
+      expect((await response.json()).error.type).toBe("invitation_not_found");
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const reloaded = await MembershipInvitationResource.fetchById(
+        adminAuth,
+        invitation.sId
+      );
+      expect(reloaded?.status).toBe(from);
+    }
+  );
 });

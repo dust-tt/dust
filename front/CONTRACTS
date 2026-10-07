@@ -755,7 +755,7 @@ locale-aware string comparisons MUST use `compareStrings` from `@app/lib/i18n/fo
 @cc [owner:sfriquet,label:product] no-hardcoded-en-us-in-ui
 Outside tests, code under `components/`, `hooks/`, `lib/client/` and `lib/swr/` MUST NOT contain
 the `"en-US"` literal, except a machine-facing one (export, API parameter, file name, map key),
-which MUST carry a `biome-ignore` comment saying why. Enforced by the `noHardcodedEnUsLocale` lint
+which MUST carry a `oxlint-disable-next-line` comment saying why. Enforced by the `noHardcodedEnUsLocale` lint
 rule.
 
 @cc [owner:sfriquet,label:product;react] ui-dates-without-date-libraries

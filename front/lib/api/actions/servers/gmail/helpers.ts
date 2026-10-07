@@ -1,5 +1,5 @@
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 import sanitizeHtml from "sanitize-html";
 
 export interface GmailHeader {
@@ -217,8 +217,7 @@ function createQuoteSection(
   const separator =
     originalDate && originalFrom
       ? `On ${escape(originalDate)}, ${escape(originalFrom)} wrote:`
-      : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        `${escape(originalFrom || "Original sender")} wrote:`;
+      : `${escape(originalFrom || "Original sender")} wrote:`;
 
   let quotedContent: string;
   switch (originalMimeType) {
@@ -308,7 +307,6 @@ export async function fetchFromGmail(
   accessToken: string,
   options?: RequestInit
 ): Promise<Response> {
-  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://gmail.googleapis.com${endpoint}`, {
     ...options,
     headers: {
@@ -368,7 +366,6 @@ export function encodeEmailAddressHeader(address: string): string {
     return `<${email}>`;
   }
 
-  // eslint-disable-next-line no-control-regex
   if (!/[^\x00-\x7F]/.test(name)) {
     return `${name} <${email}>`;
   }

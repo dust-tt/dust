@@ -55,7 +55,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
   const [selectedUsers, setSelectedUsers] = useState<SearchMemberType[]>([]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
     if (mode === "space-members") {
       const editorIds = props.currentProjectMembers
@@ -67,6 +66,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
       setCurrentMembers(new Set(props.editors.map((e) => e.sId)));
       setSelectedUsers(props.editors);
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen]);
 
   const toggleEditor = useCallback(

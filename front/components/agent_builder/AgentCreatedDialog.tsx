@@ -9,6 +9,7 @@ import {
   DialogTitle,
   MessageCircle01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface AgentCreatedDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function AgentCreatedDialog({
   agentId,
   owner,
 }: AgentCreatedDialogProps) {
+  const { t } = useLingui();
   const conversationQuery = `agent=${agentId}`;
 
   const conversationRoute = getConversationRoute(
@@ -37,22 +39,26 @@ export function AgentCreatedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Agent {agentName} created!</DialogTitle>
+          <DialogTitle>
+            <Trans>Agent {agentName} created!</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          You can now use {agentName} in conversations. Start a chat or keep
-          editing this agent.
+          <Trans>
+            You can now use {agentName} in conversations. Start a chat or keep
+            editing this agent.
+          </Trans>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Keep editing",
+            label: t`Keep editing`,
             variant: "outline",
             onClick: () => {
               onOpenChange(false);
             },
           }}
           rightButtonProps={{
-            label: "Start chat",
+            label: t`Start chat`,
             icon: MessageCircle01,
             href: conversationRoute,
           }}

@@ -211,19 +211,19 @@ describe("SharedFramePage", () => {
     expect(screen.queryByText("Sign in to open this Frame")).toBeNull();
   });
 
-  it.each([
-    "light",
-    "dark",
-  ])("provides the saved %s theme to an anonymous viewer's Frame", (theme) => {
-    localStorage.setItem("theme", theme);
+  it.each(["light", "dark"])(
+    "provides the saved %s theme to an anonymous viewer's Frame",
+    (theme) => {
+      localStorage.setItem("theme", theme);
 
-    render(<SharedFramePage />);
+      render(<SharedFramePage />);
 
-    expect(screen.getByText("frame content")).toHaveAttribute(
-      "data-theme",
-      theme
-    );
-  });
+      expect(screen.getByText("frame content")).toHaveAttribute(
+        "data-theme",
+        theme
+      );
+    }
+  );
 
   it("offers sign-in on the 404 a logged-out viewer gets from the metadata endpoint", () => {
     mocks.shareMetadataError = new Error("not found");

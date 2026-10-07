@@ -1,4 +1,5 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Rocket02 } from "@dust-tt/sparkle";
+import UTMButton from "@marketing/components/UTMButton";
 import {
   Carousel,
   CarouselContent,
@@ -14,9 +15,7 @@ import {
   H5,
   P,
 } from "@marketing/components/home/ContentComponents";
-import UTMButton from "@marketing/components/UTMButton";
 import { classNames } from "@marketing/lib/utils";
-import { Rocket02 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import React, { useEffect, useState } from "react";

@@ -1,7 +1,7 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { backfillAgentCreatedAt } from "@app/migrations/20260915_backfill_agent_created_at";
-import baseLogger from "@app/logger/logger";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import baseLogger from "@app/logger/logger";
+import { backfillAgentCreatedAt } from "@app/migrations/20260915_backfill_agent_created_at";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";

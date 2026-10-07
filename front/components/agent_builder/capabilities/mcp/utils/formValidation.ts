@@ -1,7 +1,10 @@
 import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 /**
  * Creates MCP configuration form schema for validation
@@ -11,13 +14,14 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
  * @returns Form validation schema
  */
 export function getMCPConfigurationFormSchema(
-  mcpServerView: MCPServerViewType | null | undefined
+  mcpServerView: MCPServerViewType | null | undefined,
+  t: (descriptor: MessageDescriptor) => string
 ) {
   const requirements = mcpServerView
     ? getMCPServerRequirements(mcpServerView)
     : null;
 
-  return createMCPFormSchema(requirements);
+  return createMCPFormSchema(requirements, t);
 }
 
 /**
@@ -28,7 +32,8 @@ export function getMCPConfigurationFormSchema(
  */
 export function validateMCPActionConfiguration(
   action: BuilderAction,
-  serverView: MCPServerViewType
+  serverView: MCPServerViewType,
+  t: (descriptor: MessageDescriptor) => string
 ): { isValid: boolean; errorMessage?: string } {
   try {
     const { noRequirement } = getMCPServerRequirements(serverView);
@@ -37,7 +42,7 @@ export function validateMCPActionConfiguration(
       return { isValid: true };
     }
 
-    const schema = getMCPConfigurationFormSchema(serverView);
+    const schema = getMCPConfigurationFormSchema(serverView, t);
 
     schema.parse({
       name: action.name,
@@ -47,9 +52,12 @@ export function validateMCPActionConfiguration(
 
     return { isValid: true };
   } catch {
+    const toolName = getMcpServerViewDisplayName(serverView);
     return {
       isValid: false,
-      errorMessage: `Tool "${serverView.name}" has invalid configuration. Please reconfigure it.`,
+      errorMessage: t(
+        msg`Tool "${toolName}" has invalid configuration. Please reconfigure it.`
+      ),
     };
   }
 }

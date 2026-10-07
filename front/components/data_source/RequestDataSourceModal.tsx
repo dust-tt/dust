@@ -21,6 +21,7 @@ import {
   SheetTrigger,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import capitalize from "lodash/capitalize";
 import { useEffect, useState } from "react";
 
@@ -33,6 +34,7 @@ export function RequestDataSourceModal({
   dataSources,
   owner,
 }: RequestDataSourceModal) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
@@ -57,8 +59,8 @@ export function RequestDataSourceModal({
     if (!selectedDataSource?.editedByUser) {
       sendNotification({
         type: "error",
-        title: "Error sending email",
-        description: "An unexpected error occurred while sending email.",
+        title: t`Error sending email`,
+        description: t`An unexpected error occurred while sending email.`,
       });
     } else {
       try {
@@ -67,17 +69,17 @@ export function RequestDataSourceModal({
           dataSourceId: selectedDataSource.sId,
           owner,
         });
+        const adminFullName = selectedDataSource.editedByUser.fullName;
         sendNotification({
           type: "success",
-          title: "Email sent!",
-          description: `Your request was sent to ${selectedDataSource.editedByUser.fullName}.`,
+          title: t`Email sent!`,
+          description: t`Your request was sent to ${adminFullName}.`,
         });
       } catch (e) {
         sendNotification({
           type: "error",
-          title: "Error sending email",
-          description:
-            "An unexpected error occurred while sending the request.",
+          title: t`Error sending email`,
+          description: t`An unexpected error occurred while sending the request.`,
         });
         console.log(
           {
@@ -91,14 +93,25 @@ export function RequestDataSourceModal({
     }
   };
 
+  const adminFullName = selectedDataSource?.editedByUser?.fullName;
+  const adminDisplayName = capitalize(adminFullName ?? "");
+  const selectedDataSourceName = selectedDataSource
+    ? getDisplayNameForDataSource(selectedDataSource)
+    : "";
+
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request" icon={Plus} />
+        <Button
+          label={t({ message: "Request", context: "verb, button label" })}
+          icon={Plus}
+        />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Requesting Data sources</SheetTitle>
+          <SheetTitle>
+            <Trans>Requesting data sources</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4 p-4">
@@ -106,14 +119,18 @@ export function RequestDataSourceModal({
               {dataSources.length === 0 && (
                 <label className="block text-sm font-medium text-muted-foreground">
                   <p>
-                    You have no connection set up. Ask an admin to set one up.
+                    <Trans>
+                      You have no connection set up. Ask an admin to set one up.
+                    </Trans>
                   </p>
                 </label>
               )}
               {dataSources.length >= 1 && (
                 <>
                   <label className="block text-sm font-medium text-muted-foreground">
-                    <p>Where are the requested Data hosted?</p>
+                    <p>
+                      <Trans>Where are the requested data hosted?</Trans>
+                    </p>
                   </label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -130,7 +147,7 @@ export function RequestDataSourceModal({
                         />
                       ) : (
                         <Button
-                          label="Pick your platform"
+                          label={t`Pick your platform`}
                           variant="outline"
                           size="sm"
                           isSelect
@@ -161,15 +178,14 @@ export function RequestDataSourceModal({
             {selectedDataSource && (
               <div className="flex flex-col gap-2">
                 <p className="mb-2 text-sm text-muted-foreground">
-                  {capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
-                  is the administrator for the{" "}
-                  {getDisplayNameForDataSource(selectedDataSource)} connection
-                  within Dust. Send an email to{" "}
-                  {capitalize(selectedDataSource.editedByUser?.fullName ?? "")},
-                  explaining your request.
+                  <Trans>
+                    {adminDisplayName} is the administrator for the{" "}
+                    {selectedDataSourceName} connection within Dust. Send an
+                    email to {adminDisplayName}, explaining your request.
+                  </Trans>
                 </p>
                 <TextArea
-                  placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
+                  placeholder={t`Hello ${adminFullName},`}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   className="mb-2"
@@ -180,13 +196,13 @@ export function RequestDataSourceModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           {...(dataSources.length > 0 && {
             rightButtonProps: {
-              label: "Send",
+              label: t`Send`,
               onClick: onSave,
               disabled: message.length === 0,
             },

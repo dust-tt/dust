@@ -1,6 +1,7 @@
 import { formatNumber } from "@app/lib/i18n/format";
 import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { InputWithSave } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 export interface GroupSpendLimitRowData {
@@ -23,6 +24,7 @@ export function GroupSpendLimitCell({
   onSave,
   disabled,
 }: GroupSpendLimitCellProps) {
+  const { t } = useLingui();
   const [isEditing, setIsEditing] = useState(false);
   const current = group.poolCapAwuCredits;
 
@@ -47,9 +49,9 @@ export function GroupSpendLimitCell({
       <InputWithSave
         inputMode="numeric"
         pattern="[0-9]*"
-        placeholder="No limit"
+        placeholder={t`No limit`}
         value={current === null ? "" : formatNumber(current)}
-        unit={current === null && !isEditing ? undefined : "credits/month"}
+        unit={current === null && !isEditing ? undefined : t`credits/month`}
         normalizeValue={(value) => value.replace(/[^\d]/g, "")}
         formatValue={(value) => (value ? formatNumber(Number(value)) : value)}
         onSave={handleSave}

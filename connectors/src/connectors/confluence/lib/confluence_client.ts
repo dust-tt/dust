@@ -274,6 +274,10 @@ const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
 // If Confluence indicates that we are approaching the rate limit, we delay by this value.
 const NEAR_RATE_LIMIT_DELAY = 60_000; // 1 minute
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+// Confluence renders the page body before answering, which can take more than 30 seconds for
+// large pages.
+const PAGE_WITH_BODY_REQUEST_TIMEOUT_MS = 90_000;
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
@@ -381,7 +385,12 @@ export class ConfluenceClient {
     {
       retryCount = 0,
       bypassThrottle = false,
-    }: { retryCount?: number; bypassThrottle?: boolean } = {}
+      timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+    }: {
+      retryCount?: number;
+      bypassThrottle?: boolean;
+      timeoutMs?: number;
+    } = {}
   ): Promise<T> {
     const response = await (async () => {
       try {
@@ -390,8 +399,7 @@ export class ConfluenceClient {
             Authorization: `Bearer ${this.authToken}`,
             "Content-Type": "application/json",
           },
-          // Timeout after 30 seconds.
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(timeoutMs),
           dispatcher: this.proxyAgent,
         });
       } catch (e) {
@@ -411,6 +419,7 @@ export class ConfluenceClient {
               url: `${this.apiUrl}${endpoint}`,
               message: e.message,
               error: e,
+              timeoutMs,
             },
           });
         }
@@ -483,6 +492,7 @@ export class ConfluenceClient {
             return this.request(endpoint, codec, {
               retryCount: retryCount + 1,
               bypassThrottle,
+              timeoutMs,
             });
           }
         }
@@ -857,6 +867,12 @@ export class ConfluenceClient {
     );
   }
 
+  /**
+   * @cc [owner:philipperolet,label:error-handling] throws-504-when-unavailable
+   * When Confluence does not answer in time, is unreachable, or answers with a 504, `getPageById`
+   * MUST throw a `ConfluenceClientError` with `status` 504. Callers MAY catch it, as an exception
+   * to `no-catching-own-errors`.
+   */
   async getPageById(pageId: string) {
     const params = new URLSearchParams({
       "body-format": "view", // Returns HTML.
@@ -866,7 +882,8 @@ export class ConfluenceClient {
     try {
       return await this.request(
         `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
-        ConfluencePageWithBodyCodec
+        ConfluencePageWithBodyCodec,
+        { timeoutMs: PAGE_WITH_BODY_REQUEST_TIMEOUT_MS }
       );
     } catch (err) {
       if (err instanceof ConfluenceClientError && err.status === 404) {

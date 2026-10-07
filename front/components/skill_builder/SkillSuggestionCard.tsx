@@ -5,12 +5,12 @@ import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFie
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
+import { SuggestedSkillFiles } from "@app/components/skill_builder/SuggestedSkillFiles";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
-import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -25,6 +25,7 @@ import {
   LoadingBlock,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { KeyboardEvent } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
@@ -43,32 +44,63 @@ export function ReviewedSuggestionCard({
   updatedAt,
   updatedBy,
 }: ReviewedSuggestionCardProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
 
   const isCurrentUser = !!updatedBy && updatedBy.sId === user?.sId;
 
   const chip = getSuggestionStateChip(state);
-  const actor = isCurrentUser ? "you" : updatedBy?.fullName;
-  const by = actor ? ` by ${actor}` : "";
+  const reviewerName = updatedBy?.fullName;
+  const relativeTime = formatRelativeTime(updatedAt);
+
+  const getStateTexts = (): { label: string; tooltip: string } | null => {
+    switch (state) {
+      case "pending":
+        return null;
+      case "approved":
+        return {
+          label: t({ message: "Accepted", context: "suggestion state" }),
+          tooltip: isCurrentUser
+            ? t`Accepted by you ${relativeTime}`
+            : reviewerName
+              ? t`Accepted by ${reviewerName} ${relativeTime}`
+              : t`Accepted ${relativeTime}`,
+        };
+      case "rejected":
+        return {
+          label: t({ message: "Declined", context: "suggestion state" }),
+          tooltip: isCurrentUser
+            ? t`Declined by you ${relativeTime}`
+            : reviewerName
+              ? t`Declined by ${reviewerName} ${relativeTime}`
+              : t`Declined ${relativeTime}`,
+        };
+      case "outdated":
+        return {
+          label: t({ message: "Outdated", context: "suggestion state" }),
+          tooltip: t`Superseded by a later suggestion`,
+        };
+      default:
+        assertNeverAndIgnore(state);
+        return null;
+    }
+  };
+  const stateTexts = getStateTexts();
 
   return (
     <Card variant="primary" size="sm" className="flex-col gap-1">
       <div className="flex min-w-0 items-center gap-2">
-        {chip && (
+        {chip && stateTexts && (
           <Tooltip
             trigger={
               <Chip
                 size="xs"
                 color={chip.color}
                 icon={chip.icon}
-                label={chip.label}
+                label={stateTexts.label}
               />
             }
-            label={
-              state === "outdated"
-                ? "Superseded by a later suggestion"
-                : `${chip.label}${by} ${formatRelativeTime(updatedAt)}`
-            }
+            label={stateTexts.tooltip}
           />
         )}
         <span className="truncate text-sm text-muted-foreground">{title}</span>
@@ -101,8 +133,11 @@ function ConversationFooter({
   if (shownIds.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        Based on {sourceConversationsCount} conversation
-        {sourceConversationsCount > 1 ? "s" : ""}
+        <Plural
+          value={sourceConversationsCount}
+          one="Based on # conversation"
+          other="Based on # conversations"
+        />
       </p>
     );
   }
@@ -119,25 +154,38 @@ function ConversationFooter({
     </Hoverable>
   ));
 
+  const joinLinks = (linksToJoin: typeof indexedLinks) =>
+    linksToJoin.map((link, i) => (
+      <span key={link.key}>
+        {i > 0 && ", "}
+        {link}
+      </span>
+    ));
+
+  if (remainingCount > 0) {
+    const links = joinLinks(indexedLinks);
+    return (
+      <p className="text-xs text-muted-foreground">
+        <Plural
+          value={remainingCount}
+          one={<Trans>Based on conversations {links} and # other</Trans>}
+          other={<Trans>Based on conversations {links} and # others</Trans>}
+        />
+      </p>
+    );
+  }
+
+  const links = joinLinks(indexedLinks.slice(0, -1));
+  const lastLink = indexedLinks[indexedLinks.length - 1];
+
   return (
     <p className="text-xs text-muted-foreground">
-      Based on conversation
-      {shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
-      {indexedLinks.map((link, i) => (
-        <span key={shownIds[i]}>
-          {i > 0 &&
-            (remainingCount === 0 && i === indexedLinks.length - 1
-              ? " and "
-              : ", ")}
-          {link}
-        </span>
-      ))}
-      {remainingCount > 0 && (
-        <>
-          {" "}
-          and {remainingCount} other
-          {remainingCount > 1 ? "s" : ""}
-        </>
+      {links.length === 0 ? (
+        <Trans>Based on conversation {lastLink}</Trans>
+      ) : (
+        <Trans>
+          Based on conversations {links} and {lastLink}
+        </Trans>
       )}
     </p>
   );
@@ -158,9 +206,13 @@ function DeleteSuggestionSection({
     return <LoadingBlock className="h-6 w-full" />;
   }
 
+  const skillName = skill?.name;
+
   return (
     <p className="text-sm text-foreground">
-      Delete the <span className="font-medium">{skill?.name}</span> skill.
+      <Trans>
+        Delete the <span className="font-medium">{skillName}</span> skill.
+      </Trans>
     </p>
   );
 }
@@ -180,6 +232,8 @@ function SuggestionDetails({
   workspaceId,
   layout,
 }: SuggestionDetailsProps) {
+  const { t } = useLingui();
+
   switch (suggestion.kind) {
     case "availability":
       return (
@@ -200,19 +254,19 @@ function SuggestionDetails({
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
-            label="Name"
+            label={t`Name`}
             currentValue=""
             newValue={name}
             layout={layout}
           />
           <SuggestionFieldEditSection
-            label="Description"
+            label={t`Description`}
             currentValue=""
             newValue={userFacingDescription}
             layout={layout}
           />
           <SuggestionFieldEditSection
-            label={SKILL_INVOCATION_LABEL}
+            label={t`When to use this skill`}
             currentValue=""
             newValue={agentFacingDescription}
             layout={layout}
@@ -242,7 +296,7 @@ function SuggestionDetails({
         <>
           {agentFacingDescriptionEdit && (
             <SuggestionFieldEditSection
-              label={SKILL_INVOCATION_LABEL}
+              label={t`When to use this skill`}
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
               layout={layout}
@@ -252,7 +306,7 @@ function SuggestionDetails({
           {instructionEdits && instructionEdits.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="text-sm text-muted-foreground">
-                Instructions
+                <Trans>Instructions</Trans>
               </span>
               {instructionEdits.map((edit, index) => (
                 <SuggestionInstructionsDiffBlock
@@ -287,6 +341,15 @@ function SuggestionDetails({
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
           layout={layout}
+        />
+      );
+
+    case "files":
+      return (
+        <SuggestedSkillFiles
+          suggestion={suggestion.suggestion}
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
         />
       );
 
@@ -369,6 +432,7 @@ export function SkillSuggestionCard({
   isAccepting = false,
   isDeclining = false,
 }: SkillSuggestionCardProps) {
+  const { t } = useLingui();
   const isClickable = !!onSelect;
   const hasActions = !!onAccept && !!onDecline;
 
@@ -376,7 +440,7 @@ export function SkillSuggestionCard({
     return (
       <ReviewedSuggestionCard
         state={suggestion.state}
-        title={suggestion.title ?? "Suggestion"}
+        title={suggestion.title ?? t`Suggestion`}
         updatedAt={suggestion.updatedAt}
         updatedBy={suggestion.updatedBy}
       />
@@ -404,14 +468,14 @@ export function SkillSuggestionCard({
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <span className="heading-base text-foreground">
-            {suggestion.title ?? "Suggestion"}
+            {suggestion.title ?? t`Suggestion`}
           </span>
           {hasActions && (
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="outline"
                 size="sm"
-                label="Decline"
+                label={t`Decline`}
                 onClick={() => onDecline(suggestion)}
                 disabled={disabled}
                 isLoading={isDeclining}
@@ -419,7 +483,7 @@ export function SkillSuggestionCard({
               <Button
                 variant="highlight"
                 size="sm"
-                label="Accept"
+                label={t`Accept`}
                 onClick={() => onAccept(suggestion)}
                 disabled={disabled}
                 isLoading={isAccepting}

@@ -19,7 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 use subtle::ConstantTimeEq;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, OwnedMutexGuard, RwLock};
 use tonic::{Request, Status};
 
 const WORKSPACE_LOCK_PURGE_THRESHOLD: usize = 1024;
@@ -95,9 +95,8 @@ impl Sessions {
         state.active()?;
         Ok(state)
     }
-    pub async fn close<T>(&self, request: &Request<T>) -> Result<(), Status> {
-        let state = self.get(request).await?;
-        let _guard = state.gate.write().await;
+    /// Caller MUST hold the session write gate and finish its accepted publication before closing.
+    pub async fn close<T>(&self, request: &Request<T>, state: &SessionState) -> Result<(), Status> {
         state.closed.store(true, Ordering::Release);
         self.entries.lock().await.remove(&hash(bearer(request)?));
         Ok(())
@@ -105,14 +104,21 @@ impl Sessions {
 }
 
 /// @cc [owner:spolu,label:concurrency] topology-and-file-gates
-/// Namespace and grant mutations MUST hold the topology write gate through publication. File edits
-/// MUST hold its read gate and their object's exclusive gate. Independent file edits may overlap.
+/// Local pending edits, their publication, and reads combining them with FDB MUST hold the object's
+/// gate from before the FDB snapshot through queue reconciliation. Multiple gates MUST be acquired in
+/// sorted ID order. No workspace gate may span I/O; FDB transactions protect namespace and authority.
 #[derive(Default)]
 pub(crate) struct WorkspaceLocks {
-    pub topology: RwLock<()>,
     files: Mutex<HashMap<String, Weak<Mutex<()>>>>,
 }
 impl WorkspaceLocks {
+    pub async fn acquire(&self, ids: &BTreeSet<String>) -> Vec<OwnedMutexGuard<()>> {
+        let mut guards = Vec::with_capacity(ids.len());
+        for id in ids {
+            guards.push(self.file(id).await.lock_owned().await);
+        }
+        guards
+    }
     pub async fn file(&self, id: &str) -> Arc<Mutex<()>> {
         let mut files = self.files.lock().await;
         if files.len() >= 1024 {
@@ -155,7 +161,7 @@ impl State {
     }
     /// @cc [owner:spolu,label:concurrency;performance] workspace-gate-retention
     /// At 1024 registry entries, lookups MUST prune entries held only by the registry. Callers MUST
-    /// retain the returned Arc while waiting for or holding workspace/file gates. Pruning MUST NOT
+    /// retain the returned Arc while waiting for or holding object gates. Pruning MUST NOT
     /// replace a lock set still held by a caller.
     pub(crate) async fn locks(&self, workspace: &str) -> Arc<WorkspaceLocks> {
         let mut locks = self.locks.lock().await;
@@ -178,15 +184,16 @@ pub(crate) mod tests {
             fdb_prefix: format!("dfs-v2-locks-{}", uuid::Uuid::new_v4().simple()),
         })
         .await?;
-        let state = State::new(storage, &"ab".repeat(32))?;
+        let state = State::new_durable(storage, &"ab".repeat(32))?;
         let active = state.locks("active").await;
-        let guard = active.topology.write().await;
         let file_lock = active.file("file").await;
+        let guard = file_lock.lock().await;
         let idle = Arc::downgrade(&state.locks("idle").await);
         assert!(idle.upgrade().is_some());
 
         let waiting = state.locks("active").await;
-        let mut waiter = std::pin::pin!(waiting.topology.read());
+        let waiting_file = waiting.file("file").await;
+        let mut waiter = std::pin::pin!(waiting_file.lock());
         assert!(futures::poll!(&mut waiter).is_pending());
 
         for index in 0..2 * WORKSPACE_LOCK_PURGE_THRESHOLD {
@@ -197,7 +204,7 @@ pub(crate) mod tests {
         assert!(idle.upgrade().is_none());
         let retained = state.locks("active").await;
         assert!(Arc::ptr_eq(&active, &retained));
-        assert!(retained.topology.try_read().is_err());
+        assert!(retained.file("file").await.try_lock().is_err());
         assert!(Arc::ptr_eq(&file_lock, &retained.file("file").await));
         drop(guard);
         drop(waiter.await);

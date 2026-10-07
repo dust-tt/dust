@@ -10,9 +10,7 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class SlackConnectorStrategy
-  implements ConnectorProviderStrategy<"slack">
-{
+export class SlackConnectorStrategy implements ConnectorProviderStrategy<"slack"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SlackConfigurationModel>,

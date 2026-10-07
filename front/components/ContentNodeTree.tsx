@@ -10,7 +10,6 @@ import { compareStrings } from "@app/lib/i18n/format";
 import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Brackets,
@@ -23,6 +22,9 @@ import {
   Tree,
   useSheetViewport,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import React, {
   useCallback,
@@ -35,14 +37,16 @@ import React, {
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
   node: ContentNode,
-  sendNotification: (notification: NotificationType) => void
+  sendNotification: (notification: NotificationType) => void,
+  t: (descriptor: MessageDescriptor) => string
 ) => {
   if (Object.entries(selection).some(([, v]) => v.parents === null)) {
     sendNotification({
       type: "error",
-      title: "Deselecting partial selection unavailable.",
-      description:
-        "Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet",
+      title: t(msg`Deselecting partial selection unavailable.`),
+      description: t(
+        msg`Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet`
+      ),
     });
     return selection;
   }
@@ -162,13 +166,10 @@ function ContentNodeTreeInfiniteScroll({
   );
 }
 
-const PERMISSIONS_ERROR_MESSAGES: Record<string, string> = {
-  rate_limit_error:
-    "Connected service's API limit reached. Please retry shortly.",
-  data_source_auth_error:
-    "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.",
-  connector_oauth_user_must_be_admin:
-    "The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account.",
+const PERMISSIONS_ERROR_MESSAGES: Record<string, MessageDescriptor> = {
+  rate_limit_error: msg`Connected service's API limit reached. Please retry shortly.`,
+  data_source_auth_error: msg`Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.`,
+  connector_oauth_user_must_be_admin: msg`The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account.`,
 };
 
 interface ContentNodeTreeChildrenProps {
@@ -203,6 +204,7 @@ function ContentNodeTreeChildren({
     onSelectAllLoadingChange,
   } = useContentNodeTreeContext();
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [filter, setFilter] = useState("");
   // This is to control when to display the "Select All" vs "unselect All" button.
@@ -260,10 +262,11 @@ function ContentNodeTreeChildren({
   );
 
   if (isResourcesError) {
-    const errorMessage =
-      (resourcesError?.type &&
-        PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
-      "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
+    const permissionsErrorMessage =
+      resourcesError?.type && PERMISSIONS_ERROR_MESSAGES[resourcesError.type];
+    const errorMessage = permissionsErrorMessage
+      ? t(permissionsErrorMessage)
+      : t`Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.`;
 
     return <div className="text-sm text-warning">{errorMessage}</div>;
   }
@@ -273,7 +276,7 @@ function ContentNodeTreeChildren({
       {!isResourcesLoading &&
         filteredNodes &&
         filteredNodes.length === 0 &&
-        (emptyComponent ?? <Tree.Empty label="No documents" />)}
+        (emptyComponent ?? <Tree.Empty label={t`No documents`} />)}
 
       {filteredNodes.map((n) => {
         const checkedState = getCheckedState(n);
@@ -307,7 +310,7 @@ function ContentNodeTreeChildren({
                         if (checkedState === "partial") {
                           // Handle clicking on partial: unselect all selected children
                           setSelectedNodes((prev) =>
-                            unselectedChildren(prev, n, sendNotification)
+                            unselectedChildren(prev, n, sendNotification, t)
                           );
                         } else {
                           setSelectedNodes((prev) => ({
@@ -403,18 +406,25 @@ function ContentNodeTreeChildren({
     if (selectionResult.isErr()) {
       sendNotification({
         type: "error",
-        title: "Failed to select all",
-        description: "Could not load folders to select. Please try again.",
+        title: t`Failed to select all`,
+        description: t`Could not load folders to select. Please try again.`,
       });
       return;
     }
 
     const { nodes, skippedNodes } = selectionResult.value;
-    if (skippedNodes.length > 0) {
+    const skippedCount = skippedNodes.length;
+    if (skippedCount > 0) {
       sendNotification({
         type: "info",
-        title: "Some locations could not be selected",
-        description: `Selected accessible folders, but skipped ${skippedNodes.length} inaccessible location${pluralize(skippedNodes.length)}.`,
+        title: t`Some locations could not be selected`,
+        description: t`Selected accessible folders, but skipped ${plural(
+          skippedCount,
+          {
+            one: "# inaccessible location",
+            other: "# inaccessible locations",
+          }
+        )}.`,
       });
     }
 
@@ -440,7 +450,7 @@ function ContentNodeTreeChildren({
             <div className="flex-grow p-1">
               <SearchInput
                 name="search"
-                placeholder="Search"
+                placeholder={t`Search`}
                 value={filter}
                 onChange={(v) => {
                   selectAllOperationIdRef.current += 1;
@@ -454,10 +464,10 @@ function ContentNodeTreeChildren({
               icon={CheckDone01}
               label={
                 isSelectAllLoading
-                  ? "Loading..."
+                  ? t`Loading...`
                   : selectAllClicked
-                    ? "Unselect All"
-                    : "Select All"
+                    ? t`Unselect all`
+                    : t`Select all`
               }
               size="sm"
               className="m-1"

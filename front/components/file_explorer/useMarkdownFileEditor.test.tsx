@@ -1,5 +1,6 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { writeFileContentByPath } from "@app/lib/swr/files";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +18,7 @@ vi.mock("@app/hooks/useNotification", () => ({
 }));
 
 vi.mock("@app/lib/swr/files", () => ({
-  writeFileContentByPath: vi.fn().mockResolvedValue(undefined),
+  writeFileContentByPath: vi.fn(),
 }));
 
 const owner: LightWorkspaceType = {
@@ -42,6 +43,7 @@ const params = {
   isContentLoading: false,
   isTooLarge: false,
   isTruncated: false,
+  canWrite: true,
   owner,
   rawContent: "# Notes\n",
   processedContent: { text: "# Notes", format: "markdown" as const },
@@ -56,6 +58,18 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
+    vi.mocked(writeFileContentByPath).mockResolvedValue(new Ok(undefined));
+  });
+
+  it("opens no editor when the mount refuses writes", () => {
+    flags.add("co_edition");
+
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, canWrite: false })
+    );
+
+    expect(result.current.canEdit).toBe(false);
+    expect(result.current.richEditor).toBeNull();
   });
 
   it("keeps the plain editor when co_edition is off", () => {
@@ -69,8 +83,8 @@ describe("useMarkdownFileEditor", () => {
     let finishWrite: () => void = () => undefined;
     vi.mocked(writeFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok(undefined));
         })
     );
     const { result } = renderHook(() => useMarkdownFileEditor(params));
@@ -98,8 +112,8 @@ describe("useMarkdownFileEditor", () => {
     let finishWrite: () => void = () => undefined;
     vi.mocked(writeFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok(undefined));
         })
     );
     const { result } = renderHook(() => useMarkdownFileEditor(params));
@@ -131,7 +145,7 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
-  it("keeps the plain editor when the preview text was truncated", () => {
+  it("opens no editor for writing when the preview text was cut", () => {
     flags.add("co_edition");
 
     const { result } = renderHook(() =>
@@ -139,6 +153,35 @@ describe("useMarkdownFileEditor", () => {
     );
 
     expect(result.current.richEditor).toBeNull();
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("does not open the plain editor on cut preview text when co_edition is off", () => {
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("keeps a dirty plain draft when the file grows past the cut, and refuses to save it", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.setDraft("# Notes\n\nMine");
+    });
+
+    rerender({ ...revised, isTruncated: true });
+    expect(result.current.canEdit).toBe(true);
+    expect(result.current.content).toBe("# Notes\n\nMine");
+
+    const writes = vi.mocked(writeFileContentByPath).mock.calls.length;
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(vi.mocked(writeFileContentByPath).mock.calls.length).toBe(writes);
   });
 
   it("reopens a clean editor on content written by someone else", () => {
@@ -195,8 +238,8 @@ describe("useMarkdownFileEditor", () => {
     let finishWrite: () => void = () => undefined;
     vi.mocked(writeFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok(undefined));
         })
     );
     const { result, rerender } = renderHook(

@@ -15,11 +15,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 
-export const WORKSPACE_NAME_LABEL = "Workspace Name";
-
 export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
+  const { t } = useLingui();
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [workspaceName, setWorkspaceName] = useState(owner.name);
@@ -38,16 +38,18 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
       // eslint-disable-next-line no-useless-escape
     } else if (!workspaceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setWorkspaceNameError(
-        "Workspace name must only contain letters, numbers, and the characters `._-`"
+        t({
+          message:
+            "Workspace name must only contain letters, numbers, and the characters `._-`",
+        })
       );
       valid = false;
     } else {
       setWorkspaceNameError("");
     }
     return valid;
-  }, [owner.name, workspaceName]);
+  }, [owner.name, workspaceName, t]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);
@@ -64,7 +66,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
       }),
     });
     if (!res.ok) {
-      window.alert("Failed to update workspace.");
+      window.alert(t`Failed to update workspace.`);
       setUpdating(false);
     } else {
       setIsSheetOpen(false);
@@ -84,25 +86,31 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.governance.workspaceName}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <Page.H variant="h5">{WORKSPACE_NAME_LABEL}</Page.H>
+          <Page.H variant="h5">
+            <Trans>Workspace Name</Trans>
+          </Page.H>
           <Page.P variant="secondary">{owner.name}</Page.P>
         </div>
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" label="Edit" icon={Edit04} />
+            <Button variant="outline" label={t`Edit`} icon={Edit04} />
           </SheetTrigger>
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>Edit Workspace Name</SheetTitle>
+              <SheetTitle>
+                <Trans>Edit Workspace Name</Trans>
+              </SheetTitle>
             </SheetHeader>
             <SheetContainer>
               <div className="mt-6 flex flex-col gap-4">
                 <Page.P>
-                  Think GitHub repository names, short and memorable.
+                  <Trans>
+                    Think GitHub repository names, short and memorable.
+                  </Trans>
                 </Page.P>
                 <Input
                   name="name"
-                  placeholder="Workspace name"
+                  placeholder={t`Workspace name`}
                   value={workspaceName}
                   onChange={(e) => setWorkspaceName(e.target.value)}
                   message={workspaceNameError}
@@ -114,12 +122,12 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
               leftButtonProps={{
                 onClick: handleCancel,
                 variant: "outline",
-                label: "Cancel",
+                label: t`Cancel`,
               }}
               rightButtonProps={{
                 onClick: handleUpdateWorkspace,
                 variant: "primary",
-                label: updating ? "Saving..." : "Save",
+                label: updating ? t`Saving...` : t`Save`,
                 disabled: disable || updating,
               }}
             />

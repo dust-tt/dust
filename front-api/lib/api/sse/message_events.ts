@@ -31,6 +31,10 @@ export type MessageEventsOptions = {
   transformEvent: (auth: Authenticator, event: MessageStreamEvent) => unknown;
 };
 
+export const PRIVATE_MESSAGE_EVENTS_OPTIONS: MessageEventsOptions = {
+  transformEvent: (_auth, event) => event,
+};
+
 const MESSAGE_STREAM_END_EVENT = {
   eventId: "end-of-stream",
   data: { type: "end-of-stream" },
@@ -88,6 +92,17 @@ async function validateMessageEventsRequest(
 // Shared orchestration for both the v1 (public API) and private SSE
 // message-events routes; each supplies its own `transformEvent`. Public-API
 // stability rules ([api-backward-compatibility]) apply to whatever the v1 caller emits.
+/**
+ * @cc [owner:id13,label:api;performance] terminal-empty-message-poll
+ * For polling, when a non-aborted batch has no events and the persisted agent message is terminal,
+ * the response MUST contain one end-of-stream event. Under the same empty-batch condition, a
+ * message still in `created` status MUST return an empty batch.
+ */
+/**
+ * @cc [owner:id13,label:api;error-handling] terminal-message-poll-cursor
+ * After validating conversation access and message type, polling with the synthetic
+ * `end-of-stream` cursor MUST return the end-of-stream event without reading Redis.
+ */
 export async function streamMessageEventsForRoute(
   ctx: Context,
   auth: Authenticator,
@@ -96,7 +111,8 @@ export async function streamMessageEventsForRoute(
     messageId,
     lastEventId,
   }: { conversationId: string; messageId: string; lastEventId: string | null },
-  opts: MessageEventsOptions
+  opts: MessageEventsOptions,
+  transport: "sse" | "poll" = "sse"
 ) {
   const validation = await validateMessageEventsRequest(ctx, auth, {
     conversationId,
@@ -104,6 +120,39 @@ export async function streamMessageEventsForRoute(
   });
   if (validation.isErr()) {
     return validation.error;
+  }
+
+  if (transport === "poll") {
+    return pollEvents(ctx, async (signal) => {
+      if (lastEventId === MESSAGE_STREAM_END_EVENT.eventId) {
+        return {
+          events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
+        };
+      }
+
+      const events = await getMessagesEventsBatch({
+        messageId,
+        lastEventId,
+        signal,
+      });
+
+      if (events.length === 0 && !ctx.req.raw.signal.aborted) {
+        const status = await ConversationResource.fetchAgentMessageStatus(
+          auth,
+          validation.value,
+          messageId
+        );
+        if (status && isTerminalAgentMessageStatus(status)) {
+          return {
+            events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
+          };
+        }
+      }
+
+      return {
+        events: events.map((event) => JSON.stringify(event)),
+      };
+    });
   }
 
   return streamEvents({
@@ -112,65 +161,5 @@ export async function streamMessageEventsForRoute(
       getMessagesEvents(auth, { messageId, lastEventId, signal }),
     transform: (event) => opts.transformEvent(auth, event),
     writeDoneSentinel: true,
-  });
-}
-
-/**
- * @cc [owner:id13,label:api;performance] terminal-empty-message-poll
- * When a non-aborted batch has no events and the persisted agent message is terminal, the response
- * MUST contain one end-of-stream event. Under the same empty-batch condition, a message still in
- * `created` status MUST return an empty batch.
- */
-/**
- * @cc [owner:id13,label:api;error-handling] terminal-message-poll-cursor
- * After validating conversation access and message type, polling with the synthetic
- * `end-of-stream` cursor MUST return the end-of-stream event without reading Redis.
- */
-export async function pollMessageEventsForRoute(
-  ctx: Context,
-  auth: Authenticator,
-  {
-    conversationId,
-    messageId,
-    lastEventId,
-  }: { conversationId: string; messageId: string; lastEventId: string | null }
-) {
-  const validation = await validateMessageEventsRequest(ctx, auth, {
-    conversationId,
-    messageId,
-  });
-  if (validation.isErr()) {
-    return validation.error;
-  }
-
-  return pollEvents(ctx, async (signal) => {
-    if (lastEventId === MESSAGE_STREAM_END_EVENT.eventId) {
-      return {
-        events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
-      };
-    }
-
-    const events = await getMessagesEventsBatch({
-      messageId,
-      lastEventId,
-      signal,
-    });
-
-    if (events.length === 0 && !ctx.req.raw.signal.aborted) {
-      const status = await ConversationResource.fetchAgentMessageStatus(
-        auth,
-        validation.value,
-        messageId
-      );
-      if (status && isTerminalAgentMessageStatus(status)) {
-        return {
-          events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
-        };
-      }
-    }
-
-    return {
-      events: events.map((event) => JSON.stringify(event)),
-    };
   });
 }

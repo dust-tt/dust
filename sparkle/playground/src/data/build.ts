@@ -23,9 +23,9 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
+import type { Agent } from "./types";
 import { mockAgents } from "./agents";
 import { mockCompanySpaces } from "./companySpaces";
-import type { Agent } from "./types";
 
 // What the Build tab manages: the tools a workspace connects, the skills built
 // on top of them, and the agents assembled from those skills. Each of the three

@@ -77,9 +77,8 @@ vi.mock("@app/lib/utils/cache", () => ({
 
 // Mock file storage (GCS) - must be at module level to avoid SERVICE_ACCOUNT env requirement.
 vi.mock("@app/lib/file_storage", async () => {
-  const { fileStorageMock } = await import(
-    "@app/tests/utils/mocks/file_storage"
-  );
+  const { fileStorageMock } =
+    await import("@app/tests/utils/mocks/file_storage");
   // Spread the actual module so plain re-exports (constants) keep their real
   // values; the mock only replaces the GCS-backed functions. Safe because the
   // real module only reads SERVICE_ACCOUNT inside the FileStorage constructor.
@@ -91,9 +90,8 @@ vi.mock("@app/lib/file_storage", async () => {
 
 // Mock TextExtraction (Tika) - must be at module level to avoid connecting to Tika.
 vi.mock("@app/types/shared/text_extraction", async () => {
-  const { mockTextExtraction } = await import(
-    "@app/tests/utils/mocks/text_extraction"
-  );
+  const { mockTextExtraction } =
+    await import("@app/tests/utils/mocks/text_extraction");
   return mockTextExtraction();
 });
 

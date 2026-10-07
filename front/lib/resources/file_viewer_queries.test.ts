@@ -55,7 +55,7 @@ describe("FileResource viewer history", () => {
         viewedAt: new Date(at),
       });
     const readSequence = async () => {
-      // biome-ignore lint/plugin/noRawSql: The Resource does not expose PostgreSQL sequence state.
+      // oxlint-disable-next-line dust/noRawSql -- The Resource does not expose PostgreSQL sequence state.
       const [sequence] = await frontSequelize.query<{ lastValue: string }>(
         'SELECT last_value::text AS "lastValue" FROM file_viewer_dailies_id_seq',
         { type: QueryTypes.SELECT }

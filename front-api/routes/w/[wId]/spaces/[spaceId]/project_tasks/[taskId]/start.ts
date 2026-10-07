@@ -22,7 +22,7 @@ const app = workspaceApp();
 app.post(
   "/",
   validate("param", ParamsSchema),
-  withSpace({ requireCanRead: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", PostStartPodTaskBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

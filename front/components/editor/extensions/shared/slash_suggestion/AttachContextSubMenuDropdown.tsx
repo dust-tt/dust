@@ -1,3 +1,4 @@
+import { getKnowledgeBrowserEntryLabel } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
 import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
 import {
@@ -5,12 +6,12 @@ import {
   navigateToKnowledgeBrowserItem,
   useKnowledgeBrowserNavigation,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
-import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
   isAttachContextSlashCommand,
   SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
+import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   ContextSlashSearchSelection,
@@ -36,6 +37,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Breadcrumbs } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
   forwardRef,
@@ -118,16 +120,16 @@ function getSubMenuListProps({
   }
 }
 
-interface AttachContextSubMenuDropdownProps
-  extends Pick<
-    SuggestionProps<SlashCommand>,
-    "clientRect" | "editor" | "query" | "range"
-  > {
+interface AttachContextSubMenuDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "query"
+> {
   // The sub-menu command the user came from, and how to return to it. Absent when the browser is
   // the whole menu: no Back row, Escape closes.
   activeFrame?: SlashMenuStackFrame;
   onBack?: () => void;
   conversationId?: string | null;
+  dropdownHeaders?: React.ReactNode;
   onClose: () => void;
   // Extra rows shown as the last section of the browser's root with an empty query, for a menu
   // where the browser is the whole menu and commands such as "Upload file" have nowhere else to go.
@@ -168,6 +170,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
       activeFrame,
       clientRect,
       conversationId = null,
+      dropdownHeaders,
       onBack,
       onClose,
       onRootSectionSelect,
@@ -180,6 +183,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
 
     const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
@@ -223,8 +227,11 @@ export const AttachContextSubMenuDropdown = forwardRef<
       isLoading || isBrowsableSpacesLoading || browser.isLoading;
     const browseSections = useMemo(
       () =>
-        buildRootBrowseSections(browser.items, { isLoading: isBrowseLoading }),
-      [browser.items, isBrowseLoading]
+        buildRootBrowseSections(browser.items, {
+          isLoading: isBrowseLoading,
+          t,
+        }),
+      [browser.items, isBrowseLoading, t]
     );
     const attachNode = useCallback(
       (node: DataSourceViewContentNode) =>
@@ -237,8 +244,9 @@ export const AttachContextSubMenuDropdown = forwardRef<
           onAttachNode: attachNode,
           hasMore: browser.hasMore,
           isLoadingMore: browser.isLoadingMore,
+          t,
         }),
-      [attachNode, browser.items, browser.hasMore, browser.isLoadingMore]
+      [attachNode, browser.items, browser.hasMore, browser.isLoadingMore, t]
     );
     const searchCommands = useMemo(
       () => items.map(toSlashCommandItem),
@@ -280,13 +288,16 @@ export const AttachContextSubMenuDropdown = forwardRef<
               collapseIntermediates
               items={getKnowledgeBrowserBreadcrumbItems(
                 navigationHistory,
-                navigateTo
+                navigateTo,
+                {
+                  getLabel: (entry) => getKnowledgeBrowserEntryLabel(entry, t),
+                }
               )}
               size="xs"
             />
           </div>
         ) : undefined,
-      [canNavigateUp, navigateTo, navigationHistory]
+      [canNavigateUp, navigateTo, navigationHistory, t]
     );
 
     const handleSelect = (item: SlashCommand) => {
@@ -349,6 +360,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
         ref={dropdownRef}
         clientRect={clientRect}
         command={handleSelect}
+        dropdownHeaders={dropdownHeaders}
         emptyMessage={mode === "browse" ? BROWSE_EMPTY_MESSAGE : emptyMessage}
         headerContent={breadcrumbs}
         isLoading={

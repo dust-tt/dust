@@ -1,6 +1,6 @@
 import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -43,6 +43,7 @@ it("hides previous-query results immediately while the next query debounces", as
         isOpen: true,
         searchQuery: query,
         currentUserId: "current-user",
+        hideSettings: false,
       }),
     {
       initialProps: { query: "old" },

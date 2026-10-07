@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 import type {
   BenefitsProps,
   MetricProps,
@@ -7,13 +7,12 @@ import type {
   CustomerStory,
   QuoteProps,
 } from "@marketing/components/home/content/Solutions/CustomerStoriesSection";
+import type { DemoVideoProps } from "@marketing/components/home/content/Solutions/DemoVideoSection";
+import type { UseCaseProps } from "@marketing/components/home/content/Solutions/UseCasesSection";
 import type {
   HeroProps,
   pageSettingsProps,
 } from "@marketing/components/home/content/Solutions/configs/utils";
-import type { DemoVideoProps } from "@marketing/components/home/content/Solutions/DemoVideoSection";
-import type { UseCaseProps } from "@marketing/components/home/content/Solutions/UseCasesSection";
-import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 // Config exports

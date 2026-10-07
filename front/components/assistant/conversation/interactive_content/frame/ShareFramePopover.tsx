@@ -1,11 +1,11 @@
 import { FrameSharingFiles } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingFiles";
 import { FrameSharingGrants } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingGrants";
 import { FrameSharingViewers } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingViewers";
-import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import {
   getAvailableScopeOptions,
   SHARE_SCOPE_ICONS,
 } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
+import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import {
   useShareInteractiveContentFile,
   useSharingGrants,

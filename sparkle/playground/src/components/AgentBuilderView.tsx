@@ -86,7 +86,6 @@ import {
   mockSuggestionChanges,
   mockUsers,
 } from "../data";
-import { actionCardDirective } from "./actionCardDirective";
 import { InputBar } from "./InputBar";
 import { InviteUsersScreen } from "./InviteUsersScreen";
 import {
@@ -96,6 +95,7 @@ import {
   NewConversationUserMessage,
 } from "./NewConversationMessages";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
+import { actionCardDirective } from "./actionCardDirective";
 
 const getRandomSubset = <T,>(items: T[], count: number) => {
   const shuffled = [...items].sort(() => 0.5 - Math.random());

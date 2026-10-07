@@ -12,8 +12,8 @@ import {
 } from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
@@ -57,6 +57,9 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CellContext,
   ColumnDef,
@@ -87,15 +90,17 @@ const columnsBreakpoints = {
 };
 
 const getTableColumns = ({
+  t,
   showSpaceUsage,
   isTopLevelInView,
 }: {
+  t: (descriptor: MessageDescriptor) => string;
   showSpaceUsage: boolean;
   isTopLevelInView: boolean;
 }): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
-    header: "Name",
+    header: t(msg`Name`),
     id: "title",
     accessorFn: (row) =>
       getDisplayTitleForDataSourceViewContentNode(row, {
@@ -126,7 +131,7 @@ const getTableColumns = ({
       header: () => {
         return (
           <div className="flex w-full justify-end">
-            <p>Available to</p>
+            <p>{t(msg`Available to`)}</p>
           </div>
         );
       },
@@ -155,7 +160,7 @@ const getTableColumns = ({
   }
 
   columns.push({
-    header: "Last updated",
+    header: t(msg`Last updated`),
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     enableSorting: true,
@@ -255,6 +260,7 @@ export const SpaceDataSourceViewContentList = ({
   systemSpace,
   useCaseForDocument,
 }: SpaceDataSourceViewContentListProps) => {
+  const { t } = useLingui();
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -296,7 +302,6 @@ export const SpaceDataSourceViewContentList = ({
   const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
 
   // Reset pagination when sorting changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [sortingAsString, resetPagination]);
@@ -332,10 +337,11 @@ export const SpaceDataSourceViewContentList = ({
   const columns = useMemo(
     () =>
       getTableColumns({
+        t,
         showSpaceUsage,
         isTopLevelInView,
       }),
-    [showSpaceUsage, isTopLevelInView]
+    [t, showSpaceUsage, isTopLevelInView]
   );
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
@@ -403,21 +409,22 @@ export const SpaceDataSourceViewContentList = ({
         if (!res.ok) {
           const rawError: { error: APIError } = await res.json();
           sendNotification({
-            title: "Error while adding data to space",
+            title: t`Error while adding data to space`,
             description: rawError.error.message,
             type: "error",
           });
         } else {
           sendNotification({
-            title: "Data added to space",
+            title: t`Data added to space`,
             type: "success",
           });
           await mutateDataSourceViews();
         }
       } catch (e) {
+        const errorMessage = `${e}`;
         sendNotification({
-          title: "Error while adding data to space",
-          description: `An Unknown error ${e} occurred while adding data to space.`,
+          title: t`Error while adding data to space`,
+          description: t`An unknown error ${errorMessage} occurred while adding data to space.`,
           type: "error",
         });
       }
@@ -428,6 +435,7 @@ export const SpaceDataSourceViewContentList = ({
       mutateDataSourceViews,
       owner.sId,
       sendNotification,
+      t,
     ]
   );
 
@@ -463,6 +471,7 @@ export const SpaceDataSourceViewContentList = ({
           modal: false,
         },
         menuItems: getMenuItems(
+          t,
           canReadInSpace,
           canWriteInSpace,
           dataSourceView,
@@ -484,6 +493,7 @@ export const SpaceDataSourceViewContentList = ({
       addToSpace,
       router,
       onSelect,
+      t,
     ]
   );
 
@@ -514,7 +524,7 @@ export const SpaceDataSourceViewContentList = ({
     isManaged(dataSourceView.dataSource) && space.kind !== "system" ? (
       isAdmin ? (
         <Button
-          label="Manage Data"
+          label={t`Manage data`}
           icon={Settings01}
           onClick={() => {
             if (systemSpace) {
@@ -538,7 +548,13 @@ export const SpaceDataSourceViewContentList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
-  const emptyContent = parentId ? <div>No content</div> : emptySpaceContent;
+  const emptyContent = parentId ? (
+    <div>
+      <Trans>No content</Trans>
+    </div>
+  ) : (
+    emptySpaceContent
+  );
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   const actionButtons = (
@@ -551,22 +567,29 @@ export const SpaceDataSourceViewContentList = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
-                  label={viewType === "document" ? "document" : "table"}
+                  label={
+                    viewType === "document"
+                      ? t({
+                          message: "Document",
+                          context: "content type filter",
+                        })
+                      : t({ message: "Table", context: "content type filter" })
+                  }
                   variant="outline"
                   isSelect
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
-                  label="Documents"
+                  label={t`Documents`}
                   onClick={() => handleViewTypeChange("document")}
                 />
                 <DropdownMenuItem
-                  label="Tables"
+                  label={t`Tables`}
                   onClick={() => handleViewTypeChange("table")}
                 />
                 <DropdownMenuItem
-                  label="All"
+                  label={t({ message: "All", context: "all content types" })}
                   onClick={() => handleViewTypeChange("all")}
                 />
               </DropdownMenuContent>
@@ -604,7 +627,11 @@ export const SpaceDataSourceViewContentList = ({
         !parentId &&
         space.kind === "system" && (
           <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-            {isEmpty && <div>Connection ready. Select the data to sync.</div>}
+            {isEmpty && (
+              <div>
+                <Trans>Connection ready. Select the data to sync.</Trans>
+              </div>
+            )}
 
             <ConnectorPermissionsModal
               owner={owner}
@@ -632,8 +659,8 @@ export const SpaceDataSourceViewContentList = ({
     // MultipleFilesUpload listens to the file drop context and uploads the files.
     <FileDropProvider>
       <DropzoneContainer
-        description="Drag and drop your files here."
-        title="Add Files"
+        description={t`Drag and drop your files here.`}
+        title={t`Add files`}
         disabled={!canWriteInSpace || !isFolder(dataSourceView.dataSource)}
       >
         {isEmpty && (

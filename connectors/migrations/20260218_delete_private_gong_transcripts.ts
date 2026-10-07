@@ -3,14 +3,14 @@ import {
   fetchGongConnector,
   getGongClient,
 } from "@connectors/connectors/gong/lib/utils";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { GongTranscriptModel } from "@connectors/lib/models/gong";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
-import type { Logger } from "@connectors/logger/logger";
 
 const BATCH_SIZE = 100;
 const CORE_DELETION_CONCURRENCY = 10;

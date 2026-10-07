@@ -7,8 +7,8 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
@@ -54,6 +54,9 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import type React from "react";
@@ -92,6 +95,7 @@ const hasConfigureSlackConnectionQuery = (
   query.configureConnection === "slack";
 
 function getTableColumns(
+  t: (descriptor: MessageDescriptor) => string,
   onAgentClick: (id: string | null) => void,
   onSkillClick: (id: string | null) => void,
   isManaged: boolean,
@@ -116,7 +120,7 @@ function getTableColumns(
   };
   const managedByColumn: ColumnDef<RowData, string | undefined> = {
     id: "managedBy",
-    header: "Managed by",
+    header: t(msg`Managed by`),
     accessorFn: (row) =>
       isGlobalOrSystemSpace
         ? (row.dataSourceView.dataSource.editedByUser?.imageUrl ??
@@ -139,7 +143,7 @@ function getTableColumns(
   };
   const usedByColumn: ColumnDef<RowData, number> = {
     id: "usedBy",
-    header: "Used by",
+    header: t(msg`Used by`),
     // Return a numeric count to allow numeric sorts if we want
     accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
     cell: (info) => (
@@ -155,7 +159,7 @@ function getTableColumns(
   // For lastSynced, we store a number or undefined in accessorFn
   const lastSyncedColumn: ColumnDef<RowData, number | undefined> = {
     id: "lastSync",
-    header: "Last sync",
+    header: t(msg`Last sync`),
     meta: {
       className: "w-64",
     },
@@ -166,10 +170,12 @@ function getTableColumns(
       return (
         <DataTable.CellContent className="pr-2">
           {!ds.connector && !ds.fetchConnectorError && (
-            <Chip color="info">Never</Chip>
+            <Chip color="info">
+              {t(msg({ message: "Never", context: "last sync status" }))}
+            </Chip>
           )}
           {ds.fetchConnectorError && (
-            <Chip color="warning">Retry in a few minutes</Chip>
+            <Chip color="warning">{t(msg`Retry in a few minutes`)}</Chip>
           )}
           {ds.connector && info.row.original.workspaceId && ds.name && (
             <ConnectorSyncingChip
@@ -200,7 +206,7 @@ function getTableColumns(
               icon={CloudArrowLeftRight}
               disabled={disabled}
               onClick={buttonOnClick}
-              label={isLoading ? "Connecting..." : "Connect"}
+              label={isLoading ? t(msg`Connecting...`) : t(msg`Connect`)}
             />
           </DataTable.CellContent>
         );
@@ -212,7 +218,16 @@ function getTableColumns(
             icon={Settings01}
             disabled={disabled}
             onClick={buttonOnClick}
-            label={isAdmin ? "Manage" : "View"}
+            label={
+              isAdmin
+                ? t(msg`Manage`)
+                : t(
+                    msg({
+                      message: "View",
+                      context: "button label, view a connection",
+                    })
+                  )
+            }
             size="xs"
           />
         </DataTable.CellContent>
@@ -281,6 +296,7 @@ export const SpaceResourcesList = ({
   user,
   activeSeats,
 }: SpaceResourcesListProps) => {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [skillId, setSkillId] = useState<string | null>(null);
@@ -364,7 +380,6 @@ export const SpaceResourcesList = ({
   const { setIsSearchDisabled, setTargetDataSourceViews } =
     useContext(SpaceSearchContext);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
       return [];
@@ -391,7 +406,10 @@ export const SpaceResourcesList = ({
         const menuItems: MenuItem[] = [];
         if (isWebsiteOrFolder && canWriteInSpace) {
           menuItems.push({
-            label: "Edit",
+            label: t({
+              message: "Edit",
+              context: "menu item, edit a folder or website",
+            }),
             kind: "item",
             icon: Edit04,
             onClick: (e) => {
@@ -402,7 +420,7 @@ export const SpaceResourcesList = ({
           });
           if (isFolder) {
             menuItems.push({
-              label: "Use from API",
+              label: t`Use from API`,
               kind: "item",
               icon: Cube01,
               onClick: (e) => {
@@ -413,7 +431,7 @@ export const SpaceResourcesList = ({
             });
           }
           menuItems.push({
-            label: "Delete",
+            label: t`Delete`,
             icon: Trash01,
             kind: "item",
             variant: "warning",
@@ -451,6 +469,7 @@ export const SpaceResourcesList = ({
     canWriteInSpace,
     isFolder,
     isDark,
+    t,
   ]);
 
   // Capture configureConnection=slack query param and store intent to open modal.
@@ -643,6 +662,7 @@ export const SpaceResourcesList = ({
           className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
+            t,
             setAgentId,
             setSkillId,
             isManagedCategory,

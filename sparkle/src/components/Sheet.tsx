@@ -97,8 +97,9 @@ const sheetVariants = cva(
   }
 );
 
-interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
+interface SheetContentProps extends React.ComponentPropsWithoutRef<
+  typeof SheetPrimitive.Content
+> {
   /** Maximum width of the panel: "md" | "lg" | "xl" | "2xl" | "3xl" (defaults to "md"). */
   size?: SheetSizeType;
   /** Traps keyboard focus inside the sheet while it is open. */
@@ -397,8 +398,9 @@ const SheetFooter = ({
 };
 SheetFooter.displayName = "SheetFooter";
 
-interface SheetTitleProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title> {
+interface SheetTitleProps extends React.ComponentPropsWithoutRef<
+  typeof SheetPrimitive.Title
+> {
   icon?: React.ComponentType;
 }
 

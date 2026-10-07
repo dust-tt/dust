@@ -3,21 +3,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockDistribution,
   mockExecuteWithLock,
+  mockGaugeDelta,
   mockGetSandboxImage,
   mockGetSandboxProvider,
   mockProviderCreate,
   mockProviderDestroy,
   mockProviderExec,
+  mockProviderSleep,
   mockProviderWake,
   mockRevokeAllExecTokensForSandbox,
 } = vi.hoisted(() => ({
   mockDistribution: vi.fn(),
   mockExecuteWithLock: vi.fn(),
+  mockGaugeDelta: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
   mockProviderCreate: vi.fn(),
   mockProviderDestroy: vi.fn(),
   mockProviderExec: vi.fn(),
+  mockProviderSleep: vi.fn(),
   mockProviderWake: vi.fn(),
   mockRevokeAllExecTokensForSandbox: vi.fn(),
 }));
@@ -26,6 +30,7 @@ vi.mock("@app/lib/utils/statsd", () => ({
   statsDMetrics: {
     increment: vi.fn(),
     distribution: mockDistribution,
+    gaugeDelta: mockGaugeDelta,
   },
 }));
 
@@ -521,37 +526,48 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
     conversationResource = fetched;
   });
 
-  it.each([
-    "running",
-    "sleeping",
-    "pending_approval",
-  ] as const)("destroys at the provider and marks deleted regardless of status (%s)", async (status) => {
-    const sandbox = await SandboxFactory.create(
-      authenticator,
-      conversationResource.toJSON(),
-      {
-        status,
-        killRequestedAt: new Date(),
-      }
-    );
-
-    const result =
-      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+  it.each(["running", "sleeping", "pending_approval"] as const)(
+    "destroys at the provider and marks deleted regardless of status (%s)",
+    async (status) => {
+      const sandbox = await SandboxFactory.create(
         authenticator,
-        conversationResource
+        conversationResource.toJSON(),
+        {
+          status,
+          killRequestedAt: new Date(),
+        }
       );
 
-    expect(result.isOk()).toBe(true);
-    expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
-      workspaceId: authenticator.getNonNullableWorkspace().sId,
-    });
+      const result =
+        await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+          authenticator,
+          conversationResource
+        );
 
-    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
-      authenticator,
-      conversationResource.toJSON()
-    );
-    expect(reloaded?.status).toBe("deleted");
-  });
+      expect(result.isOk()).toBe(true);
+      expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
+        workspaceId: authenticator.getNonNullableWorkspace().sId,
+      });
+
+      const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+        authenticator,
+        conversationResource.toJSON()
+      );
+      expect(reloaded?.status).toBe("deleted");
+      if (status === "running") {
+        expect(mockGaugeDelta).toHaveBeenCalledWith(
+          "sandbox.lifecycle.running",
+          -1,
+          expect.arrayContaining([
+            expect.stringMatching(/^region:/),
+            "sandbox_type:conversation",
+          ])
+        );
+      } else {
+        expect(mockGaugeDelta).not.toHaveBeenCalled();
+      }
+    }
+  );
 
   it("is a no-op when killRequestedAt is not set", async () => {
     await SandboxFactory.create(authenticator, conversationResource.toJSON(), {
@@ -602,6 +618,7 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested pre-destroy flush", 
 
   const lifecycleOwner = () => ({
     lockKey: conversationResource.sId,
+    sandboxType: "conversation" as const,
     fetchSandbox: () =>
       ConversationSandboxAdapter.fetchSandbox(
         authenticator,
@@ -1108,6 +1125,7 @@ describe("SandboxResource.ensureActive", () => {
       create: mockProviderCreate,
       destroy: mockProviderDestroy,
       exec: mockProviderExec,
+      sleep: mockProviderSleep,
       wake: mockProviderWake,
     });
     mockGetSandboxImage.mockReturnValue(
@@ -1126,6 +1144,7 @@ describe("SandboxResource.ensureActive", () => {
     );
     mockProviderCreate.mockResolvedValue(new Ok({ providerId: "provider-id" }));
     mockProviderWake.mockResolvedValue(new Ok(undefined));
+    mockProviderSleep.mockResolvedValue(new Ok(undefined));
     mockProviderExec.mockResolvedValue(
       new Ok({ exitCode: 0, stdout: "", stderr: "" })
     );
@@ -1788,6 +1807,160 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.version).toBe("0.0.1");
     expect(persisted?.killRequestedAt).toBeNull();
     expect(persisted?.status).toBe("running");
+  });
+});
+
+describe("sandbox.lifecycle.running gauge", () => {
+  let authenticator: Authenticator;
+  let conversation: ConversationType;
+  let conversationResource: ConversationResource;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      create: mockProviderCreate,
+      destroy: mockProviderDestroy,
+      sleep: mockProviderSleep,
+      wake: mockProviderWake,
+    });
+    mockGetSandboxImage.mockReturnValue(
+      new Ok({
+        toCreateConfig: () => ({
+          imageId: { imageName: "test-image", tag: "0.0.1" },
+          envVars: {},
+          network: { egress: "restricted" },
+          resources: { cpu: 1, memoryMB: 512 },
+        }),
+      })
+    );
+    mockProviderCreate.mockResolvedValue(new Ok({ providerId: "provider-id" }));
+    mockProviderWake.mockResolvedValue(new Ok(undefined));
+    mockProviderSleep.mockResolvedValue(new Ok(undefined));
+    mockProviderDestroy.mockResolvedValue(new Ok(undefined));
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const fetched = await ConversationResource.fetchById(
+      authenticator,
+      conversation.sId
+    );
+    if (!fetched) {
+      throw new Error("Conversation not found.");
+    }
+    conversationResource = fetched;
+  });
+
+  function expectRunningGauge(
+    delta: 1 | -1,
+    sandboxType: "conversation" | "frame"
+  ) {
+    expect(mockGaugeDelta).toHaveBeenCalledWith(
+      "sandbox.lifecycle.running",
+      delta,
+      expect.arrayContaining([
+        expect.stringMatching(/^region:/),
+        `sandbox_type:${sandboxType}`,
+      ])
+    );
+    for (const call of mockGaugeDelta.mock.calls) {
+      const tags = call[2] ?? [];
+      expect(tags).not.toEqual(
+        expect.arrayContaining([expect.stringMatching(/workspace/i)])
+      );
+    }
+  }
+
+  it("increments on conversation sandbox create", async () => {
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      conversation
+    );
+
+    expect(result.isOk()).toBe(true);
+    expectRunningGauge(1, "conversation");
+  });
+
+  it("increments on frame sandbox wake", async () => {
+    const workspace = authenticator.getNonNullableWorkspace();
+    const pod = await SpaceFactory.project(workspace);
+    const frame = await FileFactory.create(authenticator, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: pod.sId,
+      })}Frame/${FRAME_MANIFEST_FILE}`,
+    });
+    await SandboxFactory.createForFrame(authenticator, frame, {
+      status: "sleeping",
+    });
+
+    const result = await FrameSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      frame,
+      { wakeOnly: true }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expectRunningGauge(1, "frame");
+  });
+
+  it("decrements on pause (sleep)", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+    });
+
+    const result =
+      await ConversationSandboxAdapter.dangerouslySleepSandboxIfRunning(
+        authenticator,
+        conversationResource
+      );
+
+    expect(result.isOk()).toBe(true);
+    expectRunningGauge(-1, "conversation");
+  });
+
+  it("decrements on pause for approval", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+    });
+
+    const result = await ConversationSandboxAdapter.pauseSandboxForApproval(
+      authenticator,
+      conversation
+    );
+
+    expect(result.isOk()).toBe(true);
+    expectRunningGauge(-1, "conversation");
+  });
+
+  it("does not decrement when destroying an already-paused sandbox", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "sleeping",
+    });
+
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+        authenticator,
+        conversationResource
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockGaugeDelta).not.toHaveBeenCalled();
   });
 });
 

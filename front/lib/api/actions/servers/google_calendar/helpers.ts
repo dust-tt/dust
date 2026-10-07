@@ -19,8 +19,7 @@ interface GoogleCalendarEventDateTime {
   timeZone?: string;
 }
 
-interface EnrichedGoogleCalendarEventDateTime
-  extends GoogleCalendarEventDateTime {
+interface EnrichedGoogleCalendarEventDateTime extends GoogleCalendarEventDateTime {
   eventDayOfWeek?: string;
   isAllDay?: boolean;
 }
@@ -128,8 +127,10 @@ export interface GoogleCalendarEvent {
   }>;
 }
 
-export interface EnrichedGoogleCalendarEvent
-  extends Omit<GoogleCalendarEvent, "start" | "end"> {
+export interface EnrichedGoogleCalendarEvent extends Omit<
+  GoogleCalendarEvent,
+  "start" | "end"
+> {
   start?: EnrichedGoogleCalendarEventDateTime;
   end?: EnrichedGoogleCalendarEventDateTime;
 }

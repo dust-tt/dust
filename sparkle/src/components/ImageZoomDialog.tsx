@@ -75,7 +75,6 @@ function ImageZoomDialog({
     [image.downloadUrl, image.title]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: open and image.src are props that should trigger the reset
   React.useEffect(() => {
     setImageLoaded(false);
   }, [open, image.src]);

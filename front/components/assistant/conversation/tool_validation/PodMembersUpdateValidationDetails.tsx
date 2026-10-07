@@ -117,6 +117,7 @@ export function PodMembersUpdateValidationDetails({
     () => [
       ...new Set([...addEntries.map(([userId]) => userId), ...membersToRemove]),
     ],
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [addEntries, membersToRemove]
   );
   const { membersById, isMembersLoading } = useMemberDetails({

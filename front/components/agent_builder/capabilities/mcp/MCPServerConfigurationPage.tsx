@@ -11,6 +11,7 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
@@ -27,6 +28,7 @@ export function MCPServerConfigurationPage({
   mcpServerView,
   getAgentInstructions,
 }: MCPServerConfigurationPageProps) {
+  const { t } = useLingui();
   const requirements = useMemo(() => {
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
@@ -36,8 +38,8 @@ export function MCPServerConfigurationPage({
       <div className="h-full space-y-6 pt-3">
         {action.configurationRequired && (
           <NameSection
-            title="Name"
-            placeholder="My tool name…"
+            title={t`Name`}
+            placeholder={t`My tool name…`}
             triggerValidationOnChange
           />
         )}

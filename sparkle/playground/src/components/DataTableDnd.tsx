@@ -220,7 +220,7 @@ export function DataTable<TData extends TBaseData>({
     getRowId,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: table is recreated every render, adding it would cause infinite re-runs
+  // oxlint-disable-next-line react/exhaustive-deps -- table is recreated every render, adding it would cause infinite re-runs
   useEffect(() => {
     if (filterColumn) {
       table.getColumn(filterColumn)?.setFilterValue(filter);
@@ -343,8 +343,9 @@ export function DataTable<TData extends TBaseData>({
   );
 }
 
-export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends DataTableProps<TData> {
+export interface ScrollableDataTableProps<
+  TData extends TBaseData,
+> extends DataTableProps<TData> {
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
@@ -913,8 +914,7 @@ interface BaseMenuItem {
 }
 
 interface RegularMenuItem
-  extends BaseMenuItem,
-    Omit<DropdownMenuItemProps, "children" | "label"> {
+  extends BaseMenuItem, Omit<DropdownMenuItemProps, "children" | "label"> {
   kind: "item";
 }
 

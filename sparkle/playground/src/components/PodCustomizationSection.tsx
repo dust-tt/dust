@@ -23,11 +23,11 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import { useState, type ComponentType, type DragEvent } from "react";
 
+import type { DataSource } from "../data/types";
 import {
   MAX_POD_FILE_TAB_TITLE_LENGTH,
   MAX_POD_FILE_TABS,
 } from "../data/podSettings";
-import type { DataSource } from "../data/types";
 import { AddPodFileMenu } from "./AddPodFileMenu";
 
 const POD_TAB_DRAG_MIME = "application/x-dust-pod-tab-value";

@@ -13,9 +13,8 @@ vi.mock("@app/components/dev/devModeConstants", () => {
 });
 
 vi.mock("@app/lib/api/config", async (importOriginal) => {
-  const { createAppConfigMock } = await import(
-    "@app/tests/utils/mocks/app_config"
-  );
+  const { createAppConfigMock } =
+    await import("@app/tests/utils/mocks/app_config");
   return createAppConfigMock(importOriginal, {
     getAcademyJwtSecret: () => "test-academy-jwt-secret",
     getApiBaseUrl: () => "http://localhost:3000",

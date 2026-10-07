@@ -8,6 +8,7 @@ import {
   GooglePdfLogo as GenericPdfLogo,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export const createConnectorOptionsPdfEnabled = (description: string) => {
   const ConnectorOptionsPdfEnabled = ({
@@ -16,6 +17,7 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
     isAdmin,
     dataSource,
   }: ConnectorOptionsProps) => {
+    const { t } = useLingui();
     const { configValue } = useConnectorConfig({
       owner,
       dataSource,
@@ -35,7 +37,7 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
     return (
       <ContextItem.List>
         <ContextItem
-          title="Enable PDF syncing"
+          title={t`Enable PDF syncing`}
           visual={<ContextItem.Visual visual={GenericPdfLogo} />}
           action={
             <div className="relative">

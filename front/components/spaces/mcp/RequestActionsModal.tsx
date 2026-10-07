@@ -24,6 +24,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import capitalize from "lodash/capitalize";
 import { useState } from "react";
 
@@ -33,6 +34,7 @@ interface RequestActionsModal {
 }
 
 export function RequestActionsModal({ owner, space }: RequestActionsModal) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const { serverViews, isMCPServerViewsLoading: isLoading } =
     useMCPServerViewsNotActivated({ owner, space, disabled: !isOpen });
@@ -53,8 +55,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
     if (!userToId || !selectedMcpServer) {
       sendNotification({
         type: "error",
-        title: "Error sending email",
-        description: "An unexpected error occurred while sending email.",
+        title: t`Error sending email`,
+        description: t`An unexpected error occurred while sending email.`,
       });
     } else {
       try {
@@ -63,17 +65,17 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
           mcpServerViewId: selectedMcpServer.sId,
           owner,
         });
+        const adminFullName = selectedMcpServer.editedByUser?.fullName;
         sendNotification({
           type: "success",
-          title: "Email sent!",
-          description: `Your request was sent to ${selectedMcpServer.editedByUser?.fullName}`,
+          title: t`Email sent!`,
+          description: t`Your request was sent to ${adminFullName}`,
         });
       } catch (e) {
         sendNotification({
           type: "error",
-          title: "Error sending email",
-          description:
-            "An unexpected error occurred while sending the request.",
+          title: t`Error sending email`,
+          description: t`An unexpected error occurred while sending the request.`,
         });
         logger.error(
           {
@@ -88,21 +90,25 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
     }
   };
 
+  const selectedToolName = selectedMcpServer
+    ? getMcpServerViewDisplayName(selectedMcpServer)
+    : "";
+  const adminName = capitalize(selectedMcpServer?.editedByUser?.fullName ?? "");
+
   return (
     <Sheet
       open={isOpen}
       onOpenChange={(open) => (open ? setIsOpen(true) : onClose())}
     >
       <SheetTrigger asChild>
-        <Button label="Request Tool" icon={Plus} />
+        <Button label={t`Request tool`} icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            Requesting Access to{" "}
             {selectedMcpServer
-              ? getMcpServerViewDisplayName(selectedMcpServer)
-              : ""}
+              ? t`Requesting access to ${selectedToolName}`
+              : t`Requesting access`}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -114,8 +120,10 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {!isLoading && serverViews.length === 0 && (
                   <label className="block text-sm font-medium text-muted-foreground">
                     <p>
-                      There are no extra tools set up that you can request
-                      access to. Ask an admin to set one up.
+                      <Trans>
+                        There are no extra tools set up that you can request
+                        access to. Ask an admin to set one up.
+                      </Trans>
                     </p>
                   </label>
                 )}
@@ -123,7 +131,9 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                 {serverViews.length >= 1 && (
                   <>
                     <label className="block text-sm font-medium text-muted-foreground">
-                      <p>Which tools you want to get access to?</p>
+                      <p>
+                        <Trans>Which tools you want to get access to?</Trans>
+                      </p>
                     </label>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -139,7 +149,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           />
                         ) : (
                           <Button
-                            label="Pick Tools"
+                            label={t`Pick tools`}
                             variant="outline"
                             size="sm"
                             isSelect
@@ -164,17 +174,14 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
               {selectedMcpServer && (
                 <div className="flex flex-col gap-2">
                   <p className="mb-2 text-sm text-muted-foreground">
-                    {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}{" "}
-                    is the administrator for the{" "}
-                    {selectedMcpServer
-                      ? getMcpServerViewDisplayName(selectedMcpServer)
-                      : ""}{" "}
-                    tool within Dust. Send an email to Dust. Send an email to{" "}
-                    {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}
-                    , explaining your request.
+                    <Trans>
+                      {adminName} is the administrator for the{" "}
+                      {selectedToolName} tool within Dust. Send an email to{" "}
+                      {adminName}, explaining your request.
+                    </Trans>
                   </p>
                   <TextArea
-                    placeholder={`Hello`}
+                    placeholder={t`Hello`}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="mb-2"
@@ -186,12 +193,12 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Send",
+            label: t`Send`,
             onClick: onSave,
             disabled: message.length === 0,
           }}

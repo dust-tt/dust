@@ -90,6 +90,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("no_seat");
@@ -102,6 +103,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: true,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("user_cap_reached");
@@ -113,9 +115,49 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: true,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("user_cap_reached");
+  });
+
+  it("reports a group limit block when the personal cap is not reached, even with a depleted pool", async () => {
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+      groupLimitBlocked: true,
+    });
+
+    expect(blocked).toBe("group_limit_reached");
+  });
+
+  it("reports the personal cap over the group limit when both are reached", async () => {
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "active");
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: true,
+      groupLimitBlocked: true,
+    });
+
+    expect(blocked).toBe("user_cap_reached");
+  });
+
+  it("does not block a free seat on a group limit", async () => {
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      seatType: "free",
+    });
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "active");
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+      groupLimitBlocked: true,
+    });
+
+    expect(blocked).toBeNull();
   });
 
   it("returns null when user is on_pool, pool is active and cap is not blocked", async () => {
@@ -124,6 +166,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -135,6 +178,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -146,6 +190,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");
@@ -165,6 +210,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -182,6 +228,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");
@@ -191,16 +238,20 @@ describe("isUserBlockedByMetronome", () => {
     "active_low_balance",
     "active_critical_balance",
     "overage",
-  ] as const)("does not block when pool status is '%s' (non-depleted warning state)", async (poolState) => {
-    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
-    redisValues.set("metronome:pool_credit_status:ws_test", poolState);
+  ] as const)(
+    "does not block when pool status is '%s' (non-depleted warning state)",
+    async (poolState) => {
+      redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+      redisValues.set("metronome:pool_credit_status:ws_test", poolState);
 
-    const blocked = await isUserBlockedByMetronome(workspace, user, {
-      userCapBlocked: false,
-    });
+      const blocked = await isUserBlockedByMetronome(workspace, user, {
+        userCapBlocked: false,
+        groupLimitBlocked: false,
+      });
 
-    expect(blocked).toBeNull();
-  });
+      expect(blocked).toBeNull();
+    }
+  );
 
   it("falls back to DB when 'user_credit_state' Redis value is invalid", async () => {
     redisValues.set(
@@ -221,6 +272,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     // DB resolved the state to `user_seat`, so pool depletion does not block.
@@ -245,6 +297,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -263,6 +316,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -282,6 +336,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -300,6 +355,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");
@@ -322,6 +378,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
+      groupLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");

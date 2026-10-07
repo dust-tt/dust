@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface DisableProviderDialogProps {
   providerId: WhitelistableModelMakerIdType | null;
@@ -21,27 +22,32 @@ export function DisableProviderDialog({
   onConfirm,
   onCancel,
 }: DisableProviderDialogProps) {
+  const { t } = useLingui();
   const providerName = providerId ? getModelMakerDisplayName(providerId) : "";
 
   return (
     <Dialog open={providerId !== null} onOpenChange={() => onCancel()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Disable {providerName}?</DialogTitle>
+          <DialogTitle>
+            <Trans>Disable {providerName}?</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <DialogDescription>
-            Agents using {providerName} models will stop responding until they
-            are reconfigured to use another provider.
+            <Trans>
+              Agents using {providerName} models will stop responding until they
+              are reconfigured to use another provider.
+            </Trans>
           </DialogDescription>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Disable provider",
+            label: t`Disable provider`,
             variant: "warning",
             onClick: onConfirm,
           }}

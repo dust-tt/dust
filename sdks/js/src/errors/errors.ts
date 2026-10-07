@@ -192,10 +192,7 @@ export type DustErrorCode = DustErrorType["code"];
 
 const errorTypeMapping: Record<
   string,
-  new (
-    message: string,
-    options?: BaseErrorOptions
-  ) => DustError
+  new (message: string, options?: BaseErrorOptions) => DustError
 > = {
   not_authenticated: DustAuthenticationError,
   invalid_api_key_error: DustAuthenticationError,
@@ -220,6 +217,7 @@ const errorTypeMapping: Record<
   plan_message_limit_exceeded: DustPermissionError,
   credits_exhausted: DustPermissionError,
   user_cap_reached: DustPermissionError,
+  group_limit_reached: DustPermissionError,
   subscription_required: DustPermissionError,
   workspace_can_use_product_required_error: DustPermissionError,
   content_too_large: DustContentTooLargeError,
@@ -229,10 +227,7 @@ const errorTypeMapping: Record<
 
 const statusCodeMapping: Record<
   number,
-  new (
-    message: string,
-    options?: BaseErrorOptions
-  ) => DustError
+  new (message: string, options?: BaseErrorOptions) => DustError
 > = {
   401: DustAuthenticationError,
   403: DustPermissionError,

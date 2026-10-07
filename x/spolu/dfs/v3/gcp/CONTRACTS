@@ -1,0 +1,10 @@
+@cc [owner:spolu,label:security;operations] existing-dust-dev-fixture
+Cloud commands MUST explicitly target dust-dev and the allowlisted v2/gcp VMs. Verify the workload
+VM's metadata identity before host mutations. Cloud resource creation/deletion remains manual.
+This fixture MUST NOT initialize or reconfigure FDB or modify existing v2 binaries/data.
+
+@cc [owner:spolu,label:testing;operations] isolated-networked-benchmarks
+Benchmarks MUST use fresh v3 prefixes and retain the same workloads and freshness bounds as local
+runs. Record actual FDB topology and distinguish application restarts from FDB/OS cache resets.
+Builds, tests, and timed runs MUST NOT overlap. Restore pre-existing interactive services after
+timing. Generated reports, credentials, and build outputs MUST remain outside version control.

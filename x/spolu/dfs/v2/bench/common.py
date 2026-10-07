@@ -31,19 +31,31 @@ def corpus(work, files=10000):
     return target
 
 
-def metadata(binary='/target/release/dfs-server-v2'):
+def metadata(binary=None):
+    selected_binary = support.server_binary(binary)
+    help_text = subprocess.run([selected_binary, '--help'], check=True, capture_output=True,
+                               text=True).stdout
+    writeback = {name: int(os.environ.get(name, default)) for name, default in {
+        'DFS_WRITEBACK_MIB': 256, 'DFS_WRITEBACK_DEBOUNCE_MS': 50,
+        'DFS_WRITEBACK_MAX_AGE_MS': 500, 'DFS_WRITEBACK_CONCURRENCY': 8,
+        'DFS_WRITEBACK_BATCH_KIB': 4096, 'DFS_WRITEBACK_BATCH_FILES': 64,
+    }.items()} if '--writeback-mib' in help_text else {'DFS_WRITEBACK_MIB': 0}
     return {'label': 'dfs v2 [FoundationDB + Elasticsearch]', 'manifest_sha256': MANIFEST_SHA256,
             'files': 10000, 'profile': 'release',
             'linux': platform.platform(), 'cpu_count': os.cpu_count(),
             'memory': Path('/proc/meminfo').read_text().splitlines()[0],
-            'server_binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
+            'server_binary_sha256': hashlib.sha256(Path(selected_binary).read_bytes()).hexdigest(),
+            'fuse_binary_sha256': hashlib.sha256(support.v1.fuse_binary().read_bytes()).hexdigest(),
+            'xattr_cache_mib': os.environ.get('DFS_XATTR_CACHE_MIB', 'binary default'),
             'fdb_version': '7.3.69', 'es_version': '8.15.3',
-            'fdb_tuning_seconds': {name: float(os.environ.get(variable,
-                default if name == 'grv' else tuned))
-                for name, (variable, _, default, tuned) in KNOBS.items()},
+            'fdb_tuning_seconds': {name: float(os.environ.get(variable, default))
+                for name, (variable, _, default, _) in KNOBS.items()},
             'server_cache': 'advisory object/parent IDs only; 16384 entries / 8 MiB accounting budget',
             'backend_caches': 'FDB, ES, and OS caches retained across dfs-server restarts',
-            'durability': 'normal FDB commits; no post-acknowledgement persistence drain'}
+            'writeback': writeback,
+            'durability': ('file writes/updates acknowledge server RAM; fsync/shutdown await FDB'
+                if writeback['DFS_WRITEBACK_MIB'] else
+                'normal FDB commits; no post-acknowledgement persistence drain')}
 
 
 def save(work, run):
@@ -60,3 +72,25 @@ def fields(path, message):
         if value.get('message') == message:
             rows.append(value)
     return rows
+
+
+def persistence(path):
+    """@cc [owner:spolu,label:testing;performance] separate-durable-drain
+    Server drain MUST include in-flight publication and MUST remain separate from kernel writeback
+    and total shutdown. Counters MUST identify all FDB transactions versus buffered publications.
+    Missing instrumentation MUST remain unknown, not be reported as measured zero.
+    """
+    drains = fields(path, 'writeback drained')
+    totals = fields(path, 'FDB transaction totals')
+    batches = fields(path, 'writeback publication')
+    splits = fields(path, 'writeback batch split')
+    return {'writeback_drain': drains[-1] if drains else None,
+            'fdb_transactions': totals[-1] if totals else None,
+            'publication': None if not drains else {
+                'batches': len(batches),
+                'files': sum(row['files'] for row in batches),
+                'operations': sum(row['operations'] for row in batches),
+                'accounted_bytes': sum(row['bytes'] for row in batches),
+                'elapsed_us': sum(row['elapsed_us'] for row in batches),
+                'conflict_splits': sum(row['conflicted'] for row in splits),
+                'split_elapsed_us': sum(row['elapsed_us'] for row in splits)}}

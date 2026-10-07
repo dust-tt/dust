@@ -11,8 +11,8 @@ on:
       - Lint & Build (marketing)
       - Lint & Build (sparkle)
       - Typecheck (spa)
-      - Format/lint checks (Biome)
-      - Check no new bulk Biome suppressions
+      - Format/lint checks (oxc)
+      - Check no new bulk lint suppressions
     types: [completed]
     branches: [main]
 

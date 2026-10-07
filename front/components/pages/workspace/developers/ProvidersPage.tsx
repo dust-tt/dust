@@ -14,6 +14,7 @@ import { useProviders } from "@app/lib/swr/apps";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Chip, Container, cn, Page } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface ProvidersProps {
@@ -21,6 +22,7 @@ interface ProvidersProps {
 }
 
 export function Providers({ owner }: ProvidersProps) {
+  const { t } = useLingui();
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
   });
@@ -98,8 +100,8 @@ export function Providers({ owner }: ProvidersProps) {
           >
             <div>
               <Page.SectionHeader
-                title="Model Providers"
-                description="Model providers available to your Dust apps."
+                title={t`Model Providers`}
+                description={t`Model providers available to your Dust apps.`}
               />
               <ul role="list" className="divide-y divide-separator pt-4">
                 {filteredProviders.map((provider) => (
@@ -123,8 +125,8 @@ export function Providers({ owner }: ProvidersProps) {
           >
             <div>
               <Page.SectionHeader
-                title="Service Providers"
-                description="Service providers enable your Dust Apps to query external data or write to external services."
+                title={t`Service Providers`}
+                description={t`Service providers enable your Dust Apps to query external data or write to external services.`}
               />
               <ul role="list" className="divide-y divide-separator pt-4">
                 {serviceProviders.map((provider) => (
@@ -161,6 +163,7 @@ function ProviderListItem({
   apiKey,
   onAction,
 }: ProviderListItemProps) {
+  const { t } = useLingui();
   return (
     <li className="py-4">
       <div className="flex items-center justify-between gap-4">
@@ -176,13 +179,15 @@ function ProviderListItem({
             </p>
             <Chip
               size="xs"
-              label={isEnabled ? "enabled" : "disabled"}
+              label={isEnabled ? t`enabled` : t`disabled`}
               color={isEnabled ? "success" : "primary"}
             />
           </div>
           {apiKey && (
             <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
-              <span className="shrink-0">API Key:</span>
+              <span className="shrink-0">
+                <Trans>API Key:</Trans>
+              </span>
               <div className="dd-privacy-mask max-w-72 truncate">
                 {redactString(apiKey, 4)}
               </div>
@@ -191,7 +196,7 @@ function ProviderListItem({
         </div>
         <Button
           variant={isEnabled ? "primary" : "outline"}
-          label={isEnabled ? "Edit" : "Set up"}
+          label={isEnabled ? t`Edit` : t`Set up`}
           onClick={onAction}
         />
       </div>

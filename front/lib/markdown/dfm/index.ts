@@ -4,14 +4,22 @@
  * README.md next to this file.
  */
 
-export { extractAnchors } from "@app/lib/markdown/dfm/anchors";
 export {
-  parseDfm,
-  serializeDfm,
-} from "@app/lib/markdown/dfm/document";
+  anchorDirective,
+  extractAnchors,
+  findAnchorDirective,
+  readAnchorDirective,
+} from "@app/lib/markdown/dfm/anchors";
+export {
+  dfmCommentSchema,
+  dfmCommentsSchema,
+} from "@app/lib/markdown/dfm/annotations";
+export { parseDfm, serializeDfm } from "@app/lib/markdown/dfm/document";
 export { anchorComment } from "@app/lib/markdown/dfm/operations";
+export { messageSignaturePayload } from "@app/lib/markdown/dfm/signatures";
 export type {
   DfmAnchor,
+  DfmAnchorDirective,
   DfmAuthor,
   DfmAuthorKind,
   DfmComment,

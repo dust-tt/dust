@@ -61,6 +61,15 @@ describe("GET /api/w/:wId/triggers/:tId/webhook_requests", () => {
     expect(response.status).toBe(404);
   });
 
+  it("returns 404 to a manager for a trigger on a hidden agent", async () => {
+    const { workspace, agentOwnerAuth } = await setup("manager");
+    const trigger = await createTrigger(agentOwnerAuth, { scope: "hidden" });
+
+    const response = await getWebhookRequests(workspace, trigger.sId);
+
+    expect(response.status).toBe(404);
+  });
+
   it("lets an admin read a trigger on an agent they cannot read", async () => {
     const { workspace, agentOwnerAuth } = await setup("admin");
     const trigger = await createTrigger(agentOwnerAuth, { scope: "hidden" });

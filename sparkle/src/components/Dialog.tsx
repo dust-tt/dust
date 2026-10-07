@@ -118,8 +118,9 @@ const dialogVariants = cva(
   }
 );
 
-interface DialogContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+interface DialogContentProps extends React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> {
   /** Max width of the dialog: "md" | "lg" | "xl" | "2xl" | "full" (full screen) | "fit" (content width). */
   size?: DialogSizeType;
   /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl"; unset grows with content up to 90vh. */

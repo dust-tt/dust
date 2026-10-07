@@ -16,10 +16,10 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
@@ -100,23 +100,23 @@ describe("PATCH /api/w/:wId/assistant/suggestion_batches/:bId", () => {
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
-  it.each([
-    "approved",
-    "rejected",
-  ] as const)("sets the batch and its suggestions to %s", async (state) => {
-    const { workspace, batch } = await setup();
+  it.each(["approved", "rejected"] as const)(
+    "sets the batch and its suggestions to %s",
+    async (state) => {
+      const { workspace, batch } = await setup();
 
-    const response = await patch(workspace, batch.sId, { state });
+      const response = await patch(workspace, batch.sId, { state });
 
-    expect(response.status).toBe(200);
-    const { batch: updated } = await response.json();
-    expect(updated.state).toBe(state);
-    expect(
-      [...updated.agentSuggestions, ...updated.skillSuggestions].map(
-        (s: { state: string }) => s.state
-      )
-    ).toEqual([state, state]);
-  });
+      expect(response.status).toBe(200);
+      const { batch: updated } = await response.json();
+      expect(updated.state).toBe(state);
+      expect(
+        [...updated.agentSuggestions, ...updated.skillSuggestions].map(
+          (s: { state: string }) => s.state
+        )
+      ).toEqual([state, state]);
+    }
+  );
 });
 
 // A skill its creator edits, and an empty batch its suggestions go into.

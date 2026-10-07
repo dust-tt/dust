@@ -15,6 +15,7 @@ import {
   Plus,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useRef, useState } from "react";
 
 type TriggerOption = {
@@ -33,9 +34,11 @@ export function AddTriggerButton({
   onClick,
   variant = "primary",
 }: AddTriggerButtonProps) {
+  const { t } = useLingui();
+
   return (
     <Button
-      label="Add Source"
+      label={t`Add source`}
       variant={variant}
       icon={Plus}
       size="sm"
@@ -59,6 +62,7 @@ export function AddTriggerDialog({
   setIsOpen,
   createWebhook,
 }: AddTriggerDialogProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const [searchText, setSearchText] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -72,15 +76,16 @@ export function AddTriggerDialog({
         );
       }).map((provider) => {
         const preset = CLIENT_SIDE_WEBHOOK_PRESETS[provider];
+        const presetName = preset.name;
         return {
           provider,
-          name: `${preset.name}${preset.featureFlag ? " (Preview)" : ""}`,
+          name: preset.featureFlag ? t`${presetName} (Preview)` : presetName,
           description: preset.description,
           icon: getIcon(preset.icon),
         };
       }),
     ],
-    [hasFeature]
+    [hasFeature, t]
   );
 
   const filteredTriggerOptions = useMemo(() => {
@@ -114,7 +119,9 @@ export function AddTriggerDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Add a trigger</DialogTitle>
+          <DialogTitle>
+            <Trans>Add a trigger</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer
           fixedContent={
@@ -122,14 +129,14 @@ export function AddTriggerDialog({
               <SearchInput
                 ref={searchInputRef}
                 name="search"
-                placeholder="Search trigger sources..."
+                placeholder={t`Search trigger sources...`}
                 value={searchText}
                 onChange={setSearchText}
                 className="flex-grow"
               />
               <Button
                 icon={Plus}
-                label="Custom Webhook"
+                label={t`Custom webhook`}
                 variant="outline"
                 onClick={() => onSelectTrigger(null)}
               />
@@ -140,10 +147,10 @@ export function AddTriggerDialog({
             <div className="flex flex-1 items-center justify-center py-8">
               <div className="px-4 text-center">
                 <div className="mb-2 text-lg font-medium text-foreground">
-                  No trigger source matches your search
+                  <Trans>No trigger source matches your search</Trans>
                 </div>
                 <div className="max-w-sm text-muted-foreground">
-                  Try a different search term.
+                  <Trans>Try a different search term.</Trans>
                 </div>
               </div>
             </div>

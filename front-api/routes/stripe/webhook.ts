@@ -15,9 +15,8 @@ export type GetResponseBody = {
 const app = createHono();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  async (ctx): HandlerResult<GetResponseBody> => ctx.json({ success: true })
+app.get("/", async (ctx): HandlerResult<GetResponseBody> =>
+  ctx.json({ success: true })
 );
 
 app.post("/", async (ctx): HandlerResult<GetResponseBody> => {

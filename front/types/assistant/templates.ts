@@ -1,9 +1,6 @@
-import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
-import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
+import { z } from "zod";
 
-import { ioTsEnum } from "../shared/utils/iots_utils";
-import { TimeframeUnitCodec } from "../shared/utils/time_frame";
+import { TimeframeUnitSchema } from "../shared/utils/time_frame";
 
 // TAGS
 
@@ -114,9 +111,7 @@ export function isTemplateTagCodeArray(
   );
 }
 
-const TemplateTagCodeTypeCodec = t.keyof({
-  ...TEMPLATES_TAGS_CONFIG,
-});
+const TemplateTagCodeTypeSchema = z.enum(TEMPLATES_TAG_CODES);
 
 // MULTI ACTION MODE
 
@@ -132,20 +127,20 @@ export const MULTI_ACTION_PRESETS: Record<MultiActionType, string> = {
   WEB_NAVIGATION: "Web navigation",
 } as const;
 export type MultiActionPreset = keyof typeof MULTI_ACTION_PRESETS;
-const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(
-  Object.keys(MULTI_ACTION_PRESETS),
-  "MultiActionPreset"
+const MultiActionPresetSchema = z.enum(
+  Object.keys(MULTI_ACTION_PRESETS) as [
+    MultiActionPreset,
+    ...MultiActionPreset[],
+  ]
 );
-const TemplateActionTypePreset = t.type({
-  type: MultiActionPresetCodec,
-  name: NonEmptyString,
-  description: NonEmptyString,
-  help: NonEmptyString,
+const TemplateActionPresetSchema = z.object({
+  type: MultiActionPresetSchema,
+  name: z.string().min(1),
+  description: z.string().min(1),
+  help: z.string().min(1),
 });
 
-export type TemplateActionPreset = t.TypeOf<typeof TemplateActionTypePreset>;
-
-const TemplateActionsPreset = t.array(TemplateActionTypePreset);
+export type TemplateActionPreset = z.infer<typeof TemplateActionPresetSchema>;
 
 // VISIBILITY
 
@@ -155,29 +150,26 @@ export const TEMPLATE_VISIBILITIES = [
   "disabled",
 ] as const;
 export type TemplateVisibility = (typeof TEMPLATE_VISIBILITIES)[number];
-const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
-  TEMPLATE_VISIBILITIES,
-  "TemplateVisibility"
-);
+const TemplateVisibilitySchema = z.enum(TEMPLATE_VISIBILITIES);
 
 // FORM SCHEMA
 
-export const CreateTemplateFormSchema = t.type({
-  backgroundColor: NonEmptyString,
-  userFacingDescription: t.union([t.string, t.undefined]),
-  agentFacingDescription: t.union([t.string, t.undefined]),
-  emoji: NonEmptyString,
-  handle: NonEmptyString,
-  timeFrameDuration: t.union([t.string, t.undefined]),
-  timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
-  helpActions: t.union([t.string, t.undefined]),
-  helpInstructions: t.union([t.string, t.undefined]),
-  sidekickInstructions: t.union([t.string, t.undefined]),
-  presetActions: TemplateActionsPreset,
-  presetInstructions: t.union([t.string, t.undefined]),
-  presetModelId: t.string,
-  tags: nonEmptyArray(TemplateTagCodeTypeCodec),
-  visibility: TemplateVisibilityCodec,
+export const CreateTemplateFormSchema = z.object({
+  backgroundColor: z.string().min(1),
+  userFacingDescription: z.string().optional(),
+  agentFacingDescription: z.string().optional(),
+  emoji: z.string().min(1),
+  handle: z.string().min(1),
+  timeFrameDuration: z.string().optional(),
+  timeFrameUnit: z.union([TimeframeUnitSchema, z.literal("")]).optional(),
+  helpActions: z.string().optional(),
+  helpInstructions: z.string().optional(),
+  sidekickInstructions: z.string().optional(),
+  presetActions: z.array(TemplateActionPresetSchema),
+  presetInstructions: z.string().optional(),
+  presetModelId: z.string(),
+  tags: z.array(TemplateTagCodeTypeSchema).min(1),
+  visibility: TemplateVisibilitySchema,
 });
 
-export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
+export type CreateTemplateFormType = z.infer<typeof CreateTemplateFormSchema>;

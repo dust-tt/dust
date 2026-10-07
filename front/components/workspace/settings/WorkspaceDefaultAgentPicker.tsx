@@ -7,11 +7,8 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Button, Robot } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useContext } from "react";
-
-export const WORKSPACE_DEFAULT_AGENT_LABEL = "Default agent";
-export const WORKSPACE_DEFAULT_AGENT_DESCRIPTION =
-  "The agent pre-selected when anyone starts a new conversation in this workspace";
 
 interface WorkspaceDefaultAgentPickerProps {
   owner: WorkspaceType;
@@ -30,6 +27,7 @@ export function WorkspaceDefaultAgentPicker({
 }
 
 function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const { workspaceDefaultAgentId, isChanging, doUpdateWorkspaceDefaultAgent } =
     useWorkspaceDefaultAgent({ owner });
@@ -56,12 +54,11 @@ function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
     // switching. Resetting back to @dust needs no confirmation.
     if (nextAgentId) {
       const confirmed = await confirm({
-        title: "Warning",
-        message:
-          "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?",
+        title: t`Warning`,
+        message: t`@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?`,
         validateVariant: "warning",
-        validateLabel: "Yes",
-        cancelLabel: "No",
+        validateLabel: t`Yes`,
+        cancelLabel: t`No`,
       });
       if (!confirmed) {
         return;
@@ -72,8 +69,8 @@ function DefaultAgentRow({ owner }: WorkspaceDefaultAgentPickerProps) {
 
   return (
     <GovernanceSettingRowLayout
-      label={WORKSPACE_DEFAULT_AGENT_LABEL}
-      description={WORKSPACE_DEFAULT_AGENT_DESCRIPTION}
+      label={t`Default agent`}
+      description={t`The agent pre-selected when anyone starts a new conversation in this workspace`}
       action={
         <AgentPicker
           owner={owner}

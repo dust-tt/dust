@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
+import { validateMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -78,6 +80,8 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
+ * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused;
+ * a new comment that mentions agents or users is posted to the document's conversation.
  */
 const app = workspaceApp();
 
@@ -672,13 +676,47 @@ app.put(
       return putContentTooLargeError(ctx);
     }
 
+    const content = new Uint8Array(contentBuffer);
+    // Only Markdown in a co_edition workspace has its comments checked and new messages; any
+    // other write gets null `newMessages`, and possibly a revision binding it to what was checked.
+    const markdownCheck = await validateMarkdownCommentsForWrite(
+      auth,
+      dustFs,
+      canonicalPath,
+      content,
+      ctx.req.header("content-type") ?? undefined
+    );
+    if (markdownCheck.isErr()) {
+      const { code, message } = markdownCheck.error;
+      return apiError(
+        ctx,
+        code === "unreadable_file"
+          ? {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message,
+              },
+            }
+          : {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message,
+              },
+            }
+      );
+    }
+    const { revision: checkedRevision, newMessages } = markdownCheck.value;
+
+    // A Markdown write is conditional on the revision its comments were validated against.
     const writeResult = await writeCanonicalFileContent(
       auth,
       dustFs,
       canonicalPath,
-      new Uint8Array(contentBuffer),
+      content,
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["x-dust-if-revision-match"]
+      ctx.req.valid("header")["x-dust-if-revision-match"] ?? checkedRevision
     );
 
     if (writeResult.isErr()) {
@@ -716,6 +754,13 @@ app.put(
         }
       }
       return apiError(ctx, mapDustFsError(error));
+    }
+
+    if (newMessages) {
+      await dispatchCommentMentions(auth, {
+        scopedPath: canonicalPath,
+        newMessages,
+      });
     }
 
     return new Response(null, {

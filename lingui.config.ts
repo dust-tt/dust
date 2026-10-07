@@ -1,6 +1,6 @@
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "./front/types/locale";
 import { defineConfig } from "@lingui/cli";
 import { formatter } from "@lingui/format-po";
+import { CATALOG_LOCALES, DEFAULT_LOCALE } from "./front/types/locale";
 
 export default defineConfig({
   sourceLocale: DEFAULT_LOCALE,

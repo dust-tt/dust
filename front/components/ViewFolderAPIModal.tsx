@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import config from "@app/lib/api/config";
 import type { DataSourceType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface ViewFolderAPIModalProps {
@@ -36,6 +37,7 @@ export function ViewFolderAPIModal({
   owner,
   space,
 }: ViewFolderAPIModalProps) {
+  const { t } = useLingui();
   const cURLRequest = (type: "upsert" | "search") => {
     switch (type) {
       case "upsert":
@@ -54,8 +56,8 @@ export function ViewFolderAPIModal({
     }
   };
 
-  const [copySearchButtonText, setCopySearchButtonText] = useState("Copy");
-  const [copyUpsertButtonText, setCopyUpsertButtonText] = useState("Copy");
+  const [isSearchCopied, setIsSearchCopied] = useState(false);
+  const [isUpsertCopied, setIsUpsertCopied] = useState(false);
 
   // Copy the cURL request to the clipboard
   const handleCopyClick = async (type: "upsert" | "search") => {
@@ -63,15 +65,15 @@ export function ViewFolderAPIModal({
 
     switch (type) {
       case "upsert":
-        setCopyUpsertButtonText("Copied!");
+        setIsUpsertCopied(true);
         setTimeout(() => {
-          setCopyUpsertButtonText("Copy");
+          setIsUpsertCopied(false);
         }, 1500);
         break;
       case "search":
-        setCopySearchButtonText("Copied!");
+        setIsSearchCopied(true);
         setTimeout(() => {
-          setCopySearchButtonText("Copy");
+          setIsSearchCopied(false);
         }, 1500);
         break;
       default:
@@ -80,12 +82,15 @@ export function ViewFolderAPIModal({
   };
 
   const { isDark } = useTheme();
+  const dataSourceName = dataSource.name;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Data source API</SheetTitle>
+          <SheetTitle>
+            <Trans>Data source API</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer className="pb-8">
           <div className="flex flex-col gap-6">
@@ -94,7 +99,7 @@ export function ViewFolderAPIModal({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
-                      Space ID:
+                      <Trans>Space ID:</Trans>
                     </span>
                     <code className="rounded bg-background px-2 py-1 font-mono text-sm font-semibold text-foreground shadow-sm">
                       {space.sId}
@@ -102,7 +107,7 @@ export function ViewFolderAPIModal({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
-                      Data Source ID:
+                      <Trans>Data source ID:</Trans>
                     </span>
                     <code className="rounded bg-background px-2 py-1 font-mono text-sm font-semibold text-foreground shadow-sm">
                       {dataSource.sId}
@@ -115,10 +120,12 @@ export function ViewFolderAPIModal({
             <Page.Separator />
 
             <div>
-              <Page.SectionHeader title="Upsert document" />
+              <Page.SectionHeader title={t`Upsert document`} />
               <Page.P>
-                Use the following cURL command to upsert a document to folder{" "}
-                <span className="italic">{dataSource.name}</span>:
+                <Trans>
+                  Use the following cURL command to upsert a document to folder{" "}
+                  <span className="italic">{dataSourceName}</span>:
+                </Trans>
               </Page.P>
               <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
@@ -139,7 +146,7 @@ export function ViewFolderAPIModal({
                 <Button
                   variant="outline"
                   onClick={() => handleCopyClick("upsert")}
-                  label={copyUpsertButtonText}
+                  label={isUpsertCopied ? t`Copied!` : t`Copy`}
                   icon={Clipboard}
                 />
               </div>
@@ -148,10 +155,12 @@ export function ViewFolderAPIModal({
             <Page.Separator />
 
             <div>
-              <Page.SectionHeader title="Search" />
+              <Page.SectionHeader title={t`Search`} />
               <Page.P>
-                Use the following cURL command to search in folder{" "}
-                <span className="italic">{dataSource.name}</span>:
+                <Trans>
+                  Use the following cURL command to search in folder{" "}
+                  <span className="italic">{dataSourceName}</span>:
+                </Trans>
               </Page.P>
               <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
@@ -172,7 +181,7 @@ export function ViewFolderAPIModal({
                 <Button
                   variant="outline"
                   onClick={() => handleCopyClick("search")}
-                  label={copySearchButtonText}
+                  label={isSearchCopied ? t`Copied!` : t`Copy`}
                   icon={Clipboard}
                 />
               </div>
@@ -181,7 +190,7 @@ export function ViewFolderAPIModal({
             <Page.Separator />
 
             <div>
-              <Page.SectionHeader title="API Keys" />
+              <Page.SectionHeader title={t`API keys`} />
               <Page.P>
                 <div className="pb-2">
                   {isAdmin(owner) ? (
@@ -189,15 +198,19 @@ export function ViewFolderAPIModal({
                       href={`/w/${owner.sId}/developers/api-keys`}
                       variant="highlight"
                     >
-                      Manage workspace API keys
+                      <Trans>Manage workspace API keys</Trans>
                     </Hoverable>
                   ) : (
-                    <span>API keys are managed by workspace admins.</span>
+                    <span>
+                      <Trans>API keys are managed by workspace admins.</Trans>
+                    </span>
                   )}
                 </div>
                 <span>
-                  Handle API keys with care as they provide access to your
-                  company data.
+                  <Trans>
+                    Handle API keys with care as they provide access to your
+                    company data.
+                  </Trans>
                 </span>
               </Page.P>
             </div>
@@ -205,16 +218,18 @@ export function ViewFolderAPIModal({
             <Page.Separator />
 
             <div>
-              <Page.SectionHeader title="Documentation" />
+              <Page.SectionHeader title={t`Documentation`} />
               <Page.P>
-                For a detailed documentation of the Data source API, please
-                refer to the{" "}
-                <Hoverable
-                  href={"https://docs.dust.tt/reference/"}
-                  variant="highlight"
-                >
-                  API Reference
-                </Hoverable>
+                <Trans>
+                  For a detailed documentation of the Data source API, please
+                  refer to the{" "}
+                  <Hoverable
+                    href={"https://docs.dust.tt/reference/"}
+                    variant="highlight"
+                  >
+                    API reference
+                  </Hoverable>
+                </Trans>
               </Page.P>
             </div>
           </div>

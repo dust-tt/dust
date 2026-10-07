@@ -17,6 +17,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { SetStateAction } from "react";
 import {
   useCallback,
@@ -78,6 +79,7 @@ export default function SpaceManagedDataSourcesViewsModal({
   systemSpace,
   title,
 }: SpaceManagedDataSourcesViewsModalProps) {
+  const { t } = useLingui();
   const defaultSelectedDataSources = useStabilizedValue(
     initialSelectedDataSources,
     isOpen,
@@ -153,6 +155,7 @@ export default function SpaceManagedDataSourcesViewsModal({
     if (isOpen) {
       initialConfigurations.refetch();
     }
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen, initialConfigurations.refetch]);
 
   useEffect(() => {
@@ -228,7 +231,6 @@ export default function SpaceManagedDataSourcesViewsModal({
     spaceDataSourceViews,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
       setHasChanged(true);
@@ -236,6 +238,8 @@ export default function SpaceManagedDataSourcesViewsModal({
     },
     [setSelectionConfigurations]
   );
+
+  const spaceName = space.name;
 
   return (
     <Sheet
@@ -252,7 +256,7 @@ export default function SpaceManagedDataSourcesViewsModal({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            {title ?? `Add connected data to space "${space.name}"`}
+            {title ?? t`Add connected data to space "${spaceName}"`}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer
@@ -283,12 +287,12 @@ export default function SpaceManagedDataSourcesViewsModal({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             onClick: () => {
               void (async () => {
                 const result = await onSave(selectionConfigurations);

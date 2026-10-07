@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { LegacyButton as Button, Chip } from "@dust-tt/sparkle";
 import {
   Grid,
   H1,
@@ -6,17 +6,16 @@ import {
   H3,
   P,
 } from "@marketing/components/home/ContentComponents";
-import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
-import { CustomerStoriesSection } from "@marketing/components/home/content/Solutions/CustomerStoriesSection";
-import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
+import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
+import { CustomerStoriesSection } from "@marketing/components/home/content/Solutions/CustomerStoriesSection";
+import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
 import { useAppRouter } from "@marketing/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
-import { LegacyButton as Button, Chip } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
 

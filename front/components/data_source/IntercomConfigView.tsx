@@ -5,6 +5,7 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, IntercomLogo, SliderToggle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 export function IntercomConfigView({
@@ -18,6 +19,7 @@ export function IntercomConfigView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const configKey = "intercomConversationsNotesSyncEnabled";
   const { configValue: syncNotesConfig, mutateConfig: mutateSyncNotesConfig } =
     useConnectorConfig({
@@ -50,7 +52,7 @@ export function IntercomConfigView({
       const err = (await res.json()) as { error: APIError };
       sendNotification({
         type: "error",
-        title: "Failed to edit Intercom Configuration",
+        title: t`Failed to edit Intercom configuration`,
         description: err.error.message,
       });
     }
@@ -60,7 +62,7 @@ export function IntercomConfigView({
   return (
     <ContextItem.List>
       <ContextItem
-        title="Sync Intercom Notes from conversations"
+        title={t`Sync Intercom notes from conversations`}
         visual={<ContextItem.Visual visual={IntercomLogo} />}
         action={
           <div className="relative">
@@ -76,8 +78,10 @@ export function IntercomConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground">
-            If activated, Dust will also sync the notes from the conversations
-            you've selected.
+            <Trans>
+              If activated, Dust will also sync the notes from the conversations
+              you've selected.
+            </Trans>
           </div>
         </ContextItem.Description>
       </ContextItem>

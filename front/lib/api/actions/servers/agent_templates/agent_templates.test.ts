@@ -12,9 +12,8 @@ vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
 }));
 
 beforeEach(async () => {
-  const templateSuggestion = await import(
-    "@app/lib/api/assistant/template_suggestion"
-  );
+  const templateSuggestion =
+    await import("@app/lib/api/assistant/template_suggestion");
   vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
 });
 
@@ -269,6 +268,23 @@ describe("agent_templates tools", () => {
           expect(content.text).toContain(`sId: ${template.sId}`);
           expect(content.text).not.toContain("sidekickInstructions:");
         }
+      }
+    });
+
+    it("returns error for unpublished templates", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const template = await TemplateFactory.draft();
+
+      const tool = getToolByName("get_agent_template");
+      const result = await tool.handler(
+        { templateId: template.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Template not found");
       }
     });
 

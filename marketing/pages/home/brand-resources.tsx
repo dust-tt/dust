@@ -1,3 +1,4 @@
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import {
   Grid,
   H1,
@@ -8,7 +9,6 @@ import {
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -22,7 +22,7 @@ export async function getStaticProps() {
 
 const ASSET_BASE_PATH = "/static/landing/logos/dust";
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function BrandResources() {
   const router = useRouter();
 

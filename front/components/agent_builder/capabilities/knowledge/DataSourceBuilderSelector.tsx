@@ -43,6 +43,7 @@ import {
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 type DataSourceBuilderSelectorProps = {
@@ -54,6 +55,7 @@ export const DataSourceBuilderSelector = ({
   viewType,
   initialRequestedSpaceIds,
 }: DataSourceBuilderSelectorProps) => {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { spaces, isSpacesLoading } = useSpacesContext();
   const { supportedDataSourceViews: dataSourceViews } =
@@ -251,6 +253,17 @@ export const DataSourceBuilderSelector = ({
     }
   };
 
+  const rootLabel = t({ message: "All", context: "breadcrumb root" });
+  // The sheet shows every level, a pod's auto-entered category included.
+  const breadcrumbOptions = useMemo(
+    () => ({
+      getLabel: (entry: NavigationHistoryEntryType) =>
+        getBreadcrumbLabel(entry, rootLabel),
+      includeSkippedLevels: true,
+    }),
+    [rootLabel]
+  );
+
   const breadcrumbItems: BreadcrumbsItem[] = useMemo(() => {
     if (shouldShowSearch && currentSpace) {
       // Space-scope search still filters by currentCategory, so keep it in the breadcrumb.
@@ -265,7 +278,7 @@ export const DataSourceBuilderSelector = ({
         return getKnowledgeBrowserBreadcrumbItems(
           spaceNavigation,
           navigateTo,
-          BREADCRUMB_OPTIONS
+          breadcrumbOptions
         );
       }
 
@@ -273,14 +286,14 @@ export const DataSourceBuilderSelector = ({
       return getKnowledgeBrowserBreadcrumbItems(
         navigationHistory,
         navigateTo,
-        BREADCRUMB_OPTIONS
+        breadcrumbOptions
       );
     }
 
     return getKnowledgeBrowserBreadcrumbItems(
       navigationHistory,
       navigateTo,
-      BREADCRUMB_OPTIONS
+      breadcrumbOptions
     );
   }, [
     navigationHistory,
@@ -289,22 +302,25 @@ export const DataSourceBuilderSelector = ({
     currentSpace,
     searchScope,
     currentCategory,
+    breadcrumbOptions,
   ]);
+
+  const currentSpaceName = currentSpace?.name;
 
   if (filteredSpaces.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="flex flex-col gap-2 px-4 text-center">
           <div className="text-lg font-medium text-foreground">
-            No data sources available
+            <Trans>No data sources available</Trans>
           </div>
           <div className="max-w-sm text-muted-foreground">
-            Connect data sources or ask your admin to set them up
+            <Trans>Connect data sources or ask your admin to set them up</Trans>
           </div>
           <div>
             <Button
               icon={CloudArrowLeftRight}
-              label="Connect data"
+              label={t`Connect data`}
               variant="primary"
               onClick={handleConnectDataClick}
             />
@@ -324,8 +340,11 @@ export const DataSourceBuilderSelector = ({
         <div className="flex flex-col gap-2">
           <SearchInput
             name="search"
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            placeholder={`Search in ${currentSpace?.name || "space"}`}
+            placeholder={
+              currentSpaceName
+                ? t`Search in ${currentSpaceName}`
+                : t`Search in space`
+            }
             value={searchTerm}
             onChange={setSearchTerm}
           />
@@ -333,7 +352,7 @@ export const DataSourceBuilderSelector = ({
           {(currentNode || currentDataSourceView) && isSearching && (
             <div className="flex items-center gap-1 px-1 py-1">
               <span className="mr-2 text-sm text-muted-foreground">
-                Searching in:
+                <Trans>Searching in:</Trans>
               </span>
               <div className="flex space-x-3 overflow-hidden rounded-md">
                 <Button
@@ -355,7 +374,7 @@ export const DataSourceBuilderSelector = ({
                 <Button
                   onClick={() => setSearchScope("space")}
                   variant={searchScope === "space" ? "outline" : "ghost"}
-                  label={`All ${currentSpace?.name}`}
+                  label={t`All ${currentSpaceName}`}
                   className={cn(
                     searchScope !== "space" && "text-muted-foreground"
                   )}
@@ -388,12 +407,9 @@ export const DataSourceBuilderSelector = ({
 
 // The sheet has room for full names, so a data source view keeps its stored name here rather than
 // the browser's shortened label.
-function getBreadcrumbLabel(entry: NavigationHistoryEntryType): string {
-  return entry.type === "root" ? "All" : navigationHistoryEntryTitle(entry);
+function getBreadcrumbLabel(
+  entry: NavigationHistoryEntryType,
+  rootLabel: string
+): string {
+  return entry.type === "root" ? rootLabel : navigationHistoryEntryTitle(entry);
 }
-
-// The sheet shows every level, a pod's auto-entered category included.
-const BREADCRUMB_OPTIONS = {
-  getLabel: getBreadcrumbLabel,
-  includeSkippedLevels: true,
-};

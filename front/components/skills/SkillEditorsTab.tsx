@@ -20,6 +20,7 @@ import { isEditorsSkillSuggestion } from "@app/types/suggestions/skill_suggestio
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Plus } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -37,6 +38,7 @@ type AgentEditorsTabProps = {
 };
 
 export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
+  const { t } = useLingui();
   const updateEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,
@@ -128,7 +130,9 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
     <div className="relative flex flex-col gap-4">
       {editedSections.has("editors") && <EditedSectionBar />}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Editors</h3>
+        <h3 className="text-sm font-semibold">
+          <Trans>Editors</Trans>
+        </h3>
         {canManageEditors && (
           <AddEditorDropdown
             owner={owner}
@@ -139,7 +143,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
                 variant="outline"
                 size="sm"
                 icon={Plus}
-                label="Add editors"
+                label={t`Add editors`}
                 disabled={
                   isEditorsLoading ||
                   isEditorsError ||
@@ -172,7 +176,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
           <Button
             variant="outline"
             size="sm"
-            label="Cancel"
+            label={t`Cancel`}
             disabled={!hasChanges || form.formState.isSubmitting}
             onClick={() => form.reset(formValues)}
             type="button"
@@ -180,7 +184,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
           <Button
             variant="highlight"
             size="sm"
-            label="Save"
+            label={t`Save`}
             disabled={!hasChanges || form.formState.isSubmitting}
             isLoading={form.formState.isSubmitting}
             onClick={onSave}

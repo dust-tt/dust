@@ -4,13 +4,15 @@ import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilder
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { useLingui } from "@lingui/react/macro";
 
 export function CreateSkillPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { user } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
 
-  useDocumentTitle("Dust - New Skill");
+  useDocumentTitle(t`Dust - New skill`);
 
   if (!hasPermission("create", "skill")) {
     return <Custom404 />;

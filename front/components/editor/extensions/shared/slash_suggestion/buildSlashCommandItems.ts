@@ -1,3 +1,4 @@
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   SlashCommandSkillSuggestion,
   SlashCommandToolSuggestion,
@@ -9,7 +10,6 @@ import {
   MAX_RENDERED_CAPABILITY_ITEMS,
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";

@@ -4,6 +4,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Upload01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ChangeEvent } from "react";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Crop } from "react-image-crop";
@@ -29,6 +30,7 @@ const AgentBuilderCustomUpload = forwardRef<
   { onChange, owner }: AgentBuilderCustomUploadProps,
   ref
 ) {
+  const { t } = useLingui();
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [crop, setCrop] = useState<Crop>(DEFAULT_CROP);
   const [src, setSrc] = useState<string | null>(null);
@@ -42,7 +44,6 @@ const AgentBuilderCustomUpload = forwardRef<
     useCase: "avatar",
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useImperativeHandle(ref, () => {
     return {
       getUrl: async () => {
@@ -149,7 +150,7 @@ const AgentBuilderCustomUpload = forwardRef<
             <ReactCrop crop={crop} aspect={1} onChange={(_, pC) => setCrop(pC)}>
               <img
                 src={src}
-                alt="Profile"
+                alt={t`Profile`}
                 onLoad={(event) => {
                   const { naturalWidth: width, naturalHeight: height } =
                     event.currentTarget;
@@ -176,7 +177,7 @@ const AgentBuilderCustomUpload = forwardRef<
           </div>
         ) : (
           <Button
-            label="Upload"
+            label={t`Upload`}
             icon={Upload01}
             onClick={() => fileInputRef?.current?.click()}
           />

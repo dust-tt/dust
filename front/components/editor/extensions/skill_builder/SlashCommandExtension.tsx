@@ -1,10 +1,5 @@
-import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import {
-  isSkillSlashCommand,
-  isToolSlashCommand,
-} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
+import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
@@ -12,7 +7,6 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
@@ -24,9 +18,15 @@ import {
   SLASH_MENU_TRIGGER_CLASS_NAME,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import { getSlashTriggerText } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useSkillBuilderSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import {
+  isSkillSlashCommand,
+  isToolSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ChainedCommands, Editor, Range } from "@tiptap/core";
@@ -176,13 +176,11 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
           ref={subMenuRef}
           activeFrame={activeFrame}
           clientRect={clientRect}
-          editor={editor}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleAttachContextSelect}
           owner={owner}
           query={query}
-          range={range}
           useCase="skill-builder"
         />
       );

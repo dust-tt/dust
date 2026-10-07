@@ -8,6 +8,7 @@ import {
   ProgressBar,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { ComponentProps, ReactNode } from "react";
 
 interface AvatarNameCellProps {
@@ -106,14 +107,18 @@ export function CreditsCell({
   messageCount?: number;
 }) {
   const showAvg = messageCount !== undefined && messageCount > 0;
+  const formattedCredits = formatCredits(credits);
+  const averageCredits = showAvg ? formatCredits(credits / messageCount) : null;
   return (
     <Tooltip
       label={
         <div className="flex flex-col">
-          <span>{formatCredits(credits)} credits</span>
+          <span>
+            <Trans>{formattedCredits} credits</Trans>
+          </span>
           {showAvg && (
             <span>
-              {formatCredits(credits / messageCount)} credits / message
+              <Trans>{averageCredits} credits / message</Trans>
             </span>
           )}
         </div>

@@ -12,11 +12,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-import { formatRowTime } from "../data/time";
 import type { Agent, Conversation, User } from "../data/types";
+import { formatRowTime } from "../data/time";
 import { getUserById } from "../data/users";
-import { InputBar } from "./InputBar";
 import { ConversationListItem } from "./ConversationListItem";
+import { InputBar } from "./InputBar";
 
 interface PersonAgentViewProps {
   collaborator: { type: "agent" | "person"; data: Agent | User };

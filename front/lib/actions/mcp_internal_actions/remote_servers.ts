@@ -4012,6 +4012,230 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: 10041,
+    name: "Airtable",
+    description:
+      "Airtable tools for querying and managing bases, records, tables, interfaces, forms and automations.",
+    url: "https://mcp.airtable.com/mcp",
+    icon: "AirtableLogo",
+    documentationUrl:
+      "https://airtable.com/developers/agents/mcp/getting-started",
+    connectionInstructions:
+      "Airtable uses OAuth with dynamic client registration. You will be prompted to sign in with your Airtable account and choose the bases, apps and workspaces to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      create_automation: "low",
+      delete_automation: "high",
+      fetch_automation_input_data: "never_ask",
+      get_automation: "never_ask",
+      get_create_automation_instructions: "never_ask",
+      list_automations: "never_ask",
+      test_automation_webhook_trigger: "high",
+      update_automation: "low",
+
+      create_base: "high",
+      list_bases: "never_ask",
+      search_bases: "never_ask",
+
+      create_field: "high",
+      update_field: "high",
+
+      get_form_schema: "never_ask",
+      submit_form: "high",
+
+      create_interface: "high",
+      create_page: "high",
+      delete_interface: "high",
+      delete_page: "high",
+      list_records_for_page: "never_ask",
+      get_record_for_page: "never_ask",
+      describe_page_element: "never_ask",
+      describe_page_type: "never_ask",
+      list_pages_for_base: "never_ask",
+
+      create_records_for_table: "low",
+      delete_records_for_table: "high",
+      display_records_for_table: "never_ask",
+      list_records_for_table: "never_ask",
+      revert_action: "high",
+      search_candidate_linked_records: "never_ask",
+      search_records: "never_ask",
+      update_records_for_table: "low",
+
+      create_table: "high",
+      delete_table: "high",
+      get_table_schema: "never_ask",
+      list_views_for_table: "never_ask",
+      list_tables_for_base: "never_ask",
+      update_table: "high",
+
+      list_workspaces: "never_ask",
+      list_external_accounts: "never_ask",
+    },
+    toolDisplayLabels: {
+      create_automation: {
+        running: "Creating an automation on Airtable",
+        done: "Created an automation on Airtable",
+      },
+      delete_automation: {
+        running: "Deleting an automation on Airtable",
+        done: "Deleted an automation on Airtable",
+      },
+      fetch_automation_input_data: {
+        running: "Fetching automation options from Airtable",
+        done: "Fetched automation options from Airtable",
+      },
+      get_automation: {
+        running: "Getting automation details from Airtable",
+        done: "Got automation details from Airtable",
+      },
+      get_create_automation_instructions: {
+        running: "Getting automation instructions from Airtable",
+        done: "Got automation instructions from Airtable",
+      },
+      list_automations: {
+        running: "Listing automations on Airtable",
+        done: "Listed automations on Airtable",
+      },
+      test_automation_webhook_trigger: {
+        running: "Testing an automation webhook on Airtable",
+        done: "Tested an automation webhook on Airtable",
+      },
+      update_automation: {
+        running: "Updating an automation on Airtable",
+        done: "Updated an automation on Airtable",
+      },
+      create_base: {
+        running: "Creating a base on Airtable",
+        done: "Created a base on Airtable",
+      },
+      list_bases: {
+        running: "Listing bases on Airtable",
+        done: "Listed bases on Airtable",
+      },
+      search_bases: {
+        running: "Searching bases on Airtable",
+        done: "Searched bases on Airtable",
+      },
+      create_field: {
+        running: "Creating a field on Airtable",
+        done: "Created a field on Airtable",
+      },
+      update_field: {
+        running: "Updating a field on Airtable",
+        done: "Updated a field on Airtable",
+      },
+      get_form_schema: {
+        running: "Getting a form schema from Airtable",
+        done: "Got a form schema from Airtable",
+      },
+      submit_form: {
+        running: "Submitting a form on Airtable",
+        done: "Submitted a form on Airtable",
+      },
+      create_interface: {
+        running: "Creating an interface on Airtable",
+        done: "Created an interface on Airtable",
+      },
+      create_page: {
+        running: "Creating an interface page on Airtable",
+        done: "Created an interface page on Airtable",
+      },
+      delete_interface: {
+        running: "Deleting an interface on Airtable",
+        done: "Deleted an interface on Airtable",
+      },
+      delete_page: {
+        running: "Deleting an interface page on Airtable",
+        done: "Deleted an interface page on Airtable",
+      },
+      list_records_for_page: {
+        running: "Listing interface records on Airtable",
+        done: "Listed interface records on Airtable",
+      },
+      get_record_for_page: {
+        running: "Getting an interface record from Airtable",
+        done: "Got an interface record from Airtable",
+      },
+      describe_page_element: {
+        running: "Describing a page element on Airtable",
+        done: "Described a page element on Airtable",
+      },
+      describe_page_type: {
+        running: "Describing a page type on Airtable",
+        done: "Described a page type on Airtable",
+      },
+      list_pages_for_base: {
+        running: "Listing pages on Airtable",
+        done: "Listed pages on Airtable",
+      },
+      create_records_for_table: {
+        running: "Creating records on Airtable",
+        done: "Created records on Airtable",
+      },
+      delete_records_for_table: {
+        running: "Deleting records on Airtable",
+        done: "Deleted records on Airtable",
+      },
+      display_records_for_table: {
+        running: "Displaying records from Airtable",
+        done: "Displayed records from Airtable",
+      },
+      list_records_for_table: {
+        running: "Listing records from Airtable",
+        done: "Listed records from Airtable",
+      },
+      revert_action: {
+        running: "Reverting an Airtable action",
+        done: "Reverted an Airtable action",
+      },
+      search_candidate_linked_records: {
+        running: "Searching linked records on Airtable",
+        done: "Searched linked records on Airtable",
+      },
+      search_records: {
+        running: "Searching records on Airtable",
+        done: "Searched records on Airtable",
+      },
+      update_records_for_table: {
+        running: "Updating records on Airtable",
+        done: "Updated records on Airtable",
+      },
+      create_table: {
+        running: "Creating a table on Airtable",
+        done: "Created a table on Airtable",
+      },
+      delete_table: {
+        running: "Deleting a table on Airtable",
+        done: "Deleted a table on Airtable",
+      },
+      get_table_schema: {
+        running: "Getting a table schema from Airtable",
+        done: "Got a table schema from Airtable",
+      },
+      list_views_for_table: {
+        running: "Listing table views on Airtable",
+        done: "Listed table views on Airtable",
+      },
+      list_tables_for_base: {
+        running: "Listing tables on Airtable",
+        done: "Listed tables on Airtable",
+      },
+      update_table: {
+        running: "Updating a table on Airtable",
+        done: "Updated a table on Airtable",
+      },
+      list_workspaces: {
+        running: "Listing workspaces on Airtable",
+        done: "Listed workspaces on Airtable",
+      },
+      list_external_accounts: {
+        running: "Listing connected accounts on Airtable",
+        done: "Listed connected accounts on Airtable",
+      },
+    },
+  },
+  {
     id: 10039,
     name: "Qonto",
     description: "Qonto tools for reading and managing business banking data.",
@@ -4557,6 +4781,1052 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_run_tool: {
         running: "Running a Weave tool on Figma",
         done: "Ran a Weave tool on Figma",
+      },
+    },
+  },
+  {
+    id: 10042,
+    name: "Clay",
+    description:
+      "Clay tools for searching companies and contacts, enriching them with data points, and running Clay subroutines.",
+    url: "https://api.clay.com/v3/mcp",
+    icon: "ClayLogo",
+    documentationUrl: "https://university.clay.com/fr/docs/connect-to-clay-mcp",
+    connectionInstructions:
+      "Clay uses OAuth with dynamic client registration. Connect your Clay workspace to use its tools. Tools consume your workspace credits at the same rate as in Clay.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Read-only
+      get_credits_available: "never_ask",
+      get_current_workspace: "never_ask",
+      get_task: "never_ask",
+      get_task_context: "never_ask",
+      list_subroutines: "never_ask",
+      get_subroutine_input_options: "never_ask",
+      query_objects: "never_ask",
+      ask_question_about_accounts: "never_ask",
+      search_companies: "never_ask",
+      search_contacts: "never_ask",
+      load_more_search_results: "never_ask",
+      track_event: "never_ask",
+      // Enrich contacts by name
+      search_contacts_by_name: "low",
+      // Consume credits / run workflows
+      add_company_data_points: "high",
+      add_contact_data_points: "high",
+      run_subroutine: "high",
+      run_subroutine_direct: "high",
+      run_subroutine_no_mapping: "high",
+    },
+    toolDisplayLabels: {
+      add_company_data_points: {
+        running: "Enriching companies on Clay",
+        done: "Enriched companies on Clay",
+      },
+      add_contact_data_points: {
+        running: "Enriching contacts on Clay",
+        done: "Enriched contacts on Clay",
+      },
+      ask_question_about_accounts: {
+        running: "Asking a question about accounts on Clay",
+        done: "Asked a question about accounts on Clay",
+      },
+      get_credits_available: {
+        running: "Checking available credits on Clay",
+        done: "Checked available credits on Clay",
+      },
+      get_current_workspace: {
+        running: "Loading the current workspace from Clay",
+        done: "Loaded the current workspace from Clay",
+      },
+      get_subroutine_input_options: {
+        running: "Loading subroutine input options from Clay",
+        done: "Loaded subroutine input options from Clay",
+      },
+      get_task: {
+        running: "Fetching a task from Clay",
+        done: "Fetched a task from Clay",
+      },
+      get_task_context: {
+        running: "Fetching task details from Clay",
+        done: "Fetched task details from Clay",
+      },
+      list_subroutines: {
+        running: "Listing subroutines on Clay",
+        done: "Listed subroutines on Clay",
+      },
+      load_more_search_results: {
+        running: "Loading more search results from Clay",
+        done: "Loaded more search results from Clay",
+      },
+      query_objects: {
+        running: "Searching accounts, contacts and deals on Clay",
+        done: "Searched accounts, contacts and deals on Clay",
+      },
+      run_subroutine: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      run_subroutine_direct: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      run_subroutine_no_mapping: {
+        running: "Running a subroutine on Clay",
+        done: "Ran a subroutine on Clay",
+      },
+      search_companies: {
+        running: "Searching companies on Clay",
+        done: "Searched companies on Clay",
+      },
+      search_contacts: {
+        running: "Searching contacts on Clay",
+        done: "Searched contacts on Clay",
+      },
+      search_contacts_by_name: {
+        running: "Searching contacts by name on Clay",
+        done: "Searched contacts by name on Clay",
+      },
+      track_event: {
+        running: "Tracking an event on Clay",
+        done: "Tracked an event on Clay",
+      },
+    },
+  },
+  {
+    id: 10043,
+    name: "FullEnrich",
+    description:
+      "FullEnrich tools for B2B contact and company search, contact enrichment (emails, phones) and CSV export.",
+    url: "https://mcp.fullenrich.com/mcp",
+    icon: "FullEnrichLogo",
+    documentationUrl: "https://help.fullenrich.com",
+    connectionInstructions:
+      "FullEnrich uses OAuth with dynamic client registration. Sign in with your FullEnrich account to connect. Enrichment and exports consume FullEnrich credits.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      // Free / read-only
+      get_credits: "never_ask",
+      list_industries: "never_ask",
+      list_seniorities: "never_ask",
+      list_functions_subfunctions: "never_ask",
+      search_people: "never_ask",
+      search_companies: "never_ask",
+      search_contact_by_email: "never_ask",
+      get_enrichment_results: "never_ask",
+      // Consume credits
+      enrich_search_contact: "high",
+      enrich_bulk: "high",
+      export_contacts: "high",
+      export_companies: "high",
+      export_enrichment_results: "low",
+    },
+    toolDisplayLabels: {
+      get_credits: {
+        running: "Checking credits on FullEnrich",
+        done: "Checked credits on FullEnrich",
+      },
+      list_industries: {
+        running: "Listing industries on FullEnrich",
+        done: "Listed industries on FullEnrich",
+      },
+      list_seniorities: {
+        running: "Listing seniorities on FullEnrich",
+        done: "Listed seniorities on FullEnrich",
+      },
+      list_functions_subfunctions: {
+        running: "Listing functions on FullEnrich",
+        done: "Listed functions on FullEnrich",
+      },
+      search_people: {
+        running: "Searching people on FullEnrich",
+        done: "Searched people on FullEnrich",
+      },
+      search_companies: {
+        running: "Searching companies on FullEnrich",
+        done: "Searched companies on FullEnrich",
+      },
+      search_contact_by_email: {
+        running: "Looking up a contact by email on FullEnrich",
+        done: "Looked up a contact by email on FullEnrich",
+      },
+      enrich_search_contact: {
+        running: "Enriching contacts on FullEnrich",
+        done: "Enriched contacts on FullEnrich",
+      },
+      enrich_bulk: {
+        running: "Enriching contacts in bulk on FullEnrich",
+        done: "Enriched contacts in bulk on FullEnrich",
+      },
+      get_enrichment_results: {
+        running: "Fetching enrichment results from FullEnrich",
+        done: "Fetched enrichment results from FullEnrich",
+      },
+      export_contacts: {
+        running: "Exporting contacts from FullEnrich",
+        done: "Exported contacts from FullEnrich",
+      },
+      export_companies: {
+        running: "Exporting companies from FullEnrich",
+        done: "Exported companies from FullEnrich",
+      },
+      export_enrichment_results: {
+        running: "Exporting enrichment results from FullEnrich",
+        done: "Exported enrichment results from FullEnrich",
+      },
+    },
+  },
+  {
+    id: 10044,
+    name: "ClickUp",
+    description:
+      "ClickUp tools for searching and managing tasks, comments, time tracking, lists, folders, Docs and Chat.",
+    url: "https://mcp.clickup.com/mcp",
+    icon: "ClickUpLogo",
+    documentationUrl:
+      "https://developer.clickup.com/docs/connect-an-ai-assistant-to-clickups-mcp-server",
+    connectionInstructions:
+      "ClickUp uses OAuth. You will be prompted to sign in with your ClickUp account and choose the workspace to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_workspace: "never_ask",
+      search_tasks_by_type: "never_ask",
+      search_tasks_by_tag: "never_ask",
+      get_task: "never_ask",
+      get_task_comments: "never_ask",
+      get_threaded_replies: "never_ask",
+      get_task_time_entries: "never_ask",
+      get_time_entries_multiple: "never_ask",
+      get_current_time_entry: "never_ask",
+      get_workspace_hierarchy: "never_ask",
+      get_list: "never_ask",
+      get_folder: "never_ask",
+      get_workspace_members: "never_ask",
+      find_member_by_name: "never_ask",
+      resolve_assignees: "never_ask",
+      get_chat_channels: "never_ask",
+      list_document_pages: "never_ask",
+      get_document_pages: "never_ask",
+      get_time_in_status_task: "never_ask",
+      get_time_in_status_list: "never_ask",
+      create_task: "low",
+      update_task: "low",
+      set_custom_fields: "low",
+      attach_file_to_task: "low",
+      add_tag_to_task: "low",
+      remove_tag_from_task: "low",
+      add_task_link: "low",
+      add_dependency: "low",
+      move_task_to_list: "low",
+      add_task_to_list: "low",
+      start_time_tracking: "low",
+      stop_time_tracking: "low",
+      add_time_entry: "low",
+      create_list: "low",
+      create_list_in_folder: "low",
+      update_list: "low",
+      create_folder: "low",
+      update_folder: "low",
+      create_document: "low",
+      create_document_page: "low",
+      update_document_page: "low",
+      delete_task: "high",
+      create_bulk_tasks: "high",
+      update_bulk_tasks: "high",
+      remove_task_link: "high",
+      remove_dependency: "high",
+      create_task_comment: "high",
+      send_chat_message: "high",
+    },
+    toolDisplayLabels: {
+      search_workspace: {
+        running: "Searching the ClickUp workspace",
+        done: "Searched the ClickUp workspace",
+      },
+      search_tasks_by_type: {
+        running: "Searching tasks by type on ClickUp",
+        done: "Searched tasks by type on ClickUp",
+      },
+      search_tasks_by_tag: {
+        running: "Searching tasks by tag on ClickUp",
+        done: "Searched tasks by tag on ClickUp",
+      },
+      get_task: {
+        running: "Loading a task from ClickUp",
+        done: "Loaded a task from ClickUp",
+      },
+      get_task_comments: {
+        running: "Loading task comments from ClickUp",
+        done: "Loaded task comments from ClickUp",
+      },
+      get_threaded_replies: {
+        running: "Loading threaded replies from ClickUp",
+        done: "Loaded threaded replies from ClickUp",
+      },
+      get_task_time_entries: {
+        running: "Loading task time entries from ClickUp",
+        done: "Loaded task time entries from ClickUp",
+      },
+      get_time_entries_multiple: {
+        running: "Loading time entries from ClickUp",
+        done: "Loaded time entries from ClickUp",
+      },
+      get_current_time_entry: {
+        running: "Checking the running timer on ClickUp",
+        done: "Checked the running timer on ClickUp",
+      },
+      get_workspace_hierarchy: {
+        running: "Loading the workspace hierarchy from ClickUp",
+        done: "Loaded the workspace hierarchy from ClickUp",
+      },
+      get_list: {
+        running: "Loading a list from ClickUp",
+        done: "Loaded a list from ClickUp",
+      },
+      get_folder: {
+        running: "Loading a folder from ClickUp",
+        done: "Loaded a folder from ClickUp",
+      },
+      get_workspace_members: {
+        running: "Listing workspace members on ClickUp",
+        done: "Listed workspace members on ClickUp",
+      },
+      find_member_by_name: {
+        running: "Finding a member on ClickUp",
+        done: "Found a member on ClickUp",
+      },
+      resolve_assignees: {
+        running: "Resolving assignees on ClickUp",
+        done: "Resolved assignees on ClickUp",
+      },
+      get_chat_channels: {
+        running: "Listing chat channels on ClickUp",
+        done: "Listed chat channels on ClickUp",
+      },
+      list_document_pages: {
+        running: "Listing Doc pages on ClickUp",
+        done: "Listed Doc pages on ClickUp",
+      },
+      get_document_pages: {
+        running: "Loading Doc pages from ClickUp",
+        done: "Loaded Doc pages from ClickUp",
+      },
+      get_time_in_status_task: {
+        running: "Loading time in status for a task on ClickUp",
+        done: "Loaded time in status for a task on ClickUp",
+      },
+      get_time_in_status_list: {
+        running: "Loading time in status for a list on ClickUp",
+        done: "Loaded time in status for a list on ClickUp",
+      },
+      create_task: {
+        running: "Creating a task on ClickUp",
+        done: "Created a task on ClickUp",
+      },
+      update_task: {
+        running: "Updating a task on ClickUp",
+        done: "Updated a task on ClickUp",
+      },
+      set_custom_fields: {
+        running: "Setting custom fields on ClickUp",
+        done: "Set custom fields on ClickUp",
+      },
+      attach_file_to_task: {
+        running: "Attaching a file to a task on ClickUp",
+        done: "Attached a file to a task on ClickUp",
+      },
+      add_tag_to_task: {
+        running: "Adding a tag to a task on ClickUp",
+        done: "Added a tag to a task on ClickUp",
+      },
+      remove_tag_from_task: {
+        running: "Removing a tag from a task on ClickUp",
+        done: "Removed a tag from a task on ClickUp",
+      },
+      add_task_link: {
+        running: "Linking tasks on ClickUp",
+        done: "Linked tasks on ClickUp",
+      },
+      add_dependency: {
+        running: "Adding a task dependency on ClickUp",
+        done: "Added a task dependency on ClickUp",
+      },
+      move_task_to_list: {
+        running: "Moving a task to another list on ClickUp",
+        done: "Moved a task to another list on ClickUp",
+      },
+      add_task_to_list: {
+        running: "Adding a task to a list on ClickUp",
+        done: "Added a task to a list on ClickUp",
+      },
+      start_time_tracking: {
+        running: "Starting the timer on ClickUp",
+        done: "Started the timer on ClickUp",
+      },
+      stop_time_tracking: {
+        running: "Stopping the timer on ClickUp",
+        done: "Stopped the timer on ClickUp",
+      },
+      add_time_entry: {
+        running: "Adding a time entry on ClickUp",
+        done: "Added a time entry on ClickUp",
+      },
+      create_list: {
+        running: "Creating a list on ClickUp",
+        done: "Created a list on ClickUp",
+      },
+      create_list_in_folder: {
+        running: "Creating a list in a folder on ClickUp",
+        done: "Created a list in a folder on ClickUp",
+      },
+      update_list: {
+        running: "Updating a list on ClickUp",
+        done: "Updated a list on ClickUp",
+      },
+      create_folder: {
+        running: "Creating a folder on ClickUp",
+        done: "Created a folder on ClickUp",
+      },
+      update_folder: {
+        running: "Updating a folder on ClickUp",
+        done: "Updated a folder on ClickUp",
+      },
+      create_document: {
+        running: "Creating a Doc on ClickUp",
+        done: "Created a Doc on ClickUp",
+      },
+      create_document_page: {
+        running: "Creating a Doc page on ClickUp",
+        done: "Created a Doc page on ClickUp",
+      },
+      update_document_page: {
+        running: "Updating a Doc page on ClickUp",
+        done: "Updated a Doc page on ClickUp",
+      },
+      delete_task: {
+        running: "Deleting a task on ClickUp",
+        done: "Deleted a task on ClickUp",
+      },
+      create_bulk_tasks: {
+        running: "Creating multiple tasks on ClickUp",
+        done: "Created multiple tasks on ClickUp",
+      },
+      update_bulk_tasks: {
+        running: "Updating multiple tasks on ClickUp",
+        done: "Updated multiple tasks on ClickUp",
+      },
+      remove_task_link: {
+        running: "Removing a task link on ClickUp",
+        done: "Removed a task link on ClickUp",
+      },
+      remove_dependency: {
+        running: "Removing a task dependency on ClickUp",
+        done: "Removed a task dependency on ClickUp",
+      },
+      create_task_comment: {
+        running: "Commenting on a task on ClickUp",
+        done: "Commented on a task on ClickUp",
+      },
+      send_chat_message: {
+        running: "Sending a chat message on ClickUp",
+        done: "Sent a chat message on ClickUp",
+      },
+    },
+  },
+  {
+    id: 10045,
+    name: "Superhuman Docs",
+    description:
+      "Superhuman Docs (Coda) tools for searching, reading and editing docs, pages, tables, comments and formulas.",
+    url: "https://docs.superhuman.com/apis/mcp",
+    icon: "SuperhumanLogo",
+    documentationUrl:
+      "https://help.superhuman.com/hc/en-us/articles/46210076980365-Connect-to-the-Superhuman-Docs-MCP",
+    connectionInstructions:
+      "Superhuman Docs (Coda) uses OAuth with dynamic client registration. Sign in with your Superhuman or Coda account to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      content_read: "never_ask",
+      document_outline: "never_ask",
+      control_read: "never_ask",
+      formula_execute: "never_ask",
+      name_match: "never_ask",
+      page_describe: "never_ask",
+      table_columns_read: "never_ask",
+      table_rows_read: "never_ask",
+      tool_guide: "never_ask",
+      url_convert: "never_ask",
+      whoami: "never_ask",
+      notifications_list: "never_ask",
+      search: "never_ask",
+      comment_add: "high",
+      comment_delete: "high",
+      comment_resolve: "high",
+      content_image_upload: "high",
+      content_modify: "high",
+      document_suggest_changes: "high",
+      control_delete: "high",
+      control_manage: "high",
+      page_create: "high",
+      page_delete: "high",
+      page_update: "high",
+      table_columns_manage: "high",
+      table_create: "high",
+      table_delete: "high",
+      table_columns_delete: "high",
+      table_rows_delete: "high",
+      table_rows_manage: "high",
+      table_view_delete: "high",
+      table_view_manage: "high",
+      content_duplicate: "high",
+      document_create: "high",
+      document_delete: "high",
+      document_manage: "high",
+      notifications_mark_read: "high",
+    },
+    toolDisplayLabels: {
+      content_read: {
+        running: "Reading content on Superhuman Docs",
+        done: "Read content on Superhuman Docs",
+      },
+      document_outline: {
+        running: "Loading a doc outline from Superhuman Docs",
+        done: "Loaded a doc outline from Superhuman Docs",
+      },
+      control_read: {
+        running: "Reading a control on Superhuman Docs",
+        done: "Read a control on Superhuman Docs",
+      },
+      formula_execute: {
+        running: "Running a formula on Superhuman Docs",
+        done: "Ran a formula on Superhuman Docs",
+      },
+      name_match: {
+        running: "Matching names on Superhuman Docs",
+        done: "Matched names on Superhuman Docs",
+      },
+      page_describe: {
+        running: "Describing a page on Superhuman Docs",
+        done: "Described a page on Superhuman Docs",
+      },
+      table_columns_read: {
+        running: "Reading table columns on Superhuman Docs",
+        done: "Read table columns on Superhuman Docs",
+      },
+      table_rows_read: {
+        running: "Reading table rows on Superhuman Docs",
+        done: "Read table rows on Superhuman Docs",
+      },
+      tool_guide: {
+        running: "Loading a tool guide from Superhuman Docs",
+        done: "Loaded a tool guide from Superhuman Docs",
+      },
+      url_convert: {
+        running: "Converting a URL on Superhuman Docs",
+        done: "Converted a URL on Superhuman Docs",
+      },
+      whoami: {
+        running: "Checking the current user on Superhuman Docs",
+        done: "Checked the current user on Superhuman Docs",
+      },
+      notifications_list: {
+        running: "Listing notifications on Superhuman Docs",
+        done: "Listed notifications on Superhuman Docs",
+      },
+      search: {
+        running: "Searching Superhuman Docs",
+        done: "Searched Superhuman Docs",
+      },
+      comment_add: {
+        running: "Adding a comment on Superhuman Docs",
+        done: "Added a comment on Superhuman Docs",
+      },
+      comment_delete: {
+        running: "Deleting a comment on Superhuman Docs",
+        done: "Deleted a comment on Superhuman Docs",
+      },
+      comment_resolve: {
+        running: "Updating a comment thread on Superhuman Docs",
+        done: "Updated a comment thread on Superhuman Docs",
+      },
+      content_image_upload: {
+        running: "Uploading an image to Superhuman Docs",
+        done: "Uploaded an image to Superhuman Docs",
+      },
+      content_modify: {
+        running: "Modifying content on Superhuman Docs",
+        done: "Modified content on Superhuman Docs",
+      },
+      document_suggest_changes: {
+        running: "Suggesting changes on Superhuman Docs",
+        done: "Suggested changes on Superhuman Docs",
+      },
+      control_delete: {
+        running: "Deleting a control on Superhuman Docs",
+        done: "Deleted a control on Superhuman Docs",
+      },
+      control_manage: {
+        running: "Managing a control on Superhuman Docs",
+        done: "Managed a control on Superhuman Docs",
+      },
+      page_create: {
+        running: "Creating a page on Superhuman Docs",
+        done: "Created a page on Superhuman Docs",
+      },
+      page_delete: {
+        running: "Deleting a page on Superhuman Docs",
+        done: "Deleted a page on Superhuman Docs",
+      },
+      page_update: {
+        running: "Updating a page on Superhuman Docs",
+        done: "Updated a page on Superhuman Docs",
+      },
+      table_columns_manage: {
+        running: "Managing table columns on Superhuman Docs",
+        done: "Managed table columns on Superhuman Docs",
+      },
+      table_create: {
+        running: "Creating a table on Superhuman Docs",
+        done: "Created a table on Superhuman Docs",
+      },
+      table_delete: {
+        running: "Deleting a table on Superhuman Docs",
+        done: "Deleted a table on Superhuman Docs",
+      },
+      table_columns_delete: {
+        running: "Deleting table columns on Superhuman Docs",
+        done: "Deleted table columns on Superhuman Docs",
+      },
+      table_rows_delete: {
+        running: "Deleting table rows on Superhuman Docs",
+        done: "Deleted table rows on Superhuman Docs",
+      },
+      table_rows_manage: {
+        running: "Managing table rows on Superhuman Docs",
+        done: "Managed table rows on Superhuman Docs",
+      },
+      table_view_delete: {
+        running: "Deleting a table view on Superhuman Docs",
+        done: "Deleted a table view on Superhuman Docs",
+      },
+      table_view_manage: {
+        running: "Managing a table view on Superhuman Docs",
+        done: "Managed a table view on Superhuman Docs",
+      },
+      content_duplicate: {
+        running: "Duplicating content on Superhuman Docs",
+        done: "Duplicated content on Superhuman Docs",
+      },
+      document_create: {
+        running: "Creating a doc on Superhuman Docs",
+        done: "Created a doc on Superhuman Docs",
+      },
+      document_delete: {
+        running: "Deleting a doc on Superhuman Docs",
+        done: "Deleted a doc on Superhuman Docs",
+      },
+      document_manage: {
+        running: "Managing doc access on Superhuman Docs",
+        done: "Managed doc access on Superhuman Docs",
+      },
+      notifications_mark_read: {
+        running: "Marking notifications as read on Superhuman Docs",
+        done: "Marked notifications as read on Superhuman Docs",
+      },
+    },
+  },
+  {
+    id: 10046,
+    name: "Paddle",
+    description:
+      "Manage Paddle pricing, billing, subscriptions, and integrations through Paddle's hosted MCP server.",
+    url: "https://mcp.paddle.com/mcp",
+    icon: "PaddleLogo",
+    documentationUrl: "https://developer.paddle.com/sdks/ai/paddle-mcp/",
+    connectionInstructions:
+      "Connect to your Paddle live account with OAuth. Access starts with the read permissions allowed by your Paddle role; adjust permissions in Paddle > Connectors > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      execute: "high",
+      report_missing_tool: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching Paddle",
+        done: "Searched Paddle",
+      },
+      execute: {
+        running: "Running a Paddle operation",
+        done: "Ran a Paddle operation",
+      },
+      report_missing_tool: {
+        running: "Reporting a missing Paddle capability",
+        done: "Reported a missing Paddle capability",
+      },
+    },
+  },
+  {
+    id: 10047,
+    name: "PandaDoc",
+    description:
+      "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: Global).",
+    url: "https://mcp.pandadoc.com/v1/mcp",
+    icon: "PandaDocLogo",
+    documentationUrl:
+      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
+    connectionInstructions:
+      "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.com; authentication fails if the server region does not match your account region.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      documents_audit_trail_get: "never_ask",
+      documents_list: "never_ask",
+      documents_search: "never_ask",
+      documents_status_get: "never_ask",
+      documents_details_get: "never_ask",
+      documents_summary_get: "never_ask",
+      documents_content_get: "never_ask",
+      documents_metadata_batch_get: "never_ask",
+      contacts_list: "never_ask",
+      contacts_search: "never_ask",
+      templates_list: "never_ask",
+      templates_details_get: "never_ask",
+      catalog_items_search: "never_ask",
+      catalog_item_get: "never_ask",
+      documents_create: "high",
+      documents_update: "high",
+      documents_status_change: "high",
+      documents_send: "high",
+      documents_fields_assign: "high",
+      documents_archive: "high",
+      documents_reminder_send: "high",
+      recipients_edit: "high",
+      recipients_add_cc: "high",
+      recipients_reassign: "high",
+      recipients_delete: "high",
+      templates_create: "high",
+      templates_update: "high",
+      templates_duplicate: "high",
+      templates_delete: "high",
+      catalog_item_create: "high",
+      catalog_item_update: "high",
+      catalog_item_delete: "high",
+      quotes_update: "high",
+    },
+    toolDisplayLabels: {
+      documents_audit_trail_get: {
+        running: "Loading a document audit trail from PandaDoc",
+        done: "Loaded a document audit trail from PandaDoc",
+      },
+      documents_list: {
+        running: "Listing documents on PandaDoc",
+        done: "Listed documents on PandaDoc",
+      },
+      documents_search: {
+        running: "Searching documents on PandaDoc",
+        done: "Searched documents on PandaDoc",
+      },
+      documents_status_get: {
+        running: "Checking a document status on PandaDoc",
+        done: "Checked a document status on PandaDoc",
+      },
+      documents_details_get: {
+        running: "Loading document details from PandaDoc",
+        done: "Loaded document details from PandaDoc",
+      },
+      documents_summary_get: {
+        running: "Loading a document summary from PandaDoc",
+        done: "Loaded a document summary from PandaDoc",
+      },
+      documents_content_get: {
+        running: "Loading document content from PandaDoc",
+        done: "Loaded document content from PandaDoc",
+      },
+      documents_metadata_batch_get: {
+        running: "Loading document metadata from PandaDoc",
+        done: "Loaded document metadata from PandaDoc",
+      },
+      contacts_list: {
+        running: "Looking up a contact by email on PandaDoc",
+        done: "Looked up a contact by email on PandaDoc",
+      },
+      contacts_search: {
+        running: "Searching contacts on PandaDoc",
+        done: "Searched contacts on PandaDoc",
+      },
+      templates_list: {
+        running: "Listing templates on PandaDoc",
+        done: "Listed templates on PandaDoc",
+      },
+      templates_details_get: {
+        running: "Loading template details from PandaDoc",
+        done: "Loaded template details from PandaDoc",
+      },
+      catalog_items_search: {
+        running: "Searching catalog items on PandaDoc",
+        done: "Searched catalog items on PandaDoc",
+      },
+      catalog_item_get: {
+        running: "Loading a catalog item from PandaDoc",
+        done: "Loaded a catalog item from PandaDoc",
+      },
+      documents_create: {
+        running: "Creating a document on PandaDoc",
+        done: "Created a document on PandaDoc",
+      },
+      documents_update: {
+        running: "Updating a document on PandaDoc",
+        done: "Updated a document on PandaDoc",
+      },
+      documents_status_change: {
+        running: "Changing a document status on PandaDoc",
+        done: "Changed a document status on PandaDoc",
+      },
+      documents_send: {
+        running: "Sending a document on PandaDoc",
+        done: "Sent a document on PandaDoc",
+      },
+      documents_fields_assign: {
+        running: "Assigning document fields on PandaDoc",
+        done: "Assigned document fields on PandaDoc",
+      },
+      documents_archive: {
+        running: "Archiving a document on PandaDoc",
+        done: "Archived a document on PandaDoc",
+      },
+      documents_reminder_send: {
+        running: "Sending a document reminder on PandaDoc",
+        done: "Sent a document reminder on PandaDoc",
+      },
+      recipients_edit: {
+        running: "Editing a recipient on PandaDoc",
+        done: "Edited a recipient on PandaDoc",
+      },
+      recipients_add_cc: {
+        running: "Adding a CC recipient on PandaDoc",
+        done: "Added a CC recipient on PandaDoc",
+      },
+      recipients_reassign: {
+        running: "Reassigning a recipient on PandaDoc",
+        done: "Reassigned a recipient on PandaDoc",
+      },
+      recipients_delete: {
+        running: "Removing a recipient on PandaDoc",
+        done: "Removed a recipient on PandaDoc",
+      },
+      templates_create: {
+        running: "Creating a template on PandaDoc",
+        done: "Created a template on PandaDoc",
+      },
+      templates_update: {
+        running: "Updating a template on PandaDoc",
+        done: "Updated a template on PandaDoc",
+      },
+      templates_duplicate: {
+        running: "Duplicating a template on PandaDoc",
+        done: "Duplicated a template on PandaDoc",
+      },
+      templates_delete: {
+        running: "Deleting a template on PandaDoc",
+        done: "Deleted a template on PandaDoc",
+      },
+      catalog_item_create: {
+        running: "Creating a catalog item on PandaDoc",
+        done: "Created a catalog item on PandaDoc",
+      },
+      catalog_item_update: {
+        running: "Updating a catalog item on PandaDoc",
+        done: "Updated a catalog item on PandaDoc",
+      },
+      catalog_item_delete: {
+        running: "Deleting a catalog item on PandaDoc",
+        done: "Deleted a catalog item on PandaDoc",
+      },
+      quotes_update: {
+        running: "Updating quotes on PandaDoc",
+        done: "Updated quotes on PandaDoc",
+      },
+    },
+  },
+  {
+    id: 10048,
+    name: "PandaDoc (Europe)",
+    description:
+      "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: EU).",
+    url: "https://mcp.pandadoc.eu/v1/mcp",
+    icon: "PandaDocLogo",
+    documentationUrl:
+      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
+    connectionInstructions:
+      "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.eu; authentication fails if the server region does not match your account region.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      documents_audit_trail_get: "never_ask",
+      documents_list: "never_ask",
+      documents_search: "never_ask",
+      documents_status_get: "never_ask",
+      documents_details_get: "never_ask",
+      documents_summary_get: "never_ask",
+      documents_content_get: "never_ask",
+      documents_metadata_batch_get: "never_ask",
+      contacts_list: "never_ask",
+      contacts_search: "never_ask",
+      templates_list: "never_ask",
+      templates_details_get: "never_ask",
+      catalog_items_search: "never_ask",
+      catalog_item_get: "never_ask",
+      documents_create: "high",
+      documents_update: "high",
+      documents_status_change: "high",
+      documents_send: "high",
+      documents_fields_assign: "high",
+      documents_archive: "high",
+      documents_reminder_send: "high",
+      recipients_edit: "high",
+      recipients_add_cc: "high",
+      recipients_reassign: "high",
+      recipients_delete: "high",
+      templates_create: "high",
+      templates_update: "high",
+      templates_duplicate: "high",
+      templates_delete: "high",
+      catalog_item_create: "high",
+      catalog_item_update: "high",
+      catalog_item_delete: "high",
+      quotes_update: "high",
+    },
+    toolDisplayLabels: {
+      documents_audit_trail_get: {
+        running: "Loading a document audit trail from PandaDoc",
+        done: "Loaded a document audit trail from PandaDoc",
+      },
+      documents_list: {
+        running: "Listing documents on PandaDoc",
+        done: "Listed documents on PandaDoc",
+      },
+      documents_search: {
+        running: "Searching documents on PandaDoc",
+        done: "Searched documents on PandaDoc",
+      },
+      documents_status_get: {
+        running: "Checking a document status on PandaDoc",
+        done: "Checked a document status on PandaDoc",
+      },
+      documents_details_get: {
+        running: "Loading document details from PandaDoc",
+        done: "Loaded document details from PandaDoc",
+      },
+      documents_summary_get: {
+        running: "Loading a document summary from PandaDoc",
+        done: "Loaded a document summary from PandaDoc",
+      },
+      documents_content_get: {
+        running: "Loading document content from PandaDoc",
+        done: "Loaded document content from PandaDoc",
+      },
+      documents_metadata_batch_get: {
+        running: "Loading document metadata from PandaDoc",
+        done: "Loaded document metadata from PandaDoc",
+      },
+      contacts_list: {
+        running: "Looking up a contact by email on PandaDoc",
+        done: "Looked up a contact by email on PandaDoc",
+      },
+      contacts_search: {
+        running: "Searching contacts on PandaDoc",
+        done: "Searched contacts on PandaDoc",
+      },
+      templates_list: {
+        running: "Listing templates on PandaDoc",
+        done: "Listed templates on PandaDoc",
+      },
+      templates_details_get: {
+        running: "Loading template details from PandaDoc",
+        done: "Loaded template details from PandaDoc",
+      },
+      catalog_items_search: {
+        running: "Searching catalog items on PandaDoc",
+        done: "Searched catalog items on PandaDoc",
+      },
+      catalog_item_get: {
+        running: "Loading a catalog item from PandaDoc",
+        done: "Loaded a catalog item from PandaDoc",
+      },
+      documents_create: {
+        running: "Creating a document on PandaDoc",
+        done: "Created a document on PandaDoc",
+      },
+      documents_update: {
+        running: "Updating a document on PandaDoc",
+        done: "Updated a document on PandaDoc",
+      },
+      documents_status_change: {
+        running: "Changing a document status on PandaDoc",
+        done: "Changed a document status on PandaDoc",
+      },
+      documents_send: {
+        running: "Sending a document on PandaDoc",
+        done: "Sent a document on PandaDoc",
+      },
+      documents_fields_assign: {
+        running: "Assigning document fields on PandaDoc",
+        done: "Assigned document fields on PandaDoc",
+      },
+      documents_archive: {
+        running: "Archiving a document on PandaDoc",
+        done: "Archived a document on PandaDoc",
+      },
+      documents_reminder_send: {
+        running: "Sending a document reminder on PandaDoc",
+        done: "Sent a document reminder on PandaDoc",
+      },
+      recipients_edit: {
+        running: "Editing a recipient on PandaDoc",
+        done: "Edited a recipient on PandaDoc",
+      },
+      recipients_add_cc: {
+        running: "Adding a CC recipient on PandaDoc",
+        done: "Added a CC recipient on PandaDoc",
+      },
+      recipients_reassign: {
+        running: "Reassigning a recipient on PandaDoc",
+        done: "Reassigned a recipient on PandaDoc",
+      },
+      recipients_delete: {
+        running: "Removing a recipient on PandaDoc",
+        done: "Removed a recipient on PandaDoc",
+      },
+      templates_create: {
+        running: "Creating a template on PandaDoc",
+        done: "Created a template on PandaDoc",
+      },
+      templates_update: {
+        running: "Updating a template on PandaDoc",
+        done: "Updated a template on PandaDoc",
+      },
+      templates_duplicate: {
+        running: "Duplicating a template on PandaDoc",
+        done: "Duplicated a template on PandaDoc",
+      },
+      templates_delete: {
+        running: "Deleting a template on PandaDoc",
+        done: "Deleted a template on PandaDoc",
+      },
+      catalog_item_create: {
+        running: "Creating a catalog item on PandaDoc",
+        done: "Created a catalog item on PandaDoc",
+      },
+      catalog_item_update: {
+        running: "Updating a catalog item on PandaDoc",
+        done: "Updated a catalog item on PandaDoc",
+      },
+      catalog_item_delete: {
+        running: "Deleting a catalog item on PandaDoc",
+        done: "Deleted a catalog item on PandaDoc",
+      },
+      quotes_update: {
+        running: "Updating quotes on PandaDoc",
+        done: "Updated quotes on PandaDoc",
       },
     },
   },

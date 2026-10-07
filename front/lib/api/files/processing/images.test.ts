@@ -31,50 +31,53 @@ describe("SVG rasterization", () => {
       useCaseMetadata: { asset: "favicon" },
       maxSizePixels: 256,
     },
-  ] as const)("converts $useCase SVG to PNG via imgproxy with a $maxSizePixels pixel cap", async ({
-    useCase,
-    useCaseMetadata,
-    maxSizePixels,
-  }) => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-    const file = await FileFactory.create(auth, null, {
-      contentType: "image/svg+xml",
-      fileName: "upload.svg",
-      fileSize: 100,
-      status: "created",
-      useCase,
-      useCaseMetadata,
-    });
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("converted PNG bytes", {
-        headers: { "Content-Type": "image/png" },
-      })
-    );
+  ] as const)(
+    "converts $useCase SVG to PNG via imgproxy with a $maxSizePixels pixel cap",
+    async ({ useCase, useCaseMetadata, maxSizePixels }) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const file = await FileFactory.create(auth, null, {
+        contentType: "image/svg+xml",
+        fileName: "upload.svg",
+        fileSize: 100,
+        status: "created",
+        useCase,
+        useCaseMetadata,
+      });
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("converted PNG bytes", {
+          headers: { "Content-Type": "image/png" },
+        })
+      );
 
-    const result = await processImage(auth, file);
+      const result = await processImage(auth, file);
 
-    assert(result.isOk());
-    const source = Buffer.from("https://signed-url.test").toString("base64url");
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringMatching(
-        new RegExp(
-          `^http://imgproxy\\.test/[^/]+/rs:fit:${maxSizePixels}:${maxSizePixels}:0/${source}\\.png$`
+      assert(result.isOk());
+      const source = Buffer.from("https://signed-url.test").toString(
+        "base64url"
+      );
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringMatching(
+          new RegExp(
+            `^http://imgproxy\\.test/[^/]+/rs:fit:${maxSizePixels}:${maxSizePixels}:0/${source}\\.png$`
+          )
         )
-      )
-    );
-    expect(fileStorageMock.signedUrlCalls[0].filePath).toBe(
-      file.getCloudStoragePath(auth, "original")
-    );
-    // The application never reads or decodes the uploaded bytes itself,
-    // including when a binary image is disguised with an SVG content type.
-    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
-    expect(fileStorageMock.writeStreamCalls).toEqual([
-      {
-        filePath: file.getCloudStoragePath(auth, "processed"),
-        contentType: "image/png",
-      },
-    ]);
-  });
+      );
+      expect(fileStorageMock.signedUrlCalls[0].filePath).toBe(
+        file.getCloudStoragePath(auth, "original")
+      );
+      // The application never reads or decodes the uploaded bytes itself,
+      // including when a binary image is disguised with an SVG content type.
+      expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+      expect(fileStorageMock.writeStreamCalls).toEqual([
+        {
+          filePath: file.getCloudStoragePath(auth, "processed"),
+          contentType: "image/png",
+        },
+      ]);
+    }
+  );
 
   it("returns an error without writing output when imgproxy rejects the image", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });

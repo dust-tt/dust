@@ -44,9 +44,7 @@ const configSchema = z.union([
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithOpenAIGptFiveDotSixLunaConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class OpenAIGptFiveDotSixLuna extends Base {
     static readonly model = GPT_5_6_LUNA;

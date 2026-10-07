@@ -3,12 +3,12 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const LOG_EVERY_N_WORKSPACES = 500;
 

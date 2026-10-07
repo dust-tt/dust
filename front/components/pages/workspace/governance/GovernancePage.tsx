@@ -53,6 +53,7 @@ import {
   Clock,
   ContentMessage,
   Cube01,
+  Hoverable,
   InfoCircle,
   PuzzlePiece01,
   Robot,
@@ -62,6 +63,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
@@ -114,6 +116,7 @@ function groupGovernancePermissionsBySection(
 }
 
 export const GovernancePage = () => {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { groups, isGroupsLoading, isGroupsError } = useGroups({
@@ -166,13 +169,13 @@ export const GovernancePage = () => {
   }[] = [
     {
       sectionId: ADMIN_SECTION_IDS.governance.agents,
-      label: "Agents",
+      label: t`Agents`,
       icon: Robot,
       governancePermissions: agents,
     },
     {
       sectionId: ADMIN_SECTION_IDS.governance.skills,
-      label: "Skills",
+      label: t`Skills`,
       icon: PuzzlePiece01,
       governancePermissions: skills,
     },
@@ -189,9 +192,9 @@ export const GovernancePage = () => {
           variant="warning"
           icon={InfoCircle}
           size="lg"
-          title="Failed to load"
+          title={t`Failed to load`}
         >
-          Governance settings could not be loaded.
+          <Trans>Governance settings could not be loaded.</Trans>
         </ContentMessage>
       </GovernancePageLayout>
     );
@@ -200,19 +203,22 @@ export const GovernancePage = () => {
   return (
     <GovernancePageLayout>
       {isAdmin && <WorkspaceNameEditor owner={owner} />}
-      <LinkedSectionNotice
-        description="Groups assigned here are managed in"
-        linkLabel="Members → Groups"
-        onLinkClick={handleNavigateToGroups}
-      />
+      <LinkedSectionNotice>
+        <Trans>
+          Groups assigned here are managed in{" "}
+          <Hoverable variant="primary" onClick={handleNavigateToGroups}>
+            Members → Groups
+          </Hoverable>
+        </Trans>
+      </LinkedSectionNotice>
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as GovernanceTab)}
       >
         <TabsList className="mb-6">
-          <TabsTrigger value="agents" label="Agents" />
-          <TabsTrigger value="pods" label="Pods" />
-          <TabsTrigger value="features" label="Features" />
+          <TabsTrigger value="agents" label={t`Agents`} />
+          <TabsTrigger value="pods" label={t`Pods`} />
+          <TabsTrigger value="features" label={t`Features`} />
         </TabsList>
         <TabsContent value="agents" className="flex w-full flex-col gap-8">
           {agentsSections.map(
@@ -279,7 +285,7 @@ export const GovernancePage = () => {
           {(framePermissions.length > 0 || isAdmin) && (
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.governance.frame}
-              label="Frames"
+              label={t`Frames`}
               icon={ActionFrame}
             >
               {isAdmin && (
@@ -308,7 +314,7 @@ export const GovernancePage = () => {
           {triggers.length > 0 && (
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.governance.automations}
-              label="Automations"
+              label={t`Automations`}
               icon={Clock}
             >
               {triggers.map((governancePermission) => (
@@ -330,7 +336,7 @@ export const GovernancePage = () => {
           {isAdmin && (
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.governance.pods}
-              label="Pods"
+              label={t`Pods`}
               icon={Cube01}
             >
               <OpenPodPolicy owner={owner} />
@@ -342,7 +348,7 @@ export const GovernancePage = () => {
           {isAdmin && (
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.governance.features}
-              label="Features"
+              label={t`Features`}
               icon={ShapesPlus}
             >
               <WorkspaceDefaultAgentPicker owner={owner} />

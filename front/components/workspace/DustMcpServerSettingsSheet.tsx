@@ -20,6 +20,7 @@ import {
   SheetTitle,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 interface DustMcpServerSettingsSheetProps {
@@ -37,6 +38,7 @@ export function DustMcpServerSettingsSheet({
   isSaving,
   onSave,
 }: DustMcpServerSettingsSheetProps) {
+  const { t } = useLingui();
   const { isAdmin } = useAuth();
   const [draftSettings, setDraftSettings] = useState(settings);
   const [redirectUriInput, setRedirectUriInput] = useState("");
@@ -66,10 +68,10 @@ export function DustMcpServerSettingsSheet({
     redirectUriValidation?.isErr() === true
       ? redirectUriValidation.error.message
       : isDuplicateRedirectUri
-        ? "This redirect URI is already in the list."
+        ? t`This redirect URI is already in the list.`
         : normalizedRedirectUri
-          ? `Will be saved as ${normalizedRedirectUri}.`
-          : "Use a full redirect URI such as https://example.com/oauth/callback.";
+          ? t`Will be saved as ${normalizedRedirectUri}.`
+          : t`Use a full redirect URI such as https://example.com/oauth/callback.`;
   const isRedirectUriInputInvalid =
     redirectUriValidation?.isErr() === true || isDuplicateRedirectUri;
   const canAddRedirectUri =
@@ -147,13 +149,17 @@ export function DustMcpServerSettingsSheet({
     >
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Redirect URIs</SheetTitle>
+          <SheetTitle>
+            <Trans>Redirect URIs</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <Page.Vertical align="stretch" gap="lg">
             {!isAdmin && (
               <ContentMessage variant="info" size="lg">
-                Only workspace admins can manage MCP server settings.
+                <Trans>
+                  Only workspace admins can manage MCP server settings.
+                </Trans>
               </ContentMessage>
             )}
 
@@ -171,22 +177,26 @@ export function DustMcpServerSettingsSheet({
                 <RadioGroupItem
                   value="all"
                   id="dust-mcp-redirect-uri-policy-all"
-                  label="Accept all redirect URIs"
+                  label={t`Accept all redirect URIs`}
                   disabled={!isAdmin || isSaving}
                 />
                 <Page.P variant="secondary">
-                  Any redirect URI requested during OAuth will be allowed.
+                  <Trans>
+                    Any redirect URI requested during OAuth will be allowed.
+                  </Trans>
                 </Page.P>
               </div>
               <div className="flex flex-col gap-1">
                 <RadioGroupItem
                   value="allowlist"
                   id="dust-mcp-redirect-uri-policy-allowlist"
-                  label="Allowlisted redirect URIs only"
+                  label={t`Allowlisted redirect URIs only`}
                   disabled={!isAdmin || isSaving}
                 />
                 <Page.P variant="secondary">
-                  Only the redirect URIs listed below will be accepted.
+                  <Trans>
+                    Only the redirect URIs listed below will be accepted.
+                  </Trans>
                 </Page.P>
               </div>
             </RadioGroup>
@@ -202,7 +212,7 @@ export function DustMcpServerSettingsSheet({
                 >
                   <div className="grow">
                     <Input
-                      label="Redirect URI"
+                      label={t`Redirect URI`}
                       name="redirectUri"
                       placeholder="https://example.com/oauth/callback"
                       value={redirectUriInput}
@@ -220,7 +230,7 @@ export function DustMcpServerSettingsSheet({
                   </div>
                   <Button
                     type="submit"
-                    label="Add URI"
+                    label={t`Add URI`}
                     icon={Plus}
                     disabled={!canAddRedirectUri}
                     isLoading={isSaving}
@@ -230,7 +240,7 @@ export function DustMcpServerSettingsSheet({
 
                 {draftSettings.allowedRedirectUris.length === 0 ? (
                   <ContentMessage variant="outline" size="lg">
-                    Add at least one redirect URI before saving.
+                    <Trans>Add at least one redirect URI before saving.</Trans>
                   </ContentMessage>
                 ) : (
                   <div className="flex w-full flex-col divide-y divide-separator">
@@ -246,7 +256,7 @@ export function DustMcpServerSettingsSheet({
                           variant="warning"
                           size="mini"
                           icon={Trash01}
-                          tooltip={`Remove ${uri}`}
+                          tooltip={t`Remove ${uri}`}
                           disabled={!isAdmin || isSaving}
                           onClick={() => handleRemoveRedirectUri(uri)}
                           className="shrink-0"
@@ -261,13 +271,13 @@ export function DustMcpServerSettingsSheet({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: handleClose,
             disabled: isSaving,
           }}
           rightButtonProps={{
-            label: isSaving ? "Saving..." : "Save",
+            label: isSaving ? t`Saving...` : t`Save`,
             onClick: () => {
               void handleSave();
             },

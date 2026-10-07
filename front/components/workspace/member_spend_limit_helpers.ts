@@ -10,6 +10,8 @@ import {
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
 import type { GroupType } from "@app/types/groups";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export type GroupRow = {
   groupId: string;
@@ -28,10 +30,12 @@ export function toSpendLimit(awuCredits: number | null): UserSpendLimit {
 
 type ParsedCredits<T> =
   | { ok: true; awuCredits: T }
-  | { ok: false; message: string };
+  | { ok: false; message: MessageDescriptor };
 
-function outOfRangeMessage(min: number, max: number): string {
-  return `Enter a whole number of credits between ${formatNumber(min)} and ${formatNumber(max)}.`;
+function outOfRangeMessage(min: number, max: number): MessageDescriptor {
+  const minFormatted = formatNumber(min);
+  const maxFormatted = formatNumber(max);
+  return msg`Enter a whole number of credits between ${minFormatted} and ${maxFormatted}.`;
 }
 
 // An empty input parses to null so callers decide what "no value" means.

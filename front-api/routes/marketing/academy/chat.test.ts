@@ -62,9 +62,8 @@ describe("POST /api/marketing/academy/chat", () => {
 
   beforeEach(async () => {
     // Mocked by generic_private_api_tests; import lazily so the mock applies.
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],

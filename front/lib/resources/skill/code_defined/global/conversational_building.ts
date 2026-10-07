@@ -7,6 +7,10 @@ import {
   SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
+  GET_AGENT_FEEDBACK_TOOL_NAME,
+  GET_AGENT_INSIGHTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common/agent_feedback_and_insights/metadata";
+import {
   GET_SKILL_DETAILS_TOOL_NAME,
   GET_TOOL_DETAILS_TOOL_NAME,
   LIST_MODELS_TOOL_NAME,
@@ -111,6 +115,8 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change an agent's or a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 - \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`: an agent's full configuration, with instructions as HTML whose blocks carry a \`data-block-id\`. Call it before targeting instruction edits on an agent; the block ids are required to target edits.
+- \`${buildingToolName(GET_AGENT_FEEDBACK_TOOL_NAME)}\`: the thumbs up and down users left on an agent's answers, with their comments. Use it to ground improvements to an existing agent in what its users report.
+- \`${buildingToolName(GET_AGENT_INSIGHTS_TOOL_NAME)}\`: an agent's active users, conversation and message counts, and feedback totals over a number of days.
 
 When editing an entity, repeat the discovery on EVERY turn of the conversation before suggesting anything.
 The user may have accepted, rejected or edited suggestions between two turns, so any configuration retrieved earlier may be outdated.
@@ -330,6 +336,6 @@ export const conversationalBuildingSkill = {
     { name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 3,
+  version: 4,
   icon: "ActionListCheckIcon",
 } as const satisfies GlobalSkillDefinition;

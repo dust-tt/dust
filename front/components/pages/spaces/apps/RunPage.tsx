@@ -9,9 +9,11 @@ import { cleanSpecificationFromCore } from "@app/lib/specification";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { Button, CheckCircle, Clock, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useState } from "react";
 
 export function RunPage() {
+  const { t } = useLingui();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
   const runId = useRequiredPathParam("runId");
@@ -47,10 +49,11 @@ export function RunPage() {
       return;
     }
 
+    const restoredRunId = run.run_id;
     if (
       !(await confirm({
-        title: "Double checking",
-        message: `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`,
+        title: t`Double checking`,
+        message: t`This will revert the app specification to the state it was in when this run was saved (${restoredRunId}). Are you sure?`,
         validateVariant: "warning",
       }))
     ) {
@@ -105,7 +108,7 @@ export function RunPage() {
           <div className="flex flex-col items-start">
             <div className="flex items-center">
               <span>
-                Viewing run:{" "}
+                <Trans>Viewing run:</Trans>{" "}
                 <span className="ml-1 hidden font-mono text-muted-foreground sm:inline">
                   {run.run_id}
                 </span>
@@ -117,7 +120,7 @@ export function RunPage() {
             {run.app_hash ? (
               <div className="flex items-center text-xs italic text-muted-foreground">
                 <span>
-                  Specification Hash:{" "}
+                  <Trans>Specification hash:</Trans>{" "}
                   <span className="ml-1 hidden font-mono text-muted-foreground sm:inline">
                     {run.app_hash}
                   </span>
@@ -134,13 +137,13 @@ export function RunPage() {
                 onClick={restore}
                 disabled={isLoading}
                 icon={Clock}
-                label={isLoading ? "Restoring..." : "Restore"}
+                label={isLoading ? t`Restoring...` : t`Restore`}
               />
             ) : (
               <Button
                 disabled={true}
                 icon={CheckCircle}
-                label="Latest version"
+                label={t`Latest version`}
                 variant="outline"
               />
             )}

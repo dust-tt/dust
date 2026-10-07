@@ -14,6 +14,7 @@ import {
   GithubLogo,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface GitHubConnectionRowProps {
   owner: LightWorkspaceType;
@@ -26,6 +27,7 @@ export function GitHubConnectionRow({
   connection,
   onDisconnected,
 }: GitHubConnectionRowProps) {
+  const { t } = useLingui();
   const { disconnectGitHub, isDisconnectingGitHub } =
     useDisconnectWorkspaceGitHub({ owner });
 
@@ -42,10 +44,10 @@ export function GitHubConnectionRow({
       <div className="flex grow flex-col">
         <span className="heading-sm text-foreground">GitHub</span>
         <span className="text-sm text-muted-foreground">
-          Access Repository - Shared connection
+          <Trans>Access repository - Shared connection</Trans>
         </span>
       </div>
-      <Chip size="xs" color="success" label="Connected" />
+      <Chip size="xs" color="success" label={t`Connected`} />
       {connection.connectedBy && (
         <Tooltip
           label={connection.connectedBy.fullName}
@@ -68,7 +70,7 @@ export function GitHubConnectionRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              label="Disconnect"
+              label={t`Disconnect`}
               onClick={() => {
                 void handleDisconnect();
               }}

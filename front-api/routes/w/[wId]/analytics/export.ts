@@ -1,5 +1,7 @@
 import {
   exportTable,
+  isExportRangeTooLong,
+  MAX_MESSAGES_EXPORT_DAYS,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
 import { parseCalendarDate, timezoneSchema } from "@app/lib/api/timezone";
@@ -44,6 +46,9 @@ const QuerySchema = z
   })
   .refine((d) => d.startDate <= d.endDate, {
     message: "startDate must be before or equal to endDate",
+  })
+  .refine((d) => !isExportRangeTooLong(d), {
+    message: `Time range must not exceed ${MAX_MESSAGES_EXPORT_DAYS} days for the messages table`,
   });
 
 // Mounted at /api/w/:wId/analytics/export. Same export logic (exportTable) as

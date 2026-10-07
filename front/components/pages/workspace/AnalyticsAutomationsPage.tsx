@@ -1,10 +1,6 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
-import {
-  AUTOMATIONS_SLACK_WORKFLOWS_TAB_LABEL,
-  AUTOMATIONS_TRIGGERS_TAB_LABEL,
-} from "@app/components/pages/workspace/automationsAdminSearchEntries";
 import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
 import { SlackWorkflowsTab } from "@app/components/workspace/analytics/automations/SlackWorkflowsTab";
@@ -30,11 +26,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 type AutomationsTab = "triggers" | "slack-workflows";
 
 export function AnalyticsAutomationsPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
@@ -73,10 +71,14 @@ export function AnalyticsAutomationsPage() {
           title={
             <div className="flex w-full flex-row justify-between">
               <div className="flex flex-col gap-1">
-                <Page.H variant="h3">Automations</Page.H>
+                <Page.H variant="h3">
+                  <Trans>Automations</Trans>
+                </Page.H>
                 <Page.P variant="secondary">
-                  Everything that runs on its own: who set it up, how often it
-                  runs, what it costs.
+                  <Trans>
+                    Everything that runs on its own: who set it up, how often it
+                    runs, what it costs.
+                  </Trans>
                 </Page.P>
               </div>
               <ConsumptionPeriodSelector
@@ -97,14 +99,8 @@ export function AnalyticsAutomationsPage() {
             }
           >
             <TabsList className="mb-4">
-              <TabsTrigger
-                value="triggers"
-                label={AUTOMATIONS_TRIGGERS_TAB_LABEL}
-              />
-              <TabsTrigger
-                value="slack-workflows"
-                label={AUTOMATIONS_SLACK_WORKFLOWS_TAB_LABEL}
-              />
+              <TabsTrigger value="triggers" label={t`Triggers`} />
+              <TabsTrigger value="slack-workflows" label={t`Slack workflows`} />
             </TabsList>
             <TabsContent value="triggers">
               <AdminSectionAnchor

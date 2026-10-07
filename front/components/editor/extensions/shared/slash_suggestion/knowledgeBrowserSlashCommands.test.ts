@@ -1,5 +1,5 @@
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
-import { POD_FILES_TITLE } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import { getKnowledgeBrowserEntryLabel } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { getKnowledgeBrowserBreadcrumbItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
@@ -8,13 +8,19 @@ import {
   NAVIGATE_KNOWLEDGE_BROWSER_ACTION,
   toKnowledgeBrowserSlashCommands,
 } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
+import { i18n } from "@app/lib/i18n/i18n";
 import {
   makeContentNodeFixture,
   makeDataSourceViewFixture,
   makeSpaceFixture,
 } from "@app/tests/utils/content_node_test_fixtures";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it, vi } from "vitest";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
+const getLabel = (entry: NavigationHistoryEntryType) =>
+  getKnowledgeBrowserEntryLabel(entry, translate);
 
 const space = makeSpaceFixture({ sId: "space1", name: "Company Data" });
 
@@ -59,7 +65,10 @@ describe("toKnowledgeBrowserSlashCommands", () => {
     ];
 
     const onAttachNode = vi.fn();
-    const commands = toKnowledgeBrowserSlashCommands(items, { onAttachNode });
+    const commands = toKnowledgeBrowserSlashCommands(items, {
+      onAttachNode,
+      t: translate,
+    });
 
     expect(commands.map((command) => command.action)).toEqual([
       NAVIGATE_KNOWLEDGE_BROWSER_ACTION,
@@ -79,20 +88,23 @@ describe("toKnowledgeBrowserSlashCommands", () => {
 
 describe("toKnowledgeBrowserSlashCommands data source rows", () => {
   it("labels a pod's own data source as its files", () => {
-    const [command] = toKnowledgeBrowserSlashCommands([
-      {
-        kind: "data_source",
-        id: "pod-files",
-        title: "Project (vlt_abc): Launch",
-        icon: () => null,
-        dataSourceView: makeDataSourceViewFixture("pod-files", {
-          name: "Project (vlt_abc): Launch",
-          connectorProvider: "dust_project",
-          connectorId: "c2",
-        }),
-      },
-    ]);
-    expect(command.label).toBe(POD_FILES_TITLE);
+    const [command] = toKnowledgeBrowserSlashCommands(
+      [
+        {
+          kind: "data_source",
+          id: "pod-files",
+          title: "Project (vlt_abc): Launch",
+          icon: () => null,
+          dataSourceView: makeDataSourceViewFixture("pod-files", {
+            name: "Project (vlt_abc): Launch",
+            connectorProvider: "dust_project",
+            connectorId: "c2",
+          }),
+        },
+      ],
+      { t: translate }
+    );
+    expect(command.label).toBe("Pod files");
   });
 
   it("adds an Add action attaching the view's root node", () => {
@@ -108,7 +120,7 @@ describe("toKnowledgeBrowserSlashCommands data source rows", () => {
           dataSourceView,
         },
       ],
-      { onAttachNode }
+      { onAttachNode, t: translate }
     );
 
     expect(command.action).toBe(NAVIGATE_KNOWLEDGE_BROWSER_ACTION);
@@ -132,7 +144,9 @@ describe("getKnowledgeBrowserBreadcrumbItems", () => {
       { type: "category", category: "folder" },
     ];
 
-    const items = getKnowledgeBrowserBreadcrumbItems(history, navigateTo);
+    const items = getKnowledgeBrowserBreadcrumbItems(history, navigateTo, {
+      getLabel,
+    });
 
     expect(items.map((item) => item.label)).toEqual([
       "All",
@@ -151,9 +165,12 @@ describe("getKnowledgeBrowserBreadcrumbItems", () => {
     ];
 
     expect(
-      getKnowledgeBrowserBreadcrumbItems(history, vi.fn()).map((i) => i.label)
+      getKnowledgeBrowserBreadcrumbItems(history, vi.fn(), { getLabel }).map(
+        (i) => i.label
+      )
     ).toEqual(["All", "Company Data"]);
     const items = getKnowledgeBrowserBreadcrumbItems(history, vi.fn(), {
+      getLabel,
       includeSkippedLevels: true,
     });
     expect(items).toHaveLength(3);

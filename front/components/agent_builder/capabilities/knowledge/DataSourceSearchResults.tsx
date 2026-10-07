@@ -21,9 +21,10 @@ import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/
 import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { DataSourceContentNode } from "@app/types/api/search";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import { cn } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 
 interface DataSourceSearchResultsProps {
@@ -39,6 +40,7 @@ export function DataSourceSearchResults({
   onClearSearch,
   error,
 }: DataSourceSearchResultsProps) {
+  const { t } = useLingui();
   const { spaces } = useSpacesContext();
   const {
     setSpaceEntry,
@@ -234,7 +236,6 @@ export function DataSourceSearchResults({
     return m;
   }, [searchResults]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const listItems: DataSourceListItem[] = useMemo(() => {
     return searchResults.map((node) => {
       const id = `${node.dataSourceView.sId}:${node.internalId}`;
@@ -256,11 +257,13 @@ export function DataSourceSearchResults({
     return (
       <div className="flex w-full flex-col gap-2">
         <div className="text-end text-sm text-muted-foreground">
-          0 results found
+          <Trans>0 results found</Trans>
         </div>
         <div className="flex items-center justify-center p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            No matching results found. Try different search terms.
+            <Trans>
+              No matching results found. Try different search terms.
+            </Trans>
           </p>
         </div>
       </div>
@@ -271,7 +274,7 @@ export function DataSourceSearchResults({
     <>
       {error ? (
         <div className="text-end text-sm text-muted-foreground">
-          Error searching results.
+          <Trans>Error searching results.</Trans>
         </div>
       ) : (
         <DataSourceList
@@ -297,11 +300,11 @@ export function DataSourceSearchResults({
               removeSearchNode(item.entry, node);
             }
           }}
-          headerTitle="Name"
+          headerTitle={t`Name`}
           showSelectAllHeader={false}
           additionalColumns={[
             {
-              title: "Location",
+              title: t`Location`,
               render: (item) => {
                 const node = itemNodeMap.get(item.id);
                 if (!node) {

@@ -25,8 +25,10 @@ import type { UseFormReturn } from "react-hook-form";
 import { FormProvider, useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 
-interface ButtonStubProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+interface ButtonStubProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "children"
+> {
   label?: string;
   isSelect?: boolean;
   icon?: unknown;
@@ -34,8 +36,10 @@ interface ButtonStubProps
   variant?: string;
 }
 
-interface CheckboxStubProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "checked" | "onChange"> {
+interface CheckboxStubProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "checked" | "onChange"
+> {
   checked?: boolean | "indeterminate";
   onCheckedChange?: (checked: boolean | "indeterminate") => void;
 }

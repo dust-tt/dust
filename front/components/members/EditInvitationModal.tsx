@@ -1,7 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   GROUP_ROLE_MANAGED_MESSAGE,
-  getRoleDescription,
+  ROLE_DESCRIPTIONS,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -23,23 +23,8 @@ import {
   SheetTitle,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useState } from "react";
-
-function getInvitationRoleMessage({
-  isRoleManagedByGroup,
-  role,
-}: {
-  isRoleManagedByGroup: boolean;
-  role: ActiveRoleType;
-}): string {
-  if (isRoleManagedByGroup) {
-    return GROUP_ROLE_MANAGED_MESSAGE;
-  }
-
-  return `The role defines the rights of a member for the workspace. ${getRoleDescription(
-    role
-  )}`;
-}
 
 export function EditInvitationModal({
   owner,
@@ -50,6 +35,7 @@ export function EditInvitationModal({
   invitation: MembershipInvitationType | null;
   onClose: () => void;
 }) {
+  const { t } = useLingui();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | undefined>(
     invitation?.initialRole
   );
@@ -70,12 +56,17 @@ export function EditInvitationModal({
   const isRoleManagedByGroup =
     selectedRole !== undefined && grantedRoles.some((r) => r === selectedRole);
 
-  const roleMessage = invitation
-    ? getInvitationRoleMessage({
-        isRoleManagedByGroup,
-        role: invitation.initialRole,
-      })
-    : "";
+  const roleDescription = invitation
+    ? t(ROLE_DESCRIPTIONS[invitation.initialRole])
+    : null;
+  let roleMessage = "";
+  if (roleDescription !== null) {
+    roleMessage = isRoleManagedByGroup
+      ? t(GROUP_ROLE_MANAGED_MESSAGE)
+      : t`The role defines the rights of a member for the workspace. ${roleDescription}`;
+  }
+
+  const sentDate = invitation ? formatDate(invitation.createdAt) : "";
 
   useEffect(() => {
     if (invitation) {
@@ -109,7 +100,9 @@ export function EditInvitationModal({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Edit invitation</SheetTitle>
+          <SheetTitle>
+            <Trans>Edit invitation</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           {invitation && selectedRole && (
@@ -117,16 +110,20 @@ export function EditInvitationModal({
               <div className="flex flex-col gap-2">
                 <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
                 <div className="text-muted-foreground">
-                  Invitation sent on {formatDate(invitation.createdAt)}
+                  <Trans>Invitation sent on {sentDate}</Trans>
                   {invitation.isExpired && (
-                    <span className="ml-2 text-red-500">(expired)</span>
+                    <span className="ml-2 text-red-500">
+                      <Trans>(expired)</Trans>
+                    </span>
                   )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="heading-base text-foreground">Role:</div>
+                  <div className="heading-base text-foreground">
+                    <Trans>Role:</Trans>
+                  </div>
                   <RoleDropDown
                     selectedRole={selectedRole}
                     onChange={setSelectedRole}
@@ -140,7 +137,7 @@ export function EditInvitationModal({
                 <div className="flex items-center gap-2">
                   <Button
                     variant="primary"
-                    label="Send invitation again"
+                    label={t`Send invitation again`}
                     icon={Mail01}
                     onClick={async () => {
                       await sendInvitations({
@@ -154,7 +151,7 @@ export function EditInvitationModal({
                   />
                   <Button
                     variant="warning"
-                    label="Revoke invitation"
+                    label={t`Revoke invitation`}
                     icon={XClose}
                     disabled={owner.ssoEnforced}
                     onClick={async () => {
@@ -173,7 +170,7 @@ export function EditInvitationModal({
         </SheetContainer>
         <SheetFooter
           rightButtonProps={{
-            label: "Update role",
+            label: t`Update role`,
             onClick: handleSave,
             disabled:
               selectedRole === invitation?.initialRole || isRoleManagedByGroup,

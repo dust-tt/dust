@@ -1,7 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { P } from "@marketing/components/home/ContentComponents";
-import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { appendUTMParams } from "@marketing/lib/utils/utm";
 import {
   ArrowRight,
   Button,
@@ -11,6 +7,9 @@ import {
   cn,
   Icon,
 } from "@dust-tt/sparkle";
+import { P } from "@marketing/components/home/ContentComponents";
+import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
+import { appendUTMParams } from "@marketing/lib/utils/utm";
 import Image from "next/image";
 import { useState } from "react";
 

@@ -6,13 +6,13 @@ import type {
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import {
   CreateWebhookSourceFormContent,
-  CreateWebhookSourceSchema,
+  useCreateWebhookSourceSchema,
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import {
   diffWebhookSourceForm,
   getWebhookSourceFormDefaults,
-  getWebhookSourceFormSchema,
+  useWebhookSourceFormSchema,
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
@@ -55,6 +55,7 @@ import {
   Trash01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import uniq from "lodash/uniq";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
@@ -81,6 +82,7 @@ export function WebhookSourceSheet({
   mode,
   onClose,
 }: WebhookSourceSheetProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const open = mode !== null;
   const [isDirty, setIsDirty] = useState(false);
@@ -104,10 +106,9 @@ export function WebhookSourceSheet({
   const handleOpenChange = useCallback(async () => {
     if (isDirty) {
       const confirmed = await confirm({
-        title: "Unsaved changes",
-        message:
-          "You have unsaved changes. Are you sure you want to close without saving?",
-        validateLabel: "Discard changes",
+        title: t`Unsaved changes`,
+        message: t`You have unsaved changes. Are you sure you want to close without saving?`,
+        validateLabel: t`Discard changes`,
         validateVariant: "warning",
       });
 
@@ -117,7 +118,7 @@ export function WebhookSourceSheet({
     }
 
     onClose();
-  }, [isDirty, confirm, onClose]);
+  }, [isDirty, confirm, onClose, t]);
 
   return mode?.type === "create" ? (
     <Dialog
@@ -168,6 +169,7 @@ function WebhookSourceSheetContent({
   onClose,
   onCancel,
 }: WebhookSourceSheetContentProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification(true);
   const [currentPageId, setCurrentPageId] = useState<
@@ -216,9 +218,10 @@ function WebhookSourceSheetContent({
   );
 
   // Create form
-  const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(
-    () => ({
-      name: `${asDisplayName(mode.provider)} Source`,
+  const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(() => {
+    const providerName = asDisplayName(mode.provider);
+    return {
+      name: t`${providerName} source`,
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
@@ -227,12 +230,12 @@ function WebhookSourceSheetContent({
       subscribedEvents: mode.provider
         ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
         : [],
-    }),
-    [mode.provider]
-  );
+    };
+  }, [mode.provider, t]);
 
+  const createWebhookSourceSchema = useCreateWebhookSourceSchema();
   const createForm = useForm<CreateWebhookSourceFormData>({
-    resolver: zodResolver(CreateWebhookSourceSchema),
+    resolver: zodResolver(createWebhookSourceSchema),
     defaultValues: createFormDefaultValues,
   });
 
@@ -252,11 +255,12 @@ function WebhookSourceSheetContent({
     );
   }, [systemView, webhookSourceWithViews, spaces]);
 
+  const webhookSourceFormSchema = useWebhookSourceFormSchema();
   const editForm = useForm<WebhookSourceFormValues>({
     defaultValues: editDefaults ?? undefined,
     mode: "onChange",
     shouldUnregister: false,
-    resolver: zodResolver(getWebhookSourceFormSchema()),
+    resolver: zodResolver(webhookSourceFormSchema),
   });
 
   useEffect(() => {
@@ -323,7 +327,7 @@ function WebhookSourceSheetContent({
           );
           if (!response.ok) {
             const body = await response.json();
-            throw new Error(body.error?.message ?? "Failed to add to space");
+            throw new Error(body.error?.message ?? t`Failed to add to space`);
           }
         } else {
           const view = webhookSourceWithViews?.views.find(
@@ -339,14 +343,14 @@ function WebhookSourceSheetContent({
             if (!response.ok) {
               const body = await response.json();
               throw new Error(
-                body.error?.message ?? "Failed to remove from space"
+                body.error?.message ?? t`Failed to remove from space`
               );
             }
           }
         }
       }
     },
-    [webhookSource, spaces, owner.sId, webhookSourceWithViews]
+    [webhookSource, spaces, owner.sId, webhookSourceWithViews, t]
   );
 
   const onEditSave = useCallback(async (): Promise<boolean> => {
@@ -372,7 +376,7 @@ function WebhookSourceSheetContent({
             if (!response.ok) {
               const body = await response.json();
               throw new Error(
-                body.error?.message ?? "Failed to update webhook source view"
+                body.error?.message ?? t`Failed to update webhook source view`
               );
             }
           }
@@ -383,10 +387,11 @@ function WebhookSourceSheetContent({
 
           await mutateWebhookSourcesWithViews();
 
+          const webhookSourceName = webhookSource.name;
           sendNotification({
             type: "success",
-            title: `${webhookSource.name} updated`,
-            description: "Your changes have been saved.",
+            title: t`${webhookSourceName} updated`,
+            description: t`Your changes have been saved.`,
           });
 
           editForm.reset(values);
@@ -394,11 +399,11 @@ function WebhookSourceSheetContent({
         } catch (error) {
           sendNotification({
             type: "error",
-            title: "Failed to save changes",
+            title: t`Failed to save changes`,
             description:
               error instanceof Error
                 ? error.message
-                : "An error occurred while saving changes.",
+                : t`An error occurred while saving changes.`,
           });
           datadogLogger.error(
             {
@@ -413,13 +418,14 @@ function WebhookSourceSheetContent({
       async (errors) => {
         const errorEntries = Object.entries(errors);
         const errorDetails = errorEntries
-          .map(([key, error]) => {
-            return `${key}: ${error?.message ?? "invalid"}`;
+          .map(([fieldName, error]) => {
+            const errorMessage = error?.message ?? t`invalid`;
+            return t`${fieldName}: ${errorMessage}`;
           })
           .join(", ");
 
         const details =
-          errorEntries.length > 0 ? `Invalid: ${errorDetails}` : undefined;
+          errorEntries.length > 0 ? t`Invalid: ${errorDetails}` : undefined;
         datadogLogger.error(
           {
             fields: errorEntries.map(([key]) => key),
@@ -431,7 +437,7 @@ function WebhookSourceSheetContent({
         );
         sendNotification({
           type: "error",
-          title: "Invalid form data",
+          title: t`Invalid form data`,
           description: details,
         });
         success = false;
@@ -447,6 +453,7 @@ function WebhookSourceSheetContent({
     applySharingChanges,
     mutateWebhookSourcesWithViews,
     sendNotification,
+    t,
   ]);
 
   const changeTab = useCallback((next: string) => {
@@ -470,32 +477,39 @@ function WebhookSourceSheetContent({
         .map((agent) => agent.name)
     );
 
+    const webhookSourceName = webhookSource.name;
+    const agentName = agents[0];
+    const agentNames = agents.join(", ");
     const confirmed = await confirm({
-      title: `Are you sure you want to remove ${webhookSource.name}?`,
+      title: t`Are you sure you want to remove ${webhookSourceName}?`,
       message: (
         <>
           {agents.length === 1 && (
             <div>
-              <span className="font-semibold">{agents[0]}</span> is using this
-              webhook source.
-              <br />
-              The associated trigger(s) will be automatically removed from it.
+              <Trans>
+                <span className="font-semibold">{agentName}</span> is using this
+                webhook source.
+                <br />
+                The associated triggers will be automatically removed from it.
+              </Trans>
             </div>
           )}
           {agents.length > 1 && (
             <div>
-              <span className="font-semibold">{agents.join(", ")}</span> are
-              using this webhook source.
-              <br />
-              The associated trigger(s) will be automatically removed from them.
+              <Trans>
+                <span className="font-semibold">{agentNames}</span> are using
+                this webhook source.
+                <br />
+                The associated triggers will be automatically removed from them.
+              </Trans>
             </div>
           )}
           <div className="mt-2 font-semibold">
-            This action cannot be undone.
+            <Trans>This action cannot be undone.</Trans>
           </div>
         </>
       ),
-      validateLabel: "Remove",
+      validateLabel: t`Remove`,
       validateVariant: "warning",
     });
 
@@ -513,6 +527,7 @@ function WebhookSourceSheetContent({
     webhookSource,
     deleteWebhookSource,
     onClose,
+    t,
   ]);
 
   const footerButtons: {
@@ -522,12 +537,12 @@ function WebhookSourceSheetContent({
     if (currentPageId === "create") {
       return {
         leftButton: {
-          label: "Cancel",
+          label: t`Cancel`,
           variant: "outline",
           onClick: onCancel,
         },
         rightButton: {
-          label: createForm.formState.isSubmitting ? "Saving..." : "Save",
+          label: createForm.formState.isSubmitting ? t`Saving...` : t`Save`,
           variant: "primary",
           disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
@@ -545,14 +560,14 @@ function WebhookSourceSheetContent({
 
     return {
       leftButton: {
-        label: "Cancel",
+        label: t`Cancel`,
         variant: "outline",
         disabled: isSaving || editForm.formState.isSubmitting,
         onClick: onCancel,
       },
       rightButton: {
         label:
-          isSaving || editForm.formState.isSubmitting ? "Saving..." : "Save",
+          isSaving || editForm.formState.isSubmitting ? t`Saving...` : t`Save`,
         variant: "primary",
         disabled: isSaving || editForm.formState.isSubmitting,
         onClick: async () => {
@@ -576,13 +591,21 @@ function WebhookSourceSheetContent({
     isPresetReadyToSubmit,
     remoteProviderData,
     connectionId,
+    t,
   ]);
+
+  const providerPresetName = mode.provider
+    ? WEBHOOK_PRESETS[mode.provider].name
+    : null;
+  const createTitle = providerPresetName
+    ? t`New ${providerPresetName} trigger`
+    : t`New custom trigger`;
 
   const pages: MultiPageSheetPage[] = useMemo(
     () => [
       {
         id: "create",
-        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Trigger`,
+        title: createTitle,
         description: "",
         icon: getIcon(
           normalizeWebhookIcon(
@@ -612,8 +635,8 @@ function WebhookSourceSheetContent({
         id: "edit",
         title: systemView
           ? systemView.customName
-          : (webhookSource?.name ?? "Webhook Source"),
-        description: "Webhook source for triggering assistants.",
+          : (webhookSource?.name ?? t`Webhook source`),
+        description: t`Webhook source for triggering assistants.`,
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
           : getIcon(
@@ -628,8 +651,12 @@ function WebhookSourceSheetContent({
             <FormProvider {...editForm}>
               <Tabs value={selectedTab} onValueChange={changeTab}>
                 <TabsList>
-                  <TabsTrigger value="info" label="Info" icon={InfoCircle} />
-                  <TabsTrigger value="sharing" label="Sharing" icon={Lock01} />
+                  <TabsTrigger value="info" label={t`Info`} icon={InfoCircle} />
+                  <TabsTrigger
+                    value="sharing"
+                    label={t`Sharing`}
+                    icon={Lock01}
+                  />
                   <>
                     <div className="grow" />
                     <div className="flex h-full flex-row items-center">
@@ -677,6 +704,8 @@ function WebhookSourceSheetContent({
       handleDeleteWebhookSource,
       owner,
       spaces,
+      createTitle,
+      t,
     ]
   );
 
@@ -684,10 +713,7 @@ function WebhookSourceSheetContent({
     return (
       <DialogContent size="lg" height="lg">
         <DialogHeader>
-          <DialogTitle>
-            New {mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"}{" "}
-            Trigger
-          </DialogTitle>
+          <DialogTitle>{createTitle}</DialogTitle>
         </DialogHeader>
         <div className="overflow-y-auto px-5 py-4">
           <FormProvider {...createForm}>
@@ -707,12 +733,12 @@ function WebhookSourceSheetContent({
         </div>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onCancel,
           }}
           rightButtonProps={{
-            label: createForm.formState.isSubmitting ? "Saving..." : "Save",
+            label: createForm.formState.isSubmitting ? t`Saving...` : t`Save`,
             variant: "primary",
             disabled:
               createForm.formState.isSubmitting || !isPresetReadyToSubmit,

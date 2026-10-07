@@ -234,6 +234,16 @@ const GLOBAL_AGENT_PROMPT_CONTEXT: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_NONE]: {
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MISTRAL_LARGE_HIGH]: {
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_NEXT]: {
     injectsToolsets: true,
     injectsUserContext: false,

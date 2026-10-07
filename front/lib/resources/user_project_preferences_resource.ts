@@ -12,11 +12,8 @@ import { SpaceResource } from "./space_resource";
 import { UserProjectPreferencesModel } from "./storage/models/user_project_preferences";
 import { makeSId } from "./string_ids";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface UserProjectPreferencesResource
-  extends ReadonlyAttributesType<UserProjectPreferencesModel> {}
+export interface UserProjectPreferencesResource extends ReadonlyAttributesType<UserProjectPreferencesModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserProjectPreferencesResource extends BaseResource<UserProjectPreferencesModel> {
   static model: typeof UserProjectPreferencesModel =
     UserProjectPreferencesModel;

@@ -483,7 +483,7 @@ describe("isEligibleForNudge", () => {
     });
     const activationPod = await createActivationPod(authenticator, globalSpace);
 
-    // biome-ignore lint/plugin/noRawSql: only way to backdate a paranoid model's deletedAt in tests.
+    // oxlint-disable-next-line dust/noRawSql -- only way to backdate a paranoid model's deletedAt in tests.
     await frontSequelize.query(
       `UPDATE vaults SET "deletedAt" = :deletedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
       {

@@ -39,7 +39,7 @@ export async function renderConversationAsTextWithFeedback(
     Error
   >
 > {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err(

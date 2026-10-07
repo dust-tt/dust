@@ -40,7 +40,6 @@ export function useBuilderTracking({
   const saveCountRef = useRef(0);
 
   // A sitting opens exactly once, so this must not re-fire if its inputs change identity.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only.
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.BUILDER,
@@ -48,6 +47,7 @@ export function useBuilderTracking({
       action: TRACKING_ACTIONS.OPEN,
       extra: { entry_point: entryPoint },
     });
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, []);
 
   const trackSave = useCallback(

@@ -1,5 +1,6 @@
 import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -11,9 +12,10 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * @cc [owner:aubin-tchoi,label:security] agent-search-listing-names
- * Resolve editor, tag, skill and space names for `searchAgents` results (listed agents and facets)
- * through resources, and only name skills and spaces the caller can read: unreadable ones are
- * dropped from the facets. Editors-only skills are only named for callers who can write to them.
+ * Resolve editor, tag, skill, space and tool names for `searchAgents` results (listed agents and
+ * facets) through resources, and only name skills, spaces and tools the caller can read: unreadable
+ * ones are dropped from the facets. Editors-only skills are only named for callers who can write
+ * to them.
  */
 export async function searchAgentListings(
   auth: Authenticator,
@@ -43,7 +45,7 @@ export async function searchAgentListings(
   const facetCountsById = (
     values: { value: string; count: number }[] | undefined
   ) => new Map((values ?? []).map(({ value, count }) => [value, count]));
-  const [users, tags, skills, spaces] = await Promise.all([
+  const [users, tags, skills, spaces, mcpServerViews] = await Promise.all([
     UserResource.fetchByIds(editorIds),
     tagIds.length > 0 ? TagResource.fetchByIds(auth, tagIds) : [],
     facetValues.skills?.length
@@ -55,6 +57,12 @@ export async function searchAgentListings(
       : [],
     facetValues.spaces?.length
       ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
+      : [],
+    facetValues.mcpServerViews?.length
+      ? MCPServerViewResource.fetchByIds(
+          auth,
+          facetIds(facetValues.mcpServerViews)
+        )
       : [],
   ]);
 
@@ -69,6 +77,7 @@ export async function searchAgentListings(
   const tagsById = new Map(tags.map((tag) => [tag.sId, tag]));
   const skillCounts = facetCountsById(facetValues.skills);
   const spaceCounts = facetCountsById(facetValues.spaces);
+  const mcpServerViewCounts = facetCountsById(facetValues.mcpServerViews);
 
   return new Ok<SearchAgentsResponseBody>({
     ...result.value,
@@ -123,6 +132,16 @@ export async function searchAgentListings(
               .filter((space) => auth.can("read", space))
               .map((space) =>
                 space.toSearchFacetJSON(spaceCounts.get(space.sId) ?? 0)
+              )
+              .toSorted((a, b) => a.name.localeCompare(b.name)),
+          }
+        : {}),
+      ...(facetValues.mcpServerViews
+        ? {
+            mcpServerViews: mcpServerViews
+              .filter((view) => auth.can("read", view))
+              .map((view) =>
+                view.toSearchFacetJSON(mcpServerViewCounts.get(view.sId) ?? 0)
               )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }

@@ -201,39 +201,39 @@ describe("runSandboxChildToolWorkflow", () => {
     expect(runRetryableToolActivity).not.toHaveBeenCalled();
   });
 
-  it.each([
-    "no_retry",
-    "retry_on_interrupt",
-  ] as const)("finalizes terminal activity failures without failing the workflow for %s", async (retryPolicy) => {
-    const error = new Error("activity attempts exhausted");
-    const runActivity =
-      retryPolicy === "retry_on_interrupt"
-        ? runRetryableToolActivity
-        : runToolActivity;
-    runActivity.mockRejectedValue(error);
+  it.each(["no_retry", "retry_on_interrupt"] as const)(
+    "finalizes terminal activity failures without failing the workflow for %s",
+    async (retryPolicy) => {
+      const error = new Error("activity attempts exhausted");
+      const runActivity =
+        retryPolicy === "retry_on_interrupt"
+          ? runRetryableToolActivity
+          : runToolActivity;
+      runActivity.mockRejectedValue(error);
 
-    await expect(
-      runSandboxChildToolWorkflow({
-        actionModelId: 123,
-        agentLoopArgs,
+      await expect(
+        runSandboxChildToolWorkflow({
+          actionModelId: 123,
+          agentLoopArgs,
+          authType,
+          retryPolicy,
+          step: 1,
+        })
+      ).resolves.toBeUndefined();
+
+      expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledWith(
         authType,
-        retryPolicy,
-        step: 1,
-      })
-    ).resolves.toBeUndefined();
-
-    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledWith(
-      authType,
-      { actionModelId: 123 }
-    );
-    expect(workflowLogError).toHaveBeenCalledWith(
-      "Sandbox child tool activity failed.",
-      {
-        actionModelId: 123,
-        error,
-      }
-    );
-  });
+        { actionModelId: 123 }
+      );
+      expect(workflowLogError).toHaveBeenCalledWith(
+        "Sandbox child tool activity failed.",
+        {
+          actionModelId: 123,
+          error,
+        }
+      );
+    }
+  );
 
   it("preserves terminal activity failure propagation when replaying without the completion patch", async () => {
     const error = new Error("activity attempts exhausted");

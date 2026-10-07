@@ -1,0 +1,46 @@
+name: dfs-v4
+services:
+  fdb:
+    image: foundationdb/foundationdb:7.3.69
+    environment:
+      FDB_NETWORKING_MODE: container
+    volumes:
+      - fdb-data:/var/fdb
+    mem_limit: ${DFS_V4_FDB_MEMORY:-8g}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'"]
+      interval: 2s
+      timeout: 6s
+      retries: 60
+  dev:
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:${DFS_V4_PORT:-18084}:8080"
+    environment:
+      FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
+      DFS_FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
+      DFS_FDB_PREFIX: dfs-v4-local
+      RUSTC_WRAPPER: ""
+      CARGO_TARGET_DIR: /target
+      CARGO_PROFILE_DEV_DEBUG: "0"
+    volumes:
+      - ../..:/dfs
+      - ../../../../jd/filesystem-benchmark:/benchmark:ro
+      - fdb-data:/var/fdb:ro
+      - target:/target
+      - cargo:/usr/local/cargo/registry
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add: [SYS_ADMIN]
+    security_opt: [apparmor:unconfined]
+    command: ["sleep", "infinity"]
+    init: true
+    depends_on:
+      fdb:
+        condition: service_healthy
+volumes:
+  fdb-data:
+  target:
+  cargo:

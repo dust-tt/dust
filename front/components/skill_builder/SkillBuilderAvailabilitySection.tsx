@@ -1,7 +1,7 @@
 import { SkillBuilderAvailabilityMessage } from "@app/components/skill_builder/SkillBuilderAvailabilityMessage";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SkillBuilderSimilarDiscoverableSkills } from "@app/components/skill_builder/SkillBuilderSimilarDiscoverableSkills";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
@@ -17,25 +17,28 @@ import {
   InfoCircle,
   LinkExternal01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController } from "react-hook-form";
 
 const AVAILABILITY_OPTIONS: {
-  label: string;
+  label: MessageDescriptor;
   value: SkillAvailability;
-  description?: string;
+  description?: MessageDescriptor;
 }[] = [
   {
-    label: "Editors only",
+    label: msg`Editors only`,
     value: "editors",
   },
   {
-    label: "Members",
+    label: msg`Members`,
     value: "workspace_users",
   },
   {
-    label: "Members and agents",
+    label: msg`Members and agents`,
     value: "users_and_agents",
-    description: "Available to all members and agents with Discover Skills",
+    description: msg`Available to all members and agents with Discover Skills`,
   },
 ];
 
@@ -46,6 +49,7 @@ interface SkillBuilderAvailabilitySectionProps {
 export function SkillBuilderAvailabilitySection({
   owner,
 }: SkillBuilderAvailabilitySectionProps) {
+  const { t } = useLingui();
   const {
     field: { value: availability, onChange },
   } = useController<SkillBuilderFormData, "availability">({
@@ -85,18 +89,20 @@ export function SkillBuilderAvailabilitySection({
     isAutoDiscoverableOn && !canMakeSkillAutoDiscoverable;
 
   const availabilityTooltip = !canUpdateAvailability
-    ? "You don’t have permission to change this skill’s availability"
+    ? t`You don’t have permission to change this skill’s availability`
     : isAvailabilityLocked
-      ? "You don’t have permission to change the availability of an auto-discoverable skill"
+      ? t`You don’t have permission to change the availability of an auto-discoverable skill`
       : undefined;
 
   return (
     <div className="space-y-2">
-      <h3 className="text-base font-semibold text-foreground">Availability</h3>
+      <h3 className="text-base font-semibold text-foreground">
+        <Trans>Availability</Trans>
+      </h3>
       <DropdownMenu>
         <DropdownMenuTrigger>
           <Button
-            label={currentOption?.label}
+            label={currentOption ? t(currentOption.label) : undefined}
             variant="outline"
             isSelect
             disabled={!canUpdateAvailability || isAvailabilityLocked}
@@ -110,16 +116,18 @@ export function SkillBuilderAvailabilitySection({
               !canMakeSkillAutoDiscoverable;
             return (
               <DropdownMenuItem
-                key={option.label}
-                label={option.label}
+                key={option.value}
+                label={t(option.label)}
                 onClick={() => {
                   onChange(option.value);
                 }}
-                description={option.description}
+                description={
+                  option.description ? t(option.description) : undefined
+                }
                 disabled={isOptionDisabled}
                 tooltip={
                   isOptionDisabled
-                    ? "You don’t have permission to make skills auto-discoverable"
+                    ? t`You don’t have permission to make skills auto-discoverable`
                     : undefined
                 }
               />
@@ -130,22 +138,28 @@ export function SkillBuilderAvailabilitySection({
       {showWorkspaceWideEffectsMessage ? (
         <ContentMessage
           icon={InfoCircle}
-          title="This skill has workspace-wide effects"
+          title={t`This skill has workspace-wide effects`}
           size="lg"
         >
           <ul className="list-disc space-y-1 pl-5">
-            <li>All members can find it via the composer and agent builder</li>
             <li>
-              Any agent with Discover Skills, including Dust, can use it
-              automatically. See other skills available to agents in{" "}
-              <Hoverable
-                href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
-                target="_blank"
-                className="inline-flex items-center gap-1 underline"
-              >
-                Manage Skills
-                <Icon visual={LinkExternal01} size="xs" />
-              </Hoverable>
+              <Trans>
+                All members can find it via the composer and agent builder
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Any agent with Discover Skills, including Dust, can use it
+                automatically. See other skills available to agents in{" "}
+                <Hoverable
+                  href={`/w/${owner.sId}/builder/skills?availability=users_and_agents`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 underline"
+                >
+                  Manage skills
+                  <Icon visual={LinkExternal01} size="xs" />
+                </Hoverable>
+              </Trans>
             </li>
           </ul>
         </ContentMessage>

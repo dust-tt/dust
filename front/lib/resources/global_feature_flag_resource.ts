@@ -28,10 +28,7 @@ type CachedGlobalFeatureFlagData = {
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GlobalFeatureFlagResource
-  extends ReadonlyAttributesType<GlobalFeatureFlagModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface GlobalFeatureFlagResource extends ReadonlyAttributesType<GlobalFeatureFlagModel> {}
 export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagModel> {
   static model: ModelStatic<GlobalFeatureFlagModel> = GlobalFeatureFlagModel;
 

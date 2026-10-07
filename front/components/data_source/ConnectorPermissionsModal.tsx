@@ -53,7 +53,11 @@ import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import type {
+  EditedByUser,
+  LightWorkspaceType,
+  WorkspaceType,
+} from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -84,6 +88,9 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -106,7 +113,8 @@ async function handleUpdatePermissions(
   owner: LightWorkspaceType,
   extraConfig: Record<string, string>,
   sendNotification: (notification: NotificationType) => void,
-  cellInfo: CellInfo | null
+  cellInfo: CellInfo | null,
+  t: (descriptor: MessageDescriptor) => string
 ) {
   const provider = connector.type;
 
@@ -119,7 +127,7 @@ async function handleUpdatePermissions(
   if (connectionRes.isErr()) {
     sendNotification({
       type: "error",
-      title: "Failed to update the permissions",
+      title: t(msg`Failed to update the permissions`),
       description: connectionRes.error.message,
     });
     return;
@@ -130,12 +138,13 @@ async function handleUpdatePermissions(
     extraConfig,
     provider,
     dataSource,
-    owner
+    owner,
+    t
   );
   if (updateRes.error) {
     sendNotification({
       type: "error",
-      title: "Failed to update the connection",
+      title: t(msg`Failed to update the connection`),
       description: updateRes.error,
     });
     return;
@@ -159,9 +168,10 @@ async function handleUpdatePermissions(
     if (!credentialRes.ok) {
       sendNotification({
         type: "error",
-        title: "Failed to update the connection",
-        description:
-          "The connection was updated but the credential could not be set.",
+        title: t(msg`Failed to update the connection`),
+        description: t(
+          msg`The connection was updated but the credential could not be set.`
+        ),
       });
       return;
     }
@@ -169,8 +179,8 @@ async function handleUpdatePermissions(
 
   sendNotification({
     type: "success",
-    title: "Successfully updated connection",
-    description: "The connection was successfully updated.",
+    title: t(msg`Successfully updated connection`),
+    description: t(msg`The connection was successfully updated.`),
   });
 }
 
@@ -179,7 +189,8 @@ export async function updateConnectorConnectionId(
   newExtraConfig: Record<string, string>,
   provider: ConnectorProvider,
   dataSource: DataSourceType,
-  owner: LightWorkspaceType
+  owner: LightWorkspaceType,
+  t: (descriptor: MessageDescriptor) => string
 ) {
   const res = await clientFetch(
     `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/update`,
@@ -211,14 +222,17 @@ export async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_user_missing_rights") {
     return {
       success: false,
-      error:
-        "The authenticated user needs higher permissions from your service provider.",
+      error: t(
+        msg`The authenticated user needs higher permissions from your service provider.`
+      ),
     };
   }
 
   return {
     success: false,
-    error: `Failed to update the permissions of the Data Source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists.`,
+    error: t(
+      msg`Failed to update the permissions of the data source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists.`
+    ),
   };
 }
 
@@ -244,11 +258,49 @@ function DataSourceManagementModal({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Manage Connection</SheetTitle>
+          <SheetTitle>
+            <Trans>Manage connection</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>{children}</SheetContainer>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ConnectionSetupDescription({
+  editedByUser,
+  isDataSourceOwner,
+}: {
+  editedByUser: EditedByUser | null | undefined;
+  isDataSourceOwner: boolean;
+}) {
+  const ownerFullName = editedByUser?.fullName;
+  const setupDate = editedByUser?.editedAt
+    ? formatTimestampToFriendlyDate(editedByUser.editedAt)
+    : null;
+
+  if (isDataSourceOwner) {
+    return setupDate ? (
+      <Trans>
+        <span className="font-bold">You</span> set it up on {setupDate}
+      </Trans>
+    ) : (
+      <Trans>
+        <span className="font-bold">You</span> set it up.
+      </Trans>
+    );
+  }
+
+  return setupDate ? (
+    <Trans>
+      <span className="font-bold">{ownerFullName}</span> set it up on{" "}
+      {setupDate}
+    </Trans>
+  ) : (
+    <Trans>
+      <span className="font-bold">{ownerFullName}</span> set it up.
+    </Trans>
   );
 }
 
@@ -267,6 +319,7 @@ function UpdateConnectionOAuthModal({
   onEditPermissionsClick,
   owner,
 }: UpdateConnectionOAuthModalProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
@@ -290,7 +343,6 @@ function UpdateConnectionOAuthModal({
 
   // Populate extraConfig from metadata on first load only
   // This preserves user's unsaved changes when closing/reopening the modal
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !isMetadataLoading && isMicrosoft) {
       if (metadata?.client_id) {
@@ -366,6 +418,8 @@ function UpdateConnectionOAuthModal({
   const permissionsConfigurable =
     getConnectorPermissionsConfigurableBlocked(connectorProvider);
 
+  const connectorName = connectorConfiguration.name;
+
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
       <>
@@ -376,7 +430,7 @@ function UpdateConnectionOAuthModal({
               size="md"
             />
             <Page.SectionHeader
-              title={`${connectorConfiguration.name} data & permissions`}
+              title={t`${connectorName} data & permissions`}
             />
           </div>
 
@@ -385,26 +439,30 @@ function UpdateConnectionOAuthModal({
               <ContentMessage
                 size="md"
                 variant="warning"
-                title="Migration required"
+                title={t`Migration required`}
                 icon={InfoCircle}
               >
-                You are using a legacy way to connect your Slack workspace to
-                Dust. Starting December 2025, all Slack connections require
-                customers to create their own Slack app. This change ensures
-                optimal performance and reliable real-time syncing.
+                <Trans>
+                  You are using a legacy way to connect your Slack workspace to
+                  Dust. Starting December 2025, all Slack connections require
+                  customers to create their own Slack app. This change ensures
+                  optimal performance and reliable real-time syncing.
+                </Trans>
                 <br />
                 <br />
-                Please follow the instructions of the section{" "}
-                <b>"Setting up the Connection"</b> in our{" "}
-                <Hoverable
-                  href="https://docs.dust.tt/docs/slack-connection#setting-up-the-connection"
-                  target="_blank"
-                  variant="highlight"
-                >
-                  official documentation
-                </Hoverable>{" "}
-                and enter your credentials below to{" "}
-                <b>complete the migration before March 3, 2026</b>.
+                <Trans>
+                  Please follow the instructions of the section{" "}
+                  <b>"Setting up the Connection"</b> in our{" "}
+                  <Hoverable
+                    href="https://docs.dust.tt/docs/slack-connection#setting-up-the-connection"
+                    target="_blank"
+                    variant="highlight"
+                  >
+                    official documentation
+                  </Hoverable>{" "}
+                  and enter your credentials below to{" "}
+                  <b>complete the migration before March 3, 2026</b>.
+                </Trans>
               </ContentMessage>
             </div>
           )}
@@ -413,24 +471,28 @@ function UpdateConnectionOAuthModal({
             <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
               <div className="flex items-center gap-2 font-medium text-info-800">
                 <Icon visual={InfoCircle} />
-                Important
+                <Trans>Important</Trans>
               </div>
               <div className="copy-sm p-4 text-info-900">
-                <b>Editing</b> can break the existing data structure in Dust and
-                Agents using them.
+                <Trans>
+                  <b>Editing</b> can break the existing data structure in Dust
+                  and Agents using them.
+                </Trans>
               </div>
 
               {connectorUIConfiguration.guideLink && (
                 <div className="copy-sm pl-4 text-info-800">
-                  Read our{" "}
-                  <a
-                    href={connectorUIConfiguration.guideLink}
-                    className="text-highlight-600"
-                    target="_blank"
-                  >
-                    Playbook
-                  </a>
-                  .
+                  <Trans>
+                    Read our{" "}
+                    <a
+                      href={connectorUIConfiguration.guideLink}
+                      className="text-highlight-600"
+                      target="_blank"
+                    >
+                      Playbook
+                    </a>
+                    .
+                  </Trans>
                 </div>
               )}
             </div>
@@ -438,23 +500,22 @@ function UpdateConnectionOAuthModal({
         </div>
 
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
-          <Page.SectionHeader title="Connection Owner" />
+          <Page.SectionHeader title={t`Connection owner`} />
           <div className="flex items-center gap-2">
             <Avatar visual={editedByUser?.imageUrl} size="sm" isRounded />
             <div>
-              <span className="font-bold">
-                {isDataSourceOwner ? "You" : editedByUser?.fullName}
-              </span>{" "}
-              set it up
-              {editedByUser?.editedAt
-                ? ` on ${formatTimestampToFriendlyDate(editedByUser?.editedAt)}`
-                : "."}
+              <ConnectionSetupDescription
+                editedByUser={editedByUser}
+                isDataSourceOwner={isDataSourceOwner}
+              />
             </div>
           </div>
           {microsoftAccount && (
             <div className="copy-sm text-muted-foreground">
-              Authorized with Microsoft account{" "}
-              <span className="font-bold">{microsoftAccount}</span>.
+              <Trans>
+                Authorized with Microsoft account{" "}
+                <span className="font-bold">{microsoftAccount}</span>.
+              </Trans>
             </div>
           )}
           {!isDataSourceOwner && (
@@ -469,26 +530,30 @@ function UpdateConnectionOAuthModal({
 
         {!isDataSourceOwner && (
           <div className="item flex flex-col gap-2 border-t pt-4">
-            <Page.SectionHeader title="Editing permissions" />
+            <Page.SectionHeader title={t`Editing permissions`} />
             <ContentMessage
               size="md"
               variant="warning"
-              title="You are not the owner of this connection."
+              title={t`You are not the owner of this connection.`}
               icon={InfoCircle}
             >
-              Editing permission rights with a different account will likely
-              break the existing data structure in Dust and Agents using them.
+              <Trans>
+                Editing permission rights with a different account will likely
+                break the existing data structure in Dust and Agents using them.
+              </Trans>
               {connectorUIConfiguration.guideLink && (
                 <div>
-                  Read our{" "}
-                  <Hoverable
-                    href={connectorUIConfiguration.guideLink}
-                    variant="primary"
-                    target="_blank"
-                  >
-                    Playbook
-                  </Hoverable>
-                  .
+                  <Trans>
+                    Read our{" "}
+                    <Hoverable
+                      href={connectorUIConfiguration.guideLink}
+                      variant="primary"
+                      target="_blank"
+                    >
+                      Playbook
+                    </Hoverable>
+                    .
+                  </Trans>
                 </div>
               )}
             </ContentMessage>
@@ -508,7 +573,7 @@ function UpdateConnectionOAuthModal({
           <Dialog>
             <DialogTrigger>
               <Button
-                label="Edit Permissions"
+                label={t`Edit permissions`}
                 icon={Lock01}
                 variant="warning"
                 disabled={
@@ -517,7 +582,7 @@ function UpdateConnectionOAuthModal({
               />
               {permissionsConfigurable.blocked && (
                 <ContentMessage
-                  title="Editing permissions is temporarily disabled"
+                  title={t`Editing permissions is temporarily disabled`}
                   variant="info"
                   icon={InfoCircle}
                 >
@@ -529,20 +594,24 @@ function UpdateConnectionOAuthModal({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Are you sure?</DialogTitle>
+                <DialogTitle>
+                  <Trans>Are you sure?</Trans>
+                </DialogTitle>
               </DialogHeader>
               <DialogContainer>
-                The changes you are about to make may break existing{" "}
-                {connectorConfiguration.name} Data sources and the agents using
-                them. Are you sure you want to continue?
+                <Trans>
+                  The changes you are about to make may break existing{" "}
+                  {connectorName} data sources and the agents using them. Are
+                  you sure you want to continue?
+                </Trans>
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
-                  label: "Cancel",
+                  label: t`Cancel`,
                   variant: "outline",
                 }}
                 rightButtonProps={{
-                  label: "Continue",
+                  label: t`Continue`,
                   variant: "warning",
                   onClick: async () => {
                     void onEditPermissionsClick(extraConfig);
@@ -571,6 +640,7 @@ function DataSourceDeletionModal({
   onClose,
   owner,
 }: DataSourceDeletionModalProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
@@ -594,6 +664,7 @@ function DataSourceDeletionModal({
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
   const connectorUIConfiguration =
     CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
+  const connectorName = connectorConfiguration.name;
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -605,16 +676,16 @@ function DataSourceDeletionModal({
     );
     if (res.ok) {
       sendNotification({
-        title: "Successfully deleted connection",
+        title: t`Successfully deleted connection`,
         type: "success",
-        description: "The connection has been successfully deleted.",
+        description: t`The connection has been successfully deleted.`,
       });
       await mutateSpaceDataSourceViews();
       onClose();
     } else {
       const err = (await res.json()) as { error: APIError };
       sendNotification({
-        title: "Error deleting connection",
+        title: t`Error deleting connection`,
         type: "error",
         description: err.error.message,
       });
@@ -632,47 +703,48 @@ function DataSourceDeletionModal({
               size="md"
             />
             <Page.SectionHeader
-              title={`Deleting ${connectorConfiguration.name} connection`}
+              title={t`Deleting ${connectorName} connection`}
             />
           </div>
           {isDeletable ? (
             <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
               <div className="flex items-center gap-2 font-medium text-info-800">
                 <Icon visual={InfoCircle} />
-                Important
+                <Trans>Important</Trans>
               </div>
               <div className="p-4 text-sm text-info-900">
-                <b>Deleting</b> will break Agents using this data.
+                <Trans>
+                  <b>Deleting</b> will break Agents using this data.
+                </Trans>
               </div>
             </div>
           ) : (
             <ContentMessage
               className="mb-4 mt-8"
-              title="Connection removal requires support"
+              title={t`Connection removal requires support`}
               variant="warning"
               icon={InfoCircle}
             >
-              Removing a connection permanently deletes its synced data and may
-              break agents or spaces that rely on it. Contact{" "}
-              <Hoverable href="mailto:support@dust.tt" variant="highlight">
-                support@dust.tt
-              </Hoverable>{" "}
-              to be assisted with the removal of this connection.
+              <Trans>
+                Removing a connection permanently deletes its synced data and
+                may break agents or spaces that rely on it. Contact{" "}
+                <Hoverable href="mailto:support@dust.tt" variant="highlight">
+                  support@dust.tt
+                </Hoverable>{" "}
+                to be assisted with the removal of this connection.
+              </Trans>
             </ContentMessage>
           )}
         </div>
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
-          <Page.SectionHeader title="Connection Owner" />
+          <Page.SectionHeader title={t`Connection owner`} />
           <div className="flex items-center gap-2">
             <Avatar visual={editedByUser?.imageUrl} size="sm" isRounded />
             <div>
-              <span className="font-bold">
-                {isDataSourceOwner ? "You" : editedByUser?.fullName}
-              </span>{" "}
-              set it up
-              {editedByUser?.editedAt
-                ? ` on ${formatTimestampToFriendlyDate(editedByUser?.editedAt)}`
-                : "."}
+              <ConnectionSetupDescription
+                editedByUser={editedByUser}
+                isDataSourceOwner={isDataSourceOwner}
+              />
             </div>
           </div>
         </div>
@@ -681,14 +753,16 @@ function DataSourceDeletionModal({
             <Dialog>
               <DialogTrigger>
                 <Button
-                  label="Delete Connection"
+                  label={t`Delete connection`}
                   icon={Lock01}
                   variant="warning"
                 />
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Are you sure?</DialogTitle>
+                  <DialogTitle>
+                    <Trans>Are you sure?</Trans>
+                  </DialogTitle>
                 </DialogHeader>
                 {isLoading ? (
                   <div className="flex justify-center py-8">
@@ -697,17 +771,19 @@ function DataSourceDeletionModal({
                 ) : (
                   <>
                     <DialogContainer>
-                      The changes you are about to make will break existing
-                      agents using {connectorConfiguration.name}. Are you sure
-                      you want to continue?
+                      <Trans>
+                        The changes you are about to make will break existing
+                        agents using {connectorName}. Are you sure you want to
+                        continue?
+                      </Trans>
                     </DialogContainer>
                     <DialogFooter
                       leftButtonProps={{
-                        label: "Cancel",
+                        label: t`Cancel`,
                         variant: "outline",
                       }}
                       rightButtonProps={{
-                        label: "Delete",
+                        label: t`Delete`,
                         variant: "warning",
                         onClick: async () => {
                           await handleDelete();
@@ -761,6 +837,7 @@ export function ConnectorPermissionsModal({
   owner,
   readOnly,
 }: ConnectorPermissionsModalProps) {
+  const { t } = useLingui();
   const { mutate } = useSWRConfig();
   const cellContext = useCellContext();
 
@@ -882,6 +959,7 @@ export function ConnectorPermissionsModal({
             .filter((sn) => sn.isSelected)
             .map((sn) => sn.node),
           confirm,
+          t,
         }))
       ) {
         return;
@@ -953,9 +1031,8 @@ export function ConnectorPermissionsModal({
     } catch (e) {
       sendNotification({
         type: "error",
-        title: "Error saving connector configuration",
-        description:
-          "An unexpected error occurred while saving connector configuration.",
+        title: t`Error saving connector configuration`,
+        description: t`An unexpected error occurred while saving connector configuration.`,
       });
       console.error(e);
     } finally {
@@ -978,7 +1055,6 @@ export function ConnectorPermissionsModal({
     [selectedNodes, initialTreeSelectionModel]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen) {
       setModalToShow(initialModalState);
@@ -998,12 +1074,14 @@ export function ConnectorPermissionsModal({
     connector.type
   );
 
+  const dataSourceDisplayName = getDisplayNameForDataSource(dataSource);
+
   return (
     <>
       {onManageButtonClick && (
         <Button
           size="sm"
-          label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
+          label={t`Manage ${dataSourceDisplayName}`}
           icon={CloudArrowLeftRight}
           variant="primary"
           disabled={readOnly || !isAdmin}
@@ -1026,7 +1104,7 @@ export function ConnectorPermissionsModal({
             <>
               <SheetHeader>
                 <SheetTitle>
-                  Manage {getDisplayNameForDataSource(dataSource)} connection
+                  <Trans>Manage {dataSourceDisplayName} connection</Trans>
                 </SheetTitle>
                 <div className="flex flex-row justify-end gap-2 py-1">
                   {(isOAuthProvider(connector.type) ||
@@ -1034,8 +1112,8 @@ export function ConnectorPermissionsModal({
                     <Button
                       label={
                         !isRemoteDatabase(dataSource)
-                          ? "Edit permissions"
-                          : "Edit connection"
+                          ? t`Edit permissions`
+                          : t`Edit connection`
                       }
                       variant="outline"
                       icon={Lock01}
@@ -1048,14 +1126,14 @@ export function ConnectorPermissionsModal({
                   {dataSource.connectorProvider === "notion" &&
                     featureFlags.includes("notion_private_integration") && (
                       <Button
-                        label="Setup Private Integration"
+                        label={t`Setup private integration`}
                         variant="outline"
                         icon={Lock01}
                         onClick={() => setModalToShow("private_integration")}
                       />
                     )}
                   <Button
-                    label="Delete connection"
+                    label={t`Delete connection`}
                     variant="warning"
                     icon={Trash01}
                     onClick={() => {
@@ -1069,7 +1147,7 @@ export function ConnectorPermissionsModal({
                 <div className="dd-privacy-mask flex w-full flex-col gap-4">
                   {permissionsConfigurable.blocked && (
                     <ContentMessage
-                      title="Editing permissions is temporarily disabled"
+                      title={t`Editing permissions is temporarily disabled`}
                       variant="info"
                       icon={InfoCircle}
                     >
@@ -1080,7 +1158,9 @@ export function ConnectorPermissionsModal({
                   )}
                   {OptionsComponent && plan && (
                     <>
-                      <div className="heading-xl p-1">Connection options</div>
+                      <div className="heading-xl p-1">
+                        <Trans>Connection options</Trans>
+                      </div>
                       <div className="p-1">
                         <div className="border-y border-border">
                           <OptionsComponent
@@ -1123,7 +1203,9 @@ export function ConnectorPermissionsModal({
                     featureFlags.includes("sensitivity_labels") && (
                       <Collapsible className="mb-4">
                         <CollapsibleTrigger>
-                          <div className="heading-lg">Advanced</div>
+                          <div className="heading-lg">
+                            <Trans>Advanced</Trans>
+                          </div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-4">
@@ -1149,12 +1231,12 @@ export function ConnectorPermissionsModal({
               {!connectorUIConfiguration.isResourceSelectionDisabled && (
                 <SheetFooter
                   leftButtonProps={{
-                    label: "Cancel",
+                    label: t`Cancel`,
                     variant: "outline",
                     onClick: () => closeModal(false),
                   }}
                   rightButtonProps={{
-                    label: saving ? "Saving..." : "Save",
+                    label: saving ? t`Saving...` : t`Save`,
                     variant: "primary",
                     disabled:
                       (isUnchanged && !advancedOptionsHasChanges) ||
@@ -1242,7 +1324,8 @@ export function ConnectorPermissionsModal({
                     owner,
                     extraConfig,
                     sendNotification,
-                    cellContext.cellInfo
+                    cellContext.cellInfo,
+                    t
                   );
                   closeModal(false);
                 }}
@@ -1279,9 +1362,11 @@ export function ConnectorPermissionsModal({
 export async function confirmPrivateNodesSync({
   selectedNodes,
   confirm,
+  t,
 }: {
   selectedNodes: ContentNode[];
   confirm: (n: ConfirmDataType) => Promise<boolean>;
+  t: (descriptor: MessageDescriptor) => string;
 }): Promise<boolean> {
   // confirmation in case there are private nodes
   const privateNodes = selectedNodes.filter(
@@ -1289,14 +1374,26 @@ export async function confirmPrivateNodesSync({
   );
 
   if (privateNodes.length > 0) {
-    const warnNodes = privateNodes.slice(0, 3).map((node) => node.title);
-    if (privateNodes.length > 3) {
-      warnNodes.push(` and ${privateNodes.length - 3} more...`);
-    }
+    const privateNodeCount = privateNodes.length;
+    const privateNodeTitles = privateNodes
+      .slice(0, 3)
+      .map((node) => node.title)
+      .join(", ");
+    const hiddenPrivateNodeCount = privateNodeCount - 3;
 
     return confirm({
-      title: "Sensitive data synchronization",
-      message: `You are synchronizing data from private source(s): ${warnNodes.join(", ")}. Is this okay?`,
+      title: t(msg`Sensitive data synchronization`),
+      message:
+        hiddenPrivateNodeCount > 0
+          ? t(
+              msg`You are synchronizing data from private sources: ${privateNodeTitles} and ${hiddenPrivateNodeCount} more. Is this okay?`
+            )
+          : t(
+              msg`${plural(privateNodeCount, {
+                one: `You are synchronizing data from a private source: ${privateNodeTitles}. Is this okay?`,
+                other: `You are synchronizing data from private sources: ${privateNodeTitles}. Is this okay?`,
+              })}`
+            ),
       validateVariant: "warning",
     });
   }

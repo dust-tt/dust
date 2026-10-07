@@ -1,7 +1,6 @@
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
-import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
   Button,
   ContentMessage,
@@ -9,6 +8,7 @@ import {
   Plus,
   ReverseLeft,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 
@@ -18,6 +18,7 @@ const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 
 export function SkillBuilderInstructionsSection() {
+  const { t } = useLingui();
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
@@ -51,11 +52,13 @@ export function SkillBuilderInstructionsSection() {
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
         <div className="space-y-1">
           <h3 className="heading-lg font-semibold text-foreground">
-            {SKILL_INSTRUCTIONS_LABEL}
+            <Trans>Instructions</Trans>
           </h3>
           <p className="text-sm text-muted-foreground">
-            Provide the guidelines the skill should follow when it runs. Type
-            "/" to attach knowledge, tools, or another skill.
+            <Trans>
+              Provide the guidelines the skill should follow when it runs. Type
+              "/" to attach knowledge, tools, or another skill.
+            </Trans>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -65,14 +68,17 @@ export function SkillBuilderInstructionsSection() {
               size="sm"
               icon={ReverseLeft}
               onClick={restoreInstructions}
-              label="Restore instructions"
+              label={t`Restore instructions`}
               disabled={isReadOnly}
             />
           )}
           {!compareVersion && (
             <Button
               variant="outline"
-              label="Insert"
+              label={t({
+                message: "Insert",
+                context: "button, insert content in the instructions",
+              })}
               icon={Plus}
               onClick={openInsertMenu ?? undefined}
               disabled={isReadOnly || !openInsertMenu}
@@ -86,10 +92,12 @@ export function SkillBuilderInstructionsSection() {
           variant="info"
           icon={InfoCircle}
           size="lg"
-          title="This skill is noticeably large"
+          title={t`This skill is noticeably large`}
         >
-          Large skills consume a significant part of the context window on each
-          use. Consider keeping your guidelines concise.
+          <Trans>
+            Large skills consume a significant part of the context window on
+            each use. Consider keeping your guidelines concise.
+          </Trans>
         </ContentMessage>
       )}
       <SkillBuilderInstructionsEditor

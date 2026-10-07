@@ -144,6 +144,12 @@ export function getProviderStrategy(
  * `oauth-finalize-requires-ownership`. Connection metadata MUST never store the
  * plaintext cookie value.
  */
+/**
+ * @cc [owner:spolu,label:security;logging] no-oauth-setup-config-values-in-logs
+ * Setup validation failures MUST NOT log extraConfig values, except extraConfig.mcp_server_id,
+ * which MAY be logged as a non-secret diagnostic identifier. Configuration payloads MUST be
+ * logged as key names only, never as raw objects.
+ */
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
@@ -166,7 +172,7 @@ export async function createConnectionAndGetSetupUrl(
 
   if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
-      { provider, useCase, extraConfig },
+      { provider, useCase, extraConfigKeys: Object.keys(extraConfig) },
       "OAuth: Invalid extraConfig before getting related credential"
     );
     return new Err({
@@ -259,7 +265,7 @@ export async function createConnectionAndGetSetupUrl(
         )
       ) {
         logger.error(
-          { provider, useCase, extraConfig },
+          { provider, useCase, extraConfigKeys: Object.keys(extraConfig) },
           "OAuth: Invalid extraConfig after getting related credential"
         );
         return new Err({

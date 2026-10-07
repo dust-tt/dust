@@ -1,18 +1,33 @@
-import { makeGroupLimitAwuCreditsRateLimitKeyForGroup } from "@app/lib/api/assistant/rate_limits";
+import {
+  makeGroupLimitAwuCreditsRateLimitKeyForGroup,
+  makeSpendLimitCycleWindowBounds,
+} from "@app/lib/api/assistant/rate_limits";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
+import {
+  bucketsToArray,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { contractHasPersonalCreditSeats } from "@app/lib/metronome/seats";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
-import { addFixedWindowCount } from "@app/lib/utils/rate_limiter";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
+import {
+  addFixedWindowCount,
+  readFixedWindowCountWithLazySeed,
+  setFixedWindowCount,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   GroupLimit,
@@ -22,6 +37,8 @@ import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 
 export const MIN_GROUP_LIMIT_AWU_CREDITS = 0;
 export const MAX_GROUP_LIMIT_AWU_CREDITS = 100_000_000;
@@ -209,6 +226,37 @@ export async function resolveLimitGroupForUser(
   return limitGroups.get(user.sId) ?? null;
 }
 
+/**
+ * Whether the member's limit group has used its whole limit for the current cycle. Fails open (not
+ * blocked) when the cycle or the counter cannot be read.
+ */
+export async function isGroupLimitReached(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const limitGroup = await resolveLimitGroupForUser(auth, { user });
+  if (!limitGroup || limitGroup.groupLimitAwuCredits === null) {
+    return false;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  const count = await readGroupLimitCount(auth, { group: limitGroup, bounds });
+  if (count === null) {
+    logger.warn(
+      { workspaceId: workspace.sId, groupId: limitGroup.sId },
+      "[GroupLimit] Failed to read group limit count; allowing message"
+    );
+    return false;
+  }
+
+  return count >= roundCreditsToMicroCredits(limitGroup.groupLimitAwuCredits);
+}
+
 export async function recordGroupLimitUsage(
   auth: Authenticator,
   {
@@ -257,10 +305,181 @@ export async function recordGroupLimitUsage(
     return;
   }
 
+  await readGroupLimitCount(auth, { group: limitGroup, bounds });
+
   await addFixedWindowCount({
     key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, limitGroup),
     bounds,
     incrementBy: roundCreditsToMicroCredits(incrementBy),
     logger,
   });
+}
+
+type LimitGroupConsumedBucket = {
+  key: string;
+  credits?: estypes.AggregationsSumAggregate;
+};
+
+type LimitGroupConsumedAggs = {
+  by_limit_group?: estypes.AggregationsMultiBucketAggregateBase<LimitGroupConsumedBucket>;
+};
+
+/**
+ * Microcredits consumed this billing cycle by the messages recorded to each limit group, keyed by
+ * group sId (groups without consumption are absent). Returns null when the cycle or the analytics
+ * index cannot be read, so callers never mistake a failed read for zero usage.
+ */
+async function fetchConsumedMicroCreditsByLimitGroupId({
+  workspace,
+  groupIds,
+  cycle,
+}: {
+  workspace: LightWorkspaceType;
+  groupIds: string[];
+  cycle?: BillingCycle;
+}): Promise<Map<string, number> | null> {
+  if (groupIds.length === 0) {
+    return new Map();
+  }
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return null;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchConsumptionAnalytics<
+    never,
+    LimitGroupConsumedAggs
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { terms: { "user.limit_group_id": groupIds } },
+          {
+            range: {
+              completed_at: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: {
+        by_limit_group: {
+          terms: {
+            field: "user.limit_group_id",
+            size: Math.max(1, groupIds.length),
+          },
+          aggs: { credits: { sum: { field: "credit_micro" } } },
+        },
+      },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[GroupLimit] Failed to read per-limit-group consumed credits from analytics index"
+    );
+    return null;
+  }
+
+  const consumedByGroupId = new Map<string, number>();
+  for (const bucket of bucketsToArray<LimitGroupConsumedBucket>(
+    result.value.aggregations?.by_limit_group?.buckets
+  )) {
+    consumedByGroupId.set(
+      String(bucket.key),
+      Math.round(bucket.credits?.value ?? 0)
+    );
+  }
+  return consumedByGroupId;
+}
+
+/**
+ * Reads a group's limit counter (microcredits) for the cycle, seeding it from the analytics index
+ * when it reads as 0 (absent key: new cycle, eviction). Returns null on a Redis read error.
+ */
+export async function readGroupLimitCount(
+  auth: Authenticator,
+  { group, bounds }: { group: GroupResource; bounds: FixedWindowBounds }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+  return readFixedWindowCountWithLazySeed({
+    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    bounds,
+    logger,
+    fetchSeedValue: async () => {
+      const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
+        workspace,
+        groupIds: [group.sId],
+      });
+      return consumedByGroupId === null
+        ? null
+        : (consumedByGroupId.get(group.sId) ?? 0);
+    },
+  });
+}
+
+/**
+ * Overwrites each limited group's counter for the current cycle with its analytics-index total.
+ * Skips the write entirely when the index cannot be read, so an outage never erases live counters.
+ */
+export async function resyncGroupLimitCountersFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ updatedGroupCount: number }, Error>> {
+  if (!(await areGroupLimitsEnabled(auth))) {
+    return new Ok({ updatedGroupCount: 0 });
+  }
+
+  const groups = await GroupResource.listLimitedGroups(auth);
+  if (groups.length === 0) {
+    return new Ok({ updatedGroupCount: 0 });
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+
+  const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
+    workspace,
+    groupIds: groups.map((group) => group.sId),
+    cycle,
+  });
+  if (consumedByGroupId === null) {
+    return new Err(
+      new Error(
+        "Failed to read group consumption from Elasticsearch; skipped resync to avoid erasing the counters."
+      )
+    );
+  }
+
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+  const results = await concurrentExecutor(
+    groups,
+    async (group) => {
+      const setResult = await setFixedWindowCount({
+        key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+        bounds,
+        value: consumedByGroupId.get(group.sId) ?? 0,
+        logger,
+      });
+      return setResult.isOk();
+    },
+    { concurrency: 8 }
+  );
+
+  return new Ok({ updatedGroupCount: results.filter(Boolean).length });
 }

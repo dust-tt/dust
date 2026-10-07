@@ -24,8 +24,7 @@ interface BaseMenuItem {
 }
 
 interface RegularMenuItem
-  extends BaseMenuItem,
-    Omit<DropdownMenuItemProps, "children" | "label"> {
+  extends BaseMenuItem, Omit<DropdownMenuItemProps, "children" | "label"> {
   kind: "item";
 }
 

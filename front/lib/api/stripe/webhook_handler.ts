@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
@@ -5,7 +6,11 @@ import {
 } from "@app/lib/api/email";
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { getMembers } from "@app/lib/api/workspace";
+import {
+  getActiveAdminEmails,
+  getMembers,
+  isWorkspaceRelocationDone,
+} from "@app/lib/api/workspace";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -41,7 +46,6 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
-  createCustomerPortalSession,
   getStripeSubscription,
   isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
@@ -309,10 +313,37 @@ async function resolveCreditPurchaseInvoiceCtx(
 /**
  * Single entry point for resolving any invoice (subscription or credit
  * purchase, Stripe-billed or Metronome-pushed) to a uniform context.
+ * Returns null if the workspace was relocated to another region.
+ */
+async function resolveInvoiceCtx(
+  invoice: Stripe.Invoice
+): Promise<SubscriptionInvoiceCtx | null> {
+  const ctx = await resolveInvoiceCtxByKind(invoice);
+
+  // Every region receives every Stripe event, and a relocated workspace's row
+  // stays in the source region until purge. Only the destination region may
+  // act on its invoices.
+  if (
+    ctx &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({ workspace: ctx.workspace })
+    )
+  ) {
+    logger.info(
+      { invoiceId: invoice.id, workspaceId: ctx.workspace.sId },
+      "[Stripe Webhook] Workspace has been relocated, skipping invoice event"
+    );
+    return null;
+  }
+
+  return ctx;
+}
+
+/**
  * Picks the right underlying resolver based on which identifiers are present
  * on the invoice.
  */
-async function resolveInvoiceCtx(
+async function resolveInvoiceCtxByKind(
   invoice: Stripe.Invoice
 ): Promise<SubscriptionInvoiceCtx | null> {
   // Stripe-subscription invoice (regular or credit-purchase).
@@ -459,8 +490,22 @@ async function enableSepaOnFinalizedEnterpriseInvoice(
 /**
  * Shared payment-failure handling for a workspace subscription. Skips
  * enterprise plans (paid by wire on 30-day terms), flags the subscription as
- * payment-failing, and emails admins + the Stripe customer email.
+ * payment-failing, and emails the active admins a link to the workspace's
+ * subscription management page, which opens the Stripe billing portal once
+ * they are authenticated.
  * Used by both the Stripe-subscription and Metronome-subscription paths.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;product] payment-failure-email-recipients
+ * The payment-failure email MUST only be sent to the workspace's currently active admins.
+ * Addresses carried by the Stripe invoice (such as `customer_email`) MUST NOT be used as
+ * recipients: they reflect who initiated checkout, not who holds billing access today.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security] payment-failure-email-no-portal-session
+ * The payment-failure email MUST NOT contain a Stripe billing-portal session URL. It MUST link to
+ * the workspace's `/subscription/manage` page, which requires authentication and obtains the portal
+ * through `POST /api/stripe/portal` and its billing-permission check, for every billing rail.
  */
 async function notifyAdminsOfPaymentFailure({
   auth,
@@ -499,21 +544,13 @@ async function notifyAdminsOfPaymentFailure({
       paymentFailingSince: now,
     });
   }
-  const { members } = await getMembers(auth, {
-    roles: ["admin"],
-    activeOnly: true,
-  });
-  const adminEmails = members.map((u) => u.email);
-  const customerEmail = invoice.customer_email;
-  if (customerEmail && !adminEmails.includes(customerEmail)) {
-    adminEmails.push(customerEmail);
-  }
-  const portalUrl = await createCustomerPortalSession({
-    owner,
-    subscription: subscriptionType,
-  });
+  const adminEmails = await getActiveAdminEmails(auth);
+  const manageSubscriptionUrl = `${config.getAppUrl()}/w/${owner.sId}/subscription/manage`;
   for (const adminEmail of adminEmails) {
-    await sendAdminSubscriptionPaymentFailedEmail(adminEmail, portalUrl);
+    await sendAdminSubscriptionPaymentFailedEmail(
+      adminEmail,
+      manageSubscriptionUrl
+    );
   }
 }
 
@@ -699,6 +736,12 @@ async function handleStripeCheckoutCompleted({
  * `APIErrorWithContentfulStatusCode` on failures the caller should surface as an HTTP
  * error response.
  */
+/**
+ * @cc [owner:philipperolet,label:product] skip-relocated-workspace-invoices
+ * For invoice events (`invoice.*`, `charge.dispute.created`) whose workspace row in this region is
+ * marked `relocation-done`, the handler MUST have no side effect other than logging (no database,
+ * Stripe, Metronome, Temporal or email writes): the destination region handles them.
+ */
 export async function processStripeWebhookEvent({
   event,
   stripe,
@@ -812,6 +855,16 @@ export async function processStripeWebhookEvent({
         logger.warn(
           { invoiceId: invoice.id, metronomeCustomerId },
           "[Stripe Webhook] invoice.created: workspace not found for Metronome invoice, skipping clean"
+        );
+        break;
+      }
+
+      // Same rule as in `resolveInvoiceCtx`: only the destination region of a
+      // relocated workspace may act on its invoices.
+      if (isWorkspaceRelocationDone(renderLightWorkspaceType({ workspace }))) {
+        logger.info(
+          { invoiceId: invoice.id, workspaceId: workspace.sId },
+          "[Stripe Webhook] invoice.created: workspace has been relocated, skipping clean"
         );
         break;
       }

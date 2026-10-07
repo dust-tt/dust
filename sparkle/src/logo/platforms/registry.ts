@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 
 import AdomikLogo from "./Adomik";
 import Ai21Logo from "./Ai21";
+import AirtableLogo from "./Airtable";
 import AmplitudeLogo from "./Amplitude";
 import AnthropicLogo from "./Anthropic";
 import ApifyLogo from "./Apify";
@@ -14,6 +15,8 @@ import CanvaLogo from "./Canva";
 import ChromeLogo from "./Chrome";
 import ClariLogo from "./Clari";
 import ClaudeLogo from "./Claude";
+import ClayLogo from "./Clay";
+import ClickUpLogo from "./ClickUp";
 import CohereLogo from "./Cohere";
 import ConfluenceLogo from "./Confluence";
 import ContentsquareLogo from "./Contentsquare";
@@ -33,6 +36,7 @@ import FrameLogo from "./Frame";
 import FreshdeskLogo from "./Freshdesk";
 import FreshserviceLogo from "./Freshservice";
 import FrontLogo from "./Front";
+import FullEnrichLogo from "./FullEnrich";
 import GammaLogo from "./Gamma";
 import GcalLogo from "./Gcal";
 import GeminiLogo from "./Gemini";
@@ -79,6 +83,8 @@ import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
 import OfficeLogo from "./Office";
 import OpenaiLogo from "./Openai";
+import PaddleLogo from "./Paddle";
+import PandaDocLogo from "./PandaDoc";
 import PdfLogo from "./Pdf";
 import PowerBiLogo from "./PowerBi";
 import PraizLogo from "./Praiz";
@@ -99,6 +105,7 @@ import StackOneLogo from "./StackOne";
 import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
+import SuperhumanLogo from "./Superhuman";
 import TableLogo from "./Table";
 import TemporalLogo from "./Temporal";
 import ThinkingMachinesLogo from "./ThinkingMachines";
@@ -122,6 +129,7 @@ type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 export const PLATFORM_LOGOS = {
   AdomikLogo,
   Ai21Logo,
+  AirtableLogo,
   AmplitudeLogo,
   AnthropicLogo,
   ApifyLogo,
@@ -134,6 +142,8 @@ export const PLATFORM_LOGOS = {
   ChromeLogo,
   ClariLogo,
   ClaudeLogo,
+  ClayLogo,
+  ClickUpLogo,
   CohereLogo,
   ConfluenceLogo,
   ContentsquareLogo,
@@ -153,6 +163,7 @@ export const PLATFORM_LOGOS = {
   FreshdeskLogo,
   FreshserviceLogo,
   FrontLogo,
+  FullEnrichLogo,
   GammaLogo,
   GcalLogo,
   GeminiLogo,
@@ -199,6 +210,8 @@ export const PLATFORM_LOGOS = {
   NotionLogo,
   OfficeLogo,
   OpenaiLogo,
+  PaddleLogo,
+  PandaDocLogo,
   PdfLogo,
   PowerBiLogo,
   PraizLogo,
@@ -219,6 +232,7 @@ export const PLATFORM_LOGOS = {
   StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
+  SuperhumanLogo,
   TableLogo,
   TemporalLogo,
   ThinkingMachinesLogo,

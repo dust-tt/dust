@@ -14,6 +14,7 @@ import { getLatestNodeFromNavigationHistory } from "@app/components/data_source_
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ArrowLeft, EmptyCTA, EmptyCTAButton, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo } from "react";
 
 interface DataSourceBrowserTableProps {
@@ -45,6 +46,7 @@ function getRowNavigation(
 export function DataSourceBrowserTable({
   viewType,
 }: DataSourceBrowserTableProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const navigation = useDataSourceBuilderContext();
   const { navigationHistory, navigateTo, removeNode } = navigation;
@@ -71,10 +73,11 @@ export function DataSourceBrowserTable({
     async (item: DataSourceListItem, selectionState: boolean | "partial") => {
       // Categories only show checkboxes for partial selections to unselect all
       if (selectionState === "partial") {
+        const itemTitle = item.title;
         const confirmed = await confirm({
-          title: "Are you sure?",
-          message: `Do you want to unselect all of "${item.title}"?`,
-          validateLabel: "Unselect all",
+          title: t`Are you sure?`,
+          message: t`Do you want to unselect all of "${itemTitle}"?`,
+          validateLabel: t`Unselect all`,
           validateVariant: "warning",
         });
         if (confirmed) {
@@ -82,7 +85,7 @@ export function DataSourceBrowserTable({
         }
       }
     },
-    [confirm, removeNode]
+    [confirm, removeNode, t]
   );
 
   if (browser.isLoading) {
@@ -109,7 +112,7 @@ export function DataSourceBrowserTable({
         <DataSourceList
           items={listItems}
           showSelectAllHeader
-          headerTitle="Name"
+          headerTitle={t`Name`}
         />
       );
     case "data_source":
@@ -121,13 +124,13 @@ export function DataSourceBrowserTable({
       if (isTopLevelInView && listItems.length === 0) {
         return (
           <EmptyCTA
-            title="No pages found"
-            message="This website doesn't have any pages to browse yet."
+            title={t`No pages found`}
+            message={t`This website doesn't have any pages to browse yet.`}
             action={
               <EmptyCTAButton
                 variant="primary"
                 icon={ArrowLeft}
-                label="Go back"
+                label={t`Go back`}
                 onClick={() => navigateTo(navigationHistory.length - 2)}
               />
             }
@@ -141,7 +144,7 @@ export function DataSourceBrowserTable({
           hasMore={browser.hasMore}
           isLoading={browser.isLoadingMore}
           showSelectAllHeader
-          headerTitle="Name"
+          headerTitle={t`Name`}
         />
       );
     }

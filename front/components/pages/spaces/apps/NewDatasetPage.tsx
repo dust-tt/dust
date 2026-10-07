@@ -11,9 +11,11 @@ import { useDatasets } from "@app/lib/swr/datasets";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { Button, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 export function NewDatasetPage() {
+  const { t } = useLingui();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -55,7 +57,6 @@ export function NewDatasetPage() {
   // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
   // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
   // this should happen.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isFinishedEditing && app) {
       void router.push(
@@ -136,7 +137,7 @@ export function NewDatasetPage() {
 
           <div className="flex py-6">
             <Button
-              label="Create"
+              label={t`Create`}
               variant="primary"
               disabled={disable || loading}
               onClick={() => handleSubmit()}

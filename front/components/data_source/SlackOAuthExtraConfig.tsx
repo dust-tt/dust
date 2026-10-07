@@ -1,5 +1,6 @@
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { Input } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 export function SlackOAuthExtraConfig({
@@ -7,6 +8,7 @@ export function SlackOAuthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
+  const { t } = useLingui();
   useEffect(() => {
     setIsExtraConfigValid(
       !!extraConfig.client_id &&
@@ -18,8 +20,8 @@ export function SlackOAuthExtraConfig({
   return (
     <div className="flex flex-col gap-4">
       <Input
-        label="Slack App Client ID"
-        message="The Client ID from your Slack app's, available on the Basic Information page."
+        label={t`Slack app client ID`}
+        message={t`The Client ID from your Slack app's, available on the Basic Information page.`}
         messageStatus="info"
         name="client_id"
         placeholder="1234567890.1234567890123"
@@ -32,8 +34,8 @@ export function SlackOAuthExtraConfig({
         }}
       />
       <Input
-        label="Slack App Client Secret"
-        message="The Client Secret from your Slack app's, available on the Basic Information page."
+        label={t`Slack app client secret`}
+        message={t`The Client Secret from your Slack app's, available on the Basic Information page.`}
         messageStatus="info"
         name="client_secret"
         placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -46,8 +48,8 @@ export function SlackOAuthExtraConfig({
         }}
       />
       <Input
-        label="Slack App Signing Secret"
-        message="The Signing Secret from your Slack app's, available on the Basic Information page."
+        label={t`Slack app signing secret`}
+        message={t`The Signing Secret from your Slack app's, available on the Basic Information page.`}
         messageStatus="info"
         name="signing_secret"
         placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

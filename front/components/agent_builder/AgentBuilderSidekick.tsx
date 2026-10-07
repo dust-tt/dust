@@ -19,6 +19,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -77,6 +78,7 @@ function SidekickContent({
   isAdmin,
   clientSideMCPServerIds,
 }: SidekickContentProps) {
+  const { t } = useLingui();
   const { subscription } = useAuth();
   const agentBuilderContext = useMemo(
     () => ({
@@ -117,8 +119,8 @@ function SidekickContent({
           {user && (
             <FileDropProvider>
               <DropzoneContainer
-                title="Attach files to Sidekick"
-                description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+                title={t`Attach files to Sidekick`}
+                description={t`Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here.`}
                 // `relative` scopes the DropzoneOverlay to this panel (else it
                 // covers a far ancestor); `h-full` sizes it to the panel height.
                 className="relative min-h-0 h-full"
@@ -148,6 +150,7 @@ function SidekickContent({
 }
 
 export function AgentBuilderSidekick() {
+  const { t } = useLingui();
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user, subscription } = useAuth();
   const isTrialPlan = isFreeTrialPhonePlan(subscription.plan.code);
@@ -173,8 +176,8 @@ export function AgentBuilderSidekick() {
     if (creationFailed) {
       return (
         <EmptyState
-          message="Unable to start Sidekick"
-          description="There was an issue starting the Sidekick session. Please try again later."
+          message={t`Unable to start Sidekick`}
+          description={t`There was an issue starting the Sidekick session. Please try again later.`}
         />
       );
     }
@@ -184,7 +187,7 @@ export function AgentBuilderSidekick() {
     }
 
     if (isCreatingConversation || !conversation) {
-      return <LoadingState message="Starting Sidekick session..." />;
+      return <LoadingState message={t`Starting Sidekick session...`} />;
     }
 
     return (
@@ -202,7 +205,7 @@ export function AgentBuilderSidekick() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col" aria-label="Agent Sidekick">
+    <div className="flex h-full w-full flex-col" aria-label={t`Agent Sidekick`}>
       <BlockedActionsProvider
         owner={owner}
         conversation={conversation ?? undefined}

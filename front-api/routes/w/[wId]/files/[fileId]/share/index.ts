@@ -3,17 +3,16 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { canAccessFrame } from "@app/lib/api/files/frame_access";
 import { checkFrameShareScopePermission } from "@app/lib/api/share/frame_sharing";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { buildShareFileResponse } from "@app/lib/api/viz/share_frame_viewer_files";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorResponse } from "@app/types/error";
 import {
   fileShareScopeSchema,
-  isConversationFileUseCase,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -149,9 +148,8 @@ app.post(
   }
 );
 
-// Returns the file when it exists, is a Frame, and (if linked to a
-// conversation) the caller can access it. Otherwise returns a `Response` for
-// the handler to short-circuit on.
+// Returns the file when it exists, is a Frame, and the caller can access it.
+// Otherwise returns a `Response` for the handler to short-circuit on.
 async function fetchShareableFile(
   ctx: Context,
   auth: Authenticator,
@@ -165,20 +163,12 @@ async function fetchShareableFile(
     });
   }
 
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    }
+  const canAccess = await canAccessFrame(auth, file);
+  if (!canAccess) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
   }
 
   if (!file.isShareableFrame) {

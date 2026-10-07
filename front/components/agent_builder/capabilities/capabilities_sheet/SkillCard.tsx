@@ -5,6 +5,7 @@ import {
 } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { ActionCard } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface SkillCardProps {
   skill: SkillListItemType;
@@ -19,6 +20,8 @@ export function SkillCard({
   onClick,
   onMoreInfoClick,
 }: SkillCardProps) {
+  const { t } = useLingui();
+
   return (
     <ActionCard
       icon={getSkillIcon(skill.icon)}
@@ -32,7 +35,7 @@ export function SkillCard({
       cardContainerClassName="h-36"
       mountPortal
       footer={{
-        label: "Skill details",
+        label: t`Skill details`,
         onClick: onMoreInfoClick,
       }}
     />

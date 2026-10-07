@@ -353,6 +353,8 @@ impl Search {
         state: &State,
         workspace: &str,
     ) -> Result<IndexStatus, Status> {
+        // Status is diagnostic: concurrent acceptance/publication may change counts during this scan.
+        let mut local = state.writeback.pending_ids(workspace).await;
         let view = View::new(&state.storage, workspace, BTreeSet::new()).await?;
         let meta = meta(&view).await?;
         let now = model::now()?.seconds;
@@ -366,6 +368,7 @@ impl Search {
         };
         let mut pending = view.scan(view.keys.pending(), None).await?;
         while let Some(row) = pending.next().await? {
+            local.remove(&id(&row.key)?);
             let work: Pending = decode(&row.value)?;
             response.pending += 1;
             response.failed += u64::from(work.attempts > 0);
@@ -378,6 +381,7 @@ impl Search {
             let work: Indexed = decode(&row.value)?;
             response.skipped += u64::from(work.skipped);
         }
+        response.pending += local.len() as u64;
         Ok(response)
     }
 }

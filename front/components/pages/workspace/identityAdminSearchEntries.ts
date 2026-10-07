@@ -3,19 +3,6 @@ import {
   COMPUTER_NETWORK_SECTION_LABEL,
 } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
 import { AGENT_REQUESTED_DOMAINS_LABEL } from "@app/components/sandbox/AgentRequestedDomainsSetting";
-import {
-  AUDIT_LOGS_CONFIGURE_EXPORT_LABEL,
-  AUDIT_LOGS_VIEW_LABEL,
-} from "@app/components/workspace/AuditLogsSection";
-import { AUDIT_LOGS_EMIT_LABEL } from "@app/components/workspace/settings/AuditLogsToggle";
-import {
-  ENFORCE_SSO_LABEL,
-  SSO_HEADING_LABEL,
-} from "@app/components/workspace/sso/WorkOSSSOConnection";
-import {
-  ADD_DOMAIN_LABEL,
-  DOMAIN_VERIFICATION_TITLE,
-} from "@app/components/workspace/WorkspaceAccessPanel";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -34,8 +21,8 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.domain,
     [
-      [DOMAIN_VERIFICATION_TITLE, "verified domains domain status"],
-      [ADD_DOMAIN_LABEL, "verify company domain"],
+      ["Domain Verification", "verified domains domain status"],
+      ["Add Domain", "verify company domain"],
     ],
     "identity"
   ),
@@ -43,8 +30,11 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.sso,
     [
-      [SSO_HEADING_LABEL, "workos google oidc saml idp configure de-activate"],
-      [ENFORCE_SSO_LABEL, "disable social logins"],
+      [
+        "Single Sign-On (SSO)",
+        "workos google oidc saml idp configure de-activate",
+      ],
+      ["Enforce SSO login", "disable social logins"],
     ],
     "identity"
   ),
@@ -78,15 +68,15 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.auditLogs,
     [
-      [AUDIT_LOGS_VIEW_LABEL, "workspace activity logs audit"],
-      [AUDIT_LOGS_CONFIGURE_EXPORT_LABEL, "siem export audit"],
+      ["View Logs", "workspace activity logs audit"],
+      ["Configure Export", "siem export audit"],
     ],
     "audit"
   ),
   ...adminSearchEntries(
     PAGE,
     G.audit,
-    [[AUDIT_LOGS_EMIT_LABEL, "emit audit events workos"]],
+    [["Audit logs", "emit audit events workos"]],
     "audit"
   ),
 ];

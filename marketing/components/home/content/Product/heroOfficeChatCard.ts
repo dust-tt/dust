@@ -4,7 +4,7 @@
 // **bold**, * bullet lines, > closer lines, and a reactions footer where
 // emojis arc in from other cast members.
 
-// biome-ignore-all lint/suspicious/noExplicitAny: the engine threads ad-hoc
+// the engine threads ad-hoc
 // fields through SVG/HTML elements (e.g. _chatCard, _planX). Typing them
 // would require a parallel WeakMap and gain little.
 

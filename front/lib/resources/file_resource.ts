@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import path from "node:path";
 
 import config from "@app/lib/api/config";
@@ -56,6 +53,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { destroyAllForWorkspaceInBatches } from "@app/lib/resources/storage/destroy_in_batches";
 import {
   AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
@@ -147,9 +145,6 @@ const FRAME_CONTENT_TYPES = new Set([
   frameSlideshowContentType,
 ]);
 
-const BATCH_DESTROY_SIZE = 10_000;
-const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
-
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
     /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
@@ -185,9 +180,9 @@ export type LegacyFrameFields = Pick<
   | "useCaseMetadata"
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
   static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =
@@ -281,7 +276,7 @@ export class FileResource extends BaseResource<FileModel> {
     const frames = await this.model.findAll({
       // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across workspaces; these IDs come
       // from workspace-scoped sandbox ownership rows.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -306,7 +301,7 @@ export class FileResource extends BaseResource<FileModel> {
     batchSize: number;
   }): Promise<FileResource[]> {
     const frames = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -462,7 +457,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { token },
       // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
       // point we don't know the workspaceId.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {
@@ -613,7 +608,11 @@ export class FileResource extends BaseResource<FileModel> {
 
     await deleteFileViewsForWorkspace(auth);
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
-    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
+    // Invocations FK their function, so they go first.
+    await SandboxFunctionInvocationResource.deleteAllForWorkspace(auth);
+    await destroyAllForWorkspaceInBatches(SandboxFunctionModel, {
+      workspaceModelId,
+    });
     await FramePublicationResource.deleteAllForWorkspace(auth);
     await getPrivateUploadBucket().deleteByPrefix(
       getFramesBasePath({ workspaceId: owner.sId })
@@ -641,44 +640,9 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId: workspaceModelId },
     });
 
-    return this.batchDestroyAllForWorkspace(auth);
-  }
-
-  // A workspace can hold millions of files. Deleting them in a single statement exceeds the
-  // Postgres statement timeout, and the aborted transaction rolls back after having written
-  // gigabytes of WAL, which stalls every other query on the instance. Batching keeps each
-  // statement short and lets the deletion make forward progress across retries.
-  private static async batchDestroyAllForWorkspace(auth: Authenticator) {
-    const owner = auth.getNonNullableWorkspace();
-    const localLogger = logger.child({ workspaceId: owner.id });
-    let deletedCount = 0;
-
-    for (;;) {
-      const batch = await this.model.findAll({
-        attributes: ["id"],
-        where: { workspaceId: owner.id },
-        limit: BATCH_DESTROY_SIZE,
-      });
-
-      if (batch.length === 0) {
-        break;
-      }
-
-      deletedCount += await this.model.destroy({
-        where: {
-          workspaceId: owner.id,
-          id: batch.map((file) => file.id),
-        },
-      });
-
-      localLogger.info({ deletedCount }, "Deleted a batch of workspace files");
-
-      if (batch.length < BATCH_DESTROY_SIZE) {
-        break;
-      }
-    }
-
-    return deletedCount;
+    return destroyAllForWorkspaceInBatches(this.model, {
+      workspaceModelId,
+    });
   }
 
   private static async deleteFrameFunctionModelIds(
@@ -699,26 +663,6 @@ export class FileResource extends BaseResource<FileModel> {
         workspaceId: workspaceModelId,
       },
     });
-  }
-
-  private static async deleteAllFrameFunctionsForWorkspace(
-    workspaceModelId: ModelId
-  ): Promise<void> {
-    for (;;) {
-      const sandboxFunctions = await SandboxFunctionModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId: workspaceModelId },
-        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
-      });
-      if (sandboxFunctions.length === 0) {
-        return;
-      }
-
-      await this.deleteFrameFunctionModelIds(
-        workspaceModelId,
-        sandboxFunctions.map(({ id }) => id)
-      );
-    }
   }
 
   private async deleteFrameFunctions(auth: Authenticator): Promise<void> {
@@ -2281,7 +2225,7 @@ export class FileResource extends BaseResource<FileModel> {
     return { conversationId, spaceId };
   }
 
-  private async verifyAuthorizedFileIdRef(
+  static async verifyAuthorizedFileIdRef(
     auth: Authenticator,
     {
       fileId,
@@ -2353,9 +2297,12 @@ export class FileResource extends BaseResource<FileModel> {
   > {
     switch (fileRef.type) {
       case "fileId": {
-        const verifyResult = await this.verifyAuthorizedFileIdRef(auth, {
-          fileId: fileRef.fileId,
-        });
+        const verifyResult = await FileResource.verifyAuthorizedFileIdRef(
+          auth,
+          {
+            fileId: fileRef.fileId,
+          }
+        );
         if (!verifyResult.verified) {
           return { verified: false };
         }
@@ -2936,6 +2883,28 @@ export class FileResource extends BaseResource<FileModel> {
 
   isSafeToDisplay(): boolean {
     return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
+  }
+
+  /**
+   * @cc [owner:matteotrab,label:security] unattached-conversation-file-uploader-only
+   * A `conversation` or `tool_output` file without `useCaseMetadata.conversationId` (uploaded
+   * before its message is sent, or never sent) MUST be accessible only to: the uploading user when
+   * `userId` is set; any non-system API key when `userId` is null (uploaded with an API key). Any
+   * other caller MUST be denied. Files with a `conversationId` are out of scope: callers MUST
+   * authorize them through the conversation instead.
+   */
+  canAccessUnattachedConversationFile(auth: Authenticator): boolean {
+    assert(
+      isConversationFileUseCase(this.useCase) &&
+        !this.useCaseMetadata?.conversationId,
+      "Only unattached conversation files are authorized by their uploader."
+    );
+
+    if (this.userId !== null) {
+      return auth.user()?.id === this.userId;
+    }
+
+    return auth.isKey();
   }
 
   private static async fetchReadyFileForCopy(
