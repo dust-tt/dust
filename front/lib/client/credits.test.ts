@@ -39,27 +39,29 @@ describe("formatRelativeResetDay", () => {
   });
 
   it.each([
-    ["2025-09-22T10:00:00Z", "today"],
-    ["2025-09-23T00:00:00Z", "today"],
-    ["2025-09-24T00:30:00Z", "tomorrow"],
-    ["2025-09-25T12:00:00Z", "on Thursday"],
-    ["2025-09-29T12:00:00Z", "on Monday"],
-    ["2025-09-30T12:00:00Z", "on Sep 30"],
-    ["2025-10-06T12:00:00Z", "on Oct 6"],
-  ])("labels %s as %s", (isoDate, expected) => {
-    expect(formatRelativeResetDay(isoDate)).toBe(expected);
+    ["2025-09-22T10:00:00Z", "relative", "today"],
+    ["2025-09-23T00:00:00Z", "relative", "today"],
+    ["2025-09-24T00:30:00Z", "relative", "tomorrow"],
+    ["2025-09-25T12:00:00Z", "weekday", "Thursday"],
+    ["2025-09-29T12:00:00Z", "weekday", "Monday"],
+    ["2025-09-30T12:00:00Z", "date", "Sep 30"],
+    ["2025-10-06T12:00:00Z", "date", "Oct 6"],
+  ])("labels %s as %s %s", (isoDate, kind, day) => {
+    expect(formatRelativeResetDay(isoDate)).toEqual({ kind, day });
   });
 
   it("formats in the UI locale, not the format locale", async () => {
     setFormatLocale("fr-FR");
-    expect(formatRelativeResetDay("2025-09-24T00:30:00Z")).toBe("tomorrow");
+    expect(formatRelativeResetDay("2025-09-24T00:30:00Z").day).toBe("tomorrow");
 
     i18n.loadAndActivate({
       locale: "fr-FR",
       messages: await loadCatalog("fr-FR"),
     });
-    expect(formatRelativeResetDay("2025-09-23T12:00:00Z")).toBe("aujourd’hui");
-    expect(formatRelativeResetDay("2025-09-24T00:30:00Z")).toBe("demain");
-    expect(formatRelativeResetDay("2025-09-25T12:00:00Z")).toBe("on jeudi");
+    expect(formatRelativeResetDay("2025-09-23T12:00:00Z").day).toBe(
+      "aujourd’hui"
+    );
+    expect(formatRelativeResetDay("2025-09-24T00:30:00Z").day).toBe("demain");
+    expect(formatRelativeResetDay("2025-09-25T12:00:00Z").day).toBe("jeudi");
   });
 });

@@ -91,7 +91,9 @@ export function ChartTooltipCard({
                 {isString(r.value) ? r.value : formatNumber(r.value)}
               </span>
               {typeof r.percent === "number" && (
-                <span className="text-muted-foreground">({r.percent}%)</span>
+                <span className="text-muted-foreground">
+                  ({formatNumber(r.percent / 100, { style: "percent" })})
+                </span>
               )}
             </li>
           );

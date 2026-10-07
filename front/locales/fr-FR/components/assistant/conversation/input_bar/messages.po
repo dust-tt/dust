@@ -14,8 +14,8 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
-msgid "{contextUsagePercentage}% of context used. <0>Learn more</0>"
-msgstr "{contextUsagePercentage} % du contexte utilisé. <0>En savoir plus</0>"
+msgid "{contextUsagePercent} of context used. <0>Learn more</0>"
+msgstr "{contextUsagePercent} du contexte utilisé. <0>En savoir plus</0>"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
 msgid "Compacting"

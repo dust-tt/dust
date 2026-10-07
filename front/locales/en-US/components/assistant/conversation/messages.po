@@ -158,12 +158,12 @@ msgid "Copy to clipboard"
 msgstr "Copy to clipboard"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
-msgid "{formattedCreditValue} used for this message. View consumption breakdown"
-msgstr "{formattedCreditValue} used for this message. View consumption breakdown"
+msgid "{creditCount, plural, one {{formattedCredits} credit used for this message. View consumption breakdown} other {{formattedCredits} credits used for this message. View consumption breakdown}}"
+msgstr "{creditCount, plural, one {{formattedCredits} credit used for this message. View consumption breakdown} other {{formattedCredits} credits used for this message. View consumption breakdown}}"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
-msgid "{formattedCreditValue} used for this message"
-msgstr "{formattedCreditValue} used for this message"
+msgid "{creditCount, plural, one {{formattedCredits} credit used for this message} other {{formattedCredits} credits used for this message}}"
+msgstr "{creditCount, plural, one {{formattedCredits} credit used for this message} other {{formattedCredits} credits used for this message}}"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
 msgid "More message actions"
@@ -226,8 +226,8 @@ msgid "Frames"
 msgstr "Frames"
 
 #: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
-msgid "Updated {updatedDate}"
-msgstr "Updated {updatedDate}"
+msgid "{updatedDayKind, select, relative {Updated {updatedDay}} lastWeekday {Updated last {updatedDay}} weekday {Updated on {updatedDay}} other {Updated on {updatedDay}}}"
+msgstr "{updatedDayKind, select, relative {Updated {updatedDay}} lastWeekday {Updated last {updatedDay}} weekday {Updated on {updatedDay}} other {Updated on {updatedDay}}}"
 
 #: front/components/assistant/conversation/CompactionMessage.tsx
 msgid "Context compaction failed"
@@ -550,16 +550,16 @@ msgid "The exact charge above is authoritative."
 msgstr "The exact charge above is authoritative."
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
-msgid "{triggeringUserName} stopped this task after it used {formattedCredits}."
-msgstr "{triggeringUserName} stopped this task after it used {formattedCredits}."
+msgid "{creditCount, plural, one {{triggeringUserName} stopped this task after it used {formattedCredits} credit.} other {{triggeringUserName} stopped this task after it used {formattedCredits} credits.}}"
+msgstr "{creditCount, plural, one {{triggeringUserName} stopped this task after it used {formattedCredits} credit.} other {{triggeringUserName} stopped this task after it used {formattedCredits} credits.}}"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
 msgid "{triggeringUserName} stopped this task because it was using a lot of credits."
 msgstr "{triggeringUserName} stopped this task because it was using a lot of credits."
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
-msgid "The user stopped this task after it used {formattedCredits}."
-msgstr "The user stopped this task after it used {formattedCredits}."
+msgid "{creditCount, plural, one {The user stopped this task after it used {formattedCredits} credit.} other {The user stopped this task after it used {formattedCredits} credits.}}"
+msgstr "{creditCount, plural, one {The user stopped this task after it used {formattedCredits} credit.} other {The user stopped this task after it used {formattedCredits} credits.}}"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
 msgid "The user stopped this task because it was using a lot of credits."
@@ -574,8 +574,8 @@ msgid "Paused to avoid excessive credit use"
 msgstr "Paused to avoid excessive credit use"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
-msgid "This task has used {formattedCredits} so far. Continue running it?"
-msgstr "This task has used {formattedCredits} so far. Continue running it?"
+msgid "{creditCount, plural, one {This task has used {formattedCredits} credit so far. Continue running it?} other {This task has used {formattedCredits} credits so far. Continue running it?}}"
+msgstr "{creditCount, plural, one {This task has used {formattedCredits} credit so far. Continue running it?} other {This task has used {formattedCredits} credits so far. Continue running it?}}"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
 msgid "This task has used a lot of credits. Continue running it?"

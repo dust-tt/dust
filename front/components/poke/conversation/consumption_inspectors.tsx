@@ -1,5 +1,6 @@
 import { ConversationCreditUsageBreakdown } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown";
 import { formatCreditValue } from "@app/lib/client/credits";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { usePokeConversationConsumption } from "@app/poke/swr/conversation_consumption";
 import {
   Collapsible,
@@ -75,7 +76,10 @@ export function PokeConversationConsumptionInspector({
             <div className="flex items-baseline justify-between gap-4">
               <span className="text-sm text-muted-foreground">Total used</span>
               <span className="text-lg font-semibold text-foreground">
-                {formatCreditValue(consumption.billedCredits)}
+                {formatCreditValue(
+                  consumption.billedCredits,
+                  defaultLocaleI18n.t
+                )}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">

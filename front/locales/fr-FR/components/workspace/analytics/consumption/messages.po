@@ -141,12 +141,12 @@ msgid "Target consumption"
 msgstr "Consommation cible"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
-msgid "{deltaAmount} ahead of target"
-msgstr "{deltaAmount} au-dessus de la cible"
+msgid "{deltaCreditCount, plural, one {{deltaAmount} credit ahead of target} other {{deltaAmount} credits ahead of target}}"
+msgstr "{deltaCreditCount, plural, one {{deltaAmount} crédit au-dessus de la cible} other {{deltaAmount} crédits au-dessus de la cible}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
-msgid "{deltaAmount} behind target"
-msgstr "{deltaAmount} en dessous de la cible"
+msgid "{deltaCreditCount, plural, one {{deltaAmount} credit behind target} other {{deltaAmount} credits behind target}}"
+msgstr "{deltaCreditCount, plural, one {{deltaAmount} crédit en dessous de la cible} other {{deltaAmount} crédits en dessous de la cible}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
@@ -171,24 +171,24 @@ msgid "This month (partial)"
 msgstr "Ce mois-ci (partiel)"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} so far today"
-msgstr "{total} jusqu’ici aujourd’hui"
+msgid "{creditCount, plural, one {{total} credit so far today} other {{total} credits so far today}}"
+msgstr "{creditCount, plural, one {{total} crédit jusqu’ici aujourd’hui} other {{total} crédits jusqu’ici aujourd’hui}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} so far this week"
-msgstr "{total} jusqu’ici cette semaine"
+msgid "{creditCount, plural, one {{total} credit so far this week} other {{total} credits so far this week}}"
+msgstr "{creditCount, plural, one {{total} crédit jusqu’ici cette semaine} other {{total} crédits jusqu’ici cette semaine}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} so far this month"
-msgstr "{total} jusqu’ici ce mois-ci"
+msgid "{creditCount, plural, one {{total} credit so far this month} other {{total} credits so far this month}}"
+msgstr "{creditCount, plural, one {{total} crédit jusqu’ici ce mois-ci} other {{total} crédits jusqu’ici ce mois-ci}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Active users"
 msgstr "Utilisateurs actifs"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} total"
-msgstr "{total} au total"
+msgid "{creditCount, plural, one {{total} credit total} other {{total} credits total}}"
+msgstr "{creditCount, plural, one {{total} crédit au total} other {{total} crédits au total}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Consumption"

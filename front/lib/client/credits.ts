@@ -12,7 +12,10 @@ import type {
 import { TIMEFRAME_SECONDS } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // Format a number of AWU credits for display (thousands separators, at most
 // one decimal). Shared across the credits usage table and the message /
@@ -38,13 +41,23 @@ export function formatCreditsPrecise(credits: number): string {
   return formatNumber(credits, { maximumFractionDigits: 6 });
 }
 
-export function formatCreditValue(credits: number): string {
-  const displayedCredits = Math.round(credits * 10) / 10;
-  return `${formatCredits(credits)} credit${pluralize(displayedCredits)}`;
+export function roundCredits(credits: number): number {
+  return Math.round(credits * 10) / 10;
 }
 
-export function toolUsageLabel(callCount: number): string {
-  return `${callCount} use${pluralize(callCount)}`;
+export function formatCreditValue(credits: number, t: Translate): string {
+  const displayedCredits = roundCredits(credits);
+  const formattedCredits = formatCredits(credits);
+  return t(
+    msg`${plural(displayedCredits, {
+      one: `${formattedCredits} credit`,
+      other: `${formattedCredits} credits`,
+    })}`
+  );
+}
+
+export function toolUsageLabel(callCount: number, t: Translate): string {
+  return t(msg`${plural(callCount, { one: "# use", other: "# uses" })}`);
 }
 
 export function formatCreditsCompact(credits: number): string {
@@ -62,17 +75,25 @@ export function formatMicroUsdCompact(microUsd: number): string {
   });
 }
 
-// Relative UTC day label for a reset/refill date: "today", "tomorrow", a
-// weekday within the week ("on Monday"), or the calendar date beyond that
-// ("on Oct 6"). Shared by the fair-use and premium-usage reset copy.
+// Relative UTC day of a reset/refill date: "today" or "tomorrow", a weekday within the week
+// ("Monday"), or the calendar date beyond that ("Oct 6"). `kind` lets the caller's message choose
+// the words around the day ("Resets today", "Resets on Monday"). Shared by the fair-use and
+// premium-usage reset copy.
+export interface RelativeResetDay {
+  kind: "relative" | "weekday" | "date";
+  day: string;
+}
+
 /**
  * @cc [owner:sfriquet,label:product] reset-day-in-ui-locale
- * The day label MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
+ * The day MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
  * formatters, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`, which is the
  * browser's when the `localisation` flag is off: a French browser MUST then get "tomorrow", not
- * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`.
+ * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`. The words around the day
+ * ("on …") MUST NOT be part of `day`: callers write them in the message embedding it, selected on
+ * `kind`.
  */
-export function formatRelativeResetDay(isoDate: string): string {
+export function formatRelativeResetDay(isoDate: string): RelativeResetDay {
   const resetAt = new Date(isoDate);
   const now = new Date();
   const resetDayMs = Date.UTC(
@@ -90,21 +111,30 @@ export function formatRelativeResetDay(isoDate: string): string {
   const locale = getActiveLocale();
 
   if (delayDays < 2) {
-    return formatRelativeTime(
-      Math.max(delayDays, 0),
-      "day",
-      { numeric: "auto" },
-      locale
-    );
+    return {
+      kind: "relative",
+      day: formatRelativeTime(
+        Math.max(delayDays, 0),
+        "day",
+        { numeric: "auto" },
+        locale
+      ),
+    };
   }
   if (delayDays < 7) {
-    return `on ${formatDate(resetAt, { weekday: "long", timeZone: "UTC" }, locale)}`;
+    return {
+      kind: "weekday",
+      day: formatDate(resetAt, { weekday: "long", timeZone: "UTC" }, locale),
+    };
   }
-  return `on ${formatDate(
-    resetAt,
-    { month: "short", day: "numeric", timeZone: "UTC" },
-    locale
-  )}`;
+  return {
+    kind: "date",
+    day: formatDate(
+      resetAt,
+      { month: "short", day: "numeric", timeZone: "UTC" },
+      locale
+    ),
+  };
 }
 
 // Browser display only: tolerates an unrecognized timeframe (the server may

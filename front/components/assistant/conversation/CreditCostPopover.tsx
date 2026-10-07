@@ -33,7 +33,7 @@ function toolDescription(
   tool: AgentMessageConsumptionToolDetails,
   t: (descriptor: MessageDescriptor) => string
 ): string {
-  const descriptions = [toolUsageLabel(tool.callCount)];
+  const descriptions = [toolUsageLabel(tool.callCount, t)];
 
   if (tool.pending) {
     descriptions.push(t(msg`Still running`));
@@ -262,7 +262,7 @@ export function CreditCostPopover({
           <dl>
             <CreditDetailRow
               label={t`Charged`}
-              value={formatCreditValue(totalCredits)}
+              value={formatCreditValue(totalCredits, t)}
             />
           </dl>
         </section>
@@ -285,7 +285,7 @@ export function CreditCostPopover({
             <dl>
               <CreditDetailRow
                 label={t`Context and reasoning`}
-                value={formatCreditValue(details.agentWorkCredits)}
+                value={formatCreditValue(details.agentWorkCredits, t)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
               {visibleTools.map((tool) => (
@@ -294,7 +294,7 @@ export function CreditCostPopover({
                   label={tool.label}
                   description={toolDescription(tool, t)}
                   expandLabelOnHover
-                  value={formatCreditValue(tool.attributedCredits)}
+                  value={formatCreditValue(tool.attributedCredits, t)}
                   icon={getActionStepIcon(tool)}
                 />
               ))}
@@ -304,8 +304,8 @@ export function CreditCostPopover({
                     one: "# other tool",
                     other: "# other tools",
                   })}`}
-                  description={toolUsageLabel(remainingToolCallCount)}
-                  value={formatCreditValue(remainingToolCredits)}
+                  description={toolUsageLabel(remainingToolCallCount, t)}
+                  value={formatCreditValue(remainingToolCredits, t)}
                   icon={Plus}
                 />
               )}

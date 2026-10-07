@@ -3,6 +3,7 @@ import { formatAmount } from "@app/components/workspace/billing/seatTypeUtils";
 import { formatPostSummary } from "@app/lib/api/actions/servers/slab/helpers";
 import type { SlabPost } from "@app/lib/api/actions/servers/slab/types";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import { describeWakeUpSchedule } from "@app/lib/client/wakeup_schedule";
 import {
   compareStrings,
   formatCurrency,
@@ -19,16 +20,17 @@ import {
   prefersTwentyFourHourTime,
   setFormatLocale,
 } from "@app/lib/i18n/format";
+import { i18n } from "@app/lib/i18n/i18n";
 import {
   formatCurrencyAmount,
   formatCurrencyAmountCents,
 } from "@app/lib/metronome/amounts";
 import {
   formatDate as formatDatePattern,
+  formatDurationString,
   formatShortDate,
   formatTimestring,
 } from "@app/lib/utils/timestamps";
-import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { SupportedLocale } from "@app/types/locale";
 import { SUPPORTED_LOCALES } from "@app/types/locale";
@@ -366,6 +368,16 @@ describe("date library calls keep their en-US output", () => {
       "3 hours ago"
     );
   });
+
+  it.each([
+    [9 * MINUTE_MS + 12 * SECOND_MS, "9 min 12 sec"],
+    [9 * MINUTE_MS, "9 min"],
+    [45 * SECOND_MS, "45 sec"],
+    [500, "< 1 sec"],
+  ])("formatDurationString keeps its wording for %i ms", (ms, expected) => {
+    setFormatLocale("en-US");
+    expect(formatDurationString(ms)).toBe(expected);
+  });
 });
 
 describe.each([undefined, ...SUPPORTED_LOCALES])(
@@ -394,9 +406,12 @@ describe.each([undefined, ...SUPPORTED_LOCALES])(
     it("describeWakeUpSchedule", () => {
       setFormatLocale(locale);
       expect(
-        describeWakeUpSchedule({
-          scheduleConfig: { type: "one_shot", fireAt: TIMESTAMP },
-        })
+        describeWakeUpSchedule(
+          {
+            scheduleConfig: { type: "one_shot", fireAt: TIMESTAMP },
+          },
+          (descriptor) => i18n._(descriptor)
+        )
       ).toBe(`at ${date.toLocaleTimeString(locale, hourAndMinute)}`);
     });
 

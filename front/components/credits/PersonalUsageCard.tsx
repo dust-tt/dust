@@ -3,9 +3,9 @@ import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   formatCredits,
-  formatCreditValue,
   formatRelativeResetDay,
   getTimeframeSecondsFromLiteral,
+  roundCredits,
 } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate } from "@app/lib/i18n/format";
@@ -21,7 +21,7 @@ import {
   Stars02,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { plural } from "@lingui/core/macro";
+import { plural, select } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 
 interface PersonalUsageCardProps {
@@ -85,7 +85,7 @@ export function PersonalUsageCard({
   const isPremiumModelUsageAtLimit = premiumModelUsage
     ? premiumModelUsage.usedMessages >= premiumModelUsage.limitMessages
     : false;
-  const nextPremiumModelRefillDate = premiumModelUsage?.nextRefill
+  const nextPremiumModelRefillDay = premiumModelUsage?.nextRefill
     ? formatRelativeResetDay(premiumModelUsage.nextRefill.availableAt)
     : null;
   const fairUseCreditsPercentage = fairUseAwuCreditsState
@@ -116,30 +116,65 @@ export function PersonalUsageCard({
     fairUseAwuCreditsState?.windowKind === "fixed" &&
     fairUseAwuCreditsState.nextResetAt
   ) {
-    const resetDay = formatRelativeResetDay(fairUseAwuCreditsState.nextResetAt);
-    fairUseResetLabel = t`Resets ${resetDay}`;
+    const { kind: resetDayKind, day: resetDay } = formatRelativeResetDay(
+      fairUseAwuCreditsState.nextResetAt
+    );
+    fairUseResetLabel = t`${select(resetDayKind, {
+      relative: `Resets ${resetDay}`,
+      weekday: `Resets on ${resetDay}`,
+      other: `Resets on ${resetDay}`,
+    })}`;
   } else if (fairUseWindowDays !== null) {
     fairUseResetLabel = formatRollingResetLabel(fairUseWindowDays);
   }
   let fairUseRefillLabel: string | null = null;
   if (isFairUseCreditsAtLimit && nextFairUseRefill) {
-    const refillCredits = formatCreditValue(nextFairUseRefill.credits);
-    const refillDay = formatRelativeResetDay(nextFairUseRefill.date);
-    fairUseRefillLabel = t`${refillCredits} available again ${refillDay}`;
+    const refillCreditCount = roundCredits(nextFairUseRefill.credits);
+    const refillCredits = formatCredits(nextFairUseRefill.credits);
+    const { kind: refillDayKind, day: refillDay } = formatRelativeResetDay(
+      nextFairUseRefill.date
+    );
+    fairUseRefillLabel = t`${select(refillDayKind, {
+      relative: plural(refillCreditCount, {
+        one: `${refillCredits} credit available again ${refillDay}`,
+        other: `${refillCredits} credits available again ${refillDay}`,
+      }),
+      weekday: plural(refillCreditCount, {
+        one: `${refillCredits} credit available again on ${refillDay}`,
+        other: `${refillCredits} credits available again on ${refillDay}`,
+      }),
+      other: plural(refillCreditCount, {
+        one: `${refillCredits} credit available again on ${refillDay}`,
+        other: `${refillCredits} credits available again on ${refillDay}`,
+      }),
+    })}`;
   }
   const premiumModelWindowDays = premiumModelUsage?.windowDays ?? 0;
   const premiumModelRefillMessages =
     premiumModelUsage?.nextRefill?.messages ?? null;
-  const premiumModelLimitLabel =
-    premiumModelRefillMessages !== null && nextPremiumModelRefillDate
-      ? t`${plural(premiumModelRefillMessages, {
-          one: `# message available again ${nextPremiumModelRefillDate}`,
-          other: `# messages available again ${nextPremiumModelRefillDate}`,
-        })}`
-      : t`${plural(premiumModelWindowDays, {
-          one: "Messages become available # day after use",
-          other: "Messages become available # days after use",
-        })}`;
+  let premiumModelLimitLabel: string;
+  if (premiumModelRefillMessages !== null && nextPremiumModelRefillDay) {
+    const { kind: refillDayKind, day: refillDay } = nextPremiumModelRefillDay;
+    premiumModelLimitLabel = t`${select(refillDayKind, {
+      relative: plural(premiumModelRefillMessages, {
+        one: `# message available again ${refillDay}`,
+        other: `# messages available again ${refillDay}`,
+      }),
+      weekday: plural(premiumModelRefillMessages, {
+        one: `# message available again on ${refillDay}`,
+        other: `# messages available again on ${refillDay}`,
+      }),
+      other: plural(premiumModelRefillMessages, {
+        one: `# message available again on ${refillDay}`,
+        other: `# messages available again on ${refillDay}`,
+      }),
+    })}`;
+  } else {
+    premiumModelLimitLabel = t`${plural(premiumModelWindowDays, {
+      one: "Messages become available # day after use",
+      other: "Messages become available # days after use",
+    })}`;
+  }
   const isLoading = isMyUsageLoading || isFairUseCreditsLoading;
 
   return (

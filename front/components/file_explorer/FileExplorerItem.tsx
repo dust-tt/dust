@@ -20,6 +20,7 @@ import {
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatTimeDistance } from "@app/lib/i18n/format";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
@@ -249,9 +250,12 @@ function getFileSubtitle(
     t
   );
   const timeLabel = entry.lastModifiedMs
-    ? formatTimeDistance(entry.lastModifiedMs, Date.now(), {
-        style: viewMode === "list" ? "long" : "narrow",
-      })
+    ? formatTimeDistance(
+        entry.lastModifiedMs,
+        Date.now(),
+        { style: viewMode === "list" ? "long" : "narrow" },
+        getActiveLocale()
+      )
     : null;
   return [typeLabel, timeLabel].filter(Boolean).join(" - ");
 }

@@ -25,7 +25,7 @@ import {
   computePoolLimitAwuCredits,
   computeSeatUsage,
 } from "@app/lib/api/credits/seat_usage";
-import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
   getUserModelTierMenuItemsWithSelection,
@@ -72,7 +72,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CellContext,
@@ -970,12 +970,18 @@ function buildFairUseCreditsColumn(
             : 0;
       const isAtLimit = limitCredits > 0 && usedCredits >= limitCredits;
       const usedLabel = formatCredits(usedCredits);
-      const limitLabel = formatCreditValue(limitCredits);
+      const limitLabel = formatCredits(limitCredits);
+      const limitCreditCount = roundCredits(limitCredits);
       const bar = (
         <ProgressBar
           aria-label={t(msg`Fair-use credits usage`)}
           aria-valuenow={percentage}
-          aria-valuetext={t(msg`${usedLabel} of ${limitLabel} used`)}
+          aria-valuetext={t(
+            msg`${plural(limitCreditCount, {
+              one: `${usedLabel} of ${limitLabel} credit used`,
+              other: `${usedLabel} of ${limitLabel} credits used`,
+            })}`
+          )}
           className="w-full"
           variant="transparent"
           values={[

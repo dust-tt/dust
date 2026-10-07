@@ -10,7 +10,7 @@ import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg, plural } from "@lingui/core/macro";
+import { msg, plural, select } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 
 interface CreditUsageStateBase {
@@ -128,8 +128,16 @@ function getRollingWindowUsageDescription(
     return getLifetimeUsageDescription(state, t);
   }
   if (state.isFixedWindow && state.nextResetAt) {
-    const resetDay = formatRelativeResetDay(state.nextResetAt);
-    return t(msg`Resets ${resetDay}`);
+    const { kind: resetDayKind, day: resetDay } = formatRelativeResetDay(
+      state.nextResetAt
+    );
+    return t(
+      msg`${select(resetDayKind, {
+        relative: `Resets ${resetDay}`,
+        weekday: `Resets on ${resetDay}`,
+        other: `Resets on ${resetDay}`,
+      })}`
+    );
   }
   const windowDays =
     getTimeframeSecondsFromLiteral(state.timeframe) / (24 * 60 * 60);

@@ -89,6 +89,14 @@ msgid "No memories yet."
 msgstr "Aucune mémoire pour l’instant."
 
 #: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Triggered by {event} events."
+msgstr "Déclenché par les événements {event}."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Triggered by webhook events."
+msgstr "Déclenché par les événements webhook."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
 msgid "Trigger deleted"
 msgstr "Déclencheur supprimé"
 

@@ -1,6 +1,7 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { compareStrings, formatTimeDistance } from "@app/lib/i18n/format";
 import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type {
@@ -300,7 +301,12 @@ function GrantRow({ grant, isRevoking, onRevoke }: GrantRowProps) {
   const label = isDomain ? `@${grant.target.value}` : grant.target.value;
   const now = new Date();
   const grantedBy = grant.grantedBy?.fullName ?? grant.grantedBy?.email;
-  const grantedAgo = formatTimeDistance(new Date(grant.grantedAt), now);
+  const grantedAgo = formatTimeDistance(
+    new Date(grant.grantedAt),
+    now,
+    undefined,
+    getActiveLocale()
+  );
   const grantedLabel = isDomain
     ? grantedBy
       ? t`Added by ${grantedBy} ${grantedAgo}`

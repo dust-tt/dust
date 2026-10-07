@@ -1,5 +1,7 @@
 import {
+  formatList,
   formatDate as formatLocaleDate,
+  formatNumber,
   formatTime,
 } from "@app/lib/i18n/format";
 import {
@@ -78,17 +80,22 @@ export const formatDurationString = (durationMs: number): string => {
   const totalSeconds = Math.floor(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
+  const formatUnit = (value: number, unit: "minute" | "second") =>
+    formatNumber(value, { style: "unit", unit, unitDisplay: "short" });
 
   if (minutes > 0) {
     if (seconds === 0) {
-      return `${minutes} min`;
+      return formatUnit(minutes, "minute");
     }
-    return `${minutes} min ${seconds} sec`;
+    return formatList(
+      [formatUnit(minutes, "minute"), formatUnit(seconds, "second")],
+      { type: "unit", style: "narrow" }
+    );
   }
   if (totalSeconds === 0) {
-    return "< 1 sec";
+    return `< ${formatUnit(1, "second")}`;
   }
-  return `${seconds} sec`;
+  return formatUnit(seconds, "second");
 };
 
 /**

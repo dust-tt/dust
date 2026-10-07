@@ -18,16 +18,16 @@ msgid "{windowDays, plural, one {Resets on a rolling #-day basis} other {Resets 
 msgstr "{windowDays, plural, one {Réinitialisation sur une période glissante de # jour} other {Réinitialisation sur une période glissante de # jours}}"
 
 #: front/components/credits/PersonalUsageCard.tsx
-msgid "Resets {resetDay}"
-msgstr "Réinitialisation {resetDay}"
+msgid "{resetDayKind, select, relative {Resets {resetDay}} weekday {Resets on {resetDay}} other {Resets on {resetDay}}}"
+msgstr "{resetDayKind, select, relative {Réinitialisation {resetDay}} weekday {Réinitialisation {resetDay}} other {Réinitialisation le {resetDay}}}"
 
 #: front/components/credits/PersonalUsageCard.tsx
-msgid "{refillCredits} available again {refillDay}"
-msgstr "Retour de {refillCredits} {refillDay}"
+msgid "{refillDayKind, select, relative {{refillCreditCount, plural, one {{refillCredits} credit available again {refillDay}} other {{refillCredits} credits available again {refillDay}}}} weekday {{refillCreditCount, plural, one {{refillCredits} credit available again on {refillDay}} other {{refillCredits} credits available again on {refillDay}}}} other {{refillCreditCount, plural, one {{refillCredits} credit available again on {refillDay}} other {{refillCredits} credits available again on {refillDay}}}}}"
+msgstr "{refillDayKind, select, relative {{refillCreditCount, plural, one {{refillCredits} crédit à nouveau disponible {refillDay}} other {{refillCredits} crédits à nouveau disponibles {refillDay}}}} weekday {{refillCreditCount, plural, one {{refillCredits} crédit à nouveau disponible {refillDay}} other {{refillCredits} crédits à nouveau disponibles {refillDay}}}} other {{refillCreditCount, plural, one {{refillCredits} crédit à nouveau disponible le {refillDay}} other {{refillCredits} crédits à nouveau disponibles le {refillDay}}}}}"
 
 #: front/components/credits/PersonalUsageCard.tsx
-msgid "{premiumModelRefillMessages, plural, one {# message available again {nextPremiumModelRefillDate}} other {# messages available again {nextPremiumModelRefillDate}}}"
-msgstr "{premiumModelRefillMessages, plural, one {# message à nouveau disponible {nextPremiumModelRefillDate}} other {# messages à nouveau disponibles {nextPremiumModelRefillDate}}}"
+msgid "{refillDayKind, select, relative {{premiumModelRefillMessages, plural, one {# message available again {refillDay}} other {# messages available again {refillDay}}}} weekday {{premiumModelRefillMessages, plural, one {# message available again on {refillDay}} other {# messages available again on {refillDay}}}} other {{premiumModelRefillMessages, plural, one {# message available again on {refillDay}} other {# messages available again on {refillDay}}}}}"
+msgstr "{refillDayKind, select, relative {{premiumModelRefillMessages, plural, one {# message à nouveau disponible {refillDay}} other {# messages à nouveau disponibles {refillDay}}}} weekday {{premiumModelRefillMessages, plural, one {# message à nouveau disponible {refillDay}} other {# messages à nouveau disponibles {refillDay}}}} other {{premiumModelRefillMessages, plural, one {# message à nouveau disponible le {refillDay}} other {# messages à nouveau disponibles le {refillDay}}}}}"
 
 #: front/components/credits/PersonalUsageCard.tsx
 msgid "{premiumModelWindowDays, plural, one {Messages become available # day after use} other {Messages become available # days after use}}"

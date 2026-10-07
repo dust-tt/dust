@@ -3,6 +3,7 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
+import { formatNumber } from "@app/lib/i18n/format";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -93,6 +94,10 @@ export function ContextUsageIndicator({
     return null;
   }
 
+  const contextUsagePercent = formatNumber(contextUsagePercentage / 100, {
+    style: "percent",
+  });
+
   const circleProgressVariant =
     contextUsagePercentage > CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"]
       ? "warning"
@@ -118,7 +123,7 @@ export function ContextUsageIndicator({
           <div className="flex flex-col items-start gap-3">
             <span className="text-sm text-muted-foreground">
               <Trans>
-                {contextUsagePercentage}% of context used.{" "}
+                {contextUsagePercent} of context used.{" "}
                 <LinkWrapper
                   href={COMPACTION_GUIDE_URL}
                   target="_blank"
