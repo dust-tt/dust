@@ -105,6 +105,7 @@ function getTableColumns(
   const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
   const nameColumn: ColumnDef<RowData, string> = {
     id: "name",
+    header: t(msg`Name`),
     meta: {
       className: "w-96",
     },

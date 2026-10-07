@@ -134,6 +134,7 @@ export function DustAppSection() {
     {
       id: "name",
       accessorKey: "name",
+      header: t`Name`,
       cell: ({ row }) => (
         <DataTable.CellContent icon={Terminal}>
           <div className="flex flex-col">

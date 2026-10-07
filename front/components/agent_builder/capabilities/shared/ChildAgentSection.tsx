@@ -110,6 +110,7 @@ export function ChildAgentSection() {
       {
         id: "name",
         accessorKey: "name",
+        header: t`Name`,
         cell: ({ row }) => (
           <DataTable.CellContent avatarUrl={row.original.pictureUrl}>
             <div className="flex flex-col py-1">

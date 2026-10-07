@@ -94,7 +94,7 @@ export function DataTableSkeleton<
                   scope="col"
                   style={{ height: DATA_TABLE_HEADER_HEIGHT_PX[density] }}
                   className={cn(
-                    "heading-sm px-2 capitalize text-foreground",
+                    "heading-sm px-2 text-foreground",
                     ALIGN_TEXT_CLASS[presets.headerAlign],
                     presets.headerClassName,
                     header.column.columnDef.meta?.className

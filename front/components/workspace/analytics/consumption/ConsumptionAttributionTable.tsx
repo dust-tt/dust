@@ -724,7 +724,7 @@ export function ConsumptionAttributionRowsView({
       usageVsAverage: t`Vs workspace avg`,
       costShare: t`Consumption share`,
       totalCredits: t`Total credits`,
-      vsPrev: t`vs prev`,
+      vsPrev: t`Vs prev`,
       addToFilters: t`Add to filters`,
       removeFromFilters: t`Remove from filters`,
       expandBreakdown: (name) => t`Expand breakdown for ${name}`,

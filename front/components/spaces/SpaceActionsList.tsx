@@ -140,6 +140,7 @@ export const SpaceActionsList = ({
     return [
       {
         id: "name",
+        header: t`Name`,
         cell: (info: CellContext<RowData, string>) => (
           <DataTable.CellContent>
             <div className="flex flex-row items-center gap-2 py-3">
@@ -160,6 +161,7 @@ export const SpaceActionsList = ({
       },
       {
         id: "description",
+        header: t`Description`,
         cell: (info: CellContext<RowData, string>) => (
           <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
         ),

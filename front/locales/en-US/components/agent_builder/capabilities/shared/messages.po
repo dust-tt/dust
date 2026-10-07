@@ -48,6 +48,12 @@ msgstr "Search"
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 #: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
 msgid "No description available"
 msgstr "No description available"
 
