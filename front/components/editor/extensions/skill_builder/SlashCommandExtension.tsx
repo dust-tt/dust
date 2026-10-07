@@ -1,6 +1,9 @@
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
-import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
+import {
+  filterSlashCommandItems,
+  withDefaultLocaleSearchText,
+} from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   SlashCommand,
@@ -116,7 +119,7 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
     const commandItems = useMemo(
       () =>
         filterSlashCommandItems(
-          [createAttachKnowledgeSlashCommand(t)],
+          [withDefaultLocaleSearchText(createAttachKnowledgeSlashCommand, t)],
           resolvedQuery
         ),
       [resolvedQuery, t]
@@ -349,7 +352,12 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
   triggerClassName: SLASH_MENU_TRIGGER_CLASS_NAME,
   items: ({ query, options }) =>
     filterSlashCommandItems(
-      [createAttachKnowledgeSlashCommand(options.t)],
+      [
+        withDefaultLocaleSearchText(
+          createAttachKnowledgeSlashCommand,
+          options.t
+        ),
+      ],
       query
     ),
   command: ({ editor, range, props, options, storage }) => {
