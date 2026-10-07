@@ -4,7 +4,7 @@ import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, isMacOS, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
-import { Fragment, Slice } from "@tiptap/pm/model";
+import { Fragment, Mark as ProseMirrorMark, Slice } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
@@ -935,7 +935,10 @@ export const DocumentComments = Extension.create({
               const node = state.schema.nodeFromJSON(json);
               return canCarryCommentMark(node, $from.parent)
                 ? node.mark(
-                    marks.reduce((set, mark) => mark.addToSet(set), node.marks)
+                    ProseMirrorMark.setFrom([
+                      ...node.marks.filter((mark) => mark.type !== markType),
+                      ...marks,
+                    ])
                   )
                 : node;
             })
