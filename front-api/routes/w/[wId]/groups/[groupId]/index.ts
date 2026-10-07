@@ -1,6 +1,7 @@
 import {
   emitGroupManagerAuditLog,
   emitGroupMemberAuditLogs,
+  emitManualGroupLifecycleAuditLog,
 } from "@app/lib/api/groups/audit";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import {
@@ -316,6 +317,11 @@ app.patch(
       }
     }
 
+    emitManualGroupLifecycleAuditLog(auth, {
+      kind: "name_updated",
+      group,
+      previousName: updateRes.value.previousName,
+    });
     emitGroupMemberAuditLogs(auth, group, updateRes.value);
 
     const members = await group.getActiveMembers(auth);
@@ -413,6 +419,12 @@ app.delete(
           assertNever(deleteRes.error.code);
       }
     }
+
+    emitManualGroupLifecycleAuditLog(auth, {
+      kind: "deleted",
+      group,
+      memberCount: deleteRes.value.memberCount,
+    });
 
     return ctx.json({ success: true });
   }

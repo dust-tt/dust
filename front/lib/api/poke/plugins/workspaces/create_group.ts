@@ -1,4 +1,7 @@
-import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import {
+  emitGroupMemberAuditLogs,
+  emitManualGroupLifecycleAuditLog,
+} from "@app/lib/api/groups/audit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -67,6 +70,12 @@ export const createGroupPlugin = createPlugin({
     }
     const { group, addedUsers } = groupRes.value;
 
+    emitManualGroupLifecycleAuditLog(auth, {
+      kind: "created",
+      group,
+      memberCount: addedUsers.length,
+      managerCount: 0,
+    });
     emitGroupMemberAuditLogs(auth, group, { addedUsers, removedUsers: [] });
 
     return new Ok({

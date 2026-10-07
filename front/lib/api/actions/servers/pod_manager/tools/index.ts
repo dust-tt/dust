@@ -62,6 +62,7 @@ import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import { emitSpaceNameUpdatedAuditLog } from "@app/lib/api/spaces/audit";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
@@ -295,6 +296,13 @@ export function createProjectManagerTools(
           if (updateNameRes.isErr()) {
             return new Err(
               new MCPError(updateNameRes.error.message, { tracked: false })
+            );
+          }
+          if (updateNameRes.value.previousName !== null) {
+            emitSpaceNameUpdatedAuditLog(
+              auth,
+              pod,
+              updateNameRes.value.previousName
             );
           }
           updates.title = title.trim();

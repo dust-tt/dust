@@ -1,6 +1,7 @@
 import {
   emitGroupManagerAuditLog,
   emitGroupMemberAuditLogs,
+  emitManualGroupLifecycleAuditLog,
 } from "@app/lib/api/groups/audit";
 import { createGroup } from "@app/lib/api/groups/create";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
@@ -188,6 +189,12 @@ app.post(
     }
     const { group, addedUsers, addedManagers } = groupRes.value;
 
+    emitManualGroupLifecycleAuditLog(auth, {
+      kind: "created",
+      group,
+      memberCount: addedUsers.length,
+      managerCount: addedManagers.length,
+    });
     emitGroupMemberAuditLogs(auth, group, { addedUsers, removedUsers: [] });
     emitGroupManagerAuditLog(auth, group, {
       addedUsers: addedManagers,

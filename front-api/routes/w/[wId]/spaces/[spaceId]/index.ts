@@ -7,6 +7,7 @@ import {
   getSpaceCategoriesWithUsage,
   softDeleteSpaceAndLaunchScrubWorkflow,
 } from "@app/lib/api/spaces";
+import { emitSpaceNameUpdatedAuditLog } from "@app/lib/api/spaces/audit";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -447,6 +448,9 @@ app.patch(
             message: nameRes.error.message,
           },
         });
+      }
+      if (nameRes.value.previousName !== null) {
+        emitSpaceNameUpdatedAuditLog(auth, space, nameRes.value.previousName);
       }
     }
     return ctx.json({ space: space.toJSON() });

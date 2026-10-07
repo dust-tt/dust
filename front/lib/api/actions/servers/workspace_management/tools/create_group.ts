@@ -5,7 +5,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeTextLines } from "@app/lib/api/actions/servers/workspace_management/tools/utils";
-import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import {
+  emitGroupMemberAuditLogs,
+  emitManualGroupLifecycleAuditLog,
+} from "@app/lib/api/groups/audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -33,6 +36,12 @@ export async function createGroup(
   }
   const { group, addedUsers } = groupRes.value;
 
+  emitManualGroupLifecycleAuditLog(auth, {
+    kind: "created",
+    group,
+    memberCount: addedUsers.length,
+    managerCount: 0,
+  });
   emitGroupMemberAuditLogs(auth, group, { addedUsers, removedUsers: [] });
 
   return new Ok([
