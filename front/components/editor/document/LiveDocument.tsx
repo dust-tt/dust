@@ -25,6 +25,7 @@ export default function LiveDocument(props: LiveDocumentProps) {
             document: connection.document,
             awareness: connection.provider.awareness,
             user: { name, color },
+            comments: connection.comments,
           })
         : null,
     [t, connection, name, color]

@@ -1,11 +1,17 @@
 import { documentSchema } from "@app/components/editor/document/content";
 import { loadDfm } from "@app/components/editor/document/dfm_persistence";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
-import { withoutDocumentJSONComments } from "@app/components/editor/document/DocumentComments";
+import {
+  getDocumentComments,
+  withoutDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
 import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import { Err } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
@@ -27,9 +33,33 @@ function sharedDocumentFor(source: string) {
   return { document, commentIds: getMarkedCommentIds(loaded.value.content) };
 }
 
+/** A session's comment side, whose thread pushes the test makes. */
+function fakeCommentChannel() {
+  const listeners = new Set<(comments: DfmComment[]) => void>();
+  let threads: DfmComment[] | null = null;
+  const channel: LiveCommentChannel = {
+    getThreads: () => threads,
+    onThreads: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    send: async () => new Err("unavailable"),
+    close: () => listeners.clear(),
+  };
+  const push = (comments: DfmComment[]) => {
+    threads = comments;
+    listeners.forEach((listener) => listener(comments));
+  };
+  return { channel, push };
+}
+
 function renderLiveEditor(
   document: Y.Doc,
-  { onSave = vi.fn(), initialContent = FIXTURE } = {}
+  {
+    onSave = vi.fn(),
+    initialContent = FIXTURE,
+    comments = fakeCommentChannel().channel,
+  } = {}
 ) {
   return renderHook(() =>
     useDocumentEditor({
@@ -44,6 +74,7 @@ function renderLiveEditor(
           document,
           awareness: null,
           user: { name: "Daph", color: "#0ea5e9" },
+          comments,
         }),
         connected: true,
       },
@@ -87,6 +118,36 @@ describe("useDocumentEditor in a live session", () => {
 
     expect(getMarkedCommentIds(editor.getJSON())).toEqual(commentIds);
     expect(result.current.editable).toBe(true);
+  });
+
+  it("shows the threads the session sends, without touching the shared document", async () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    const { result } = renderLiveEditor(document, { comments: channel });
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+    const before = Y.encodeStateVector(document);
+    const threads: DfmComment[] = [
+      {
+        id: "c-live",
+        status: "resolved",
+        messages: [
+          {
+            author: { kind: "user", id: "usr_daph", name: "Daph" },
+            createdAt: "2026-01-01T00:00:00.000Z",
+            body: "From the session.",
+          },
+        ],
+      },
+    ];
+
+    act(() => push(threads));
+
+    expect(getDocumentComments(editor.state.doc)).toEqual(threads);
+    expect(Y.encodeStateVector(document)).toEqual(before);
   });
 
   it("keeps the anchors through a remote edit, in the editor and the shared document", async () => {

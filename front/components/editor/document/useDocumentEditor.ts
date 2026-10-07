@@ -81,8 +81,9 @@ interface UseDocumentEditorProps {
 /**
  * @cc [owner:PopDaph,label:product] document-live-editing
  * A live editor MUST edit the shared document only: it MUST NOT save, autosave or report a
- * draft, and it is editable only while connected. It shows the file's comment threads, which
- * can be stale; keeping comment marks without a thread is up to the live extensions.
+ * draft, and it is editable only while connected. It shows the file's comment threads until the
+ * live extensions replace them with the session's; keeping comment marks without a thread is up
+ * to the live extensions.
  */
 export const useDocumentEditor = ({
   initialContent,

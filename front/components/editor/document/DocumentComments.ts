@@ -419,6 +419,8 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
+      /** Replaces every thread, keeping the marks; a live document gets its threads this way. */
+      setCommentThreads: (comments: DfmComment[]) => ReturnType;
       /** Replaces the commented text with inline content that keeps the comment. */
       applyCommentSuggestion: (
         id: string,
@@ -898,6 +900,15 @@ export const DocumentComments = Extension.create({
             COMMENTS_ATTRIBUTE,
             comments.filter((comment) => comment.id !== id)
           );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    setCommentThreads:
+      (comments) =>
+      ({ tr, dispatch }) => {
+        if (dispatch) {
+          tr.setDocAttribute(COMMENTS_ATTRIBUTE, comments);
           tr.setMeta("addToHistory", false);
         }
         return true;

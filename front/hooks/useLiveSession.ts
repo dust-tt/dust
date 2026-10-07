@@ -2,6 +2,8 @@ import type {
   DocumentLiveSession,
   LiveStatus,
 } from "@app/components/editor/document/types";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import { createLiveCommentChannel } from "@app/lib/client/live_comments";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
@@ -12,6 +14,7 @@ export interface LiveConnection {
   id: number;
   document: Y.Doc;
   provider: HocuspocusProvider;
+  comments: LiveCommentChannel;
   close: () => void;
 }
 
@@ -71,11 +74,13 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
     let closed = false;
     let destroyed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    let comments: LiveCommentChannel | null = null;
     const close = () => {
       if (destroyed) {
         return;
       }
       destroyed = true;
+      comments?.close();
       if (!closed) {
         closed = true;
         provider.destroy();
@@ -88,6 +93,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         return;
       }
       closed = true;
+      comments?.close();
       provider.destroy();
       if (synced) {
         setStatus("offline");
@@ -110,7 +116,14 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         }
         synced = true;
         failuresRef.current = 0;
-        const next = { id: nextConnectionId++, document, provider, close };
+        comments = createLiveCommentChannel(provider);
+        const next = {
+          id: nextConnectionId++,
+          document,
+          provider,
+          comments,
+          close,
+        };
         shownRef.current = next;
         setConnection(next);
         setStatus("live");
