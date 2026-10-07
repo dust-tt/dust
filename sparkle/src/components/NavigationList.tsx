@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Button } from "@sparkle/components/Button";
@@ -446,6 +447,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const [isShowingAll, setIsShowingAll] = React.useState(false);
 
     const childArray = React.Children.toArray(children);
@@ -527,7 +529,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
                   size="xs"
                   icon={ChevronUp}
                   variant="ghost-secondary"
-                  label="Hide"
+                  label={t`Hide`}
                   onClick={() => setIsShowingAll(false)}
                 />
               ) : (
@@ -535,7 +537,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
                   size="xs"
                   icon={ChevronDown}
                   variant="ghost-secondary"
-                  label="Show all"
+                  label={t`Show all`}
                   isCounter={overflowCount !== undefined && overflowCount > 0}
                   counterValue={String(overflowCount)}
                   className={

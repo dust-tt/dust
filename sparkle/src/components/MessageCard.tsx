@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { CARD_SHADOW } from "@sparkle/components/Card";
 import { cn } from "@sparkle/lib/utils";
@@ -45,6 +46,7 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const handleLearnMore = () => {
       if (onLearnMore) {
         onLearnMore();
@@ -84,14 +86,14 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
               variant="highlight"
               size="sm"
               onClick={handleLearnMore}
-              label="Learn more"
+              label={t`Learn more`}
             />
             {dismissible && onDismiss && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                label="Dismiss"
+                label={t`Dismiss`}
               />
             )}
           </div>

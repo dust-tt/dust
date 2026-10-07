@@ -13,9 +13,140 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/ActionCard.tsx
+msgid "Added"
+msgstr "Ajouté"
+
+#: src/components/ActionCard.tsx
+msgid "Add"
+msgstr "Ajouter"
+
+#: src/components/Bar.tsx
+msgid "Back"
+msgstr "Retour"
+
+#: src/components/Bar.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: src/components/Bar.tsx
+msgid "Delete"
+msgstr "Supprimer"
+
+#: src/components/Bar.tsx
+msgid "Share"
+msgstr "Partager"
+
+#: src/components/Breadcrumbs.tsx
+msgid "Breadcrumb"
+msgstr "Fil d’Ariane"
+
+#: src/components/Chip.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: src/components/ComposerInput.tsx
+msgid "Get work done"
+msgstr "Au travail"
+
+#: src/components/ConversationMessage.tsx
+msgid "Message actions"
+msgstr "Actions du message"
+
+#: src/components/DataTableSkeleton.tsx
+msgid "Loading table"
+msgstr "Chargement du tableau"
+
+#: src/components/DiffBlock.tsx
+#: src/components/LoadMore.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show less"
+msgstr "Afficher moins"
+
+#: src/components/DiffBlock.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr "Afficher plus"
+
+#: src/components/FaviconIcon.tsx
+msgid "Website icon"
+msgstr "Icône du site web"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Creating image"
+msgstr "Création de l’image"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Generated image"
+msgstr "Image générée"
+
+#: src/components/ImagePreview.tsx
+#: src/components/ImageZoomDialog.tsx
+msgid "Download"
+msgstr "Télécharger"
+
+#: src/components/InputWithSave.tsx
+#: src/components/LegacyInputWithSave.tsx
+#: src/components/Toolbar.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Chargement"
+
+#: src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Charger plus"
+
+#: src/components/LoadMore.tsx
 #: src/components/Pagination.tsx
 msgid "{rowCount, plural, one {# item} other {# items}}"
 msgstr "{rowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {#+ élément} other {#+ éléments}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/MessageCard.tsx
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#: src/components/MessageCard.tsx
+msgid "Dismiss"
+msgstr "Ignorer"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Previous page"
+msgstr "Page précédente"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Next page"
+msgstr "Page suivante"
+
+#: src/components/NavigationList.tsx
+msgid "Hide"
+msgstr "Masquer"
+
+#: src/components/NavigationList.tsx
+msgid "Show all"
+msgstr "Tout afficher"
+
+#: src/components/Notification.tsx
+msgid "Dismiss notification"
+msgstr "Ignorer la notification"
+
+#: src/components/Notification.tsx
+msgid "Details"
+msgstr "Détails"
 
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
@@ -24,3 +155,52 @@ msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount,
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
 msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/ProgressBar.tsx
+msgid "Progress"
+msgstr "Progression"
+
+#: src/components/SearchDropdownMenu.tsx
+#: src/components/SearchInput.tsx
+msgid "Search"
+msgstr "Rechercher"
+
+#: src/components/SearchInput.tsx
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#: src/components/Toolbar.tsx
+msgid "Insert link"
+msgstr "Insérer un lien"
+
+#: src/components/Toolbar.tsx
+msgid "Add a link to your message with custom text."
+msgstr "Ajoutez un lien à votre message avec un texte personnalisé."
+
+#: src/components/Toolbar.tsx
+msgid "Text"
+msgstr "Texte"
+
+#: src/components/Toolbar.tsx
+msgid "Link"
+msgstr "Lien"
+
+#: src/components/Toolbar.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: src/components/VoicePicker.tsx
+msgid "Transcribing…"
+msgstr "Transcription…"
+
+#: src/components/VoicePicker.tsx
+msgid "Release to stop"
+msgstr "Relâchez pour arrêter"
+
+#: src/components/VoicePicker.tsx
+msgid "Stop recording"
+msgstr "Arrêter l’enregistrement"
+
+#: src/components/VoicePicker.tsx
+msgid "Click, or press and hold to record"
+msgstr "Cliquez, ou maintenez appuyé pour enregistrer"

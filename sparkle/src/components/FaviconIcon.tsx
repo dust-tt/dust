@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Globe01 } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -38,6 +39,7 @@ export function FaviconIcon({
   size = "sm",
   className,
 }: FaviconIconProps) {
+  const { t } = useLingui();
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -76,7 +78,7 @@ export function FaviconIcon({
     >
       <img
         src={finalFaviconUrl}
-        alt="Website icon"
+        alt={t`Website icon`}
         className={cn("object-contain", faviconVariants({ size }))}
         onError={handleError}
         onLoad={handleLoad}

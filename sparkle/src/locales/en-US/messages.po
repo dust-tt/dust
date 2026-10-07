@@ -13,9 +13,140 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/ActionCard.tsx
+msgid "Added"
+msgstr "Added"
+
+#: src/components/ActionCard.tsx
+msgid "Add"
+msgstr "Add"
+
+#: src/components/Bar.tsx
+msgid "Back"
+msgstr "Back"
+
+#: src/components/Bar.tsx
+msgid "Close"
+msgstr "Close"
+
+#: src/components/Bar.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: src/components/Bar.tsx
+msgid "Share"
+msgstr "Share"
+
+#: src/components/Breadcrumbs.tsx
+msgid "Breadcrumb"
+msgstr "Breadcrumb"
+
+#: src/components/Chip.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: src/components/ComposerInput.tsx
+msgid "Get work done"
+msgstr "Get work done"
+
+#: src/components/ConversationMessage.tsx
+msgid "Message actions"
+msgstr "Message actions"
+
+#: src/components/DataTableSkeleton.tsx
+msgid "Loading table"
+msgstr "Loading table"
+
+#: src/components/DiffBlock.tsx
+#: src/components/LoadMore.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show less"
+msgstr "Show less"
+
+#: src/components/DiffBlock.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr "Show more"
+
+#: src/components/FaviconIcon.tsx
+msgid "Website icon"
+msgstr "Website icon"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Creating image"
+msgstr "Creating image"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Generated image"
+msgstr "Generated image"
+
+#: src/components/ImagePreview.tsx
+#: src/components/ImageZoomDialog.tsx
+msgid "Download"
+msgstr "Download"
+
+#: src/components/InputWithSave.tsx
+#: src/components/LegacyInputWithSave.tsx
+#: src/components/Toolbar.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Load more"
+
+#: src/components/LoadMore.tsx
 #: src/components/Pagination.tsx
 msgid "{rowCount, plural, one {# item} other {# items}}"
 msgstr "{rowCount, plural, one {# item} other {# items}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+
+#: src/components/MessageCard.tsx
+msgid "Learn more"
+msgstr "Learn more"
+
+#: src/components/MessageCard.tsx
+msgid "Dismiss"
+msgstr "Dismiss"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Previous page"
+msgstr "Previous page"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Next page"
+msgstr "Next page"
+
+#: src/components/NavigationList.tsx
+msgid "Hide"
+msgstr "Hide"
+
+#: src/components/NavigationList.tsx
+msgid "Show all"
+msgstr "Show all"
+
+#: src/components/Notification.tsx
+msgid "Dismiss notification"
+msgstr "Dismiss notification"
+
+#: src/components/Notification.tsx
+msgid "Details"
+msgstr "Details"
 
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
@@ -24,3 +155,52 @@ msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plura
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
 msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+
+#: src/components/ProgressBar.tsx
+msgid "Progress"
+msgstr "Progress"
+
+#: src/components/SearchDropdownMenu.tsx
+#: src/components/SearchInput.tsx
+msgid "Search"
+msgstr "Search"
+
+#: src/components/SearchInput.tsx
+msgid "Select all"
+msgstr "Select all"
+
+#: src/components/Toolbar.tsx
+msgid "Insert link"
+msgstr "Insert link"
+
+#: src/components/Toolbar.tsx
+msgid "Add a link to your message with custom text."
+msgstr "Add a link to your message with custom text."
+
+#: src/components/Toolbar.tsx
+msgid "Text"
+msgstr "Text"
+
+#: src/components/Toolbar.tsx
+msgid "Link"
+msgstr "Link"
+
+#: src/components/Toolbar.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/components/VoicePicker.tsx
+msgid "Transcribing…"
+msgstr "Transcribing…"
+
+#: src/components/VoicePicker.tsx
+msgid "Release to stop"
+msgstr "Release to stop"
+
+#: src/components/VoicePicker.tsx
+msgid "Stop recording"
+msgstr "Stop recording"
+
+#: src/components/VoicePicker.tsx
+msgid "Click, or press and hold to record"
+msgstr "Click, or press and hold to record"

@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Avatar } from "@sparkle/components/Avatar";
 import type { Button } from "@sparkle/components/Button";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessages";
@@ -188,6 +189,7 @@ const ConversationMessageHeader = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     return (
       <div
         ref={ref}
@@ -228,7 +230,7 @@ const ConversationMessageHeader = React.forwardRef<
                     icon={DotsHorizontal}
                     size="xs"
                     variant="highlight-ghost"
-                    aria-label="Message actions"
+                    aria-label={t`Message actions`}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>

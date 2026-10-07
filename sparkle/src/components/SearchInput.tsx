@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import { ContentMessage } from "@sparkle/components/ContentMessage";
@@ -48,7 +49,7 @@ export interface SearchInputProps {
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   (
     {
-      placeholder = "Search",
+      placeholder,
       id,
       value,
       onChange,
@@ -62,6 +63,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const clearInputField = () => {
       onChange("");
     };
@@ -75,7 +77,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           type="text"
           name={name}
           autoComplete="off"
-          placeholder={placeholder}
+          placeholder={placeholder ?? t`Search`}
           value={value}
           onChange={(e) => {
             onChange(e.target.value);
@@ -188,6 +190,7 @@ function BaseSearchInputWithPopover<T>(
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
 ) {
+  const { t } = useLingui();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const showHeader =
@@ -299,7 +302,7 @@ function BaseSearchInputWithPopover<T>(
                   variant="ghost"
                   size="xs"
                   onClick={onSelectAll}
-                  label="Select all"
+                  label={t`Select all`}
                   icon={CheckDone01}
                 />
               )}

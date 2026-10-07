@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +43,7 @@ export function SearchDropdownMenu({
   minLengthToOpen = 1,
   children,
 }: SearchDropdownMenuProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,7 +61,7 @@ export function SearchDropdownMenu({
         <SearchInput
           ref={searchInputRef}
           name="search"
-          placeholder="Search"
+          placeholder={t`Search`}
           className="w-full"
           value={searchInputValue}
           disabled={disabled}

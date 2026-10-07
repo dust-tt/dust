@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   AlertCircle,
   Bell01,
@@ -109,6 +110,7 @@ export function NotificationContent({
   /** Called each time the details are expanded or collapsed. */
   onToggleDetails?: (open: boolean) => void;
 }) {
+  const { t } = useLingui();
   const icon = resolveIcon(type);
   const foreground = resolveForeground(type);
 
@@ -151,7 +153,7 @@ export function NotificationContent({
               "mt-[2px] shrink-0 cursor-pointer opacity-60 transition-opacity hover:opacity-100",
               foreground
             )}
-            aria-label="Dismiss notification"
+            aria-label={t`Dismiss notification`}
           >
             <Icon visual={XClose} size="xs" />
           </button>
@@ -160,7 +162,9 @@ export function NotificationContent({
       {details && (
         <Collapsible className="pl-6" onOpenChange={onToggleDetails}>
           <CollapsibleTrigger>
-            <span className={cn("copy-xs", foreground)}>Details</span>
+            <span className={cn("copy-xs", foreground)}>
+              <Trans>Details</Trans>
+            </span>
           </CollapsibleTrigger>
           {/* Not animated: the toast's height is measured right after the toggle, so the details
               must already be at their final size. */}

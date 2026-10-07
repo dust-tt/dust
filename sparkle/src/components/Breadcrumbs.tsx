@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import {
   Button,
   type ButtonVariantType,
@@ -350,9 +351,10 @@ interface BreadcrumbRootProps {
 
 /** Composable breadcrumb root: a nav landmark wrapping BreadcrumbItem children. */
 export function Breadcrumb({ children, className }: BreadcrumbRootProps) {
+  const { t } = useLingui();
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={t`Breadcrumb`}
       className={cn("flex flex-row items-center gap-0", className)}
     >
       {children}

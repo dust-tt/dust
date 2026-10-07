@@ -1,3 +1,5 @@
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type {
   ButtonProps,
   RegularButtonSize,
@@ -71,6 +73,7 @@ export function VoicePicker({
   pressDelayMs = DEFAULT_PRESS_DELAY_MS,
   buttonProps,
 }: VoicePickerProps): React.ReactElement {
+  const { t } = useLingui();
   const [interactionMode, setInteractionMode] =
     React.useState<VoicePickerInteractionMode>("hold");
   const interactionModeRef = React.useRef<VoicePickerInteractionMode>("hold");
@@ -289,7 +292,9 @@ export function VoicePicker({
     : shouldShowStop && showStopLabel
       ? "Stop"
       : undefined;
-  const tooltip = computeTooltip(interactionMode, isRecording, isTranscribing);
+  const tooltip = t(
+    computeTooltip(interactionMode, isRecording, isTranscribing)
+  );
 
   return (
     <div className="flex items-center">
@@ -365,17 +370,17 @@ function computeTooltip(
   mode: VoicePickerInteractionMode,
   isRecording: boolean,
   isTranscribing: boolean
-): string {
+) {
   if (isTranscribing) {
-    return "Transcribing…";
+    return msg`Transcribing…`;
   }
   if (mode === "hold" && isRecording) {
-    return "Release to stop";
+    return msg`Release to stop`;
   }
   if (isRecording) {
-    return "Stop recording";
+    return msg`Stop recording`;
   }
-  return "Click, or Press & Hold to record";
+  return msg`Click, or press and hold to record`;
 }
 
 function formatTime(seconds: number): string {

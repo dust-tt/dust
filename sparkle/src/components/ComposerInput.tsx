@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   useCallback,
@@ -114,7 +115,7 @@ export const ComposerInput = React.forwardRef<
     onSubmit,
     onFocus,
     onBlur,
-    placeholder = "Get work done",
+    placeholder,
     disabled = false,
     autoFocus = false,
     suggestions = EMPTY_SUGGESTIONS,
@@ -122,6 +123,7 @@ export const ComposerInput = React.forwardRef<
   },
   ref
 ) {
+  const { t } = useLingui();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useImperativeHandle<HTMLTextAreaElement | null, HTMLTextAreaElement | null>(
     ref,
@@ -274,7 +276,7 @@ export const ComposerInput = React.forwardRef<
           onBlur={onBlur}
           disabled={disabled}
           autoFocus={autoFocus}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t`Get work done`}
           rows={1}
           className={textareaClassName}
         />
