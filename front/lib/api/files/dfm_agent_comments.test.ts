@@ -40,7 +40,6 @@ function stored(content: string, revision: string) {
   return new Ok({
     stream: Readable.from([Buffer.from(content, "utf8")]),
     contentType: "text/markdown",
-    sizeBytes: content.length,
     revision,
   });
 }
@@ -92,7 +91,6 @@ describe("addAgentComment", () => {
       new Ok({
         stream: Readable.from([Buffer.from(SOURCE, "utf8")]),
         contentType: "text/markdown",
-        sizeBytes: SOURCE.length,
       })
     );
 

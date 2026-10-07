@@ -582,9 +582,10 @@ function mapMarkdownCheckError(
     case "file_too_large":
       return {
         status_code: 413,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "file_too_large", message: error.message },
       };
 
+    case "unsupported_content_type":
     case "not_available":
     case "unavailable_file":
     case "invalid_position":

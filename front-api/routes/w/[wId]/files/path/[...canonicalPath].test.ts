@@ -1539,7 +1539,7 @@ describe("comment signatures on Markdown saves", () => {
       return { workspace, path };
     };
 
-    it("leaves a file stored as a type the write refuses to the write", async () => {
+    it("refuses a file stored as a type the write refuses", async () => {
       const { workspace, path } = await setupStored(
         "%PDF-1.7",
         "application/pdf"
@@ -1570,6 +1570,7 @@ describe("comment signatures on Markdown saves", () => {
       });
 
       expect(response.status).toBe(413);
+      expect((await response.json()).error.type).toBe("file_too_large");
     });
 
     it("validates a plain-text file within the write limit", async () => {

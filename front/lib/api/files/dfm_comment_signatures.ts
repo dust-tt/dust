@@ -20,7 +20,7 @@ import {
   parseDfm,
   serializeDfm,
 } from "@app/lib/markdown/dfm";
-import { streamToBuffer } from "@app/lib/utils/streams";
+import { streamToBoundedBuffer, streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { contentTypeFromFileName, stripMimeParameters } from "@app/types/files";
@@ -45,6 +45,7 @@ export type DfmCommentSignatureErrorCode =
   | "altered_message"
   | "moved_message"
   | "unreadable_file"
+  | "unsupported_content_type"
   | "file_too_large";
 
 export class DfmCommentSignatureError extends Error {
@@ -494,8 +495,9 @@ export interface MarkdownCommentsCheck {
  * in a workspace with `co_edition` the write MUST be bound to the stored state it was classified
  * against: it MUST return the stored file's revision, or for an absent file the revision that
  * only matches an absent file, and MUST validate the write instead when storage has no revision,
- * refusing it with `file_too_large` when the stored file exceeds the write size limit. A file
- * stored with a content type the write refuses MUST NOT be read nor validated.
+ * refusing it with `file_too_large`, without reading past the limit, when the stored file exceeds
+ * the write size limit. A write to a file stored with a content type other than `text/*` or
+ * `application/json` MUST be refused with `unsupported_content_type` without reading the file.
  * A stored file that still exists but cannot be read MUST refuse the write with
  * `unreadable_file`, never count as absent; one deleted before it could be read counts as absent.
  * Other writes, such as archive extraction and sandbox or plain agent file writes, are not
@@ -520,13 +522,17 @@ export async function validateMarkdownCommentsForWrite(
     return new Err(unreadableFileError());
   }
   const stored = read.value;
-  // The write refuses a file stored with a content type it cannot write, so it is never read.
   if (
     stored &&
     !isPathWritableContentType(stripMimeParameters(stored.contentType))
   ) {
     stored.stream.on("error", () => undefined).destroy();
-    return new Ok({ revision: stored.revision, newMessages: null });
+    return new Err(
+      new DfmCommentSignatureError(
+        "unsupported_content_type",
+        "Only text and JSON files can be updated through this endpoint."
+      )
+    );
   }
 
   // The editor opens a file by its stored content type, so a file stored as Markdown is
@@ -548,23 +554,28 @@ export async function validateMarkdownCommentsForWrite(
       }
       return new Ok({ revision: classifiedRevision, newMessages: null });
     }
-    // Validating instead reads the whole stored file, so it is bounded like the write itself.
-    if (stored && stored.sizeBytes > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
-      stored.stream.on("error", () => undefined).destroy();
-      return new Err(
-        new DfmCommentSignatureError(
-          "file_too_large",
-          `This file exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit and cannot be updated.`
-        )
-      );
-    }
   }
 
   let storedText: string | null = null;
   let storedRevision = stored?.revision;
   if (stored) {
-    const buffer = await streamToBuffer(stored.stream);
+    // Validating a file that is not Markdown is the fallback for storage without revisions, so
+    // its read is bounded like the write itself.
+    const buffer = isMarkdown
+      ? await streamToBuffer(stored.stream)
+      : await streamToBoundedBuffer(
+          stored.stream,
+          WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
+        );
     if (buffer.isOk()) {
+      if (buffer.value === null) {
+        return new Err(
+          new DfmCommentSignatureError(
+            "file_too_large",
+            `This file exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit and cannot be updated.`
+          )
+        );
+      }
       storedText = decodeBuffer(buffer.value);
     } else {
       // A file deleted between its lookup and its read is absent, not unreadable.
