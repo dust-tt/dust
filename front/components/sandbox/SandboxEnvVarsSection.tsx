@@ -48,15 +48,12 @@ import {
   Trash01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useMemo, useState } from "react";
 import { useController, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-
-const NAME_HELPER_TEXT =
-  "Uppercase letters, digits and underscores. Up to 64 characters after the prefix.";
-
-const ALLOWED_DOMAINS_HELPER_TEXT =
-  "Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.";
 
 function parseAllowedDomainsText(value: string): string[] {
   return value
@@ -72,102 +69,112 @@ function getEnvVarSuffix(envVar: SandboxEnvVarType): string {
     : envVar.name;
 }
 
-function labelForKind(kind: SandboxEnvVarKind): string {
+function labelForKind(kind: SandboxEnvVarKind): MessageDescriptor | null {
   switch (kind) {
     case "config":
-      return "Config";
+      return msg`Config`;
     case "https_secret":
-      return "HTTPS secret";
+      return msg`HTTPS secret`;
     default:
       assertNeverAndIgnore(kind);
-      return "";
+      return null;
   }
 }
 
-const formSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, NAME_HELPER_TEXT)
-      .regex(
-        ENV_VAR_NAME_SUFFIX_REGEX,
-        "Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters."
-      ),
-    value: z.string().min(1, "Value is required."),
-    kind: z.enum(SANDBOX_ENV_VAR_KINDS),
-    allowedDomainsText: z.string(),
-  })
-  .superRefine((data, ctx) => {
-    const valueBytes = new TextEncoder().encode(data.value).length;
+function useFormSchema() {
+  const { t } = useLingui();
 
-    switch (data.kind) {
-      case "config": {
-        if (data.value.includes("\u0000")) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["value"],
-            message: "Values cannot contain NUL bytes.",
-          });
-        }
-        if (valueBytes > MAX_VALUE_BYTES) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["value"],
-            message: "Values cannot exceed 32 KiB.",
-          });
-        }
-        return;
-      }
+  return useMemo(
+    () =>
+      z
+        .object({
+          name: z
+            .string()
+            .min(
+              1,
+              t`Uppercase letters, digits and underscores. Up to 64 characters after the prefix.`
+            )
+            .regex(
+              ENV_VAR_NAME_SUFFIX_REGEX,
+              t`Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters.`
+            ),
+          value: z.string().min(1, t`Value is required.`),
+          kind: z.enum(SANDBOX_ENV_VAR_KINDS),
+          allowedDomainsText: z.string(),
+        })
+        .superRefine((data, ctx) => {
+          const valueBytes = new TextEncoder().encode(data.value).length;
 
-      case "https_secret": {
-        if (/[\u0000-\u001F\u007F]/.test(data.value)) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["value"],
-            message: "HTTPS secret values cannot contain ASCII control bytes.",
-          });
-        }
-        if (valueBytes > MAX_HTTPS_SECRET_VALUE_BYTES) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["value"],
-            message: `HTTPS secret values cannot exceed ${
-              MAX_HTTPS_SECRET_VALUE_BYTES / 1_024
-            } KiB.`,
-          });
-        }
+          switch (data.kind) {
+            case "config": {
+              if (data.value.includes("\u0000")) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["value"],
+                  message: t`Values cannot contain NUL bytes.`,
+                });
+              }
+              if (valueBytes > MAX_VALUE_BYTES) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["value"],
+                  message: t`Values cannot exceed 32 KiB.`,
+                });
+              }
+              return;
+            }
 
-        const allowedDomains = parseAllowedDomainsText(data.allowedDomainsText);
-        if (allowedDomains.length === 0) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["allowedDomainsText"],
-            message: "HTTPS secrets require at least one allowed domain.",
-          });
-          return;
-        }
+            case "https_secret": {
+              if (/[\u0000-\u001F\u007F]/.test(data.value)) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["value"],
+                  message: t`HTTPS secret values cannot contain ASCII control bytes.`,
+                });
+              }
+              if (valueBytes > MAX_HTTPS_SECRET_VALUE_BYTES) {
+                const maxKiB = MAX_HTTPS_SECRET_VALUE_BYTES / 1_024;
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["value"],
+                  message: t`HTTPS secret values cannot exceed ${maxKiB} KiB.`,
+                });
+              }
 
-        const normalizedDomains =
-          normalizeHttpsSecretAllowedDomains(allowedDomains);
-        if (normalizedDomains.isErr()) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["allowedDomainsText"],
-            message: normalizedDomains.error.message,
-          });
-        }
-        return;
-      }
-    }
-  });
+              const allowedDomains = parseAllowedDomainsText(
+                data.allowedDomainsText
+              );
+              if (allowedDomains.length === 0) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["allowedDomainsText"],
+                  message: t`HTTPS secrets require at least one allowed domain.`,
+                });
+                return;
+              }
 
-type FormValues = z.infer<typeof formSchema>;
+              const normalizedDomains =
+                normalizeHttpsSecretAllowedDomains(allowedDomains);
+              if (normalizedDomains.isErr()) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["allowedDomainsText"],
+                  message: normalizedDomains.error.message,
+                });
+              }
+              return;
+            }
+          }
+        }),
+    [t]
+  );
+}
 
-const WORKSPACE_ENV_VARS_DESCRIPTION =
-  "Secrets mounted as env vars on every Computer in this workspace.";
-const POD_ENV_VARS_DESCRIPTION =
-  "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers.";
-const POD_ENV_VARS_READ_ONLY_DESCRIPTION = `${POD_ENV_VARS_DESCRIPTION} Workspace admins manage these variables.`;
+type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
+
+const WORKSPACE_ENV_VARS_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this workspace.`;
+const POD_ENV_VARS_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers.`;
+const POD_ENV_VARS_READ_ONLY_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers. Workspace admins manage these variables.`;
 
 const DEFAULT_FORM_VALUES: FormValues = {
   name: "",
@@ -189,17 +196,17 @@ interface SandboxEnvVarsSectionProps {
   canEdit?: boolean;
 }
 
-export const ENVIRONMENT_VARIABLES_LABEL = "Environment variables";
-export const HTTPS_SECRETS_LABEL = "HTTPS secrets (DSEC_)";
-export const CONFIG_ENV_VARS_LABEL = `Config (${SANDBOX_ENV_VAR_PREFIX})`;
-export const WRITE_ONLY_ENV_VALUES_LABEL = "Write-only values";
-
 export function SandboxEnvVarsSection({
   owner,
   spaceId,
   disabled = false,
   canEdit,
 }: SandboxEnvVarsSectionProps) {
+  const { t } = useLingui();
+  const formSchema = useFormSchema();
+  const nameHelperText = t`Uppercase letters, digits and underscores. Up to 64 characters after the prefix.`;
+  const allowedDomainsHelperText = t`Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.`;
+  const savedAsMessage = (domains: string) => t`Will be saved as ${domains}.`;
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
@@ -264,25 +271,24 @@ export function SandboxEnvVarsSection({
   const nameMessage = (() => {
     if (errors.name) {
       return {
-        message: errors.name.message ?? NAME_HELPER_TEXT,
+        message: errors.name.message ?? nameHelperText,
         isError: true,
       };
     }
     if (nameValue.length === 0) {
-      return { message: NAME_HELPER_TEXT, isError: false };
+      return { message: nameHelperText, isError: false };
     }
     if (isNameTakenByOtherKind) {
+      const existingName = existingEnvVarForSuffix?.name ?? fullName;
       return {
-        message: `A variable with this suffix already exists as ${
-          existingEnvVarForSuffix?.name ?? fullName
-        }.`,
+        message: t`A variable with this suffix already exists as ${existingName}.`,
         isError: true,
       };
     }
     return {
       message: isReplacing
-        ? "A variable with this name already exists. Saving will replace its value."
-        : "This name can be saved.",
+        ? t`A variable with this name already exists. Saving will replace its value.`
+        : t`This name can be saved.`,
       isError: false,
     };
   })();
@@ -295,12 +301,11 @@ export function SandboxEnvVarsSection({
       kindValue === "https_secret"
         ? MAX_HTTPS_SECRET_VALUE_BYTES
         : MAX_VALUE_BYTES;
-    const suffix =
-      kindValue === "https_secret"
-        ? "ASCII control bytes are not allowed."
-        : "Multiline values are allowed.";
     return {
-      message: `${valueBytes} / ${maxBytes} bytes. ${suffix}`,
+      message:
+        kindValue === "https_secret"
+          ? t`${valueBytes} / ${maxBytes} bytes. ASCII control bytes are not allowed.`
+          : t`${valueBytes} / ${maxBytes} bytes. Multiline values are allowed.`,
       isError: false,
     };
   })();
@@ -317,7 +322,7 @@ export function SandboxEnvVarsSection({
 
     const allowedDomains = parseAllowedDomainsText(allowedDomainsTextValue);
     if (allowedDomains.length === 0) {
-      return { message: ALLOWED_DOMAINS_HELPER_TEXT, isError: false };
+      return { message: allowedDomainsHelperText, isError: false };
     }
 
     const normalizedDomains =
@@ -327,7 +332,7 @@ export function SandboxEnvVarsSection({
     }
 
     return {
-      message: `Will be saved as ${normalizedDomains.value.join(", ")}.`,
+      message: savedAsMessage(normalizedDomains.value.join(", ")),
       isError: false,
     };
   })();
@@ -345,12 +350,16 @@ export function SandboxEnvVarsSection({
     domainsDialogParsed.length > 0
       ? normalizeHttpsSecretAllowedDomains(domainsDialogParsed)
       : null;
+  const domainsDialogSavedDomains =
+    domainsDialogNormalized?.isOk() === true
+      ? domainsDialogNormalized.value.join(", ")
+      : null;
   const domainsDialogMessage =
     domainsDialogNormalized?.isErr() === true
       ? domainsDialogNormalized.error.message
-      : domainsDialogNormalized?.isOk() === true
-        ? `Will be saved as ${domainsDialogNormalized.value.join(", ")}.`
-        : ALLOWED_DOMAINS_HELPER_TEXT;
+      : domainsDialogSavedDomains !== null
+        ? savedAsMessage(domainsDialogSavedDomains)
+        : allowedDomainsHelperText;
   const isDomainsDialogInvalid = domainsDialogNormalized?.isErr() === true;
   const canSaveDomains =
     domainsDialogNormalized?.isOk() === true &&
@@ -442,11 +451,16 @@ export function SandboxEnvVarsSection({
     }
   };
 
+  const configureDomainsEnvVarName = envVarToConfigureDomains?.name;
+  const envVarToDeleteName = envVarToDelete?.name;
+
   const renderBody = () => {
     if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Computer administration is not enabled for this workspace.
+          <Trans>
+            Computer administration is not enabled for this workspace.
+          </Trans>
         </ContentMessage>
       );
     }
@@ -459,9 +473,9 @@ export function SandboxEnvVarsSection({
           variant="warning"
           icon={InfoCircle}
           size="lg"
-          title="Failed to load"
+          title={t`Failed to load`}
         >
-          The Computer environment variables could not be loaded.
+          <Trans>The Computer environment variables could not be loaded.</Trans>
         </ContentMessage>
       );
     }
@@ -469,14 +483,14 @@ export function SandboxEnvVarsSection({
     const podDescription = allowEdit
       ? POD_ENV_VARS_DESCRIPTION
       : POD_ENV_VARS_READ_ONLY_DESCRIPTION;
-    const description = spaceId
-      ? podDescription
-      : WORKSPACE_ENV_VARS_DESCRIPTION;
+    const description = t(
+      spaceId ? podDescription : WORKSPACE_ENV_VARS_DESCRIPTION
+    );
 
     return (
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
-          title={ENVIRONMENT_VARIABLES_LABEL}
+          title={t`Environment variables`}
           description={description}
         />
 
@@ -485,31 +499,37 @@ export function SandboxEnvVarsSection({
             variant="primary"
             icon={InfoCircle}
             size="lg"
-            title="Choose the right kind for each value"
+            title={t`Choose the right kind for each value`}
           >
             <div className="flex flex-col gap-2">
               <div>
-                <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
-                anything sensitive. Stored encrypted on the host. The dsbx
-                forwarder injects the value only into outbound HTTPS requests to
-                the domains you whitelist; code running in the Computer never
-                sees the raw value. Safe for API keys, tokens, and other secrets
-                bound to a known external service.
+                <Trans>
+                  <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
+                  anything sensitive. Stored encrypted on the host. The dsbx
+                  forwarder injects the value only into outbound HTTPS requests
+                  to the domains you whitelist; code running in the Computer
+                  never sees the raw value. Safe for API keys, tokens, and other
+                  secrets bound to a known external service.
+                </Trans>
               </div>
               <div>
-                <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
-                non-sensitive configuration: feature flags, identifiers, public
-                endpoints, model names. Mounted as plain env vars on every new
-                Computer and read directly by the agent and the code it runs.
-                Anything you put here should be safe to log; do not use for
-                credentials.
+                <Trans>
+                  <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
+                  non-sensitive configuration: feature flags, identifiers,
+                  public endpoints, model names. Mounted as plain env vars on
+                  every new Computer and read directly by the agent and the code
+                  it runs. Anything you put here should be safe to log; do not
+                  use for credentials.
+                </Trans>
               </div>
               <div>
-                Values are write-only: they cannot be viewed after saving, only
-                overwritten or deleted. Env vars are snapshotted when the
-                Computer starts: an already-running Computer keeps its original
-                values, and any new Computer (new conversation, restart) picks
-                up the latest.
+                <Trans>
+                  Values are write-only: they cannot be viewed after saving,
+                  only overwritten or deleted. Env vars are snapshotted when the
+                  Computer starts: an already-running Computer keeps its
+                  original values, and any new Computer (new conversation,
+                  restart) picks up the latest.
+                </Trans>
               </div>
             </div>
           </ContentMessage>
@@ -518,7 +538,7 @@ export function SandboxEnvVarsSection({
         {allowEdit && (
           <div className="flex justify-end">
             <Button
-              label="Add variable"
+              label={t`Add variable`}
               icon={Plus}
               onClick={openAddDialog}
               disabled={isUpsertingSandboxEnvVar}
@@ -528,13 +548,18 @@ export function SandboxEnvVarsSection({
 
         {envVars.length === 0 ? (
           <ContentMessage variant="primary" size="lg">
-            No environment variables yet.
+            <Trans>No environment variables yet.</Trans>
           </ContentMessage>
         ) : (
           <ListGroup>
             {envVars.map((envVar) => {
+              const envVarName = envVar.name;
+              const kindLabel = labelForKind(envVar.kind);
+              const updatedAgo = timeAgoFrom(envVar.updatedAt, {
+                useLongFormat: true,
+              });
               const updatedBy =
-                envVar.lastUpdatedByName ?? envVar.createdByName ?? "Unknown";
+                envVar.lastUpdatedByName ?? envVar.createdByName ?? t`Unknown`;
               const isAnyMutationPending =
                 isUpsertingSandboxEnvVar ||
                 isDeletingSandboxEnvVar ||
@@ -550,9 +575,9 @@ export function SandboxEnvVarsSection({
                       {envVar.name}
                     </pre>
                     <div className="text-xs text-muted-foreground">
-                      Updated{" "}
-                      {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
-                      by {updatedBy}
+                      <Trans>
+                        Updated {updatedAgo} by {updatedBy}
+                      </Trans>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Chip
@@ -560,7 +585,7 @@ export function SandboxEnvVarsSection({
                         color={
                           envVar.kind === "https_secret" ? "warning" : "info"
                         }
-                        label={labelForKind(envVar.kind)}
+                        label={kindLabel ? t(kindLabel) : ""}
                       />
                       {envVar.kind === "https_secret" &&
                         envVar.allowedDomains?.map((domain) => (
@@ -581,8 +606,8 @@ export function SandboxEnvVarsSection({
                         icon={envVar.kind === "config" ? Lock01 : Globe01}
                         tooltip={
                           envVar.kind === "config"
-                            ? `Promote ${envVar.name} to HTTPS secret`
-                            : `Edit allowed domains for ${envVar.name}`
+                            ? t`Promote ${envVarName} to HTTPS secret`
+                            : t`Edit allowed domains for ${envVarName}`
                         }
                         disabled={isAnyMutationPending}
                         onClick={() => openConfigureDomainsDialog(envVar)}
@@ -591,7 +616,7 @@ export function SandboxEnvVarsSection({
                         variant="outline"
                         size="mini"
                         icon={Edit04}
-                        tooltip={`Replace value of ${envVar.name}`}
+                        tooltip={t`Replace value of ${envVarName}`}
                         disabled={isAnyMutationPending}
                         onClick={() => openReplaceDialog(envVar)}
                       />
@@ -599,7 +624,7 @@ export function SandboxEnvVarsSection({
                         variant="warning"
                         size="mini"
                         icon={Trash01}
-                        tooltip={`Delete ${envVar.name}`}
+                        tooltip={t`Delete ${envVarName}`}
                         disabled={isAnyMutationPending}
                         onClick={() => setEnvVarToDelete(envVar)}
                       />
@@ -627,7 +652,11 @@ export function SandboxEnvVarsSection({
         <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>
-              {isReplacing ? "Replace variable" : "Add variable"}
+              {isReplacing ? (
+                <Trans>Replace variable</Trans>
+              ) : (
+                <Trans>Add variable</Trans>
+              )}
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -636,9 +665,13 @@ export function SandboxEnvVarsSection({
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col">
-                      <Label>HTTPS secret</Label>
+                      <Label>
+                        <Trans>HTTPS secret</Trans>
+                      </Label>
                       <span className="text-xs text-muted-foreground">
-                        Keep the value out of the Computer environment.
+                        <Trans>
+                          Keep the value out of the Computer environment.
+                        </Trans>
                       </span>
                     </div>
                     <SliderToggle
@@ -660,28 +693,30 @@ export function SandboxEnvVarsSection({
                     size="sm"
                   >
                     {kindValue === "https_secret" ? (
-                      <>
+                      <Trans>
                         Stored securely. The dsbx forwarder injects it only into
                         outbound HTTPS requests to whitelisted domains; Computer
                         code never reads it.
-                      </>
+                      </Trans>
                     ) : (
-                      <>
+                      <Trans>
                         Mounted as a prefixed env var on every new Computer and
                         read directly by the agent and any code it runs. Use for
                         non-sensitive values.
-                      </>
+                      </Trans>
                     )}
                   </ContentMessage>
                 </div>
               ) : null}
               <div className="flex flex-col gap-1">
-                <Label htmlFor="sandbox-env-var-name">Name</Label>
+                <Label htmlFor="sandbox-env-var-name">
+                  <Trans>Name</Trans>
+                </Label>
                 <div className="relative">
                   <span
                     className="pointer-events-none absolute left-3 top-0 flex h-9 select-none items-center text-sm text-muted-foreground"
                     aria-hidden="true"
-                    title={`The ${namePrefix} prefix is reserved and cannot be removed.`}
+                    title={t`The ${namePrefix} prefix is reserved and cannot be removed.`}
                   >
                     {namePrefix}
                   </span>
@@ -714,12 +749,12 @@ export function SandboxEnvVarsSection({
                   aria-disabled={kindValue !== "https_secret"}
                 >
                   <Input
-                    label="Allowed domains"
-                    placeholder="e.g. api.openai.com, *.mistral.ai"
+                    label={t`Allowed domains`}
+                    placeholder={t`e.g. api.openai.com, *.mistral.ai`}
                     message={
                       kindValue === "https_secret"
                         ? allowedDomainsMessage?.message
-                        : "Only used when HTTPS secret is on."
+                        : t`Only used when HTTPS secret is on.`
                     }
                     messageStatus={
                       kindValue === "https_secret" &&
@@ -735,7 +770,9 @@ export function SandboxEnvVarsSection({
                 </div>
               ) : null}
               <div className="flex flex-col gap-1">
-                <Label htmlFor="sandbox-env-var-value">Value</Label>
+                <Label htmlFor="sandbox-env-var-value">
+                  <Trans>Value</Trans>
+                </Label>
                 <TextArea
                   id="sandbox-env-var-value"
                   autoComplete="off"
@@ -745,7 +782,7 @@ export function SandboxEnvVarsSection({
                   data-lpignore="true"
                   data-form-type="other"
                   minRows={8}
-                  placeholder="Paste the secret value"
+                  placeholder={t`Paste the secret value`}
                   error={valueMessage.isError ? valueMessage.message : null}
                   showErrorLabel={false}
                   resize="vertical"
@@ -766,12 +803,12 @@ export function SandboxEnvVarsSection({
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               onClick: closeDialog,
             }}
             rightButtonProps={{
-              label: isReplacing ? "Replace" : "Save",
+              label: isReplacing ? t`Replace` : t`Save`,
               icon: Lock01,
               onClick: () => {
                 void handleSubmit(onSubmit)();
@@ -796,9 +833,13 @@ export function SandboxEnvVarsSection({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {envVarToConfigureDomains.kind === "config"
-                  ? `Promote ${envVarToConfigureDomains.name}`
-                  : `Allowed domains for ${envVarToConfigureDomains.name}`}
+                {envVarToConfigureDomains.kind === "config" ? (
+                  <Trans>Promote {configureDomainsEnvVarName}</Trans>
+                ) : (
+                  <Trans>
+                    Allowed domains for {configureDomainsEnvVarName}
+                  </Trans>
+                )}
               </DialogTitle>
             </DialogHeader>
             <DialogContainer>
@@ -807,18 +848,21 @@ export function SandboxEnvVarsSection({
                   <ContentMessage
                     variant="warning"
                     icon={InfoCircle}
-                    title="Promotion only takes effect on next wake"
+                    title={t`Promotion only takes effect on next wake`}
                   >
-                    Running Computers keep the previous {SANDBOX_ENV_VAR_PREFIX}
-                    -prefixed value in their env until they are restarted. New
-                    Computers will receive the promoted secret only via
-                    egress-time substitution to the allowed domains.
+                    <Trans>
+                      Running Computers keep the previous{" "}
+                      {SANDBOX_ENV_VAR_PREFIX}-prefixed value in their env until
+                      they are restarted. New Computers will receive the
+                      promoted secret only via egress-time substitution to the
+                      allowed domains.
+                    </Trans>
                   </ContentMessage>
                 ) : null}
                 <Input
-                  label="Allowed domains"
+                  label={t`Allowed domains`}
                   name="sandbox-env-var-allowed-domains"
-                  placeholder="e.g. api.openai.com, *.mistral.ai"
+                  placeholder={t`e.g. api.openai.com, *.mistral.ai`}
                   value={domainsText}
                   message={domainsDialogMessage}
                   messageStatus={isDomainsDialogInvalid ? "error" : "info"}
@@ -829,7 +873,7 @@ export function SandboxEnvVarsSection({
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
                 onClick: () => {
                   setEnvVarToConfigureDomains(null);
@@ -839,8 +883,8 @@ export function SandboxEnvVarsSection({
               rightButtonProps={{
                 label:
                   envVarToConfigureDomains.kind === "config"
-                    ? "Promote"
-                    : "Save",
+                    ? t`Promote`
+                    : t`Save`,
                 icon:
                   envVarToConfigureDomains.kind === "config" ? Lock01 : Globe01,
                 onClick: () => {
@@ -865,20 +909,24 @@ export function SandboxEnvVarsSection({
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete {envVarToDelete.name}</DialogTitle>
+              <DialogTitle>
+                <Trans>Delete {envVarToDeleteName}</Trans>
+              </DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              Are you sure you want to delete{" "}
-              <strong>{envVarToDelete.name}</strong>?
+              <Trans>
+                Are you sure you want to delete{" "}
+                <strong>{envVarToDeleteName}</strong>?
+              </Trans>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
                 onClick: () => setEnvVarToDelete(null),
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: t`Delete`,
                 variant: "warning",
                 onClick: () => {
                   void handleDelete();

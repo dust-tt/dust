@@ -1,7 +1,11 @@
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { labelForSelection } from "@app/components/sandbox/SandboxScopeSelector";
+import { i18n } from "@app/lib/i18n/i18n";
 import type { SandboxAdminPod } from "@app/types/api/sandbox/egress_policy";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 const pods: SandboxAdminPod[] = [
   { sId: "vlt_a", name: "Alpha", isRestricted: false },
@@ -17,41 +21,49 @@ function selection(
 
 describe("labelForSelection", () => {
   it("returns the placeholder when nothing is selected", () => {
-    expect(labelForSelection(selection(), pods)).toBe("Select scope");
+    expect(labelForSelection(selection(), pods, translate)).toBe(
+      "Select scope"
+    );
   });
 
   it("labels the workspace alone", () => {
-    expect(labelForSelection(selection({ includeWorkspace: true }), pods)).toBe(
-      "Workspace"
-    );
+    expect(
+      labelForSelection(selection({ includeWorkspace: true }), pods, translate)
+    ).toBe("Workspace");
   });
 
   it("names a single selected Pod", () => {
-    expect(labelForSelection(selection({ podIds: ["vlt_b"] }), pods)).toBe(
-      "Beta"
-    );
+    expect(
+      labelForSelection(selection({ podIds: ["vlt_b"] }), pods, translate)
+    ).toBe("Beta");
   });
 
   it("counts multiple selected Pods", () => {
     expect(
-      labelForSelection(selection({ podIds: ["vlt_a", "vlt_b"] }), pods)
+      labelForSelection(
+        selection({ podIds: ["vlt_a", "vlt_b"] }),
+        pods,
+        translate
+      )
     ).toBe("2 Pods");
   });
 
-  it("collapses every Pod to 'all Pods'", () => {
+  it("collapses every Pod to 'All Pods'", () => {
     expect(
       labelForSelection(
         selection({ podIds: ["vlt_a", "vlt_b", "vlt_c"] }),
-        pods
+        pods,
+        translate
       )
-    ).toBe("all Pods");
+    ).toBe("All Pods");
   });
 
   it("combines the workspace and a Pod", () => {
     expect(
       labelForSelection(
         selection({ includeWorkspace: true, podIds: ["vlt_a"] }),
-        pods
+        pods,
+        translate
       )
     ).toBe("Workspace + Alpha");
   });
@@ -63,7 +75,8 @@ describe("labelForSelection", () => {
           includeWorkspace: true,
           podIds: ["vlt_a", "vlt_b", "vlt_c"],
         }),
-        pods
+        pods,
+        translate
       )
     ).toBe("All scopes");
   });
@@ -72,7 +85,8 @@ describe("labelForSelection", () => {
     expect(
       labelForSelection(
         selection({ includeWorkspace: true, podIds: ["vlt_a", "vlt_gone"] }),
-        pods
+        pods,
+        translate
       )
     ).toBe("Workspace + Alpha");
   });
@@ -82,7 +96,8 @@ describe("labelForSelection", () => {
     expect(
       labelForSelection(
         selection({ includeWorkspace: true, podIds: ["vlt_a", "vlt_gone"] }),
-        [pods[0], pods[1]]
+        [pods[0], pods[1]],
+        translate
       )
     ).toBe("Workspace + Alpha");
   });
