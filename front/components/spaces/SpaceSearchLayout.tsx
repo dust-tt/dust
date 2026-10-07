@@ -230,7 +230,6 @@ function BackendSearch({
     React.useState<DataSourceViewType | null>(null);
   const [effectiveContentNode, setEffectiveContentNode] =
     React.useState<LightContentNode | null>(null);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = React.useState<
     UrlCandidate | NodeCandidate | null
@@ -256,7 +255,6 @@ function BackendSearch({
     debouncedValue: debouncedSearch,
     isDebouncing,
     setValue: setSearchValue,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = useDebounce(searchParam.value || "", {
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
@@ -747,7 +745,6 @@ function SearchResultsTable({
 
   // Transform search results into format for DataTable.
   const rows: RowData[] = React.useMemo(() => {
-    // eslint-disable-next-line react-hooks/refs
     return searchResultNodes.map((node) => {
       const { dataSourceView, internalId: parentId } = node;
 

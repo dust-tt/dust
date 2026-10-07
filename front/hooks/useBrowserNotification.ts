@@ -39,7 +39,6 @@ export function useBrowserNotification(): UseBrowserNotificationApi {
             // Call the onClick callback if provided.
             await options?.onClick?.();
           };
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_) {
           // Silently ignore errors to avoid noisy logs as per logging policy.
         }

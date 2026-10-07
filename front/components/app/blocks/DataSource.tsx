@@ -62,18 +62,15 @@ export default function DataSource({
 
   const handleAddTagsIn = (tag: string) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.in) {
       b.config.filter.tags.in = [];
     }
@@ -84,18 +81,15 @@ export default function DataSource({
 
   const handleRemoveTagsIn = (index?: number) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.in) {
       b.config.filter.tags.in = [];
     }
@@ -118,18 +112,15 @@ export default function DataSource({
 
   const handleAddTagsNot = (tag: string) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.not) {
       b.config.filter.tags.not = [];
     }
@@ -140,18 +131,15 @@ export default function DataSource({
 
   const handleRemoveTagsNot = (index?: number) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.not) {
       b.config.filter.tags.not = [];
     }
@@ -233,7 +221,6 @@ export default function DataSource({
             <DataSourcePicker
               owner={owner}
               readOnly={readOnly}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               currentDataSources={block.config.data_sources || []}
               space={app.space}
               onDataSourcesUpdate={(dataSources) => {
@@ -258,7 +245,6 @@ export default function DataSource({
             </Label>
             <div className="flex flex-initial font-normal">
               <Checkbox
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 checked={block.spec.full_text || false}
                 onCheckedChange={(checked) => handleFullTextChange(!!checked)}
                 disabled={readOnly}
@@ -354,7 +340,6 @@ export default function DataSource({
                           />
                         )}
                         <div className="flex flex-row gap-1">
-                          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                           {(block.config.filter?.tags?.in || []).map(
                             (tag: string, i: number) => (
                               <Chip
@@ -406,7 +391,6 @@ export default function DataSource({
                         )}
                         <div className="flex flex-row items-center">
                           <div className="flex flex-row gap-1">
-                            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                             {(block.config.filter?.tags?.not || []).map(
                               (tag: string, i: number) => (
                                 <Chip

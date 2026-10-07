@@ -170,7 +170,6 @@ export function SearchResultDetails({
               }`,
               title: node.title,
               icon: <IconComponent />,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: node.sourceUrl || undefined,
             };
           });
@@ -185,7 +184,6 @@ export function SearchResultDetails({
               }`,
               title: metadata.title,
               icon: <IconComponent />,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: metadata.sourceUrl || undefined,
             },
           ];

@@ -371,7 +371,6 @@ export function AgentDetailsBody({
             )}
             hideButton={isInSidePanel}
           >
-            {/* eslint-disable-next-line react-hooks/static-components */}
             <DescriptionSection />
           </SheetHeader>
           <SheetContainer className="pb-4">

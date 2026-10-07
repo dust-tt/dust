@@ -26,7 +26,6 @@ export function AppSpecificationPage() {
     }
     try {
       const spec = JSON.parse(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         app.savedSpecification || "[]"
       ) as SpecificationType;
       // Note: We don't have access to latestDatasets here, so we pass an empty object.

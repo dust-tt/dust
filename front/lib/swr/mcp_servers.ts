@@ -122,7 +122,6 @@ export function useMCPServer({
   }
 
   return {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     server: data?.server || null,
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,
@@ -1138,7 +1137,6 @@ export function useAddMCPServerToSpace(
 
           if (!response.ok) {
             const body = await response.json();
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             throw new Error(body.error?.message || "Unknown error");
           }
 

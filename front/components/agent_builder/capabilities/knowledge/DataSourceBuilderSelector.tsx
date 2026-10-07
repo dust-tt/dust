@@ -349,7 +349,6 @@ export const DataSourceBuilderSelector = ({
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
           {(currentNode || currentDataSourceView) && isSearching && (
             <div className="flex items-center gap-1 px-1 py-1">
               <span className="mr-2 text-sm text-muted-foreground">

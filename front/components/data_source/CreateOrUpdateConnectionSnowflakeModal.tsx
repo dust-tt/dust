@@ -465,8 +465,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     type="password"
                     value={
                       "private_key_passphrase" in credentials
-                        ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                          credentials.private_key_passphrase || ""
+                        ? credentials.private_key_passphrase || ""
                         : ""
                     }
                     placeholder={t`Leave empty if key is not encrypted`}
@@ -515,7 +514,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               e.preventDefault();
               e.stopPropagation();
               setIsLoading(true);
-              // eslint-disable-next-line no-unused-expressions
               dataSourceToUpdate
                 ? await updateSnowflakeConnection()
                 : await createSnowflakeConnection();

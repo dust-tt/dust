@@ -31,9 +31,7 @@ export function DataSourceNodeContentDetails({
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { metadata, text } = dataSourceNodeContent || {};
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { sourceUrl } = metadata || {};
 
   return (
@@ -53,7 +51,6 @@ export function DataSourceNodeContentDetails({
               onClick={
                 sourceUrl ? () => window.open(sourceUrl, "_blank") : undefined
               }
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               tooltip={`${metadata.parentTitle || metadata.path}${metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""}`}
             >
               <CitationIcons>
@@ -86,7 +83,6 @@ export function FilesystemPathDetails({
     ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { path } = filesystemPath || { path: [] };
 
   const breadcrumbItems: BreadcrumbsItem[] = path?.map((item) =>

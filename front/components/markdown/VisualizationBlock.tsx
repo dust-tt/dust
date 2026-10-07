@@ -29,7 +29,6 @@ export function VisualizationBlock({
 
   const visualizationRenderer = useMemo(() => {
     return (
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       customRenderer?.visualization ||
       (() => (
         <div className="pb-2 pt-4 font-medium text-warning">
@@ -92,7 +91,6 @@ export function visualizationDirective() {
   return (tree: any) => {
     visit(tree, ["containerDirective"], (node) => {
       if (node.name === "visualization") {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "visualization";
         data.hProperties = {

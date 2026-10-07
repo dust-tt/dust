@@ -443,7 +443,6 @@ This rule has no attributes
   it("should work on deep-nested instruction blocks with NBSP", () => {
     editor.commands.setContent(
       // Contains NBSP before the `1. something`
-      // eslint-disable-next-line no-irregular-whitespace
       `<prompt>\n<instructions>\n<do>\n    1. something\n</do>\n</instructions>\n</prompt>`,
       {
         contentType: "markdown",
