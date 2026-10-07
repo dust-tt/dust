@@ -4,15 +4,15 @@ import type {
   CatalogKind,
   CatalogQuery,
   CatalogView,
-  DiscoverSkill,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   buildCatalogQuery,
   getItemDescription,
   getItemId,
   getItemName,
+  interleaveCatalogItems,
   toHydratedAgentCatalogItem,
-  toHydratedSkillCatalogItem,
+  toSearchSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   trackDiscoverItemDetailsOpen,
@@ -25,7 +25,7 @@ import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -75,15 +75,6 @@ const CATALOG_KINDS: { id: CatalogKind; label: MessageDescriptor }[] = [
   { id: "agent", label: msg`Agents` },
   { id: "skill", label: msg`Skills` },
 ];
-
-function skillSearchString(skill: DiscoverSkill): string {
-  return [
-    skill.name,
-    ...(skill.relations.editors ?? []).map((editor) => editor.fullName),
-  ]
-    .join(" ")
-    .toLowerCase();
-}
 
 function capitalizeWords(text: string): string {
   return text.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -145,7 +136,7 @@ interface CatalogSourceProps extends CatalogActions {
   onClearFilters: () => void;
 }
 
-function HydratedCatalog({
+function FavoritesCatalog({
   owner,
   query,
   search,
@@ -157,12 +148,25 @@ function HydratedCatalog({
 }: CatalogSourceProps) {
   const { agentConfigurations, isLoading: isAgentsLoading } =
     useUnifiedAgentConfigurations({ workspaceId: owner.sId });
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      withUsage: true,
-    });
+  const {
+    skills,
+    resolvedSearchTerm,
+    isSkillsLoading,
+    isSkillsError,
+    hasMore,
+    loadMore,
+  } = useSearchSkillsInfinite({
+    owner,
+    searchTerm: query.searchTerm,
+    limit: query.limit,
+    selectionMode: "favorites_only",
+    disabled: !query.showSkills,
+  });
+  // Filter local agents with the displayed skills' query so both lists update together.
+  const itemsQuery = useMemo(
+    () => ({ ...query, searchTerm: resolvedSearchTerm ?? query.searchTerm }),
+    [query, resolvedSearchTerm]
+  );
 
   const activeAgents = useMemo(
     () => agentConfigurations.filter((a) => a.status === "active"),
@@ -181,55 +185,31 @@ function HydratedCatalog({
   );
 
   const items = useMemo(() => {
-    const agents = query.showAgents
+    const agents = itemsQuery.showAgents
       ? activeAgents
           .filter(
             (agent) =>
-              (query.view !== "favorites" || agent.userFavorite) &&
-              (query.view !== "mine" || agent.canEdit) &&
-              (query.tagId === null ||
-                agent.tags.some((tag) => tag.sId === query.tagId)) &&
-              (!query.searchTerm ||
-                subFilter(query.searchTerm, getAgentSearchString(agent)))
+              agent.userFavorite &&
+              (itemsQuery.tagId === null ||
+                agent.tags.some((tag) => tag.sId === itemsQuery.tagId)) &&
+              (!itemsQuery.searchTerm ||
+                subFilter(itemsQuery.searchTerm, getAgentSearchString(agent)))
           )
-          .map((agent) => ({
-            item: toHydratedAgentCatalogItem(agent),
-            searchString: getAgentSearchString(agent),
-            sortName: agent.name.toLowerCase(),
-            usage: agent.usage?.messageCount ?? 0,
-          }))
-      : [];
-    const skills = query.showSkills
-      ? skillsWithRelations
-          .filter(
-            (skill) =>
-              (query.view !== "favorites" || !!skill.isFavorite) &&
-              (query.view !== "mine" || skill.canWrite) &&
-              (!query.searchTerm ||
-                subFilter(query.searchTerm, skillSearchString(skill)))
+          .sort(
+            (a, b) =>
+              (itemsQuery.searchTerm
+                ? compareForFuzzySort(
+                    itemsQuery.searchTerm,
+                    getAgentSearchString(a),
+                    getAgentSearchString(b)
+                  )
+                : 0) ||
+              compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
           )
-          .map((skill) => ({
-            item: toHydratedSkillCatalogItem(skill),
-            searchString: skillSearchString(skill),
-            sortName: skill.name.toLowerCase(),
-            usage: skill.usage ?? 0,
-          }))
+          .map(toHydratedAgentCatalogItem)
       : [];
-    return [...agents, ...skills]
-      .sort(
-        (a, b) =>
-          (query.searchTerm
-            ? compareForFuzzySort(
-                query.searchTerm,
-                a.searchString,
-                b.searchString
-              )
-            : 0) ||
-          (query.view === "popular" ? b.usage - a.usage : 0) ||
-          compareStrings(a.sortName, b.sortName)
-      )
-      .map(({ item }) => item);
-  }, [activeAgents, query, skillsWithRelations]);
+    return interleaveCatalogItems(agents, skills.map(toSearchSkillCatalogItem));
+  }, [activeAgents, itemsQuery, skills]);
 
   return (
     <CatalogLayout
@@ -241,10 +221,11 @@ function HydratedCatalog({
     >
       <CatalogResults
         items={items}
-        itemsQuery={query}
-        isLoading={isAgentsLoading || isSkillsWithRelationsLoading}
-        hasError={false}
-        hasNextPage={false}
+        itemsQuery={itemsQuery}
+        isLoading={isAgentsLoading || isSkillsLoading}
+        hasError={isSkillsError}
+        hasNextPage={query.showSkills && hasMore}
+        onLoadMore={loadMore}
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
         {...actions}
@@ -335,7 +316,7 @@ export function DiscoverCatalog({
     setSearchTerm(searchTerm);
   }, [searchTerm, setSearchTerm]);
 
-  // Favorites stay hydrated because search results have no favorite flag.
+  // The Favorites view keeps agents in the database and searches only favorite skills.
   const useSearch = filters.view !== "favorites";
   const query = useMemo(
     () =>
@@ -382,7 +363,7 @@ export function DiscoverCatalog({
       {...actions}
     />
   ) : (
-    <HydratedCatalog
+    <FavoritesCatalog
       owner={owner}
       query={query}
       search={search}
