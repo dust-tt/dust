@@ -316,12 +316,12 @@ msgstr "JSON formaté"
 #: src/components/markdown/CodeBlockWithExtendedSupport.tsx
 msgctxt "tooltip, show the JSON source text"
 msgid "Switch to Raw JSON"
-msgstr "Afficher le JSON brut"
+msgstr "Passer en JSON brut"
 
 #: src/components/markdown/CodeBlockWithExtendedSupport.tsx
 msgctxt "tooltip, show the JSON as a formatted tree"
 msgid "Switch to Pretty View"
-msgstr "Afficher la vue formatée"
+msgstr "Passer en JSON formaté"
 
 #: src/components/markdown/ContentBlockWrapper.tsx
 msgctxt "verb, copy to clipboard"
