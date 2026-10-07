@@ -133,7 +133,7 @@
     "/api/v1/w/{wId}/analytics/consumption/export": {
       "post": {
         "summary": "Export consumption analytics",
-        "description": "Export per-call consumption analytics for the workspace identified by {wId}.\nEach row represents one unit of billed credit consumption (an LLM call or a tool call).\nThe export can be filtered by various dimensions (agents, users, API keys, groups, models, tools, skills, sources, tags).\nThe export is limited to a maximum of 30 days per request and times out after 10 seconds: reduce the time range\nor apply filters to reduce the number of rows if you encounter a timeout.\nResults are streamed, if an error occurs, an error message is appended and the stream is closed.\n",
+        "description": "Export per-call consumption analytics for the workspace identified by {wId}.\nEach row represents one unit of billed credit consumption (an LLM call or a tool call).\nThe export can be filtered by various dimensions (agents, users, API keys, groups, models, tools, skills, sources, tags).\nThe export is limited to a maximum of 30 days per request and times out after 10 seconds: reduce the time range\nor apply filters to reduce the number of rows if you encounter a timeout.\nResults are streamed, if an error occurs, an error message is appended and the stream is closed.\n\nAn admin API key can export the whole workspace. Any other API key must filter on `groups`, and\nmust be allowed to read the analytics of every group listed. The rows then cover the messages of\nthe users who were members of those groups when the message was sent, and the `userGroupIds`\nand `userGroupNames` columns only list the requested groups.\n",
         "tags": [
           "Analytics"
         ],
@@ -218,7 +218,7 @@
                           "type": "string",
                           "maxLength": 256
                         },
-                        "description": "Group IDs to filter on"
+                        "description": "Group IDs to filter on. Required, with at least one non-empty value, unless the\nAPI key has admin scope.\n"
                       },
                       "models": {
                         "type": "array",
@@ -288,7 +288,7 @@
             "description": "Invalid request body (missing fields, invalid dates, range exceeds 30 days)"
           },
           "403": {
-            "description": "Requires an API key with admin scope"
+            "description": "The workspace does not have access to the consumption export API, or the API key has no\nadmin scope and the export is not restricted to groups whose analytics it can read.\n"
           },
           "500": {
             "description": "Internal Server Error"

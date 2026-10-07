@@ -189,11 +189,27 @@ async function fetchAllConsumptionDocuments(
   return new Ok(allDocs);
 }
 
+// `visibleGroupIds` restricts the user group columns to those groups (group sIds); every group of
+// the user is listed when it is omitted.
 async function buildConsumptionLineExportRows(
   auth: Authenticator,
   docs: AgentMessageConsumptionAnalyticsData[],
-  labelCache?: DimensionLabelCache
+  {
+    labelCache,
+    visibleGroupIds,
+  }: {
+    labelCache?: DimensionLabelCache;
+    visibleGroupIds?: ReadonlySet<string>;
+  } = {}
 ): Promise<ConsumptionLineExportRow[]> {
+  const userGroupIds: (doc: AgentMessageConsumptionAnalyticsData) => string[] =
+    visibleGroupIds
+      ? (doc) =>
+          (doc.user?.group_ids ?? []).filter((groupId) =>
+            visibleGroupIds.has(groupId)
+          )
+      : (doc) => doc.user?.group_ids ?? [];
+
   const resolve = labelCache
     ? (dimension: ConsumptionTopDimension, keys: string[]) =>
         resolveAndCache(auth, labelCache, dimension, keys)
@@ -221,9 +237,7 @@ async function buildConsumptionLineExportRows(
     resolve("skill", [
       ...new Set(docs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])),
     ]),
-    resolve("group", [
-      ...new Set(docs.flatMap((doc) => doc.user?.group_ids ?? [])),
-    ]),
+    resolve("group", [...new Set(docs.flatMap(userGroupIds))]),
     resolve("source", [
       ...new Set(removeNulls(docs.map((doc) => doc.context_origin))),
     ]),
@@ -234,6 +248,7 @@ async function buildConsumptionLineExportRows(
 
   return docs.map((doc) => {
     const { agent, model, user, tool } = doc;
+    const groupIds = userGroupIds(doc);
     const agentId = agent.attributed_id;
     // Older documents indexed before these buckets shipped don't carry them.
     const gross = doc.gross_credit_micro ?? {
@@ -268,8 +283,8 @@ async function buildConsumptionLineExportRows(
       modelResolutionMethod: model?.resolution_method ?? "",
       userId: user?.id ?? "",
       userName: user ? (userLabels.get(user.id)?.name ?? user.id) : "",
-      userGroupIds: (user?.group_ids ?? []).join("; "),
-      userGroupNames: (user?.group_ids ?? [])
+      userGroupIds: groupIds.join("; "),
+      userGroupNames: groupIds
         .map((id) => groupLabels.get(id)?.name ?? id)
         .join("; "),
       triggerId: doc.trigger_id ?? "",
@@ -389,10 +404,11 @@ export async function streamConsumptionExport(
     filter?: ConsumptionScopeFilter;
     format: "csv" | "ndjson";
     signal?: AbortSignal;
+    visibleGroupIds?: ReadonlySet<string>;
   }
 ): Promise<Result<ReadableStream<Uint8Array>, ElasticsearchError>> {
   const encoder = new TextEncoder();
-  const { period, filter, format, signal } = opts;
+  const { period, filter, format, signal, visibleGroupIds } = opts;
 
   const query = buildConsumptionScopeQuery({
     auth,
@@ -431,7 +447,10 @@ export async function streamConsumptionExport(
         }
       }
 
-      const rows = await buildConsumptionLineExportRows(auth, docs, labelCache);
+      const rows = await buildConsumptionLineExportRows(auth, docs, {
+        labelCache,
+        visibleGroupIds,
+      });
 
       const chunk =
         format === "csv"
