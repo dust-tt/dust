@@ -76,10 +76,20 @@ describe("suggestionBlock", () => {
     "Run `npm test` first.",
     "A fence: ``` inside, and ```` longer.",
     '::message{author=user:x name="x" at=2026-10-05T09:13:02.500Z}',
+    "abc\r",
+    "\r",
+    "a\r\nb\r",
   ])("reads back %j", (suggestion) => {
     expect(
       unwrap(readMessageSuggestions(unwrap(suggestionBlock(suggestion))))
     ).toEqual([{ kind: "suggestion", suggestion }]);
+  });
+
+  it("refuses a suggestion with too many backtick runs to spread", () => {
+    expectError(
+      suggestionBlock("`a".repeat(130_000)),
+      "emphasis, link or code delimiters"
+    );
   });
 
   it("refuses a suggestion whose fences take the block out of bounds", () => {

@@ -23,8 +23,8 @@ export type DfmMessagePart =
 /**
  * @cc [owner:tdraier,label:product] dfm-message-suggestions
  * Every top-level fenced code block whose language is `suggestion` MUST be read as a suggestion,
- * its content verbatim, and the body as its text and suggestions in order, each text trimmed and
- * none empty. A body without one MUST read as having no suggestion.
+ * its content as CommonMark reads it, and the body as its text and suggestions in order, each
+ * text trimmed and none empty. A body without one MUST read as having no suggestion.
  */
 export function readMessageSuggestions(
   body: string
@@ -55,20 +55,22 @@ export function readMessageSuggestions(
 
 /**
  * @cc [owner:tdraier,label:product] dfm-suggestion-block
- * The block MUST read back through `readMessageSuggestions` as exactly `suggestion`, whatever
- * backticks it contains. A block outside the parser's input bounds MUST be refused with the
- * located bounds error instead.
+ * The block MUST read back through `readMessageSuggestions` as `suggestion`, whatever backticks
+ * or line endings it contains, up to CommonMark reading NUL as U+FFFD. A block outside the
+ * parser's input bounds MUST be refused with the located bounds error instead.
  */
 export function suggestionBlock(suggestion: string): Result<string, DfmError> {
-  const longestRun = Math.max(
-    0,
-    ...(suggestion.match(BACKTICK_RUN_PATTERN) ?? []).map((run) => run.length)
-  );
+  let longestRun = 0;
+  for (const run of suggestion.match(BACKTICK_RUN_PATTERN) ?? []) {
+    longestRun = Math.max(longestRun, run.length);
+  }
   const fence = "`".repeat(Math.max(3, longestRun + 1));
+  // A final CR followed by LF would read as one line ending and drop the CR.
+  const lineEnding = suggestion.endsWith("\r") ? "\r" : "\n";
   const block =
     suggestion === ""
       ? `${fence}${SUGGESTION_LANGUAGE}\n${fence}`
-      : `${fence}${SUGGESTION_LANGUAGE}\n${suggestion}\n${fence}`;
+      : `${fence}${SUGGESTION_LANGUAGE}\n${suggestion}${lineEnding}${fence}`;
   const outOfBounds = checkInputBounds(block);
   return outOfBounds ? new Err(outOfBounds) : new Ok(block);
 }
