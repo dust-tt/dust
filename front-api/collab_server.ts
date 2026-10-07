@@ -11,7 +11,10 @@ import { serve } from "@hono/node-server";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
-import { createCollabHocuspocus } from "./lib/collab/hocuspocus";
+import {
+  checkpointAllDocuments,
+  createCollabHocuspocus,
+} from "./lib/collab/hocuspocus";
 import { createHono } from "./lib/hono";
 import { healthzApp } from "./routes/healthz";
 
@@ -98,3 +101,25 @@ server.on("error", (err) => {
   logger.error({ err }, "Collab server error");
   process.exit(1);
 });
+
+// Checkpoint every document before exiting: edits waiting for a debounced store reach the file.
+async function shutdown(signal: NodeJS.Signals) {
+  logger.info(
+    { signal, documents: hocuspocus.getDocumentsCount() },
+    "Collab server shutting down"
+  );
+  server.close();
+  // Terminated, not closed: no edit still on the wire may arrive during the checkpoints.
+  ws.closeAll(undefined, undefined, true);
+  await checkpointAllDocuments(hocuspocus);
+  logger.info("Collab server stopped");
+  process.exit(0);
+}
+
+// A second signal joins the shutdown instead of ending the process.
+let stopping: Promise<void> | undefined;
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    stopping ??= shutdown(signal);
+  });
+}

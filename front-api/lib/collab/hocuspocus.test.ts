@@ -16,6 +16,7 @@ import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import {
   authenticateConnection,
+  checkpointAllDocuments,
   createCollabHocuspocus,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
@@ -56,22 +57,25 @@ function typeInto(doc: Y.Doc, text: string) {
   body.insert(body.length, [paragraph]);
 }
 
+/** What `loadLiveDocument` returns for `SOURCE`, with fresh Yjs identities each time. */
+async function loadSource() {
+  const live = dfmToYDoc(SOURCE);
+  if (live.isErr()) {
+    throw new Error(live.error);
+  }
+  const content = yDocToDfm(live.value);
+  if (content.isErr()) {
+    throw new Error(content.error);
+  }
+  return new Ok({
+    live: { doc: live.value.doc, comments: COMMENTS },
+    checkpoint: { revision: "1", content: content.value },
+  });
+}
+
 describe("createCollabHocuspocus", () => {
   beforeEach(() => {
-    vi.mocked(loadLiveDocument).mockImplementation(async () => {
-      const live = dfmToYDoc(SOURCE);
-      if (live.isErr()) {
-        throw new Error(live.error);
-      }
-      const content = yDocToDfm(live.value);
-      if (content.isErr()) {
-        throw new Error(content.error);
-      }
-      return new Ok({
-        live: { doc: live.value.doc, comments: COMMENTS },
-        checkpoint: { revision: "1", content: content.value },
-      });
-    });
+    vi.mocked(loadLiveDocument).mockImplementation(loadSource);
     vi.mocked(checkpointLiveDocument).mockImplementation(
       async (_file, _live, last) =>
         new Ok({
@@ -106,6 +110,50 @@ describe("createCollabHocuspocus", () => {
     expect(calls[0][1].comments).toBe(COMMENTS);
     expect(calls.map(([, , last]) => last.revision)).toEqual(["1", "2"]);
     expect(loadLiveDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkpoints every document at once on shutdown, edits waiting for their store included", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    vi.useFakeTimers();
+
+    const edited = await hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
+    await edited.transact((doc) => typeInto(doc, "Not stored yet."));
+    await hocuspocus.openDirectConnection("w1:user-u1/untouched.md", writer);
+    expect(checkpointLiveDocument).not.toHaveBeenCalled();
+
+    await checkpointAllDocuments(hocuspocus);
+
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(checkpointLiveDocument).mock.calls[0][0]).toBe(writer);
+    // The debounced store it replaced does not run again.
+    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits on shutdown for a document still loading", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    let finishLoad = () => {};
+    vi.mocked(loadLiveDocument).mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finishLoad = resolve;
+      });
+      return loadSource();
+    });
+
+    const opening = hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
+    let checkpointed = false;
+    const shutdown = checkpointAllDocuments(hocuspocus).then(() => {
+      checkpointed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(checkpointed).toBe(false);
+
+    finishLoad();
+    await opening;
+    await shutdown;
+    expect(checkpointed).toBe(true);
   });
 
   it("keeps a document for the grace period, then reads the file again", async () => {
