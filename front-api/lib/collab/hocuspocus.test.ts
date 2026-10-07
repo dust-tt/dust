@@ -466,7 +466,8 @@ async function serve(hocuspocus: ReturnType<typeof createCollabHocuspocus>) {
 }
 
 // TODO(co-edition): cover commands applied one at a time per document, a message that is not a
-// client message, a command whose document unloads before it finishes, and a closed channel.
+// client message, a command whose document unloads before it finishes, and a command a closed
+// channel was waiting for.
 describe("comment threads in a live session", () => {
   const THREAD: DfmComment = {
     id: "c1",
@@ -574,5 +575,10 @@ describe("comment threads in a live session", () => {
     });
     expect(invalid.isErr() && invalid.error).toBe("unavailable");
     expect(applyLiveCommentCommand).toHaveBeenCalledTimes(2);
+
+    mine.close();
+    expect(mine.getThreads()).toBeNull();
+    const late = await mine.send({ type: "delete", commentId: "c2" });
+    expect(late.isErr() && late.error).toBe("unavailable");
   }, 15_000);
 });
