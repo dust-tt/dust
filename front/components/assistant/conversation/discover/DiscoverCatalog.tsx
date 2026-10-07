@@ -10,9 +10,6 @@ import {
   getItemDescription,
   getItemId,
   getItemName,
-  interleaveCatalogItems,
-  toHydratedAgentCatalogItem,
-  toSearchSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   trackDiscoverItemDetailsOpen,
@@ -21,17 +18,10 @@ import {
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
-import { compareStrings, formatNumber } from "@app/lib/i18n/format";
+import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
-import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
-import {
-  compareForFuzzySort,
-  getAgentSearchString,
-  subFilter,
-  tagsSorter,
-} from "@app/lib/utils";
+import { tagsSorter } from "@app/lib/utils";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -116,14 +106,14 @@ interface DiscoverCatalogProps {
   onAgentClick: (agent: RichAgentMentionCandidate) => void;
   onSkillClick: (skill: PendingSkill) => void;
   onPin?: (item: CatalogItem) => void;
-  onDetails: (item: CatalogItem) => void;
+  onDetails: (item: CatalogItem, onClose?: () => void) => void;
   onFiltersChange: () => void;
 }
 
 interface CatalogActions {
   onUse: (item: CatalogItem) => void;
   onPin?: (item: CatalogItem) => void;
-  onDetails: (item: CatalogItem) => void;
+  onDetails: (item: CatalogItem, onClose?: () => void) => void;
 }
 
 interface CatalogSourceProps extends CatalogActions {
@@ -134,104 +124,6 @@ interface CatalogSourceProps extends CatalogActions {
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
   canClearFilters: boolean;
   onClearFilters: () => void;
-}
-
-function FavoritesCatalog({
-  owner,
-  query,
-  search,
-  onSearchChange,
-  onUpdateFilters,
-  canClearFilters,
-  onClearFilters,
-  ...actions
-}: CatalogSourceProps) {
-  const { agentConfigurations, isLoading: isAgentsLoading } =
-    useUnifiedAgentConfigurations({ workspaceId: owner.sId });
-  const {
-    skills,
-    resolvedSearchTerm,
-    isSkillsLoading,
-    isSkillsError,
-    hasMore,
-    loadMore,
-  } = useSearchSkillsInfinite({
-    owner,
-    searchTerm: query.searchTerm,
-    limit: query.limit,
-    selectionMode: "favorites_only",
-    disabled: !query.showSkills,
-  });
-  // Filter local agents with the displayed skills' query so both lists update together.
-  const itemsQuery = useMemo(
-    () => ({ ...query, searchTerm: resolvedSearchTerm ?? query.searchTerm }),
-    [query, resolvedSearchTerm]
-  );
-
-  const activeAgents = useMemo(
-    () => agentConfigurations.filter((a) => a.status === "active"),
-    [agentConfigurations]
-  );
-  const tags = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          activeAgents.flatMap((agent) =>
-            agent.tags.map((tag) => [tag.sId, tag])
-          )
-        ).values()
-      ).sort(tagsSorter),
-    [activeAgents]
-  );
-
-  const items = useMemo(() => {
-    const agents = itemsQuery.showAgents
-      ? activeAgents
-          .filter(
-            (agent) =>
-              agent.userFavorite &&
-              (itemsQuery.tagId === null ||
-                agent.tags.some((tag) => tag.sId === itemsQuery.tagId)) &&
-              (!itemsQuery.searchTerm ||
-                subFilter(itemsQuery.searchTerm, getAgentSearchString(agent)))
-          )
-          .sort(
-            (a, b) =>
-              (itemsQuery.searchTerm
-                ? compareForFuzzySort(
-                    itemsQuery.searchTerm,
-                    getAgentSearchString(a),
-                    getAgentSearchString(b)
-                  )
-                : 0) ||
-              compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
-          )
-          .map(toHydratedAgentCatalogItem)
-      : [];
-    return interleaveCatalogItems(agents, skills.map(toSearchSkillCatalogItem));
-  }, [activeAgents, itemsQuery, skills]);
-
-  return (
-    <CatalogLayout
-      filters={query}
-      tags={tags}
-      search={search}
-      onSearchChange={onSearchChange}
-      onUpdateFilters={onUpdateFilters}
-    >
-      <CatalogResults
-        items={items}
-        itemsQuery={itemsQuery}
-        isLoading={isAgentsLoading || isSkillsLoading}
-        hasError={isSkillsError}
-        hasNextPage={query.showSkills && hasMore}
-        onLoadMore={loadMore}
-        canClearFilters={canClearFilters}
-        onClearFilters={onClearFilters}
-        {...actions}
-      />
-    </CatalogLayout>
-  );
 }
 
 interface SearchCatalogProps extends CatalogSourceProps {
@@ -253,6 +145,7 @@ function SearchCatalog({
   canClearFilters,
   onClearFilters,
   isDebouncing,
+  onDetails,
   ...actions
 }: SearchCatalogProps) {
   const catalogSearch = useCatalogSearch({ owner, query });
@@ -289,6 +182,11 @@ function SearchCatalog({
         onLoadMore={catalogSearch.loadMore}
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
+        onDetails={(item) =>
+          onDetails(item, () => {
+            void catalogSearch.mutate();
+          })
+        }
         {...actions}
       />
     </CatalogLayout>
@@ -316,12 +214,9 @@ export function DiscoverCatalog({
     setSearchTerm(searchTerm);
   }, [searchTerm, setSearchTerm]);
 
-  // The Favorites view keeps agents in the database and searches only favorite skills.
-  const useSearch = filters.view !== "favorites";
   const query = useMemo(
-    () =>
-      buildCatalogQuery(filters, useSearch ? debouncedSearchTerm : searchTerm),
-    [debouncedSearchTerm, filters, searchTerm, useSearch]
+    () => buildCatalogQuery(filters, debouncedSearchTerm),
+    [debouncedSearchTerm, filters]
   );
   const updateFilters = (update: Partial<CatalogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
@@ -350,7 +245,7 @@ export function DiscoverCatalog({
     onDetails,
   };
 
-  return useSearch ? (
+  return (
     <SearchCatalog
       owner={owner}
       query={query}
@@ -360,17 +255,6 @@ export function DiscoverCatalog({
       canClearFilters={canClearFilters}
       onClearFilters={clearFilters}
       isDebouncing={isDebouncing}
-      {...actions}
-    />
-  ) : (
-    <FavoritesCatalog
-      owner={owner}
-      query={query}
-      search={search}
-      onSearchChange={onSearchChange}
-      onUpdateFilters={updateFilters}
-      canClearFilters={canClearFilters}
-      onClearFilters={clearFilters}
       {...actions}
     />
   );
