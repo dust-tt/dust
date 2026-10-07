@@ -1,39 +1,34 @@
 import {
   documentCommentMessageHeading,
   documentCommentsSkill,
+  isDocumentCommentMessage,
 } from "@app/lib/resources/skill/code_defined/system/document_comments";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { describe, expect, it } from "vitest";
 
-function agentLoopDataWithContent(content: string): AgentLoopExecutionData {
-  return {
-    userMessage: { content },
-  } as unknown as AgentLoopExecutionData;
-}
-
 describe("documentCommentsSkill", () => {
-  it("is always active for a run answering a document comment", () => {
-    const content = `${documentCommentMessageHeading({
-      commentId: "c1",
-      documentPath: "pod-abc/plan.md",
-      location: 'the pod "Launch"',
-    })}\n\nThoughts @dust?`;
-
+  it("is auto-enabled, so it is in the system prompt when not disabled", () => {
     expect(documentCommentsSkill.getAutoEnabledOrEquippedForAgentLoop()).toBe(
       "enabled"
     );
-    expect(
-      documentCommentsSkill.isDisabledForAgentLoop(
-        agentLoopDataWithContent(content)
-      )
-    ).toBe(false);
   });
 
-  it("is unavailable for any other run", () => {
-    expect(
-      documentCommentsSkill.isDisabledForAgentLoop(
-        agentLoopDataWithContent("Summarize plan.md, please.")
-      )
-    ).toBe(true);
+  it("recognizes a message opening with the comment heading", () => {
+    const heading = documentCommentMessageHeading({
+      commentId: "c1",
+      documentPath: "pod-abc/plan.md",
+      location: 'the pod "Launch"',
+    });
+
+    expect(isDocumentCommentMessage(`${heading}\n\nThoughts @dust?`)).toBe(
+      true
+    );
+  });
+
+  it.each([
+    "Summarize plan.md, please.",
+    "Comment in thread `c1` disappeared; help me debug it",
+    "Comment in thread `c1` of the document `a.md`, in a pod: and more",
+  ])("does not recognize %j", (content) => {
+    expect(isDocumentCommentMessage(content)).toBe(false);
   });
 });

@@ -18,8 +18,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
-const COMMENT_MESSAGE_OPENING = "Comment in thread `";
-
 /** The line that opens the user message posted for a document comment. */
 export const documentCommentMessageHeading = ({
   commentId,
@@ -30,7 +28,14 @@ export const documentCommentMessageHeading = ({
   documentPath: string;
   location: string;
 }) =>
-  `${COMMENT_MESSAGE_OPENING}${commentId}\` of the document \`${documentPath}\`, in ${location}:`;
+  `Comment in thread \`${commentId}\` of the document \`${documentPath}\`, in ${location}:`;
+
+const COMMENT_MESSAGE_HEADING_PATTERN =
+  /^Comment in thread `[^`\n]+` of the document `[^`\n]+`, in [^\n]+:(?:\n|$)/;
+
+/** Whether `content` opens with a whole `documentCommentMessageHeading` line. */
+export const isDocumentCommentMessage = (content: string) =>
+  COMMENT_MESSAGE_HEADING_PATTERN.test(content);
 
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
 People discuss Markdown documents in comment threads anchored on passages of the text, and read your answers there rather than in this conversation.
@@ -76,5 +81,5 @@ export const documentCommentsSkill = {
     !(await hasFeatureFlag(auth, "co_edition")),
   getAutoEnabledOrEquippedForAgentLoop: () => "enabled",
   isDisabledForAgentLoop: ({ userMessage }) =>
-    !userMessage.content.startsWith(COMMENT_MESSAGE_OPENING),
+    !isDocumentCommentMessage(userMessage.content),
 } as const satisfies SystemSkillDefinition;
