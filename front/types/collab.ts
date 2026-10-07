@@ -1,3 +1,6 @@
+import { dfmCommentSchema, dfmCommentsSchema } from "@app/lib/markdown/dfm";
+import { z } from "zod";
+
 /** The Yjs fragment holding a live document's body, read by the server and bound by the editor. */
 export const BODY_FRAGMENT_NAME = "body";
 
@@ -25,3 +28,69 @@ export function parseLiveDocumentName(
     canonicalPath: documentName.slice(index + 1),
   };
 }
+
+/**
+ * Comment threads in a live session travel beside the shared document, as Hocuspocus stateless
+ * messages: the browser sends commands, the server answers each one and pushes every change of
+ * the threads to all the document's browsers.
+ */
+
+const commentIdSchema = z.string().min(1);
+
+export const liveCommentCommandSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("add"),
+    commentId: commentIdSchema,
+    body: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("reply"),
+    commentId: commentIdSchema,
+    position: z.number().int().min(1),
+    body: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("resolve"),
+    commentId: commentIdSchema,
+    resolved: z.boolean(),
+  }),
+  z.object({ type: z.literal("delete"), commentId: commentIdSchema }),
+]);
+
+export type LiveCommentCommand = z.infer<typeof liveCommentCommandSchema>;
+
+export const liveCommentClientMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("threads") }),
+  z.object({
+    type: z.literal("command"),
+    requestId: z.string().min(1),
+    command: liveCommentCommandSchema,
+  }),
+]);
+
+export type LiveCommentClientMessage = z.infer<
+  typeof liveCommentClientMessageSchema
+>;
+
+export const LIVE_COMMENT_ERROR_CODES = [
+  "unavailable",
+  "not_found",
+  "thread_changed",
+  "unwritable",
+] as const;
+
+export type LiveCommentErrorCode = (typeof LIVE_COMMENT_ERROR_CODES)[number];
+
+export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("threads"), comments: dfmCommentsSchema }),
+  z.object({
+    type: z.literal("result"),
+    requestId: z.string(),
+    error: z.enum(LIVE_COMMENT_ERROR_CODES).nullable(),
+    comment: dfmCommentSchema.nullable(),
+  }),
+]);
+
+export type LiveCommentServerMessage = z.infer<
+  typeof liveCommentServerMessageSchema
+>;
