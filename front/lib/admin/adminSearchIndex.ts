@@ -12,6 +12,7 @@ import { SUBSCRIPTION_SEARCH_ENTRIES } from "@app/components/pages/workspace/sub
 import { USAGE_SEARCH_ENTRIES } from "@app/components/pages/workspace/usageAdminSearchEntries";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { searchAdminSettings } from "@app/lib/admin/searchAdminSettings";
+import type { MessageDescriptor } from "@lingui/core";
 
 /**
  * Composed admin settings search index for the Organization / Spend / Platform
@@ -34,7 +35,8 @@ export const ADMIN_SEARCH_INDEX: AdminSettingEntry[] = [
 
 export function searchAdminSettingsIndex(
   query: string,
-  pageLabel: (pageId: string) => string
+  pageLabel: (pageId: string) => string,
+  t: (descriptor: MessageDescriptor) => string
 ): AdminSettingEntry[] {
-  return searchAdminSettings(ADMIN_SEARCH_INDEX, query, pageLabel);
+  return searchAdminSettings(ADMIN_SEARCH_INDEX, query, pageLabel, t);
 }

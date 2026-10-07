@@ -1,7 +1,18 @@
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
+import { messages as defaultLocaleMessages } from "@app/locales/en-US.catalog";
+import { DEFAULT_LOCALE } from "@app/types/locale";
+import type { MessageDescriptor } from "@lingui/core";
+import { setupI18n } from "@lingui/core";
+
+const defaultLocaleI18n = setupI18n({
+  locale: DEFAULT_LOCALE,
+  messages: { [DEFAULT_LOCALE]: defaultLocaleMessages },
+});
 
 const norm = (s: string) =>
   s
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9@]+/g, " ")
     .trim();
@@ -23,26 +34,38 @@ function tokenMatches(hay: string, token: string) {
  * Rank admin settings against a free-text query. Label hits rank above
  * keyword-only hits. Returns at most 20 entries.
  */
+/**
+ * @cc [owner:sfriquet,label:product] match-translated-and-english
+ * An entry's label and keywords MUST match a query both as translated by `t` and in
+ * `DEFAULT_LOCALE`, so that English queries keep finding settings whatever the active locale.
+ */
 export function searchAdminSettings(
   index: AdminSettingEntry[],
   query: string,
-  pageLabel: (pageId: string) => string
+  pageLabel: (pageId: string) => string,
+  t: (descriptor: MessageDescriptor) => string
 ): AdminSettingEntry[] {
   const tokens = norm(query).split(" ").filter(Boolean);
   if (tokens.length === 0) {
     return [];
   }
 
+  const translations = (descriptor: MessageDescriptor | undefined) =>
+    descriptor
+      ? [norm(t(descriptor)), norm(defaultLocaleI18n._(descriptor))]
+      : [];
+
   const scored = index
     .map((entry) => {
-      const label = norm(entry.label);
-      const hay = `${label} ${norm(entry.keywords ?? "")} ${norm(entry.sectionId)} ${norm(pageLabel(entry.pageId))}`;
-      if (!tokens.every((t) => tokenMatches(hay, t))) {
+      const labels = translations(entry.label);
+      const label = labels.join(" ");
+      const hay = `${label} ${translations(entry.keywords).join(" ")} ${norm(entry.sectionId)} ${norm(pageLabel(entry.pageId))}`;
+      if (!tokens.every((token) => tokenMatches(hay, token))) {
         return null;
       }
       const score =
-        tokens.filter((t) => tokenMatches(label, t)).length * 2 +
-        (label.startsWith(tokens[0]) ? 1 : 0);
+        tokens.filter((token) => tokenMatches(label, token)).length * 2 +
+        (labels.some((l) => l.startsWith(tokens[0])) ? 1 : 0);
       return { entry, score };
     })
     .filter(

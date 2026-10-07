@@ -71,11 +71,13 @@ msgstr "Error updating credit cap"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "API Reference"
 msgstr "API Reference"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "Dust API Keys"
 msgstr "Dust API Keys"
 
@@ -233,6 +235,7 @@ msgid "Set up"
 msgstr "Set up"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "Developer Secrets"
 msgstr "Developer Secrets"
 
@@ -309,6 +312,7 @@ msgid "Search secrets"
 msgstr "Search secrets"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "Create Secret"
 msgstr "Create Secret"
 
@@ -327,3 +331,95 @@ msgstr "No matching secrets found"
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "No secrets created yet."
 msgstr "No secrets created yet."
+
+#: front/components/pages/workspace/developers/computerAdminSearchEntries.ts
+msgid "Network"
+msgstr "Network"
+
+#: front/components/pages/workspace/developers/computerAdminSearchEntries.ts
+msgid "Allowed domains"
+msgstr "Allowed domains"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "keys active credits used programmatic"
+msgstr "keys active credits used programmatic"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Create API Key"
+msgstr "Create API Key"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "new key scope spaces monthly cap"
+msgstr "new key scope spaces monthly cap"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "API key list"
+msgstr "API key list"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "name scope key spaces credits last used status"
+msgstr "name scope key spaces credits last used status"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Revoke API key"
+msgstr "Revoke API key"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "revoke"
+msgstr "revoke"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Edit monthly cap"
+msgstr "Edit monthly cap"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "per key credits cap"
+msgstr "per key credits cap"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "docs documentation api reference"
+msgstr "docs documentation api reference"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "env.secrets dust apps mcp servers"
+msgstr "env.secrets dust apps mcp servers"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "secret name value"
+msgstr "secret name value"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "docs documentation secrets api reference"
+msgstr "docs documentation secrets api reference"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Environment variables"
+msgstr "Environment variables"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "computer env vars secrets config workspace"
+msgstr "computer env vars secrets config workspace"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "HTTPS secrets (DSEC_)"
+msgstr "HTTPS secrets (DSEC_)"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "computer encrypted outbound https allowlisted domains env"
+msgstr "computer encrypted outbound https allowlisted domains env"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Config ({SANDBOX_ENV_VAR_PREFIX})"
+msgstr "Config ({SANDBOX_ENV_VAR_PREFIX})"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "computer plain environment variables"
+msgstr "computer plain environment variables"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Write-only values"
+msgstr "Write-only values"
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "snapshotted at computer start"
+msgstr "snapshotted at computer start"

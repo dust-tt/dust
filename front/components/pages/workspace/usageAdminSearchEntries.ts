@@ -1,6 +1,7 @@
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import { msg } from "@lingui/core/macro";
 
 const U = ADMIN_SECTION_IDS.usage;
 const PAGE = "credits" as const;
@@ -16,14 +17,14 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.members,
     [
-      ["Members usage", "seats spend limit upgrade requests"],
+      [msg`Members usage`, msg`seats spend limit upgrade requests`],
       [
-        "Members model tiers",
-        "model tiers member access tier per user standard advanced frontier",
+        msg`Members model tiers`,
+        msg`model tiers member access tier per user standard advanced frontier`,
       ],
-      ["Upgrade requests", "review member requests deny"],
-      ["Change seat type", "upgrade seat assign seat remove seat"],
-      ["Edit spend limit", "override member limit"],
+      [msg`Upgrade requests`, msg`review member requests deny`],
+      [msg`Change seat type`, msg`upgrade seat assign seat remove seat`],
+      [msg`Edit spend limit`, msg`override member limit`],
     ],
     "members"
   ),
@@ -31,12 +32,12 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.groups,
     [
-      ["Groups usage", "group spend limit seat"],
+      [msg`Groups usage`, msg`group spend limit seat`],
       [
-        "Group model tiers",
-        "model tiers group access tier per group standard advanced frontier",
+        msg`Group model tiers`,
+        msg`model tiers group access tier per group standard advanced frontier`,
       ],
-      ["Group monthly spend limit", "per group limit"],
+      [msg`Group monthly spend limit`, msg`per group limit`],
     ],
     "groups"
   ),
@@ -45,35 +46,35 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     U.topUps,
     [
       [
-        "Top-ups history",
-        "credit grants added credits expiration bonus purchased",
+        msg`Top-ups history`,
+        msg`credit grants added credits expiration bonus purchased`,
       ],
     ],
     "top-ups"
   ),
   // Always mounted above the Credits tabs (no `?tab=`).
   ...adminSearchEntries(PAGE, U.addCredits, [
-    ["Add credits", "buy top-up purchase additional credits"],
-    ["Purchase additional credits", "buy top-up programmatic"],
+    [msg`Add credits`, msg`buy top-up purchase additional credits`],
+    [msg`Purchase additional credits`, msg`buy top-up programmatic`],
   ]),
   ...adminSearchEntries(
     PAGE,
     U.spendingPolicies,
     [
       [
-        "Default per-user workspace credit pool monthly limit",
-        "spending policy default limit pool",
+        msg`Default per-user workspace credit pool monthly limit`,
+        msg`spending policy default limit pool`,
       ],
-      ["Upgrade request", "allow members request upgrade"],
-      ["Require a reason for upgrade requests", "justification"],
-      ["Auto-upgrade seats", "free pro max at limit"],
+      [msg`Upgrade request`, msg`allow members request upgrade`],
+      [msg`Require a reason for upgrade requests`, msg`justification`],
+      [msg`Auto-upgrade seats`, msg`free pro max at limit`],
     ],
     SETTINGS_TAB
   ),
   ...adminSearchEntries(
     PAGE,
     U.costManagement,
-    [["Credit spend checkpoint", "pause agent message threshold"]],
+    [[msg`Credit spend checkpoint`, msg`pause agent message threshold`]],
     SETTINGS_TAB
   ),
   ...adminSearchEntries(
@@ -81,13 +82,16 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     U.programmatic,
     [
       // Legacy Programmatic Usage page keywords, retargeted here.
-      ["Programmatic Usage", "credits usage api keys triggers"],
+      [msg`Programmatic Usage`, msg`credits usage api keys triggers`],
       [
-        "Programmatic monthly limit",
-        "api keys triggers block programmatic access",
+        msg`Programmatic monthly limit`,
+        msg`api keys triggers block programmatic access`,
       ],
-      ["Global spending cap", "self improving skills monthly cap credits"],
-      ["Default cost cap per skill", "self improving skills per run cap"],
+      [
+        msg`Global spending cap`,
+        msg`self improving skills monthly cap credits`,
+      ],
+      [msg`Default cost cap per skill`, msg`self improving skills per run cap`],
     ],
     SETTINGS_TAB
   ),
@@ -95,8 +99,11 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.notifications,
     [
-      ["Workspace credit pool threshold alert", "email alert pool percent"],
-      ["Upgrade request emails", "email admins managers"],
+      [
+        msg`Workspace credit pool threshold alert`,
+        msg`email alert pool percent`,
+      ],
+      [msg`Upgrade request emails`, msg`email admins managers`],
     ],
     SETTINGS_TAB
   ),

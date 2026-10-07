@@ -26,9 +26,59 @@ msgid "Billing information"
 msgstr "Billing information"
 
 #: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
 msgid "Invoices"
 msgstr "Invoices"
 
 #: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
 msgid "Coupons"
 msgstr "Coupons"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Subscription"
+msgstr "Subscription"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "plan status frequency next billing date amount cancel subscription"
+msgstr "plan status frequency next billing date amount cancel subscription"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Seats by type"
+msgstr "Seats by type"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "pro max platform yearly seats assigned credits"
+msgstr "pro max platform yearly seats assigned credits"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Billing contact"
+msgstr "Billing contact"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "email"
+msgstr "email"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Address"
+msgstr "Address"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "billing address"
+msgstr "billing address"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Payment method"
+msgstr "Payment method"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "card visa"
+msgstr "card visa"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "download invoice pdf"
+msgstr "download invoice pdf"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "redeemed coupon codes"
+msgstr "redeemed coupon codes"

@@ -39,7 +39,7 @@ describe("ADMIN_SEARCH_INDEX drift", () => {
   it("has unique labels within each page/section", () => {
     const seen = new Set<string>();
     for (const entry of ADMIN_SEARCH_INDEX) {
-      const key = `${entry.pageId}/${entry.sectionId}/${entry.label}`;
+      const key = `${entry.pageId}/${entry.sectionId}/${entry.label.id}`;
       expect(seen.has(key), `duplicate search entry: ${key}`).toBe(false);
       seen.add(key);
     }

@@ -2,6 +2,7 @@ import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { SANDBOX_ENV_VAR_PREFIX } from "@app/lib/api/sandbox/env_vars";
+import { msg } from "@lingui/core/macro";
 
 const K = ADMIN_SECTION_IDS.apiKeys;
 const S = ADMIN_SECTION_IDS.secrets;
@@ -14,12 +15,12 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     K.keys,
     [
-      ["Dust API Keys", "keys active credits used programmatic"],
-      ["Create API Key", "new key scope spaces monthly cap"],
-      ["API key list", "name scope key spaces credits last used status"],
-      ["Revoke API key", "revoke"],
-      ["Edit monthly cap", "per key credits cap"],
-      ["API Reference", "docs documentation api reference"],
+      [msg`Dust API Keys`, msg`keys active credits used programmatic`],
+      [msg`Create API Key`, msg`new key scope spaces monthly cap`],
+      [msg`API key list`, msg`name scope key spaces credits last used status`],
+      [msg`Revoke API key`, msg`revoke`],
+      [msg`Edit monthly cap`, msg`per key credits cap`],
+      [msg`API Reference`, msg`docs documentation api reference`],
     ],
     "keys"
   ),
@@ -27,9 +28,9 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     S.secrets,
     [
-      ["Developer Secrets", "env.secrets dust apps mcp servers"],
-      ["Create Secret", "secret name value"],
-      ["API Reference", "docs documentation secrets api reference"],
+      [msg`Developer Secrets`, msg`env.secrets dust apps mcp servers`],
+      [msg`Create Secret`, msg`secret name value`],
+      [msg`API Reference`, msg`docs documentation secrets api reference`],
     ],
     "secrets"
   ),
@@ -37,16 +38,19 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     C.environment,
     [
-      ["Environment variables", "computer env vars secrets config workspace"],
       [
-        "HTTPS secrets (DSEC_)",
-        "computer encrypted outbound https allowlisted domains env",
+        msg`Environment variables`,
+        msg`computer env vars secrets config workspace`,
       ],
       [
-        `Config (${SANDBOX_ENV_VAR_PREFIX})`,
-        "computer plain environment variables",
+        msg`HTTPS secrets (DSEC_)`,
+        msg`computer encrypted outbound https allowlisted domains env`,
       ],
-      ["Write-only values", "snapshotted at computer start"],
+      [
+        msg`Config (${SANDBOX_ENV_VAR_PREFIX})`,
+        msg`computer plain environment variables`,
+      ],
+      [msg`Write-only values`, msg`snapshotted at computer start`],
     ],
     "env"
   ),
