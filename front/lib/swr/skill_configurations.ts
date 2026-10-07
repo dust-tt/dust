@@ -24,7 +24,6 @@ import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
   GetSkillsResponseBody,
-  GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
   SearchSkillsResponseBody,
   SkillSearchFacet,
@@ -408,56 +407,6 @@ export function useSearchSkillsInfinite({
     isSkillsLoading,
     hasMore,
     loadMore,
-  };
-}
-
-export function useSkillsWithRelations({
-  owner,
-  disabled,
-  status,
-  onlyCustom,
-  bypassEditorVisibility,
-  withUsage,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  status: SkillStatus;
-  onlyCustom?: boolean;
-  // Admin-only: bypass the editor-visibility rule and also list unpublished
-  // (editors-only) skills the caller does not edit.
-  bypassEditorVisibility?: boolean;
-  withUsage?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
-
-  const queryParams = new URLSearchParams({
-    withRelations: "true",
-    status,
-  });
-  if (onlyCustom) {
-    queryParams.set("onlyCustom", "true");
-  }
-  if (bypassEditorVisibility) {
-    queryParams.set("bypassEditorVisibility", "true");
-  }
-  if (withUsage) {
-    queryParams.set("withUsage", "true");
-  }
-
-  const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(
-      `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
-      skillsFetcher,
-      { disabled }
-    );
-
-  return {
-    skillsWithRelations: data?.skills ?? emptyArray(),
-    isSkillsWithRelationsLoading: isLoading,
-    mutateSkillsWithRelations: mutate,
-    mutateSkillsWithRelationsRegardlessOfQueryParams:
-      mutateRegardlessOfQueryParams,
   };
 }
 
