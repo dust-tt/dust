@@ -27,7 +27,10 @@ import {
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
-import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import {
+  mergeAgentEdits,
+  resolveInstructionsEdits,
+} from "@app/lib/editor/merge_agent_suggestion_changes";
 import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import {
   applyInstructionEditsToHtml,
@@ -54,7 +57,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   CreateSuggestionType,
   EditorsSuggestionType,
-  InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
   StructuredOutputSuggestionType,
@@ -219,42 +221,6 @@ function resolveDeleteSuggestion(
 
   // Editor access is enforced by the callers (`agent.canEdit`), matching the manual DELETE route.
   return new Ok({ type: "delete", agentId: agent.sId });
-}
-
-interface ResolvedInstructions {
-  instructions: string | null;
-  instructionsHtml: string | null;
-}
-
-/** Carries the agent's current instructions over untouched when no suggestion edits them. */
-function resolveInstructionsEdits(
-  agentConfiguration: {
-    instructions: string | null;
-    instructionsHtml: string | null;
-  },
-  edits: InstructionsSuggestionSchemaType[]
-): Result<ResolvedInstructions, ApplyAgentSuggestionsError> {
-  if (edits.length === 0) {
-    return new Ok({
-      instructions: agentConfiguration.instructions,
-      instructionsHtml: agentConfiguration.instructionsHtml,
-    });
-  }
-
-  if (!agentConfiguration.instructionsHtml) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "The agent this suggestion targets has no block-structured instructions."
-      )
-    );
-  }
-
-  return applyInstructionEditsToHtml(
-    agentConfiguration.instructionsHtml,
-    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
-    getMarkdownPipeline("agent")
-  );
 }
 
 /**
@@ -566,7 +532,8 @@ async function resolveAgentFieldEdits(
 
   const resolvedInstructions = resolveInstructionsEdits(
     current,
-    instructions ?? []
+    instructions ?? [],
+    () => getMarkdownPipeline("agent")
   );
   if (resolvedInstructions.isErr()) {
     return resolvedInstructions;
