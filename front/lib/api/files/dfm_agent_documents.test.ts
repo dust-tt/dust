@@ -54,11 +54,12 @@ const conflict = () =>
   );
 
 describe("readAgentDocument", () => {
+  let authenticator: Authenticator;
   let dustFs: DustFileSystem;
 
   beforeEach(async () => {
     vi.resetAllMocks();
-    const { authenticator } = await createResourceTest({});
+    ({ authenticator } = await createResourceTest({}));
     const fileSystem = await DustFileSystem.forConversations(authenticator, []);
     if (fileSystem.isErr()) {
       throw fileSystem.error;
@@ -69,18 +70,22 @@ describe("readAgentDocument", () => {
   it("returns the full source, anchors and threads included", async () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
-    const result = await readAgentDocument(dustFs, PATH);
+    const result = await readAgentDocument(authenticator, dustFs, PATH);
     expect(result.isOk() && result.value.source).toBe(SOURCE);
   });
 
   it("refuses a file that is not Markdown or that the codec cannot read", async () => {
-    const notMarkdown = await readAgentDocument(dustFs, "pod-p1/notes.txt");
+    const notMarkdown = await readAgentDocument(
+      authenticator,
+      dustFs,
+      "pod-p1/notes.txt"
+    );
     expect(notMarkdown.isErr() && notMarkdown.error.code).toBe("not_markdown");
 
     vi.mocked(readCanonicalFileContent).mockResolvedValue(
       stored("Hi :comment-start{id=c1}there.\n", "7")
     );
-    const unreadable = await readAgentDocument(dustFs, PATH);
+    const unreadable = await readAgentDocument(authenticator, dustFs, PATH);
     expect(unreadable.isErr() && unreadable.error.code).toBe(
       "invalid_document"
     );

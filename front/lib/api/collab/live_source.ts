@@ -1,0 +1,161 @@
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
+import type {
+  LiveSourceReadRequest,
+  LiveSourceReadResponse,
+  LiveSourceWriteRequest,
+  LiveSourceWriteResult,
+} from "@app/types/collab";
+import {
+  INTERNAL_LIVE_SOURCE_READ_PATH,
+  INTERNAL_LIVE_SOURCE_WRITE_PATH,
+  liveSourceReadResponseSchema,
+  liveSourceWriteResponseSchema,
+} from "@app/types/collab";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { z } from "zod";
+
+const LIVE_SOURCE_TIMEOUT_MS = 10_000;
+
+const apiErrorSchema = z.object({
+  error: z.object({ type: z.string(), message: z.string() }),
+});
+
+/** Why a live document could not be read or written: refused, or the collab server failed. */
+export interface LiveSourceError {
+  code: "refused" | "unavailable";
+  message: string;
+}
+
+const unavailable = (message: string): LiveSourceError => ({
+  code: "unavailable",
+  message,
+});
+
+function isConnectionRefused(err: unknown): boolean {
+  if (!(err instanceof TypeError) || !(err.cause instanceof Error)) {
+    return false;
+  }
+  return "code" in err.cause && err.cause.code === "ECONNREFUSED";
+}
+
+/** The collab server's answer, or `null` when nothing listens: no session can then be open. */
+async function postToCollabServer<S extends z.ZodTypeAny>(
+  path: string,
+  body: LiveSourceReadRequest | LiveSourceWriteRequest,
+  schema: S
+): Promise<Result<z.infer<S> | null, LiveSourceError>> {
+  const url = config.getCollabServerInternalUrl();
+  const secret = config.getCollabServerInternalSecret();
+  if (!url || !secret) {
+    return new Ok(null);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${url}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(LIVE_SOURCE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (isConnectionRefused(err)) {
+      return new Ok(null);
+    }
+    return new Err(unavailable(normalizeError(err).message));
+  }
+
+  const json = await response.json().catch(() => null);
+  if (!response.ok) {
+    const failure = apiErrorSchema.safeParse(json);
+    return new Err({
+      code: response.status === 403 ? "refused" : "unavailable",
+      message: failure.success
+        ? failure.data.error.message
+        : `Collab server error (${response.status}).`,
+    });
+  }
+  const parsed = schema.safeParse(json);
+  if (!parsed.success) {
+    return new Err(unavailable("Unexpected collab server answer."));
+  }
+  return new Ok(parsed.data);
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency] live-source-read
+ * A document MUST be reported closed without asking the collab server when the workspace lacks
+ * `co_edition` or no collab server is configured, and when nothing listens at its address: no
+ * session can be open then. Any other failure MUST be an error, never reported closed, since the
+ * caller would write the file under an open session.
+ */
+export async function fetchLiveSource(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<LiveSourceReadResponse, LiveSourceError>> {
+  if (!(await hasFeatureFlag(auth, "co_edition"))) {
+    return new Ok({ open: false });
+  }
+  const answer = await postToCollabServer(
+    INTERNAL_LIVE_SOURCE_READ_PATH,
+    { workspaceId: auth.getNonNullableWorkspace().sId, canonicalPath },
+    liveSourceReadResponseSchema
+  );
+  if (answer.isErr()) {
+    return answer;
+  }
+  return new Ok(answer.value ?? { open: false });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency;security] live-source-write
+ * The write MUST be sent as `auth`'s user, conditional on `base`, and MUST be refused without
+ * asking the collab server when `auth` has no user. Nothing listening at the collab server's
+ * address MUST count as `closed`. A refusal of the access or of the source MUST be `refused`, any
+ * other failure `unavailable`.
+ */
+export async function pushLiveSource(
+  auth: Authenticator,
+  {
+    canonicalPath,
+    base,
+    source,
+  }: { canonicalPath: string; base: string; source: string }
+): Promise<Result<LiveSourceWriteResult, LiveSourceError>> {
+  const user = auth.user();
+  if (!user) {
+    return new Err({
+      code: "refused",
+      message:
+        "This document is being edited live and can only be changed on behalf of a user.",
+    });
+  }
+  const answer = await postToCollabServer(
+    INTERNAL_LIVE_SOURCE_WRITE_PATH,
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      userId: user.sId,
+      canonicalPath,
+      base,
+      source,
+    },
+    liveSourceWriteResponseSchema
+  );
+  if (answer.isErr()) {
+    return answer;
+  }
+  if (answer.value === null) {
+    return new Ok("closed");
+  }
+  if (answer.value.result === "refused") {
+    return new Err({ code: "refused", message: answer.value.message });
+  }
+  return new Ok(answer.value.result);
+}
