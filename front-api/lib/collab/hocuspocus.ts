@@ -7,6 +7,7 @@ import {
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { parseLiveDocumentName } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
@@ -237,14 +238,20 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
 
 /**
  * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-checkpoint
- * Every loaded document MUST be checkpointed at once, in place of its pending debounced store, and
- * the returned promise MUST resolve only once each checkpoint has finished or failed.
+ * Once no connection can send edits any more, every document MUST be checkpointed at once, in
+ * place of its pending debounced store, including documents still loading, which are waited for
+ * first. The returned promise MUST resolve only once each checkpoint has finished or failed.
  */
 export async function checkpointAllDocuments(
   hocuspocus: Hocuspocus<LiveFile>
 ): Promise<void> {
-  await Promise.all(
-    [...hocuspocus.documents.values()].map((document) =>
+  // A load may still apply edits queued while it ran; its failure was already logged.
+  for (const loading of [...hocuspocus.loadingDocuments.values()]) {
+    await loading.catch(() => undefined);
+  }
+  await concurrentExecutor(
+    [...hocuspocus.documents.values()],
+    (document) =>
       hocuspocus.storeDocumentHooks(
         document,
         {
@@ -257,7 +264,7 @@ export async function checkpointAllDocuments(
           lastTransactionOrigin: undefined,
         },
         true
-      )
-    )
+      ),
+    { concurrency: 8 }
   );
 }

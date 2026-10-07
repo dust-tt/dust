@@ -57,22 +57,25 @@ function typeInto(doc: Y.Doc, text: string) {
   body.insert(body.length, [paragraph]);
 }
 
+/** What `loadLiveDocument` returns for `SOURCE`, with fresh Yjs identities each time. */
+async function loadSource() {
+  const live = dfmToYDoc(SOURCE);
+  if (live.isErr()) {
+    throw new Error(live.error);
+  }
+  const content = yDocToDfm(live.value);
+  if (content.isErr()) {
+    throw new Error(content.error);
+  }
+  return new Ok({
+    live: { doc: live.value.doc, comments: COMMENTS },
+    checkpoint: { revision: "1", content: content.value },
+  });
+}
+
 describe("createCollabHocuspocus", () => {
   beforeEach(() => {
-    vi.mocked(loadLiveDocument).mockImplementation(async () => {
-      const live = dfmToYDoc(SOURCE);
-      if (live.isErr()) {
-        throw new Error(live.error);
-      }
-      const content = yDocToDfm(live.value);
-      if (content.isErr()) {
-        throw new Error(content.error);
-      }
-      return new Ok({
-        live: { doc: live.value.doc, comments: COMMENTS },
-        checkpoint: { revision: "1", content: content.value },
-      });
-    });
+    vi.mocked(loadLiveDocument).mockImplementation(loadSource);
     vi.mocked(checkpointLiveDocument).mockImplementation(
       async (_file, _live, last) =>
         new Ok({
@@ -126,6 +129,31 @@ describe("createCollabHocuspocus", () => {
     // The debounced store it replaced does not run again.
     await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
     expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits on shutdown for a document still loading", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    let finishLoad = () => {};
+    vi.mocked(loadLiveDocument).mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finishLoad = resolve;
+      });
+      return loadSource();
+    });
+
+    const opening = hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
+    let checkpointed = false;
+    const shutdown = checkpointAllDocuments(hocuspocus).then(() => {
+      checkpointed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(checkpointed).toBe(false);
+
+    finishLoad();
+    await opening;
+    await shutdown;
+    expect(checkpointed).toBe(true);
   });
 
   it("keeps a document for the grace period, then reads the file again", async () => {

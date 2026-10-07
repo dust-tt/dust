@@ -111,15 +111,19 @@ async function shutdown(signal: NodeJS.Signals) {
     "Collab server shutting down"
   );
   server.close();
-  hocuspocus.closeConnections();
+  // Terminating the sockets, not only closing Hocuspocus's connections, so no edit still on the
+  // wire arrives during the checkpoints.
+  ws.closeAll(1001, "Server shutting down", true);
   await checkpointAllDocuments(hocuspocus);
   logger.info("Collab server stopped");
   process.exit(0);
 }
 
+// A second signal while checkpointing must not end the process: it joins the first shutdown.
+let stopping: Promise<void> | undefined;
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
-  process.once(signal, () => {
-    shutdown(signal).catch((err: unknown) => {
+  process.on(signal, () => {
+    stopping ??= shutdown(signal).catch((err: unknown) => {
       logger.error(
         { err: normalizeError(err) },
         "Collab server shutdown failed"
