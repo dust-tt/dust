@@ -51,9 +51,10 @@ function logUnexpected(documentName: string, message: string) {
  * Every load MUST read the file: no Yjs state outlives its Hocuspocus document. A store MUST
  * checkpoint the document with the threads and checkpoint of its load, through the connection that
  * last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
- * Hocuspocus keeps the document instead of unloading it. Once its last client leaves, the
- * document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after the last departure, then unload
- * unless a client came back or its last checkpoint failed.
+ * Hocuspocus keeps the document instead of unloading it. Once its last WebSocket client leaves,
+ * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
+ * unless a connection is open or its last checkpoint failed. A direct connection that leaves
+ * during that period does not extend it.
  */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const sessions = new WeakMap<Document, LiveSession>();
