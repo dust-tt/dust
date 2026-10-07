@@ -14,15 +14,16 @@ import crossws from "crossws/adapters/node";
 import {
   checkpointAllDocuments,
   createCollabHocuspocus,
+  recheckAllConnections,
 } from "./lib/collab/hocuspocus";
 import { createHono } from "./lib/hono";
 import { healthzApp } from "./routes/healthz";
 
 /**
  * @cc [owner:PopDaph,label:security] collab-server-dev-only
- * Until a connection's access is re-checked during its session, the server MUST refuse to start
- * outside development: access is checked only when a connection opens, so a user removed from a
- * workspace or a file keeps editing until disconnected. This runs before anything else at startup.
+ * The server MUST refuse to start outside development until live editing is turned on for
+ * production, together with the browser's production URL. This runs before anything else at
+ * startup.
  */
 function assertDevelopmentOnly() {
   if (!isDevelopment()) {
@@ -103,12 +104,27 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
+// Access is checked again on open connections, so a user who loses it does not keep editing until
+// a reconnect. A sweep still running skips the next one.
+const ACCESS_RECHECK_INTERVAL_MS = 60_000;
+let rechecking = false;
+const recheckTimer = setInterval(() => {
+  if (rechecking) {
+    return;
+  }
+  rechecking = true;
+  void recheckAllConnections(hocuspocus).finally(() => {
+    rechecking = false;
+  });
+}, ACCESS_RECHECK_INTERVAL_MS);
+
 // Checkpoint every document before exiting: edits waiting for a debounced store reach the file.
 async function shutdown(signal: NodeJS.Signals) {
   logger.info(
     { signal, documents: hocuspocus.getDocumentsCount() },
     "Collab server shutting down"
   );
+  clearInterval(recheckTimer);
   server.close();
   // Terminated, not closed: no edit still on the wire may arrive during the checkpoints.
   ws.closeAll(undefined, undefined, true);

@@ -398,6 +398,10 @@ msgid "The file is empty."
 msgstr "Le fichier est vide."
 
 #: front/lib/api_error_messages.ts
+msgid "You can only read this file."
+msgstr "Vous ne pouvez que consulter ce fichier."
+
+#: front/lib/api_error_messages.ts
 msgid "Run not found."
 msgstr "Exécution introuvable."
 

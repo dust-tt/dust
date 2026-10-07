@@ -1,5 +1,9 @@
 import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
-import type { LiveCheckpoint, LiveFile } from "@app/lib/api/collab/live_file";
+import type {
+  LiveAccessError,
+  LiveCheckpoint,
+  LiveFile,
+} from "@app/lib/api/collab/live_file";
 import {
   checkLiveAccess,
   checkpointLiveDocument,
@@ -30,7 +34,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import type { Document } from "@hocuspocus/server";
+import type { Connection, Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
 import { z } from "zod";
 
@@ -573,4 +577,79 @@ export async function writeLiveSource(
     return new Ok("busy");
   }
   return written;
+}
+
+// Hocuspocus's `Forbidden`, from `@hocuspocus/common`.
+const FORBIDDEN = { code: 4403, reason: "Forbidden" };
+
+/**
+ * @cc [owner:PopDaph,label:security] collab-access-recheck
+ * Every open WebSocket connection MUST be checked again with `checkLiveAccess`, with an
+ * Authenticator freshly built for its user in this sweep, and MUST be closed when the check fails.
+ * A failure checking one user and document MUST NOT stop the others: it is logged and their
+ * connections stay open until the next sweep, an exception to `no-catching-own-errors` limited to
+ * it. The returned promise MUST resolve once every connection has been checked.
+ */
+export async function recheckAllConnections(
+  hocuspocus: Hocuspocus<LiveFile>
+): Promise<void> {
+  // One check per user and document, however many tabs they have open.
+  const groups = new Map<string, Connection[]>();
+  for (const document of hocuspocus.documents.values()) {
+    for (const connection of document.getConnections()) {
+      const context: LiveFile = connection.context;
+      const key = `${context.auth.getNonNullableUser().sId}:${document.name}`;
+      const group = groups.get(key);
+      if (group) {
+        group.push(connection);
+      } else {
+        groups.set(key, [connection]);
+      }
+    }
+  }
+
+  // One fresh Authenticator per user and workspace, shared by their documents in this sweep.
+  const authenticators = new Map<string, Promise<Authenticator>>();
+  const authenticatorFor = (userId: string, workspaceId: string) => {
+    const key = `${userId}:${workspaceId}`;
+    const existing = authenticators.get(key);
+    if (existing) {
+      return existing;
+    }
+    const built = Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId);
+    authenticators.set(key, built);
+    return built;
+  };
+
+  await concurrentExecutor(
+    [...groups.values()],
+    async (connections) => {
+      const { auth, workspaceId, canonicalPath } = connections[0].context;
+      let access: Result<LiveFile, LiveAccessError>;
+      try {
+        const fresh = await authenticatorFor(
+          auth.getNonNullableUser().sId,
+          workspaceId
+        );
+        access = await checkLiveAccess(fresh, canonicalPath);
+      } catch (err) {
+        logger.error(
+          { err: normalizeError(err), workspaceId },
+          "Collab access re-check failed"
+        );
+        return;
+      }
+      if (access.isOk()) {
+        return;
+      }
+      logger.info(
+        { workspaceId, reason: access.error.message },
+        "Collab connection closed: access lost"
+      );
+      for (const connection of connections) {
+        connection.close(FORBIDDEN);
+      }
+    },
+    { concurrency: 8 }
+  );
 }

@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/collab/live_file";
 import { mintLiveTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
+import { DustFileSystemError } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { Authenticator } from "@app/lib/auth";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
@@ -30,11 +31,13 @@ import {
   checkpointAllDocuments,
   createCollabHocuspocus,
   readLiveSource,
+  recheckAllConnections,
   UNLOAD_GRACE_PERIOD_MS,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { WebSocketLike } from "@hocuspocus/server";
+import { Connection } from "@hocuspocus/server";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1005,5 +1008,111 @@ describe("comment threads in a live session", () => {
       const checkpointed = live ? yDocToDfm(live) : null;
       expect(checkpointed?.isOk() && checkpointed.value).toContain("edited");
     }, 15_000);
+  });
+});
+
+describe("recheckAllConnections", () => {
+  beforeEach(() => {
+    vi.mocked(loadLiveDocument).mockImplementation(loadSource);
+  });
+
+  /** A WebSocket connection to the user's own file, open as after a successful connect. */
+  async function openConnection(hocuspocus = createCollabHocuspocus()) {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const file = await checkLiveAccess(auth, path);
+    if (file.isErr()) {
+      throw new Error(file.error.message);
+    }
+    const request = new Request("http://localhost/api/collab");
+    const document = await hocuspocus.createDocument(
+      toLiveDocumentName(workspace.sId, path),
+      request,
+      "socket",
+      { readOnly: false, isAuthenticated: true },
+      file.value
+    );
+    const socket = { send: vi.fn(), close: vi.fn(), readyState: 1 };
+    const connection = new Connection(
+      socket,
+      request,
+      document,
+      "socket",
+      file.value
+    );
+    return { hocuspocus, document, connection, workspace, user };
+  }
+
+  it("keeps a connection whose user still has access", async () => {
+    const { hocuspocus, document } = await openConnection();
+
+    await recheckAllConnections(hocuspocus);
+
+    expect(document.getConnectionsCount()).toBe(1);
+  });
+
+  it("closes a connection once co_edition is turned off", async () => {
+    const { hocuspocus, document, workspace } = await openConnection();
+    await FeatureFlagResource.disable(workspace, "co_edition");
+
+    await recheckAllConnections(hocuspocus);
+
+    expect(document.getConnectionsCount()).toBe(0);
+  });
+
+  it("closes a connection once its user left the workspace", async () => {
+    const { hocuspocus, document, workspace, user } = await openConnection();
+    const revoked = await MembershipResource.revokeMembership({
+      user,
+      workspace,
+    });
+    if (revoked.isErr()) {
+      throw revoked.error;
+    }
+
+    await recheckAllConnections(hocuspocus);
+
+    expect(document.getConnectionsCount()).toBe(0);
+  });
+
+  it("keeps checking the others when one check fails", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const failing = await openConnection(hocuspocus);
+    const revoked = await openConnection(hocuspocus);
+    await FeatureFlagResource.disable(revoked.workspace, "co_edition");
+    const build = Authenticator.fromUserIdAndWorkspaceId.bind(Authenticator);
+    const spy = vi
+      .spyOn(Authenticator, "fromUserIdAndWorkspaceId")
+      .mockImplementation(async (userId, workspaceId) => {
+        if (userId === failing.user.sId) {
+          throw new Error("Database unavailable.");
+        }
+        return build(userId, workspaceId);
+      });
+
+    await recheckAllConnections(hocuspocus);
+
+    expect(failing.document.getConnectionsCount()).toBe(1);
+    expect(revoked.document.getConnectionsCount()).toBe(0);
+    spy.mockRestore();
+  });
+
+  it("closes a connection once its user can only read the file", async () => {
+    const { hocuspocus, document } = await openConnection();
+    const readOnly = vi
+      .spyOn(DustFileSystem.prototype, "checkWriteAccess")
+      .mockReturnValue(
+        new Err(new DustFileSystemError("internal", "Read-only mount."))
+      );
+
+    await recheckAllConnections(hocuspocus);
+
+    expect(document.getConnectionsCount()).toBe(0);
+    readOnly.mockRestore();
   });
 });

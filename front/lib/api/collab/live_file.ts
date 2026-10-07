@@ -95,6 +95,7 @@ export async function openLiveFile(
 export type LiveAccessError =
   | { code: "not_member"; message: string }
   | { code: "not_available"; message: string }
+  | { code: "read_only"; message: string }
   | {
       code: "workspace_unavailable";
       message: string;
@@ -106,8 +107,9 @@ export type LiveAccessError =
  * @cc [owner:PopDaph,label:security] live-access
  * A live session MUST be opened only for a member of the workspace, in a workspace with
  * `co_edition` that `validateWorkspaceAccess` lets through, for a file `openLiveFile` opens for
- * them. `auth` MUST be built for this check: an Authenticator keeps the membership, plan and
- * workspace it was built with. Minting a ticket and connecting MUST both go through it.
+ * them with write access. `auth` MUST be built for this check: an Authenticator keeps the
+ * membership, plan and workspace it was built with. Minting a ticket, connecting and re-checking
+ * an open connection MUST all go through it.
  */
 export async function checkLiveAccess(
   auth: Authenticator,
@@ -134,7 +136,15 @@ export async function checkLiveAccess(
       workspaceError,
     });
   }
-  return openLiveFile(auth, canonicalPath);
+  const file = await openLiveFile(auth, canonicalPath);
+  if (file.isOk() && !file.value.canWrite) {
+    // Readers get the file without live editing for now.
+    return new Err({
+      code: "read_only",
+      message: "Live editing needs write access to this file.",
+    });
+  }
+  return file;
 }
 
 /** The file as the live document last read or wrote it. */
