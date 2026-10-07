@@ -128,7 +128,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   // The grants this group holds, as opposed to the grants on it (e.g. `group_manager`). Loaded by
-  // `baseFetch`; `null` when the group was built by another path.
+  // `baseFetch` for manual groups, the only ones non-admins can edit; `null` otherwise.
   private heldGrants: GroupGrant[] | null = null;
 
   // Default group kinds for auth (excludes system groups).
@@ -709,11 +709,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     });
     const groups = groupModels.map((b) => new this(this.model, b.get()));
-    await this.loadHeldGrants(auth, groups, transaction);
+    await this.loadHeldGrants(
+      auth,
+      groups.filter((group) => group.isRegularManual()),
+      transaction
+    );
     return groups;
   }
 
-  // One query for all groups, on the (workspaceId, groupId) index.
+  // One query for all groups, on the (workspaceId, groupId) index. Not through
+  // `GroupPermissionResource.listForGroups`: that module imports this one (import cycle).
   private static async loadHeldGrants(
     auth: Authenticator,
     groups: GroupResource[],
@@ -2824,10 +2829,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       permissions
         .resolvedVerbsForResource(resourceType, WHOLE_TYPE_RESOURCE_ID, "type")
         .includes("admin");
+    const managesEveryGroup =
+      permissions.resourceIdsWithVerb("group", "write").kind === "all";
     return (
-      givesAdminOn("billing") ||
-      givesAdminOn("security") ||
-      permissions.resourceIdsWithVerb("group", "write").kind === "all"
+      givesAdminOn("billing") || givesAdminOn("security") || managesEveryGroup
     );
   }
 
