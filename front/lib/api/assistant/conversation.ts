@@ -900,16 +900,18 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
-    if (
-      onlyWhenIdle &&
-      ((await conversationResource.getRunningAgentMessage(auth, {
-        transaction: t,
-      })) ||
-        (await conversationResource.getRunningCompactionMessage(auth, {
+    if (onlyWhenIdle) {
+      const runningAgentMessage =
+        await conversationResource.getRunningAgentMessage(auth, {
           transaction: t,
-        })))
-    ) {
-      return null;
+        });
+      const runningCompactionMessage =
+        await conversationResource.getRunningCompactionMessage(auth, {
+          transaction: t,
+        });
+      if (runningAgentMessage || runningCompactionMessage) {
+        return null;
+      }
     }
 
     // We clear the hasError flag of a conversation when posting a new user message.
