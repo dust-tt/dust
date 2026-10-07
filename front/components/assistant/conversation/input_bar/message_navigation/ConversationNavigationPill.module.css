@@ -41,7 +41,7 @@
   stroke: var(--color-highlight-300);
   stroke-width: 1px;
   stroke-linecap: round;
-  animation: glint 3.2s linear infinite;
+  animation: glint 4.5s linear infinite;
 }
 
 .glintTail {
