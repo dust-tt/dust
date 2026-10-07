@@ -1,5 +1,5 @@
+import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
-import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AgentSurfaceRouterLayout } from "@spa/app/layouts/AgentSurfaceRouterLayout";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";

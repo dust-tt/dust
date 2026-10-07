@@ -1,12 +1,12 @@
 import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary.js";
+import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
 import { i18n } from "@dust-tt/front/lib/i18n/i18n";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { I18nProvider } from "@lingui/react";
-import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import { routes } from "@spa/poke/routes";
