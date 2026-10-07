@@ -1,4 +1,7 @@
-import { MODELS_TIER_DISPLAY_NAMES } from "@app/components/model_picker/modelPickerUtils";
+import {
+  LOWERCASE_REASONING_EFFORT_LABELS,
+  MODELS_TIER_DISPLAY_NAMES,
+} from "@app/components/model_picker/modelPickerUtils";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ModelTierExplainerTier } from "@app/lib/client/model_tiers_explainer";
 import { getModelTierExplainer } from "@app/lib/client/model_tiers_explainer";
@@ -146,8 +149,13 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
   const owner = useWorkspace();
   const { models, isModelsLoading } = useModels({ owner, disabled: !isOpen });
   const tiers = useMemo(
-    () => getModelTierExplainer(new Set(models.map((model) => model.modelId))),
-    [models]
+    () =>
+      getModelTierExplainer(
+        new Set(models.map((model) => model.modelId)),
+        t,
+        (effort) => t(LOWERCASE_REASONING_EFFORT_LABELS[effort])
+      ),
+    [models, t]
   );
 
   return (

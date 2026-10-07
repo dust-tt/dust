@@ -1,8 +1,5 @@
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
-import {
-  getModelsTierDisplayName,
-  MODELS_TIER_NAMES,
-} from "@app/types/assistant/models/model_tiers";
+import { MODELS_TIER_NAMES } from "@app/types/assistant/models/model_tiers";
 
 export const DEFAULT_MAX_MODEL_TIER: ModelsTierName = "ultra";
 
@@ -54,15 +51,4 @@ export function isTierAtLeast(
 // tier (an effort the model does not support) is below it.
 export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
   return tierName !== null && isTierAtLeast(tierName, "premium");
-}
-
-export function formatMaxTierDescription(
-  maxTierName: ModelsTierName
-): string | undefined {
-  const lowerTiers = expandTiersUpTo(maxTierName).slice(0, -1);
-  if (lowerTiers.length === 0) {
-    return undefined;
-  }
-
-  return `Includes ${lowerTiers.map(getModelsTierDisplayName).join(", ")}`;
 }

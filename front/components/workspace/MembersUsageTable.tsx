@@ -1511,7 +1511,9 @@ export function MembersUsageTable({
                         groupNameToId,
                         groupTierNamesByGroupId: groupModelTiersByGroupId,
                         workspaceAllowedTierNames: workspaceAllowedModelTiers,
+                        t,
                       }),
+                      t,
                     }).map((tierItem) => ({
                       id: tierItem.id,
                       name: tierItem.name,

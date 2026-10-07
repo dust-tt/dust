@@ -81,6 +81,43 @@ msgstr "Qu’est-ce qui se prépare, {name} ?"
 msgid "Ready when you are, {name}."
 msgstr "Quand vous voulez, {name}."
 
+#: front/lib/client/model_tier_options.ts
+msgid "Includes {tierNames}"
+msgstr "Inclut {tierNames}"
+
+#: front/lib/client/model_tier_options.ts
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from workspace"
+msgstr "Hérité du workspace"
+
+#: front/lib/client/model_tiers.ts
+msgid "Up to {tierName}"
+msgstr "Jusqu’à {tierName}"
+
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from groups"
+msgstr "Hérité des groupes"
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Lower-cost models for routine tasks."
+msgstr "Des modèles moins coûteux pour les tâches courantes."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Balanced models for most tasks."
+msgstr "Des modèles équilibrés pour la plupart des tâches."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "More capable models for complex or demanding work."
+msgstr "Des modèles plus performants pour les travaux complexes ou exigeants."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Frontier models priced far above Premium, for the most demanding work."
+msgstr "Des modèles de pointe, bien plus chers que Premium, pour les travaux les plus exigeants."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "all efforts"
+msgstr "tous les efforts"
+
 #: front/lib/client/wakeup_schedule.ts
 msgid "at {time}"
 msgstr "à {time}"
