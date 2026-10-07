@@ -142,7 +142,7 @@ export function PendingBatchSuggestionCard({
       collapsibleContent={
         <div className="flex flex-col gap-2">
           {Object.entries(agentSuggestionsByAgentId).map(
-            ([agentId, suggestions]) => (
+            ([agentId, suggestions], index) => (
               <AgentSuggestionsDiff
                 key={agentId}
                 owner={owner}
@@ -150,17 +150,19 @@ export function PendingBatchSuggestionCard({
                 agentId={agentId}
                 suggestions={suggestions}
                 pendingSkillNameById={pendingSkillNameById}
+                defaultOpen={index === 0}
               />
             )
           )}
           {Object.entries(skillSuggestionsBySkillId).map(
-            ([skillId, suggestions]) => (
+            ([skillId, suggestions], index) => (
               <SkillSuggestionsDiff
                 key={skillId}
                 owner={owner}
                 batchId={batch.id}
                 skillId={skillId}
                 suggestions={suggestions}
+                defaultOpen={batch.agentSuggestions.length === 0 && index === 0}
               />
             )
           )}
