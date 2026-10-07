@@ -40,6 +40,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { parse } from "csv-parse/browser/esm/sync";
 import { useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
@@ -87,18 +88,41 @@ function getCodeLanguage(fileName: string): string {
   return EXTENSION_TO_LANGUAGE[ext] ?? "text";
 }
 
-function getDelimitedRecordCount({
+// Rows are parsed leniently: the preview may be cut mid-record, so a broken
+// record is dropped rather than failing the whole table.
+function parseDelimitedRows({
   content,
+  mimeType,
 }: {
   content: string;
+  mimeType: string;
+}): string[][] {
+  const isTsv =
+    mimeType === "text/tsv" || mimeType === "text/tab-separated-values";
+
+  return parse(content, {
+    delimiter: isTsv ? "\t" : ",",
+    relax_column_count: true,
+    relax_quotes: true,
+    skip_empty_lines: true,
+    skip_records_with_error: true,
+    trim: true,
+  });
+}
+
+function getDelimitedRecordCount({
+  content,
+  mimeType,
+}: {
+  content: string;
+  mimeType: string;
 }): { displayed: number; total: number } | null {
-  const lines = content.split("\n").filter((l) => l.trim());
-  if (lines.length < 2) {
+  const rows = parseDelimitedRows({ content, mimeType });
+  if (rows.length < 2) {
     return null;
   }
 
-  const [, ...dataLines] = lines;
-  const total = dataLines.length;
+  const total = rows.length - 1;
 
   return { displayed: Math.min(total, MAX_CSV_ROWS), total };
 }
@@ -108,16 +132,22 @@ interface DelimitedPreviewProps {
   mimeType: string;
 }
 
-type Row = Record<string, string>;
+interface Row {
+  cells: string[];
+  // Present only to satisfy the table's base row type, which requires a row
+  // to share at least one of its optional props.
+  onClick?: () => void;
+}
 
+/**
+ * @cc [owner:avervaet,label:react] columns-keyed-by-position
+ * Columns MUST be identified by their position, never by their header text: empty or repeated
+ * header cells MUST render without throwing and each column MUST show its own values.
+ */
 function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
-  const isTsv =
-    mimeType === "text/tsv" || mimeType === "text/tab-separated-values";
+  const rows = parseDelimitedRows({ content, mimeType });
 
-  const delimiter = isTsv ? "\t" : ",";
-  const lines = content.split("\n").filter((l) => l.trim());
-
-  if (lines.length < 2) {
+  if (rows.length < 2) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         <Trans>No data to preview.</Trans>
@@ -125,19 +155,14 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
     );
   }
 
-  const [headerLine, ...dataLines] = lines;
-  const headers = headerLine!
-    .split(delimiter)
-    .map((c) => c.trim().replace(/^"|"$/g, ""));
-  const allRows = dataLines.map((line) =>
-    line.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, ""))
-  );
+  const [headers, ...dataRows] = rows;
+  const allRows: Row[] = dataRows.map((cells) => ({ cells }));
   const displayed = allRows.slice(0, MAX_CSV_ROWS);
 
   const baseRatio = Math.floor(100 / headers.length);
   const columns: ColumnDef<Row>[] = headers.map((header, idx) => ({
-    id: header,
-    accessorFn: (row: Row) => row[header] ?? "",
+    id: `col_${idx}`,
+    accessorFn: (row: Row) => row.cells[idx] ?? "",
     header,
     cell: (info: CellContext<Row, unknown>) => (
       <DataTable.BasicCellContent label={String(info.getValue() ?? "")} />
@@ -151,13 +176,13 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
     },
   }));
 
-  const data: Row[] = displayed.map((row) =>
-    Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""]))
-  );
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ScrollableDataTable data={data} columns={columns} maxHeight={true} />
+      <ScrollableDataTable
+        data={displayed}
+        columns={columns}
+        maxHeight={true}
+      />
     </div>
   );
 }
@@ -299,7 +324,7 @@ export function useFilePreviewContent({
 
   const recordCounts =
     category === "delimited" && truncatedContent
-      ? getDelimitedRecordCount({ content: truncatedContent })
+      ? getDelimitedRecordCount({ content: truncatedContent, mimeType })
       : null;
 
   return {
