@@ -27,12 +27,12 @@ export function internalIdFromTypeAndPath({
   return "microsoft-" + Buffer.from(stringId).toString("base64url");
 }
 
-export function typeAndPathFromInternalId(internalId: string): {
+function parseInternalId(internalId: string): {
   nodeType: MicrosoftNodeType;
   itemAPIPath: string;
-} {
+} | null {
   if (!internalId.startsWith("microsoft-")) {
-    throw new Error(`Invalid internal id: ${internalId}`);
+    return null;
   }
 
   // decode from base64url
@@ -47,12 +47,96 @@ export function typeAndPathFromInternalId(internalId: string): {
 
   const [nodeType, ...resourcePathArr] = decodedId.split("/");
   if (!nodeType || !isValidNodeType(nodeType)) {
-    throw new Error(
-      `Invalid internal id: ${decodedId} with nodeType: ${nodeType}`
-    );
+    return null;
   }
 
   return { nodeType, itemAPIPath: resourcePathArr.join("/") };
+}
+
+export function typeAndPathFromInternalId(internalId: string): {
+  nodeType: MicrosoftNodeType;
+  itemAPIPath: string;
+} {
+  const parsed = parseInternalId(internalId);
+  if (!parsed) {
+    throw new Error(`Invalid internal id: ${internalId}`);
+  }
+  return parsed;
+}
+
+export type SelectableContainer =
+  | { type: "sites-root" }
+  | { type: "site"; siteId: string }
+  | { type: "drive"; driveId: string };
+
+const GUID =
+  "[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}";
+const SITE_ID_SEGMENT = `([A-Za-z0-9.-]+,${GUID},${GUID})`;
+const DRIVE_ITEM_ID_SEGMENT = "([A-Za-z0-9!_-]+)";
+const PERSONAL_SITE_HOSTNAME_PATTERN = /-my\.sharepoint\.[a-z.]+$/i;
+
+const SELECTABLE_PATH_PATTERNS = [
+  {
+    nodeType: "site",
+    pattern: new RegExp(`^/sites/${SITE_ID_SEGMENT}$`),
+    container: "site",
+  },
+  {
+    nodeType: "list",
+    pattern: new RegExp(
+      `^/sites/${SITE_ID_SEGMENT}/lists/${DRIVE_ITEM_ID_SEGMENT}$`
+    ),
+    container: "site",
+  },
+  {
+    nodeType: "drive",
+    pattern: new RegExp(`^/drives/${DRIVE_ITEM_ID_SEGMENT}$`),
+    container: "drive",
+  },
+  {
+    nodeType: "folder",
+    pattern: new RegExp(
+      `^/drives/${DRIVE_ITEM_ID_SEGMENT}/items/${DRIVE_ITEM_ID_SEGMENT}$`
+    ),
+    container: "drive",
+  },
+] as const;
+
+/**
+ * @cc [owner:tdraier,label:security] selectable-internal-id-shape
+ * Returns `null` unless `internalId` is the canonical encoding of `sites-root` or of a site
+ * (`/sites/{siteId}`), list (`/sites/{siteId}/lists/{id}`), drive (`/drives/{id}`) or folder
+ * (`/drives/{id}/items/{id}`) path, where `{siteId}` is a Graph `{hostname},{guid},{guid}` site id
+ * and each `{id}` is a single path segment of letters, digits, `!`, `_` or `-`. Sites on a personal
+ * OneDrive host (`*-my.sharepoint.*`) and any other node type or Graph path, such as `/me/drive` or
+ * `/users/{id}/drive`, MUST be rejected. Otherwise returns the site or drive containing the node.
+ */
+export function getSelectableContainer(
+  internalId: string
+): SelectableContainer | null {
+  const parsed = parseInternalId(internalId);
+  if (!parsed || internalIdFromTypeAndPath(parsed) !== internalId) {
+    return null;
+  }
+  if (parsed.nodeType === "sites-root") {
+    return { type: "sites-root" };
+  }
+
+  const entry = SELECTABLE_PATH_PATTERNS.find(
+    (e) => e.nodeType === parsed.nodeType
+  );
+  const containerId = entry?.pattern.exec(parsed.itemAPIPath)?.[1];
+  if (!entry || !containerId) {
+    return null;
+  }
+
+  if (entry.container === "drive") {
+    return { type: "drive", driveId: containerId };
+  }
+  const [hostname = ""] = containerId.split(",");
+  return PERSONAL_SITE_HOSTNAME_PATTERN.test(hostname)
+    ? null
+    : { type: "site", siteId: containerId };
 }
 
 export function getDriveInternalIdFromItemId(itemId: string) {
