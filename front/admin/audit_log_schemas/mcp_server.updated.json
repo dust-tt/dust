@@ -1,0 +1,25 @@
+{
+  "action": "mcp_server.updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "mcp_server"
+    }
+  ],
+  "metadata": {
+    "server_type": "string",
+    "server_name": "string",
+    "internal_name": "string",
+    "change_kind": "string",
+    "changed_fields": "string",
+    "previous_name": "string",
+    "oauth_use_case": "string",
+    "is_restricted_to_skills": "string",
+    "meta_cleared": "string",
+    "shared_secret_change": "string",
+    "custom_headers_change": "string",
+    "actor_type": "string"
+  }
+}

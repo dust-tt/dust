@@ -1,0 +1,18 @@
+{
+  "action": "mcp_server.deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "mcp_server"
+    }
+  ],
+  "metadata": {
+    "server_type": "string",
+    "server_name": "string",
+    "internal_name": "string",
+    "space_count": "string",
+    "actor_type": "string"
+  }
+}

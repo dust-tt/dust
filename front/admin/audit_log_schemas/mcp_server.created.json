@@ -1,0 +1,17 @@
+{
+  "action": "mcp_server.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "mcp_server"
+    }
+  ],
+  "metadata": {
+    "server_type": "string",
+    "server_name": "string",
+    "internal_name": "string",
+    "actor_type": "string"
+  }
+}
