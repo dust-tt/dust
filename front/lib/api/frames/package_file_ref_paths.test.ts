@@ -32,6 +32,7 @@ describe("isFramePackageRelativePath", () => {
 });
 
 describe("parseExtractableFramePackageRelativePath", () => {
+  // Extraction denylist is intentional; FS verification remains the allowlist gate.
   it("requires ./ plus a real non-source/module extension", () => {
     expect(parseExtractableFramePackageRelativePath("hello world")).toBeNull();
     expect(
