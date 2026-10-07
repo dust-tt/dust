@@ -26,6 +26,7 @@ import {
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo } from "react";
 
 const DEFAULT_PILL_BASE_CLASSNAME =
@@ -42,6 +43,7 @@ export function PodSettingsCustomizationTab({
   owner,
   pod,
 }: PodSettingsCustomizationTabProps) {
+  const { t } = useLingui();
   const isPodEditor = pod.isEditor;
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
@@ -91,12 +93,11 @@ export function PodSettingsCustomizationTab({
     async (agentId: string | null) => {
       if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
         const confirmed = await confirm({
-          title: "Warning",
-          message:
-            "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?",
+          title: t`Warning`,
+          message: t`@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?`,
           validateVariant: "warning",
-          validateLabel: "Yes",
-          cancelLabel: "No",
+          validateLabel: t`Yes`,
+          cancelLabel: t`No`,
         });
         if (!confirmed) {
           return;
@@ -104,7 +105,7 @@ export function PodSettingsCustomizationTab({
       }
       await doUpdateMetadata({ defaultAgentId: agentId });
     },
-    [confirm, doUpdateMetadata]
+    [confirm, doUpdateMetadata, t]
   );
 
   // Default skills
@@ -130,14 +131,16 @@ export function PodSettingsCustomizationTab({
     [doUpdateMetadata, defaultSkillIds]
   );
 
+  const defaultAgentName = displayedDefaultAgent?.name ?? "Dust";
+
   const renderDefaultAgentPill = (interactive: boolean) => (
     <div
       role="button"
       tabIndex={interactive ? 0 : -1}
       aria-label={
         isInheritingWorkspaceDefault
-          ? `Default Agent: ${displayedDefaultAgent?.name ?? "Dust"} (workspace default)`
-          : `Default Agent: ${displayedDefaultAgent?.name ?? "Dust"}`
+          ? t`Default agent: ${defaultAgentName} (workspace default)`
+          : t`Default agent: ${defaultAgentName}`
       }
       aria-disabled={!interactive}
       className={cn(
@@ -149,10 +152,10 @@ export function PodSettingsCustomizationTab({
     >
       <Avatar size="xs" visual={displayedDefaultAgent?.pictureUrl} />
       <span className="grow truncate notranslate">
-        {displayedDefaultAgent?.name ?? "Dust"}
+        {defaultAgentName}
         {isInheritingWorkspaceDefault && (
           <span className="ml-1 text-muted-foreground">
-            · Workspace default
+            · <Trans>Workspace default</Trans>
           </span>
         )}
       </span>
@@ -174,7 +177,7 @@ export function PodSettingsCustomizationTab({
               <Icon visual={InfoCircle} size="xs" />
             </span>
           }
-          label="This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the pod for more information."
+          label={t`This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the Pod for more information.`}
         />
       )}
       {interactive && (
@@ -196,11 +199,15 @@ export function PodSettingsCustomizationTab({
 
       {/* Instructions for Agents */}
       <div className="flex w-full flex-col gap-2">
-        <div className="heading-lg">Pod instructions for Agents</div>
+        <div className="heading-lg">
+          <Trans>Pod instructions for agents</Trans>
+        </div>
         <div className="text-sm text-muted-foreground">
-          Seen by all agents in this Pod, stored as{" "}
-          <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
-          Pod's files.
+          <Trans>
+            Seen by all agents in this Pod, stored as{" "}
+            <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
+            Pod's files.
+          </Trans>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2">
           <MarkdownFileEditor
@@ -208,7 +215,7 @@ export function PodSettingsCustomizationTab({
             filePath={getPodAgentsMdScopedPath(pod.sId)}
             emptyWhenNotFound
             readOnly={!isPodEditor}
-            placeholder="Enter instructions for agents"
+            placeholder={t`Enter instructions for agents`}
             maxCharacterCount={POD_AGENTS_MD_MAX_CHARACTER_COUNT}
           />
         </div>
@@ -216,12 +223,17 @@ export function PodSettingsCustomizationTab({
 
       {/* Default agent */}
       <div className="flex w-full flex-col gap-2">
-        <div className="heading-lg">Default agent</div>
+        <div className="heading-lg">
+          <Trans>Default agent</Trans>
+        </div>
         <p className="text-sm text-muted-foreground">
-          The agent pre-selected when anyone starts a new conversation in this
-          Pod.{" "}
-          {hasWorkspaceDefaultAgentFeature &&
-            "When unset, it inherits the Workspace default agent."}
+          <Trans>
+            The agent pre-selected when anyone starts a new conversation in this
+            Pod.
+          </Trans>{" "}
+          {hasWorkspaceDefaultAgentFeature && (
+            <Trans>When unset, it inherits the workspace default agent.</Trans>
+          )}
         </p>
         <div className="flex items-center gap-2">
           {isPodEditor ? (
@@ -239,7 +251,7 @@ export function PodSettingsCustomizationTab({
                     variant="ghost"
                     size="sm"
                     icon={XCircle}
-                    tooltip="Reset to workspace default"
+                    tooltip={t`Reset to workspace default`}
                     onClick={() => void saveDefaultAgent(null)}
                   />
                 )}
@@ -252,35 +264,42 @@ export function PodSettingsCustomizationTab({
 
       {/* Default Skills */}
       <div className="flex w-full flex-col gap-2">
-        <div className="heading-lg">Default Skills</div>
+        <div className="heading-lg">
+          <Trans>Default skills</Trans>
+        </div>
         <p className="text-sm text-muted-foreground">
-          The skills pre-selected when anyone starts a new conversation in this
-          Pod. Members can still edit the skills in each conversation.
+          <Trans>
+            The skills pre-selected when anyone starts a new conversation in
+            this Pod. Members can still edit the skills in each conversation.
+          </Trans>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          {selectedDefaultSkills.map((skill) => (
-            <div
-              key={skill.sId}
-              aria-label={`Default skill: ${skill.name}`}
-              className={cn(
-                DEFAULT_PILL_BASE_CLASSNAME,
-                !isPodEditor && "opacity-50"
-              )}
-            >
-              <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
-              <span className="grow truncate notranslate">{skill.name}</span>
-              {isPodEditor && (
-                <button
-                  type="button"
-                  aria-label={`Remove ${skill.name}`}
-                  className="-mr-1 flex items-center text-faint hover:text-primary"
-                  onClick={() => void removeDefaultSkill(skill.sId)}
-                >
-                  <Icon visual={XCircle} size="xs" />
-                </button>
-              )}
-            </div>
-          ))}
+          {selectedDefaultSkills.map((skill) => {
+            const skillName = skill.name;
+            return (
+              <div
+                key={skill.sId}
+                aria-label={t`Default skill: ${skillName}`}
+                className={cn(
+                  DEFAULT_PILL_BASE_CLASSNAME,
+                  !isPodEditor && "opacity-50"
+                )}
+              >
+                <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
+                <span className="grow truncate notranslate">{skill.name}</span>
+                {isPodEditor && (
+                  <button
+                    type="button"
+                    aria-label={t`Remove ${skillName}`}
+                    className="-mr-1 flex items-center text-faint hover:text-primary"
+                    onClick={() => void removeDefaultSkill(skill.sId)}
+                  >
+                    <Icon visual={XCircle} size="xs" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
           {isPodEditor && (
             <PodDefaultSkillPicker
               owner={owner}
@@ -294,7 +313,7 @@ export function PodSettingsCustomizationTab({
           )}
           {!isPodEditor && selectedDefaultSkills.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No default skills configured.
+              <Trans>No default skills configured.</Trans>
             </p>
           )}
         </div>

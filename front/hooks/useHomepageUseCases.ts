@@ -1,4 +1,4 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -45,7 +45,7 @@ export function useDismissHomepageUseCase({
 }: {
   workspaceId: string;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateUseCases } = useHomepageUseCases({
     disabled: true,
     workspaceId,
@@ -64,10 +64,9 @@ export function useDismissHomepageUseCase({
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to hide the suggestion.",
-          description: errorData.message,
+          error: errorData,
         });
         return;
       }
@@ -80,6 +79,6 @@ export function useDismissHomepageUseCase({
         { revalidate: false }
       );
     },
-    [mutateUseCases, sendNotification, workspaceId]
+    [mutateUseCases, sendApiErrorNotification, workspaceId]
   );
 }

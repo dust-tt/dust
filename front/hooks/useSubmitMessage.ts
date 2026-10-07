@@ -11,6 +11,7 @@ import type {
 import type { MentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -56,7 +57,10 @@ export function useSubmitMessage({
         return new Err({
           type: "message_send_error",
           title: "Conversation not found",
-          message: "Cannot send message without a conversation",
+          error: {
+            type: "conversation_not_found",
+            message: "Cannot send message without a conversation",
+          } satisfies APIError,
         });
       }
 
@@ -119,8 +123,7 @@ export function useSubmitMessage({
             return new Err({
               type: "attachment_upload_error",
               title: "Error uploading file.",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              message: data.error.message || "Please try again or contact us.",
+              error: data,
             });
           }
         }
@@ -156,7 +159,10 @@ export function useSubmitMessage({
           return new Err({
             type: "content_too_large",
             title: "Your message is too long to be sent.",
-            message: "Please try again with a shorter message.",
+            error: {
+              type: "content_too_large",
+              message: "Please try again with a shorter message.",
+            } satisfies APIError,
           });
         }
         const data = await mRes.json();
@@ -168,14 +174,13 @@ export function useSubmitMessage({
                 ? "credits_exhausted_error"
                 : data.error.type === "user_cap_reached"
                   ? "user_cap_reached_error"
-                  : data.error.type === "group_limit_reached"
-                    ? "group_limit_reached_error"
+                  : data.error.type === "group_shared_usage_limit_reached"
+                    ? "group_shared_usage_limit_reached_error"
                     : data.error.type === "no_seat"
                       ? "no_seat_error"
                       : "message_send_error",
           title: "Your message could not be sent.",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          message: data.error.message || "Please try again or contact us.",
+          error: data,
         });
       }
 

@@ -1,0 +1,35 @@
+{
+  "label": "dfs henry [FoundationDB]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "profile": "release",
+  "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
+  "cpu_count": 12,
+  "server_binary_sha256": "7e082f8ce6afec7a9660f9dd8bab8a38d1a7b5667b014b9fedf347e99fb9a2df",
+  "mount_binary_sha256": "80b26c591c5360342941685d49e0cfa8498b0932eb534a6fc3e8478e170c71c8",
+  "fdb_client_knobs": {},
+  "max_delay_ms": 1000,
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
+  "kernel_caching": "none (TTL 0, direct I/O)",
+  "fuse_threads": 1,
+  "max_background": 32,
+  "revalidate_listings": true,
+  "url": "https://github.com/dust-tt/dust",
+  "git": "git version 2.47.3",
+  "native": {
+    "clone_seconds": 70.53999956500047,
+    "status_first_seconds": 0.3911011079981108,
+    "status_warm_seconds": 0.029946285001642536,
+    "clean": true,
+    "head": "470719c616a008d41b020665e0ed8602b6c5e0f4",
+    "sync_seconds": 0.7438365619964316
+  },
+  "dfs": {
+    "clone_seconds": 112.36245813999994,
+    "status_first_seconds": 5.4115296349991695,
+    "status_warm_seconds": 1.4597749739987194,
+    "clean": true,
+    "head": "8139065b0d36182abc9deba0b6579c5431daac3b",
+    "remaining_client_writeback_seconds": 0.0021651540009770542
+  }
+}

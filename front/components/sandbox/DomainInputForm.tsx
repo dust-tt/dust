@@ -1,9 +1,7 @@
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { Button, Input, Plus } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
-
-const DOMAIN_INPUT_HINT =
-  "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
 
 interface DomainInputFormProps {
   // A message when the normalized domain is a duplicate for the current scope
@@ -27,6 +25,7 @@ export function DomainInputForm({
   submitLabel,
   isUpdating,
 }: DomainInputFormProps) {
+  const { t } = useLingui();
   const [domainInput, setDomainInput] = useState("");
 
   const hasDomainInput = domainInput.trim().length > 0;
@@ -44,7 +43,7 @@ export function DomainInputForm({
         ? duplicate
         : normalizedDomain !== null
           ? validMessage(normalizedDomain)
-          : DOMAIN_INPUT_HINT;
+          : t`Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.`;
   const isInvalid = domainInputResult?.isErr() === true || duplicate !== null;
   const canSubmit =
     normalizedDomain !== null && duplicate === null && !isUpdating;
@@ -69,9 +68,9 @@ export function DomainInputForm({
     >
       <div className="grow">
         <Input
-          label="Domain"
+          label={t`Domain`}
           name="domain"
-          placeholder="e.g. api.openai.com or *.mistral.ai"
+          placeholder={t`e.g. api.openai.com or *.mistral.ai`}
           value={domainInput}
           message={message}
           messageStatus={isInvalid ? "error" : "info"}

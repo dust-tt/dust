@@ -1,11 +1,12 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useSearchParam } from "@app/lib/platform";
-import {
-  GetGoTemplateDraftResponseBodySchema,
-  GoTemplateApiErrorBodySchema,
-} from "@app/types/api/assistant/go_template_types";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { GetGoTemplateDraftResponseBodySchema } from "@app/types/api/assistant/go_template_types";
 import { isSupportedFileContentType } from "@app/types/files";
 import { useContext, useEffect, useRef } from "react";
 
@@ -18,6 +19,7 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
   const goSlug = useSearchParam("go");
   const { setPendingInputText, fileUploaderService, setIsLoadingGoTemplate } =
     useContext(InputBarContext);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const loadedSlugRef = useRef<string | null>(null);
 
@@ -46,21 +48,10 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
         }
 
         if (!response.ok) {
-          let message = "This link template could not be loaded.";
-          try {
-            const body = GoTemplateApiErrorBodySchema.safeParse(
-              await response.json()
-            );
-            if (body.success && body.data.error?.message) {
-              message = body.data.error.message;
-            }
-          } catch {
-            // Keep default message.
-          }
-          sendNotification({
-            type: "error",
+          const errorData = await getErrorFromResponse(response);
+          sendApiErrorNotification({
             title: "Template unavailable",
-            description: message,
+            error: errorData,
           });
           return;
         }
@@ -133,6 +124,7 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
     setPendingInputText,
     setIsLoadingGoTemplate,
     fileUploaderService,
+    sendApiErrorNotification,
     sendNotification,
   ]);
 }

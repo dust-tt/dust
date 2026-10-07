@@ -1,10 +1,11 @@
-import { lingui } from "@lingui/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { createRequire } from "module";
 import path from "path";
 import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
+
+import { linguiMergedCatalogPlugin } from "../front/scripts/i18n/merged_catalog";
 
 const require = createRequire(import.meta.url);
 
@@ -248,6 +249,16 @@ export default defineConfig(({ mode }) => {
 
   const appDefinition = apps[appName];
 
+  // The co-edition live session server is reached through the API host's /collab route. Only
+  // dev builds get it: no server runs elsewhere yet.
+  if (
+    mode === "development" &&
+    env.VITE_DUST_COLLAB_URL === undefined &&
+    env.VITE_DUST_API_URL
+  ) {
+    env.VITE_DUST_COLLAB_URL = `${env.VITE_DUST_API_URL.replace(/^http/, "ws")}/collab`;
+  }
+
   // Map NEXT_PUBLIC_* env vars to process.env.NEXT_PUBLIC_* for compatibility
   const envVarDefines: Record<string, string> = {};
   for (const key of Object.keys(env)) {
@@ -295,7 +306,7 @@ export default defineConfig(({ mode }) => {
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
       react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
-      lingui(),
+      linguiMergedCatalogPlugin(),
       enableAnalyzer &&
         visualizer({
           open: true,

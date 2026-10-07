@@ -11,6 +11,7 @@ import {
   DialogTitle,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 type GlobalAgentActionProps = {
   agent: Pick<LightAgentConfigurationType, "sId" | "name" | "status">;
@@ -31,9 +32,11 @@ export function GlobalAgentAction({
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
 }: GlobalAgentActionProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
 
   const canBeDisabled = agent.sId !== GLOBAL_AGENTS_SID.HELPER;
+  const agentName = agent.name;
 
   if (canBeDisabled) {
     return (
@@ -73,19 +76,21 @@ export function GlobalAgentAction({
           >
             <DialogContent size="md">
               <DialogHeader hideButton={false}>
-                <DialogTitle>Free plan</DialogTitle>
+                <DialogTitle>
+                  <Trans>Free plan</Trans>
+                </DialogTitle>
               </DialogHeader>
               <DialogContainer>
-                {`${agent.name} is only available on our paid plans.`}
+                <Trans>{agentName} is only available on our paid plans.</Trans>
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
-                  label: "Cancel",
+                  label: t`Cancel`,
                   variant: "outline",
                   onClick: () => setShowDisabledFreeWorkspacePopup(null),
                 }}
                 rightButtonProps={{
-                  label: "Check Dust plans",
+                  label: t`Check Dust plans`,
                   variant: "primary",
                   onClick: () => {
                     void router.push(`/w/${owner.sId}/subscription`);

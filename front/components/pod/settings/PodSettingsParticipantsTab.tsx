@@ -17,10 +17,8 @@ import {
   Tooltip,
   Users01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useState } from "react";
-
-const OPEN_POD_DISABLED_TOOLTIP =
-  "Open Pods are disabled by your workspace admin.";
 
 interface PodSettingsParticipantsTabProps {
   owner: LightWorkspaceType;
@@ -33,6 +31,7 @@ export function PodSettingsParticipantsTab({
   pod,
   onOpenMembersPanel,
 }: PodSettingsParticipantsTabProps) {
+  const { t } = useLingui();
   const isPodEditor = pod.isEditor;
   const { members: podMembers, groups: podGroups } = pod;
   const isOpen = !pod.isRestricted;
@@ -60,11 +59,11 @@ export function PodSettingsParticipantsTab({
 
   const handleVisibilityToggle = useCallback(async () => {
     const newIsOpen = !isOpen;
-    const title = newIsOpen ? "Switch to open?" : "Switch to restricted?";
+    const title = newIsOpen ? t`Switch to open?` : t`Switch to restricted?`;
 
     const message = newIsOpen
-      ? "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
-      : "Access will be limited to invited members only.";
+      ? t`All workspace members will be able to join and see everything in the Pod — including existing conversations and files.`
+      : t`Access will be limited to invited members only.`;
 
     const confirmed = await confirm({
       title,
@@ -84,8 +83,10 @@ export function PodSettingsParticipantsTab({
         name: pod.name,
       },
       {
-        title: "Successfully updated Pod visibility",
-        description: `Pod is now ${newIsOpen ? "open" : "restricted"}.`,
+        title: t`Successfully updated Pod visibility`,
+        description: newIsOpen
+          ? t`Pod is now open.`
+          : t`Pod is now restricted.`,
       }
     );
 
@@ -93,21 +94,23 @@ export function PodSettingsParticipantsTab({
       await mutatePodInfo();
       void mutateSpaceSummary();
     }
-  }, [confirm, doUpdate, isOpen, pod, mutatePodInfo, mutateSpaceSummary]);
+  }, [confirm, doUpdate, isOpen, pod, mutatePodInfo, mutateSpaceSummary, t]);
 
   return (
     <>
       {/* Visibility */}
       <div className="flex w-full items-end justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="heading-lg">Open to everyone</div>
+          <div className="heading-lg">
+            <Trans>Open to everyone</Trans>
+          </div>
           <div className="text-sm text-muted-foreground">
-            Anyone in the workspace can find and join the Pod.
+            <Trans>Anyone in the workspace can find and join the Pod.</Trans>
           </div>
         </div>
         {isVisibilityToggleDisabled ? (
           <Tooltip
-            label={OPEN_POD_DISABLED_TOOLTIP}
+            label={t`Open Pods are disabled by your workspace admin.`}
             trigger={
               <div>
                 <SliderToggle
@@ -132,10 +135,12 @@ export function PodSettingsParticipantsTab({
       {/* Members */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="heading-lg flex-1">Members</h3>
+          <h3 className="heading-lg flex-1">
+            <Trans>Members</Trans>
+          </h3>
           {isPodEditor && onOpenMembersPanel && (
             <Button
-              label="Manage"
+              label={t`Manage`}
               variant="outline"
               icon={Users01}
               onClick={onOpenMembersPanel}
@@ -146,7 +151,7 @@ export function PodSettingsParticipantsTab({
           <>
             <SearchInput
               name="search"
-              placeholder="Search (email)"
+              placeholder={t`Search (email)`}
               value={searchSelectedMembers}
               onChange={setSearchSelectedMembers}
             />
@@ -163,7 +168,9 @@ export function PodSettingsParticipantsTab({
           </>
         ) : (
           <p className="text-sm italic text-muted-foreground">
-            No members yet. Add people to give them access to this Pod.
+            <Trans>
+              No members yet. Add people to give them access to this Pod.
+            </Trans>
           </p>
         )}
       </div>
@@ -171,10 +178,12 @@ export function PodSettingsParticipantsTab({
       {/* Groups */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="heading-lg flex-1">Groups</h3>
+          <h3 className="heading-lg flex-1">
+            <Trans>Groups</Trans>
+          </h3>
           {isPodEditor && (
             <Button
-              label="Manage"
+              label={t`Manage`}
               variant="outline"
               icon={Users01}
               onClick={() => setIsGroupsPanelOpen(true)}
@@ -193,8 +202,10 @@ export function PodSettingsParticipantsTab({
           </ScrollArea>
         ) : (
           <p className="text-sm italic text-muted-foreground">
-            No groups yet. Add a group to give all of its members access at
-            once.
+            <Trans>
+              No groups yet. Add a group to give all of its members access at
+              once.
+            </Trans>
           </p>
         )}
       </div>

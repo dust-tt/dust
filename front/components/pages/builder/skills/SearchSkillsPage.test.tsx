@@ -121,6 +121,7 @@ async function setup({
       skills: [skill],
       total: 1,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
   const fetcherWithBody = vi.fn(async (..._args: unknown[]) => search());
@@ -137,6 +138,7 @@ async function setup({
       skills: [],
       total: 1,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {
         availability: SKILL_AVAILABILITIES.map((availability) => ({
           availability,
@@ -311,6 +313,7 @@ describe("search-backed Manage Skills", () => {
       ],
       total: 2,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();
@@ -357,6 +360,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 51,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();
@@ -365,6 +369,7 @@ describe("search-backed Manage Skills", () => {
       skills: [{ ...skill, name: "Second page" }],
       total: 51,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     const [, nextButton] = screen
@@ -397,6 +402,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 1,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     await act(async () => {
@@ -404,6 +410,7 @@ describe("search-backed Manage Skills", () => {
         skills: [skill],
         total: 1,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {},
       });
     });
@@ -563,8 +570,16 @@ describe("search-backed Manage Skills", () => {
       ])
     );
     await waitFor(() =>
-      expect(screen.queryByText("Editor")).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole("button", { name: "Remove" })
+      ).not.toBeInTheDocument()
     );
+    // Clearing the editor filter offers its preset again.
+    expect(
+      screen.getByRole("button", {
+        name: `Editor is ${context.user.fullName} (You)`,
+      })
+    ).toBeInTheDocument();
   });
 
   it("lists only the filter options held by matching skills, narrowed by the other selections", async () => {
@@ -573,6 +588,7 @@ describe("search-backed Manage Skills", () => {
       skills: [],
       total: 1,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {
         availability: [{ availability: "workspace_users", count: 1 }],
         editors: [],
@@ -693,6 +709,7 @@ describe("search-backed Manage Skills", () => {
         skills: [],
         total: 1,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {
           availability: [{ availability: "workspace_users", count: 1 }],
         },
@@ -729,6 +746,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 51,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();
@@ -807,6 +825,7 @@ describe("search-backed Manage Skills", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     expect(
@@ -848,6 +867,7 @@ describe("search-backed Manage Skills", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     mutation.mockImplementation(async () => {
@@ -855,6 +875,7 @@ describe("search-backed Manage Skills", () => {
         skills: [skill],
         total: 1,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {},
       });
     });
@@ -923,6 +944,7 @@ describe("search-backed Manage Skills", () => {
           skills: [],
           total: 0,
           hasMore: false,
+          isFavoritesOnly: false,
           facets: {},
         });
       });
@@ -975,6 +997,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 60,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();
@@ -994,6 +1017,7 @@ describe("search-backed Manage Skills", () => {
       skills: [{ ...skill, sId: "second", name: "Second page" }],
       total: 60,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     await userEvent.click(screen.getByRole("button", { name: "2" }));
@@ -1043,6 +1067,7 @@ describe("search-backed Manage Skills", () => {
       ],
       total: 2,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();
@@ -1062,12 +1087,14 @@ describe("search-backed Manage Skills", () => {
       skills: [{ ...skill, name: "Zebra" }],
       total: 51,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     };
     const secondPage = {
       skills: [{ ...skill, sId: "next", name: "Alpha" }],
       total: 51,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     };
     search.mockResolvedValueOnce(firstPage);
@@ -1113,6 +1140,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 1,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
 
@@ -1173,6 +1201,7 @@ describe("search-backed Manage Skills", () => {
         skills: [{ ...skill, name: "New report" }],
         total: 1,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {},
       });
     });
@@ -1207,6 +1236,7 @@ describe("search-backed Manage Skills", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));

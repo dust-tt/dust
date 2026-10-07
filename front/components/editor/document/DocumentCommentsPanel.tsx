@@ -1,3 +1,4 @@
+import { parseInlineMarkdown } from "@app/components/editor/document/content";
 import { DocumentCommentInput } from "@app/components/editor/document/DocumentCommentInput";
 import type {
   DocumentCommentAvatarSize,
@@ -7,6 +8,7 @@ import type { DocumentCommentsController } from "@app/components/editor/document
 import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { formatDateTime } from "@app/lib/i18n/format";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
+import { readMessageSuggestions } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import {
   AlertCircle,
@@ -23,8 +25,11 @@ import {
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import type { Extensions } from "@tiptap/core";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 interface PanelIconButtonProps {
   label: string;
@@ -87,85 +92,167 @@ const MessageByline = ({
   renderAuthorAvatar,
   verified,
   mountPortalContainer,
-}: MessageBylineProps) => (
-  <div className="flex min-w-0 flex-1 items-center gap-2">
-    <span aria-hidden="true">{renderAuthorAvatar(message.author, size)}</span>
-    <span className="min-w-0 truncate text-sm font-medium">
-      {message.author.name}
-    </span>
-    {verified === false && (
-      <Tooltip
-        label="Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
-        tooltipTriggerAsChild
-        mountPortalContainer={mountPortalContainer}
-        trigger={
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-warning-500">
-            <Icon visual={AlertCircle} size="xs" />
-            Unverified
-          </span>
-        }
-      />
-    )}
-    <time
-      dateTime={message.createdAt}
-      title={formatDateTime(new Date(message.createdAt))}
-      className="shrink-0 text-xs text-muted-foreground"
-    >
-      {formatRelativeTime(new Date(message.createdAt))}
-    </time>
-  </div>
-);
+}: MessageBylineProps) => {
+  const { t } = useLingui();
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <span aria-hidden="true">{renderAuthorAvatar(message.author, size)}</span>
+      <span className="min-w-0 truncate text-sm font-medium">
+        {message.author.name}
+      </span>
+      {verified === false && (
+        <Tooltip
+          label={t`Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor.`}
+          tooltipTriggerAsChild
+          mountPortalContainer={mountPortalContainer}
+          trigger={
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs text-warning-500">
+              <Icon visual={AlertCircle} size="xs" />
+              <Trans>Unverified</Trans>
+            </span>
+          }
+        />
+      )}
+      <time
+        dateTime={message.createdAt}
+        title={formatDateTime(new Date(message.createdAt))}
+        className="shrink-0 text-xs text-muted-foreground"
+      >
+        {formatRelativeTime(new Date(message.createdAt))}
+      </time>
+    </div>
+  );
+};
 
-interface ReplyComposerProps {
-  author: DfmAuthor | undefined;
-  renderAuthorAvatar: RenderAuthorAvatar;
-  onReply: (body: string) => Promise<Result<void, string>>;
-  /** Escape clears the field and hands focus back to the thread. */
-  onCancel: () => void;
+interface SuggestionCardProps {
+  quote: string | undefined;
+  suggestion: string;
+  renderBody: (body: string) => ReactNode;
+  onApply?: () => Result<void, string>;
 }
 
-const ReplyComposer = ({
-  author,
-  renderAuthorAvatar,
-  onReply,
-  onCancel,
-}: ReplyComposerProps) => {
-  const [body, setBody] = useState("");
+/**
+ * @cc [owner:tdraier,label:react] document-comment-suggestion-card
+ * A message with a suggestion MUST show the current commented text it would replace and the
+ * suggested text, or that it deletes the text when the suggestion is blank. Apply MUST render
+ * only when the user can write, the thread is open, its commented text lies in one textblock and
+ * the suggestion reads as one paragraph of inline Markdown. A refused Apply, such as one another
+ * comment blocks, MUST show the reason.
+ */
+const SuggestionCard = ({
+  quote,
+  suggestion,
+  renderBody,
+  onApply,
+}: SuggestionCardProps) => {
+  const { t } = useLingui();
   const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
 
   return (
-    <DocumentCommentInput
-      label="Reply"
-      placeholder="Reply…"
-      author={author}
-      renderAuthorAvatar={renderAuthorAvatar}
-      value={body}
-      onChange={setBody}
-      onSubmit={async (trimmed) => {
-        setSending(true);
-        let replied: Result<void, string>;
-        try {
-          replied = await onReply(trimmed);
-        } finally {
-          setSending(false);
-        }
-        if (replied.isErr()) {
-          setError(replied.error);
-          return;
-        }
-        setError(null);
-        setBody("");
-      }}
-      onCancel={() => {
-        setBody("");
-        setError(null);
-        onCancel();
-      }}
-      error={error}
-      pending={sending}
-      className="-mb-1 border-t border-border pt-2"
-    />
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border text-sm">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted-background py-1 pl-2 pr-1">
+        <span className="text-xs font-medium text-muted-foreground">
+          <Trans>Suggested change</Trans>
+        </span>
+        {onApply && (
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            label={t`Apply`}
+            onClick={(event) => {
+              event.stopPropagation();
+              const applied = onApply();
+              setError(applied.isErr() ? applied.error : null);
+            }}
+          />
+        )}
+      </div>
+      <div className="bg-warning-100/60 px-2 py-1 line-through decoration-foreground/40 wrap-anywhere dark:bg-warning-500/20">
+        <span className="sr-only">{t`Replaces:`} </span>
+        {quote || t`The commented text was removed.`}
+      </div>
+      <div className="bg-success-100/60 px-2 py-1 dark:bg-success-500/20">
+        <span className="sr-only">{t`With:`} </span>
+        {suggestion.trim() ? (
+          renderBody(suggestion)
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            <Trans>Deletes the text.</Trans>
+          </span>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className="px-2 py-1 text-xs text-warning-500">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+};
+
+interface MessageBodyProps {
+  body: string;
+  quote: string | undefined;
+  renderBody: (body: string) => ReactNode;
+  onApplySuggestion?: (suggestion: string) => Result<void, string>;
+}
+
+/**
+ * @cc [owner:tdraier,label:react] document-comment-message-body
+ * A message MUST render its text and each of its suggestions where they stand in the body, each
+ * suggestion as its own card, applying its own text. The text between suggestions renders as
+ * separate Markdown bodies, so a reference definition applies only within its own part.
+ */
+const MessageBody = ({
+  body,
+  quote,
+  renderBody,
+  onApplySuggestion,
+}: MessageBodyProps) => {
+  const parts = useMemo(() => {
+    const read = readMessageSuggestions(body);
+    if (read.isErr() || !read.value) {
+      return null;
+    }
+    // Keyed by where each part starts; the +1 keeps consecutive empty suggestions apart.
+    let position = 0;
+    return read.value.map((part) => {
+      const key = `${part.kind}-${position}`;
+      position +=
+        (part.kind === "text" ? part.text : part.suggestion).length + 1;
+      return {
+        ...part,
+        key,
+        applicable:
+          part.kind === "suggestion" &&
+          parseInlineMarkdown(part.suggestion).isOk(),
+      };
+    });
+  }, [body]);
+  if (!parts) {
+    return renderBody(body);
+  }
+  return (
+    <>
+      {parts.map((part) =>
+        part.kind === "text" ? (
+          <Fragment key={part.key}>{renderBody(part.text)}</Fragment>
+        ) : (
+          <SuggestionCard
+            key={part.key}
+            quote={quote}
+            suggestion={part.suggestion}
+            renderBody={renderBody}
+            onApply={
+              onApplySuggestion && part.applicable
+                ? () => onApplySuggestion(part.suggestion)
+                : undefined
+            }
+          />
+        )
+      )}
+    </>
   );
 };
 
@@ -177,6 +264,9 @@ interface DraftCardProps {
   visible: boolean;
   onSubmit: (body: string) => Promise<Result<void, string>>;
   onCancel: () => void;
+  onSuggest?: () => Result<string, string>;
+  inputExtensions?: Extensions;
+  mountPortalContainer?: HTMLElement;
 }
 
 const DraftCard = ({
@@ -186,10 +276,11 @@ const DraftCard = ({
   visible,
   onSubmit,
   onCancel,
+  onSuggest,
+  inputExtensions,
+  mountPortalContainer,
 }: DraftCardProps) => {
-  const [body, setBody] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  const { t } = useLingui();
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -201,35 +292,25 @@ const DraftCard = ({
   return (
     <article
       ref={ref}
-      aria-label="New comment"
+      aria-label={t`New comment`}
       className="flex flex-col gap-2.5 rounded-xl border border-golden-500/60 bg-background p-3 ring-1 ring-golden-500/40"
     >
       <p className="line-clamp-2 rounded-r-md border-l-2 border-golden-400 py-0.5 pl-2 text-xs text-muted-foreground">
-        <span className="sr-only">Commented text: </span>
+        <span className="sr-only">{t`Commented text:`} </span>
         {quote}
       </p>
       <DocumentCommentInput
-        label="Comment"
-        placeholder="Add a comment…"
+        label={t`Comment`}
+        placeholder={t`Add a comment…`}
         author={author}
         renderAuthorAvatar={renderAuthorAvatar}
-        value={body}
-        onChange={setBody}
-        onSubmit={async (trimmed) => {
-          setSending(true);
-          let submitted: Result<void, string>;
-          try {
-            submitted = await onSubmit(trimmed);
-          } finally {
-            setSending(false);
-          }
-          setError(submitted.isErr() ? submitted.error : null);
-        }}
+        onSubmit={onSubmit}
         onCancel={onCancel}
-        error={error}
-        pending={sending}
         // Hidden elements ignore focus(), so wait until the panel shows.
         autoFocus={visible}
+        onSuggest={onSuggest}
+        extensions={inputExtensions}
+        mountPortalContainer={mountPortalContainer}
       />
     </article>
   );
@@ -248,6 +329,9 @@ interface CommentThreadProps {
   onDelete: () => void;
   onElement: (element: HTMLElement | null) => void;
   renderBody: (body: string) => ReactNode;
+  onSuggest?: () => Result<string, string>;
+  onApplySuggestion?: (suggestion: string) => Result<void, string>;
+  inputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -265,12 +349,17 @@ const CommentThread = ({
   onDelete,
   onElement,
   renderBody,
+  onSuggest,
+  onApplySuggestion,
+  inputExtensions,
   mountPortalContainer,
   renderAuthorAvatar,
 }: CommentThreadProps) => {
+  const { t } = useLingui();
   const ref = useRef<HTMLElement | null>(null);
   const [first, ...replies] = comment.messages;
   const resolved = comment.status === "resolved";
+  const authorName = first.author.name;
 
   useEffect(() => {
     if (active) {
@@ -285,7 +374,7 @@ const CommentThread = ({
         onElement(element);
       }}
       tabIndex={-1}
-      aria-label={`Comment by ${first.author.name}`}
+      aria-label={t`Comment by ${authorName}`}
       aria-current={active ? "true" : undefined}
       className={cn(
         "rounded-xl border border-border bg-background transition-colors motion-reduce:transition-none",
@@ -313,13 +402,13 @@ const CommentThread = ({
           {canWrite && (
             <div className="-mr-1.5 flex shrink-0">
               <PanelIconButton
-                label={resolved ? "Reopen" : "Resolve"}
+                label={resolved ? t`Reopen` : t`Resolve`}
                 icon={resolved ? ReverseLeft : Check}
                 onClick={() => onSetResolved(!resolved)}
                 mountPortalContainer={mountPortalContainer}
               />
               <PanelIconButton
-                label="Delete comment"
+                label={t`Delete comment`}
                 icon={Trash01}
                 onClick={onDelete}
                 mountPortalContainer={mountPortalContainer}
@@ -339,10 +428,15 @@ const CommentThread = ({
             resolved && "line-through decoration-muted-foreground/60"
           )}
         >
-          <span className="sr-only">Commented text: </span>
-          {quote || "The commented text was removed."}
+          <span className="sr-only">{t`Commented text:`} </span>
+          {quote || t`The commented text was removed.`}
         </button>
-        {renderBody(first.body)}
+        <MessageBody
+          body={first.body}
+          quote={quote}
+          renderBody={renderBody}
+          onApplySuggestion={onApplySuggestion}
+        />
         {replies.length > 0 && (
           <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
             {replies.map((reply, index) => (
@@ -357,17 +451,29 @@ const CommentThread = ({
                   verified={isVerified(index + 1)}
                   mountPortalContainer={mountPortalContainer}
                 />
-                {renderBody(reply.body)}
+                <MessageBody
+                  body={reply.body}
+                  quote={quote}
+                  renderBody={renderBody}
+                  onApplySuggestion={onApplySuggestion}
+                />
               </li>
             ))}
           </ul>
         )}
         {canWrite && active && !resolved && (
-          <ReplyComposer
+          <DocumentCommentInput
+            label={t`Reply`}
+            placeholder={t`Reply…`}
             author={author}
             renderAuthorAvatar={renderAuthorAvatar}
-            onReply={onReply}
+            onSubmit={onReply}
+            // Escape clears the field and hands focus back to the thread.
             onCancel={() => ref.current?.focus()}
+            onSuggest={onSuggest}
+            extensions={inputExtensions}
+            mountPortalContainer={mountPortalContainer}
+            className="-mb-1 border-t border-border pt-2"
           />
         )}
       </div>
@@ -379,6 +485,7 @@ interface DocumentCommentsPanelProps {
   id: string;
   comments: DocumentCommentsController;
   renderCommentBody: (body: string) => ReactNode;
+  commentInputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -393,18 +500,19 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * @cc [owner:tdraier,label:react] document-comment-draft-card
  * While a draft is pending and the user can comment, the panel MUST show a new comment card
  * among the open threads at the draft's place in document order, with its field focused once
- * the panel is visible. Escape in the field and closing the panel MUST cancel the draft; a
- * pointer press elsewhere MUST NOT, so typed text survives a stray click. Enter MUST submit the
- * trimmed text. A refused submission MUST keep the typed text and show the reason.
+ * the panel is visible. Escape the field hands to its onCancel (see `document-comment-input`)
+ * and closing the panel MUST cancel the draft; a pointer press elsewhere MUST NOT, so typed text
+ * survives a stray click. Enter MUST submit the trimmed Markdown, outside a list item. A refused submission MUST keep the typed text and show the reason.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comments-panel
  * The panel MUST list open threads in document order, then resolved threads in a collapsed
  * group. Reply and moderation controls MUST render only when canWrite, and replies only on the
- * active open thread. Escape inside a reply field MUST clear it and return focus to its
- * thread, not close the panel. After resolving, reopening or deleting a thread, focus MUST
- * move to a neighbouring thread or to the panel heading. Opening or closing the panel MUST NOT
- * change the document.
+ * active open thread. Escape inside a reply field MUST NOT close the panel; when the field hands
+ * it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST
+ * return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
+ * neighbouring thread or to the panel heading. Opening or closing the panel MUST NOT change the
+ * document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars
@@ -416,9 +524,11 @@ export const DocumentCommentsPanel = ({
   id,
   comments,
   renderCommentBody,
+  commentInputExtensions,
   mountPortalContainer,
   renderAuthorAvatar,
 }: DocumentCommentsPanelProps) => {
+  const { t } = useLingui();
   const {
     comments: threads,
     quotes,
@@ -439,6 +549,11 @@ export const DocumentCommentsPanel = ({
     submitDraft,
     cancelDraft,
     isVerified,
+    suggestable,
+    draftSuggestable,
+    suggestionTemplate,
+    draftSuggestionTemplate,
+    applySuggestion,
   } = comments;
   const [hasOpened, setHasOpened] = useState(panelOpen);
   if (panelOpen && !hasOpened) {
@@ -457,6 +572,8 @@ export const DocumentCommentsPanel = ({
   );
   const unresolved = sorted.filter((comment) => comment.status === "open");
   const resolved = sorted.filter((comment) => comment.status === "resolved");
+  const unresolvedCount = unresolved.length;
+  const resolvedCount = resolved.length;
   // Threads whose text was removed have no start and stay after the draft.
   const draftIndex = draft
     ? unresolved.filter(
@@ -477,6 +594,8 @@ export const DocumentCommentsPanel = ({
 
   const renderThread = (comment: DfmComment) => {
     const siblings = comment.status === "resolved" ? resolved : unresolved;
+    const canSuggest =
+      canWrite && comment.status === "open" && suggestable.has(comment.id);
     return (
       <CommentThread
         key={comment.id}
@@ -501,6 +620,20 @@ export const DocumentCommentsPanel = ({
         }}
         renderAuthorAvatar={renderVisibleAvatar}
         renderBody={renderCommentBody}
+        inputExtensions={commentInputExtensions}
+        onSuggest={
+          canSuggest ? () => suggestionTemplate(comment.id) : undefined
+        }
+        onApplySuggestion={
+          canSuggest
+            ? (suggestion) =>
+                applySuggestion(
+                  comment.id,
+                  suggestion,
+                  neighbourId(siblings, comment.id)
+                )
+            : undefined
+        }
         mountPortalContainer={mountPortalContainer}
       />
     );
@@ -510,7 +643,7 @@ export const DocumentCommentsPanel = ({
     <aside
       id={id}
       ref={panelRef}
-      aria-label="Comments"
+      aria-label={t`Comments`}
       data-state={panelOpen ? "open" : "closed"}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -533,13 +666,13 @@ export const DocumentCommentsPanel = ({
           ref={headingRef}
           tabIndex={-1}
           aria-label={
-            unresolved.length > 0
-              ? `Comments, ${unresolved.length} unresolved`
-              : "Comments"
+            unresolvedCount > 0
+              ? t`Comments, ${plural(unresolvedCount, { one: "# unresolved", other: "# unresolved" })}`
+              : t`Comments`
           }
           className="rounded-md text-sm font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Comments
+          <Trans>Comments</Trans>
           {unresolved.length > 0 && (
             <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
               {unresolved.length}
@@ -547,7 +680,7 @@ export const DocumentCommentsPanel = ({
           )}
         </h2>
         <PanelIconButton
-          label="Close comments"
+          label={t`Close comments`}
           icon={XClose}
           onClick={closePanel}
           mountPortalContainer={mountPortalContainer}
@@ -558,10 +691,12 @@ export const DocumentCommentsPanel = ({
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <Icon visual={MessageTextCircle01} size="md" />
             <p className="text-sm font-medium text-foreground">
-              No comments yet
+              <Trans>No comments yet</Trans>
             </p>
             <p className="text-xs">
-              Select some text and choose Comment to start a thread.
+              <Trans>
+                Select some text and choose Comment to start a thread.
+              </Trans>
             </p>
           </div>
         )}
@@ -574,6 +709,9 @@ export const DocumentCommentsPanel = ({
             visible={panelOpen}
             onSubmit={submitDraft}
             onCancel={cancelDraft}
+            onSuggest={draftSuggestable ? draftSuggestionTemplate : undefined}
+            inputExtensions={commentInputExtensions}
+            mountPortalContainer={mountPortalContainer}
           />
         )}
         {unresolved.slice(Math.max(draftIndex, 0)).map(renderThread)}
@@ -581,7 +719,7 @@ export const DocumentCommentsPanel = ({
           <Collapsible className="mt-1">
             <CollapsibleTrigger
               variant="secondary"
-              label={`Resolved (${resolved.length})`}
+              label={t`Resolved (${resolvedCount})`}
             />
             <CollapsibleContent className="flex flex-col gap-3 pt-3">
               {resolved.map(renderThread)}
@@ -602,6 +740,7 @@ export const DocumentCommentsToggle = ({
   panelId,
   comments,
 }: DocumentCommentsToggleProps) => {
+  const { t } = useLingui();
   const unresolvedCount = comments.unresolved.length;
   return (
     <Button
@@ -610,11 +749,11 @@ export const DocumentCommentsToggle = ({
       variant="ghost"
       size="xs"
       icon={MessageTextCircle01}
-      label="Comments"
+      label={t`Comments`}
       aria-label={
         unresolvedCount > 0
-          ? `Comments, ${unresolvedCount} unresolved`
-          : "Comments"
+          ? t`Comments, ${plural(unresolvedCount, { one: "# unresolved", other: "# unresolved" })}`
+          : t`Comments`
       }
       isCounter={unresolvedCount > 0}
       counterValue={String(unresolvedCount)}

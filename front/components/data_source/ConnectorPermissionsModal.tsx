@@ -12,7 +12,10 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
@@ -49,7 +52,6 @@ import type {
   DataSourceType,
 } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
@@ -216,7 +218,7 @@ export async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error: CONNECTOR_UI_CONFIGURATIONS[provider].mismatchError,
+      error: t(CONNECTOR_UI_CONFIGURATIONS[provider].mismatchError),
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {
@@ -587,7 +589,9 @@ function UpdateConnectionOAuthModal({
                   icon={InfoCircle}
                 >
                   <ReactMarkdown>
-                    {permissionsConfigurable.placeholder ?? ""}
+                    {permissionsConfigurable.placeholder
+                      ? t(permissionsConfigurable.placeholder)
+                      : ""}
                   </ReactMarkdown>
                 </ContentMessage>
               )}
@@ -641,6 +645,7 @@ function DataSourceDeletionModal({
   owner,
 }: DataSourceDeletionModalProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
@@ -683,11 +688,10 @@ function DataSourceDeletionModal({
       await mutateSpaceDataSourceViews();
       onClose();
     } else {
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Error deleting connection`,
-        type: "error",
-        description: err.error.message,
+        error: err,
       });
     }
     setIsLoading(false);
@@ -927,6 +931,7 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { user } = useAuth();
   const sensitivityLabelsController = useSensitivityLabelsController({
@@ -989,18 +994,9 @@ export function ConnectorPermissionsModal({
         );
 
         if (!r.ok) {
-          const error: {
-            error: {
-              type: string;
-              message: string;
-              connectors_error: { type: string; message: string };
-            };
-          } = await r.json();
-          console.log(JSON.stringify(error, null, 2));
-          sendNotification({
-            type: "error",
-            title: error.error.message,
-            description: error.error.connectors_error.message,
+          sendApiErrorNotification({
+            title: "Failed to update permissions",
+            error: await r.json(),
           });
           return;
         } else {
@@ -1152,7 +1148,9 @@ export function ConnectorPermissionsModal({
                       icon={InfoCircle}
                     >
                       <ReactMarkdown>
-                        {permissionsConfigurable.placeholder ?? ""}
+                        {permissionsConfigurable.placeholder
+                          ? t(permissionsConfigurable.placeholder)
+                          : ""}
                       </ReactMarkdown>
                     </ContentMessage>
                   )}
@@ -1174,7 +1172,8 @@ export function ConnectorPermissionsModal({
                     <>
                       <div className="flex items-center justify-between p-1">
                         <div className="heading-xl">
-                          {connectorUIConfiguration.selectLabel}
+                          {connectorUIConfiguration.selectLabel &&
+                            t(connectorUIConfiguration.selectLabel)}
                         </div>
                       </div>
                       <ContentNodeTree
@@ -1195,7 +1194,11 @@ export function ConnectorPermissionsModal({
                             : undefined
                         }
                         showExpand={connectorUIConfiguration?.isNested}
-                        emptyComponent={connectorUIConfiguration.emptyNodeLabel}
+                        emptyComponent={
+                          connectorUIConfiguration.emptyNodeLabel
+                            ? t(connectorUIConfiguration.emptyNodeLabel)
+                            : undefined
+                        }
                       />
                     </>
                   )}

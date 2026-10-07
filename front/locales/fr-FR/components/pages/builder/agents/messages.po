@@ -1,0 +1,90 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Create an agent"
+msgstr "Créer un agent"
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Start with a template"
+msgstr "Partir d’un modèle"
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Explore different ways to use Dust. Find a setup that works for you and make it your own."
+msgstr "Découvrez différentes façons d’utiliser Dust. Trouvez une configuration qui vous convient et adaptez-la."
+
+#: front/components/pages/builder/agents/CreateAgentPage.tsx
+msgid "Search templates"
+msgstr "Rechercher des modèles"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Could not load agents. Please try again."
+msgstr "Impossible de charger les agents. Veuillez réessayer."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Retry"
+msgstr "Réessayer"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "No agents match your search."
+msgstr "Aucun agent ne correspond à votre recherche."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "No agents to show."
+msgstr "Aucun agent à afficher."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Dust - Manage agents"
+msgstr "Dust - Gérer les agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Search agents"
+msgstr "Rechercher des agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Search for agents"
+msgstr "Rechercher des agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Manage agents"
+msgstr "Gérer les agents"
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Build and manage agents that work with your team's knowledge and tools."
+msgstr "Créez et gérez des agents qui exploitent les connaissances et les outils de votre équipe."
+
+#: front/components/pages/builder/agents/ManageAgentsPage.tsx
+msgid "Hidden agents"
+msgstr "Agents masqués"
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Configure model providers"
+msgstr "Configurer les fournisseurs de modèles"
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Providers must be configured in your workspace to use the agent builder."
+msgstr "Des fournisseurs doivent être configurés dans votre workspace pour utiliser l’Agent Builder."
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Back to homepage"
+msgstr "Retour à l’accueil"
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "No provider is configured in your workspace. Contact your administrator."
+msgstr "Aucun fournisseur n’est configuré dans votre workspace. Contactez votre administrateur."
+
+#: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
+msgid "Agent builder is not available"
+msgstr "L’Agent Builder n’est pas disponible"

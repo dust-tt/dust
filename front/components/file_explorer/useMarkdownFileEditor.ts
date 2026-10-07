@@ -4,7 +4,9 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { formatError } from "@app/lib/api_error_messages";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getLiveSessionUrl } from "@app/lib/client/live_session";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
@@ -144,7 +146,13 @@ export function useMarkdownFileEditor({
       content,
       contentType: "text/markdown",
     });
-    return result.isOk() ? new Ok(undefined) : new Err(result.error.message);
+    return result.isOk()
+      ? new Ok(undefined)
+      : new Err(
+          formatError(result.error, {
+            hasLocalisation: hasFeature("localisation"),
+          }).description
+        );
   };
 
   /**
@@ -182,6 +190,7 @@ export function useMarkdownFileEditor({
         await adoptWritten(draft);
         sendNotification({ type: "success", title: t`File saved` });
       } else {
+        // we loose the error details here because we want to be iso between the rich and plain editor
         sendNotification({
           type: "error",
           title: t`Failed to save file`,
@@ -196,6 +205,7 @@ export function useMarkdownFileEditor({
   const rich = useRichMarkdownEditor({
     // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
     enabled: hasFeature("co_edition") && canOpenEditor,
+    live: getLiveSessionUrl() !== null,
     entryPath,
     isActive,
     rawContent,

@@ -11,6 +11,9 @@ import {
   Markdown,
   TerminalSquare,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 const SANDBOX_SECTION_TYPES = [
@@ -60,16 +63,19 @@ function isLongContent(content: string): boolean {
   return lines > COLLAPSE_LINE_THRESHOLD;
 }
 
-function sectionLabel(type: SandboxSectionType): string {
+function sectionLabel(
+  t: (descriptor: MessageDescriptor) => string,
+  type: SandboxSectionType
+): string {
   switch (type) {
     case "stdout":
       return "stdout";
     case "stderr":
       return "stderr";
     case "exit_code":
-      return "exit code";
+      return t(msg`exit code`);
     case "network_proxy_logs":
-      return "network proxy logs";
+      return t(msg`network proxy logs`);
     default:
       assertNeverAndIgnore(type);
       return "";
@@ -90,6 +96,7 @@ export function MCPSandboxActionDetails({
   toolParams,
   toolOutput,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const command =
     typeof toolParams.command === "string" ? toolParams.command : null;
 
@@ -112,7 +119,7 @@ export function MCPSandboxActionDetails({
 
   const isRunning = toolOutput === null;
 
-  const actionName = isRunning ? "Executing command" : "Execute command";
+  const actionName = isRunning ? t`Executing command` : t`Execute command`;
 
   const viewProps: SandboxViewProps = {
     command,
@@ -159,7 +166,7 @@ function ExitCodeBadge({ exitCode }: ExitCodeBadgeProps) {
         exitCode === 0 ? "text-success" : "text-warning"
       )}
     >
-      exit code: {exitCode}
+      <Trans>exit code: {exitCode}</Trans>
     </span>
   );
 }
@@ -171,6 +178,7 @@ interface SectionBlockProps {
 }
 
 function SectionBlock({ type, content, defaultOpen }: SectionBlockProps) {
+  const { t } = useLingui();
   const isStderr = type === "stderr";
   const isExitCode = type === "exit_code";
 
@@ -186,19 +194,20 @@ function SectionBlock({ type, content, defaultOpen }: SectionBlockProps) {
   if (!isLongContent(content)) {
     return (
       <div className="flex flex-col gap-1">
-        <span className={labelClass}>{sectionLabel(type)}</span>
+        <span className={labelClass}>{sectionLabel(t, type)}</span>
         <CodeBlock wrapLongLines>{content}</CodeBlock>
       </div>
     );
   }
 
   const lineCount = content.split("\n").length;
+  const label = sectionLabel(t, type);
 
   return (
     <Collapsible defaultOpen={defaultOpen}>
       <CollapsibleTrigger>
         <span className={labelClass}>
-          {sectionLabel(type)} · {lineCount} lines
+          {t`${label} · ${plural(lineCount, { one: "# line", other: "# lines" })}`}
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -222,7 +231,11 @@ function SandboxOutput({ sections, exitCode, isRunning }: SandboxOutputProps) {
   if (renderable.length === 0) {
     return (
       <p className="text-sm italic text-muted-foreground">
-        {isRunning ? "Waiting for output…" : "No output"}
+        {isRunning ? (
+          <Trans>Waiting for output…</Trans>
+        ) : (
+          <Trans>No output</Trans>
+        )}
       </p>
     );
   }
@@ -274,7 +287,9 @@ function SidebarView({
     <div className="flex flex-col gap-4 py-4 pl-6">
       {command && (
         <div>
-          <span className="font-medium text-foreground">Command</span>
+          <span className="font-medium text-foreground">
+            <Trans>Command</Trans>
+          </span>
           <div className="py-2">
             <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
           </div>
@@ -282,7 +297,9 @@ function SidebarView({
       )}
 
       <div>
-        <span className="font-medium text-foreground">Output</span>
+        <span className="font-medium text-foreground">
+          <Trans>Output</Trans>
+        </span>
         <div className="py-2">
           <SandboxOutput
             sections={parsedSections}

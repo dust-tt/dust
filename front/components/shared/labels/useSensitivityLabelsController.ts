@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import {
   saveDataClassificationLabels,
@@ -26,6 +29,7 @@ export function useSensitivityLabelsController({
   disabled?: boolean;
 }): SensitivityLabelsController {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const {
     dataClassificationLabels,
@@ -88,10 +92,9 @@ export function useSensitivityLabelsController({
         return true;
       }
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to update labels setting`,
-        description: result.error,
+        error: result.error,
       });
       return false;
     } catch (error) {
@@ -114,6 +117,7 @@ export function useSensitivityLabelsController({
     owner,
     pendingAllowedLabels,
     sendNotification,
+    sendApiErrorNotification,
     source,
     t,
   ]);

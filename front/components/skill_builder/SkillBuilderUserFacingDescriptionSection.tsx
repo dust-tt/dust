@@ -7,7 +7,7 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/utils";
 import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
@@ -20,7 +20,7 @@ const MIN_INSTRUCTIONS_LENGTH = 20;
 export function SkillBuilderUserFacingDescriptionSection() {
   const { t } = useLingui();
   const { owner } = useSkillBuilderContext();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const { field } = useController<
@@ -73,10 +73,9 @@ export function SkillBuilderUserFacingDescriptionSection() {
     setIsGenerating(false);
 
     if (result.isErr()) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to generate description`,
-        description: result.error.message,
+        error: result.error,
       });
       return false;
     }

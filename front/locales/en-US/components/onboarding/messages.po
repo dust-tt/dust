@@ -1,0 +1,140 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:55+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/onboarding/ProfileOnboardingDialog.tsx
+msgid "Welcome to Dust"
+msgstr "Welcome to Dust"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Customer Success"
+msgstr "Customer Success"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Customer Support"
+msgstr "Customer Support"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
+msgid "Data"
+msgstr "Data"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Design"
+msgstr "Design"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Engineering"
+msgstr "Engineering"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Finance"
+msgstr "Finance"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
+msgid "IT"
+msgstr "IT"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "People (HR)"
+msgstr "People (HR)"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Legal"
+msgstr "Legal"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Marketing"
+msgstr "Marketing"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Operations"
+msgstr "Operations"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Procurement"
+msgstr "Procurement"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Product"
+msgstr "Product"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Revenue Operations"
+msgstr "Revenue Operations"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Sales"
+msgstr "Sales"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Other"
+msgstr "Other"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "First name is required"
+msgstr "First name is required"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Last name is required"
+msgstr "Last name is required"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Please select your job type"
+msgstr "Please select your job type"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Hello {firstName}!"
+msgstr "Hello {firstName}!"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Hello there!"
+msgstr "Hello there!"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Let's check a few things."
+msgstr "Let's check a few things."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "You'll be joining the workspace: <0>{workspaceName}</0>."
+msgstr "You'll be joining the workspace: <0>{workspaceName}</0>."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your name is:"
+msgstr "Your name is:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "First name"
+msgstr "First name"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Last name"
+msgstr "Last name"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Pick your role to customize your experience:"
+msgstr "Pick your role to customize your experience:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Next"
+msgstr "Next"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "What are your favorite platforms?"
+msgstr "What are your favorite platforms?"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognise some of these?"
+msgstr "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognise some of these?"

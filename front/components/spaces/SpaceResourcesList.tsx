@@ -194,7 +194,6 @@ function getTableColumns(
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const disabled = isLoading || !isAdmin;
       const connector = dataSourceView.dataSource.connector;
       if (!connector) {

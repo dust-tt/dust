@@ -13,7 +13,6 @@ export function makeDirective(
   return () => (tree: any) => {
     visit(tree, ["textDirective", "leafDirective"], (node) => {
       if (node.name === name) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = name;
         data.hProperties = toProperties(node.attributes);

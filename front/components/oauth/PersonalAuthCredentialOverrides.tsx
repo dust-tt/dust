@@ -1,6 +1,7 @@
 import type { OAuthCredentialInputs } from "@app/types/oauth/lib";
 import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
 import { Input, Label } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface PersonalAuthCredentialOverridesProps {
   inputs: OAuthCredentialInputs;
@@ -15,6 +16,8 @@ export function PersonalAuthCredentialOverrides({
   onChange,
   idPrefix,
 }: PersonalAuthCredentialOverridesProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex flex-col gap-4">
       {Object.entries(inputs).map(([key, inputData]) => {
@@ -37,9 +40,13 @@ export function PersonalAuthCredentialOverrides({
           inputData.validator &&
           !inputData.validator(trimmedValue);
 
-        const message = hasValidationError
-          ? `Invalid ${label.toLowerCase()}. ${helpText ?? "Please check the format."}`
-          : helpText;
+        const lowerCaseLabel = label.toLowerCase();
+        let message = helpText;
+        if (hasValidationError) {
+          message = helpText
+            ? t`Invalid ${lowerCaseLabel}. ${helpText}`
+            : t`Invalid ${lowerCaseLabel}. Please check the format.`;
+        }
 
         return (
           <div key={key} className="flex flex-col gap-1">
@@ -47,10 +54,12 @@ export function PersonalAuthCredentialOverrides({
               htmlFor={inputId}
               className="text-sm font-medium text-foreground"
             >
-              {label}{" "}
-              <span className="font-normal text-muted-foreground">
-                (optional)
-              </span>
+              <Trans>
+                {label}{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Trans>
             </Label>
             <Input
               id={inputId}

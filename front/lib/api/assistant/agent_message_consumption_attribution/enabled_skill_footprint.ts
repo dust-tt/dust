@@ -1,4 +1,5 @@
 import { MAX_TOOL_DESCRIPTION_LENGTH } from "@app/lib/actions/mcp";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { applyToolSourceLoadingPolicy } from "@app/lib/actions/tool_loading";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
@@ -7,6 +8,7 @@ import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/sk
 import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import { isToolDeferred } from "@app/lib/model_constructors/types/tool_search";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -17,6 +19,12 @@ const EMPTY_INPUT_SCHEMA: JSONSchema = {
   properties: {},
   required: [],
 };
+
+// Only `skill_management` tools return enable-skill outputs: the outputs of other actions need not
+// be loaded to find the skills an action enabled.
+export function canEnableSkill(action: AgentMCPActionResource): boolean {
+  return action.metadata.internalMCPServerName === SKILL_MANAGEMENT_SERVER_NAME;
+}
 
 export function getEnabledSkillIdsFromAction(
   action: AgentMCPActionWithOutputType

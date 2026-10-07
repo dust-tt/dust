@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
   SortingParams,
@@ -413,6 +416,7 @@ export function useCreateFolder({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
     useSpaceDataSourceViews({
@@ -453,10 +457,9 @@ export function useCreateFolder({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Error creating Folder",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return null;
     }
@@ -472,6 +475,7 @@ export function useUpdateFolder({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const doUpdate = async (
     dataSourceView: DataSourceViewType | null,
@@ -501,10 +505,9 @@ export function useUpdateFolder({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Error updating Folder",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
     }
     return res.ok;
@@ -522,6 +525,7 @@ export function useDeleteFolderOrWebsite({
   spaceId: string;
   category: DataSourceViewCategoryWithoutApps;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
     useSpaceDataSourceViews({
@@ -551,10 +555,9 @@ export function useDeleteFolderOrWebsite({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error deleting ${category}`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
     }
     return res.ok;
@@ -564,6 +567,7 @@ export function useDeleteFolderOrWebsite({
 }
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -608,10 +612,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Error creating space",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return null;
     } else {
@@ -634,6 +637,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -695,10 +699,9 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Error updating space",
-          description: `Error: ${errorData.message}`,
+          error: errorData,
         });
         return null;
       }
@@ -721,6 +724,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
 // Adds members to a manually managed space without replacing its member list.
 export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -752,10 +756,9 @@ export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Failed to add members to ${getSpaceName(space)}`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       return false;
     }
@@ -782,6 +785,7 @@ export function useDeleteSpace({
   owner: LightWorkspaceType;
   force?: boolean;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -814,10 +818,9 @@ export function useDeleteSpace({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error deleting ${getSpaceName(space)}`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
     }
     return res.ok;
@@ -962,9 +965,7 @@ export function useSpacesSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
   };
 }

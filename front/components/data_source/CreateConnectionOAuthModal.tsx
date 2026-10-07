@@ -126,7 +126,7 @@ export function CreateConnectionOAuthModal({
                     <Trans>Limitations</Trans>
                   </div>
                   <div className="copy-sm font-normal text-muted-foreground">
-                    {connectorUIConfiguration.limitations}
+                    {t(connectorUIConfiguration.limitations)}
                   </div>
                 </div>
               )}

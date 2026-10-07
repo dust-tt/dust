@@ -31,12 +31,18 @@ import {
   TextArea,
   Upload01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useEffect, useState } from "react";
 
-const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "All activity",
-  only_mentions: "Only when mentioned",
-  never: "Don't notify me",
+const NOTIFICATION_CONDITION_LABELS: Record<
+  NotificationCondition,
+  MessageDescriptor
+> = {
+  all_messages: msg`All activity`,
+  only_mentions: msg`Only when mentioned`,
+  never: msg`Don't notify me`,
 };
 
 const DISPLAYED_NOTIFICATION_PREFERENCES: NotificationCondition[] = [
@@ -54,6 +60,7 @@ export function PodSettingsGeneralTab({
   owner,
   pod,
 }: PodSettingsGeneralTabProps) {
+  const { t } = useLingui();
   const isPodEditor = pod.isEditor;
   const confirm = useContext(ConfirmContext);
 
@@ -161,8 +168,8 @@ export function PodSettingsGeneralTab({
       return;
     }
     const confirmed = await confirm({
-      title: "Update Pod name?",
-      message: `The Pod name will be changed to "${newPodName}".`,
+      title: t`Update Pod name?`,
+      message: t`The Pod name will be changed to "${newPodName}".`,
       validateVariant: "warning",
     });
 
@@ -178,8 +185,8 @@ export function PodSettingsGeneralTab({
         name: newPodName,
       },
       {
-        title: "Successfully updated Pod name",
-        description: "Pod name was successfully updated.",
+        title: t`Successfully updated Pod name`,
+        description: t`Pod name was successfully updated.`,
       }
     );
 
@@ -214,11 +221,17 @@ export function PodSettingsGeneralTab({
     void updateNotificationPreference(condition);
   };
 
+  const archivedDate = podMetadata?.archivedAt
+    ? formatTimestampToFriendlyDate(podMetadata.archivedAt, "short")
+    : null;
+
   return (
     <>
       {/* Name */}
       <div className="flex w-full flex-col gap-2">
-        <div className="heading-lg">Name</div>
+        <div className="heading-lg">
+          <Trans>Name</Trans>
+        </div>
         <div className="flex w-full min-w-0 gap-2">
           <Input
             value={podName}
@@ -228,20 +241,20 @@ export function PodSettingsGeneralTab({
               setNameToCheck(e.target.value);
               setIsEditingName(e.target.value.trim() !== pod.name.trim());
             }}
-            placeholder="Enter Pod name"
+            placeholder={t`Enter Pod name`}
             containerClassName="flex-1"
             maxLength={MAX_POD_NAME_LENGTH}
           />
           {isEditingName && (
             <>
               <Button
-                label="Save"
+                label={t`Save`}
                 variant="highlight"
                 onClick={onSaveName}
                 disabled={nameNotAvailable || isCheckingName}
               />
               <Button
-                label="Cancel"
+                label={t`Cancel`}
                 variant="outline"
                 onClick={() => {
                   setPodName(pod.name);
@@ -254,14 +267,16 @@ export function PodSettingsGeneralTab({
         </div>
         {isEditingName && nameNotAvailable && (
           <div className="text-xs text-warning-500">
-            A Pod or space with this name already exists.
+            <Trans>A Pod or space with this name already exists.</Trans>
           </div>
         )}
       </div>
 
       {/* Description */}
       <div className="flex w-full flex-col gap-2">
-        <div className="heading-lg">Description</div>
+        <div className="heading-lg">
+          <Trans>Description</Trans>
+        </div>
         <div className="flex w-full min-w-0 flex-col gap-2">
           <TextArea
             value={podDescription}
@@ -273,8 +288,8 @@ export function PodSettingsGeneralTab({
             }}
             placeholder={
               isPodMetadataLoading
-                ? "Loading..."
-                : "Describe what this Pod is about..."
+                ? t`Loading...`
+                : t`Describe what this Pod is about...`
             }
             disabled={isPodMetadataLoading || !isPodEditor}
             minRows={3}
@@ -284,13 +299,13 @@ export function PodSettingsGeneralTab({
           {isEditingDescription && (
             <div className="flex gap-2">
               <Button
-                label="Save"
+                label={t`Save`}
                 variant="highlight"
                 isLoading={isSavingDescription}
                 onClick={() => void onSaveDescription()}
               />
               <Button
-                label="Cancel"
+                label={t`Cancel`}
                 variant="outline"
                 disabled={isSavingDescription}
                 onClick={() => {
@@ -307,10 +322,14 @@ export function PodSettingsGeneralTab({
 
       {/* Notifications */}
       <div className="flex w-full flex-col gap-2">
-        <div className="heading-lg">Notifications</div>
+        <div className="heading-lg">
+          <Trans>Notifications</Trans>
+        </div>
         <p className="text-sm text-muted-foreground">
-          How you get notified about activity in this Pod. Also available from
-          the Pod menu.
+          <Trans>
+            How you get notified about activity in this Pod. Also available from
+            the Pod menu.
+          </Trans>
         </p>
         <RadioGroup
           value={notificationCondition}
@@ -325,7 +344,7 @@ export function PodSettingsGeneralTab({
               key={preference}
               id={`pod-notifications-${preference}`}
               value={preference}
-              label={NOTIFICATION_CONDITION_LABELS[preference]}
+              label={t(NOTIFICATION_CONDITION_LABELS[preference])}
             />
           ))}
         </RadioGroup>
@@ -334,24 +353,24 @@ export function PodSettingsGeneralTab({
       {/* Archive and delete */}
       {isPodEditor && (
         <div className="flex w-full flex-col gap-3 border-t border-border pt-8">
-          <h3 className="heading-lg">Archive and delete</h3>
-          <h4 className="heading-base">Archive</h4>
+          <h3 className="heading-lg">
+            <Trans>Archive and delete</Trans>
+          </h3>
+          <h4 className="heading-base">
+            <Trans context="section title">Archive</Trans>
+          </h4>
           {podMetadata?.archivedAt ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-foreground">
-                Archived on{" "}
-                <span className="font-medium">
-                  {formatTimestampToFriendlyDate(
-                    podMetadata.archivedAt,
-                    "short"
-                  )}
-                </span>
-                .
+                <Trans>
+                  Archived on{" "}
+                  <span className="font-medium">{archivedDate}</span>.
+                </Trans>
               </p>
               <Button
                 icon={Upload01}
                 variant="outline"
-                label="Unarchive"
+                label={t`Unarchive`}
                 onClick={handleArchiveToggle}
                 className="w-fit"
               />
@@ -359,24 +378,30 @@ export function PodSettingsGeneralTab({
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                This Pod is removed from your sidebar. Its content stays intact
-                and agents can still use it as a data source. You can restore it
-                at any time.
+                <Trans>
+                  This Pod is removed from your sidebar. Its content stays
+                  intact and agents can still use it as a data source. You can
+                  restore it at any time.
+                </Trans>
               </p>
               <Button
                 icon={Archive}
                 variant="warning"
-                label="Archive"
+                label={t({ message: "Archive", context: "button label" })}
                 onClick={handleArchiveToggle}
                 className="w-fit"
               />
             </>
           )}
-          <h4 className="heading-base">Delete</h4>
+          <h4 className="heading-base">
+            <Trans context="section title">Delete</Trans>
+          </h4>
           <p className="text-sm text-muted-foreground">
-            Deleting removes all content in this Pod: conversations, folders,
-            websites, and data sources. Agents that use its tools will stop
-            working. This cannot be undone.
+            <Trans>
+              Deleting removes all content in this Pod: conversations, folders,
+              websites, and data sources. Agents that use its tools will stop
+              working. This cannot be undone.
+            </Trans>
           </p>
           <div className="flex w-full flex-col items-start">
             <DeletePodDialog owner={owner} pod={pod} />

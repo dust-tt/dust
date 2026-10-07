@@ -6,6 +6,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -32,6 +33,7 @@ export function AddPodFileMenu({
   onOpenChange,
   align = "start",
 }: AddPodFileMenuProps) {
+  const { t } = useLingui();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [search, setSearch] = useState("");
   const isControlled = open !== undefined;
@@ -67,7 +69,7 @@ export function AddPodFileMenu({
             <DropdownMenuSearchbar
               autoFocus
               name="add-file-search"
-              placeholder="Search files"
+              placeholder={t`Search files`}
               value={search}
               onChange={setSearch}
             />
@@ -76,11 +78,11 @@ export function AddPodFileMenu({
       >
         {files.length === 0 ? (
           <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
-            No files to add
+            <Trans>No files to add</Trans>
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
-            No files found
+            <Trans>No files found</Trans>
           </div>
         ) : (
           filteredFiles.map((file) => (

@@ -1,0 +1,354 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameBetaChip.tsx
+msgid "Click for more info on this beta"
+msgstr "Click for more info on this beta"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameBetaChip.tsx
+msgid "Beta"
+msgstr "Beta"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
+msgid "Publishing your changes..."
+msgstr "Publishing your changes..."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
+msgid "Save text edits"
+msgstr "Save text edits"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
+msgid "No unsaved edits"
+msgstr "No unsaved edits"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Conversation"
+msgstr "Conversation"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Pod"
+msgstr "Pod"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Files and data used by this frame are shared too"
+msgstr "Files and data used by this frame are shared too"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "People who can view this frame can also access the files and data it uses. They can’t access the rest of the conversation or pod."
+msgstr "People who can view this frame can also access the files and data it uses. They can’t access the rest of the conversation or pod."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "{fileCount, plural, one {View # file} other {View # files}}"
+msgstr "{fileCount, plural, one {View # file} other {View # files}}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Included files"
+msgstr "Included files"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Files and data available to people you share this frame with."
+msgstr "Files and data available to people you share this frame with."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Included file list"
+msgstr "Included file list"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Close"
+msgstr "Close"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Add between 1 and {maxRecipients} email addresses or domains."
+msgstr "Add between 1 and {maxRecipients} email addresses or domains."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Add individual email addresses. Domain sharing is not available."
+msgstr "Add individual email addresses. Domain sharing is not available."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Only workspace member email addresses can be added."
+msgstr "Only workspace member email addresses can be added."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Remove access rule"
+msgstr "Remove access rule"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+#: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Remove access for <0>{label}</0>? People may still have access through another invitation, domain or the frame’s general access setting."
+msgstr "Remove access for <0>{label}</0>? People may still have access through another invitation, domain or the frame’s general access setting."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Add people or domains"
+msgstr "Add people or domains"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Invite by email"
+msgstr "Invite by email"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Invite workspace members by email"
+msgstr "Invite workspace members by email"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Add comma separated emails"
+msgstr "Add comma separated emails"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Add"
+msgstr "Add"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Invite"
+msgstr "Invite"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Invitations are sent to email addresses only. People at an added domain can open the link after verifying their email."
+msgstr "Invitations are sent to email addresses only. People at an added domain can open the link after verifying their email."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Loading access rules"
+msgstr "Loading access rules"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Could not load access rules."
+msgstr "Could not load access rules."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Retry"
+msgstr "Retry"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "No people or domains have been added yet."
+msgstr "No people or domains have been added yet."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "No one has been invited yet."
+msgstr "No one has been invited yet."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "People with access"
+msgstr "People with access"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Added by {grantedBy} {grantedAgo}"
+msgstr "Added by {grantedBy} {grantedAgo}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Added {grantedAgo}"
+msgstr "Added {grantedAgo}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Invited by {grantedBy} {grantedAgo}"
+msgstr "Invited by {grantedBy} {grantedAgo}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "Invited {grantedAgo}"
+msgstr "Invited {grantedAgo}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "External viewers cannot access this frame."
+msgstr "External viewers cannot access this frame."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingGrants.tsx
+msgid "This invitation is restricted to workspace members."
+msgstr "This invitation is restricted to workspace members."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingRow.tsx
+msgid "Remove {label}"
+msgstr "Remove {label}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "People who accessed this frame through an email or domain invitation."
+msgstr "People who accessed this frame through an email or domain invitation."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Viewers"
+msgstr "Viewers"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Loading viewers…"
+msgstr "Loading viewers…"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Could not load viewers."
+msgstr "Could not load viewers."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "No views recorded yet."
+msgstr "No views recorded yet."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Recent viewers"
+msgstr "Recent viewers"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "{viewerCount, plural, one {View all # viewer} other {View all # viewers}}"
+msgstr "{viewerCount, plural, one {View all # viewer} other {View all # viewers}}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Search by email"
+msgstr "Search by email"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Search viewers…"
+msgstr "Search viewers…"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "{viewerCount, plural, one {{matchingCount} of # viewer} other {{matchingCount} of # viewers}}"
+msgstr "{viewerCount, plural, one {{matchingCount} of # viewer} other {{matchingCount} of # viewers}}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "{viewerCount, plural, one {# viewer} other {# viewers}}"
+msgstr "{viewerCount, plural, one {# viewer} other {# viewers}}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Viewer list"
+msgstr "Viewer list"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "No viewers match your search."
+msgstr "No viewers match your search."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "All viewers"
+msgstr "All viewers"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Last viewed {timeAgo}"
+msgstr "Last viewed {timeAgo}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
+msgid "Last viewed {exactTime}"
+msgstr "Last viewed {exactTime}"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Share"
+msgstr "Share"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Share this frame"
+msgstr "Share this frame"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Could not load sharing settings."
+msgstr "Could not load sharing settings."
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Only workspace members can be added"
+msgstr "Only workspace members can be added"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Your admin has disabled external sharing. You can only invite people already in your workspace."
+msgstr "Your admin has disabled external sharing. You can only invite people already in your workspace."
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace."
+msgstr "You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace."
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "You no longer have permission to share frames publicly"
+msgstr "You no longer have permission to share frames publicly"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "This frame is currently shared publicly. You can restrict access, but you won’t be able to make it public again."
+msgstr "This frame is currently shared publicly. You can restrict access, but you won’t be able to make it public again."
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Some referenced files cannot be shared"
+msgstr "Some referenced files cannot be shared"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Viewers will only be able to access files you can verify. Fix or remove these references before sharing: {blockedRefs}"
+msgstr "Viewers will only be able to access files you can verify. Fix or remove these references before sharing: {blockedRefs}"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Who has access"
+msgstr "Who has access"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Updating sharing settings"
+msgstr "Updating sharing settings"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Copied!"
+msgstr "Copied!"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "Copy link"
+msgstr "Copy link"
+
+#: front/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions.ts
+msgid "Invite only"
+msgstr "Invite only"
+
+#: front/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions.ts
+msgid "Invited workspace members only"
+msgstr "Invited workspace members only"
+
+#: front/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions.ts
+msgid "All workspace members + invites"
+msgstr "All workspace members + invites"
+
+#: front/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions.ts
+msgid "All workspace members"
+msgstr "All workspace members"
+
+#: front/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions.ts
+msgid "Anyone with the link"
+msgstr "Anyone with the link"
+
+#: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
+msgid "Couldn't save edits"
+msgstr "Couldn't save edits"
+
+#: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
+msgid "The Frame didn't respond. Your edits are still staged, try saving again."
+msgstr "The Frame didn't respond. Your edits are still staged, try saving again."
+
+#: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
+msgid "Discard unsaved edits?"
+msgstr "Discard unsaved edits?"
+
+#: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
+msgid "You have unsaved text edits. Leaving Edit will discard them."
+msgstr "You have unsaved text edits. Leaving Edit will discard them."
+
+#: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
+msgid "Discard"
+msgstr "Discard"

@@ -11,6 +11,7 @@ import {
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { CoinsStacked01, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 interface ConversationCreditUsagePanelProps {
@@ -46,7 +47,7 @@ export function ConversationCreditUsagePanel({
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={closePanel}>
         <span className="text-sm font-medium text-foreground">
-          Credit usage
+          <Trans>Credit usage</Trans>
         </span>
       </ConversationSidePanelHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -57,7 +58,7 @@ export function ConversationCreditUsagePanel({
         ) : isConsumptionError ? (
           <div className="flex h-full items-center justify-center px-5 py-4">
             <p className="text-sm text-muted-foreground">
-              Credit usage couldn’t be loaded.
+              <Trans>Credit usage couldn’t be loaded.</Trans>
             </p>
           </div>
         ) : hasNoCreditUsage ? (
@@ -69,10 +70,10 @@ export function ConversationCreditUsagePanel({
               />
               <div className="flex w-full flex-col items-center gap-1">
                 <p className="text-center text-lg font-medium leading-6 text-foreground">
-                  No usage yet
+                  <Trans>No usage yet</Trans>
                 </p>
                 <p className="text-center text-sm font-medium leading-5 text-muted-foreground">
-                  Updates once a message is fully processed.
+                  <Trans>Updates once a message is fully processed.</Trans>
                 </p>
               </div>
             </div>
@@ -85,13 +86,17 @@ export function ConversationCreditUsagePanel({
         ) : (
           <div className="space-y-2 px-4 py-6">
             <div className="flex items-baseline justify-between gap-4">
-              <span className="text-sm text-muted-foreground">Total used</span>
+              <span className="text-sm text-muted-foreground">
+                <Trans>Total used</Trans>
+              </span>
               <span className="text-lg font-semibold text-foreground">
                 {formatCreditValue(consumption.billedCredits)}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              The detailed breakdown isn’t available for this conversation.
+              <Trans>
+                The detailed breakdown isn’t available for this conversation.
+              </Trans>
             </p>
           </div>
         )}

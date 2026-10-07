@@ -1,0 +1,196 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "De-activate Auto-join"
+msgstr "Désactiver l’adhésion automatique"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Activate Auto-join"
+msgstr "Activer l’adhésion automatique"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "De-activate"
+msgstr "Désactiver"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Activate"
+msgstr "Activer"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "New members will need to be invited in order to gain access to your Dust Workspace."
+msgstr "Les nouveaux membres devront être invités pour accéder à votre workspace Dust."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Anyone with a <0>{domainList}</0> email will have access to your Dust Workspace."
+msgstr "Toute personne disposant d’une adresse e-mail <0>{domainList}</0> aura accès à votre workspace Dust."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Update failed"
+msgstr "Échec de la mise à jour"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Failed to enable auto-add for whitelisted domain."
+msgstr "Impossible d’activer l’ajout automatique pour le domaine autorisé."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+#: front/components/workspace/sso/Toggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Free plan"
+msgstr "Forfait gratuit"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+msgstr "Vous ne pouvez pas activer l’adhésion automatique avec le forfait gratuit. Passez à un forfait supérieur pour inviter d’autres membres."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Auto-join Workspace"
+msgstr "Adhésion automatique au workspace"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "{domainCount, plural, one {Allow your team members to access your Dust workspace when they authenticate with {domainList} account.} other {Allow your team members to access your Dust workspace when they authenticate with {domainList} accounts.}}"
+msgstr "{domainCount, plural, one {Permettez aux membres de votre équipe d’accéder à votre workspace Dust lorsqu’ils s’authentifient avec un compte {domainList}.} other {Permettez aux membres de votre équipe d’accéder à votre workspace Dust lorsqu’ils s’authentifient avec un compte {domainList}.}}"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Allow your team members to access your Dust workspace when they authenticate with verified accounts."
+msgstr "Permettez aux membres de votre équipe d’accéder à votre workspace Dust lorsqu’ils s’authentifient avec un compte vérifié."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Configure"
+msgstr "Configurer"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Enable Auto-join"
+msgstr "Activer l’adhésion automatique"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Auto-join is not available when SSO is enforced"
+msgstr "L’adhésion automatique n’est pas disponible lorsque le SSO est imposé"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Add a domain to enable Auto-join"
+msgstr "Ajoutez un domaine pour activer l’adhésion automatique"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Verify a domain to enable Auto-join"
+msgstr "Vérifiez un domaine pour activer l’adhésion automatique"
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Failed to update auto-join settings."
+msgstr "Impossible de mettre à jour les paramètres d’adhésion automatique."
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Configure Auto-join"
+msgstr "Configurer l’adhésion automatique"
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Select which domains should allow users to automatically join your workspace when they sign up with a matching email address."
+msgstr "Sélectionnez les domaines dont les utilisateurs peuvent rejoindre automatiquement votre workspace lorsqu’ils s’inscrivent avec une adresse e-mail correspondante."
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Saving..."
+msgstr "Enregistrement…"
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Enable Single Sign On Enforcement"
+msgstr "Activer l’obligation d’authentification unique"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "By enforcing SSO, access through social media logins will be discontinued. Instead, you'll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
+msgstr "En imposant le SSO, la connexion via les réseaux sociaux ne sera plus possible. Vous serez redirigé vers le portail SSO pour vous connecter. Notez que ce changement obligera tous les utilisateurs à se déconnecter puis à se reconnecter via le SSO."
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Enforce Single Sign On"
+msgstr "Imposer l’authentification unique"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Disable Single Sign On Enforcement"
+msgstr "Désactiver l’obligation d’authentification unique"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "By disabling SSO enforcement, users will have the flexibility to login with social media."
+msgstr "En désactivant l’obligation SSO, les utilisateurs pourront se connecter via les réseaux sociaux."
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Disable Single Sign-On Enforcement"
+msgstr "Désactiver l’obligation d’authentification unique"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Failed to enforce sso on workspace."
+msgstr "Impossible d’imposer le SSO sur le workspace."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Authentication and access"
+msgstr "Authentification et accès"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Single Sign-On (SSO)"
+msgstr "Authentification unique (SSO)"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Enabled"
+msgstr "Activée"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Manage your enterprise Identity Provider (IdP) settings and user provisioning via WorkOS."
+msgstr "Gérez les paramètres de votre fournisseur d’identité (IdP) d’entreprise et le provisionnement des utilisateurs via WorkOS."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Configure SSO"
+msgstr "Configurer le SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "De-activate SSO"
+msgstr "Désactiver le SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Activate SSO"
+msgstr "Activer le SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Add a domain to enable SSO"
+msgstr "Ajoutez un domaine pour activer le SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Enforce SSO login"
+msgstr "Imposer la connexion SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "When SSO is enforced, users will no longer be able to use social logins and will be redirected to the SSO portal."
+msgstr "Lorsque le SSO est imposé, les utilisateurs ne peuvent plus se connecter via les réseaux sociaux et sont redirigés vers le portail SSO."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
+msgstr "Vous ne pouvez pas activer le SSO avec le forfait gratuit. Passez à un forfait supérieur pour accéder aux fonctionnalités SSO."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Disable {connectionType} Single Sign On"
+msgstr "Désactiver l’authentification unique {connectionType}"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."
+msgstr "Les personnes disposant d’un compte {connectionType} ne pourront plus accéder à votre workspace Dust."

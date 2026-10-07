@@ -16,6 +16,7 @@ import { useUser } from "@app/lib/swr/user";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 interface ConversationAgentPanelProps {
@@ -83,7 +84,9 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
         />
       ) : (
         <ConversationSidePanelHeader onClose={closePanel}>
-          <span className="text-sm font-medium text-foreground">Agent</span>
+          <span className="text-sm font-medium text-foreground">
+            <Trans context="side panel title">Agent</Trans>
+          </span>
         </ConversationSidePanelHeader>
       )}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

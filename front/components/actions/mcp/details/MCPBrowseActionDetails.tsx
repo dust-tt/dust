@@ -9,18 +9,23 @@ import {
 import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { Card, FaviconIcon, Globe01 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface BrowseResultItemProps {
   result: BrowseResultResourceType;
 }
 
 function BrowseResultItem({ result }: BrowseResultItemProps) {
+  const { t } = useLingui();
   const isSuccess = result.responseCode === "200";
   const urlValidation = validateUrl(result.uri);
   const title = result.title ?? result.requestedUrl;
+  const { responseCode, errorMessage } = result;
   const subtitle = isSuccess
     ? result.description
-    : `Error ${result.responseCode}${result.errorMessage ? `: ${result.errorMessage}` : ""}`;
+    : errorMessage
+      ? t`Error ${responseCode}: ${errorMessage}`
+      : t`Error ${responseCode}`;
 
   const linkProps = urlValidation.valid
     ? { href: urlValidation.standardized, target: "_blank" as const }
@@ -54,6 +59,7 @@ export function MCPBrowseActionDetails({
   displayContext,
   owner,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const urls = isWebbrowseInputType(toolParams) ? toolParams.urls : null;
 
   const browseResults =
@@ -66,8 +72,8 @@ export function MCPBrowseActionDetails({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? "Browsing the web"
-          : "Web navigation"
+          ? t`Browsing the web`
+          : t`Web navigation`
       }
       visual={Globe01}
     >
@@ -95,7 +101,9 @@ export function MCPBrowseActionDetails({
 
         {generatedFiles.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-foreground">Files</span>
+            <span className="text-sm font-semibold text-foreground">
+              <Trans>Files</Trans>
+            </span>
             {generatedFiles.map((file) => (
               <ToolGeneratedFileDetails key={file.fileId} resource={file} />
             ))}

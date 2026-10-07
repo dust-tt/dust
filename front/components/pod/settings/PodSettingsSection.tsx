@@ -13,13 +13,15 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const POD_SETTINGS_TABS = [
-  { value: "general", label: "General" },
-  { value: "customization", label: "Customization" },
-  { value: "participants", label: "Participants" },
-  { value: "advanced", label: "Advanced" },
+  { value: "general", label: msg`General` },
+  { value: "customization", label: msg`Customization` },
+  { value: "participants", label: msg`Participants` },
+  { value: "advanced", label: msg`Advanced` },
 ];
 
 interface PodSettingsSectionProps {
@@ -33,6 +35,7 @@ export function PodSettingsSection({
   pod,
   onOpenMembersPanel,
 }: PodSettingsSectionProps) {
+  const { t } = useLingui();
   const [activeTab, setActiveTab] = useState("general");
   const { featureFlags } = useFeatureFlags();
 
@@ -46,7 +49,7 @@ export function PodSettingsSection({
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
         {pod.archivedAt && (
           <ContentMessage variant="info" size="lg">
-            This Pod has been archived.
+            <Trans>This Pod has been archived.</Trans>
           </ContentMessage>
         )}
 
@@ -60,7 +63,7 @@ export function PodSettingsSection({
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                label={tab.label}
+                label={t(tab.label)}
               />
             ))}
           </TabsList>

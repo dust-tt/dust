@@ -1,10 +1,7 @@
 import { getSkillIcon } from "@app/lib/skill";
-import { UNAVAILABLE_SKILL_LABEL } from "@app/lib/skills/format";
 import { AlertCircle, Chip, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { NodeViewWrapper } from "@tiptap/react";
-
-const UNAVAILABLE_SKILL_TOOLTIP_LABEL =
-  "This referenced skill is unavailable because its visibility or permissions changed.";
 
 interface SkillNodeComponentProps {
   node: {
@@ -24,17 +21,18 @@ export function SkillNodeComponent({
   onDetails,
   onRemove,
 }: SkillNodeComponentProps) {
+  const { t } = useLingui();
   if (node.attrs.skillUnavailable === true) {
     return (
       <NodeViewWrapper className="inline-flex align-middle">
         <Tooltip
-          label={UNAVAILABLE_SKILL_TOOLTIP_LABEL}
+          label={t`This referenced skill is unavailable because its visibility or permissions changed.`}
           side="top"
           tooltipTriggerAsChild
           trigger={
             <span className="inline-flex">
               <Chip
-                label={UNAVAILABLE_SKILL_LABEL}
+                label={t`Unavailable skill`}
                 icon={AlertCircle}
                 color="warning"
                 size="xs"
@@ -48,7 +46,7 @@ export function SkillNodeComponent({
   }
 
   const skillIcon = node.attrs.skillIcon ?? null;
-  const skillName = node.attrs.skillName ?? "Skill";
+  const skillName = node.attrs.skillName ?? t`Skill`;
   const skillId = node.attrs.skillId;
   const handleClick =
     skillId && onDetails ? () => onDetails(skillId) : undefined;

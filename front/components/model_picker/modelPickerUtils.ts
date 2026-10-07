@@ -21,10 +21,7 @@ import {
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
 } from "@app/types/assistant/models/model_tiers";
 import { isStaticModelId } from "@app/types/assistant/models/models";
-import {
-  ORDERED_REASONING_EFFORTS,
-  REASONING_EFFORT_LABELS,
-} from "@app/types/assistant/models/reasoning";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -37,36 +34,78 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
 // locked because the workspace is on a legacy (non usage-based) plan.
-export const PREMIUM_MODEL_LOCKED_TOOLTIP =
-  "This option isn't available on your workspace's current plan. " +
-  "Contact your administrator to upgrade.";
+const PREMIUM_MODEL_LOCKED_TOOLTIP = msg`This option isn't available on your workspace's current plan. Contact your administrator to upgrade.`;
 
 // Shown when a model row is locked because the model's tier is not enabled for
 // the workspace's current model-tier ceiling (independent of the plan: this
 // applies even on usage-based plans whose tier grants stop below the model).
-const MODEL_TIER_LOCKED_TOOLTIP =
-  "Your current model access doesn't include this option. " +
-  "Contact your administrator to get access.";
+const MODEL_TIER_LOCKED_TOOLTIP = msg`Your current model access doesn't include this option. Contact your administrator to get access.`;
 
 export const AUTO_MODELS_DOC_URL =
   "https://docs.dust.tt/docs/user-documentation/agents/model-selection#auto-models";
 
-export const AUTO_MODELS_HINT =
-  "Dust selects a model and automatically switches to another if the " +
-  "selected model is unstable.";
+export const AUTO_MODELS_HINT = msg`Dust selects a model and automatically switches to another if the selected model is unstable.`;
 
-export function getDegradedModelTooltip(displayName: string): string {
-  return `${displayName} is unstable right now. You may want to select another model.`;
+export const REASONING_EFFORT_LABELS: Record<
+  ReasoningEffort,
+  MessageDescriptor
+> = {
+  none: msg({ message: "None", context: "reasoning effort" }),
+  minimal: msg({ message: "Min", context: "reasoning effort" }),
+  low: msg({ message: "Low", context: "reasoning effort" }),
+  medium: msg({ message: "Medium", context: "reasoning effort" }),
+  high: msg({ message: "High", context: "reasoning effort" }),
+  xhigh: msg({ message: "xHigh", context: "reasoning effort" }),
+  maximal: msg({ message: "Max", context: "reasoning effort" }),
+};
+
+export const LOWERCASE_REASONING_EFFORT_LABELS: Record<
+  ReasoningEffort,
+  MessageDescriptor
+> = {
+  none: msg({ message: "none", context: "reasoning effort, lowercase" }),
+  minimal: msg({ message: "min", context: "reasoning effort, lowercase" }),
+  low: msg({ message: "low", context: "reasoning effort, lowercase" }),
+  medium: msg({ message: "medium", context: "reasoning effort, lowercase" }),
+  high: msg({ message: "high", context: "reasoning effort, lowercase" }),
+  xhigh: msg({ message: "xhigh", context: "reasoning effort, lowercase" }),
+  maximal: msg({ message: "max", context: "reasoning effort, lowercase" }),
+};
+
+export const MODELS_TIER_DISPLAY_NAMES: Record<
+  ModelsTierName,
+  MessageDescriptor
+> = {
+  cost_efficient: msg({ message: "Basic", context: "model tier" }),
+  balanced: msg({ message: "Standard", context: "model tier" }),
+  premium: msg({ message: "Premium", context: "model tier" }),
+  ultra: msg({ message: "Ultra", context: "model tier" }),
+};
+
+export function getDegradedModelTooltip(
+  t: Translate,
+  displayName: string
+): string {
+  return t(
+    msg`${displayName} is unstable right now. You may want to select another model.`
+  );
 }
 
 export function getTierFallbackMessage(
+  t: Translate,
   tierName: string,
   replacementModelName: string
 ): string {
-  return `Preferred model for ${tierName} is unstable. Using ${replacementModelName} temporarily.`;
+  return t(
+    msg`Preferred model for ${tierName} is unstable. Using ${replacementModelName} temporarily.`
+  );
 }
 
 const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
@@ -151,24 +190,24 @@ export type ModelTierId = "fast" | "standard" | "complex";
 export interface ModelTierDefinition {
   id: ModelTierId;
   metaModelId: ModelStreamIdType;
-  name: string;
+  name: MessageDescriptor;
 }
 
 export const MODEL_TIERS: ModelTierDefinition[] = [
   {
     id: "fast",
     metaModelId: AUTO_FAST_MODEL_ID,
-    name: "Basic",
+    name: MODELS_TIER_DISPLAY_NAMES.cost_efficient,
   },
   {
     id: "standard",
     metaModelId: AUTO_MODEL_ID,
-    name: "Standard",
+    name: MODELS_TIER_DISPLAY_NAMES.balanced,
   },
   {
     id: "complex",
     metaModelId: AUTO_COMPLEX_MODEL_ID,
-    name: "Premium",
+    name: MODELS_TIER_DISPLAY_NAMES.premium,
   },
 ];
 
@@ -237,22 +276,26 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
-export function getReasoningEffortLabel(
-  effort: ReasoningEffort
-): string | null {
-  return effort === "none" ? null : REASONING_EFFORT_LABELS[effort];
-}
-
 export function formatModelEffortLabel(
+  t: Translate,
   displayName: string,
   effort: ReasoningEffort
 ): string {
-  const effortLabel = getReasoningEffortLabel(effort);
+  if (effort === "none") {
+    return displayName;
+  }
+  const effortLabel = t(REASONING_EFFORT_LABELS[effort]);
 
-  return effortLabel ? `${displayName} ${effortLabel}` : displayName;
+  return t(
+    msg({
+      message: `${displayName} ${effortLabel}`,
+      context: "model name followed by its reasoning effort",
+    })
+  );
 }
 
 export function getTierResolvedModelLabel(
+  t: Translate,
   tierId: ModelTierId,
   streams: ModelStreamResolutionsType | null
 ): string | undefined {
@@ -261,6 +304,7 @@ export function getTierResolvedModelLabel(
     return undefined;
   }
   return formatModelEffortLabel(
+    t,
     resolution.displayName,
     resolution.reasoningEffort
   );
@@ -538,24 +582,30 @@ export function getModelLockReason(
   return lockPremiumEfforts ? "premium" : "model_tier";
 }
 
-export function getModelLockTooltip(reason: ModelLockReason): string {
+export function getModelLockTooltip(
+  t: Translate,
+  reason: ModelLockReason
+): string {
   switch (reason) {
     case "premium":
-      return PREMIUM_MODEL_LOCKED_TOOLTIP;
+      return t(PREMIUM_MODEL_LOCKED_TOOLTIP);
     case "model_tier":
-      return MODEL_TIER_LOCKED_TOOLTIP;
+      return t(MODEL_TIER_LOCKED_TOOLTIP);
     default:
       assertNeverAndIgnore(reason);
       return "";
   }
 }
 
-export function getEffortStopTooltip(stop: EffortStop): string | null {
+export function getEffortStopTooltip(
+  t: Translate,
+  stop: EffortStop
+): string | null {
   switch (stop.unavailabilityReason) {
     case "premium":
-      return PREMIUM_MODEL_LOCKED_TOOLTIP;
+      return t(PREMIUM_MODEL_LOCKED_TOOLTIP);
     case "model_tier":
-      return MODEL_TIER_LOCKED_TOOLTIP;
+      return t(MODEL_TIER_LOCKED_TOOLTIP);
     case null:
       return null;
     default:
@@ -565,14 +615,15 @@ export function getEffortStopTooltip(stop: EffortStop): string | null {
 }
 
 export function getModelWithReasoningEffortLabel(
+  t: Translate,
   display: SelectionDisplay
 ): string {
   switch (display.kind) {
     case "tier":
-      return getModelTier(display.tierId).name;
+      return t(getModelTier(display.tierId).name);
     case "model": {
       const { model, effort } = display;
-      return formatModelEffortLabel(model.displayName, effort);
+      return formatModelEffortLabel(t, model.displayName, effort);
     }
     default:
       assertNeverAndIgnore(display);

@@ -16,6 +16,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Button, Plus } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -37,6 +38,7 @@ export function AgentEditorsTab({
   user,
   agentConfiguration,
 }: AgentEditorsTabProps) {
+  const { t } = useLingui();
   const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration.sId,
@@ -127,7 +129,9 @@ export function AgentEditorsTab({
     <div className="relative flex flex-col gap-4">
       {suggestedEditors && <EditedSectionBar />}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Editors</h3>
+        <h3 className="text-sm font-semibold">
+          <Trans>Editors</Trans>
+        </h3>
         {canManageEditors && (
           <AddEditorDropdown
             owner={owner}
@@ -138,7 +142,7 @@ export function AgentEditorsTab({
                 variant="outline"
                 size="sm"
                 icon={Plus}
-                label="Add editors"
+                label={t`Add editors`}
                 disabled={
                   isEditorsLoading ||
                   isEditorsError ||
@@ -171,7 +175,7 @@ export function AgentEditorsTab({
           <Button
             variant="outline"
             size="sm"
-            label="Cancel"
+            label={t`Cancel`}
             disabled={!hasChanges || form.formState.isSubmitting}
             onClick={() => form.reset(formValues)}
             type="button"
@@ -179,7 +183,7 @@ export function AgentEditorsTab({
           <Button
             variant="highlight"
             size="sm"
-            label="Save"
+            label={t`Save`}
             disabled={!hasChanges || form.formState.isSubmitting}
             isLoading={form.formState.isSubmitting}
             onClick={onSave}

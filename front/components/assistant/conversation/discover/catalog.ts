@@ -3,16 +3,10 @@ import type {
   AgentSearchFilters,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
-import type {
-  GetSkillsWithRelationsResponseBody,
-  SkillSearchFilters,
-} from "@app/types/api/skills";
+import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
-
-export type DiscoverSkill =
-  GetSkillsWithRelationsResponseBody["skills"][number];
 
 type DiscoverAgentSearchResult = SearchAgentsResponseBody["agents"][number];
 
@@ -116,16 +110,6 @@ export function toHydratedAgentCatalogItem(
     authors: agent.lastAuthors ?? [],
     isDustProvided: agent.scope === "global",
     activeUsersCount: agent.usage?.userCount ?? null,
-  };
-}
-
-export function toHydratedSkillCatalogItem(skill: DiscoverSkill): CatalogItem {
-  return {
-    kind: "skill",
-    skill,
-    authors: (skill.relations.editors ?? []).map((editor) => editor.fullName),
-    isDustProvided: isDustProvidedSkill(skill),
-    activeUsersCount: null,
   };
 }
 

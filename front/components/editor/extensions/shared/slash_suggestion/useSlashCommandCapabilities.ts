@@ -79,7 +79,7 @@ export function useInputBarSlashCommandCapabilities({
   const { skills, resolvedSearchTerm, isSkillsLoading } = useSearchSkills({
     owner,
     searchTerm: query,
-    defaultToFavorites: true,
+    selectionMode: "favorites_or_all",
     excludeSkillId,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
     disabled,
@@ -136,7 +136,7 @@ export function useSkillBuilderSlashCommandCapabilities({
   const { skills, resolvedSearchTerm, isSkillsLoading } = useSearchSkills({
     owner,
     searchTerm: query,
-    defaultToFavorites: true,
+    selectionMode: "favorites_or_all",
     excludeSkillId,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
   });

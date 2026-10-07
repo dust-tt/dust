@@ -7,6 +7,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
+import { Trans } from "@lingui/react/macro";
 import TextareaAutosize from "react-textarea-autosize";
 
 import Browser from "./blocks/Browser";
@@ -402,9 +403,9 @@ export default function SpecRunView({
               );
 
             default:
-              return ((t: never) => (
+              return ((blockType: never) => (
                 <div key={idx} className="flex flex-row px-4 py-4 text-sm">
-                  Unknown block type: {t}
+                  <Trans>Unknown block type: {blockType}</Trans>
                 </div>
               ))(block.type);
           }

@@ -9,6 +9,7 @@ import {
   frameV2ContentType,
 } from "@app/types/files";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface PublicInteractiveContentContainerProps {
   shareToken: string;
@@ -43,7 +44,9 @@ export function PublicInteractiveContentContainer({
       return (
         <CenteredState>
           <Spinner size="sm" />
-          <span>Loading frame...</span>
+          <span>
+            <Trans>Loading Frame...</Trans>
+          </span>
         </CenteredState>
       );
     }

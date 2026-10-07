@@ -22,6 +22,7 @@ import {
   LoadingBlock,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
 import {
@@ -39,8 +40,6 @@ interface SlashCommandTooltip {
   description: string;
   media?: React.ReactNode;
 }
-
-const DEFAULT_EMPTY_MESSAGE = "No commands found";
 
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
   SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME;
@@ -69,7 +68,9 @@ function SlashCommandDropdownLoadingState({
 }) {
   return (
     <div role="status" aria-busy="true" className="flex flex-col">
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">
+        <Trans>Loading</Trans>
+      </span>
       {Array.from({ length: rowCount }, (_, index) => (
         <div key={index} className="flex items-center gap-2.5 p-2">
           <LoadingBlock className={iconClassName} />
@@ -110,6 +111,9 @@ export interface SlashCommand {
   icon: React.ComponentType<any>;
   id: string;
   label: string;
+  // Extra text a search query matches, on top of the label and descriptions (e.g. their
+  // default-locale rendering).
+  searchText?: string[];
   tooltip?: SlashCommandTooltip;
   tooltipLabel?: string;
 }
@@ -294,7 +298,7 @@ export const SlashCommandDropdown = forwardRef<
       clientRect,
       defaultSelectedItemId,
       dropdownHeaders,
-      emptyMessage = DEFAULT_EMPTY_MESSAGE,
+      emptyMessage: emptyMessageProp,
       header,
       headerContent,
       isLoading = false,
@@ -306,6 +310,11 @@ export const SlashCommandDropdown = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
+    const emptyMessage = emptyMessageProp ?? t`No commands found`;
+    const capabilitiesSectionLabel = t(
+      SLASH_COMMAND_CAPABILITIES_SECTION_LABEL
+    );
     const items = useMemo(
       () =>
         sections ? flattenSlashCommandSections(sections) : (itemsProp ?? []),
@@ -324,8 +333,7 @@ export const SlashCommandDropdown = forwardRef<
     const capabilitiesSectionHasItems =
       sections?.some(
         (section) =>
-          section.label === SLASH_COMMAND_CAPABILITIES_SECTION_LABEL &&
-          section.items.length > 0
+          section.label === capabilitiesSectionLabel && section.items.length > 0
       ) ?? false;
     const showLoadingPlaceholder = isLoading && !capabilitiesSectionHasItems;
     // Sections rendering their own loading rows or empty message, and a header such as
@@ -534,7 +542,7 @@ export const SlashCommandDropdown = forwardRef<
                 <DropdownMenuItem
                   icon={ArrowLeft}
                   itemId={SUB_MENU_BACK_ITEM_ID}
-                  label="Back"
+                  label={t`Back`}
                   truncateText
                   endComponent={<DropdownMenuShortcut shortcut="Esc" />}
                   onClick={() => selectEntry(0)}
@@ -645,7 +653,7 @@ export const SlashCommandDropdown = forwardRef<
                       {showLoadingPlaceholder ? (
                         <>
                           <DropdownMenuLabel>
-                            {SLASH_COMMAND_CAPABILITIES_SECTION_LABEL}
+                            {capabilitiesSectionLabel}
                           </DropdownMenuLabel>
                           <SlashCommandDropdownLoadingState
                             iconClassName={

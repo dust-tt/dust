@@ -1,0 +1,47 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "Archive this plan?"
+msgstr "Archiver ce plan ?"
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one."
+msgstr "Le plan actuel sera masqué du panneau latéral, mais restera dans les fichiers de la conversation. L’agent peut en créer un nouveau."
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "Archive plan"
+msgstr "Archiver le plan"
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "Untitled plan"
+msgstr "Plan sans titre"
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "Plan: {title}"
+msgstr "Plan : {title}"
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "No active plan for this conversation."
+msgstr "Aucun plan actif pour cette conversation."
+
+#: front/components/assistant/conversation/plan_mode/PlanPanelChip.tsx
+msgid "Plan {done}/{total}"
+msgstr "Plan {done}/{total}"
+
+#: front/components/assistant/conversation/plan_mode/PlanPanelChip.tsx
+msgctxt "noun, plan mode chip label"
+msgid "Plan"
+msgstr "Plan"

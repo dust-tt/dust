@@ -17,11 +17,15 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Fetcher } from "swr";
 
+export type FinalizeOAuthResult =
+  | { type: "finalized"; connection: OAuthConnectionType }
+  | { type: "continue_authorize"; authorizeUrl: string };
+
 export const useFinalize = () => {
   const doFinalize = async (
     provider: OAuthProvider,
     queryParams: Record<string, string | string[] | undefined>
-  ): Promise<Result<OAuthConnectionType, APIError>> => {
+  ): Promise<Result<FinalizeOAuthResult, APIError>> => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(queryParams)) {
       if (Array.isArray(value)) {
@@ -35,8 +39,9 @@ export const useFinalize = () => {
       `/api/oauth/${provider}/finalize?${params.toString()}`
     );
 
-    const result: WithAPIErrorResponse<{ connection: OAuthConnectionType }> =
-      await res.json();
+    const result: WithAPIErrorResponse<
+      { connection: OAuthConnectionType } | { authorize_url: string }
+    > = await res.json();
 
     if (isAPIErrorResponse(result)) {
       return new Err(result.error);
@@ -49,7 +54,14 @@ export const useFinalize = () => {
       });
     }
 
-    return new Ok(result.connection);
+    if ("authorize_url" in result) {
+      return new Ok({
+        type: "continue_authorize",
+        authorizeUrl: result.authorize_url,
+      });
+    }
+
+    return new Ok({ type: "finalized", connection: result.connection });
   };
 
   return doFinalize;

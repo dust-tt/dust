@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export function MobileOrExtensionAgentBrowser({
   owner,
@@ -32,6 +33,12 @@ export function MobileOrExtensionAgentBrowser({
   setSelectedTag,
   setDisplayedAssistantId,
 }: AgentBrowserSharedProps) {
+  const { t } = useLingui();
+  const viewTabDescriptor = AGENTS_TABS.find(
+    (tab) => tab.id === viewTab
+  )?.label;
+  const viewTabLabel = viewTabDescriptor ? t(viewTabDescriptor) : undefined;
+
   const handleTagClick = useTagClick(
     setSelectedTab,
     setAssistantSearch,
@@ -47,11 +54,7 @@ export function MobileOrExtensionAgentBrowser({
             <Button
               isSelect
               variant="outline"
-              label={
-                viewTab
-                  ? AGENTS_TABS.find((tab) => tab.id === viewTab)?.label
-                  : "Select view"
-              }
+              label={viewTab ? viewTabLabel : t`Select view`}
               size="sm"
             />
           </DropdownMenuTrigger>
@@ -62,7 +65,7 @@ export function MobileOrExtensionAgentBrowser({
                 disabled={agentsByTab[tab.id].length === 0}
                 onClick={() => setSelectedTab(tab.id)}
                 className="notranslate"
-                label={tab.label}
+                label={t(tab.label)}
               />
             ))}
           </DropdownMenuContent>

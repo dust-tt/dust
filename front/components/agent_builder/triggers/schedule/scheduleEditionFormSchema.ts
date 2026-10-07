@@ -12,77 +12,62 @@ import {
 } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
-import { useLingui } from "@lingui/react/macro";
-import { useCallback, useMemo } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
-export function useScheduleFormSchema() {
-  const { t } = useLingui();
+export function getScheduleFormSchema(
+  t: (descriptor: MessageDescriptor) => string
+) {
+  const commonFields = {
+    name: z
+      .string()
+      .min(1, t(msg`Name is required`))
+      .max(255, t(msg`Name should be less than 255 characters`)),
+    status: triggerStatusSchema.default("enabled"),
+    naturalLanguageDescription: z.string().optional(),
+    customPrompt: z.string(),
+    timezone: z.string().min(1, t(msg`Timezone is required`)),
+    executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
+    spaceId: z.string().nullable(),
+  };
 
-  return useMemo(() => {
-    const commonFields = {
-      name: z
-        .string()
-        .min(1, t`Name is required`)
-        .max(255, t`Name should be less than 255 characters`),
-      status: triggerStatusSchema.default("enabled"),
-      naturalLanguageDescription: z.string().optional(),
-      customPrompt: z.string(),
-      timezone: z.string().min(1, t`Timezone is required`),
-      executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
-      spaceId: z.string().nullable(),
-    };
+  const cronScheduleSchema = z.object({
+    ...commonFields,
+    scheduleType: z.literal("cron"),
+    cron: z.string().min(1, t(msg`Cron expression is required`)),
+  });
 
-    const cronScheduleSchema = z.object({
-      ...commonFields,
-      scheduleType: z.literal("cron"),
-      cron: z.string().min(1, t`Cron expression is required`),
-    });
+  const intervalScheduleSchema = z.object({
+    ...commonFields,
+    scheduleType: z.literal("interval"),
+    intervalDays: z.number().positive(),
+    dayOfWeek: z.number().nullable(),
+    hour: z.number(),
+    minute: z.number(),
+  });
 
-    const intervalScheduleSchema = z.object({
-      ...commonFields,
-      scheduleType: z.literal("interval"),
-      intervalDays: z.number().positive(),
-      dayOfWeek: z.number().nullable(),
-      hour: z.number(),
-      minute: z.number(),
-    });
-
-    return z.discriminatedUnion("scheduleType", [
-      cronScheduleSchema,
-      intervalScheduleSchema,
-    ]);
-  }, [t]);
+  return z.discriminatedUnion("scheduleType", [
+    cronScheduleSchema,
+    intervalScheduleSchema,
+  ]);
 }
 
 export type ScheduleFormValues = z.infer<
-  ReturnType<typeof useScheduleFormSchema>
+  ReturnType<typeof getScheduleFormSchema>
 >;
 
-export function useGetScheduleFormDefaultValues() {
-  const { t } = useLingui();
-
-  return useCallback(
-    (trigger: AgentBuilderScheduleTriggerType | null) =>
-      getScheduleFormDefaultValues({
-        trigger,
-        defaultName: t`Schedule`,
-      }),
-    [t]
-  );
-}
-
-function getScheduleFormDefaultValues({
+export function getScheduleFormDefaultValues({
   trigger,
-  defaultName,
+  t,
 }: {
   trigger: AgentBuilderScheduleTriggerType | null;
-  defaultName: string;
+  t: (descriptor: MessageDescriptor) => string;
 }): ScheduleFormValues {
   const config = trigger?.kind === "schedule" ? trigger.configuration : null;
 
   const commonDefaults = {
-    name: trigger?.name ?? defaultName,
+    name: trigger?.name ?? t(msg`Schedule`),
     status: trigger?.status ?? "enabled",
     naturalLanguageDescription: trigger?.naturalLanguageDescription ?? "",
     customPrompt: trigger?.customPrompt ?? "",

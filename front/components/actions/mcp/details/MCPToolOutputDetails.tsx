@@ -28,6 +28,7 @@ import {
   PaginatedCitationsGrid,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 interface ThinkingBlockProps {
@@ -35,11 +36,12 @@ interface ThinkingBlockProps {
 }
 
 export function ThinkingBlock({ resource }: ThinkingBlockProps) {
+  const { t } = useLingui();
   return (
     resource.text && (
       <div className="text-sm font-normal text-muted-foreground">
         <ContentMessage
-          title="Reasoning"
+          title={t`Reasoning`}
           variant="primary"
           icon={InfoCircle}
           size="lg"
@@ -120,7 +122,8 @@ export function SearchResultDetails({
   actionOutput,
   query,
 }: SearchResultProps) {
-  const displayQuery = query ?? "No query provided";
+  const { t } = useLingui();
+  const displayQuery = query ?? t`No query provided`;
 
   const warning = actionOutput
     ?.filter(isWarningResourceType)
@@ -167,7 +170,6 @@ export function SearchResultDetails({
               }`,
               title: node.title,
               icon: <IconComponent />,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: node.sourceUrl || undefined,
             };
           });
@@ -182,7 +184,6 @@ export function SearchResultDetails({
               }`,
               title: metadata.title,
               icon: <IconComponent />,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: metadata.sourceUrl || undefined,
             },
           ];
@@ -205,7 +206,9 @@ export function SearchResultDetails({
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-1">
-            <span className="font-medium text-foreground">Query</span>
+            <span className="font-medium text-foreground">
+              <Trans>Query</Trans>
+            </span>
             <div className="text-muted-foreground">{displayQuery}</div>
             {warning && (
               <Tooltip
@@ -216,7 +219,9 @@ export function SearchResultDetails({
           </div>
           {actionOutput && (
             <div className="flex flex-col gap-2">
-              <span className="font-medium text-foreground">Results</span>
+              <span className="font-medium text-foreground">
+                <Trans>Results</Trans>
+              </span>
               {singleFileContentText && (
                 <Markdown
                   content={singleFileContentText}

@@ -10,6 +10,7 @@ import {
   AgentSuggestionActionCard,
   mapSuggestionStateToCardState,
 } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import { REASONING_EFFORT_LABELS } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
@@ -46,6 +47,9 @@ import {
   Folder,
   LoadingBlock,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -64,6 +68,7 @@ const InstructionsSuggestionCard = memo(
     focusOnSuggestion,
     getCommittedInstructionsHtml,
   }: InstructionsSuggestionCardProps) {
+    const { t } = useLingui();
     const { content, targetBlockId } = agentSuggestion.suggestion;
     const { state, sId } = agentSuggestion;
 
@@ -109,7 +114,7 @@ const InstructionsSuggestionCard = memo(
                 variant="outline"
                 size="xs"
                 icon={Eye}
-                tooltip="Review in instructions"
+                tooltip={t`Review in instructions`}
                 onClick={() => focusOnSuggestion(agentSuggestion)}
               />
             ) : undefined
@@ -161,6 +166,7 @@ interface ToolSuggestionCardProps {
 }
 
 function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
+  const { t } = useLingui();
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
@@ -202,14 +208,14 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
 
   const labels = isAddition
     ? {
-        title: `Add ${displayName} tool`,
-        applyLabel: "Accept",
-        acceptedTitle: `${displayName} tool added`,
+        title: t`Add ${displayName} tool`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${displayName} tool added`,
       }
     : {
-        title: `Remove ${displayName} tool`,
-        applyLabel: "Accept",
-        acceptedTitle: `${displayName} tool removed`,
+        title: t`Remove ${displayName} tool`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${displayName} tool removed`,
       };
 
   return (
@@ -218,7 +224,7 @@ function ToolSuggestionCard({ agentSuggestion }: ToolSuggestionCardProps) {
       visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
-      rejectedTitle={`${displayName} tool rejected`}
+      rejectedTitle={t`${displayName} tool rejected`}
       actionsPosition="header"
       onClickAccept={() => handleAccept(agentSuggestion)}
       onClickReject={() => handleReject(agentSuggestion)}
@@ -233,6 +239,7 @@ interface SubAgentSuggestionCardProps {
 function SubAgentSuggestionCard({
   agentSuggestion,
 }: SubAgentSuggestionCardProps) {
+  const { t } = useLingui();
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
@@ -289,19 +296,19 @@ function SubAgentSuggestionCard({
   };
 
   const displayName = childAgentName
-    ? `Run ${childAgentName}`
-    : "Run sub-agent";
+    ? t`Run ${childAgentName}`
+    : t`Run sub-agent`;
 
   const labels = isAddition
     ? {
-        title: `Add ${displayName}`,
-        applyLabel: "Accept",
-        acceptedTitle: `${displayName} added`,
+        title: t`Add ${displayName}`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${displayName} added`,
       }
     : {
-        title: `Remove ${displayName}`,
-        applyLabel: "Accept",
-        acceptedTitle: `${displayName} removed`,
+        title: t`Remove ${displayName}`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${displayName} removed`,
       };
 
   return (
@@ -310,7 +317,7 @@ function SubAgentSuggestionCard({
       visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
-      rejectedTitle={`${displayName} dismissed`}
+      rejectedTitle={t`${displayName} dismissed`}
       actionsPosition="header"
       onClickAccept={() => handleAccept(agentSuggestion)}
       onClickReject={() => handleReject(agentSuggestion)}
@@ -323,6 +330,7 @@ interface SkillSuggestionCardProps {
 }
 
 function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
+  const { t } = useLingui();
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
@@ -362,16 +370,17 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
     void rejectSuggestion(agentSuggestion);
   };
 
+  const skillName = skill.name;
   const labels = isAddition
     ? {
-        title: `Add ${skill.name} skill`,
-        applyLabel: "Accept",
-        acceptedTitle: `${skill.name} skill added`,
+        title: t`Add ${skillName} skill`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${skillName} skill added`,
       }
     : {
-        title: `Remove ${skill.name} skill`,
-        applyLabel: "Accept",
-        acceptedTitle: `${skill.name} skill removed`,
+        title: t`Remove ${skillName} skill`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${skillName} skill removed`,
       };
 
   return (
@@ -380,7 +389,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
       visual={<Avatar icon={getSkillAvatarIcon(skill)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
-      rejectedTitle={`${skill.name} skill suggestion rejected`}
+      rejectedTitle={t`${skillName} skill suggestion rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}
@@ -393,10 +402,13 @@ interface ModelSuggestionCardProps {
 }
 
 function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
+  const { t } = useLingui();
   const { relations, suggestion, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const modelName =
-    relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
+    relations.model?.displayName ??
+    relations.model?.modelId ??
+    t`Unknown model`;
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
   const { control } = useFormContext<AgentBuilderFormData>();
 
@@ -437,21 +449,21 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   const effort =
     suggestion.reasoningEffort ?? relations.model?.defaultReasoningEffort;
   const formattedReasoning = effort
-    ? effort.charAt(0).toUpperCase() + effort.slice(1)
-    : "Default";
+    ? t(REASONING_EFFORT_LABELS[effort])
+    : t({ message: "Default", context: "reasoning effort" });
 
   return (
     <ActionCardBlock
       title={
         isReasoningOnlyChange
-          ? `Change model reasoning to: ${formattedReasoning}`
-          : `Change model to: ${modelName}`
+          ? t`Change model reasoning to: ${formattedReasoning}`
+          : t`Change model to: ${modelName}`
       }
-      acceptedTitle={`Model changed to ${modelName} with ${formattedReasoning} reasoning`}
-      rejectedTitle={`${modelName} model with ${formattedReasoning} reasoning suggestion rejected`}
+      acceptedTitle={t`Model changed to ${modelName} with ${formattedReasoning} reasoning`}
+      rejectedTitle={t`${modelName} model with ${formattedReasoning} reasoning suggestion rejected`}
       description={analysis ?? undefined}
       state={cardState}
-      applyLabel="Accept"
+      applyLabel={t`Accept`}
       actionsPosition="header"
       onClickAccept={() => handleAccept(agentSuggestion)}
       onClickReject={() => handleReject(agentSuggestion)}
@@ -466,11 +478,14 @@ const KNOWLEDGE_METHOD_ACTION_VERB: Record<string, string> = {
 
 const MAX_VISIBLE_NODES = 2;
 
-function formatNodeScopeTitles(nodes: DataSourceViewContentNode[]): string {
+function formatNodeScopeTitles(
+  nodes: DataSourceViewContentNode[],
+  t: (descriptor: MessageDescriptor) => string
+): string {
   const visible = nodes.slice(0, MAX_VISIBLE_NODES);
   const rest = nodes.length - MAX_VISIBLE_NODES;
   const titles = visible.map((n) => n.title).join(", ");
-  return rest > 0 ? `${titles} (+${rest} more)` : titles;
+  return rest > 0 ? t(msg`${titles} (+${rest} more)`) : titles;
 }
 
 function buildNewKnowledgeAction(
@@ -539,6 +554,7 @@ interface KnowledgeSuggestionCardProps {
 function KnowledgeSuggestionCard({
   agentSuggestion,
 }: KnowledgeSuggestionCardProps) {
+  const { t } = useLingui();
   const { suggestion, relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
@@ -617,8 +633,10 @@ function KnowledgeSuggestionCard({
       <div className="flex flex-col gap-1">
         {hasVisibleScope && (
           <span>
-            <span className="font-medium">Selections:</span>{" "}
-            {formatNodeScopeTitles(selectedNodes)}
+            <span className="font-medium">
+              <Trans>Selections:</Trans>
+            </span>{" "}
+            {formatNodeScopeTitles(selectedNodes, t)}
           </span>
         )}
         {analysis && <span>{analysis}</span>}
@@ -627,14 +645,14 @@ function KnowledgeSuggestionCard({
 
   const labels = isAddition
     ? {
-        title: `Add ${displayName} as knowledge source`,
-        applyLabel: "Accept",
-        acceptedTitle: `${displayName} knowledge added`,
+        title: t`Add ${displayName} as knowledge source`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${displayName} knowledge added`,
       }
     : {
-        title: `Remove ${displayName} knowledge source`,
-        applyLabel: "Accept",
-        acceptedTitle: `${displayName} knowledge removed`,
+        title: t`Remove ${displayName} knowledge source`,
+        applyLabel: t`Accept`,
+        acceptedTitle: t`${displayName} knowledge removed`,
       };
 
   return (
@@ -643,7 +661,7 @@ function KnowledgeSuggestionCard({
       visual={<Avatar icon={icon} size="sm" />}
       description={description}
       state={cardState}
-      rejectedTitle={`${displayName} knowledge rejected`}
+      rejectedTitle={t`${displayName} knowledge rejected`}
       actionsPosition="header"
       onClickAccept={() => handleAccept(agentSuggestion)}
       onClickReject={() => handleReject(agentSuggestion)}
@@ -729,13 +747,15 @@ interface SuggestionCardSkeletonProps {
 }
 
 export function SuggestionCardSkeleton({ kind }: SuggestionCardSkeletonProps) {
+  const { t } = useLingui();
+
   if (kind === "instructions") {
     return <LoadingBlock className="h-24 w-full" />;
   }
 
   return (
     <ActionCardBlock
-      title="Loading suggestion"
+      title={t`Loading suggestion`}
       state="accepted"
       description={<LoadingBlock className="h-14 w-full" />}
     />

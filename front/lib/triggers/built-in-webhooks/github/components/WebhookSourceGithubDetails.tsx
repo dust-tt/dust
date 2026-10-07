@@ -1,6 +1,7 @@
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/types";
 import { Chip, LinkExternal01, Page } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 export function WebhookSourceGithubDetails({
   webhookSource,
@@ -33,7 +34,9 @@ export function WebhookSourceGithubDetails({
   return (
     <div className="space-y-4">
       <div>
-        <Page.H variant="h6">Connected Sources</Page.H>
+        <Page.H variant="h6">
+          <Trans>Connected sources</Trans>
+        </Page.H>
       </div>
       <div>
         {[

@@ -879,7 +879,7 @@ export function UsagePage() {
             seatTypeFilter === "none"
               ? t`No seat`
               : seatTypeFilter
-                ? seatTypeDisplayName(seatTypeFilter)
+                ? seatTypeDisplayName(seatTypeFilter, t)
                 : t`All seats`
           }
           size="sm"
@@ -905,7 +905,7 @@ export function UsagePage() {
         {seatFilterOptions.map((seatType) => (
           <DropdownMenuItem
             key={seatType}
-            label={seatTypeDisplayName(seatType)}
+            label={seatTypeDisplayName(seatType, t)}
             icon={
               <Icon
                 visual={SEAT_TYPE_ICONS[seatType]}
@@ -1278,7 +1278,7 @@ export function UsagePage() {
                   owner={owner}
                   showSpendLimitColumn={isCreditPriced}
                   showModelTiersColumn={isWorkspaceAdmin}
-                  showGroupLimitColumn={
+                  showSharedUsageLimitColumn={
                     isCreditPriced &&
                     isWorkspaceAdmin &&
                     hasFeature("group_limits")

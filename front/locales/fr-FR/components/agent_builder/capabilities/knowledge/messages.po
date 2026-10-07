@@ -1,0 +1,254 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "Are you sure?"
+msgstr "Êtes-vous sûr ?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "Do you want to unselect all of \"{itemTitle}\"?"
+msgstr "Voulez-vous désélectionner tout le contenu de « {itemTitle} » ?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "Unselect all"
+msgstr "Tout désélectionner"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+msgid "No pages found"
+msgstr "Aucune page trouvée"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+msgid "This website doesn't have any pages to browse yet."
+msgstr "Ce site web n’a pas encore de pages à parcourir."
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+msgid "Go back"
+msgstr "Retour"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgctxt "breadcrumb root"
+msgid "All"
+msgstr "Tout"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "No data sources available"
+msgstr "Aucune source de données disponible"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Connect data sources or ask your admin to set them up"
+msgstr "Connectez des sources de données ou demandez à votre administrateur de les configurer"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Connect data"
+msgstr "Connecter des données"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Search in {currentSpaceName}"
+msgstr "Rechercher dans {currentSpaceName}"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Search in space"
+msgstr "Rechercher dans l’espace"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "Searching in:"
+msgstr "Recherche dans :"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+msgid "All {currentSpaceName}"
+msgstr "Tout {currentSpaceName}"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+msgid "Do you want to unselect all selected items?"
+msgstr "Voulez-vous désélectionner tous les éléments sélectionnés ?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+msgid "Do you want to unselect \"{itemTitle}\"?"
+msgstr "Voulez-vous désélectionner « {itemTitle} » ?"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+msgid "Unselect"
+msgstr "Désélectionner"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "0 results found"
+msgstr "0 résultat trouvé"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "No matching results found. Try different search terms."
+msgstr "Aucun résultat correspondant. Essayez d’autres termes de recherche."
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "Error searching results."
+msgstr "Erreur lors de la recherche."
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+msgid "Location"
+msgstr "Emplacement"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Unsaved changes"
+msgstr "Modifications non enregistrées"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "You have unsaved changes. Are you sure you want to close without saving?"
+msgstr "Vous avez des modifications non enregistrées. Voulez-vous vraiment fermer sans enregistrer ?"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Discard changes"
+msgstr "Abandonner les modifications"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgctxt "button, go to the next step"
+msgid "Next"
+msgstr "Suivant"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Select knowledge type and configure settings"
+msgstr "Sélectionnez le type de connaissances et configurez les paramètres"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Select tables"
+msgstr "Sélectionner des tables"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Select data sources"
+msgstr "Sélectionner des sources de données"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Choose the tables to query for your processing method"
+msgstr "Choisissez les tables à interroger pour votre méthode de traitement"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Choose the data sources to include in your knowledge base"
+msgstr "Choisissez les sources de données à inclure dans votre base de connaissances"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure knowledge"
+msgstr "Configurer les connaissances"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+msgid "Name ..."
+msgstr "Nom…"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeFooter.tsx
+msgid "{selectionCount, plural, one {Selection (# item)} other {Selection (# items)}}"
+msgstr "{selectionCount, plural, one {Sélection (# élément)} other {Sélection (# éléments)}}"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeFooter.tsx
+msgid "No selection"
+msgstr "Aucune sélection"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Content search"
+msgstr "Recherche de contenu"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Analytics (tables, spreadsheets...)"
+msgstr "Analyse (tables, feuilles de calcul...)"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Include all data"
+msgstr "Inclure toutes les données"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Advanced processing"
+msgstr "Traitement avancé"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "What’s the data?"
+msgstr "De quelles données s’agit-il ?"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Provide a brief description of the data content and context to help the agent determine when to utilize it effectively."
+msgstr "Fournissez une brève description du contenu et du contexte des données pour aider l’agent à déterminer quand les utiliser à bon escient."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "This data contains…"
+msgstr "Ces données contiennent…"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Include Data"
+msgstr "Configurer Include Data"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Set time range and describe what data to include."
+msgstr "Définissez la période et décrivez les données à inclure."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what type of data you want to include from your selected data sources to provide context to the agent."
+msgstr "Décrivez le type de données à inclure depuis les sources de données sélectionnées pour fournir du contexte à l’agent."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what data you want to include from your selected data sources..."
+msgstr "Décrivez les données à inclure depuis les sources de données sélectionnées…"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Extract Data"
+msgstr "Configurer Extract Data"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Set extraction parameters and describe what data to extract."
+msgstr "Définissez les paramètres d’extraction et décrivez les données à extraire."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
+msgstr "Fournissez une brève description (800 caractères maximum) du contenu et du contexte des données pour aider l’agent à déterminer quand les utiliser à bon escient."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Query Tables"
+msgstr "Configurer Query Tables"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe how you want to query the selected tables."
+msgstr "Décrivez comment vous voulez interroger les tables sélectionnées."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Query description"
+msgstr "Description des requêtes"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries."
+msgstr "Décrivez le type de requêtes que vous voulez exécuter sur les tables sélectionnées. L’agent utilisera ce contexte pour générer les requêtes SQL appropriées."
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Describe what you want to query from your tables..."
+msgstr "Décrivez ce que vous voulez interroger dans vos tables…"
+
+#: front/components/agent_builder/capabilities/knowledge/utils.ts
+msgid "Configure Data Warehouse"
+msgstr "Configurer Data Warehouse"

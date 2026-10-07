@@ -1,6 +1,10 @@
 // Okay to use public API types because it's front/connectors communication.
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { clientFetch } from "@app/lib/egress/client";
@@ -17,7 +21,6 @@ import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpen01,
   Button,
-  Chip,
   Icon,
   Input,
   Page,
@@ -60,9 +63,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionSnowflakeModalProps) {
   const { t } = useLingui();
+  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [authType, setAuthType] = useState<"password" | "keypair">("password");
   const [credentials, setCredentials] = useState<SnowflakeCredentials>({
     auth_type: "password",
@@ -148,7 +152,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         warehouse: credentials.warehouse,
       });
     }
-    setError(null);
   };
 
   const createSnowflakeConnection = async () => {
@@ -161,9 +164,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     const normalized = normalizedCredentials();
 
     if (!isValidSnowflakeAccount(normalized.account)) {
-      setError(
-        t`Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname).`
-      );
+      sendNotification({
+        type: "error",
+        title: t`Failed to create Snowflake connection`,
+        description: t`Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname).`,
+      });
       setIsLoading(false);
       return;
     }
@@ -184,9 +189,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     );
 
     if (!createCredentialsRes.ok) {
-      setError(
-        t`Failed to create connection: cannot verify those credentials.`
-      );
+      sendApiErrorNotification({
+        title: t`Failed to create Snowflake connection`,
+        error: await createCredentialsRes.json(),
+      });
       setIsLoading(false);
       return;
     }
@@ -203,16 +209,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       const err = await createDataSourceRes.json();
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
 
-      if (
-        isConnectorsAPIError(maybeConnectorsError) &&
-        maybeConnectorsError.type === "invalid_request_error"
-      ) {
-        const errorMessage = maybeConnectorsError.message;
-        setError(t`Failed to create Snowflake connection: ${errorMessage}`);
-      } else {
-        const errorMessage = err.error.message;
-        setError(t`Failed to create Snowflake connection: ${errorMessage}`);
-      }
+      sendApiErrorNotification({
+        title: t`Failed to create Snowflake connection`,
+        // A rejected configuration is explained by the connectors error, not the front one.
+        error:
+          isConnectorsAPIError(maybeConnectorsError) &&
+          maybeConnectorsError.type === "invalid_request_error"
+            ? maybeConnectorsError
+            : err,
+      });
 
       setIsLoading(false);
       return;
@@ -237,9 +242,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     const normalized = normalizedCredentials();
 
     if (!isValidSnowflakeAccount(normalized.account)) {
-      setError(
-        t`Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname).`
-      );
+      sendNotification({
+        type: "error",
+        title: t`Failed to update Snowflake connection`,
+        description: t`Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname).`,
+      });
       setIsLoading(false);
       return;
     }
@@ -260,9 +267,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     );
 
     if (!credentialsRes.ok) {
-      setError(
-        t`Failed to update connection: cannot verify those credentials.`
-      );
+      sendApiErrorNotification({
+        title: t`Failed to update Snowflake connection`,
+        error: await credentialsRes.json(),
+      });
       setIsLoading(false);
       return;
     }
@@ -287,16 +295,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
       setIsLoading(false);
 
-      if (
-        isConnectorsAPIError(maybeConnectorsError) &&
-        maybeConnectorsError.type === "invalid_request_error"
-      ) {
-        const errorMessage = maybeConnectorsError.message;
-        setError(t`Failed to update Snowflake connection: ${errorMessage}`);
-      } else {
-        const errorMessage = err.error.message;
-        setError(t`Failed to update Snowflake connection: ${errorMessage}`);
-      }
+      sendApiErrorNotification({
+        title: t`Failed to update Snowflake connection`,
+        // A rejected configuration is explained by the connectors error, not the front one.
+        error:
+          isConnectorsAPIError(maybeConnectorsError) &&
+          maybeConnectorsError.type === "invalid_request_error"
+            ? maybeConnectorsError
+            : err,
+      });
 
       return;
     }
@@ -337,19 +344,13 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     <Trans>Limitations</Trans>
                   </div>
                   <div className="text-sm font-normal text-muted-foreground">
-                    {connectorUIConfiguration.limitations}
+                    {t(connectorUIConfiguration.limitations)}
                   </div>
                 </div>
               )}
             </div>
 
             <Page.SectionHeader title={t`Snowflake credentials`} />
-
-            {error && (
-              <Chip color="warning" size="sm">
-                {error}
-              </Chip>
-            )}
 
             <div className="w-full space-y-4">
               <div className="space-y-2">
@@ -380,7 +381,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 placeholder="au12345.us-east-1"
                 onChange={(e) => {
                   setCredentials({ ...credentials, account: e.target.value });
-                  setError(null);
                 }}
               />
               {credentials.account.trim().length > 0 &&
@@ -400,7 +400,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 placeholder="dev_role"
                 onChange={(e) => {
                   setCredentials({ ...credentials, role: e.target.value });
-                  setError(null);
                 }}
               />
               <Input
@@ -410,7 +409,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 placeholder="dev_warehouse"
                 onChange={(e) => {
                   setCredentials({ ...credentials, warehouse: e.target.value });
-                  setError(null);
                 }}
               />
               <Input
@@ -420,7 +418,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 placeholder="dev_user"
                 onChange={(e) => {
                   setCredentials({ ...credentials, username: e.target.value });
-                  setError(null);
                 }}
               />
               {authType === "password" ? (
@@ -436,7 +433,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                       auth_type: "password",
                       password: e.target.value,
                     } as SnowflakeCredentials);
-                    setError(null);
                   }}
                 />
               ) : (
@@ -460,7 +456,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                           auth_type: "keypair",
                           private_key: e.target.value,
                         } as SnowflakeCredentials);
-                        setError(null);
                       }}
                     />
                   </div>
@@ -470,8 +465,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     type="password"
                     value={
                       "private_key_passphrase" in credentials
-                        ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                          credentials.private_key_passphrase || ""
+                        ? credentials.private_key_passphrase || ""
                         : ""
                     }
                     placeholder={t`Leave empty if key is not encrypted`}
@@ -482,7 +476,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                         // Preserve empty string to support empty passphrases on encrypted keys
                         private_key_passphrase: e.target.value,
                       } as SnowflakeCredentials);
-                      setError(null);
                     }}
                   />
                   <div className="text-sm text-muted-foreground">
@@ -521,7 +514,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               e.preventDefault();
               e.stopPropagation();
               setIsLoading(true);
-              // eslint-disable-next-line no-unused-expressions
               dataSourceToUpdate
                 ? await updateSnowflakeConnection()
                 : await createSnowflakeConnection();

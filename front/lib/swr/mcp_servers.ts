@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
   getMcpServerViewDisplayName,
@@ -43,7 +46,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
-import type { WithAPIErrorResponse } from "@app/types/error";
+import type { APIError, WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type {
@@ -119,7 +122,6 @@ export function useMCPServer({
   }
 
   return {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     server: data?.server || null,
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,
@@ -245,6 +247,7 @@ export function useMCPServers({
  */
 export function useDeleteMCPServer(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -262,14 +265,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
 
         if (!response.ok) {
           const body = await response.json();
-          sendNotification({
-            title: `Failure`,
-            type: "error",
-            description:
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              body.error?.message ||
-              `Failed to delete ${getMcpServerDisplayName(server)}`,
-          });
+          sendApiErrorNotification({ title: `Failure`, error: body });
           return false;
         }
 
@@ -277,13 +273,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
           await response.json();
 
         if (isAPIErrorResponse(result)) {
-          sendNotification({
-            title: `Failure`,
-            type: "error",
-            description:
-              result.error?.message ||
-              `Failed to delete ${getMcpServerDisplayName(server)}`,
-          });
+          sendApiErrorNotification({ title: `Failure`, error: result });
           return false;
         }
 
@@ -307,7 +297,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
         setIsDeleting(false);
       }
     },
-    [mutate, owner.sId, sendNotification]
+    [mutate, owner.sId, sendApiErrorNotification, sendNotification]
   );
 
   return { deleteServer, isDeleting };
@@ -336,7 +326,7 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     | { oauthConnection: MCPConnectionType; useCase?: never }
     | { oauthConnection?: never; useCase: MCPOAuthUseCase }
     | { oauthConnection?: never; useCase?: never }
-  )): Promise<Result<CreateMCPServerResponseBody, Error>> => {
+  )): Promise<Result<CreateMCPServerResponseBody, APIError | Error>> => {
     const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -356,8 +346,9 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     if (!response.ok) {
       const body = await response.json();
       return new Err(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        new Error(body.error?.message || "Failed to create server")
+        isAPIErrorResponse(body)
+          ? body.error
+          : new Error("Failed to create server")
       );
     }
 
@@ -384,7 +375,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   const postDiscoverOAuthMetadata = useCallback(
     async (
       requestBody: DiscoverOAuthMetadataRequestBody
-    ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
+    ): Promise<Result<DiscoverOAuthMetadataResponseBody, APIError | Error>> => {
       const response = await clientFetch(
         `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
         {
@@ -397,8 +388,9 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(body.error.message || "Failed to check OAuth connection")
+          isAPIErrorResponse(body)
+            ? body.error
+            : new Error("Failed to check OAuth connection")
         );
       }
 
@@ -423,16 +415,17 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   return { discoverOAuthMetadata, discoverOAuthMetadataForServer };
 }
 
+// `cause` holds the API error returned by the server, when the response carried one.
 class MCPCreateServerError extends Error {
   readonly isRemoteServerError: boolean;
-  constructor(message: string, isRemoteServerError: boolean) {
-    super(message);
+  constructor(apiError: APIError | null, isRemoteServerError: boolean) {
+    super(apiError?.message ?? "Failed to create server", { cause: apiError });
     this.isRemoteServerError = isRemoteServerError;
   }
 }
 
 export function isMCPCreateServerError(
-  error: Error
+  error: unknown
 ): error is MCPCreateServerError {
   return error instanceof MCPCreateServerError;
 }
@@ -505,8 +498,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
         }
         return new Err(
           new MCPCreateServerError(
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            body.error?.message || "Failed to create server",
+            isAPIErrorResponse(body) ? body.error : null,
             body.isRemoteServerError === true
           )
         );
@@ -532,6 +524,7 @@ export function useSyncRemoteMCPServer(
   serverId: string
 ) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const { mutateMCPServer } = useMCPServer({
     disabled: true,
@@ -551,11 +544,9 @@ export function useSyncRemoteMCPServer(
 
     if (!response.ok) {
       const body = await response.json();
-      sendNotification({
+      sendApiErrorNotification({
         title: `Error synchronizing server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
+        error: body,
       });
       return false;
     }
@@ -564,10 +555,9 @@ export function useSyncRemoteMCPServer(
       await response.json();
 
     if (isAPIErrorResponse(result)) {
-      sendNotification({
+      sendApiErrorNotification({
         title: `Error synchronizing server`,
-        type: "error",
-        description: result.error.message || "An error occurred",
+        error: result,
       });
       return false;
     }
@@ -597,6 +587,7 @@ export function useUpdateMCPServerView(
   mcpServerView: MCPServerViewType
 ) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateMCPServer } = useMCPServer({
     disabled: true,
     owner,
@@ -619,12 +610,7 @@ export function useUpdateMCPServerView(
 
     if (!response.ok) {
       const body = await response.json();
-      sendNotification({
-        title: `Error updating server`,
-        type: "error",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: body.error?.message || "An error occurred",
-      });
+      sendApiErrorNotification({ title: `Error updating server`, error: body });
 
       return false;
     }
@@ -632,10 +618,9 @@ export function useUpdateMCPServerView(
     const result: WithAPIErrorResponse<PatchMCPServerViewResponseBody> =
       await response.json();
     if (isAPIErrorResponse(result)) {
-      sendNotification({
+      sendApiErrorNotification({
         title: `Error updating server`,
-        type: "error",
-        description: result.error?.message || "An error occurred",
+        error: result,
       });
       return false;
     }
@@ -663,6 +648,7 @@ export function useUpdateMCPToolsSettings({
   serverId: string;
 }) {
   const sendNotification = useSendNotification(true);
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const updateMCPToolsSettings = async (
     tools: UpdateMCPToolsSettingsBodyType["tools"]
@@ -679,13 +665,11 @@ export function useUpdateMCPToolsSettings({
 
       if (!response.ok) {
         const errorResponse = await getErrorFromResponse(response);
-        const error = new Error(errorResponse.message);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to save changes",
-          description: error.message,
+          error: errorResponse,
         });
-        return new Err(error);
+        return new Err(new Error(errorResponse.message));
       }
 
       return new Ok(undefined);
@@ -1153,7 +1137,6 @@ export function useAddMCPServerToSpace(
 
           if (!response.ok) {
             const body = await response.json();
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             throw new Error(body.error?.message || "Unknown error");
           }
 
@@ -1193,6 +1176,7 @@ export function useRemoveMCPServerViewFromSpace(
   options?: { skipNotification?: boolean }
 ) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateMCPServers } = useMCPServers({
     owner,
   });
@@ -1220,13 +1204,9 @@ export function useRemoveMCPServerViewFromSpace(
               });
             } else {
               const res = await response.json();
-              sendNotification({
-                type: "error",
+              sendApiErrorNotification({
                 title: "Failed to remove action",
-                description:
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                  res.error?.message ||
-                  `Could not remove ${getMcpServerViewDisplayName(serverView)} from the ${space.name} space. Please try again.`,
+                error: res,
               });
             }
           }
@@ -1241,7 +1221,13 @@ export function useRemoveMCPServerViewFromSpace(
         }
       );
     },
-    [sendNotification, owner, mutateMCPServers, options?.skipNotification]
+    [
+      sendNotification,
+      sendApiErrorNotification,
+      owner,
+      mutateMCPServers,
+      options?.skipNotification,
+    ]
   );
 
   return { removeFromSpace: deleteView };

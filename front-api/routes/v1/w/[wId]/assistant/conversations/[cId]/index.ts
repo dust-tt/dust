@@ -1,5 +1,6 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { parseIntParam } from "@app/lib/api/pagination";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
@@ -31,9 +32,6 @@ const ParamsSchema = z.object({
 });
 
 // Parsed like the former `parseInt` ("10.5" -> 10) so values accepted before keep working.
-const parseIntParam = (v: unknown) =>
-  typeof v === "string" ? parseInt(v, 10) : v;
-
 const GetConversationQuerySchema = z.object({
   limit: z
     .preprocess(parseIntParam, z.number().int().nonnegative().safe())

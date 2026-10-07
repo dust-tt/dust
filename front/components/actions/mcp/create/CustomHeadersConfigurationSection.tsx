@@ -10,6 +10,7 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController, useFormContext } from "react-hook-form";
 
 interface CustomHeadersConfigurationSectionProps {
@@ -21,6 +22,7 @@ export function CustomHeadersConfigurationSection({
   defaultServerConfig,
   internalMCPServer,
 }: CustomHeadersConfigurationSectionProps) {
+  const { t } = useLingui();
   const form = useFormContext<CreateMCPServerDialogFormValues>();
   const { field: useCustomHeadersField } = useController({
     control: form.control,
@@ -41,7 +43,9 @@ export function CustomHeadersConfigurationSection({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Label htmlFor="customHeaders">Use custom headers</Label>
+              <Label htmlFor="customHeaders">
+                <Trans>Use custom headers</Trans>
+              </Label>
               <Tooltip
                 trigger={
                   <Icon
@@ -50,7 +54,7 @@ export function CustomHeadersConfigurationSection({
                     className="text-muted-foreground"
                   />
                 }
-                label="Custom headers can be added for advanced networking such as firewalls."
+                label={t`Custom headers can be added for advanced networking such as firewalls.`}
               />
             </div>
             <SliderToggle

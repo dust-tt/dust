@@ -1,3 +1,4 @@
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { formatCurrency } from "@app/lib/i18n/format";
@@ -67,6 +68,7 @@ export function BuyCreditDialog({
   paygUsage,
 }: BuyCreditDialogProps) {
   const { t } = useLingui();
+  const formatErrorDescription = useFormatErrorDescription();
   const [amountDollars, setAmountDollars] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedNonRefundable, setAcceptedNonRefundable] = useState(false);
@@ -132,7 +134,7 @@ export function BuyCreditDialog({
         setPurchaseState("redirect");
         break;
       case "error":
-        setErrorMessage(result.message);
+        setErrorMessage(formatErrorDescription(result.error));
         setPurchaseState("error");
         break;
       default:

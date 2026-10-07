@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
   Robot,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface ManageDropdownMenuProps {
@@ -24,6 +25,7 @@ interface ManageDropdownMenuProps {
 }
 
 export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
   const { hasPermission } = useWorkspacePermissions();
@@ -52,7 +54,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
         href={getAgentBuilderRoute(owner.sId, "manage")}
         variant="primary"
         icon={ContactsRobot}
-        label="Manage agents"
+        label={t`Manage agents`}
         data-gtm-label="assistantManagementButton"
         data-gtm-location="homepage"
         size="sm"
@@ -67,7 +69,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
         href={getSkillBuilderRoute(owner.sId, "manage")}
         variant="primary"
         icon={SKILL_ICON}
-        label="Manage skills"
+        label={t`Manage skills`}
         size="sm"
         onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_skills")}
       />
@@ -79,7 +81,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"
-          label="Manage"
+          label={t({ message: "Manage", context: "verb, button label" })}
           icon={ContactsRobot}
           size="sm"
           isSelect
@@ -89,7 +91,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem
-          label="agents"
+          label={t`Agents`}
           icon={Robot}
           onClick={() => {
             setIsLoading(true);
@@ -97,7 +99,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
           }}
         />
         <DropdownMenuItem
-          label="skills"
+          label={t`Skills`}
           icon={SKILL_ICON}
           onClick={() => {
             setIsLoading(true);

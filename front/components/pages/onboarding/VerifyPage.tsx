@@ -1,5 +1,6 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
@@ -23,6 +24,8 @@ import {
   Spinner,
   Stars02,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,8 +34,10 @@ import type { Country } from "react-phone-number-input";
 type Step = "captcha" | "phone" | "code" | "start-trial" | "done";
 
 export function VerifyPage() {
+  const { t } = useLingui();
   const { workspace } = useAuth();
   const router = useAppRouter();
+  const formatErrorDescription = useFormatErrorDescription();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
   });
@@ -107,12 +112,12 @@ export function VerifyPage() {
     setPhoneError(null);
 
     if (!phoneNumber.trim()) {
-      setPhoneError("Please enter your phone number.");
+      setPhoneError(t`Please enter your phone number.`);
       return;
     }
 
     if (!isValidPhoneNumber(phoneNumber)) {
-      setPhoneError("Please enter a valid phone number.");
+      setPhoneError(t`Please enter a valid phone number.`);
       return;
     }
 
@@ -136,7 +141,7 @@ export function VerifyPage() {
         }
       );
     } catch {
-      setPhoneError("Unexpected error. Please try again.");
+      setPhoneError(t`Unexpected error. Please try again.`);
       return;
     } finally {
       setIsLoading(false);
@@ -150,7 +155,7 @@ export function VerifyPage() {
         setStep("captcha");
         setPhoneError(
           data.error?.message ??
-            "Captcha verification failed. Please try again."
+            t`Captcha verification failed. Please try again.`
         );
         return;
       }
@@ -162,11 +167,14 @@ export function VerifyPage() {
         setResendCooldown(waitSeconds);
         const waitMinutes = Math.ceil(waitSeconds / 60);
         setPhoneError(
-          `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
+          t`Too many verification attempts. Please try again in ${plural(
+            waitMinutes,
+            { one: "# minute", other: "# minutes" }
+          )}.`
         );
         return;
       }
-      setPhoneError(data.error?.message ?? "Failed to send code");
+      setPhoneError(data.error?.message ?? t`Failed to send code`);
       return;
     }
 
@@ -193,7 +201,7 @@ export function VerifyPage() {
 
     if (!trialResponse.ok) {
       const data = await trialResponse.json();
-      setPhoneError(data.api_error?.message ?? "Failed to start trial");
+      setPhoneError(formatErrorDescription(data));
       return;
     }
 
@@ -208,12 +216,18 @@ export function VerifyPage() {
     } else {
       goToWorkspace();
     }
-  }, [workspace.sId, mutateAuthContext, isMetronomeCheckout, goToWorkspace]);
+  }, [
+    workspace.sId,
+    mutateAuthContext,
+    isMetronomeCheckout,
+    goToWorkspace,
+    formatErrorDescription,
+  ]);
 
   const verifyCode = useCallback(
     async (fullCode: string) => {
       if (fullCode.length !== CODE_LENGTH) {
-        setPhoneError("Please enter the full 6-digit code.");
+        setPhoneError(t`Please enter the full 6-digit code.`);
         return;
       }
 
@@ -233,18 +247,18 @@ export function VerifyPage() {
 
         if (!verifyResponse.ok) {
           const data = await verifyResponse.json();
-          setPhoneError(data.error?.message ?? "Invalid code");
+          setPhoneError(data.error?.message ?? t`Invalid code`);
           return;
         }
 
         await activateTrial();
       } catch {
-        setPhoneError("Network error. Please try again.");
+        setPhoneError(t`Network error. Please try again.`);
       } finally {
         setIsLoading(false);
       }
     },
-    [phoneNumber, workspace.sId, activateTrial]
+    [phoneNumber, workspace.sId, activateTrial, t]
   );
 
   const handleVerifyCode = useCallback(() => {
@@ -377,7 +391,7 @@ export function VerifyPage() {
             try {
               await activateTrial();
             } catch {
-              setPhoneError("Network error. Please try again.");
+              setPhoneError(t`Network error. Please try again.`);
             } finally {
               setIsLoading(false);
             }
@@ -401,7 +415,7 @@ export function VerifyPage() {
           onError={() => {
             setCaptchaToken(null);
             setPhoneError(
-              "Captcha could not load. Please refresh and try again."
+              t`Captcha could not load. Please refresh and try again.`
             );
           }}
         />
@@ -463,6 +477,8 @@ function PhoneInputStep({
   onCountryCodeChange,
   onSubmit,
 }: PhoneInputStepProps) {
+  const { t } = useLingui();
+
   return (
     <Page>
       <div className="flex h-full flex-col justify-center">
@@ -471,21 +487,28 @@ function PhoneInputStep({
             {isMetronome ? (
               <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-bold text-foreground">
-                  Verify your phone
+                  <Trans>Verify your phone</Trans>
                 </h1>
                 <p className="text-muted-foreground">
-                  We verify your number once to keep free credits fair. We won't
-                  text you otherwise.
+                  <Trans>
+                    We verify your number once to keep free credits fair. We
+                    won't text you otherwise.
+                  </Trans>
                 </p>
               </div>
             ) : (
               <>
                 <DustLogoSquare className="-ml-11 h-10 w-32" />
-                <Page.Header title="Phone number" />
+                <Page.Header title={t`Phone number`} />
                 <p className="-mt-4 text-muted-foreground">
-                  To start your free trial, we need to verify your account with
-                  an SMS code. <br />
-                  Your number will only be used for this verification.
+                  <Trans>
+                    To start your free trial, we need to verify your account
+                    with an SMS code.
+                  </Trans>
+                  <br />
+                  <Trans>
+                    Your number will only be used for this verification.
+                  </Trans>
                 </p>
               </>
             )}
@@ -505,7 +528,7 @@ function PhoneInputStep({
                 <Button
                   onClick={onSubmit}
                   variant="primary"
-                  label={isLoading ? "Sending..." : "Send code"}
+                  label={isLoading ? t`Sending...` : t`Send code`}
                   disabled={isLoading}
                 />
               </div>
@@ -549,6 +572,8 @@ function CodeVerificationStep({
   onResend,
   onVerify,
 }: CodeVerificationStepProps) {
+  const { t } = useLingui();
+
   return (
     <Page>
       <div className="flex h-full flex-col justify-center">
@@ -556,13 +581,15 @@ function CodeVerificationStep({
           <Page.Vertical sizing="grow" gap="lg">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-bold text-foreground">
-                Enter verification code
+                <Trans>Enter verification code</Trans>
               </h1>
               <p className="text-muted-foreground">
-                A verification code has been sent to{" "}
-                <span className="font-medium text-foreground">
-                  {maskedPhone}
-                </span>
+                <Trans>
+                  A verification code has been sent to{" "}
+                  <span className="font-medium text-foreground">
+                    {maskedPhone}
+                  </span>
+                </Trans>
               </p>
             </div>
 
@@ -581,7 +608,7 @@ function CodeVerificationStep({
               <div className="flex items-center justify-between">
                 <Button
                   variant="ghost"
-                  label="Back"
+                  label={t`Back`}
                   onClick={onBack}
                   disabled={isLoading}
                 />
@@ -590,15 +617,15 @@ function CodeVerificationStep({
                     variant="outline"
                     label={
                       resendCooldown > 0
-                        ? `Resend code (${resendCooldown}s)`
-                        : "Resend code"
+                        ? t`Resend code (${resendCooldown}s)`
+                        : t`Resend code`
                     }
                     onClick={onResend}
                     disabled={resendCooldown > 0 || isLoading}
                   />
                   <Button
                     variant="primary"
-                    label={isLoading ? "Verifying..." : "Verify now"}
+                    label={isLoading ? t`Verifying...` : t`Verify now`}
                     onClick={onVerify}
                     disabled={isLoading || code.join("").length !== CODE_LENGTH}
                   />
@@ -629,15 +656,19 @@ function CaptchaStep({
   onExpire,
   onError,
 }: CaptchaStepProps) {
+  const { t } = useLingui();
+
   return (
     <Page>
       <div className="flex h-full flex-col justify-center">
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <DustLogoSquare className="-ml-11 h-10 w-32" />
-            <Page.Header title="Verify you're human" />
+            <Page.Header title={t`Verify you're human`} />
             <p className="-mt-4 text-muted-foreground">
-              A quick check before we send your verification code.
+              <Trans>
+                A quick check before we send your verification code.
+              </Trans>
             </p>
 
             <div className="flex w-full max-w-xl flex-col gap-4">
@@ -665,6 +696,8 @@ interface StartTrialStepProps {
 }
 
 function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
+  const { t } = useLingui();
+
   return (
     <Page>
       <div className="flex h-full flex-col justify-center">
@@ -672,17 +705,17 @@ function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
           <Page.Vertical sizing="grow" gap="lg">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-bold text-foreground">
-                Your phone number has already been verified.
+                <Trans>Your phone number has already been verified.</Trans>
               </h1>
               <p className="text-muted-foreground">
-                Click below to activate your free subscription.
+                <Trans>Click below to activate your free subscription.</Trans>
               </p>
             </div>
             <p className="min-h-5 text-sm text-red-500">{error}</p>
             <Button
               onClick={onActivate}
               variant="primary"
-              label={isLoading ? "Activating..." : "Activate trial"}
+              label={isLoading ? t`Activating...` : t`Activate trial`}
               disabled={isLoading}
             />
           </Page.Vertical>
@@ -698,26 +731,31 @@ interface WelcomeStepProps {
 }
 
 function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
+  const { t } = useLingui();
+  const formattedCredits = formatNumber(credits);
+
   return (
     <Page>
       <div className="flex h-full flex-col items-center justify-center">
         <div className="flex max-w-xl flex-col items-center gap-6 text-center">
           <Icon visual={Stars02} size="lg" className="text-highlight-500" />
           <h1 className="text-4xl font-bold text-foreground">
-            You're in. Welcome to Dust.
+            <Trans>You're in. Welcome to Dust.</Trans>
           </h1>
           <p className="text-lg text-muted-foreground">
-            You've got{" "}
-            <span className="font-bold text-foreground">
-              {formatNumber(credits)} credits
-            </span>{" "}
-            to explore, they never expire, so take your time. Let's put them to
-            work.
+            <Trans>
+              You've got{" "}
+              <span className="font-bold text-foreground">
+                {formattedCredits} credits
+              </span>{" "}
+              to explore, they never expire, so take your time. Let's put them
+              to work.
+            </Trans>
           </p>
           <Button
             variant="highlight"
             size="md"
-            label="Start building"
+            label={t`Start building`}
             onClick={onStartBuilding}
           />
         </div>

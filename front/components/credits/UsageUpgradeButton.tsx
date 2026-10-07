@@ -1,4 +1,5 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import { MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -14,17 +15,23 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
-function getRequestUpgradeFormSchema(requireReason: boolean) {
+function getRequestUpgradeFormSchema(
+  requireReason: boolean,
+  t: (descriptor: MessageDescriptor) => string
+) {
   return z.object({
     reason: requireReason
       ? z
           .string()
           .trim()
-          .min(1, "A reason is required to submit an upgrade request.")
+          .min(1, t(msg`A reason is required to submit an upgrade request.`))
           .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
       : z.string().trim().max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
   });
@@ -56,12 +63,18 @@ export function UsageUpgradeButton({
   requireReason = false,
   onManagerNavigate,
 }: UsageUpgradeButtonProps) {
+  const { t } = useLingui();
   const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
+  const formatErrorDescription = useFormatErrorDescription();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
+  const requestUpgradeFormSchema = useMemo(
+    () => getRequestUpgradeFormSchema(requireReason, t),
+    [requireReason, t]
+  );
   const form = useForm<RequestUpgradeFormValues>({
-    resolver: zodResolver(getRequestUpgradeFormSchema(requireReason)),
+    resolver: zodResolver(requestUpgradeFormSchema),
     defaultValues: { reason: "" },
   });
 
@@ -81,7 +94,7 @@ export function UsageUpgradeButton({
     if (result.error.errorType === "invalid_request_error") {
       form.setError("reason", {
         type: "manual",
-        message: result.error.message,
+        message: formatErrorDescription(result.error.error),
       });
     }
   };
@@ -95,7 +108,7 @@ export function UsageUpgradeButton({
           <Button
             variant="primary"
             size="xs"
-            label="Go to workspace usage"
+            label={t`Go to workspace usage`}
             href={usageHref}
             onClick={onManagerNavigate}
           />
@@ -109,7 +122,7 @@ export function UsageUpgradeButton({
           href={usageHref}
           onClick={onManagerNavigate}
         >
-          Go to workspace usage
+          <Trans>Go to workspace usage</Trans>
         </Hoverable>
       );
     }
@@ -119,7 +132,7 @@ export function UsageUpgradeButton({
         <Button
           variant="primary"
           size="xs"
-          label={alreadyRequested ? "Requested" : "Request for upgrade"}
+          label={alreadyRequested ? t`Requested` : t`Request for upgrade`}
           disabled={alreadyRequested}
           onClick={() => setIsDialogOpen(true)}
         />
@@ -128,7 +141,9 @@ export function UsageUpgradeButton({
 
     if (alreadyRequested) {
       return (
-        <span className="copy-sm text-muted-foreground">Request sent</span>
+        <span className="copy-sm text-muted-foreground">
+          <Trans>Request sent</Trans>
+        </span>
       );
     }
 
@@ -138,7 +153,7 @@ export function UsageUpgradeButton({
         className="copy-sm underline underline-offset-2"
         onClick={() => setIsDialogOpen(true)}
       >
-        Request an upgrade
+        <Trans>Request an upgrade</Trans>
       </Hoverable>
     );
   }
@@ -153,19 +168,23 @@ export function UsageUpgradeButton({
         <DialogContent size="md">
           <FormProvider {...form}>
             <DialogHeader>
-              <DialogTitle>Request a usage limit upgrade</DialogTitle>
+              <DialogTitle>
+                <Trans>Request a usage limit upgrade</Trans>
+              </DialogTitle>
             </DialogHeader>
             <DialogContainer>
               <div className="flex flex-col gap-4">
                 <p className="text-sm text-muted-foreground">
-                  Your workspace admins and managers will review this request.
+                  <Trans>
+                    Your workspace admins and managers will review this request.
+                  </Trans>
                 </p>
                 <BaseFormFieldSection<HTMLTextAreaElement>
                   fieldName="reason"
                   title={
                     requireReason
-                      ? "Help your admin decide (required)"
-                      : "Help your admin decide"
+                      ? t`Help your admin decide (required)`
+                      : t`Help your admin decide`
                   }
                 >
                   {({
@@ -183,7 +202,7 @@ export function UsageUpgradeButton({
                     return (
                       <TextArea
                         ref={registerRef}
-                        placeholder="e.g. processing a large batch of documents for this quarter's audit"
+                        placeholder={t`e.g. processing a large batch of documents for this quarter's audit`}
                         rows={3}
                         showErrorLabel={showError}
                         error={showError ? errorMessage : undefined}
@@ -197,12 +216,12 @@ export function UsageUpgradeButton({
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
                 onClick: () => setIsDialogOpen(false),
               }}
               rightButtonProps={{
-                label: "Send request",
+                label: t`Send request`,
                 variant: "primary",
                 isLoading: form.formState.isSubmitting,
                 disabled: form.formState.isSubmitting,

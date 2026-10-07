@@ -21,16 +21,22 @@ import {
   PopoverTrigger,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactElement } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
-function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
+function toolDescription(
+  tool: AgentMessageConsumptionToolDetails,
+  t: (descriptor: MessageDescriptor) => string
+): string {
   const descriptions = [toolUsageLabel(tool.callCount)];
 
   if (tool.pending) {
-    descriptions.push("Still running");
+    descriptions.push(t(msg`Still running`));
   }
 
   return descriptions.join(" · ");
@@ -162,6 +168,7 @@ export function CreditCostPopover({
   trigger,
   workspaceId,
 }: CreditCostPopoverProps) {
+  const { t } = useLingui();
   const headingId = useId();
   const [hasOpened, setHasOpened] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -200,6 +207,7 @@ export function CreditCostPopover({
     (total, tool) => total + tool.callCount,
     0
   );
+  const remainingToolCount = remainingTools.length;
 
   return (
     <PopoverRoot
@@ -227,7 +235,7 @@ export function CreditCostPopover({
       }}
     >
       <Tooltip
-        label="View consumption breakdown"
+        label={t`View consumption breakdown`}
         tooltipTriggerAsChild
         trigger={<PopoverTrigger asChild>{trigger}</PopoverTrigger>}
       />
@@ -248,12 +256,12 @@ export function CreditCostPopover({
           id={headingId}
           className="mb-1 text-sm font-semibold text-muted-foreground"
         >
-          Message consumption
+          <Trans>Message consumption</Trans>
         </h2>
-        <section aria-label="Charge summary">
+        <section aria-label={t`Charge summary`}>
           <dl>
             <CreditDetailRow
-              label="Charged"
+              label={t`Charged`}
               value={formatCreditValue(totalCredits)}
             />
           </dl>
@@ -261,20 +269,22 @@ export function CreditCostPopover({
 
         <hr className="-mx-3 border-t border-border" />
 
-        <section aria-label="Consumption breakdown">
+        <section aria-label={t`Consumption breakdown`}>
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
               aria-live="polite"
               className="flex min-h-9 items-center text-sm text-muted-foreground"
             >
-              <span className="flex-1">Loading details</span>
+              <span className="flex-1">
+                <Trans>Loading details</Trans>
+              </span>
               <LoadingBlock className="h-3 w-8" />
             </div>
           ) : details ? (
             <dl>
               <CreditDetailRow
-                label="Context and reasoning"
+                label={t`Context and reasoning`}
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
@@ -282,7 +292,7 @@ export function CreditCostPopover({
                 <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
                   label={tool.label}
-                  description={toolDescription(tool)}
+                  description={toolDescription(tool, t)}
                   expandLabelOnHover
                   value={formatCreditValue(tool.attributedCredits)}
                   icon={getActionStepIcon(tool)}
@@ -290,7 +300,10 @@ export function CreditCostPopover({
               ))}
               {remainingTools.length > 0 && (
                 <CreditDetailRow
-                  label={`${remainingTools.length} other ${remainingTools.length === 1 ? "tool" : "tools"}`}
+                  label={t`${plural(remainingToolCount, {
+                    one: "# other tool",
+                    other: "# other tools",
+                  })}`}
                   description={toolUsageLabel(remainingToolCallCount)}
                   value={formatCreditValue(remainingToolCredits)}
                   icon={Plus}
@@ -300,10 +313,10 @@ export function CreditCostPopover({
           ) : (
             <div className="py-2 text-sm">
               <p className="font-medium text-foreground">
-                Detailed explanation unavailable
+                <Trans>Detailed explanation unavailable</Trans>
               </p>
               <p className="text-xs text-muted-foreground">
-                The exact charge above is authoritative.
+                <Trans>The exact charge above is authoritative.</Trans>
               </p>
             </div>
           )}
@@ -314,7 +327,7 @@ export function CreditCostPopover({
             <Button
               variant="highlight-ghost"
               size="sm"
-              label="Credit usage"
+              label={t`Credit usage`}
               className="w-full"
               onClick={() => {
                 preventTriggerFocusOnCloseRef.current = true;

@@ -1,0 +1,79 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:55+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/Custom404.tsx
+msgid "404: Page not found"
+msgstr "404: Page not found"
+
+#: front/components/pages/Custom404.tsx
+msgid "Looks like this page took an unscheduled coffee break."
+msgstr "Looks like this page took an unscheduled coffee break."
+
+#: front/components/pages/Custom404.tsx
+#: front/components/pages/MaintenancePage.tsx
+msgid "Back to homepage"
+msgstr "Back to homepage"
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "Service relocation in progress"
+msgstr "Service relocation in progress"
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "Your account is currently being relocated to a new region. During this planned migration, you won't be able to access our application. This temporary interruption ensures a smooth transition of your organization's data."
+msgstr "Your account is currently being relocated to a new region. During this planned migration, you won't be able to access our application. This temporary interruption ensures a smooth transition of your organization's data."
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "What's happening?"
+msgstr "What's happening?"
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "As discussed with your team, we're moving your account to a different regional infrastructure. All your data, settings, and configurations will remain exactly as they were. We'll notify your team once the relocation is complete and your access is restored."
+msgstr "As discussed with your team, we're moving your account to a different regional infrastructure. All your data, settings, and configurations will remain exactly as they were. We'll notify your team once the relocation is complete and your access is restored."
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "Service relocation complete"
+msgstr "Service relocation complete"
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "Your account has been successfully relocated to a new region. You can now access our application."
+msgstr "Your account has been successfully relocated to a new region. You can now access our application."
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "Reload"
+msgstr "Reload"
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "Under maintenance"
+msgstr "Under maintenance"
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "We're currently performing maintenance on this workspace.<0/>Please check back in a few minutes."
+msgstr "We're currently performing maintenance on this workspace.<0/>Please check back in a few minutes."
+
+#: front/components/pages/MaintenancePage.tsx
+msgid "If this persists for an extended period,<0/>please contact us at support@dust.tt"
+msgstr "If this persists for an extended period,<0/>please contact us at support@dust.tt"
+
+#: front/components/pages/SsoEnforcedPage.tsx
+msgid "<0>Secure AI agent</0> <1/>with your company's knowledge"
+msgstr "<0>Secure AI agent</0> <1/>with your company's knowledge"
+
+#: front/components/pages/SsoEnforcedPage.tsx
+msgid "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+msgstr "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+
+#: front/components/pages/SsoEnforcedPage.tsx
+msgid "Connect with SSO"
+msgstr "Connect with SSO"

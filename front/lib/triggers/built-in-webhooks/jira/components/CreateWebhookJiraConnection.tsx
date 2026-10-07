@@ -13,6 +13,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 export function CreateWebhookJiraConnection({
@@ -21,6 +22,7 @@ export function CreateWebhookJiraConnection({
   onReadyToSubmitChange,
   connectionId,
 }: WebhookCreateFormComponentProps) {
+  const { t } = useLingui();
   const [selectedProjects, setSelectedProjects] = useState<JiraProjectType[]>(
     []
   );
@@ -95,20 +97,20 @@ export function CreateWebhookJiraConnection({
         <div className="mt-2 flex items-center gap-2 py-2">
           <Spinner size="sm" />
           <span className="text-sm text-muted-foreground">
-            Loading projects...
+            <Trans>Loading projects...</Trans>
           </span>
         </div>
       ) : (
         <>
           <div>
             <Label>
-              Projects{" "}
+              <Trans>Projects</Trans>{" "}
               {selectedProjects.length === 0 && (
                 <span className="text-warning">*</span>
               )}
             </Label>
             <p className="text-sm text-muted-foreground">
-              Select Jira projects to monitor for events
+              <Trans>Select Jira projects to monitor for events</Trans>
             </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">
@@ -131,7 +133,7 @@ export function CreateWebhookJiraConnection({
                   >
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label="Add project"
+                        label={t`Add project`}
                         variant="outline"
                         icon={Plus}
                         size="sm"
@@ -140,7 +142,7 @@ export function CreateWebhookJiraConnection({
                     <DropdownMenuContent className="w-80" align="start">
                       <DropdownMenuSearchbar
                         name="project"
-                        placeholder="Search projects..."
+                        placeholder={t`Search projects...`}
                         value={searchQuery}
                         onChange={setSearchQuery}
                       />
@@ -163,7 +165,7 @@ export function CreateWebhookJiraConnection({
                           ))
                         ) : (
                           <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No projects found
+                            <Trans>No projects found</Trans>
                           </div>
                         )}
                       </div>
@@ -176,7 +178,9 @@ export function CreateWebhookJiraConnection({
 
           {selectedProjects.length === 0 && (
             <p className="mt-1 text-xs text-warning">
-              Please select at least one project to create the webhook
+              <Trans>
+                Please select at least one project to create the webhook
+              </Trans>
             </p>
           )}
         </>

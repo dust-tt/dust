@@ -12,6 +12,7 @@ import {
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLingui } from "@lingui/react/macro";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type {
   ButtonHTMLAttributes,
@@ -143,7 +144,6 @@ vi.mock("@dust-tt/sparkle", () => ({
   ),
   InfoCircle: () => null,
   Label: ({ children, isMuted: _isMuted, ...rest }: LabelStubProps) => (
-    // eslint-disable-next-line jsx-a11y/label-has-associated-control
     <label {...rest}>{children}</label>
   ),
   ListGroup: ({ children }: ChildrenStubProps) => <ul>{children}</ul>,
@@ -208,12 +208,13 @@ function renderTools(view = twoToolView) {
   let form!: UseFormReturn<MCPServerFormValues>;
 
   function Harness() {
+    const { t } = useLingui();
     const currentForm = useForm<MCPServerFormValues>({
       values: getMCPServerFormDefaults(view),
       mode: "onChange",
       shouldUnregister: false,
       resolver: zodResolver(
-        getMCPServerFormSchema(view, { existingViewNames: [] })
+        getMCPServerFormSchema(view, t, { existingViewNames: [] })
       ),
     });
     form = currentForm;

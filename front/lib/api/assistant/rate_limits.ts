@@ -320,11 +320,11 @@ export const makeSpendLimitAwuCreditsRateLimitKeyForUser = (
   return `workspace:${owner.id}:user:${user.id}:spend_limit_awu_microcredit_count`;
 };
 
-export const makeGroupLimitAwuCreditsRateLimitKeyForGroup = (
+export const makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup = (
   owner: LightWorkspaceType,
   group: GroupResource
 ) => {
-  return `workspace:${owner.id}:group:${group.id}:group_limit_awu_microcredit_count`;
+  return `workspace:${owner.id}:group:${group.id}:shared_usage_limit_awu_microcredit_count`;
 };
 
 // Fixed-window bounds for the per-user spend cap over a Metronome contract

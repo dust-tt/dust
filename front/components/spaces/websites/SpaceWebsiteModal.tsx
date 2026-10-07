@@ -1,6 +1,9 @@
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { createWebsite, updateWebsite } from "@app/lib/api/website";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -107,7 +110,6 @@ function buildWebCrawlerConfig(
 ): WebCrawlerConfigurationType {
   return {
     url: validatedUrl.standardized,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     maxPageToCrawl: state.maxPages || WEBCRAWLER_MAX_PAGES,
     depth: state.depth,
     crawlMode: state.crawlMode,
@@ -144,6 +146,7 @@ export default function SpaceWebsiteModal({
   const { t } = useLingui();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -262,12 +265,11 @@ export default function SpaceWebsiteModal({
       onClose();
       dispatch({ type: "RESET", config: null });
     } catch (err) {
-      sendNotification({
+      sendApiErrorNotification({
         title: dataSourceView
           ? t`Error updating website`
           : t`Error creating website`,
-        type: "error",
-        description: err instanceof Error ? err.message : t`An error occurred`,
+        error: err,
       });
     } finally {
       setIsSaving(false);
@@ -285,8 +287,7 @@ export default function SpaceWebsiteModal({
         { method: "DELETE" }
       );
       if (!res.ok) {
-        const errRes = await res.json();
-        throw new Error(errRes.error.message);
+        throw await res.json();
       }
       void mutateSpaceDataSourceViews();
       await router.push(
@@ -294,10 +295,9 @@ export default function SpaceWebsiteModal({
       );
       onClose();
     } catch (err) {
-      sendNotification({
+      sendApiErrorNotification({
         title: t`Error deleting website`,
-        type: "error",
-        description: err instanceof Error ? err.message : t`An error occurred`,
+        error: err,
       });
     } finally {
       setIsSaving(false);

@@ -40,20 +40,20 @@ export class GroupFactory {
     });
   }
 
-  // Writes the group limit columns directly, bypassing `GroupResource.updateGroupLimit`, to create
+  // Writes the shared usage limit columns directly, bypassing `GroupResource.updateSharedUsageLimit`, to create
   // states it forbids so that code reading them can be tested.
-  static async withRawGroupLimit(
+  static async withRawSharedUsageLimit(
     group: GroupResource,
     {
-      groupLimitAwuCredits,
-      groupLimitPriority,
+      sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority,
     }: {
-      groupLimitAwuCredits: number | null;
-      groupLimitPriority: number | null;
+      sharedUsageLimitAwuCredits: number | null;
+      sharedUsageLimitPriority: number | null;
     }
   ) {
     await GroupModel.update(
-      { groupLimitAwuCredits, groupLimitPriority },
+      { sharedUsageLimitAwuCredits, sharedUsageLimitPriority },
       { where: { id: group.id, workspaceId: group.workspaceId } }
     );
   }

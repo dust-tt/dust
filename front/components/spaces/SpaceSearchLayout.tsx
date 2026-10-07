@@ -15,7 +15,10 @@ import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { SortingParams } from "@app/lib/api/pagination";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
@@ -44,7 +47,6 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import type { APIError } from "@app/types/error";
 import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
@@ -228,7 +230,6 @@ function BackendSearch({
     React.useState<DataSourceViewType | null>(null);
   const [effectiveContentNode, setEffectiveContentNode] =
     React.useState<LightContentNode | null>(null);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = React.useState<
     UrlCandidate | NodeCandidate | null
@@ -254,7 +255,6 @@ function BackendSearch({
     debouncedValue: debouncedSearch,
     isDebouncing,
     setValue: setSearchValue,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = useDebounce(searchParam.value || "", {
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
@@ -656,6 +656,7 @@ function SearchResultsTable({
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
 
   const { spaces } = useSpaces({
@@ -711,11 +712,10 @@ function SearchResultsTable({
         }
 
         if (!res.ok) {
-          const rawError: { error: APIError } = await res.json();
-          sendNotification({
+          const rawError: unknown = await res.json();
+          sendApiErrorNotification({
             title: t`Error while adding data to space`,
-            description: rawError.error.message,
-            type: "error",
+            error: rawError,
           });
         } else {
           sendNotification({
@@ -733,12 +733,18 @@ function SearchResultsTable({
         });
       }
     },
-    [dataSourceViews, mutateDataSourceViews, owner.sId, sendNotification, t]
+    [
+      dataSourceViews,
+      mutateDataSourceViews,
+      owner.sId,
+      sendNotification,
+      sendApiErrorNotification,
+      t,
+    ]
   );
 
   // Transform search results into format for DataTable.
   const rows: RowData[] = React.useMemo(() => {
-    // eslint-disable-next-line react-hooks/refs
     return searchResultNodes.map((node) => {
       const { dataSourceView, internalId: parentId } = node;
 

@@ -43,6 +43,7 @@ import {
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
@@ -258,10 +259,10 @@ export const DataSourceBuilderSelector = ({
   const breadcrumbOptions = useMemo(
     () => ({
       getLabel: (entry: NavigationHistoryEntryType) =>
-        getBreadcrumbLabel(entry, rootLabel),
+        getBreadcrumbLabel(entry, rootLabel, t),
       includeSkippedLevels: true,
     }),
-    [rootLabel]
+    [rootLabel, t]
   );
 
   const breadcrumbItems: BreadcrumbsItem[] = useMemo(() => {
@@ -348,7 +349,6 @@ export const DataSourceBuilderSelector = ({
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
           {(currentNode || currentDataSourceView) && isSearching && (
             <div className="flex items-center gap-1 px-1 py-1">
               <span className="mr-2 text-sm text-muted-foreground">
@@ -409,7 +409,10 @@ export const DataSourceBuilderSelector = ({
 // the browser's shortened label.
 function getBreadcrumbLabel(
   entry: NavigationHistoryEntryType,
-  rootLabel: string
+  rootLabel: string,
+  t: (descriptor: MessageDescriptor) => string
 ): string {
-  return entry.type === "root" ? rootLabel : navigationHistoryEntryTitle(entry);
+  return entry.type === "root"
+    ? rootLabel
+    : navigationHistoryEntryTitle(entry, t);
 }

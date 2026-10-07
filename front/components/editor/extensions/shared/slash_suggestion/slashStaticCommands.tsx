@@ -6,19 +6,27 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
 import { INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { BookOpen01, Brain, Planet } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
-export function createAttachKnowledgeSlashCommand(): SlashCommand {
+type Translate = (descriptor: MessageDescriptor) => string;
+
+export function createAttachKnowledgeSlashCommand(t: Translate): SlashCommand {
   return {
     action: INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
-    description: "Search knowledge and reference conversation or pod files",
+    description: t(
+      msg`Search knowledge and reference conversation or Pod files`
+    ),
     icon: getSlashCommandAvatarIcon(BookOpen01),
     id: "attach-knowledge",
-    label: "Attach",
+    label: t(msg`Attach`),
     tooltip: {
-      description: "Use company knowledge or reference files for context.",
+      description: t(
+        msg`Use company knowledge or reference files for context.`
+      ),
       media: (
         <img
-          alt="Knowledge Search Interface"
+          alt={t(msg`Knowledge search interface`)}
           className="aspect-[4/3] w-full rounded object-cover"
           src="/static/landing/product/Knowledge_Tooltips.jpg"
         />
@@ -27,22 +35,26 @@ export function createAttachKnowledgeSlashCommand(): SlashCommand {
   };
 }
 
-export function createPickModelSlashCommand(): PickModelSlashCommand {
+export function createPickModelSlashCommand(
+  t: Translate
+): PickModelSlashCommand {
   return {
     action: PICK_MODEL_SLASH_COMMAND_ACTION,
-    description: "Override the model used",
+    description: t(msg`Override the model used`),
     icon: getSlashCommandAvatarIcon(Brain),
     id: "pick-model",
-    label: "Pick model",
+    label: t(msg`Pick model`),
   };
 }
 
-export function createSelectSpacesSlashCommand(): SelectSpacesSlashCommand {
+export function createSelectSpacesSlashCommand(
+  t: Translate
+): SelectSpacesSlashCommand {
   return {
     action: SELECT_SPACES_SLASH_COMMAND_ACTION,
-    description: "Give the agent access to additional Spaces",
+    description: t(msg`Give the agent access to additional spaces`),
     icon: getSlashCommandAvatarIcon(Planet),
     id: "select-spaces",
-    label: "Spaces",
+    label: t(msg`Spaces`),
   };
 }

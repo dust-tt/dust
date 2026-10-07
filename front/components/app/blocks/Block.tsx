@@ -18,6 +18,8 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 import Output from "./Output";
@@ -56,6 +58,8 @@ export default function Block({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
+
   const handleNameChange = (name: string) => {
     const b = Object.assign({}, block);
     b.name = name;
@@ -74,7 +78,7 @@ export default function Block({
     let valid = true;
     if (!name.match(/^[A-Z0-9_]+$/)) {
       setNameError(
-        "Block name must only contain uppercase letters, numbers, and the character `_`."
+        t`Block name must only contain uppercase letters, numbers, and the character \`_\`.`
       );
       valid = false;
     } else {
@@ -82,6 +86,9 @@ export default function Block({
     }
     return valid;
   };
+
+  const runStatusLabel = (successCount: number, errorCount: number) =>
+    t`${plural(successCount, { one: "# success", other: "# successes" })} ${plural(errorCount, { one: "# error", other: "# errors" })}`;
 
   useEffect(() => {
     nameValidation(block.name);
@@ -117,8 +124,8 @@ export default function Block({
               <Button
                 tooltip={
                   block.config && block.config.use_cache
-                    ? "Results are cached (faster)"
-                    : "Results are computed at each run"
+                    ? t`Results are cached (faster)`
+                    : t`Results are computed at each run`
                 }
                 variant="ghost-secondary"
                 size="icon"
@@ -176,8 +183,8 @@ export default function Block({
           >
             <div className="ml-2 mr-2">
               <Spinner size="xs" />
-            </div>
-            {` ${status.success_count} successes ${status.error_count} errors`}
+            </div>{" "}
+            {runStatusLabel(status.success_count, status.error_count)}
           </div>
         ) : running && !(status && status.status != "running") ? (
           <div
@@ -190,8 +197,8 @@ export default function Block({
               <div className="ml-2 mr-2">
                 <Spinner size="xs" />
               </div>
-            </div>
-            {` 0 successes 0 errors`}
+            </div>{" "}
+            {runStatusLabel(0, 0)}
           </div>
         ) : null}
         {status && status.status != "running" && run && showOutputs ? (

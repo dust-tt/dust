@@ -6,7 +6,6 @@ import {
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
-import { getEmailSummary } from "@app/lib/notifications/helpers";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
@@ -21,6 +20,7 @@ import {
   buildConversationUnreadEmailSubject,
   buildConversationUnreadInAppCopy,
   buildConversationUnreadSlackMessage,
+  getEmailSummary,
   getMessagePreviewSlack,
   getMessagePreviewText,
 } from "@app/lib/notifications/workflows/conversation-unread";

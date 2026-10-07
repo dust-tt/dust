@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   Plus,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export default function NewBlock({
   spec,
@@ -23,6 +24,7 @@ export default function NewBlock({
   onClick: (type: BlockType | "map_reduce" | "while_end") => void;
   small: boolean;
 }) {
+  const { t } = useLingui();
   const containsInput =
     spec.filter((block) => block.type == "input").length > 0;
   const blocks: {
@@ -34,77 +36,68 @@ export default function NewBlock({
     {
       type: "chat",
       typeNames: ["chat"],
-      name: "Interact with a Large Language Model (LLM)",
-      description:
-        "Query a Large Language Model using a message-based interface.",
+      name: t`Interact with a Large Language Model (LLM)`,
+      description: t`Query a Large Language Model using a message-based interface.`,
     },
     {
       type: "data",
       typeNames: ["data"],
-      name: "Data array",
-      description:
-        "Load a dataset and output its elements as an array. Typically used to seed few-shot prompts.",
+      name: t`Data array`,
+      description: t`Load a dataset and output its elements as an array. Typically used to seed few-shot prompts.`,
     },
     {
       type: "code",
       typeNames: ["code"],
-      name: "Run Javascript",
-      description:
-        "Run a snippet of JavaScript to modify, augment, or combine results from other blocks.",
+      name: t`Run Javascript`,
+      description: t`Run a snippet of JavaScript to modify, augment, or combine results from other blocks.`,
     },
     {
       type: "data_source",
       typeNames: ["data_source"],
-      name: "Search a datasource",
-      description:
-        "Perform semantic search against chunked documents from a DataSource.",
+      name: t`Search a datasource`,
+      description: t`Perform semantic search against chunked documents from a DataSource.`,
     },
     {
       type: "curl",
       typeNames: ["curl"],
-      name: "cURL Request",
-      description:
-        "Perform an HTTP request to interface with external services.",
+      name: t`cURL Request`,
+      description: t`Perform an HTTP request to interface with external services.`,
     },
     {
       type: "browser",
       typeNames: ["browser"],
-      name: "Extract website data",
-      description:
-        "Download the HTML or text content of page on the web (or a portion of it).",
+      name: t`Extract website data`,
+      description: t`Download the HTML or text content of page on the web (or a portion of it).`,
     },
     {
       type: "search",
       typeNames: ["search"],
-      name: "Google Search",
-      description:
-        "Issue a query to Google so you can feed the results to other blocks.",
+      name: t`Google Search`,
+      description: t`Issue a query to Google so you can feed the results to other blocks.`,
     },
     {
       type: "map_reduce",
       typeNames: ["map", "reduce"],
-      name: "Map Reduce loop",
-      description:
-        "Map over an array and execute a sequence of blocks in parallel.",
+      name: t`Map Reduce loop`,
+      description: t`Map over an array and execute a sequence of blocks in parallel.`,
     },
     {
       type: "while_end",
       typeNames: ["while", "end"],
-      name: "While loop",
-      description: "Loop over a set of blocks until a condition is met.",
+      name: t`While loop`,
+      description: t`Loop over a set of blocks until a condition is met.`,
     },
     {
       type: "database_schema",
       typeNames: ["database_schema"],
-      name: "Retrieve a database schema",
-      description: "Retrieve the schema of a database.",
+      name: t`Retrieve a database schema`,
+      description: t`Retrieve the schema of a database.`,
     },
     {
       type: "database",
       typeNames: ["database"],
-      name: "Query a database",
-      description:
-        "Query a database by executing SQL queries on structured data sources.",
+      name: t`Query a database`,
+      description: t`Query a database by executing SQL queries on structured data sources.`,
     },
   ];
 
@@ -117,9 +110,8 @@ export default function NewBlock({
     blocks.splice(0, 0, {
       type: "input",
       typeNames: ["input"],
-      name: "Input",
-      description:
-        "Select a dataset of inputs used for the design your Dust app. Each element in the dataset kicks off a separate parallel execution of the Dust app.",
+      name: t({ message: "Input", context: "Dust app block name" }),
+      description: t`Select a dataset of inputs used for the design your Dust app. Each element in the dataset kicks off a separate parallel execution of the Dust app.`,
     });
   }
 
@@ -136,7 +128,7 @@ export default function NewBlock({
         ) : (
           <Button
             variant="ghost-secondary"
-            label="Add Block"
+            label={t`Add block`}
             icon={Plus}
             disabled={disabled}
           />

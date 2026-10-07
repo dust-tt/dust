@@ -14,9 +14,7 @@ import { Code } from "@tiptap/extension-code";
  *   backticks (`\``) inside the code span. The `\\.` alternative consumes any
  *   backslash+char pair, so `\`` is treated as content, not a closing delimiter.
  */
-// eslint-disable-next-line no-useless-escape
 const inputRegex = /(^|[^`\\])`((?:[^`\\]|\\.)+)`(?!`)$/;
-// eslint-disable-next-line no-useless-escape
 const pasteRegex = /(^|[^`\\])`((?:[^`\\]|\\.)+)`(?!`)/g;
 
 export const CodeExtension = Code.extend({

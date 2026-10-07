@@ -15,6 +15,7 @@ import {
   Icon,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface MentionInvalidProps {
@@ -37,6 +38,7 @@ export function MentionInvalid({
   conversation,
   message,
 }: MentionInvalidProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -71,21 +73,29 @@ export function MentionInvalid({
   // Show warning message without approve/reject buttons
   // Different message for project conversations (non-editor can't add members)
   const isPodConv = isPodConversation(conversation);
-  const warningMessage = isPodConv
-    ? "is not a member of this Pod and only Pod editors can add new members."
-    : "doesn't have access to this conversation's spaces and won't be able to view it nor be invited.";
+  const mentionLabel = mention.label;
 
   return (
     <ContentMessage variant="warning" className="my-3 w-full max-w-full">
       <div className="flex items-center gap-2">
         <Icon visual={AlertCircle} className="hidden sm:block" />
         <div>
-          <span className="font-semibold">{mention.label}</span>{" "}
-          {warningMessage}
+          {isPodConv ? (
+            <Trans>
+              <span className="font-semibold">{mentionLabel}</span> is not a
+              member of this Pod and only Pod editors can add new members.
+            </Trans>
+          ) : (
+            <Trans>
+              <span className="font-semibold">{mentionLabel}</span> doesn't have
+              access to this conversation's spaces and won't be able to view it
+              nor be invited.
+            </Trans>
+          )}
         </div>
         <div className="ml-auto">
           <Button
-            label="Dismiss"
+            label={t`Dismiss`}
             variant="outline"
             size="xs"
             icon={XClose}

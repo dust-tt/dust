@@ -1,0 +1,538 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/app/CreditUsage.tsx
+msgid "See your usage"
+msgstr "Voir votre utilisation"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Reset in {resetInDays, plural, one {# day} other {# days}}"
+msgstr "Réinitialisation dans {resetInDays, plural, one {# jour} other {# jours}}"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Usage is above target · Credit reset in {resetInDays, plural, one {# day} other {# days}}"
+msgstr "Utilisation au-dessus de l’objectif · Réinitialisation des crédits dans {resetInDays, plural, one {# jour} other {# jours}}"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Usage is well above target · Credit reset in {resetInDays, plural, one {# day} other {# days}}"
+msgstr "Utilisation bien au-dessus de l’objectif · Réinitialisation des crédits dans {resetInDays, plural, one {# jour} other {# jours}}"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Credit reset in {resetInDays, plural, one {# day} other {# days}}"
+msgstr "Réinitialisation des crédits dans {resetInDays, plural, one {# jour} other {# jours}}"
+
+#: front/components/app/CreditUsage.tsx
+msgid "{usedCredits} of {limitCredits} used on your current plan"
+msgstr "{usedCredits} sur {limitCredits} utilisés avec votre forfait actuel"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Resets {resetDay}"
+msgstr "Réinitialisation {resetDay}"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Resets on a rolling {windowDays}-day basis"
+msgstr "Réinitialisation sur une période glissante de {windowDays} jours"
+
+#: front/components/app/CreditUsage.tsx
+msgid "Credits"
+msgstr "Crédits"
+
+#: front/components/app/CreditUsageCard.tsx
+msgid "{label} used"
+msgstr "{label} (utilisation)"
+
+#: front/components/app/CreditUsageCard.tsx
+msgid "Reset schedule:"
+msgstr "Calendrier de réinitialisation :"
+
+#: front/components/app/CreditUsageCard.tsx
+msgid "{refillDate}: +{refillCredits}"
+msgstr "{refillDate} : +{refillCredits}"
+
+#: front/components/app/DatasetPicker.tsx
+#: front/components/app/ModelPicker.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/app/DatasetPicker.tsx
+msgid "Create dataset"
+msgstr "Créer un jeu de données"
+
+#: front/components/app/DatasetPicker.tsx
+msgid "Select dataset"
+msgstr "Sélectionner un jeu de données"
+
+#: front/components/app/DatasetPicker.tsx
+msgid "Create new dataset"
+msgstr "Créer un jeu de données"
+
+#: front/components/app/DatasetView.tsx
+msgid "A dataset with the same name already exists"
+msgstr "Un jeu de données portant ce nom existe déjà"
+
+#: front/components/app/DatasetView.tsx
+msgid "Dataset name must only contain letters, numbers, and the characters `._-`"
+msgstr "Le nom du jeu de données ne doit contenir que des lettres, des chiffres et les caractères `._-`"
+
+#: front/components/app/DatasetView.tsx
+msgid "Key already exists"
+msgstr "Cette clé existe déjà"
+
+#: front/components/app/DatasetView.tsx
+msgid "Please choose a different key"
+msgstr "Veuillez choisir une autre clé"
+
+#: front/components/app/DatasetView.tsx
+msgid "Error reading JSONL file."
+msgstr "Erreur lors de la lecture du fichier JSONL."
+
+#: front/components/app/DatasetView.tsx
+msgid "Error parsing JSONL line {lineIndex}: {parseError}"
+msgstr "Erreur lors de l’analyse de la ligne JSONL {lineIndex} : {parseError}"
+
+#: front/components/app/DatasetView.tsx
+msgid "Dataset size is currently limited to 256 entries"
+msgstr "La taille d’un jeu de données est actuellement limitée à 256 entrées"
+
+#: front/components/app/DatasetView.tsx
+msgid "JSONL upload size is currently limited to 512KB"
+msgstr "La taille des fichiers JSONL importés est actuellement limitée à 512 Ko"
+
+#: front/components/app/DatasetView.tsx
+msgid "Dataset name"
+msgstr "Nom du jeu de données"
+
+#: front/components/app/DatasetView.tsx
+msgid "Description"
+msgstr "Description"
+
+#: front/components/app/DatasetView.tsx
+msgid "Optional"
+msgstr "Facultatif"
+
+#: front/components/app/DatasetView.tsx
+msgid "Schema"
+msgstr "Schéma"
+
+#: front/components/app/DatasetView.tsx
+msgid "Set the properties and types to ensure your dataset is valid when you update it. The properties descriptions are used to generate the inputs to your app when run from an agent."
+msgstr "Définissez les propriétés et leurs types pour garantir la validité de votre jeu de données lors de ses mises à jour. Les descriptions des propriétés servent à générer les entrées de votre app lorsqu’elle est exécutée depuis un agent."
+
+#: front/components/app/DatasetView.tsx
+msgid "(JSON inputs are only supported when using Dust Apps through the API and not through agent actions)"
+msgstr "(Les entrées JSON ne sont prises en charge que lorsque les Dust Apps sont utilisées via l’API, et non via les actions d’agent)"
+
+#: front/components/app/DatasetView.tsx
+msgid "Delete property"
+msgstr "Supprimer la propriété"
+
+#: front/components/app/DatasetView.tsx
+msgid "Add property after"
+msgstr "Ajouter une propriété après"
+
+#: front/components/app/DatasetView.tsx
+msgid "Property description"
+msgstr "Description de la propriété"
+
+#: front/components/app/DatasetView.tsx
+msgid "Input data for test-running your app using the 'RUN' button."
+msgstr "Données d’entrée pour tester votre app avec le bouton « RUN »."
+
+#: front/components/app/DatasetView.tsx
+msgid "Running this app from the API or an agent will use the input data provided at runtime."
+msgstr "Lorsque cette app est exécutée depuis l’API ou un agent, ce sont les données d’entrée fournies à l’exécution qui sont utilisées."
+
+#: front/components/app/DatasetView.tsx
+msgid "Data"
+msgstr "Données"
+
+#: front/components/app/DatasetView.tsx
+msgid "Add and edit your dataset entries below. You can insert or remove entries using buttons on the right."
+msgstr "Ajoutez et modifiez les entrées de votre jeu de données ci-dessous. Vous pouvez insérer ou supprimer des entrées avec les boutons à droite."
+
+#: front/components/app/DatasetView.tsx
+msgid "New entry"
+msgstr "Nouvelle entrée"
+
+#: front/components/app/DatasetView.tsx
+msgctxt "action"
+msgid "Download"
+msgstr "Télécharger"
+
+#: front/components/app/FairUseCreditsUsage.tsx
+msgid "{usedCredits} / {limitCredits} credits per day"
+msgstr "{usedCredits} / {limitCredits} crédits par jour"
+
+#: front/components/app/FairUseCreditsUsage.tsx
+msgid "{usedCredits} / {limitCredits} credits per week"
+msgstr "{usedCredits} / {limitCredits} crédits par semaine"
+
+#: front/components/app/FairUseCreditsUsage.tsx
+msgid "{usedCredits} / {limitCredits} credits per month"
+msgstr "{usedCredits} / {limitCredits} crédits par mois"
+
+#: front/components/app/FairUseCreditsUsage.tsx
+msgid "{usedCredits} / {limitCredits} credits"
+msgstr "{usedCredits} / {limitCredits} crédits"
+
+#: front/components/app/FairUseCreditsUsage.tsx
+msgid "Fair usage"
+msgstr "Utilisation équitable"
+
+#: front/components/app/FairUseCreditsUsage.tsx
+msgid "Fair Use policy"
+msgstr "Politique d’utilisation équitable"
+
+#: front/components/app/ModelPicker.tsx
+msgid "Setup provider"
+msgstr "Configurer un fournisseur"
+
+#: front/components/app/ModelPicker.tsx
+msgid "No provider available"
+msgstr "Aucun fournisseur disponible"
+
+#: front/components/app/ModelPicker.tsx
+msgid "Select provider"
+msgstr "Sélectionner un fournisseur"
+
+#: front/components/app/ModelPicker.tsx
+msgid "Loading models..."
+msgstr "Chargement des modèles…"
+
+#: front/components/app/NewBlock.tsx
+msgid "Interact with a Large Language Model (LLM)"
+msgstr "Interagir avec un grand modèle de langage (LLM)"
+
+#: front/components/app/NewBlock.tsx
+msgid "Query a Large Language Model using a message-based interface."
+msgstr "Interroger un grand modèle de langage via une interface à base de messages."
+
+#: front/components/app/NewBlock.tsx
+msgid "Data array"
+msgstr "Tableau de données"
+
+#: front/components/app/NewBlock.tsx
+msgid "Load a dataset and output its elements as an array. Typically used to seed few-shot prompts."
+msgstr "Charger un jeu de données et renvoyer ses éléments sous forme de tableau. Généralement utilisé pour alimenter des prompts few-shot."
+
+#: front/components/app/NewBlock.tsx
+msgid "Run Javascript"
+msgstr "Exécuter du JavaScript"
+
+#: front/components/app/NewBlock.tsx
+msgid "Run a snippet of JavaScript to modify, augment, or combine results from other blocks."
+msgstr "Exécuter un extrait de JavaScript pour modifier, enrichir ou combiner les résultats d’autres blocs."
+
+#: front/components/app/NewBlock.tsx
+msgid "Search a datasource"
+msgstr "Rechercher dans une source de données"
+
+#: front/components/app/NewBlock.tsx
+msgid "Perform semantic search against chunked documents from a DataSource."
+msgstr "Effectuer une recherche sémantique dans les documents découpés d’une source de données."
+
+#: front/components/app/NewBlock.tsx
+msgid "cURL Request"
+msgstr "Requête cURL"
+
+#: front/components/app/NewBlock.tsx
+msgid "Perform an HTTP request to interface with external services."
+msgstr "Effectuer une requête HTTP pour interagir avec des services externes."
+
+#: front/components/app/NewBlock.tsx
+msgid "Extract website data"
+msgstr "Extraire les données d’un site web"
+
+#: front/components/app/NewBlock.tsx
+msgid "Download the HTML or text content of page on the web (or a portion of it)."
+msgstr "Télécharger le contenu HTML ou texte d’une page web (ou d’une partie de celle-ci)."
+
+#: front/components/app/NewBlock.tsx
+msgid "Google Search"
+msgstr "Recherche Google"
+
+#: front/components/app/NewBlock.tsx
+msgid "Issue a query to Google so you can feed the results to other blocks."
+msgstr "Envoyer une requête à Google pour transmettre les résultats à d’autres blocs."
+
+#: front/components/app/NewBlock.tsx
+msgid "Map Reduce loop"
+msgstr "Boucle Map Reduce"
+
+#: front/components/app/NewBlock.tsx
+msgid "Map over an array and execute a sequence of blocks in parallel."
+msgstr "Parcourir un tableau et exécuter une séquence de blocs en parallèle."
+
+#: front/components/app/NewBlock.tsx
+msgid "While loop"
+msgstr "Boucle While"
+
+#: front/components/app/NewBlock.tsx
+msgid "Loop over a set of blocks until a condition is met."
+msgstr "Répéter un ensemble de blocs jusqu’à ce qu’une condition soit remplie."
+
+#: front/components/app/NewBlock.tsx
+msgid "Retrieve a database schema"
+msgstr "Récupérer le schéma d’une base de données"
+
+#: front/components/app/NewBlock.tsx
+msgid "Retrieve the schema of a database."
+msgstr "Récupérer le schéma d’une base de données."
+
+#: front/components/app/NewBlock.tsx
+msgid "Query a database"
+msgstr "Interroger une base de données"
+
+#: front/components/app/NewBlock.tsx
+msgid "Query a database by executing SQL queries on structured data sources."
+msgstr "Interroger une base de données en exécutant des requêtes SQL sur des sources de données structurées."
+
+#: front/components/app/NewBlock.tsx
+msgctxt "Dust app block name"
+msgid "Input"
+msgstr "Entrée"
+
+#: front/components/app/NewBlock.tsx
+msgid "Select a dataset of inputs used for the design your Dust app. Each element in the dataset kicks off a separate parallel execution of the Dust app."
+msgstr "Sélectionner un jeu de données d’entrées utilisé pour concevoir votre Dust app. Chaque élément du jeu de données déclenche une exécution parallèle distincte de la Dust app."
+
+#: front/components/app/NewBlock.tsx
+msgid "Add block"
+msgstr "Ajouter un bloc"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your account has reached its limit of {credits, plural, one {# credit} other {# credits}} over the past 24 hours."
+msgstr "Votre compte a atteint sa limite de {credits, plural, one {# crédit} other {# crédits}} sur les dernières 24 heures."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your account has reached its limit of {credits, plural, one {# credit} other {# credits}} over the past 7 days."
+msgstr "Votre compte a atteint sa limite de {credits, plural, one {# crédit} other {# crédits}} sur les 7 derniers jours."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your account has reached its limit of {credits, plural, one {# credit} other {# credits}} over the past 30 days."
+msgstr "Votre compte a atteint sa limite de {credits, plural, one {# crédit} other {# crédits}} sur les 30 derniers jours."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your account has reached its limit of {credits, plural, one {# credit} other {# credits}} for your current plan."
+msgstr "Votre compte a atteint sa limite de {credits, plural, one {# crédit} other {# crédits}} pour votre forfait actuel."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your workspace has reached its shared limit of {messages, plural, one {# message per user} other {# messages per user}} over the past 24 hours."
+msgstr "Votre workspace a atteint sa limite partagée de {messages, plural, one {# message par utilisateur} other {# messages par utilisateur}} sur les dernières 24 heures."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your workspace has reached its shared limit of {messages, plural, one {# message per user} other {# messages per user}} for your current plan."
+msgstr "Votre workspace a atteint sa limite partagée de {messages, plural, one {# message par utilisateur} other {# messages par utilisateur}} pour votre forfait actuel."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Plan limits"
+msgstr "Limites du forfait"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Manage your subscription"
+msgstr "Gérer votre abonnement"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Workspace has reached its member limit. Please upgrade or remove inactive members to add more."
+msgstr "Le workspace a atteint sa limite de membres. Passez à un forfait supérieur ou retirez des membres inactifs pour en ajouter d’autres."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Free plan"
+msgstr "Forfait gratuit"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You cannot invite other members with the free plan. Upgrade your plan for unlimited members."
+msgstr "Vous ne pouvez pas inviter d’autres membres avec le forfait gratuit. Passez à un forfait supérieur pour un nombre illimité de membres."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Failed payment"
+msgstr "Échec de paiement"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You cannot invite other members while your workspace has a failed payment."
+msgstr "Vous ne pouvez pas inviter d’autres membres tant que votre workspace a un paiement en échec."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Dust trial message limit reached"
+msgstr "Limite de messages de l’essai Dust atteinte"
+
+#: front/components/app/ReachedLimitPopup.tsx
+#: front/components/app/TrialMessageUsage.tsx
+msgid "Subscribe to Dust"
+msgstr "S’abonner à Dust"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Ok"
+msgstr "OK"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You have reached the message limit under the trial. You can subscribe to a paid plan to continue using Dust."
+msgstr "Vous avez atteint la limite de messages de l’essai. Vous pouvez souscrire un forfait payant pour continuer à utiliser Dust."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Credit quota exceeded"
+msgstr "Quota de crédits dépassé"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "We've paused messaging for your account due to our fair usage policy."
+msgstr "Nous avons suspendu l’envoi de messages pour votre compte en raison de notre politique d’utilisation équitable."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Check our <0>Fair Use policy</0> to learn more."
+msgstr "Consultez notre <0>politique d’utilisation équitable</0> pour en savoir plus."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Message quota exceeded"
+msgstr "Quota de messages dépassé"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "We've paused messaging for your workspace due to our fair usage policy."
+msgstr "Nous avons suspendu l’envoi de messages pour votre workspace en raison de notre politique d’utilisation équitable."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "This total limit is collectively shared by all users in the workspace."
+msgstr "Cette limite globale est partagée par tous les utilisateurs du workspace."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Workspace out of credits"
+msgstr "Workspace à court de crédits"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Manage credits"
+msgstr "Gérer les crédits"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
+msgstr "Votre workspace n’a plus de crédits. Veuillez acheter des crédits pour continuer à utiliser Dust."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your workspace has run out of credits. Please contact your administrator to purchase more credits."
+msgstr "Votre workspace n’a plus de crédits. Veuillez contacter votre administrateur pour acheter des crédits."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "No seat assigned"
+msgstr "Aucun siège attribué"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Go to usage page"
+msgstr "Aller à la page d’utilisation"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+msgstr "Aucun siège ne vous est attribué dans ce workspace. Rendez-vous sur la page d’utilisation pour vous en attribuer un."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."
+msgstr "Aucun siège ne vous est attribué dans ce workspace. Veuillez contacter votre administrateur pour qu’il vous en attribue un."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Usage cap reached"
+msgstr "Plafond d’utilisation atteint"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Go to Usage"
+msgstr "Voir l’utilisation"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Sur la page d’utilisation, vous pouvez changer de siège ou ajuster les plafonds des utilisateurs."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You have reached your personal usage cap. Please contact your Dust representative to adjust it."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Veuillez contacter votre représentant Dust pour l’ajuster."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "You have reached your personal usage cap. Please contact your administrator to increase it."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Veuillez contacter votre administrateur pour l’augmenter."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Shared usage limit reached"
+msgstr "Limite d’utilisation partagée atteinte"
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page."
+msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Vous pouvez ajuster les limites partagées sur la page d’utilisation."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it."
+msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Veuillez contacter les responsables de votre groupe ou votre administrateur pour l’augmenter."
+
+#: front/components/app/ReachedLimitPopup.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/app/SpecRunView.tsx
+msgid "Unknown block type: {blockType}"
+msgstr "Type de bloc inconnu : {blockType}"
+
+#: front/components/app/TrialMessageUsage.tsx
+msgid "Trial messages used"
+msgstr "Messages d’essai utilisés"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "You need to run this app at least once successfully to view the endpoint"
+msgstr "Vous devez exécuter cette app avec succès au moins une fois pour voir l’endpoint"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "View how to run this app programmatically"
+msgstr "Voir comment exécuter cette app via l’API"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Use with API"
+msgstr "Utiliser avec l’API"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Apps API"
+msgstr "API des apps"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Run app"
+msgstr "Exécuter l’app"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Use the following cURL command to run the app <0>{appName}</0>:"
+msgstr "Utilisez la commande cURL suivante pour exécuter l’app <0>{appName}</0> :"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Copied!"
+msgstr "Copié !"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Copy"
+msgstr "Copier"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "API keys"
+msgstr "Clés API"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Manage workspace API keys"
+msgstr "Gérer les clés API du workspace"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "API keys are managed by workspace admins."
+msgstr "Les clés API sont gérées par les administrateurs du workspace."
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Handle API keys with care as they provide access to your company data."
+msgstr "Manipulez les clés API avec précaution : elles donnent accès aux données de votre entreprise."
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "Documentation"
+msgstr "Documentation"
+
+#: front/components/app/ViewAppAPIModal.tsx
+msgid "For a detailed documentation of the Data source API, please refer to the <0>API reference</0>"
+msgstr "Pour une documentation détaillée de l’API des sources de données, consultez la <0>référence de l’API</0>"

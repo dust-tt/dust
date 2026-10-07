@@ -1,5 +1,8 @@
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
@@ -11,29 +14,39 @@ interface MaintenancePageInfo {
   buttonAction?: () => void;
 }
 
-function getMaintenancePageInfo(code: string): MaintenancePageInfo {
+function getMaintenancePageInfo(
+  code: string,
+  t: (descriptor: MessageDescriptor) => string
+): MaintenancePageInfo {
   switch (code) {
     case "relocation":
       return {
-        title: "Service Relocation in Progress",
+        title: t(msg`Service relocation in progress`),
         message: (
           <>
             <p className={defaultErrorMessageClassName}>
-              Your account is currently being relocated to a new region. During
-              this planned migration, you won't be able to access our
-              application. This temporary interruption ensures a smooth
-              transition of your organization's data.
+              <Trans>
+                Your account is currently being relocated to a new region.
+                During this planned migration, you won't be able to access our
+                application. This temporary interruption ensures a smooth
+                transition of your organization's data.
+              </Trans>
             </p>
-            <h4 className="heading-xl text-primary-50">What's happening?</h4>
+            <h4 className="heading-xl text-primary-50">
+              <Trans>What's happening?</Trans>
+            </h4>
             <p className={defaultErrorMessageClassName}>
-              As discussed with your team, we're moving your account to a
-              different regional infrastructure. All your data, settings, and
-              configurations will remain exactly as they were. We'll notify your
-              team once the relocation is complete and your access is restored.
+              <Trans>
+                As discussed with your team, we're moving your account to a
+                different regional infrastructure. All your data, settings, and
+                configurations will remain exactly as they were. We'll notify
+                your team once the relocation is complete and your access is
+                restored.
+              </Trans>
             </p>
           </>
         ),
-        buttonLabel: "Back to homepage",
+        buttonLabel: t(msg`Back to homepage`),
         buttonUrl: "/",
       };
 
@@ -42,44 +55,51 @@ function getMaintenancePageInfo(code: string): MaintenancePageInfo {
     // gets redirected to the correct region automatically.
     case "relocation-done":
       return {
-        title: "Service Relocation Complete",
+        title: t(msg`Service relocation complete`),
         message: (
           <p className={defaultErrorMessageClassName}>
-            Your account has been successfully relocated to a new region. You
-            can now access our application.
+            <Trans>
+              Your account has been successfully relocated to a new region. You
+              can now access our application.
+            </Trans>
           </p>
         ),
-        buttonLabel: "Reload",
+        buttonLabel: t(msg`Reload`),
         buttonUrl: "/",
         buttonAction: () => window.location.reload(),
       };
 
     default:
       return {
-        title: "Under Maintenance",
+        title: t(msg`Under maintenance`),
         message: (
           <>
             <p className={defaultErrorMessageClassName}>
-              We're currently performing maintenance on this workspace.
-              <br />
-              Please check back in a few minutes.
+              <Trans>
+                We're currently performing maintenance on this workspace.
+                <br />
+                Please check back in a few minutes.
+              </Trans>
             </p>
             <p className="text-sm italic text-primary-300">
-              If this persists for an extended period,
-              <br />
-              please contact us at support@dust.tt
+              <Trans>
+                If this persists for an extended period,
+                <br />
+                please contact us at support@dust.tt
+              </Trans>
             </p>
           </>
         ),
-        buttonLabel: "Back to homepage",
+        buttonLabel: t(msg`Back to homepage`),
         buttonUrl: "/",
       };
   }
 }
 
 export function MaintenancePage() {
+  const { t } = useLingui();
   const code = useSearchParam("code");
-  const maintenancePageInfo = getMaintenancePageInfo(code ?? "");
+  const maintenancePageInfo = getMaintenancePageInfo(code ?? "", t);
 
   return (
     <>

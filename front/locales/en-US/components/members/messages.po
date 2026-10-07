@@ -1,0 +1,305 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "Search members"
+msgstr "Search members"
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "No members found"
+msgstr "No members found"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "The role defines the rights of a member for the workspace. {roleDescription}"
+msgstr "The role defines the rights of a member for the workspace. {roleDescription}"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Edit invitation"
+msgstr "Edit invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Invitation sent on {sentDate}"
+msgstr "Invitation sent on {sentDate}"
+
+#: front/components/members/EditInvitationModal.tsx
+#: front/components/members/InvitationsList.tsx
+msgid "(expired)"
+msgstr "(expired)"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Role:"
+msgstr "Role:"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Send invitation again"
+msgstr "Send invitation again"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Revoke invitation"
+msgstr "Revoke invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Update role"
+msgstr "Update role"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Invitation Email"
+msgstr "Invitation Email"
+
+#: front/components/members/InvitationsList.tsx
+#: front/components/members/MembersList.tsx
+msgid "Role"
+msgstr "Role"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Resend"
+msgstr "Resend"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No pending invitations"
+msgstr "No pending invitations"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Send invitations to add new members to your workspace"
+msgstr "Send invitations to add new members to your workspace"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No invitations match your search"
+msgstr "No invitations match your search"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Try adjusting your search terms"
+msgstr "Try adjusting your search terms"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invalid email addresses: {invalidEmailsList}"
+msgstr "Invalid email addresses: {invalidEmailsList}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{openCount, plural, one {# Available} other {# Available}}"
+msgstr "{openCount, plural, one {# Available} other {# Available}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "If eligible"
+msgstr "If eligible"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Too many invitations"
+msgstr "Too many invitations"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Your cannot send more than {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day."
+msgstr "Your cannot send more than {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{activeDifferentRoleCount, plural, one {The user below is already in your workspace with a different role. Moving forward will change their role to <0>{newRole}</0>.} other {The users below are already in your workspace with a different role. Moving forward will change their role to <1>{newRole}</1>.}}"
+msgstr "{activeDifferentRoleCount, plural, one {The user below is already in your workspace with a different role. Moving forward will change their role to <0>{newRole}</0>.} other {The users below are already in your workspace with a different role. Moving forward will change their role to <1>{newRole}</1>.}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "- {fullName} ({email}, current role: {currentRole})"
+msgstr "- {fullName} ({email}, current role: {currentRole})"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Do you want to proceed?"
+msgstr "Do you want to proceed?"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Some users are already in the workspace"
+msgstr "Some users are already in the workspace"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Yes, proceed"
+msgstr "Yes, proceed"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite members"
+msgstr "Invite members"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite new users"
+msgstr "Invite new users"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Choose a new plan to continue"
+msgstr "Choose a new plan to continue"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses"
+msgstr "Email addresses"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses, comma separated"
+msgstr "Email addresses, comma separated"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Validate"
+msgstr "Validate"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Note"
+msgstr "Note"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>yearly fee of {price} at the end of the trial period</0>."
+msgstr "New users will be charged a <0>yearly fee of {price} at the end of the trial period</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
+msgstr "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Next bill will be adjusted proportionally based on the members' sign-up date."
+msgstr "Next bill will be adjusted proportionally based on the members' sign-up date."
+
+#: front/components/members/MemberSelectionTable.tsx
+#: front/components/members/MembersList.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Search users..."
+msgstr "Search users..."
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Loading users..."
+msgstr "Loading users..."
+
+#: front/components/members/MembersList.tsx
+msgid "Active"
+msgstr "Active"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered"
+msgstr "Unregistered"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Provisioned)"
+msgstr "Active (Provisioned)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Provisioned)"
+msgstr "Unregistered (Provisioned)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Invited)"
+msgstr "Active (Invited)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Invited)"
+msgstr "Unregistered (Invited)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Auto-joined)"
+msgstr "Active (Auto-joined)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Auto-joined)"
+msgstr "Unregistered (Auto-joined)"
+
+#: front/components/members/MembersList.tsx
+msgid "(you)"
+msgstr "(you)"
+
+#: front/components/members/MembersList.tsx
+msgid "Email"
+msgstr "Email"
+
+#: front/components/members/MembersList.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/members/MembersList.tsx
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Admin"
+msgstr "Admin"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Manager"
+msgstr "Manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Member"
+msgstr "Member"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "None"
+msgstr "None"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "admin"
+msgstr "admin"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "manager"
+msgstr "manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "member"
+msgstr "member"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "none"
+msgstr "none"
+
+#: front/components/members/Roles.ts
+msgid "All roles"
+msgstr "All roles"
+
+#: front/components/members/Roles.ts
+msgid "Can use agents in conversations. Building permissions are set by admins."
+msgstr "Can use agents in conversations. Building permissions are set by admins."
+
+#: front/components/members/Roles.ts
+msgid "Can manage members, groups, roles, and workspace analytics."
+msgstr "Can manage members, groups, roles, and workspace analytics."
+
+#: front/components/members/Roles.ts
+msgid "Full administrative control, including settings, connections, billing, and governance."
+msgstr "Full administrative control, including settings, connections, billing, and governance."
+
+#: front/components/members/Roles.ts
+msgid "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
+msgstr "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Search"
+msgstr "Search"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Search members (email)"
+msgstr "Search members (email)"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Members"
+msgstr "Members"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Invitations"
+msgstr "Invitations"

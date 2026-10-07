@@ -27,6 +27,7 @@ import {
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface EditableTaskItemProps {
@@ -34,6 +35,7 @@ interface EditableTaskItemProps {
 }
 
 export function EditableTaskItem({ task }: EditableTaskItemProps) {
+  const { t } = useLingui();
   const {
     viewerUserId,
     owner,
@@ -104,7 +106,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <textarea
               ref={inlineEdit.inputRef}
-              aria-label="Edit task text"
+              aria-label={t`Edit task text`}
               autoComplete="off"
               autoFocus
               rows={1}
@@ -187,7 +189,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
         <div className="mt-0.5 flex shrink-0 items-center gap-1">
           {hasConversationLink && (
             <Tooltip
-              label="Open task conversation"
+              label={t`Open task conversation`}
               trigger={
                 <div className="relative shrink-0">
                   <Button
@@ -226,7 +228,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                 activeAgents={activeAgents}
                 agentsLoading={isAgentsLoading}
                 disabled={isDoneWithoutConversation}
-                disabledReason="Reopen this task before starting work."
+                disabledReason={t`Reopen this task before starting work.`}
                 isStarting={isStarting}
                 isFirstOnboardingTask={isFirstOnboardingTask}
                 defaultGoToConversation={!!task.agentInstructions?.trim()}

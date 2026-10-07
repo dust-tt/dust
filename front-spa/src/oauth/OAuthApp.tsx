@@ -1,11 +1,11 @@
 import { AppI18nProvider } from "@dust-tt/front/components/app/AppI18nProvider";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
+import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import { OAuthFinalizePage } from "@dust-tt/front/components/pages/oauth/OAuthFinalizePage";
 import { OAuthSetupRedirectPage } from "@dust-tt/front/components/pages/oauth/OAuthSetupRedirectPage";
 import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
-import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 

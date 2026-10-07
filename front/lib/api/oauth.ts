@@ -19,7 +19,10 @@ import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
 import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
-import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
+import {
+  GithubOAuthProvider,
+  githubAppContinueAuthorizeUriFromQuery,
+} from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
 import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
 import { GoogleDriveOAuthProvider } from "@app/lib/api/oauth/providers/google_drive";
@@ -44,9 +47,12 @@ import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
-import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -377,17 +383,21 @@ export async function createConnectionAndGetSetupUrl(
 /**
  * @cc [owner:flvndvd,label:security] oauth-finalize-requires-ownership
  * Before exchanging the authorization code, `finalizeConnection` MUST verify
- * that `connection.metadata.user_id` and `workspace_id` match the authenticated
- * session user and workspace (using `sessionWorkspaceId` when
- * `auth.workspace()` is null for cross-region), and that the presented
- * finalize nonce hashes to `connection.metadata.finalize_nonce_hash`.
+ * that `connection.metadata.user_id` matches the authenticated session user,
+ * that this user is an active member of the workspace in
+ * `connection.metadata.workspace_id`, and that the presented finalize nonce
+ * hashes to `connection.metadata.finalize_nonce_hash`. The workspace a session
+ * was opened on MUST NOT stand in for membership: a user may start a
+ * connection from any workspace they belong to. When the connection's
+ * workspace is unknown to this region (cross-region callback), it MUST instead
+ * equal `sessionWorkspaceId`.
  * It MUST NOT call the OAuth service finalize API when any of those checks fail,
  * and MUST NOT skip checks when auth/workspace is missing. On success it MUST
  * scrub `finalize_nonce_hash` from the returned connection metadata.
  * Fails closed when identity cannot be established — including cross-region
  * callbacks that lack a session workspace claim.
  */
-function assertFinalizeOwnership({
+async function assertFinalizeOwnership({
   auth,
   connection,
   options,
@@ -395,18 +405,21 @@ function assertFinalizeOwnership({
   auth: Authenticator | null;
   connection: OAuthConnectionType;
   options: FinalizeConnectionOptions;
-}): Result<void, OAuthError> {
-  const sessionUserId = auth?.user()?.sId;
+}): Promise<
+  Result<
+    { user: UserResource; connectionWorkspace: WorkspaceResource | null },
+    OAuthError
+  >
+> {
+  const sessionUser = auth?.user();
   const connectionUserId = connection.metadata.user_id;
   const connectionWorkspaceId = connection.metadata.workspace_id;
-  const sessionWorkspaceId =
-    auth?.workspace()?.sId ?? options.sessionWorkspaceId;
   const expectedNonce = connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY];
 
   if (
-    !sessionUserId ||
+    !sessionUser ||
     !isString(connectionUserId) ||
-    sessionUserId !== connectionUserId
+    sessionUser.sId !== connectionUserId
   ) {
     return new Err({
       code: "connection_ownership_mismatch",
@@ -415,16 +428,33 @@ function assertFinalizeOwnership({
     });
   }
 
-  if (
-    !sessionWorkspaceId ||
-    !isString(connectionWorkspaceId) ||
-    sessionWorkspaceId !== connectionWorkspaceId
-  ) {
-    return new Err({
-      code: "connection_ownership_mismatch",
-      message:
-        "Failed to finalize connection: authenticated workspace does not own this connection",
-    });
+  const workspaceMismatch = new Err<OAuthError>({
+    code: "connection_ownership_mismatch",
+    message:
+      "Failed to finalize connection: authenticated workspace does not own this connection",
+  });
+
+  if (!isString(connectionWorkspaceId)) {
+    return workspaceMismatch;
+  }
+
+  // The session is bound to the workspace picked at login, which is not necessarily the one the
+  // connection was started from, so check membership of the connection's workspace instead.
+  const connectionWorkspace = await WorkspaceResource.fetchById(
+    connectionWorkspaceId
+  );
+  if (connectionWorkspace) {
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: sessionUser,
+        workspace: renderLightWorkspaceType({ workspace: connectionWorkspace }),
+      });
+    if (!membership) {
+      return workspaceMismatch;
+    }
+  } else if (options.sessionWorkspaceId !== connectionWorkspaceId) {
+    // Unknown to this region: membership cannot be checked, fall back to the session claim.
+    return workspaceMismatch;
   }
 
   if (!oauthFinalizeNoncesMatch(expectedNonce, options.finalizeNonce)) {
@@ -435,22 +465,26 @@ function assertFinalizeOwnership({
     });
   }
 
-  return new Ok(undefined);
+  return new Ok({ user: sessionUser, connectionWorkspace });
 }
+
+export type FinalizeConnectionResult =
+  | { type: "finalized"; connection: OAuthConnectionType }
+  | { type: "continue_authorize"; authorizeUrl: string };
 
 /**
  * @cc [owner:flvndvd,label:backend] tolerate-missing-workspace
  * `auth` MAY be null or carry no workspace: the callback session can reference a
  * workspace unknown to this region. Finalization MUST NOT call
  * workspace-requiring accessors for audit logging. Ownership MUST still be
- * verified via `auth.user()` and `sessionWorkspaceId` (see
- * `oauth-finalize-requires-ownership`); missing identity fails closed rather than
- * skipping the check. The `oauth.authorized` audit event is emitted when a
- * workspace is present; otherwise a warning is logged since no audit target exists.
+ * verified (see `oauth-finalize-requires-ownership`); missing identity fails
+ * closed rather than skipping the check. The `oauth.authorized` audit event is
+ * emitted on the connection's workspace when it exists in this region; otherwise
+ * a warning is logged since no audit target exists.
  *
- * Architectural note: a Dust session with neither `auth.workspace()` nor a
- * `sessionWorkspaceId` claim cannot be safely bound to a connection's
- * `workspace_id`. We fail closed in that case rather than weakening ownership.
+ * Architectural note: when the connection's workspace is unknown to this region,
+ * membership cannot be checked, so a session without a `sessionWorkspaceId`
+ * claim cannot be bound to the connection's `workspace_id` and fails closed.
  * Legitimate cross-region callbacks still work because they retain the workspace
  * claim on the session cookie even when the workspace row is absent locally.
  */
@@ -459,7 +493,7 @@ export async function finalizeConnection(
   provider: OAuthProvider,
   query: ParsedUrlQuery,
   options: FinalizeConnectionOptions = {}
-): Promise<Result<OAuthConnectionType, OAuthError>> {
+): Promise<Result<FinalizeConnectionResult, OAuthError>> {
   const childLogger = logger.child({
     workspaceId: auth?.workspace()?.sId ?? options.sessionWorkspaceId,
     userId: auth?.user()?.sId,
@@ -467,6 +501,77 @@ export async function finalizeConnection(
   });
 
   const providerStrategy = getProviderStrategy(provider);
+  const connectionId = providerStrategy.connectionIdFromQuery(query);
+
+  if (!connectionId) {
+    childLogger.error(
+      { step: "connection_extraction" },
+      "OAuth: Failed to finalize connection"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: connection not found in query`,
+    });
+  }
+
+  const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+  // Fetching the connection metadata is necessary to build the redirect URI
+  // and to enforce ownership / finalize-nonce binding before code exchange
+  // or a GitHub legacy-install continue-authorize redirect.
+  const connectionRes = await api.getConnectionMetadata({
+    connectionId,
+  });
+
+  if (connectionRes.isErr()) {
+    childLogger.error(
+      { connectionId, step: "connection_metadata_retrieval" },
+      "OAuth: Failed to retrieve connection metadata"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: failed to retrieve connection metadata`,
+    });
+  }
+
+  const connection = connectionRes.value.connection;
+
+  const ownershipRes = await assertFinalizeOwnership({
+    auth,
+    connection,
+    options,
+  });
+  if (ownershipRes.isErr()) {
+    childLogger.error(
+      {
+        connectionId,
+        step: "ownership_validation",
+        connectionUserId: connection.metadata.user_id,
+        connectionWorkspaceId: connection.metadata.workspace_id,
+      },
+      "OAuth: Refusing to finalize connection — ownership or finalize nonce mismatch"
+    );
+    return ownershipRes;
+  }
+  const { user, connectionWorkspace } = ownershipRes.value;
+
+  // GitHub-only: legacy installs (App already on the account/org) often return
+  // installation_id without a user OAuth code. Continue via /login/oauth/authorize
+  // instead of failing finalize. Not modeled on BaseOAuthStrategyProvider.
+  if (provider === "github") {
+    const authorizeUrl = githubAppContinueAuthorizeUriFromQuery(
+      query,
+      connection
+    );
+    if (authorizeUrl) {
+      childLogger.info(
+        { connectionId, step: "github_legacy_install_continue_authorize" },
+        "OAuth: Continuing GitHub App finalize with user authorization"
+      );
+      return new Ok({ type: "continue_authorize", authorizeUrl });
+    }
+  }
+
   const code = providerStrategy.codeFromQuery(query);
 
   if (!code) {
@@ -490,19 +595,6 @@ export async function finalizeConnection(
     });
   }
 
-  const connectionId = providerStrategy.connectionIdFromQuery(query);
-
-  if (!connectionId) {
-    childLogger.error(
-      { step: "connection_extraction" },
-      "OAuth: Failed to finalize connection"
-    );
-    return new Err({
-      code: "connection_finalization_failed",
-      message: `Failed to finalize ${provider} connection: connection not found in query`,
-    });
-  }
-
   if (
     providerStrategy.isCallbackQueryValid &&
     !providerStrategy.isCallbackQueryValid(query)
@@ -515,45 +607,6 @@ export async function finalizeConnection(
       code: "connection_finalization_failed",
       message: `Failed to finalize ${provider} connection: invalid callback signature`,
     });
-  }
-
-  const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-
-  // Fetching the connection metadata is necessary to build the redirect URI
-  // and to enforce ownership / finalize-nonce binding before code exchange.
-  const connectionRes = await api.getConnectionMetadata({
-    connectionId,
-  });
-
-  if (connectionRes.isErr()) {
-    childLogger.error(
-      { connectionId, step: "connection_metadata_retrieval" },
-      "OAuth: Failed to retrieve connection metadata"
-    );
-    return new Err({
-      code: "connection_finalization_failed",
-      message: `Failed to finalize ${provider} connection: failed to retrieve connection metadata`,
-    });
-  }
-
-  const connection = connectionRes.value.connection;
-
-  const ownershipRes = assertFinalizeOwnership({
-    auth,
-    connection,
-    options,
-  });
-  if (ownershipRes.isErr()) {
-    childLogger.error(
-      {
-        connectionId,
-        step: "ownership_validation",
-        connectionUserId: connection.metadata.user_id,
-        connectionWorkspaceId: connection.metadata.workspace_id,
-      },
-      "OAuth: Refusing to finalize connection — ownership or finalize nonce mismatch"
-    );
-    return ownershipRes;
   }
 
   const cRes = await api.finalizeConnection({
@@ -590,19 +643,39 @@ export async function finalizeConnection(
     }
   }
 
-  if (auth && auth.workspace()) {
+  if (connectionWorkspace) {
+    const auditAuthPromise =
+      auth && auth.workspace()?.sId === connectionWorkspace.sId
+        ? Promise.resolve(auth)
+        : Authenticator.fromUserIdAndWorkspaceId(
+            user.sId,
+            connectionWorkspace.sId
+          );
+    // The code has already been exchanged: audit preparation must not fail the callback.
     // No req available in this library function — context defaults to auth.clientIp().
-    void emitAuditLogEvent({
-      auth,
-      action: "oauth.authorized",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      ],
-      metadata: {
-        provider: String(provider),
-        connection_id: connectionId,
-      },
-    });
+    void auditAuthPromise
+      .then((auditAuth) =>
+        emitAuditLogEvent({
+          auth: auditAuth,
+          action: "oauth.authorized",
+          targets: [
+            buildAuditLogTarget(
+              "workspace",
+              auditAuth.getNonNullableWorkspace()
+            ),
+          ],
+          metadata: {
+            provider: String(provider),
+            connection_id: connectionId,
+          },
+        })
+      )
+      .catch((err) => {
+        childLogger.error(
+          { connectionId, err },
+          "oauth.authorized: failed to emit audit log"
+        );
+      });
   } else {
     childLogger.warn(
       { connectionId },
@@ -613,8 +686,11 @@ export async function finalizeConnection(
   // Do not return the finalize-nonce hash to callers; it is only needed for the
   // ownership check above and should not circulate after a successful finalize.
   return new Ok({
-    ...cRes.value.connection,
-    metadata: scrubFinalizeNonceFromMetadata(cRes.value.connection.metadata),
+    type: "finalized",
+    connection: {
+      ...cRes.value.connection,
+      metadata: scrubFinalizeNonceFromMetadata(cRes.value.connection.metadata),
+    },
   });
 }
 

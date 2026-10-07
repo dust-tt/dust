@@ -1,6 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { useAwuPoolSummary, useAwuPurchaseInfo } from "@app/lib/swr/credits";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useSyncExternalStore } from "react";
 
 const awuPurchaseLoadingState = new Map<string, boolean>();
@@ -24,7 +23,8 @@ function subscribeToAwuPurchaseLoading(callback: () => void) {
 
 type AwuPurchaseOutcome =
   | { status: "success" }
-  | { status: "error"; message: string };
+  // Formatted by the caller with `formatError`.
+  | { status: "error"; error: unknown };
 
 export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
   const isPurchasing = useSyncExternalStore(
@@ -46,7 +46,10 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
   const purchaseAwuCredits = useCallback(
     async (amountCredits: number): Promise<AwuPurchaseOutcome> => {
       if (getAwuPurchaseLoading(workspaceId)) {
-        return { status: "error", message: "Purchase already in progress" };
+        return {
+          status: "error",
+          error: new Error("Purchase already in progress"),
+        };
       }
 
       setAwuPurchaseLoading(workspaceId, true);
@@ -62,10 +65,8 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
         );
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          const message =
-            errorData?.error?.message ?? "Failed to purchase credits";
-          return { status: "error", message };
+          const errorData: unknown = await response.json().catch(() => null);
+          return { status: "error", error: errorData };
         }
 
         await response.json();
@@ -75,7 +76,7 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
 
         return { status: "success" };
       } catch (err) {
-        return { status: "error", message: normalizeError(err).message };
+        return { status: "error", error: err };
       } finally {
         setAwuPurchaseLoading(workspaceId, false);
       }

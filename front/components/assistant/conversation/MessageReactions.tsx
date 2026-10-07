@@ -1,6 +1,7 @@
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { MessageReactionType } from "@app/types/assistant/conversation";
 import { Button, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 import { ReactionPill } from "./ReactionPill";
 
@@ -15,6 +16,7 @@ export function MessageReactions({
   reactions,
   onReactionClick,
 }: MessageReactionsProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
 
   if (reactions.length === 0) {
@@ -65,7 +67,7 @@ export function MessageReactions({
               label={`+${hiddenReactions.length}`}
               size="xmini"
               variant="outline"
-              aria-label="More reactions"
+              aria-label={t`More reactions`}
             />
           }
         />

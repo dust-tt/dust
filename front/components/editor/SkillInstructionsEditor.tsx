@@ -17,12 +17,17 @@ import {
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { Range } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 function useEditorService(editor: Editor | null) {
   return useMemo(() => {
@@ -123,6 +128,7 @@ function buildSkillInstructionsEditableExtensions({
   onSkillDetailsRef,
   onToolDetailsRef,
   owner,
+  t,
 }: {
   currentSkillIdRef: React.RefObject<string | null>;
   enableSlashCommands: boolean;
@@ -136,6 +142,7 @@ function buildSkillInstructionsEditableExtensions({
     ((tool: MCPServerViewType) => void) | undefined
   >;
   owner?: LightWorkspaceType;
+  t: Translate;
 }) {
   return [
     ...(enableSlashCommands
@@ -146,12 +153,13 @@ function buildSkillInstructionsEditableExtensions({
             onSkillDetailsRef,
             onToolDetailsRef,
             owner,
+            t,
           }),
         ]
       : []),
     AgentInstructionDiffExtension,
     Placeholder.configure({
-      placeholder: "What does this skill do? How should it behave?",
+      placeholder: t(msg`What does this skill do? How should it behave?`),
       emptyNodeClass:
         "first:before:text-muted-foreground first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
@@ -178,6 +186,7 @@ export function useSkillInstructionsEditor({
   const onSkillNodeDetails = skillReferences?.onSkillNodeDetails;
   const onToolDetails = skillReferences?.onToolDetails;
   const owner = skillReferences?.owner;
+  const { t } = useLingui();
   const onSelectRef = useRef<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined
   >(undefined);
@@ -201,9 +210,10 @@ export function useSkillInstructionsEditor({
         onSkillDetailsRef,
         onToolDetailsRef,
         owner,
+        t,
       }),
     // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
-    [currentSkillId, enableSlashCommands, owner]
+    [currentSkillId, enableSlashCommands, owner, t]
   );
 
   const extensions = useMemo(

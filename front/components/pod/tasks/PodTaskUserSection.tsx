@@ -2,8 +2,8 @@ import { EditableTaskItem } from "@app/components/pod/tasks/EditableTaskItem";
 import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { SuggestedTaskItem } from "@app/components/pod/tasks/SuggestedTaskItem";
 import type { PodTaskAssigneeType, PodTaskType } from "@app/types/project_task";
-import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import { Avatar, Button, Card, Icon, Stars02 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface PodTaskUserSectionProps {
@@ -19,6 +19,7 @@ export function PodTaskUserSection({
   regularTasks,
   showHeader,
 }: PodTaskUserSectionProps) {
+  const { t } = useLingui();
   const {
     viewerUserId,
     owner,
@@ -35,8 +36,7 @@ export function PodTaskUserSection({
   );
 
   const isYou = viewerUserId !== null && user?.sId === viewerUserId;
-  const displayName =
-    user === null ? POD_TASK_NO_ASSIGNEE_LABEL : user.fullName;
+  const displayName = user === null ? t`No assignee` : user.fullName;
   const showBulkActions =
     suggestedTasks.length > 0 && viewerUserId !== null && !isReadOnly;
 
@@ -70,8 +70,11 @@ export function PodTaskUserSection({
           )}
           <div className="flex flex-1 flex-col">
             <h4 className="heading-base text-muted-foreground">
-              {displayName}
-              {user !== null && isYou ? " (you)" : ""}
+              {user !== null && isYou ? (
+                <Trans>{displayName} (you)</Trans>
+              ) : (
+                displayName
+              )}
             </h4>
           </div>
         </div>
@@ -81,7 +84,7 @@ export function PodTaskUserSection({
           <div className="flex w-full flex-col gap-4">
             <div className="heading-sm flex items-center gap-2 text-muted-foreground">
               <Icon visual={Stars02} size="sm" />
-              Suggestions
+              <Trans>Suggestions</Trans>
             </div>
             <div className="flex w-full flex-col">
               {suggestedTasks.map((task) => (
@@ -100,7 +103,7 @@ export function PodTaskUserSection({
             {showBulkActions && (
               <div className="flex items-center justify-start gap-2">
                 <Button
-                  label="Dismiss all"
+                  label={t`Dismiss all`}
                   size="sm"
                   variant="outline"
                   isLoading={bulkAction === "reject"}
@@ -111,7 +114,7 @@ export function PodTaskUserSection({
                   }}
                 />
                 <Button
-                  label="Accept all"
+                  label={t`Accept all`}
                   size="sm"
                   variant="highlight-secondary"
                   isLoading={bulkAction === "approve"}

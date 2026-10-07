@@ -10,7 +10,7 @@ import {
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type {
   ExtendableConfig,
   JSONContent,
@@ -230,4 +230,63 @@ export const serializeDocumentMarkdown = (
   return commented.isOk()
     ? commented
     : serializeReadingBack(content, anchorOrder, "shared");
+};
+
+const INLINE_NODE_TYPES = new Set(["text", "hardBreak"]);
+
+const SINGLE_PARAGRAPH_MESSAGE =
+  "This suggestion is not text for a single paragraph.";
+
+/**
+ * @cc [owner:tdraier,label:product] document-inline-markdown
+ * Inline content MUST be read only from Markdown that is one paragraph of text and hard
+ * breaks, empty Markdown reading as no content, and refused otherwise. Markdown written for
+ * inline content MUST read back as the same content, or be refused.
+ */
+export const parseInlineMarkdown = (
+  markdown: string
+): Result<JSONContent[], string> => {
+  if (markdown.trim() === "") {
+    return new Ok([]);
+  }
+  if (!hasSupportedMarkdown(markdown)) {
+    return new Err("The suggestion uses formatting the editor cannot keep.");
+  }
+  let parsed: JSONContent;
+  try {
+    parsed = documentMarkdown.parse(markdown);
+  } catch {
+    return new Err("The suggestion could not be read.");
+  }
+  const blocks = withoutTrailingParagraphs(parsed).content ?? [];
+  if (blocks.length !== 1 || blocks[0].type !== "paragraph") {
+    return new Err(SINGLE_PARAGRAPH_MESSAGE);
+  }
+  const content = blocks[0].content ?? [];
+  if (content.some((node) => !INLINE_NODE_TYPES.has(node.type ?? ""))) {
+    return new Err(SINGLE_PARAGRAPH_MESSAGE);
+  }
+  return new Ok(content);
+};
+
+const paragraphOf = (content: JSONContent[]): Node =>
+  normalizeTextNodes(
+    documentSchema.nodeFromJSON({ type: "paragraph", content })
+  );
+
+export const serializeInlineMarkdown = (
+  content: JSONContent[]
+): Result<string, string> => {
+  let markdown: string;
+  try {
+    markdown = documentMarkdown
+      .serialize({ type: "doc", content: [{ type: "paragraph", content }] })
+      .replace(/\n+$/, "");
+  } catch {
+    return new Err("This text cannot be written as Markdown.");
+  }
+  const reread = parseInlineMarkdown(markdown);
+  return reread.isOk() && paragraphOf(reread.value).eq(paragraphOf(content))
+    ? new Ok(markdown)
+    : new Err("This text would not read back the same as Markdown.");
 };

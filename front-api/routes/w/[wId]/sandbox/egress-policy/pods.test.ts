@@ -2,6 +2,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -46,14 +47,33 @@ describe("GET /api/w/:wId/sandbox/egress-policy/pods", () => {
     fileStorageMock.setFetchFileContentNotFound(() => true);
   });
 
-  it("returns 403 for non-admin users", async () => {
+  it("lets a member with the admin:security permission list pods", async () => {
+    const { workspace, user, podA } = await setupTest({ role: "user" });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+    markConfigured(workspace.sId, [podA]);
+
+    const response = await getPods(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      pods: [{ sId: podA.sId, name: podA.name, isRestricted: true }],
+    });
+  });
+
+  it("returns 403 for a member without the admin:security permission", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await getPods(workspace.sId);
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "workspace_auth_error" },
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to manage the sandbox.",
+      },
     });
   });
 

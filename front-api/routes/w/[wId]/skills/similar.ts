@@ -75,7 +75,10 @@ app.post("/", async (ctx) => {
     );
   }
 
-  return ctx.json(result.value);
+  return ctx.json({
+    similar_skills: result.value.similar_skills,
+    skills: result.value.skills.map((skill) => skill.toJSON(auth)),
+  });
 });
 
 export default app;

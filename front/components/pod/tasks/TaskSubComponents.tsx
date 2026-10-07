@@ -5,6 +5,7 @@ import { useUser } from "@app/lib/swr/user";
 import type { PodTaskActorType, PodTaskType } from "@app/types/project_task";
 import { POD_MANAGER_AGENT_SID } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   UserTypeWithWorkspaces,
@@ -22,10 +23,20 @@ import {
   SlackLogo,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useMemo } from "react";
 
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
+
+const ACTOR_LABELS = {
+  someone: msg({ message: "someone", context: "task actor" }),
+  agent: msg({ message: "an agent", context: "task actor" }),
+  you: msg({ message: "you", context: "task actor" }),
+  user: msg({ message: "a user", context: "task actor" }),
+};
 
 function formatActorLabel(
   type: PodTaskActorType | null,
@@ -34,9 +45,9 @@ function formatActorLabel(
 
   agentNameById: Map<string, string>,
   currentUser: UserTypeWithWorkspaces | null
-): string {
+): MessageDescriptor | string {
   if (!type) {
-    return "someone";
+    return ACTOR_LABELS.someone;
   }
   switch (type) {
     case "agent":
@@ -44,15 +55,15 @@ function formatActorLabel(
         return "Dust";
       }
       const name = agentId ? agentNameById.get(agentId) : null;
-      return name || "an agent";
+      return name || ACTOR_LABELS.agent;
     case "user":
       if (userId === currentUser?.sId) {
-        return "you";
+        return ACTOR_LABELS.you;
       }
-      return "a user";
+      return ACTOR_LABELS.user;
     default:
       assertNeverAndIgnore(type);
-      return "someone";
+      return ACTOR_LABELS.someone;
   }
 }
 
@@ -71,24 +82,35 @@ export function TaskMetadataTooltip({
   agentNameById,
   children,
 }: TaskMetadataTooltipProps) {
+  const { t } = useLingui();
   const { user } = useUser();
 
-  const creatorLabel = formatActorLabel(
-    task.createdByType,
-    task.createdByAgentConfigurationId,
-    task.createdByUserId,
-    agentNameById,
-    user
+  const translateActorLabel = (actorLabel: MessageDescriptor | string) =>
+    isString(actorLabel) ? actorLabel : t(actorLabel);
+
+  const creatorLabel = translateActorLabel(
+    formatActorLabel(
+      task.createdByType,
+      task.createdByAgentConfigurationId,
+      task.createdByUserId,
+      agentNameById,
+      user
+    )
   );
   const doneLabel = task.markedAsDoneByType
-    ? formatActorLabel(
-        task.markedAsDoneByType,
-        task.markedAsDoneByAgentConfigurationId,
-        task.markedAsDoneByUserId,
-        agentNameById,
-        user
+    ? translateActorLabel(
+        formatActorLabel(
+          task.markedAsDoneByType,
+          task.markedAsDoneByAgentConfigurationId,
+          task.markedAsDoneByUserId,
+          agentNameById,
+          user
+        )
       )
     : null;
+  const createdAt = formatFriendlyDate(task.createdAt);
+  const doneAt = task.doneAt ? formatFriendlyDate(task.doneAt) : null;
+  const taskId = task.sId;
 
   const isAssistantWorkInProgress =
     !!task.conversationId && task.status === "in_progress";
@@ -97,15 +119,19 @@ export function TaskMetadataTooltip({
     <div className="flex flex-col gap-1">
       {isAssistantWorkInProgress && (
         <div className="text-xs font-medium text-foreground">
-          An agent is working on this task.
+          <Trans>An agent is working on this task.</Trans>
         </div>
       )}
       <div className="text-xs">
-        Created by {creatorLabel} · {formatFriendlyDate(task.createdAt)}
+        <Trans>
+          Created by {creatorLabel} · {createdAt}
+        </Trans>
       </div>
-      {task.doneAt && doneLabel && (
+      {doneAt && doneLabel && (
         <div className="text-xs">
-          Done by {doneLabel} · {formatFriendlyDate(task.doneAt)}
+          <Trans>
+            Done by {doneLabel} · {doneAt}
+          </Trans>
         </div>
       )}
       {task.actorRationale && (
@@ -115,7 +141,7 @@ export function TaskMetadataTooltip({
       )}
       {task.agentSuggestionStatus === "pending" ? (
         <div className="break-all font-mono text-[11px] tabular-nums text-muted-foreground">
-          ID: {task.sId}
+          <Trans>ID: {taskId}</Trans>
         </div>
       ) : null}
     </div>
@@ -144,6 +170,8 @@ export function useAgentNameById(
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
+const SLACK_THREAD_LABEL = msg`Slack thread`;
+
 function getSourceDisplay(source: PodTaskType["sources"][number]) {
   const sourceIconByType: Record<
     PodTaskType["sources"][number]["sourceType"],
@@ -160,13 +188,12 @@ function getSourceDisplay(source: PodTaskType["sources"][number]) {
   };
 
   const originalLabel = source.sourceTitle ?? source.sourceId;
-  const customLabel = source.sourceType === "slack" ? "Slack thread" : null;
+  const customLabel = source.sourceType === "slack" ? SLACK_THREAD_LABEL : null;
 
   return {
     icon: sourceIconByType[source.sourceType],
-    label: customLabel ?? originalLabel,
+    customLabel,
     originalLabel,
-    hasCustomLabel: customLabel !== null,
   };
 }
 
@@ -179,11 +206,77 @@ export function TaskSources({
   owner: LightWorkspaceType;
   isDone: boolean;
 }) {
+  const { t } = useLingui();
   const router = useAppRouter();
 
   if (sources.length === 0) {
     return null;
   }
+
+  const sourceLinks = sources.map((source, index) => (
+    <span key={`${source.sourceType}-${source.sourceId}`}>
+      {index > 0 && ", "}
+      <span
+        className={cn(
+          "relative inline-block",
+          isDone &&
+            "after:pointer-events-none after:absolute after:left-0 after:right-0 after:top-1/2 after:border-t after:border-current after:opacity-70"
+        )}
+      >
+        {(() => {
+          const { icon, customLabel, originalLabel } = getSourceDisplay(source);
+          const label = customLabel ? t(customLabel) : originalLabel;
+
+          const trigger = (
+            <button
+              type="button"
+              className="underline hover:no-underline"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!source.sourceUrl) {
+                  return;
+                }
+
+                try {
+                  const currentOrigin = window.location.origin;
+                  const targetUrl = new URL(source.sourceUrl, currentOrigin);
+
+                  if (targetUrl.origin === currentOrigin) {
+                    const internalPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+                    void router.push(internalPath);
+                    return;
+                  }
+
+                  window.open(
+                    targetUrl.toString(),
+                    "_blank",
+                    "noopener,noreferrer"
+                  );
+                } catch {
+                  void router.push(source.sourceUrl);
+                }
+              }}
+            >
+              <Icon
+                visual={icon}
+                size="xs"
+                className="mr-1 inline-block align-text-bottom opacity-70"
+              />
+              <span>{label}</span>
+            </button>
+          );
+
+          if (!customLabel) {
+            return trigger;
+          }
+
+          return <Tooltip label={originalLabel} trigger={trigger} />;
+        })()}
+      </span>
+    </span>
+  ));
 
   return (
     <span
@@ -192,74 +285,7 @@ export function TaskSources({
         isDone ? "text-faint line-through" : "text-muted-foreground"
       )}
     >
-      From{" "}
-      {sources.map((source, index) => (
-        <span key={`${source.sourceType}-${source.sourceId}`}>
-          {index > 0 && ", "}
-          <span
-            className={cn(
-              "relative inline-block",
-              isDone &&
-                "after:pointer-events-none after:absolute after:left-0 after:right-0 after:top-1/2 after:border-t after:border-current after:opacity-70"
-            )}
-          >
-            {(() => {
-              const { icon, label, originalLabel, hasCustomLabel } =
-                getSourceDisplay(source);
-
-              const trigger = (
-                <button
-                  type="button"
-                  className="underline hover:no-underline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    if (!source.sourceUrl) {
-                      return;
-                    }
-
-                    try {
-                      const currentOrigin = window.location.origin;
-                      const targetUrl = new URL(
-                        source.sourceUrl,
-                        currentOrigin
-                      );
-
-                      if (targetUrl.origin === currentOrigin) {
-                        const internalPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
-                        void router.push(internalPath);
-                        return;
-                      }
-
-                      window.open(
-                        targetUrl.toString(),
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    } catch {
-                      void router.push(source.sourceUrl);
-                    }
-                  }}
-                >
-                  <Icon
-                    visual={icon}
-                    size="xs"
-                    className="mr-1 inline-block align-text-bottom opacity-70"
-                  />
-                  <span>{label}</span>
-                </button>
-              );
-
-              if (!hasCustomLabel) {
-                return trigger;
-              }
-
-              return <Tooltip label={originalLabel} trigger={trigger} />;
-            })()}
-          </span>
-        </span>
-      ))}
+      <Trans>From {sourceLinks}</Trans>
     </span>
   );
 }

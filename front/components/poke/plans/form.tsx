@@ -418,7 +418,6 @@ export const Field: React.FC<FieldProps> = ({
   const disabled = !editingPlan?.isNewPlan && isImmutable;
 
   const renderPlanFieldValue = (x: unknown) => {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     let strValue: string = x?.toString() || "";
     let classes = "";
     if (typeof x === "string") {

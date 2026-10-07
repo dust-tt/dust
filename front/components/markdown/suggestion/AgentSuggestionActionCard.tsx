@@ -24,6 +24,9 @@ import type {
 } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 export function mapSuggestionStateToCardState(
   state: AgentSuggestionState
@@ -68,7 +71,8 @@ interface AgentSuggestionActionCardProps {
 }
 
 function getAgentSuggestionLabels(
-  agentSuggestion: AgentActionCardSuggestionType
+  agentSuggestion: AgentActionCardSuggestionType,
+  t: (descriptor: MessageDescriptor) => string
 ): {
   title: string;
   acceptedTitle: string;
@@ -81,9 +85,9 @@ function getAgentSuggestionLabels(
     case "create": {
       const { name, description } = agentSuggestion.suggestion;
       return {
-        title: `Create "${name}" agent`,
-        acceptedTitle: `"${name}" agent creation accepted`,
-        rejectedTitle: `"${name}" agent creation rejected`,
+        title: t(msg`Create "${name}" agent`),
+        acceptedTitle: t(msg`"${name}" agent creation accepted`),
+        rejectedTitle: t(msg`"${name}" agent creation rejected`),
         description: analysis ?? description,
       };
     }
@@ -91,9 +95,9 @@ function getAgentSuggestionLabels(
     case "delete": {
       const { name } = agentSuggestion.suggestion;
       return {
-        title: `Delete "${name}" agent`,
-        acceptedTitle: `"${name}" agent deletion accepted`,
-        rejectedTitle: `"${name}" agent deletion rejected`,
+        title: t(msg`Delete "${name}" agent`),
+        acceptedTitle: t(msg`"${name}" agent deletion accepted`),
+        rejectedTitle: t(msg`"${name}" agent deletion rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -101,9 +105,9 @@ function getAgentSuggestionLabels(
     case "description": {
       const { description } = agentSuggestion.suggestion;
       return {
-        title: `Change description to "${description}"`,
-        acceptedTitle: `Description change to "${description}" accepted`,
-        rejectedTitle: `Description change to "${description}" rejected`,
+        title: t(msg`Change description to "${description}"`),
+        acceptedTitle: t(msg`Description change to "${description}" accepted`),
+        rejectedTitle: t(msg`Description change to "${description}" rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -113,9 +117,9 @@ function getAgentSuggestionLabels(
         agentSuggestion.suggestion.modelId
       );
       return {
-        title: `Change model to "${modelName}"`,
-        acceptedTitle: `Model change to "${modelName}" accepted`,
-        rejectedTitle: `Model change to "${modelName}" rejected`,
+        title: t(msg`Change model to "${modelName}"`),
+        acceptedTitle: t(msg`Model change to "${modelName}" accepted`),
+        rejectedTitle: t(msg`Model change to "${modelName}" rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -123,9 +127,9 @@ function getAgentSuggestionLabels(
     case "name": {
       const { name } = agentSuggestion.suggestion;
       return {
-        title: `Rename agent to "${name}"`,
-        acceptedTitle: `Rename to "${name}" accepted`,
-        rejectedTitle: `Rename to "${name}" rejected`,
+        title: t(msg`Rename agent to "${name}"`),
+        acceptedTitle: t(msg`Rename to "${name}" accepted`),
+        rejectedTitle: t(msg`Rename to "${name}" rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -133,27 +137,31 @@ function getAgentSuggestionLabels(
     case "scope": {
       const isPublishing = agentSuggestion.suggestion.scope === "visible";
       return {
-        title: isPublishing ? "Publish agent" : "Unpublish agent",
-        acceptedTitle: isPublishing ? "Agent published" : "Agent unpublished",
-        rejectedTitle: isPublishing ? "Publish rejected" : "Unpublish rejected",
+        title: isPublishing ? t(msg`Publish agent`) : t(msg`Unpublish agent`),
+        acceptedTitle: isPublishing
+          ? t(msg`Agent published`)
+          : t(msg`Agent unpublished`),
+        rejectedTitle: isPublishing
+          ? t(msg`Publish rejected`)
+          : t(msg`Unpublish rejected`),
         description: analysis ?? undefined,
       };
     }
 
     case "editors": {
       return {
-        title: "Update agent editors",
-        acceptedTitle: "Editors update accepted",
-        rejectedTitle: "Editors update rejected",
+        title: t(msg`Update agent editors`),
+        acceptedTitle: t(msg`Editors update accepted`),
+        rejectedTitle: t(msg`Editors update rejected`),
         description: analysis ?? undefined,
       };
     }
 
     case "tags": {
       return {
-        title: "Update agent tags",
-        acceptedTitle: "Tags update accepted",
-        rejectedTitle: "Tags update rejected",
+        title: t(msg`Update agent tags`),
+        acceptedTitle: t(msg`Tags update accepted`),
+        rejectedTitle: t(msg`Tags update rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -161,25 +169,25 @@ function getAgentSuggestionLabels(
     case "structured_output": {
       if (agentSuggestion.suggestion.responseFormat === null) {
         return {
-          title: "Remove structured output",
-          acceptedTitle: "Structured output removal accepted",
-          rejectedTitle: "Structured output removal rejected",
+          title: t(msg`Remove structured output`),
+          acceptedTitle: t(msg`Structured output removal accepted`),
+          rejectedTitle: t(msg`Structured output removal rejected`),
           description: analysis ?? undefined,
         };
       }
       return {
-        title: "Update structured output",
-        acceptedTitle: "Structured output update accepted",
-        rejectedTitle: "Structured output update rejected",
+        title: t(msg`Update structured output`),
+        acceptedTitle: t(msg`Structured output update accepted`),
+        rejectedTitle: t(msg`Structured output update rejected`),
         description: analysis ?? undefined,
       };
     }
 
     case "instructions": {
       return {
-        title: "Update agent instructions",
-        acceptedTitle: "Instructions update accepted",
-        rejectedTitle: "Instructions update rejected",
+        title: t(msg`Update agent instructions`),
+        acceptedTitle: t(msg`Instructions update accepted`),
+        rejectedTitle: t(msg`Instructions update rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -187,11 +195,11 @@ function getAgentSuggestionLabels(
     case "skills": {
       const isAddition = agentSuggestion.suggestion.action === "add";
       return {
-        title: isAddition ? "Add a skill" : "Remove a skill",
-        acceptedTitle: isAddition ? "Skill added" : "Skill removed",
+        title: isAddition ? t(msg`Add a skill`) : t(msg`Remove a skill`),
+        acceptedTitle: isAddition ? t(msg`Skill added`) : t(msg`Skill removed`),
         rejectedTitle: isAddition
-          ? "Skill addition rejected"
-          : "Skill removal rejected",
+          ? t(msg`Skill addition rejected`)
+          : t(msg`Skill removal rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -199,11 +207,15 @@ function getAgentSuggestionLabels(
     case "sub_agent": {
       const isAddition = agentSuggestion.suggestion.action === "add";
       return {
-        title: isAddition ? "Add a sub-agent" : "Remove a sub-agent",
-        acceptedTitle: isAddition ? "Sub-agent added" : "Sub-agent removed",
+        title: isAddition
+          ? t(msg`Add a sub-agent`)
+          : t(msg`Remove a sub-agent`),
+        acceptedTitle: isAddition
+          ? t(msg`Sub-agent added`)
+          : t(msg`Sub-agent removed`),
         rejectedTitle: isAddition
-          ? "Sub-agent addition rejected"
-          : "Sub-agent removal rejected",
+          ? t(msg`Sub-agent addition rejected`)
+          : t(msg`Sub-agent removal rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -211,11 +223,11 @@ function getAgentSuggestionLabels(
     case "tools": {
       const isAddition = agentSuggestion.suggestion.action === "add";
       return {
-        title: isAddition ? "Add a tool" : "Remove a tool",
-        acceptedTitle: isAddition ? "Tool added" : "Tool removed",
+        title: isAddition ? t(msg`Add a tool`) : t(msg`Remove a tool`),
+        acceptedTitle: isAddition ? t(msg`Tool added`) : t(msg`Tool removed`),
         rejectedTitle: isAddition
-          ? "Tool addition rejected"
-          : "Tool removal rejected",
+          ? t(msg`Tool addition rejected`)
+          : t(msg`Tool removal rejected`),
         description: analysis ?? undefined,
       };
     }
@@ -223,9 +235,9 @@ function getAgentSuggestionLabels(
     default:
       assertNeverAndIgnore(agentSuggestion);
       return {
-        title: "Agent suggestion",
-        acceptedTitle: "Agent suggestion accepted",
-        rejectedTitle: "Agent suggestion rejected",
+        title: t(msg`Agent suggestion`),
+        acceptedTitle: t(msg`Agent suggestion accepted`),
+        rejectedTitle: t(msg`Agent suggestion rejected`),
         description: undefined,
       };
   }
@@ -238,17 +250,18 @@ export function AgentSuggestionActionCard({
   disabled,
   pictureUrl,
 }: AgentSuggestionActionCardProps) {
+  const { t } = useLingui();
   const { state } = agentSuggestion;
   const cardState = disabled
     ? "disabled"
     : mapSuggestionStateToCardState(state);
 
-  const labels = getAgentSuggestionLabels(agentSuggestion);
+  const labels = getAgentSuggestionLabels(agentSuggestion, t);
 
   return (
     <ActionCardBlock
       title={labels.title}
-      applyLabel="Accept"
+      applyLabel={t`Accept`}
       acceptedTitle={labels.acceptedTitle}
       rejectedTitle={labels.rejectedTitle}
       visual={

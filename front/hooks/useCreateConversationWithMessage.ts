@@ -1,5 +1,5 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { getLocalTimeZone } from "@app/lib/i18n/format";
@@ -26,6 +26,7 @@ import type {
 import type { MentionType, RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { APIError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -47,7 +48,7 @@ export function useCreateConversationWithMessage({
 }) {
   const { fetcher } = useFetcher();
   const contextOrigin = useClientType();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const resumeOngoingAgentLoopsPolling = useResumeOngoingAgentLoopsPolling(
     owner.sId
   );
@@ -98,7 +99,10 @@ export function useCreateConversationWithMessage({
         return new Err({
           type: "message_send_error",
           title: "User not found",
-          message: "Cannot create conversation without a user",
+          error: {
+            type: "user_not_found",
+            message: "Cannot create conversation without a user",
+          } satisfies APIError,
         });
       }
 
@@ -173,10 +177,9 @@ export function useCreateConversationWithMessage({
             onError:
               onError ??
               ((err) => {
-                sendNotification({
+                sendApiErrorNotification({
                   title: err.title,
-                  description: err.message,
-                  type: "error",
+                  error: err.error,
                 });
               }),
           }).finally(() => {
@@ -266,7 +269,7 @@ export function useCreateConversationWithMessage({
       user,
       fetcher,
       contextOrigin,
-      sendNotification,
+      sendApiErrorNotification,
       setPendingFirstMessage,
       clearPendingFirstMessage,
       resumeOngoingAgentLoopsPolling,
@@ -427,15 +430,12 @@ function toConversationCreationError(
           ? "credits_exhausted_error"
           : isApiError && e.error.type === "user_cap_reached"
             ? "user_cap_reached_error"
-            : isApiError && e.error.type === "group_limit_reached"
-              ? "group_limit_reached_error"
+            : isApiError && e.error.type === "group_shared_usage_limit_reached"
+              ? "group_shared_usage_limit_reached_error"
               : isApiError && e.error.type === "no_seat"
                 ? "no_seat_error"
                 : "message_send_error",
     title: "Your message could not be sent.",
-    message: isApiError
-      ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        e.error.message || "Please try again or contact us."
-      : "Please try again or contact us.",
+    error: e,
   });
 }

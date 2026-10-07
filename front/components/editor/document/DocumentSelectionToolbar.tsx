@@ -9,6 +9,7 @@ import {
   Separator,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
 import { isTextSelection } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
@@ -36,6 +37,7 @@ export const DocumentSelectionToolbar = ({
   mountPortalContainer,
   onComment,
 }: DocumentSelectionToolbarProps) => {
+  const { t } = useLingui();
   const selection = useEditorState({
     editor,
     selector: ({ editor }) => ({
@@ -72,42 +74,46 @@ export const DocumentSelectionToolbar = ({
     >
       <div
         role="toolbar"
-        aria-label="Format selection"
+        aria-label={t`Format selection`}
         data-document-selection=""
         className="flex items-center gap-0.5 rounded-xl border border-border bg-overlay-background p-1"
       >
         {[
           {
-            label: "Bold",
+            key: "bold",
+            label: t`Bold`,
             shortcut: `${modifier}+B`,
             icon: Bold01,
             active: selection.bold,
             run: () => editor.chain().focus().toggleBold().run(),
           },
           {
-            label: "Italic",
+            key: "italic",
+            label: t`Italic`,
             shortcut: `${modifier}+I`,
             icon: Italic01,
             active: selection.italic,
             run: () => editor.chain().focus().toggleItalic().run(),
           },
           {
-            label: "Strikethrough",
+            key: "strike",
+            label: t`Strikethrough`,
             shortcut: `${modifier}+Shift+S`,
             icon: undefined,
             active: selection.strike,
             run: () => editor.chain().focus().toggleStrike().run(),
           },
           {
-            label: "Inline code",
+            key: "code",
+            label: t`Inline code`,
             shortcut: `${modifier}+E`,
             icon: Code01,
             active: selection.code,
             run: () => editor.chain().focus().toggleCode().run(),
           },
-        ].map(({ label, shortcut, icon, active, run }) => (
+        ].map(({ key, label, shortcut, icon, active, run }) => (
           <Tooltip
-            key={label}
+            key={key}
             label={label}
             shortcut={shortcut}
             tooltipTriggerAsChild
@@ -123,7 +129,7 @@ export const DocumentSelectionToolbar = ({
                   TOOLBAR_BUTTON_CLASS,
                   "size-8",
                   "aria-pressed:border-border aria-pressed:bg-selected aria-pressed:text-foreground",
-                  label === "Inline code" &&
+                  key === "code" &&
                     "relative ml-1 before:absolute before:-left-1 before:h-4 before:w-px before:bg-border"
                 )}
               >
@@ -145,7 +151,7 @@ export const DocumentSelectionToolbar = ({
               className="mx-1 h-4 min-h-0 self-center"
             />
             <Tooltip
-              label="Comment"
+              label={t`Comment`}
               shortcut={`${modifier}+Alt+M`}
               tooltipTriggerAsChild
               mountPortalContainer={mountPortalContainer}
@@ -157,7 +163,7 @@ export const DocumentSelectionToolbar = ({
                   className={cn(TOOLBAR_BUTTON_CLASS, "gap-1.5 px-2 text-sm")}
                 >
                   <Icon visual={MessagePlusCircle} size="xs" />
-                  Comment
+                  <Trans>Comment</Trans>
                 </button>
               }
             />

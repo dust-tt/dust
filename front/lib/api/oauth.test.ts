@@ -139,29 +139,24 @@ describe("finalizeConnection", () => {
     expect(mocks.finalizeConnection).not.toHaveBeenCalled();
   });
 
-  it("rejects cross-workspace finalization before exchanging the code", async () => {
-    const { user, workspace: ownerWorkspace } = await createResourceTest({
+  it("rejects finalization when the user is not a member of the connection's workspace", async () => {
+    const { authenticator, user, workspace } = await createResourceTest({
       role: "admin",
     });
-    const otherWorkspace = await WorkspaceFactory.basic();
-    await MembershipFactory.associate(otherWorkspace, user, { role: "admin" });
-    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      otherWorkspace.sId
-    );
+    const connectionWorkspace = await WorkspaceFactory.basic();
 
     const { connection, finalizeNonce } = pendingConnection({
       userId: user.sId,
-      workspaceId: ownerWorkspace.sId,
+      workspaceId: connectionWorkspace.sId,
     });
     mocks.getConnectionMetadata.mockResolvedValue(new Ok({ connection }));
 
     const res = await finalizeConnection(
-      otherAuth,
+      authenticator,
       "github",
       { code: "auth-code", state: connection.connection_id },
       {
-        sessionWorkspaceId: otherWorkspace.sId,
+        sessionWorkspaceId: workspace.sId,
         finalizeNonce,
       }
     );
@@ -171,6 +166,42 @@ describe("finalizeConnection", () => {
       expect(res.error.code).toBe("connection_ownership_mismatch");
     }
     expect(mocks.finalizeConnection).not.toHaveBeenCalled();
+  });
+
+  it("allows finalization from a session opened on another workspace the user belongs to", async () => {
+    const { user, workspace: connectionWorkspace } = await createResourceTest({
+      role: "user",
+    });
+    const sessionWorkspace = await WorkspaceFactory.basic();
+    await MembershipFactory.associate(sessionWorkspace, user, {
+      role: "admin",
+    });
+    const sessionAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      sessionWorkspace.sId
+    );
+
+    const { connection, finalizeNonce } = pendingConnection({
+      userId: user.sId,
+      workspaceId: connectionWorkspace.sId,
+    });
+    mocks.getConnectionMetadata.mockResolvedValue(new Ok({ connection }));
+    mocks.finalizeConnection.mockResolvedValue(
+      new Ok({ connection: { ...connection, status: "finalized" as const } })
+    );
+
+    const res = await finalizeConnection(
+      sessionAuth,
+      "github",
+      { code: "auth-code", state: connection.connection_id },
+      {
+        sessionWorkspaceId: sessionWorkspace.sId,
+        finalizeNonce,
+      }
+    );
+
+    expect(res.isOk()).toBe(true);
+    expect(mocks.finalizeConnection).toHaveBeenCalledOnce();
   });
 
   it("rejects finalize-nonce mismatch and missing cookie (replay/state mismatch)", async () => {
@@ -213,12 +244,13 @@ describe("finalizeConnection", () => {
   });
 
   it("allows finalize when ownership and nonce match, including cross-region null workspace", async () => {
-    const { user, workspace } = await createResourceTest({ role: "admin" });
+    const user = await UserFactory.basic();
+    const otherRegionWorkspaceId = "w_other_region";
     const finalizeNonce = "matching-finalize-nonce-value-ok!";
 
     const { connection } = pendingConnection({
       userId: user.sId,
-      workspaceId: workspace.sId,
+      workspaceId: otherRegionWorkspaceId,
       finalizeNonce,
     });
     const finalized = { ...connection, status: "finalized" as const };
@@ -243,16 +275,34 @@ describe("finalizeConnection", () => {
       "github",
       { code: "auth-code", state: connection.connection_id },
       {
-        sessionWorkspaceId: workspace.sId,
+        sessionWorkspaceId: otherRegionWorkspaceId,
         finalizeNonce,
       }
     );
 
     expect(res.isOk()).toBe(true);
     if (res.isOk()) {
-      expect(res.value.metadata).not.toHaveProperty(
-        OAUTH_FINALIZE_NONCE_METADATA_KEY
-      );
+      expect(res.value.type).toBe("finalized");
+      if (res.value.type === "finalized") {
+        expect(res.value.connection.metadata).not.toHaveProperty(
+          OAUTH_FINALIZE_NONCE_METADATA_KEY
+        );
+      }
+    }
+    expect(mocks.finalizeConnection).toHaveBeenCalledOnce();
+
+    const mismatchedClaim = await finalizeConnection(
+      auth,
+      "github",
+      { code: "auth-code", state: connection.connection_id },
+      {
+        sessionWorkspaceId: "w_another_workspace",
+        finalizeNonce,
+      }
+    );
+    expect(mismatchedClaim.isErr()).toBe(true);
+    if (mismatchedClaim.isErr()) {
+      expect(mismatchedClaim.error.code).toBe("connection_ownership_mismatch");
     }
     expect(mocks.finalizeConnection).toHaveBeenCalledOnce();
   });

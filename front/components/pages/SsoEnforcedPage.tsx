@@ -3,9 +3,11 @@ import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { Button, Logo } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 export function SsoEnforcedPage() {
+  const { t } = useLingui();
   const workspaceId = useSearchParam("workspaceId");
   const returnTo = useSearchParam("returnTo");
   const { user } = useUser();
@@ -43,20 +45,24 @@ export function SsoEnforcedPage() {
               <Logo className="h-[48px] w-[192px] px-1" />
             </div>
             <p className="mt-16 text-4xl font-semibold tracking-tighter text-primary-50 md:text-6xl">
-              <span className="text-warning">Secure AI agent</span> <br />
-              with your company's knowledge
+              <Trans>
+                <span className="text-warning">Secure AI agent</span> <br />
+                with your company's knowledge
+              </Trans>
               <br />
             </p>
           </div>
           <div className="h-10"></div>
           <div>
             <p className="font-base mb-8 text-muted-foreground">
-              Access requires Single Sign-On (SSO) authentication. Use your SSO
-              provider to sign in.{" "}
+              <Trans>
+                Access requires Single Sign-On (SSO) authentication. Use your
+                SSO provider to sign in.
+              </Trans>{" "}
             </p>
             <Button
               variant="highlight"
-              label="Connect with SSO"
+              label={t`Connect with SSO`}
               size="md"
               href={loginUrl}
             />

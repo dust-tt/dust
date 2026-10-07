@@ -19,12 +19,18 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
-const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "All activity",
-  only_mentions: "Only when mentioned",
-  never: "Don't notify me",
+const NOTIFICATION_CONDITION_LABELS: Record<
+  NotificationCondition,
+  MessageDescriptor
+> = {
+  all_messages: msg`All activity`,
+  only_mentions: msg`Only when mentioned`,
+  never: msg`Don't notify me`,
 };
 
 interface PodNotificationMenuProps {
@@ -38,6 +44,7 @@ export function PodNotificationMenu({
   owner,
   shouldWaitBeforeFetching,
 }: PodNotificationMenuProps) {
+  const { t } = useLingui();
   const {
     metadata: defaultNotificationCondition,
     isMetadataLoading: isDefaultNotificationConditionLoading,
@@ -110,7 +117,7 @@ export function PodNotificationMenu({
       <DropdownMenuSubTrigger
         disabled={isLoading || shouldWaitBeforeFetching}
         icon={Bell01}
-        label="Notifications"
+        label={t`Notifications`}
       />
       <DropdownMenuPortal>
         <DropdownMenuSubContent>
@@ -118,7 +125,7 @@ export function PodNotificationMenu({
             {displayedPreferences.map((preference) => (
               <DropdownMenuRadioItem
                 key={preference}
-                label={NOTIFICATION_CONDITION_LABELS[preference]}
+                label={t(NOTIFICATION_CONDITION_LABELS[preference])}
                 value={preference}
                 onClick={() => handleNotificationPreferenceChange(preference)}
               />

@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetWorkspaceUsageStatusResponseBody } from "@app/lib/metronome/user_block";
 import type { GetUserApprovalsResponseBody } from "@app/lib/resources/user_resource";
@@ -176,6 +179,7 @@ export function useDeleteToolApproval() {
 
 export function usePatchUser() {
   const { mutateUser } = useUser();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const patchUser = async (
@@ -218,10 +222,9 @@ export function usePatchUser() {
       return res.json();
     } else {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Error Updating User",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
 
       return null;
@@ -264,6 +267,7 @@ export function useUserMemory({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const memoryFetcher: Fetcher<GetUserMemoryResponseBody> = fetcher;
 
@@ -291,14 +295,13 @@ export function useUserMemory({
       }
 
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Error saving memory",
-        description: errorData.message,
+        error: errorData,
       });
       return false;
     },
-    [owner.sId, sendNotification, mutate]
+    [owner.sId, sendNotification, mutate, sendApiErrorNotification]
   );
 
   return {

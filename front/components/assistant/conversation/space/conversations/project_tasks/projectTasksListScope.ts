@@ -4,6 +4,8 @@ import type {
 } from "@app/types/project_task";
 import { isPodTaskPeriodScope } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 /** Filter for project task list fetching + persisted project UI prefs. */
@@ -17,23 +19,23 @@ export const DEFAULT_TASK_OWNER_FILTER: TaskOwnerFilter = {
   peopleScope: "all_project",
 };
 
-const PERIOD_SCOPE_LABELS: Record<PodTaskPeriodScope, string> = {
-  active: "Open",
-  last_24h: "Done today",
-  last_7d: "Done in the last 7 days",
-  last_30d: "Done in the last 30 days",
+const PERIOD_SCOPE_LABELS: Record<PodTaskPeriodScope, MessageDescriptor> = {
+  active: msg({ message: "Open", context: "task status filter" }),
+  last_24h: msg`Done today`,
+  last_7d: msg`Done in the last 7 days`,
+  last_30d: msg`Done in the last 30 days`,
 };
 
-const PEOPLE_SCOPE_LABELS: Record<PodTaskPeopleScope, string> = {
-  all_project: "Everyone",
-  just_mine: "Mine",
+const PEOPLE_SCOPE_LABELS: Record<PodTaskPeopleScope, MessageDescriptor> = {
+  all_project: msg`Everyone`,
+  just_mine: msg({ message: "Mine", context: "task owner filter" }),
 };
 
-export function periodScopeLabel(scope: PodTaskPeriodScope): string {
+export function periodScopeLabel(scope: PodTaskPeriodScope): MessageDescriptor {
   return PERIOD_SCOPE_LABELS[scope];
 }
 
-export function peopleScopeLabel(scope: PodTaskPeopleScope): string {
+export function peopleScopeLabel(scope: PodTaskPeopleScope): MessageDescriptor {
   return PEOPLE_SCOPE_LABELS[scope];
 }
 

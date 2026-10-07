@@ -1,11 +1,8 @@
 import type { LiveFile } from "@app/lib/api/collab/live_file";
-import {
-  loadLiveDocument,
-  openLiveFile,
-  parseLiveDocumentName,
-} from "@app/lib/api/collab/live_file";
+import { loadLiveDocument, openLiveFile } from "@app/lib/api/collab/live_file";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { parseLiveDocumentName } from "@app/types/collab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";

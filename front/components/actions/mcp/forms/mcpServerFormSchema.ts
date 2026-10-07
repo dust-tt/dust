@@ -17,7 +17,11 @@ import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_ac
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow, MetaRow } from "@app/types/shared/utils/http_headers";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // Tool settings for a single tool.
 export type ToolSettings = {
@@ -212,6 +216,7 @@ export function getMCPServerFormDefaults(
 
 export function getMCPServerFormSchema(
   view: MCPServerViewType,
+  t: Translate,
   options?: {
     existingViewNames?: string[];
     initialName?: string;
@@ -222,7 +227,7 @@ export function getMCPServerFormSchema(
   let schema = z.object({
     name: z
       .string()
-      .min(1, "Name is required.")
+      .min(1, t(msg`Name is required.`))
       .refine(
         (val) => {
           const trimmed = val.trim();
@@ -231,9 +236,9 @@ export function getMCPServerFormSchema(
           }
           return !existingViewNames.includes(trimmed);
         },
-        { message: "This name is already in use." }
+        { message: t(msg`This name is already in use.`) }
       ),
-    description: z.string().min(1, "Description is required."),
+    description: z.string().min(1, t(msg`Description is required.`)),
     isRestrictedToSkills: z.boolean(),
     toolSettings: z.record(
       z.object({

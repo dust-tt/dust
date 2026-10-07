@@ -70,6 +70,7 @@ import {
   UserSquare,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useContext, useRef, useState } from "react";
@@ -174,6 +175,7 @@ export function ConversationMenu({
   displayOpenInBrowser,
   openDetailsInNewTab,
 }: ConversationMenuProps) {
+  const { t } = useLingui();
   const { user, providersHealth } = useAuth();
   const confirm = useContext(ConfirmContext);
 
@@ -341,8 +343,8 @@ export function ConversationMenu({
 
   const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(conversationLink ?? "");
-    sendNotification({ type: "success", title: "Link copied !" });
-  }, [conversationLink, sendNotification]);
+    sendNotification({ type: "success", title: t`Link copied!` });
+  }, [conversationLink, sendNotification, t]);
 
   const openConversationInBrowser = () => {
     window.open(conversationLink, "_blank");
@@ -450,12 +452,12 @@ export function ConversationMenu({
           onFocusOutside={(e) => e.preventDefault()}
         >
           <DropdownMenuItem
-            label="Rename conversation"
+            label={t`Rename conversation`}
             onClick={() => setShowRenameDialog(true)}
             icon={Edit04}
           />
           <DropdownMenuItem
-            label="Branch conversation"
+            label={t`Branch conversation`}
             onClick={() => {
               void branchConversation();
             }}
@@ -464,7 +466,7 @@ export function ConversationMenu({
           />
           {conversation && !isConversationDisplayed && !conversation.unread && (
             <DropdownMenuItem
-              label="Mark as unread"
+              label={t`Mark as unread`}
               onClick={() => void markAsUnread(conversation)}
               icon={EyeOff}
             />
@@ -479,7 +481,7 @@ export function ConversationMenu({
           >
             <DropdownMenuSubTrigger
               icon={ArrowRight}
-              label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
+              label={canMoveOutOfPod ? t`Move to...` : t`Move to Pod`}
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent
@@ -488,7 +490,7 @@ export function ConversationMenu({
                 dropdownHeaders={
                   <DropdownMenuSearchbar
                     name="pod-search"
-                    placeholder="Search Pods"
+                    placeholder={t`Search Pods`}
                     value={podSearchText}
                     onChange={setPodSearchText}
                     autoFocus
@@ -497,7 +499,7 @@ export function ConversationMenu({
               >
                 <DropdownMenuItem
                   icon={Plus}
-                  label="New Pod"
+                  label={t`New Pod`}
                   onClick={() => setIsCreatePodModalOpen(true)}
                 />
                 {canMoveOutOfPod && (
@@ -505,7 +507,7 @@ export function ConversationMenu({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       icon={MessageCircle01}
-                      label="Personal conversations"
+                      label={t`Personal conversations`}
                       onClick={async () =>
                         moveConversationOutOfPod(conversation)
                       }
@@ -513,7 +515,7 @@ export function ConversationMenu({
                   </>
                 )}
                 <DropdownMenuSeparator />
-                {canMoveOutOfPod && <DropdownMenuLabel label="Pods" />}
+                {canMoveOutOfPod && <DropdownMenuLabel label={t`Pods`} />}
                 {filteredPods.length > 0 ? (
                   filteredPods.map((pod) => (
                     <DropdownMenuItem
@@ -527,7 +529,7 @@ export function ConversationMenu({
                   ))
                 ) : (
                   <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
-                    {!!podSearchText ? "No matches" : "No Pods"}
+                    {!!podSearchText ? t`No matches` : t`No Pods`}
                   </div>
                 )}
               </DropdownMenuSubContent>
@@ -536,7 +538,7 @@ export function ConversationMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               icon={UserSquare}
-              label="Participants"
+              label={t`Participants`}
               disabled={
                 !conversationParticipants?.users.length &&
                 !conversationParticipants?.agents.length &&
@@ -548,7 +550,7 @@ export function ConversationMenu({
                 {canJoin && (
                   <>
                     <DropdownMenuItem
-                      label="Join"
+                      label={t({ message: "Join", context: "verb, menu item" })}
                       onClick={joinConversation}
                       icon={PlusCircle}
                     />
@@ -591,14 +593,14 @@ export function ConversationMenu({
           </DropdownMenuSub>
           {displayOpenInBrowser && conversationLink && (
             <DropdownMenuItem
-              label="Open in a browser tab"
+              label={t`Open in a browser tab`}
               onClick={openConversationInBrowser}
               icon={LinkExternal01}
             />
           )}
           {conversationLink && (
             <DropdownMenuItem
-              label="Copy link"
+              label={t`Copy link`}
               onClick={copyConversationLink}
               icon={Link01}
             />
@@ -607,8 +609,8 @@ export function ConversationMenu({
             <DropdownMenuItem
               label={
                 canRestrictUrlAccess
-                  ? "Restrict URL access"
-                  : "Make URL accessible"
+                  ? t`Restrict URL access`
+                  : t`Make URL accessible`
               }
               onClick={() => {
                 void updateConversationUrlAccessMode(
@@ -623,15 +625,14 @@ export function ConversationMenu({
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
-              label="Convert to agent"
+              label={t`Convert to agent`}
               icon={Sidekick}
               disabled={!hasHealthyProviders(providersHealth)}
               onClick={async () => {
                 const confirmed = await confirm({
-                  title: "Shrink-wrap",
-                  message:
-                    "This will open the agent builder and launch Sidekick on this conversation so you can turn it into an agent.",
-                  validateLabel: "Continue",
+                  title: t`Shrink-wrap`,
+                  message: t`This will open the agent builder and launch Sidekick on this conversation so you can turn it into an agent.`,
+                  validateLabel: t`Continue`,
                 });
                 if (confirmed && conversation) {
                   const route = getAgentBuilderRoute(
@@ -646,14 +647,14 @@ export function ConversationMenu({
           )}
           {canLeave && (
             <DropdownMenuItem
-              label="Leave"
+              label={t({ message: "Leave", context: "verb, menu item" })}
               onClick={() => setShowLeaveDialog(true)}
               icon={XClose}
             />
           )}
           {canDelete && (
             <DropdownMenuItem
-              label="Delete"
+              label={t`Delete`}
               onClick={() => setShowDeleteDialog(true)}
               icon={Trash01}
               variant="warning"

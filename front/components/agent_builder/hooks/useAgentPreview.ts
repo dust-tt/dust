@@ -2,7 +2,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useFetcher } from "@app/lib/swr/swr";
@@ -21,7 +21,7 @@ export function useDraftAgent() {
   const { t } = useLingui();
   const { owner, user } = useAgentBuilderContext();
   const { fetcherWithBody } = useFetcher();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
   const lastFormDataRef = useRef<AgentBuilderFormData | null>(null);
@@ -64,10 +64,9 @@ export function useDraftAgent() {
       });
 
       if (!aRes.isOk()) {
-        sendNotification({
+        sendApiErrorNotification({
           title: t`Error saving draft agent`,
-          description: aRes.error.message,
-          type: "error",
+          error: aRes.error,
         });
         setIsSavingDraftAgent(false);
         setDraftCreationFailed(true);
@@ -79,7 +78,7 @@ export function useDraftAgent() {
       setDraftAgent(newDraft);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, user, sendNotification, getValues, fetcherWithBody, t]);
+    }, [owner, user, sendApiErrorNotification, getValues, fetcherWithBody, t]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -114,7 +113,7 @@ export function useDraftConversation({
 }) {
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [conversation, setConversation] = useState<
     ConversationType | undefined
   >();
@@ -173,23 +172,22 @@ export function useDraftConversation({
         return new Ok(undefined);
       }
 
-      sendNotification({
+      sendApiErrorNotification({
         title: result.error.title,
-        description: result.error.message,
-        type: "error",
+        error: result.error.error,
       });
 
       return new Err({
         code: "internal_error",
         name: result.error.title,
-        message: result.error.message,
+        message: result.error.title,
       });
     },
     [
       createConversationWithMessage,
       draftAgent?.sId,
       getDraftAgent,
-      sendNotification,
+      sendApiErrorNotification,
     ]
   );
 

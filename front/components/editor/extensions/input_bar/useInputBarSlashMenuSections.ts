@@ -1,20 +1,20 @@
-import {
-  filterInputBarSlashCommandItems,
-  getInputBarSlashCommandItems,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
+import { getInputBarSlashCommandItems } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
 import type {
   InputBarSlashCommand,
   InputBarSlashMenuRefs,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { isRunCommandSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { LightWorkspaceType } from "@app/types/user";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
-const ATTACH_ONLY_FILES_SECTION_LABEL = "Files";
+const ATTACH_ONLY_FILES_SECTION_LABEL = msg`Files`;
 
 export interface InputBarSlashMenuRootSection {
   label: string;
@@ -55,6 +55,7 @@ export function useInputBarSlashMenuSections({
   isLoading: boolean;
   sections: SlashCommandSection[];
 } {
+  const { t } = useLingui();
   const allCommandItems = useMemo(
     () =>
       getInputBarSlashCommandItems({
@@ -62,12 +63,14 @@ export function useInputBarSlashMenuSections({
         includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
         includePickModel: includePickModelRef.current ?? false,
         includeSelectSpaces: includeSelectSpacesRef.current ?? false,
+        t,
       }),
     [
       includeAttachKnowledgeRef,
       includePickModelRef,
       includeSelectSpacesRef,
       slashCommandsRef,
+      t,
     ]
   );
 
@@ -81,13 +84,11 @@ export function useInputBarSlashMenuSections({
   const sections = useMemo(
     () =>
       buildSlashCommandSections({
-        commandItems: filterInputBarSlashCommandItems(
-          allCommandItems,
-          resolvedQuery
-        ),
+        commandItems: filterSlashCommandItems(allCommandItems, resolvedQuery),
         capabilityItems,
+        t,
       }),
-    [allCommandItems, capabilityItems, resolvedQuery]
+    [allCommandItems, capabilityItems, resolvedQuery, t]
   );
 
   // The browser is the whole menu, so the file upload command rides along at its root.
@@ -101,9 +102,9 @@ export function useInputBarSlashMenuSections({
         item.data.command.id === "upload-file"
     );
     return uploadItems.length > 0
-      ? { label: ATTACH_ONLY_FILES_SECTION_LABEL, items: uploadItems }
+      ? { label: t(ATTACH_ONLY_FILES_SECTION_LABEL), items: uploadItems }
       : undefined;
-  }, [allCommandItems, isAttachOnly]);
+  }, [allCommandItems, isAttachOnly, t]);
 
   return { allCommandItems, attachOnlyRootSection, isLoading, sections };
 }

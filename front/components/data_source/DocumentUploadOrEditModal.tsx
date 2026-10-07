@@ -1,5 +1,8 @@
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   useCreateDataSourceViewDocument,
   useDataSourceViewDocument,
@@ -15,7 +18,6 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { getSupportedNonImageFileExtensions } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
 import { Err } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -81,6 +83,7 @@ export const DocumentUploadOrEditModal = ({
   initialId,
 }: DocumentUploadOrEditModalProps) => {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
@@ -152,10 +155,9 @@ export const DocumentUploadOrEditModal = ({
       },
       onError: (error) => {
         fileUploaderService.resetUpload();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Error fetching document content`,
-          description: normalizeError(error).message,
+          error,
         });
       },
       shouldRetryOnError: false,

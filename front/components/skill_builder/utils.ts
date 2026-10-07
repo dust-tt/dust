@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { PostSkillSuggestionsRequestBody } from "@app/types/api/skills/description_suggestion";
 import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -37,11 +38,12 @@ export async function getSkillDescriptionSuggestion({
 
     if (!res.ok) {
       const errorData = await res.json();
+      if (isAPIErrorResponse(errorData)) {
+        return new Err(errorData.error);
+      }
       return new Err({
         type: "internal_server_error",
-        message:
-          errorData.error?.message ??
-          `HTTP ${res.status}: Failed to get description suggestion`,
+        message: `HTTP ${res.status}: Failed to get description suggestion`,
       });
     }
 

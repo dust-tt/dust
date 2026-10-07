@@ -5,8 +5,8 @@ import {
   isKeyRole,
   KEY_ROLES,
   parseCreditsString,
-  useMonthlyCapCreditsSchema,
-  useMonthlyCapDollarsSchema,
+  getMonthlyCapCreditsSchema,
+  getMonthlyCapDollarsSchema,
 } from "@app/components/workspace/api-keys/utils";
 import { compareStrings } from "@app/lib/i18n/format";
 import type { SpaceType } from "@app/types/space";
@@ -32,30 +32,24 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
-function useFormSchema() {
-  const { t } = useLingui();
-  const monthlyCapDollarsSchema = useMonthlyCapDollarsSchema();
-  const monthlyCapCreditsSchema = useMonthlyCapCreditsSchema();
-
-  return useMemo(
-    () =>
-      z.object({
-        name: z.string().min(1, t`API key name is required`),
-        monthlyCapDollars: monthlyCapDollarsSchema,
-        monthlyCapCredits: monthlyCapCreditsSchema,
-        selectedSpaceIds: z.array(z.string()),
-        role: z.enum(KEY_ROLES),
-      }),
-    [monthlyCapCreditsSchema, monthlyCapDollarsSchema, t]
-  );
+function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    name: z.string().min(1, t(msg`API key name is required`)),
+    monthlyCapDollars: getMonthlyCapDollarsSchema(t),
+    monthlyCapCredits: getMonthlyCapCreditsSchema(t),
+    selectedSpaceIds: z.array(z.string()),
+    role: z.enum(KEY_ROLES),
+  });
 }
 
-type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 interface NewAPIKeyDialogProps {
   spaces: SpaceType[];
@@ -81,7 +75,7 @@ export const NewAPIKeyDialog = ({
   showLegacyUsdMonthlyCap,
 }: NewAPIKeyDialogProps) => {
   const { t } = useLingui();
-  const formSchema = useFormSchema();
+  const formSchema = useMemo(() => getFormSchema(t), [t]);
   const [isOpen, setIsOpen] = useState(false);
   const [spaceSearch, setSpaceSearch] = useState("");
 

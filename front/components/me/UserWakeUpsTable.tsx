@@ -118,7 +118,10 @@ export function UserWakeUpsTable({ owner, onNavigate }: UserWakeUpsTableProps) {
       },
       {
         id: "nextFire",
-        header: t`Next`,
+        header: t({
+          message: "Next",
+          context: "next run, table column header",
+        }),
         enableSorting: false,
         meta: { className: "w-[20%] truncate", headerAlign: "left" },
         cell: (info) => {

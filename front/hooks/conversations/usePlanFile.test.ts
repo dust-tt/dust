@@ -12,7 +12,7 @@ vi.mock("@app/lib/egress/client", () => ({
 
 const mockSendNotification = vi.fn();
 vi.mock("@app/hooks/useNotification", () => ({
-  useSendNotification: () => mockSendNotification,
+  useSendApiErrorNotification: () => mockSendNotification,
 }));
 
 const mockMutate = vi.fn();

@@ -18,7 +18,7 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
@@ -56,6 +56,8 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { useLingui } from "@lingui/react/macro";
 import { useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -156,6 +158,7 @@ export function ConversationContainerVirtuoso({
   suggestion,
   onDismissSuggestion,
 }: ConversationContainerProps) {
+  const { t } = useLingui();
   const conversationIdFromRouter = useActiveConversationId();
   const activeConversationId =
     conversationIdProp !== undefined
@@ -169,7 +172,7 @@ export function ConversationContainerVirtuoso({
 
   const router = useAppRouter();
 
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const { hasFeature } = useFeatureFlags();
   const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
@@ -219,14 +222,13 @@ export function ConversationContainerVirtuoso({
       if (limitCode) {
         setLimitReachedCode(limitCode);
       } else {
-        sendNotification({
+        sendApiErrorNotification({
           title: error.title,
-          description: error.message,
-          type: "error",
+          error: error.error,
         });
       }
     },
-    [sendNotification]
+    [sendApiErrorNotification]
   );
 
   const handleConversationCreation = useCallback(
@@ -260,8 +262,8 @@ export function ConversationContainerVirtuoso({
           case "user_cap_reached":
             limitCode = "user_credits_exhausted";
             break;
-          case "group_limit_reached":
-            limitCode = "group_limit_reached";
+          case "group_shared_usage_limit_reached":
+            limitCode = "group_shared_usage_limit_reached";
             break;
           case "credits_exhausted":
             limitCode = "pool_credits_exhausted";
@@ -308,7 +310,7 @@ export function ConversationContainerVirtuoso({
         return new Err({
           code: "internal_error",
           name: conversationRes.error.title,
-          message: conversationRes.error.message,
+          message: conversationRes.error.title,
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
@@ -342,10 +344,12 @@ export function ConversationContainerVirtuoso({
     ]
   );
 
-  const [greeting, setGreeting] = useState<string>("");
+  const [greetingMessage, setGreetingMessage] =
+    useState<MessageDescriptor | null>(null);
   useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
+    setGreetingMessage(getRandomGreetingForName(user.firstName));
   }, [user]);
+  const greeting = greetingMessage ? t(greetingMessage) : "";
 
   const shouldReduceMotion = useReducedMotion();
 
@@ -358,7 +362,6 @@ export function ConversationContainerVirtuoso({
     goToDiscover,
     goToHome,
     inputBarRef,
-    isOpeningDiscover,
     isScrollLocked,
     pullProgress,
     scrollerRef,
@@ -443,7 +446,7 @@ export function ConversationContainerVirtuoso({
                     variant="ghost"
                     size="xs"
                     icon={XClose}
-                    tooltip="Dismiss"
+                    tooltip={t`Dismiss`}
                     onClick={() => onDismissSuggestion?.(suggestion.id)}
                     className="text-highlight-600"
                   />
@@ -461,8 +464,8 @@ export function ConversationContainerVirtuoso({
 
   const body = (
     <DropzoneContainer
-      description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-      title="Attach files to the conversation"
+      description={t`Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here.`}
+      title={t`Attach files to the conversation`}
     >
       {activeConversationId ? (
         <ConversationViewer
@@ -491,10 +494,7 @@ export function ConversationContainerVirtuoso({
                   workspaceId={owner.sId}
                   pullProgress={pullProgress}
                 >
-                  <DiscoverButton
-                    onClick={goToDiscover}
-                    isOpening={isOpeningDiscover}
-                  />
+                  <DiscoverButton onClick={goToDiscover} />
                 </DiscoverButtonTeaser>
               </div>
             </div>

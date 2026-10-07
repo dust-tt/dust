@@ -1,0 +1,88 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:12+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Subject is required."
+msgstr "L’objet est obligatoire."
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Body is required."
+msgstr "Le message est obligatoire."
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email header"
+msgid "From"
+msgstr "De"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email header"
+msgid "To"
+msgstr "À"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email header"
+msgid "Cc"
+msgstr "Cc"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email header"
+msgid "Bcc"
+msgstr "Cci"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Draft reply"
+msgstr "Brouillon de réponse"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "New draft"
+msgstr "Nouveau brouillon"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email compose title"
+msgid "Reply"
+msgstr "Réponse"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "New message"
+msgstr "Nouveau message"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Subject"
+msgstr "Objet"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Kept from the original message"
+msgstr "Conservé du message d’origine"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email body"
+msgid "Body"
+msgstr "Message"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Decline"
+msgstr "Refuser"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Always allow"
+msgstr "Toujours autoriser"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Allow once"
+msgstr "Autoriser une fois"
+
+#: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgid "Allow"
+msgstr "Autoriser"

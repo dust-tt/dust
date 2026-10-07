@@ -1,5 +1,6 @@
 import { useClientType } from "@app/lib/context/clientType";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
+import { Trans } from "@lingui/react/macro";
 
 interface UserHandleProps {
   user: {
@@ -18,7 +19,11 @@ export function UserHandle({ user }: UserHandleProps) {
   };
 
   if (!user.name) {
-    return <span>Unknown User</span>;
+    return (
+      <span>
+        <Trans>Unknown user</Trans>
+      </span>
+    );
   }
 
   if (clientType === "extension") {

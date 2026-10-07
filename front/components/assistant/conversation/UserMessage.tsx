@@ -33,7 +33,6 @@ import {
   isAgentMention,
   isRichAgentMention,
 } from "@app/types/assistant/mentions";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
@@ -57,6 +56,8 @@ import {
   Trash01,
   Zap,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/react";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
@@ -78,6 +79,7 @@ function UserMessageEditor({
   isSaving,
   onSave,
 }: UserMessageEditorProps) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
 
   if (!editor) {
@@ -113,13 +115,13 @@ function UserMessageEditor({
           variant="ghost-secondary"
           size="xs"
           onClick={() => setShouldShowEditor(false)}
-          label="Cancel"
+          label={t`Cancel`}
         />
         <Button
           variant="highlight"
           size="xs"
           onClick={onSave}
-          label="Save"
+          label={t`Save`}
           isLoading={isSaving}
         />
       </div>
@@ -154,6 +156,7 @@ export function UserMessage({
   isProjectArchived = false,
   setLimitReachedCode,
 }: UserMessageProps) {
+  const { t } = useLingui();
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
     useHover();
@@ -258,16 +261,21 @@ export function UserMessage({
 
     // Only mention the agent reply when the message actually triggered one.
     const hasAgentReply = message.richMentions.some(isRichAgentMention);
-    const replyNote = hasAgentReply
-      ? " The agent's reply will also be removed."
-      : "";
+    let confirmMessage: string;
+    if (isCurrentUser) {
+      confirmMessage = hasAgentReply
+        ? t`Are you sure you want to delete this message? The agent's reply will also be removed. This action cannot be undone.`
+        : t`Are you sure you want to delete this message? This action cannot be undone.`;
+    } else {
+      confirmMessage = hasAgentReply
+        ? t`Are you sure you want to delete this user's message? The agent's reply will also be removed. This will be reflected for all participants.`
+        : t`Are you sure you want to delete this user's message? This will be reflected for all participants.`;
+    }
 
     const confirmed = await confirm({
-      title: isCurrentUser ? "Delete your message" : "Delete user message",
-      message: isCurrentUser
-        ? `Are you sure you want to delete this message?${replyNote} This action cannot be undone.`
-        : `Are you sure you want to delete this user's message?${replyNote} This will be reflected for all participants.`,
-      validateLabel: "Delete",
+      title: isCurrentUser ? t`Delete your message` : t`Delete user message`,
+      message: confirmMessage,
+      validateLabel: t`Delete`,
       validateVariant: "warning",
     });
 
@@ -293,6 +301,7 @@ export function UserMessage({
     message.sId,
     message.richMentions,
     methods,
+    t,
   ]);
 
   const handleEditMessage = () => {
@@ -353,7 +362,9 @@ export function UserMessage({
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
-                        <span className="text-xs text-faint">(edited)</span>
+                        <span className="text-xs text-faint">
+                          <Trans>(edited)</Trans>
+                        </span>
                       )}
                     </>
                   ) : undefined
@@ -376,7 +387,9 @@ export function UserMessage({
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
-                        <span className="text-xs text-faint">(edited)</span>
+                        <span className="text-xs text-faint">
+                          <Trans>(edited)</Trans>
+                        </span>
                       )}
                     </>
                   ) : undefined
@@ -418,7 +431,9 @@ export function UserMessage({
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
-                    <div className="text-faint text-sm">(no message)</div>
+                    <div className="text-faint text-sm">
+                      <Trans>(no message)</Trans>
+                    </div>
                   ) : (
                     <div
                       className={cn(
@@ -465,7 +480,10 @@ export function UserMessage({
           )}
         >
           <Icon visual={Clock} size="xs" />
-          {`Message${pluralize(pendingMessageCount)} queued`}
+          {t`${plural(pendingMessageCount, {
+            one: "Message queued",
+            other: "Messages queued",
+          })}`}
         </div>
       )}
     </>
@@ -485,25 +503,39 @@ function getChipDateFormat(date: Date) {
 
 function Label({ message }: { message?: UserMessageType }) {
   if (message?.context.lastTriggerRunAt) {
+    const currentExecutionDate = message?.created
+      ? getChipDateFormat(new Date(message?.created))
+      : null;
+    const previousRunDate = getChipDateFormat(
+      new Date(message?.context.lastTriggerRunAt)
+    );
     return (
       <div className="flex flex-col gap-1 text-sm">
-        <span className="font-bold">Scheduled and sent automatically</span>
-        {message?.created && (
+        <span className="font-bold">
+          <Trans>Scheduled and sent automatically</Trans>
+        </span>
+        {currentExecutionDate && (
           <span>
-            <span className="font-semibold">Current execution</span>:{" "}
-            {getChipDateFormat(new Date(message?.created))}
+            <Trans>
+              <span className="font-semibold">Current execution</span>:{" "}
+              {currentExecutionDate}
+            </Trans>
           </span>
         )}
-        {message?.context.lastTriggerRunAt && (
-          <span>
+        <span>
+          <Trans>
             <span className="font-semibold">Previous run</span>:{" "}
-            {getChipDateFormat(new Date(message?.context.lastTriggerRunAt))}
-          </span>
-        )}
+            {previousRunDate}
+          </Trans>
+        </span>
       </div>
     );
   } else {
-    return <span className="font-bold">Triggered and sent automatically</span>;
+    return (
+      <span className="font-bold">
+        <Trans>Triggered and sent automatically</Trans>
+      </span>
+    );
   }
 }
 
@@ -578,6 +610,7 @@ function ActionMenu({
   conversationId,
   owner,
 }: ActionMenuProps) {
+  const { t } = useLingui();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const sendNotification = useSendNotification();
@@ -602,7 +635,7 @@ function ActionMenu({
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
       type: "success",
-      title: "Message link copied to clipboard",
+      title: t`Message link copied to clipboard`,
     });
   };
 
@@ -610,14 +643,14 @@ function ActionMenu({
     ? [
         {
           icon: Link01,
-          label: "Copy message link",
+          label: t`Copy message link`,
           onClick: handleCopyMessageLink,
         },
         ...(canEdit
           ? [
               {
                 icon: Edit04,
-                label: "Edit message",
+                label: t`Edit message`,
                 onClick: handleEditMessage,
               },
             ]
@@ -626,7 +659,7 @@ function ActionMenu({
           ? [
               {
                 icon: Trash01,
-                label: "Delete message",
+                label: t`Delete message`,
                 onClick: handleDeleteMessage,
               },
             ]
@@ -671,7 +704,7 @@ function ActionMenu({
                   icon={DotsHorizontal}
                   size="icon-xs"
                   variant="outline"
-                  aria-label="Message actions"
+                  aria-label={t`Message actions`}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>

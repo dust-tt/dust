@@ -1,0 +1,114 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 12:06+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown.tsx
+msgid "Nothing to browse here"
+msgstr "Nothing to browse here"
+
+#: front/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch.tsx
+msgid "Conversation file"
+msgstr "Conversation file"
+
+#: front/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch.tsx
+msgid "{fileKind} in \"{projectName}\" knowledge"
+msgstr "{fileKind} in \"{projectName}\" knowledge"
+
+#: front/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch.tsx
+msgid "{fileKind} in Pod knowledge"
+msgstr "{fileKind} in Pod knowledge"
+
+#: front/components/editor/extensions/shared/slash_suggestion/PickModelSubMenuDropdown.tsx
+msgid "No models found"
+msgstr "No models found"
+
+#: front/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: front/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown.tsx
+msgid "No commands found"
+msgstr "No commands found"
+
+#: front/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown.tsx
+msgid "Back"
+msgstr "Back"
+
+#: front/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections.ts
+msgid "Commands"
+msgstr "Commands"
+
+#: front/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections.ts
+msgid "Capabilities"
+msgstr "Capabilities"
+
+#: front/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands.ts
+msgid "Add"
+msgstr "Add"
+
+#: front/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands.ts
+msgid "Loading…"
+msgstr "Loading…"
+
+#: front/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands.ts
+msgid "Show more"
+msgstr "Show more"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation.ts
+msgid "Type to search"
+msgstr "Type to search"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Search knowledge and reference conversation or Pod files"
+msgstr "Search knowledge and reference conversation or Pod files"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Attach"
+msgstr "Attach"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Use company knowledge or reference files for context."
+msgstr "Use company knowledge or reference files for context."
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Knowledge search interface"
+msgstr "Knowledge search interface"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Override the model used"
+msgstr "Override the model used"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Pick model"
+msgstr "Pick model"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Give the agent access to additional spaces"
+msgstr "Give the agent access to additional spaces"
+
+#: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
+msgid "Spaces"
+msgstr "Spaces"
+
+#: front/components/editor/extensions/shared/slash_suggestion/useAttachContextSearchSections.tsx
+msgid "No matches here"
+msgstr "No matches here"
+
+#: front/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems.ts
+msgid "Type at least 2 characters to search"
+msgstr "Type at least 2 characters to search"
+
+#: front/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems.ts
+msgid "No results found"
+msgstr "No results found"

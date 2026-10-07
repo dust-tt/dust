@@ -1,11 +1,11 @@
 const TITLE_REGEX = /^#\s+(.+)$/m;
 
-export function extractPlanTitle(content: string | null): string {
+export function extractPlanTitle(content: string | null): string | null {
   if (!content) {
-    return "Untitled plan";
+    return null;
   }
   const match = content.match(TITLE_REGEX);
-  return match ? match[1].trim() : "Untitled plan";
+  return match ? match[1].trim() : null;
 }
 
 // Task markers: numbered `1. [ ]` items (current template) or bulleted `- [ ]` ones (older plans).

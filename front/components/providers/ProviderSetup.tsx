@@ -11,6 +11,9 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
@@ -19,7 +22,7 @@ import { useSWRConfig } from "swr";
 type ProviderField = {
   name: string;
   label?: string;
-  placeholder: string;
+  placeholder: MessageDescriptor;
   type?: string;
 };
 
@@ -27,19 +30,19 @@ type ProviderConfig = {
   title: string;
   fields: {
     name: string;
-    placeholder: string;
+    placeholder: MessageDescriptor;
     type?: string;
   }[];
   instructions: React.ReactNode;
 };
 
-export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
-  openai: {
-    title: "OpenAI",
-    fields: [{ name: "api_key", placeholder: "OpenAI API Key" }],
-    instructions: (
-      <>
-        <p>
+const apiKeyPlaceholder = (provider: string) => msg`${provider} API key`;
+
+function OpenAIInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           To use OpenAI models you must provide your API key. It can be found{" "}
           <a
             className="font-bold text-highlight-600 hover:text-highlight-500"
@@ -49,38 +52,41 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             here
           </a>
           .
-        </p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  azure_openai: {
-    title: "Azure OpenAI",
-    fields: [
-      { name: "endpoint", placeholder: "Azure OpenAI Endpoint" },
-      { name: "api_key", placeholder: "Azure OpenAI API Key" },
-    ],
-    instructions: (
-      <>
-        <p>
-          To use Azure OpenAI models you must provide your API key and Endpoint.
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function AzureOpenAIInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
+          To use Azure OpenAI models you must provide your API key and endpoint.
           They can be found in the left menu of your OpenAI Azure Resource
           portal (menu item `Keys and Endpoint`).
-        </p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  anthropic: {
-    title: "Anthropic",
-    fields: [{ name: "api_key", placeholder: "Anthropic API Key" }],
-    instructions: (
-      <>
-        <p>
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function AnthropicInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           To use Anthropic models you must provide your API key. It can be found{" "}
           <a
             className="font-bold text-highlight-600 hover:text-highlight-500"
@@ -88,21 +94,24 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             target="_blank"
           >
             here
-          </a>
-          &nbsp;(you can create a new key specifically for Dust).
-        </p>
-        <p className="mt-2">
+          </a>{" "}
+          (you can create a new key specifically for Dust).
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  mistral: {
-    title: "Mistral AI",
-    fields: [{ name: "api_key", placeholder: "Mistral AI API Key" }],
-    instructions: (
-      <>
-        <p>
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function MistralInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           To use Mistral AI models you must provide your API key. It can be
           found{" "}
           <a
@@ -111,21 +120,24 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             target="_blank"
           >
             here
-          </a>
-          &nbsp;(you can create a new key specifically for Dust).
-        </p>
-        <p className="mt-2">
+          </a>{" "}
+          (you can create a new key specifically for Dust).
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  google_ai_studio: {
-    title: "Google AI Studio",
-    fields: [{ name: "api_key", placeholder: "Google AI Studio API Key" }],
-    instructions: (
-      <>
-        <p>
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function GoogleAIStudioInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           To use Google AI Studio models you must provide your API key. It can
           be found{" "}
           <a
@@ -134,45 +146,54 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             target="_blank"
           >
             here
-          </a>
-          &nbsp;(you can create a new key specifically for Dust).
-        </p>
-        <p className="mt-2">
+          </a>{" "}
+          (you can create a new key specifically for Dust).
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  deepseek: {
-    title: "Deepseek",
-    fields: [{ name: "api_key", placeholder: "Deepseek API Key" }],
-    instructions: (
-      <>
-        <p>To use Deepseek models you must provide your API key.</p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function DeepseekInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>To use Deepseek models you must provide your API key.</Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  fireworks: {
-    title: "Fireworks",
-    fields: [{ name: "api_key", placeholder: "Fireworks API Key" }],
-    instructions: (
-      <>
-        <p>To use Fireworks models you must provide your API key.</p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function FireworksInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>To use Fireworks models you must provide your API key.</Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  xai: {
-    title: "xAI",
-    fields: [{ name: "api_key", placeholder: "xAI API Key" }],
-    instructions: (
-      <>
-        <p>
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function XAIInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           To use xAI's Grok models you must provide your API key. It can be
           found{" "}
           <a
@@ -183,22 +204,22 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             here
           </a>
           .
-        </p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-};
+        </Trans>
+      </p>
+    </>
+  );
+}
 
-export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
-  serpapi: {
-    title: "SerpAPI Search",
-    fields: [{ name: "api_key", placeholder: "SerpAPI API Key" }],
-    instructions: (
-      <>
-        <p>
+function SerpAPIInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           SerpAPI lets you search Google (and other search engines). To use
           SerpAPI you must provide your API key. It can be found{" "}
           <a
@@ -208,19 +229,23 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           >
             here
           </a>
-        </p>
-        <p className="mt-2">
+          .
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  serper: {
-    title: "Serper Search",
-    fields: [{ name: "api_key", placeholder: "Serper API Key" }],
-    instructions: (
-      <>
-        <p>
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function SerperInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           Serper lets you search Google (and other search engines). To use
           Serper you must provide your API key. It can be found{" "}
           <a
@@ -230,19 +255,23 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
           >
             here
           </a>
-        </p>
-        <p className="mt-2">
+          .
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
-  browserlessapi: {
-    title: "Browserless API",
-    fields: [{ name: "api_key", placeholder: "Browserless API Key" }],
-    instructions: (
-      <>
-        <p>
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+function BrowserlessInstructions() {
+  return (
+    <>
+      <p>
+        <Trans>
           Browserless lets you use headless browsers to scrape web content. To
           use Browserless, you must provide your API key. It can be found{" "}
           <a
@@ -253,16 +282,88 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             here
           </a>
           .
-        </p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           Note that it generally takes <span className="font-bold">5 mins</span>{" "}
           for the API key to become active (an email is sent when it's ready).
-        </p>
-        <p className="mt-2">
+        </Trans>
+      </p>
+      <p className="mt-2">
+        <Trans>
           We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
+        </Trans>
+      </p>
+    </>
+  );
+}
+
+export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  openai: {
+    title: "OpenAI",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("OpenAI") }],
+    instructions: <OpenAIInstructions />,
+  },
+  azure_openai: {
+    title: "Azure OpenAI",
+    fields: [
+      { name: "endpoint", placeholder: msg`Azure OpenAI endpoint` },
+      { name: "api_key", placeholder: apiKeyPlaceholder("Azure OpenAI") },
+    ],
+    instructions: <AzureOpenAIInstructions />,
+  },
+  anthropic: {
+    title: "Anthropic",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("Anthropic") }],
+    instructions: <AnthropicInstructions />,
+  },
+  mistral: {
+    title: "Mistral AI",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("Mistral AI") }],
+    instructions: <MistralInstructions />,
+  },
+  google_ai_studio: {
+    title: "Google AI Studio",
+    fields: [
+      { name: "api_key", placeholder: apiKeyPlaceholder("Google AI Studio") },
+    ],
+    instructions: <GoogleAIStudioInstructions />,
+  },
+  deepseek: {
+    title: "Deepseek",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("Deepseek") }],
+    instructions: <DeepseekInstructions />,
+  },
+  fireworks: {
+    title: "Fireworks",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("Fireworks") }],
+    instructions: <FireworksInstructions />,
+  },
+  xai: {
+    title: "xAI",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("xAI") }],
+    instructions: <XAIInstructions />,
+  },
+};
+
+export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  serpapi: {
+    title: "SerpAPI Search",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("SerpAPI") }],
+    instructions: <SerpAPIInstructions />,
+  },
+  serper: {
+    title: "Serper Search",
+    fields: [{ name: "api_key", placeholder: apiKeyPlaceholder("Serper") }],
+    instructions: <SerperInstructions />,
+  },
+  browserlessapi: {
+    title: "Browserless API",
+    fields: [
+      { name: "api_key", placeholder: apiKeyPlaceholder("Browserless") },
+    ],
+    instructions: <BrowserlessInstructions />,
   },
 };
 
@@ -291,6 +392,7 @@ export function ProviderSetup({
   isOpen,
   onClose,
 }: ProviderSetupProps) {
+  const { t } = useLingui();
   const { mutate } = useSWRConfig();
   const [values, setValues] = useState<Record<string, string>>({});
   const [testError, setTestError] = useState("");
@@ -320,7 +422,7 @@ export function ProviderSetup({
 
     const check = await checkProvider(owner, providerId, partialConfig);
     if (!check.ok) {
-      setTestError(check.error || "Unknown error");
+      setTestError(check.error || t`Unknown error`);
       setTestSuccessful(false);
     } else {
       setTestError("");
@@ -363,9 +465,8 @@ export function ProviderSetup({
           </label>
         )}
         <Input
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           type={field.type || "text"}
-          placeholder={field.placeholder}
+          placeholder={t(field.placeholder)}
           value={values[field.name]}
           onChange={(e) => {
             setTestSuccessful(false);
@@ -383,17 +484,19 @@ export function ProviderSetup({
     ? {
         label: enabled
           ? enableRunning
-            ? "Updating..."
-            : "Update"
+            ? t`Updating...`
+            : t`Update`
           : enableRunning
-            ? "Enabling..."
-            : "Enable",
+            ? t`Enabling...`
+            : t`Enable`,
         variant: "primary" as const,
         disabled: enableRunning,
         onClick: handleEnable,
       }
     : {
-        label: testRunning ? "Testing..." : "Test",
+        label: testRunning
+          ? t`Testing...`
+          : t({ message: "Test", context: "verb, button label" }),
         variant: "primary" as const,
         disabled: testDisabled,
         onClick: async (event: MouseEvent) => {
@@ -402,15 +505,18 @@ export function ProviderSetup({
         },
       };
 
+  const errorDetails = JSON.stringify(testError);
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {instructions || (
-              <p>Provide the necessary configuration for {title}.</p>
+              <p>
+                <Trans>Provide the necessary configuration for {title}.</Trans>
+              </p>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -421,13 +527,12 @@ export function ProviderSetup({
             <div className="text-sm">
               {testError ? (
                 <span className="text-warning">
-                  Error: {JSON.stringify(testError)}
+                  <Trans>Error: {errorDetails}</Trans>
                 </span>
               ) : testSuccessful ? (
                 <span className="text-green-600">
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {testSuccessMessage ||
-                    `Test succeeded! You can now enable ${title}.`}
+                    t`Test succeeded! You can now enable ${title}.`}
                 </span>
               ) : (
                 <span>&nbsp;</span>
@@ -440,12 +545,12 @@ export function ProviderSetup({
           leftButtonProps={
             enabled
               ? {
-                  label: "Disable",
+                  label: t`Disable`,
                   variant: "warning",
                   onClick: handleDisable,
                 }
               : {
-                  label: "Cancel",
+                  label: t`Cancel`,
                   variant: "outline",
                 }
           }

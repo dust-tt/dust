@@ -1,5 +1,5 @@
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { z } from "zod";
 
@@ -575,7 +575,9 @@ export function getProviderRequiredOAuthCredentialInputs({
       // platform_actions uses static credentials via the registry.
       return null;
     default:
-      assertNever(provider);
+      // Reached on the client when the server knows a provider this build does not.
+      assertNeverAndIgnore(provider);
+      return null;
   }
 }
 

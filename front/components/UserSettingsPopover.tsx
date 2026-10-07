@@ -146,25 +146,19 @@ function SectionContent({
 
 // ─── Personal Information ─────────────────────────────────────────────────────
 
-function usePersonalInfoSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.object({
-        firstName: z.string().min(1, t`First name is required.`),
-        lastName: z.string().min(1, t`Last name is required.`),
-        profilePictureUrl: z.string().nullable(),
-      }),
-    [t]
-  );
+function getPersonalInfoSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    firstName: z.string().min(1, t(msg`First name is required.`)),
+    lastName: z.string().min(1, t(msg`Last name is required.`)),
+    profilePictureUrl: z.string().nullable(),
+  });
 }
 
-type PersonalInfoType = z.infer<ReturnType<typeof usePersonalInfoSchema>>;
+type PersonalInfoType = z.infer<ReturnType<typeof getPersonalInfoSchema>>;
 
 function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   const { t } = useLingui();
-  const personalInfoSchema = usePersonalInfoSchema();
+  const personalInfoSchema = useMemo(() => getPersonalInfoSchema(t), [t]);
   const { user, isUserLoading } = useUser();
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";

@@ -16,6 +16,7 @@ import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -122,10 +123,13 @@ const ACCESS_FILTER_OPTIONS: {
   { id: "hidden", name: msg`Not published` },
 ];
 
-export function getModelFilterDisplayName(modelId: string): string {
+export function getModelFilterDisplayName(
+  modelId: string,
+  t: Translate
+): string {
   const tierId = getTierIdForMetaModelId(modelId);
   if (tierId) {
-    return getModelTier(tierId).name;
+    return t(getModelTier(tierId).name);
   }
   return (
     getSupportedModelConfigs().find((model) => model.modelId === modelId)
@@ -218,7 +222,7 @@ export function getSearchFilterOptions(
         .map(({ modelId }): SearchFilterOption => ({
           category: "model",
           id: modelId,
-          name: getModelFilterDisplayName(modelId),
+          name: getModelFilterDisplayName(modelId, t),
           disabled: false,
         }))
         .toSorted((a, b) => compareStrings(a.name, b.name));
@@ -252,6 +256,45 @@ export function getSearchFilterOptions(
     case "usage":
       return [];
   }
+}
+
+export interface SearchFilterPreset<Category extends SearchFilterCategory> {
+  category: Category;
+  categoryLabel: string;
+  options: SearchFilterOption[];
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] search-filter-presets
+ * Presets MUST be offered for every listed category they apply to, whatever the current selection:
+ * `FilterSummaryChips` hides a preset while all its options are selected. The "Editor is Me"
+ * preset MUST select the current user's editor option, named as `getSearchFilterOptions` names it.
+ */
+export function getSearchFilterPresets<Category extends SearchFilterCategory>({
+  categories,
+  currentUser,
+  t,
+}: {
+  categories: readonly Category[];
+  currentUser: UserType;
+  t: Translate;
+}): SearchFilterPreset<Category>[] {
+  return removeNulls(
+    categories.map((category) =>
+      category === "editor"
+        ? {
+            category,
+            categoryLabel: getSearchFilterCategorySingularLabels(t).editor,
+            options: getSearchFilterOptions(
+              "editor",
+              { editors: [currentUser] },
+              currentUser.sId,
+              t
+            ),
+          }
+        : null
+    )
+  );
 }
 
 export function getSearchFilterIds<Category extends SearchFilterCategory>(

@@ -11,6 +11,7 @@ import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 export type AttachContextSlashMenuItem =
@@ -68,6 +69,7 @@ export function useAttachContextSlashMenuItems({
   spaceId?: string | null;
   useCase: ContextSlashSearchUseCase;
 }) {
+  const { t } = useLingui();
   const includeFiles =
     useCase === "conversation-input" &&
     (Boolean(conversationId) || Boolean(spaceId));
@@ -168,8 +170,8 @@ export function useAttachContextSlashMenuItems({
     (hasMinimalQuery && (isDebouncing || isSearchLoading));
 
   const emptyMessage = !hasMinimalQuery
-    ? "Type at least 2 characters to search"
-    : "No results found";
+    ? t`Type at least 2 characters to search`
+    : t`No results found`;
 
   return {
     emptyMessage,

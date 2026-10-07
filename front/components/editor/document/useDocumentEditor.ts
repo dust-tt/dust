@@ -2,25 +2,31 @@ import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
-import { documentExtensions } from "@app/components/editor/document/extensions";
+import {
+  getDocumentJSONComments,
+  withDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
+import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
-import type { JSONContent } from "@tiptap/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
+import type { AnyExtension, JSONContent } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
-const SAVE_ERROR_MESSAGE =
-  "Could not save. Your changes are still here. Try again.";
+const SAVE_ERROR_MESSAGE = msg`Could not save. Your changes are still here. Try again.`;
 
 /**
  * @cc [owner:PopDaph,label:error-handling] document-save-callback-errors
@@ -29,12 +35,13 @@ const SAVE_ERROR_MESSAGE =
  */
 const persistDocument = async (
   persist: NonNullable<DocumentProps["onSave"]>,
-  content: string
+  content: string,
+  failureMessage: string
 ): Promise<DocumentSaveResult> => {
   try {
     return await persist(content);
   } catch {
-    return new Err(SAVE_ERROR_MESSAGE);
+    return new Err(failureMessage);
   }
 };
 
@@ -44,6 +51,13 @@ interface UseDocumentEditorProps {
   autosaveDebounceMs: number;
   onSave: DocumentProps["onSave"];
   onStateChange: DocumentProps["onStateChange"];
+  /** Binds the editor to a synced shared document instead of the file's content. */
+  live?: {
+    /** The live extensions, bound to the shared document. */
+    extensions: AnyExtension[];
+    /** Editing pauses while the connection is down. */
+    connected: boolean;
+  };
 }
 
 /**
@@ -64,13 +78,22 @@ interface UseDocumentEditorProps {
  * saves. Cmd/Ctrl+S MUST allow an immediate save. Parent renders and callback identity changes
  * MUST NOT restart the debounce. Saves MUST use the latest committed callback.
  */
+/**
+ * @cc [owner:PopDaph,label:product] document-live-editing
+ * A live editor MUST edit the shared document only: it MUST NOT save, autosave or report a
+ * draft, and it is editable only while connected. It shows the file's comment threads, which
+ * can be stale; keeping comment marks without a thread is up to the live extensions.
+ */
 export const useDocumentEditor = ({
   initialContent,
   readOnly,
   autosaveDebounceMs,
   onSave,
   onStateChange,
+  live,
 }: UseDocumentEditorProps) => {
+  const { t } = useLingui();
+  const saveErrorMessage = t(SAVE_ERROR_MESSAGE);
   const [initial] = useState(() => loadDfm(initialContent));
   // Captured with the parse: a later source must not show under the reason this one was refused.
   const [unsupported] = useState(() =>
@@ -81,8 +104,18 @@ export const useDocumentEditor = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
-  const editable = !readOnly && onSave !== undefined && initial.isOk();
-  const persistenceRef = useRef({ onSave, onStateChange, editable });
+  const editable =
+    !readOnly &&
+    initial.isOk() &&
+    (live ? live.connected : onSave !== undefined);
+  // A live editor never saves: the session owns the file.
+  const persist = live ? undefined : onSave;
+  const persistenceRef = useRef({
+    onSave: persist,
+    onStateChange,
+    editable,
+    saveErrorMessage,
+  });
   const latestRef = useRef<{ document: JSONContent; content: string } | null>(
     null
   );
@@ -90,29 +123,50 @@ export const useDocumentEditor = ({
   const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
 
   useLayoutEffect(() => {
-    persistenceRef.current = { onSave, onStateChange, editable };
-  }, [onSave, onStateChange, editable]);
+    persistenceRef.current = {
+      onSave: persist,
+      onStateChange,
+      editable,
+      saveErrorMessage,
+    };
+  }, [persist, onStateChange, editable, saveErrorMessage]);
+
+  const savedExtensions = useMemo(() => buildDocumentEditorExtensions(t), [t]);
 
   const editor = useEditor({
-    extensions: documentExtensions,
-    content: initial.isOk() ? initial.value.content : "",
+    extensions: live?.extensions ?? savedExtensions,
+    // A live body comes from the shared document; only the threads come from the file.
+    content: !initial.isOk()
+      ? ""
+      : live
+        ? withDocumentJSONComments(
+            { type: "doc", content: [{ type: "paragraph" }] },
+            getDocumentJSONComments(initial.value.content)
+          )
+        : initial.value.content,
     contentType: "json",
     immediatelyRender: false,
     editable,
     editorProps: {
       attributes: {
         role: "textbox",
-        "aria-label": "Document content",
+        "aria-label": t`Document content`,
         "aria-multiline": "true",
         class: cn(
           "min-h-96 text-base leading-7 wrap-anywhere caret-foreground outline-none [&>:first-child]:mt-0",
           "[&>h1:first-child]:mb-6 [&>h1:first-child]:heading-3xl @sm:[&>h1:first-child]:heading-4xl",
           "[&_.is-empty]:before:pointer-events-none [&_.is-empty]:before:float-left [&_.is-empty]:before:h-0 [&_.is-empty]:before:text-muted-foreground [&_.is-empty]:before:content-[attr(data-placeholder)]",
-          "[&_h1.is-empty]:before:text-foreground/35 print:[&_.is-empty]:before:hidden"
+          "[&_h1.is-empty]:before:text-foreground/35 print:[&_.is-empty]:before:hidden",
+          // Other people's carets in a live document; their color comes inline.
+          String.raw`[&_.collaboration-carets\_\_caret]:pointer-events-none [&_.collaboration-carets\_\_caret]:relative [&_.collaboration-carets\_\_caret]:-mx-px [&_.collaboration-carets\_\_caret]:border-x [&_.collaboration-carets\_\_caret]:[word-break:normal]`,
+          String.raw`[&_.collaboration-carets\_\_label]:absolute [&_.collaboration-carets\_\_label]:-top-[1.4em] [&_.collaboration-carets\_\_label]:-left-px [&_.collaboration-carets\_\_label]:rounded-[3px_3px_3px_0] [&_.collaboration-carets\_\_label]:px-1 [&_.collaboration-carets\_\_label]:py-px [&_.collaboration-carets\_\_label]:text-xs [&_.collaboration-carets\_\_label]:leading-normal [&_.collaboration-carets\_\_label]:font-semibold [&_.collaboration-carets\_\_label]:whitespace-nowrap [&_.collaboration-carets\_\_label]:text-white [&_.collaboration-carets\_\_label]:select-none`
         ),
       },
     },
     onCreate: ({ editor }) => {
+      if (live) {
+        return;
+      }
       // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
       const document = editor.getJSON();
@@ -156,7 +210,11 @@ export const useDocumentEditor = ({
   useEffect(
     () => () => {
       const latest = latestRef.current;
-      const { onSave: persist, editable: canSave } = persistenceRef.current;
+      const {
+        onSave: persist,
+        editable: canSave,
+        saveErrorMessage: failureMessage,
+      } = persistenceRef.current;
       if (!persist || !canSave || !initial.isOk() || latest === null) {
         return;
       }
@@ -168,7 +226,7 @@ export const useDocumentEditor = ({
         }
         const serialized = saveDfm(envelope, latest.document);
         if (serialized.isOk()) {
-          await persistDocument(persist, serialized.value);
+          await persistDocument(persist, serialized.value, failureMessage);
         }
       };
       void flush();
@@ -177,7 +235,11 @@ export const useDocumentEditor = ({
   );
 
   const save = useCallback(async () => {
-    const { onSave: persist, editable: canSave } = persistenceRef.current;
+    const {
+      onSave: persist,
+      editable: canSave,
+      saveErrorMessage: failureMessage,
+    } = persistenceRef.current;
     const savedContent = persistedRef.current;
 
     if (
@@ -210,7 +272,11 @@ export const useDocumentEditor = ({
 
     let result: DocumentSaveResult;
     try {
-      const inflight = persistDocument(persist, serialized.value);
+      const inflight = persistDocument(
+        persist,
+        serialized.value,
+        failureMessage
+      );
       inflightRef.current = inflight;
       result = await inflight;
     } finally {
@@ -225,7 +291,7 @@ export const useDocumentEditor = ({
     }
 
     if (JSON.stringify(editor.getJSON()) !== savedContent) {
-      setError(result.error || SAVE_ERROR_MESSAGE);
+      setError(result.error || failureMessage);
     }
   }, [editor, initial]);
 

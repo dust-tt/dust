@@ -7,6 +7,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface LeavePodDialogProps {
   isOpen: boolean;
@@ -25,19 +26,22 @@ export const LeavePodDialog = ({
   isOpen,
   podName,
 }: LeavePodDialogProps) => {
+  const { t } = useLingui();
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Leave this Pod?</DialogTitle>
+          <DialogTitle>
+            <Trans>Leave this Pod?</Trans>
+          </DialogTitle>
           <DialogDescription>
             {isRestricted ? (
-              <>
+              <Trans>
                 You will no longer have access to conversations and context in{" "}
                 <strong>{podName}</strong>.
-              </>
+              </Trans>
             ) : (
-              "You can rejoin this Pod anytime."
+              <Trans>You can rejoin this Pod anytime.</Trans>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -48,11 +52,11 @@ export const LeavePodDialog = ({
         ) : (
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
             }}
             rightButtonProps={{
-              label: "Leave",
+              label: t`Leave`,
               variant: "warning",
               onClick: onLeave,
             }}

@@ -21,11 +21,13 @@ import {
   DropdownMenuTrigger,
   Eye,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function PodTaskScopeFilter() {
+  const { t } = useLingui();
   const { taskOwnerFilter, onTaskOwnerFilterChange } = usePodTasksPanel();
   const isMobile = useIsMobile();
-  const periodLabel = periodScopeLabel(taskOwnerFilter.periodScope);
+  const periodLabel = t(periodScopeLabel(taskOwnerFilter.periodScope));
 
   return (
     <div className="flex items-center gap-2">
@@ -45,7 +47,7 @@ export function PodTaskScopeFilter() {
           <ButtonsSwitch
             key={scope}
             value={scope}
-            label={peopleScopeLabel(scope)}
+            label={t(peopleScopeLabel(scope))}
           />
         ))}
       </ButtonsSwitchList>
@@ -64,7 +66,7 @@ export function PodTaskScopeFilter() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-            Status
+            <Trans>Status</Trans>
           </div>
           <DropdownMenuRadioGroup
             value={taskOwnerFilter.periodScope}
@@ -81,7 +83,7 @@ export function PodTaskScopeFilter() {
               <DropdownMenuRadioItem
                 key={scope}
                 value={scope}
-                label={periodScopeLabel(scope)}
+                label={t(periodScopeLabel(scope))}
               />
             ))}
           </DropdownMenuRadioGroup>

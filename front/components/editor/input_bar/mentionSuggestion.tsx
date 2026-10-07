@@ -43,7 +43,6 @@ export function createMentionSuggestion({
 
     // Override the default command to intercept agent mentions and redirect them
     // to the picker button instead of inserting them into the editor.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     command: ({ editor, range, props }: any) => {
       const mention = props as RichMention;
       if (mention.type === "agent" && onAgentSelect) {

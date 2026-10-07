@@ -1,18 +1,24 @@
+import { useLingui } from "@lingui/react/macro";
+
 export function EditedDot() {
+  const { t } = useLingui();
+
   return (
     <span
       role="img"
-      aria-label="Edited"
+      aria-label={t`Edited`}
       className="inline-block size-2 shrink-0 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500"
     />
   );
 }
 
 export function EditedSectionBar() {
+  const { t } = useLingui();
+
   return (
     <span
       role="img"
-      aria-label="Edited"
+      aria-label={t`Edited`}
       className="absolute inset-y-0 -left-[9px] w-[3px] rounded-l-xl bg-highlight-400"
     />
   );

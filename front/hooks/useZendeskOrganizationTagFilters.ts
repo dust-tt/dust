@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
@@ -13,6 +16,7 @@ export function useZendeskOrganizationTagFilters({
   owner: WorkspaceType;
   dataSource: DataSourceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const {
@@ -85,13 +89,9 @@ export function useZendeskOrganizationTagFilters({
           });
         } else {
           const err = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to add tag",
-            description:
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              err.error?.connectors_error?.message ||
-              "An unknown error occurred",
+            error: err,
           });
         }
       } catch {
@@ -109,6 +109,7 @@ export function useZendeskOrganizationTagFilters({
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
+      sendApiErrorNotification,
       sendNotification,
     ]
   );
@@ -154,13 +155,9 @@ export function useZendeskOrganizationTagFilters({
           });
         } else {
           const err = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to remove tag",
-            description:
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              err.error?.connectors_error?.message ||
-              "An unknown error occurred",
+            error: err,
           });
         }
       } catch {
@@ -179,6 +176,7 @@ export function useZendeskOrganizationTagFilters({
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
+      sendApiErrorNotification,
     ]
   );
 

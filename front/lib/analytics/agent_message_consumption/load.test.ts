@@ -260,20 +260,23 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       id: testContext.authenticator.getNonNullableUser().sId,
       group_ids: [group.sId],
       seat_type: "workspace",
-      limit_group_id: null,
+      shared_usage_limit_group_id: null,
     });
   });
 
-  it("tags the limit group stored on the message, even outside the user's current groups", async () => {
+  it("tags the shared usage limit group stored on the message, even outside the user's current groups", async () => {
     const context = await setupSettledMessage();
     const engineering = await GroupFactory.regularManual(
       context.workspace,
       "Engineering"
     );
-    await ConversationResource.setAgentMessageLimitGroup(context.auth, {
-      agentMessageModelId: context.agentMessageModelId,
-      limitGroupModelId: engineering.id,
-    });
+    await ConversationResource.setAgentMessageSharedUsageLimitGroup(
+      context.auth,
+      {
+        agentMessageModelId: context.agentMessageModelId,
+        sharedUsageLimitGroupModelId: engineering.id,
+      }
+    );
 
     const input = await loadAgentMessageConsumptionAnalyticsInput(
       context.auth,
@@ -282,11 +285,11 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
 
     expect(input?.user).toMatchObject({
       group_ids: [],
-      limit_group_id: engineering.sId,
+      shared_usage_limit_group_id: engineering.sId,
     });
   });
 
-  it("leaves the limit group empty when none is stored on the message", async () => {
+  it("leaves the shared usage limit group empty when none is stored on the message", async () => {
     const context = await setupSettledMessage();
 
     const input = await loadAgentMessageConsumptionAnalyticsInput(
@@ -294,7 +297,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       { agentMessageId: context.agentMessage.sId }
     );
 
-    expect(input?.user?.limit_group_id).toBeNull();
+    expect(input?.user?.shared_usage_limit_group_id).toBeNull();
   });
 
   it("lists the full agent chain from the root to the direct parent", async () => {

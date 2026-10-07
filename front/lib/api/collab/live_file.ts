@@ -12,37 +12,12 @@ import { isMarkdownContentType, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DOCUMENT_NAME_SEPARATOR = ":";
-
 /** A file the live session can open, with the caller's access to it. */
 export interface LiveFile {
   workspaceId: string;
   canonicalPath: string;
   dustFs: DustFileSystem;
   canWrite: boolean;
-}
-
-// TODO(co-edition step 8): key on a stable file id. A rename during a session leaves editors on
-// the old path, and saving there (step 9) would recreate the file.
-/** The name a live document goes by on the WebSocket: workspace and file path. */
-export function toLiveDocumentName(
-  workspaceId: string,
-  canonicalPath: string
-): string {
-  return `${workspaceId}${DOCUMENT_NAME_SEPARATOR}${canonicalPath}`;
-}
-
-export function parseLiveDocumentName(
-  documentName: string
-): { workspaceId: string; canonicalPath: string } | null {
-  const index = documentName.indexOf(DOCUMENT_NAME_SEPARATOR);
-  if (index <= 0 || index === documentName.length - 1) {
-    return null;
-  }
-  return {
-    workspaceId: documentName.slice(0, index),
-    canonicalPath: documentName.slice(index + 1),
-  };
 }
 
 /**

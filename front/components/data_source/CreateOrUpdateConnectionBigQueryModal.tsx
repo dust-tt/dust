@@ -1,6 +1,8 @@
 // Okay to use public API types because it's front/connectors communication.
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { clientFetch } from "@app/lib/egress/client";
@@ -68,9 +70,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionBigQueryModalProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
+  const formatErrorDescription = useFormatErrorDescription();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<string>("");
 
   const credentialsState = useMemo(() => {
@@ -132,22 +135,16 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (locations && Object.keys(locations).length === 1) {
       setSelectedLocation(Object.keys(locations)[0]);
     }
-    if (
-      locations &&
-      !locationsError &&
-      Object.keys(locations ?? {}).length === 0
-    ) {
-      setError(
-        t`No locations found - make sure you follow the instructions in the guide.`
-      );
-    }
-  }, [locations, locationsError, t]);
+  }, [locations]);
 
-  useEffect(() => {
-    const errorMessage =
-      credentialsState.errorMessage ?? locationsError?.message;
-    setError(errorMessage);
-  }, [credentialsState.errorMessage, locationsError]);
+  // Checks re-run as the credentials are typed, so they stay inline instead of being toasted.
+  let credentialsError: string | null = credentialsState.errorMessage;
+  if (!credentialsError && locationsError) {
+    credentialsError = formatErrorDescription(locationsError);
+  }
+  if (!credentialsError && locations && Object.keys(locations).length === 0) {
+    credentialsError = t`No locations found - make sure you follow the instructions in the guide.`;
+  }
 
   if (connectorProviderConfiguration.connectorProvider !== "bigquery") {
     // Should never happen.
@@ -164,7 +161,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
   function onSuccess(ds: DataSourceType) {
     setCredentials("");
     _onSuccess(ds);
-    setError(null);
   }
 
   const createBigQueryConnection = async (): Promise<boolean> => {
@@ -194,9 +190,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
     );
 
     if (!createCredentialsRes.ok) {
-      setError(
-        t`Failed to create connection: cannot verify those credentials.`
-      );
+      sendApiErrorNotification({
+        title: t`Failed to create BigQuery connection`,
+        error: await createCredentialsRes.json(),
+      });
       setIsLoading(false);
       return false;
     }
@@ -213,16 +210,15 @@ export function CreateOrUpdateConnectionBigQueryModal({
       const err = await createDataSourceRes.json();
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
 
-      if (
-        isConnectorsAPIError(maybeConnectorsError) &&
-        maybeConnectorsError.type === "invalid_request_error"
-      ) {
-        const errorMessage = maybeConnectorsError.message;
-        setError(t`Failed to create BigQuery connection: ${errorMessage}`);
-      } else {
-        const errorMessage = err.error.message;
-        setError(t`Failed to create BigQuery connection: ${errorMessage}`);
-      }
+      sendApiErrorNotification({
+        title: t`Failed to create BigQuery connection`,
+        // A rejected configuration is explained by the connectors error, not the front one.
+        error:
+          isConnectorsAPIError(maybeConnectorsError) &&
+          maybeConnectorsError.type === "invalid_request_error"
+            ? maybeConnectorsError
+            : err,
+      });
 
       setIsLoading(false);
       return false;
@@ -270,9 +266,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
     );
 
     if (!credentialsRes.ok) {
-      setError(
-        t`Failed to update connection: cannot verify those credentials.`
-      );
+      sendApiErrorNotification({
+        title: t`Failed to update BigQuery connection`,
+        error: await credentialsRes.json(),
+      });
       setIsLoading(false);
       return false;
     }
@@ -298,16 +295,15 @@ export function CreateOrUpdateConnectionBigQueryModal({
       const err = await updateConnectorRes.json();
       const maybeConnectorsError = "error" in err && err.error.connectors_error;
 
-      if (
-        isConnectorsAPIError(maybeConnectorsError) &&
-        maybeConnectorsError.type === "invalid_request_error"
-      ) {
-        const errorMessage = maybeConnectorsError.message;
-        setError(t`Failed to update BigQuery connection: ${errorMessage}`);
-      } else {
-        const errorMessage = err.error.message;
-        setError(t`Failed to update BigQuery connection: ${errorMessage}`);
-      }
+      sendApiErrorNotification({
+        title: t`Failed to update BigQuery connection`,
+        // A rejected configuration is explained by the connectors error, not the front one.
+        error:
+          isConnectorsAPIError(maybeConnectorsError) &&
+          maybeConnectorsError.type === "invalid_request_error"
+            ? maybeConnectorsError
+            : err,
+      });
 
       return false;
     }
@@ -348,14 +344,14 @@ export function CreateOrUpdateConnectionBigQueryModal({
                   title={t`Limitations`}
                   className="border-none"
                 >
-                  {connectorUIConfiguration.limitations}
+                  {t(connectorUIConfiguration.limitations)}
                 </ContentMessage>
               )}
             </div>
 
-            {error && (
+            {credentialsError && (
               <ContentMessage variant="warning" title={t`Connection error`}>
-                {error}
+                {credentialsError}
               </ContentMessage>
             )}
 

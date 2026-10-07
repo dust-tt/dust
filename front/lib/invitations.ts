@@ -1,6 +1,7 @@
 // Maximum allowed number of unconsumed invitations per workspace per day.
 
 import type { ConfirmDataType } from "@app/components/Confirm";
+import type { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   PostInvitationRequestBody,
@@ -24,12 +25,14 @@ export async function updateInvitation({
   invitation,
   newRole,
   sendNotification,
+  sendApiErrorNotification,
   confirm,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
   newRole?: ActiveRoleType; // Optional parameter for role change
   sendNotification: (notificationData: NotificationType) => void;
+  sendApiErrorNotification: ReturnType<typeof useSendApiErrorNotification>;
   confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
   if (!newRole && confirm) {
@@ -61,14 +64,9 @@ export async function updateInvitation({
   );
 
   if (!res.ok) {
-    const error: { error: { message: string } } = await res.json();
-    const message = newRole
-      ? error.error.message
-      : "Failed to update member's invitation.";
-    sendNotification({
-      type: "error",
+    sendApiErrorNotification({
       title: `${newRole ? "Role Update Failed" : "Revoke Failed"}`,
-      description: message,
+      error: await res.json(),
     });
     return;
   }
@@ -90,6 +88,7 @@ export async function sendInvitations({
   invitationRole,
   seatType,
   sendNotification,
+  sendApiErrorNotification,
   isNewInvitation,
 }: {
   owner: WorkspaceType;
@@ -97,6 +96,7 @@ export async function sendInvitations({
   invitationRole: ActiveRoleType;
   seatType?: MembershipSeatType | null;
   sendNotification: any;
+  sendApiErrorNotification: ReturnType<typeof useSendApiErrorNotification>;
   isNewInvitation: boolean;
 }) {
   const body: PostInvitationRequestBody = emails.map((email) => ({
@@ -130,15 +130,7 @@ export async function sendInvitations({
       });
     }
 
-    const errorMessage =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      data?.error?.message || "Failed to invite new members to workspace";
-
-    sendNotification({
-      type: "error",
-      title: "Invite failed",
-      description: errorMessage,
-    });
+    sendApiErrorNotification({ title: "Invite failed", error: data });
   } else {
     const result: PostInvitationResponseBody = await res.json();
     const failures = result.filter((r) => !r.success);

@@ -1,5 +1,4 @@
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 
@@ -17,10 +16,6 @@ export function getAgentNameFormatError(name: string): string | null {
     return "Agent name cannot contain spaces.";
   }
   return null;
-}
-
-export function getAgentScopeLabel(scope: AgentConfigurationScope): string {
-  return scope === "visible" ? "Published" : "Unpublished";
 }
 
 // The model settings a new agent starts with, whichever flow creates it.

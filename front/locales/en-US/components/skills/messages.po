@@ -1,0 +1,422 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}} and {skillsUsageCount, plural, one {# skill} other {# skills}}."
+msgstr "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}} and {skillsUsageCount, plural, one {# skill} other {# skills}}."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}}."
+msgstr "This will archive the skill <0>{skillName}</0> used by {agentsUsageCount, plural, one {# agent} other {# agents}}."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> used by {skillsUsageCount, plural, one {# skill} other {# skills}}."
+msgstr "This will archive the skill <0>{skillName}</0> used by {skillsUsageCount, plural, one {# skill} other {# skills}}."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "This will archive the skill <0>{skillName}</0> for everyone."
+msgstr "This will archive the skill <0>{skillName}</0> for everyone."
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "Archiving the skill"
+msgstr "Archiving the skill"
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "Are you sure you want to proceed?"
+msgstr "Are you sure you want to proceed?"
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/RestoreSkillDialog.tsx
+#: front/components/skills/SkillEditorsTab.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/skills/ArchiveSkillDialog.tsx
+msgid "Archive for everyone"
+msgstr "Archive for everyone"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Archive"
+msgstr "Archive"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{skillCount, plural, one {Archiving # skill} other {Archiving # skills}}"
+msgstr "{skillCount, plural, one {Archiving # skill} other {Archiving # skills}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{totalUsage, plural, one {This skill has been used # time.} other {This skill has been used # times.}}"
+msgstr "{totalUsage, plural, one {This skill has been used # time.} other {This skill has been used # times.}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{totalUsage, plural, one {These skills have been used # time.} other {These skills have been used # times.}}"
+msgstr "{totalUsage, plural, one {These skills have been used # time.} other {These skills have been used # times.}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{skillCount, plural, one {This will archive this skill for everyone.} other {This will archive these skills for everyone.}}"
+msgstr "{skillCount, plural, one {This will archive this skill for everyone.} other {This will archive these skills for everyone.}}"
+
+#: front/components/skills/ArchiveSkillsDialog.tsx
+msgid "{skillCount, plural, one {Archive the skill} other {Archive the skills}}"
+msgstr "{skillCount, plural, one {Archive the skill} other {Archive the skills}}"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "Create skill"
+msgstr "Create skill"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "From conversation"
+msgstr "From conversation"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "From scratch"
+msgstr "From scratch"
+
+#: front/components/skills/CreateSkillButton.tsx
+msgid "From existing"
+msgstr "From existing"
+
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgid "Discoverable skills"
+msgstr "Discoverable skills"
+
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgctxt "pagination button"
+msgid "Previous"
+msgstr "Previous"
+
+#: front/components/skills/DiscoverableSkillsList.tsx
+msgctxt "pagination button"
+msgid "Next"
+msgstr "Next"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Security notice"
+msgstr "Security notice"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "{missingSpaceCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+msgstr "{missingSpaceCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Proceed"
+msgstr "Proceed"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Joined {spaceName}"
+msgstr "Joined {spaceName}"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "You are now a member of {spaceName}."
+msgstr "You are now a member of {spaceName}."
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Restricted access"
+msgstr "Restricted access"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "You cannot see the guidelines of this skill."
+msgstr "You cannot see the guidelines of this skill."
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "The skill uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+msgstr "The skill uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Join space {firstMissingSpaceName}"
+msgstr "Join space {firstMissingSpaceName}"
+
+#: front/components/skills/RedactedSkillMessage.tsx
+msgid "Join all required spaces"
+msgstr "Join all required spaces"
+
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "Restoring the skill"
+msgstr "Restoring the skill"
+
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "This will restore the skill <0>{skillName}</0> for everyone."
+msgstr "This will restore the skill <0>{skillName}</0> for everyone."
+
+#: front/components/skills/RestoreSkillDialog.tsx
+msgid "Restore the skill"
+msgstr "Restore the skill"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Skill not found"
+msgstr "Skill not found"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "This skill may have been deleted, or the link may be incorrect."
+msgstr "This skill may have been deleted, or the link may be incorrect."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Skill not available"
+msgstr "Skill not available"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "This skill is currently visible only to its editors. An editor can publish it or share it with you."
+msgstr "This skill is currently visible only to its editors. An editor can publish it or share it with you."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Unable to load skill"
+msgstr "Unable to load skill"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "The skill could not be loaded. Please try again."
+msgstr "The skill could not be loaded. Please try again."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Retry"
+msgstr "Retry"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Info"
+msgstr "Info"
+
+#: front/components/skills/SkillDetailsBody.tsx
+#: front/components/skills/SkillEditorsTab.tsx
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Editors"
+msgstr "Editors"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Skill avatar"
+msgstr "Skill avatar"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Last edited: {editedDate} by {editorName}"
+msgstr "Last edited: {editedDate} by {editorName}"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Last edited: {editedDate}"
+msgstr "Last edited: {editedDate}"
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "This skill has been archived."
+msgstr "This skill has been archived."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "It is no longer active and cannot be used."
+msgstr "It is no longer active and cannot be used."
+
+#: front/components/skills/SkillDetailsBody.tsx
+msgid "Restore"
+msgstr "Restore"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Try skill"
+msgstr "Try skill"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Edit skill"
+msgstr "Edit skill"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Copied!"
+msgstr "Copied!"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Copy link"
+msgstr "Copy link"
+
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Skill options"
+msgstr "Skill options"
+
+#: front/components/skills/SkillEditorsTab.tsx
+msgid "Add editors"
+msgstr "Add editors"
+
+#: front/components/skills/SkillEditorsTab.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/skills/SkillFavoriteButton.tsx
+msgid "Add to favorites"
+msgstr "Add to favorites"
+
+#: front/components/skills/SkillFavoriteButton.tsx
+msgid "Remove from favorites"
+msgstr "Remove from favorites"
+
+#: front/components/skills/SkillFilterPanel.tsx
+msgid "Too many tools selected."
+msgstr "Too many tools selected."
+
+#: front/components/skills/SkillFilterPanel.tsx
+msgid "Hidden skills"
+msgstr "Hidden skills"
+
+#: front/components/skills/SkillFilterPanel.tsx
+msgid "Shows skills you can access as an admin, even if you’re not an editor"
+msgstr "Shows skills you can access as an admin, even if you’re not an editor"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "When to use this skill"
+msgstr "When to use this skill"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Guidelines"
+msgstr "Guidelines"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Knowledge"
+msgstr "Knowledge"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Files"
+msgstr "Files"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Skills"
+msgstr "Skills"
+
+#: front/components/skills/SkillInfoTab.tsx
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/skills/SkillSearchActionsMenu.tsx
+msgid "Could not load actions. Retry"
+msgstr "Could not load actions. Retry"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Clear selection"
+msgstr "Clear selection"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Select all on page"
+msgstr "Select all on page"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Deselect {skillName}"
+msgstr "Deselect {skillName}"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Select {skillName}"
+msgstr "Select {skillName}"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Availability"
+msgstr "Availability"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Usage"
+msgstr "Usage"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Usage is not available for this skill."
+msgstr "Usage is not available for this skill."
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Number of active users in the last 30 days."
+msgstr "Number of active users in the last 30 days."
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Last edited"
+msgstr "Last edited"
+
+#: front/components/skills/SkillSearchTable.tsx
+msgid "Loading skills"
+msgstr "Loading skills"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Editors only"
+msgstr "Editors only"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {Make # skill editors only} other {Make # skills editors only}}"
+msgstr "{count, plural, one {Make # skill editors only} other {Make # skills editors only}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {Only editors can find it via the composer and agent builder. The skill remains available through agents and skills that use it.} other {Only editors can find them via the composer and agent builder. The skills remain available through agents and skills that use them.}}"
+msgstr "{count, plural, one {Only editors can find it via the composer and agent builder. The skill remains available through agents and skills that use it.} other {Only editors can find them via the composer and agent builder. The skills remain available through agents and skills that use them.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Members"
+msgstr "Members"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {Make # skill available to all members} other {Make # skills available to all members}}"
+msgstr "{count, plural, one {Make # skill available to all members} other {Make # skills available to all members}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {All members can find it via the composer and agent builder.} other {All members can find them via the composer and agent builder.}}"
+msgstr "{count, plural, one {All members can find it via the composer and agent builder.} other {All members can find them via the composer and agent builder.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Members and agents"
+msgstr "Members and agents"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Available to all members and agents with Discover Skills"
+msgstr "Available to all members and agents with Discover Skills"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "This affects your entire workspace"
+msgstr "This affects your entire workspace"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
+msgstr "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Select all {totalCount, plural, one {# skill} other {# skills}}"
+msgstr "Select all {totalCount, plural, one {# skill} other {# skills}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Set availability"
+msgstr "Set availability"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "You don’t have permission to make skills auto-discoverable"
+msgstr "You don’t have permission to make skills auto-discoverable"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Update"
+msgstr "Update"
+
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "Only editors can find it via the composer and agent builder"
+msgstr "Only editors can find it via the composer and agent builder"
+
+#: front/components/skills/skillAvailabilityDisplay.ts
+msgid "All members can find it via the composer and agent builder"
+msgstr "All members can find it via the composer and agent builder"
+
+#: front/components/skills/skillFilter.ts
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/skills/skillFilter.ts
+msgctxt "tab of the skills provided by Dust"
+msgid "Dust"
+msgstr "Dust"
+
+#: front/components/skills/skillFilter.ts
+msgid "Archived"
+msgstr "Archived"

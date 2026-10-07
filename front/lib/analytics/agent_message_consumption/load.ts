@@ -1,5 +1,8 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
+import {
+  canEnableSkill,
+  getEnabledSkillIdsFromAction,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
@@ -151,12 +154,12 @@ async function loadAgentTagIds(
 async function loadAnalyticsUser({
   auth,
   completedAt,
-  limitGroupModelId,
+  sharedUsageLimitGroupModelId,
   userId,
 }: {
   auth: Authenticator;
   completedAt: Date;
-  limitGroupModelId: ModelId | null;
+  sharedUsageLimitGroupModelId: ModelId | null;
   userId: string | null;
 }): Promise<AgentMessageConsumptionAnalyticsUser | null> {
   if (userId === null) {
@@ -189,11 +192,11 @@ async function loadAnalyticsUser({
     id: user.sId,
     group_ids: groups.map((group) => group.sId).sort(),
     seat_type: seatType,
-    limit_group_id:
-      limitGroupModelId === null
+    shared_usage_limit_group_id:
+      sharedUsageLimitGroupModelId === null
         ? null
         : GroupResource.modelIdToSId({
-            id: limitGroupModelId,
+            id: sharedUsageLimitGroupModelId,
             workspaceId: workspace.id,
           }),
   };
@@ -285,9 +288,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
       agentMessage.agentMessageModelId,
     ]));
+  // Outputs are only read to find enabled skills. Loading them all would not scale: a message can
+  // make thousands of tool calls from a sandbox.
   const actionsWithOutputs =
     await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-      actions,
+      actions: actions.filter(canEnableSkill),
       ignoreContent: false,
     });
   const enabledSkillIdsByActionId = new Map(
@@ -321,7 +326,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const user = await loadAnalyticsUser({
     auth,
     completedAt,
-    limitGroupModelId: agentMessage.limitGroupModelId,
+    sharedUsageLimitGroupModelId: agentMessage.sharedUsageLimitGroupModelId,
     userId: triggeringUserMessage.userId,
   });
 

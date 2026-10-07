@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import Custom404 from "@app/components/pages/Custom404";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
@@ -9,13 +10,13 @@ import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { APP_NAME_REGEXP } from "@app/types/app";
-import type { APIError } from "@app/types/error";
 import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useState } from "react";
 
 export function AppSettingsPage() {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
   const aId = useRequiredPathParam("aId");
@@ -48,7 +49,6 @@ export function AppSettingsPage() {
   useEffect(() => {
     if (app) {
       setAppName(app.name);
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       setAppDescription(app.description || "");
     }
   }, [app]);
@@ -89,12 +89,10 @@ export function AppSettingsPage() {
         await router.push(dustAppsListUrl(owner, app.space));
       } else {
         setIsDeleting(false);
-        const err = (await res.json()) as { error: APIError };
-        const errorType = err.error.type;
-        const errorMessage = err.error.message;
-        window.alert(
-          t`Failed to delete the app (contact support@dust.tt for assistance) (internal error: type=${errorType} message=${errorMessage})`
-        );
+        sendApiErrorNotification({
+          title: t`Failed to delete the app`,
+          error: await res.json(),
+        });
       }
       return true;
     } else {
@@ -127,12 +125,10 @@ export function AppSettingsPage() {
       );
     } else {
       setIsUpdating(false);
-      const err = (await res.json()) as { error: APIError };
-      const errorType = err.error.type;
-      const errorMessage = err.error.message;
-      window.alert(
-        t`Failed to update the app (contact support@dust.tt for assistance) (internal error: type=${errorType} message=${errorMessage})`
-      );
+      sendApiErrorNotification({
+        title: t`Failed to update the app`,
+        error: await res.json(),
+      });
     }
   };
 

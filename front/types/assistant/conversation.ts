@@ -794,11 +794,18 @@ export type SubmitMessageError = {
     | "plan_limit_reached_error"
     | "credits_exhausted_error"
     | "user_cap_reached_error"
-    | "group_limit_reached_error"
+    | "group_shared_usage_limit_reached_error"
     | "no_seat_error"
     | "content_too_large";
   title: string;
-  message: string;
+  /**
+   * @cc [owner:Nils-Fedrigo,label:error-handling;react] submit-message-error-carries-original-error
+   * `error` MUST be the error the failure came from, as-is: the parsed error body when the server
+   * answered with one, the caught value otherwise, or an `APIError` built client-side when the
+   * failure happens before any request is sent. UI MUST show it through
+   * `sendApiErrorNotification({ title, error })`, never by reading a message out of it.
+   */
+  error: unknown;
 };
 
 /**

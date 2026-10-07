@@ -1,0 +1,58 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/observability/AgentFeedback.tsx
+msgid "Overview"
+msgstr "Overview"
+
+#: front/components/observability/AgentFeedback.tsx
+msgid "Reactions"
+msgstr "Reactions"
+
+#: front/components/observability/AgentFeedback.tsx
+msgid "Charts"
+msgstr "Charts"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "v{version}: {formattedTimeDisplay}"
+msgstr "v{version}: {formattedTimeDisplay}"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "By time range"
+msgstr "By time range"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "By version"
+msgstr "By version"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Not available"
+msgstr "Not available"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Last 30 days"
+msgstr "Last 30 days"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Last {period, plural, one {# day} other {# days}}"
+msgstr "Last {period, plural, one {# day} other {# days}}"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Last {p, plural, one {# day} other {# days}}"
+msgstr "Last {p, plural, one {# day} other {# days}}"

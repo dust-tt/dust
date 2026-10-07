@@ -9,6 +9,8 @@ import {
   ChevronRightIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/20/solid";
+import { plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
@@ -68,9 +70,12 @@ function ValueViewer({
   k: string | number | null;
   topLevel: boolean;
 }) {
+  const { t } = useLingui();
+
   const summary = (value: any) => {
     if (Array.isArray(value)) {
-      return `[ ${value.length} items ]`;
+      const itemCount = value.length;
+      return t`[ ${plural(itemCount, { one: "# item", other: "# items" })} ]`;
     }
     if (typeof value === "object" && value !== null) {
       return `{ ${Object.keys(value).join(", ")} }`;
@@ -193,7 +198,7 @@ function StringViewer({ value }: { value: any }) {
       <span>
         {value.slice(0, STRING_SHOW_MORE_LINK_LENGTH)}...{" "}
         <Hoverable variant="highlight" onClick={() => setExpanded(!expanded)}>
-          show all
+          <Trans>show all</Trans>
         </Hoverable>
       </span>
     );
@@ -211,14 +216,18 @@ function Error({ error }: { error: string }) {
             <div onClick={() => setExpanded(false)}>
               <span className="flex flex-row items-center">
                 <ChevronDownIcon className="mt-0.5 h-4 w-4" />
-                <span className="copy-sm italic text-primary-500">error</span>
+                <span className="copy-sm italic text-primary-500">
+                  <Trans>error</Trans>
+                </span>
               </span>
             </div>
           ) : (
             <div onClick={() => setExpanded(true)}>
               <span className="flex flex-row items-center">
                 <ChevronRightIcon className="mt-0.5 h-4 w-4" />
-                <span className="copy-sm italic text-primary-500">error</span>
+                <span className="copy-sm italic text-primary-500">
+                  <Trans>error</Trans>
+                </span>
               </span>
             </div>
           )}
@@ -285,10 +294,8 @@ function InnerLogs({ trace }: { trace: TraceType }) {
             reasoning_tokens?: number;
           };
         }
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       | undefined) || null;
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const logs = [...(meta?.logs || [])];
   if (meta && meta.provider_request_id) {
     logs.push({ provider_request_id: meta.provider_request_id });
@@ -324,6 +331,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
 }
 
 const JsonCopyLink = ({ value }: { value: string }) => {
+  const { t } = useLingui();
   const [copyCount, setCopyCount] = useState(0);
   const copied = copyCount > 0;
 
@@ -344,11 +352,13 @@ const JsonCopyLink = ({ value }: { value: string }) => {
   return (
     <div className="items-top mr-3 flex">
       {copied ? (
-        <div className="text-sm text-primary-500">Copied!</div>
+        <div className="text-sm text-primary-500">
+          <Trans>Copied!</Trans>
+        </div>
       ) : (
         <Button
           onClick={handleClick}
-          tooltip="Copy JSON to clipboard"
+          tooltip={t`Copy JSON to clipboard`}
           icon={Clipboard}
           size="icon"
           variant="ghost-secondary"
@@ -426,7 +436,6 @@ export default function Output({
         t.filter(
           (t) =>
             t.meta &&
-            /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
             (((t.meta as { logs: any[] }).logs &&
               (t.meta as { logs: any[] }).logs.length) ||
               (t.meta as { provider_request_id?: string })
@@ -441,7 +450,6 @@ export default function Output({
                   };
                 }
               ).token_usage)
-          /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
         ).length
       );
     }, 0);
@@ -462,7 +470,7 @@ export default function Output({
                     <span className="text-sm text-primary-500">
                       [{" "}
                       <span className="text font-bold">
-                        {logs} {logs === 1 ? "log" : "logs"}
+                        <Plural value={logs} one="# log" other="# logs" />
                       </span>
                       ]
                     </span>
@@ -479,7 +487,6 @@ export default function Output({
                       .map((t) => t.meta)
                       .some(
                         (e) =>
-                          /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
                           (e as { logs: any[] }).logs.length ||
                           (e as { provider_request_id?: string })
                             .provider_request_id ||
@@ -493,7 +500,6 @@ export default function Output({
                               };
                             }
                           ).token_usage
-                        /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
                       )
                   ) {
                     return (
@@ -526,13 +532,21 @@ export default function Output({
                   <span className="text-sm text-primary-500">
                     [{" "}
                     <span className="font-bold text-success">
-                      {successes} {successes === 1 ? "success" : "successes"}
+                      <Plural
+                        value={successes}
+                        one="# success"
+                        other="# successes"
+                      />
                     </span>
                     {errors > 0 ? (
                       <>
                         {", "}
                         <span className="font-bold text-warning">
-                          {errors} {errors === 1 ? "error" : "errors"}
+                          <Plural
+                            value={errors}
+                            one="# error"
+                            other="# errors"
+                          />
                         </span>
                       </>
                     ) : null}{" "}

@@ -1,8 +1,10 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
-import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import {
   BigQueryLogo,
@@ -39,6 +41,7 @@ export function BigQueryOptionsView({
   dataSource: DataSourceType;
 }) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [dbmlLoading, setDbmlLoading] = useState(false);
   const [bytesLoading, setBytesLoading] = useState(false);
@@ -84,11 +87,10 @@ export function BigQueryOptionsView({
       setDbmlLoading(false);
     } else {
       setDbmlLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to enable BigQuery use metadata for DBML`,
-        description: err.error.message,
+        error: err,
       });
     }
   };
@@ -136,11 +138,10 @@ export function BigQueryOptionsView({
       });
     } else {
       setBytesLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to update maximum bytes billed`,
-        description: err.error.message,
+        error: err,
       });
     }
   };

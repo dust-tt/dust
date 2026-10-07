@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import {
   forwardRef,
@@ -40,6 +41,7 @@ export const MentionDropdown = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     // Call clientRect() on every render to get the latest position.
@@ -209,7 +211,7 @@ export const MentionDropdown = forwardRef<
                       <Chip
                         size="mini"
                         color="primary"
-                        label="Member"
+                        label={t`Member`}
                         className="ml-2 shrink-0"
                       />
                     )}
@@ -219,7 +221,7 @@ export const MentionDropdown = forwardRef<
             </div>
           ) : (
             <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
-              No result
+              <Trans>No result</Trans>
             </div>
           )}
         </DropdownMenuContent>

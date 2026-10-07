@@ -2,10 +2,12 @@ import type { FileShareScope } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { Globe01, Lock01, Users01 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 interface ScopeOption {
   icon: typeof Lock01;
-  label: string;
+  label: MessageDescriptor;
   value: FileShareScope;
 }
 
@@ -35,20 +37,20 @@ function getScopeOptions(canInviteExternal: boolean): ScopeOption[] {
     {
       icon: SHARE_SCOPE_ICONS.emails_only,
       label: canInviteExternal
-        ? "Invite only"
-        : "Invited workspace members only",
+        ? msg`Invite only`
+        : msg`Invited workspace members only`,
       value: "emails_only",
     },
     {
       icon: SHARE_SCOPE_ICONS.workspace_and_emails,
       label: canInviteExternal
-        ? "All workspace members + invites"
-        : "All workspace members",
+        ? msg`All workspace members + invites`
+        : msg`All workspace members`,
       value: "workspace_and_emails",
     },
     {
       icon: SHARE_SCOPE_ICONS.public,
-      label: "Anyone with the link",
+      label: msg`Anyone with the link`,
       value: "public",
     },
   ];

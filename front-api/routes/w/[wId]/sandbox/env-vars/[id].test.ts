@@ -1,5 +1,6 @@
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -52,14 +53,29 @@ describe("PATCH/DELETE /api/w/:wId/sandbox/env-vars/:id", () => {
     vi.clearAllMocks();
   });
 
-  it("rejects non-admin requests", async () => {
+  it("lets a member with the admin:security permission reach a missing env var", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+
+    const response = await deleteEnvVar(workspace.sId, "env_var_unknown");
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 403 for a member without the admin:security permission", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await deleteEnvVar(workspace.sId, "env_var_unknown");
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "workspace_auth_error" },
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to manage the sandbox.",
+      },
     });
   });
 

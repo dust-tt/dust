@@ -3,6 +3,8 @@ import type { DocumentCommentsController } from "@app/components/editor/document
 import { useEditorLayoutVersion } from "@app/components/editor/document/useEditorLayoutVersion";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { cn, Icon, MessageTextCircle01, Tooltip } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
 import type { RefObject } from "react";
 import { useLayoutEffect, useState } from "react";
@@ -75,6 +77,7 @@ export const DocumentCommentMarkers = ({
   containerRef,
   mountPortalContainer,
 }: DocumentCommentMarkersProps) => {
+  const { t } = useLingui();
   const { unresolved, activeId, reveal } = comments;
   const [clusters, setClusters] = useState<MarkerCluster[]>([]);
   // Measured here so document updates re-render the markers, not the whole editor chrome.
@@ -95,10 +98,20 @@ export const DocumentCommentMarkers = ({
       {clusters.map((cluster) => {
         const active = activeId !== null ? cluster.ids.indexOf(activeId) : -1;
         const targetId = cluster.ids[(active + 1) % cluster.ids.length];
-        const label =
-          cluster.ids.length === 1
-            ? `Comment by ${authorsById.get(cluster.ids[0]) ?? "unknown"}`
-            : `${cluster.ids.length} comments`;
+        const count = cluster.ids.length;
+        const authorName = authorsById.get(cluster.ids[0]);
+        let label: string;
+        let ariaLabel: string;
+        if (count > 1) {
+          label = t`${plural(count, { one: "# comment", other: "# comments" })}`;
+          ariaLabel = t`Show ${plural(count, { one: "# comment", other: "# comments" })}`;
+        } else if (authorName !== undefined) {
+          label = t`Comment by ${authorName}`;
+          ariaLabel = t`Show comment by ${authorName}`;
+        } else {
+          label = t`Comment by unknown`;
+          ariaLabel = t`Show comment by unknown`;
+        }
 
         return (
           <Tooltip
@@ -109,7 +122,7 @@ export const DocumentCommentMarkers = ({
             trigger={
               <button
                 type="button"
-                aria-label={`Show ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
+                aria-label={ariaLabel}
                 aria-current={active >= 0 ? "true" : undefined}
                 onClick={() => reveal(targetId)}
                 style={{ top: cluster.center }}

@@ -24,9 +24,11 @@ import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import { BarHeader, Button, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React, { useEffect } from "react";
 
 function CPSubscribePage() {
+  const { t } = useLingui();
   const { workspace, isAdmin, user: authUser } = useAuth();
   const router = useAppRouter();
   const { user } = useUser();
@@ -73,7 +75,7 @@ function CPSubscribePage() {
     return (
       <>
         <BarHeader
-          title="Joining Dust"
+          title={t`Joining Dust`}
           className="ml-10 lg:ml-0"
           rightActions={
             user && (
@@ -85,15 +87,19 @@ function CPSubscribePage() {
           <div className="flex h-full flex-col justify-center">
             <Page.Horizontal>
               <Page.Vertical sizing="grow" gap="lg">
-                <Page.Header title="Workspace locked" />
+                <Page.Header title={t`Workspace locked`} />
                 <Page.P>
                   <span className="font-bold">
-                    The subscription for this workspace is not active.
+                    <Trans>
+                      The subscription for this workspace is not active.
+                    </Trans>
                   </span>
                 </Page.P>
                 <Page.P>
-                  To unlock premium features, your workspace needs to be
-                  upgraded by an admin.
+                  <Trans>
+                    To unlock premium features, your workspace needs to be
+                    upgraded by an admin.
+                  </Trans>
                 </Page.P>
               </Page.Vertical>
             </Page.Horizontal>
@@ -106,7 +112,7 @@ function CPSubscribePage() {
   return (
     <>
       <BarHeader
-        title="Choose your plan"
+        title={t`Choose your plan`}
         className="ml-10 lg:ml-0"
         rightActions={
           <div className="flex flex-row items-center">
@@ -119,10 +125,10 @@ function CPSubscribePage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16">
         <div className="flex flex-col items-center gap-2 text-center">
           <h1 className="text-4xl font-bold text-foreground">
-            Choose your plan to continue
+            <Trans>Choose your plan to continue</Trans>
           </h1>
           <p className="text-lg text-muted-foreground">
-            You can change it anytime from the admin page.
+            <Trans>You can change it anytime from the admin page.</Trans>
           </p>
         </div>
 
@@ -140,6 +146,7 @@ function CPSubscribePage() {
 }
 
 function LegacySubscribePage() {
+  const { t } = useLingui();
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
   const { user } = useUser();
@@ -198,6 +205,33 @@ function LegacySubscribePage() {
     subscriptions.length === 0 ||
     (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
 
+  const getPageTitle = () => {
+    if (isInFreePhoneTrial) {
+      return t`Subscribe to a paid plan`;
+    }
+    if (noPreviousSubscription) {
+      return t`Start your subscription`;
+    }
+    return t`Resume your subscription`;
+  };
+
+  const getSubscribeLabel = () => {
+    const isYearly = billingPeriod === "yearly";
+    if (noPreviousSubscription) {
+      return isYearly
+        ? t`Start your subscription with yearly billing`
+        : t`Start your subscription with monthly billing`;
+    }
+    if (isInFreePhoneTrial) {
+      return isYearly
+        ? t`Subscribe with yearly billing`
+        : t`Subscribe with monthly billing`;
+    }
+    return isYearly
+      ? t`Resume with yearly billing`
+      : t`Resume with monthly billing`;
+  };
+
   // Show workspace picker if user has multiple WorkOS orgs, or in dev
   // mode fall back to local DB workspaces (no orgs in seeded envs).
   const shouldShowPicker =
@@ -210,7 +244,7 @@ function LegacySubscribePage() {
   return (
     <>
       <BarHeader
-        title="Joining Dust"
+        title={t`Joining Dust`}
         className="ml-10 lg:ml-0"
         rightActions={
           <>
@@ -232,52 +266,53 @@ function LegacySubscribePage() {
           {isAdmin ? (
             <Page.Horizontal>
               <Page.Vertical sizing="grow" gap="lg">
-                <Page.Header
-                  title={
-                    isInFreePhoneTrial
-                      ? "Subscribe to a paid plan"
-                      : noPreviousSubscription
-                        ? "Start your subscription"
-                        : "Resume your subscription"
-                  }
-                />
+                <Page.Header title={getPageTitle()} />
                 {isInFreePhoneTrial ? (
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        You're currently on a free trial.
+                        <Trans>You're currently on a free trial.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
-                      To continue using Dust after your trial ends, subscribe to
-                      a paid plan. Select your preferred billing option to get
-                      started.
+                      <Trans>
+                        To continue using Dust after your trial ends, subscribe
+                        to a paid plan. Select your preferred billing option to
+                        get started.
+                      </Trans>
                     </Page.P>
                   </>
                 ) : !noPreviousSubscription ? (
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        Welcome back! You can reactivate your subscription
-                        anytime.
+                        <Trans>
+                          Welcome back! You can reactivate your subscription
+                          anytime.
+                        </Trans>
                       </span>
                     </Page.P>
                     <Page.P>
-                      Please note that if your previous contract expired over 15
-                      days ago, previously stored data will no longer be
-                      available. This is to ensure privacy and security of your
-                      information.
+                      <Trans>
+                        Please note that if your previous contract expired over
+                        15 days ago, previously stored data will no longer be
+                        available. This is to ensure privacy and security of
+                        your information.
+                      </Trans>
                     </Page.P>
                   </>
                 ) : (
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        Subscribe to the Pro plan.
+                        <Trans>Subscribe to the Pro plan.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
-                      You'll be charged immediately. You can cancel at any time.
+                      <Trans>
+                        You'll be charged immediately. You can cancel at any
+                        time.
+                      </Trans>
                     </Page.P>
                   </>
                 )}
@@ -286,38 +321,36 @@ function LegacySubscribePage() {
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        You've selected monthly billing.
+                        <Trans>You've selected monthly billing.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
-                      You'll pay on a month-to-month basis. You can cancel at
-                      any time before the end of your monthly billing cycle.
+                      <Trans>
+                        You'll pay on a month-to-month basis. You can cancel at
+                        any time before the end of your monthly billing cycle.
+                      </Trans>
                     </Page.P>
                   </>
                 ) : (
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        You've selected yearly billing.
+                        <Trans>You've selected yearly billing.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
-                      You'll pay for a year upfront and enjoy savings compared
-                      to the monthly plan. You can cancel at any time before the
-                      end of your annual billing cycle.
+                      <Trans>
+                        You'll pay for a year upfront and enjoy savings compared
+                        to the monthly plan. You can cancel at any time before
+                        the end of your annual billing cycle.
+                      </Trans>
                     </Page.P>
                   </>
                 )}
 
                 <Button
                   variant="primary"
-                  label={
-                    !noPreviousSubscription
-                      ? isInFreePhoneTrial
-                        ? `Subscribe with ${billingPeriod} billing`
-                        : `Resume with ${billingPeriod} billing`
-                      : `Start your subscription with ${billingPeriod} billing`
-                  }
+                  label={getSubscribeLabel()}
                   icon={CreditCardIcon}
                   size="sm"
                   onClick={withTracking(
@@ -345,15 +378,19 @@ function LegacySubscribePage() {
           ) : (
             <Page.Horizontal>
               <Page.Vertical sizing="grow" gap="lg">
-                <Page.Header title="Workspace locked" />
+                <Page.Header title={t`Workspace locked`} />
                 <Page.P>
                   <span className="font-bold">
-                    The subscription for this workspace is not active.
+                    <Trans>
+                      The subscription for this workspace is not active.
+                    </Trans>
                   </span>
                 </Page.P>
                 <Page.P>
-                  To unlock premium features, your workspace needs to be
-                  upgraded by an admin.
+                  <Trans>
+                    To unlock premium features, your workspace needs to be
+                    upgraded by an admin.
+                  </Trans>
                 </Page.P>
               </Page.Vertical>
               <Page.Vertical sizing="grow">

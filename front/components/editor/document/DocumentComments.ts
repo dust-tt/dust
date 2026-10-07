@@ -4,7 +4,7 @@ import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, isMacOS, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
-import { Fragment, Slice } from "@tiptap/pm/model";
+import { Fragment, Mark as ProseMirrorMark, Slice } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
@@ -419,6 +419,11 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
+      /** Replaces the commented text with inline content that keeps the comment. */
+      applyCommentSuggestion: (
+        id: string,
+        content: JSONContent[]
+      ) => ReturnType;
       setActiveComment: (id: string | null) => ReturnType;
     };
   }
@@ -478,6 +483,70 @@ const canCarryCommentMark = (node: Node, parent: Node | null) => {
   );
 };
 
+/** The text between `from` and `to` as inline nodes without comment marks, or null unless one textblock holds it. */
+const inlineContentBetween = (
+  doc: Node,
+  from: number,
+  to: number
+): JSONContent[] | null => {
+  const $from = doc.resolve(from);
+  if (!$from.parent.isTextblock || !$from.sameParent(doc.resolve(to))) {
+    return null;
+  }
+  const start = $from.start();
+  return (
+    withoutCommentMarks(
+      $from.parent.content.cut(from - start, to - start),
+      new Set()
+    ).toJSON() ?? []
+  );
+};
+
+/** The commented text as inline nodes, or null when the comment has no text or spans textblocks. */
+export const getCommentInlineContent = (
+  doc: Node,
+  id: string
+): JSONContent[] | null => {
+  const range = getCommentRanges(doc).get(id);
+  return range ? inlineContentBetween(doc, range.from, range.to) : null;
+};
+
+/** The draft's text from the first character a comment mark can sit on to the last, the text its comment would anchor. */
+export const getDraftInlineContent = (
+  doc: Node,
+  draft: DocumentCommentDraft
+): JSONContent[] | null => {
+  let from: number | null = null;
+  let to: number | null = null;
+  doc.nodesBetween(draft.from, draft.to, (node, pos, parent) => {
+    if (canCarryCommentMark(node, parent)) {
+      from ??= Math.max(pos, draft.from);
+      to = Math.min(pos + node.nodeSize, draft.to);
+    }
+  });
+  return from !== null && to !== null
+    ? inlineContentBetween(doc, from, to)
+    : null;
+};
+
+const suggestableComments = new WeakMap<Node, Set<string>>();
+
+/** Comments whose text lies in one textblock, the ones a suggestion can replace. */
+export const getSuggestableCommentIds = (doc: Node): Set<string> => {
+  const cached = suggestableComments.get(doc);
+  if (cached) {
+    return cached;
+  }
+  const ids = new Set<string>();
+  for (const [id, { from, to }] of getCommentRanges(doc)) {
+    if (doc.resolve(from).sameParent(doc.resolve(to))) {
+      ids.add(id);
+    }
+  }
+  suggestableComments.set(doc, ids);
+  return ids;
+};
+
 /**
  * @cc [owner:tdraier,label:product] document-comment-inherited
  * Text inserted between a comment's first and last marked characters MUST take that comment's
@@ -515,7 +584,9 @@ const inheritEnclosingComments = (
  * @cc [owner:tdraier,label:product] document-comment-orphan-marks-dropped
  * When a transaction puts the mark of a comment without a thread on text, such as an undo
  * restoring text after its comment was deleted, that mark MUST be removed from the whole
- * document, since saving fails on an anchor without a thread.
+ * document, since saving fails on an anchor without a thread. A live document, configured with
+ * `holdsThreads: false`, MUST keep such marks: its editor does not hold the threads, and a
+ * removal would spread to every other editor.
  */
 const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
   const threads = new Set(
@@ -545,8 +616,13 @@ const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
  * A transaction MUST be refused when it takes the comment mark off the first or last character
  * of a comment that has a thread after it, without deleting that character, such as inline code
  * or a code block over a comment's edge, since saving would then shrink or drop the comment.
+ * With `holdsThreads: false`, every marked comment counts as having a thread.
  */
-const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
+const takesCommentEdge = (
+  transaction: Transaction,
+  before: EditorState,
+  holdsThreads: boolean
+) => {
   if (
     !transaction.steps.some(
       (step) =>
@@ -561,7 +637,7 @@ const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
     getDocumentComments(transaction.doc).map((comment) => comment.id)
   );
   for (const [id, { from, to }] of getCommentRanges(before.doc)) {
-    if (!threadsAfter.has(id)) {
+    if (holdsThreads && !threadsAfter.has(id)) {
       continue;
     }
     const range = after.get(id);
@@ -577,8 +653,9 @@ const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
   return false;
 };
 
-export const DocumentCommentMark = Mark.create({
+export const DocumentCommentMark = Mark.create<{ holdsThreads: boolean }>({
   name: COMMENT_MARK_NAME,
+  addOptions: () => ({ holdsThreads: true }),
   inclusive: false,
   excludes: "",
   addAttributes: () => ({
@@ -592,7 +669,8 @@ export const DocumentCommentMark = Mark.create({
   }),
   parseHTML: () => [],
   renderHTML: ({ HTMLAttributes }) => ["span", HTMLAttributes, 0],
-  addProseMirrorPlugins: () => {
+  addProseMirrorPlugins() {
+    const { holdsThreads } = this.options;
     // ProseMirror runs transformPasted before deciding whether a drop moves or copies; the drop
     // event arrives first. Asking the dragCopies props, this one included, gives ProseMirror's
     // own answer.
@@ -622,15 +700,18 @@ export const DocumentCommentMark = Mark.create({
             ),
         },
         filterTransaction: (transaction, state) =>
-          !takesCommentEdge(transaction, state),
+          !takesCommentEdge(transaction, state, holdsThreads),
         appendTransaction: (transactions, _oldState, newState) => {
           const changed = changedRanges(transactions);
           if (changed.length === 0) {
             return null;
           }
           const tr = newState.tr;
-          dropOrphanCommentMarks(tr, changed);
-          if (getDocumentComments(tr.doc).length > 0) {
+          if (holdsThreads) {
+            dropOrphanCommentMarks(tr, changed);
+          }
+          // Without the threads, marks are the only sign of a comment.
+          if (!holdsThreads || getDocumentComments(tr.doc).length > 0) {
             inheritEnclosingComments(tr, changed);
           }
           return tr.docChanged ? tr : null;
@@ -666,6 +747,17 @@ export const DocumentCommentMark = Mark.create({
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-history
  * Posting, replying to, resolving and deleting comments MUST stay out of text undo history.
  * Undoing text MUST NOT restore an old comments array or remove another user's replies.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-comment-suggestion-apply
+ * Applying a suggestion MUST replace exactly the text from the comment's first marked character
+ * to its last with the given inline content, which MUST carry the comment's mark wherever the
+ * mark can sit, in one text edit that undo reverts. The content MUST also carry the mark of
+ * every other comment with a thread whose text encloses the replaced text, so that comment stays
+ * one run. It MUST be refused, leaving the document unchanged, when the comment has no thread or
+ * no text, when its text spans more than one textblock, when the content cannot sit in that
+ * textblock, or when it would remove text of another comment with a thread that does not
+ * enclose the replaced text, or all the text of one that does.
  */
 export const DocumentComments = Extension.create({
   name: "documentComments",
@@ -807,6 +899,80 @@ export const DocumentComments = Extension.create({
             comments.filter((comment) => comment.id !== id)
           );
           tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    applyCommentSuggestion:
+      (id, content) =>
+      ({ state, tr, dispatch }) => {
+        const ranges = getCommentRanges(state.doc);
+        const range = ranges.get(id);
+        const threads = new Set(
+          getDocumentComments(state.doc).map((comment) => comment.id)
+        );
+        if (!range || !threads.has(id)) {
+          return false;
+        }
+        const $from = state.doc.resolve(range.from);
+        const $to = state.doc.resolve(range.to);
+        if (!$from.parent.isTextblock || !$from.sameParent($to)) {
+          return false;
+        }
+
+        const markType = state.schema.marks[COMMENT_MARK_NAME];
+        const marks = [markType.create({ id })];
+        const sameRange: string[] = [];
+        for (const [otherId, other] of ranges) {
+          if (
+            otherId === id ||
+            !threads.has(otherId) ||
+            other.to <= range.from ||
+            other.from >= range.to
+          ) {
+            continue;
+          }
+          if (other.from > range.from || other.to < range.to) {
+            return false;
+          }
+          marks.push(markType.create({ id: otherId }));
+          if (other.from === range.from && other.to === range.to) {
+            sameRange.push(otherId);
+          }
+        }
+
+        let replacement: Fragment;
+        try {
+          replacement = Fragment.fromArray(
+            content.map((json) => {
+              const node = state.schema.nodeFromJSON(json);
+              return canCarryCommentMark(node, $from.parent)
+                ? node.mark(
+                    ProseMirrorMark.setFrom([
+                      ...node.marks.filter((mark) => mark.type !== markType),
+                      ...marks,
+                    ])
+                  )
+                : node;
+            })
+          );
+        } catch {
+          return false;
+        }
+        if (
+          !$from.parent.canReplace($from.index(), $to.indexAfter(), replacement)
+        ) {
+          return false;
+        }
+        let carriesMark = false;
+        replacement.forEach((node) => {
+          carriesMark ||= canCarryCommentMark(node, $from.parent);
+        });
+        if (sameRange.length > 0 && !carriesMark) {
+          return false;
+        }
+
+        if (dispatch) {
+          tr.replaceWith(range.from, range.to, replacement);
         }
         return true;
       },

@@ -1,6 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
-
+import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import egressPolicy from "./egress-policy";
 import envVars from "./env-vars";
 
@@ -9,7 +8,14 @@ import envVars from "./env-vars";
 // (SandboxPage), not the routes.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
+app.use(
+  "*",
+  ensureHasWorkspacePermission(
+    "admin",
+    "security",
+    "You are not authorized to manage the sandbox."
+  )
+);
 
 app.route("/egress-policy", egressPolicy);
 app.route("/env-vars", envVars);

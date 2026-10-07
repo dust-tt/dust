@@ -1,6 +1,7 @@
 import type { FrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import { Button, Check } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface FrameEditControlsProps {
   hideLabels: boolean;
@@ -11,6 +12,7 @@ export function FrameEditControls({
   hideLabels,
   session,
 }: FrameEditControlsProps) {
+  const { t } = useLingui();
   const { hasPendingEdits, isSaving, mode, save, setMode } = session;
 
   return (
@@ -27,7 +29,7 @@ export function FrameEditControls({
         <Button
           // Keep an icon so the control stays visible when the label is hidden on narrow
           // headers (same pattern as Preview|Edit).
-          label={hideLabels ? undefined : "Save"}
+          label={hideLabels ? undefined : t`Save`}
           icon={Check}
           size="xs"
           variant="ghost"
@@ -36,13 +38,13 @@ export function FrameEditControls({
           onClick={() => {
             void save();
           }}
-          aria-label="Save"
+          aria-label={t`Save`}
           tooltip={
             isSaving
-              ? "Publishing your changes..."
+              ? t`Publishing your changes...`
               : hasPendingEdits
-                ? "Save text edits"
-                : "No unsaved edits"
+                ? t`Save text edits`
+                : t`No unsaved edits`
           }
         />
       )}

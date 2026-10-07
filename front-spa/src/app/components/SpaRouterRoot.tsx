@@ -1,8 +1,8 @@
 import { AppI18nProvider } from "@dust-tt/front/components/app/AppI18nProvider";
 import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
+import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import { SparkleContext } from "@dust-tt/sparkle";
-import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import type { createBrowserRouter } from "react-router-dom";
 import { RouterProvider } from "react-router-dom";

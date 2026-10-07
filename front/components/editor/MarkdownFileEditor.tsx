@@ -8,6 +8,7 @@ import {
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface MarkdownFileEditorProps extends Omit<
@@ -42,6 +43,7 @@ export function MarkdownFileEditor({
   maxCharacterCount,
   ...markdownEditorProps
 }: MarkdownFileEditorProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const resolvedUrl = useMemo(
     () => (filePath ? getFilePathContentApiPath(owner, filePath) : null),
@@ -120,8 +122,8 @@ export function MarkdownFileEditor({
     if (maxCharacterCount !== undefined && draft.length > maxCharacterCount) {
       sendNotification({
         type: "error",
-        title: "Content too long",
-        description: `Shorten the file to ${maxCharacterCount} characters or fewer before saving.`,
+        title: t`Content too long`,
+        description: t`Shorten the file to ${maxCharacterCount} characters or fewer before saving.`,
       });
       return;
     }
@@ -148,6 +150,7 @@ export function MarkdownFileEditor({
     onSaved,
     saveContentType,
     sendNotification,
+    t,
     writeFileContent,
   ]);
 
@@ -166,11 +169,11 @@ export function MarkdownFileEditor({
   if (isNotFound && !emptyWhenNotFound) {
     return (
       <ContentMessage
-        title="File not found"
+        title={t`File not found`}
         variant="warning"
         className="w-full"
       >
-        The file could not be found at this path.
+        <Trans>The file could not be found at this path.</Trans>
       </ContentMessage>
     );
   }
@@ -178,7 +181,7 @@ export function MarkdownFileEditor({
   if (fileContentError) {
     return (
       <ContentMessage
-        title="Failed to load file"
+        title={t`Failed to load file`}
         variant="warning"
         className="w-full"
       >
@@ -191,12 +194,14 @@ export function MarkdownFileEditor({
     <div className="flex w-full min-w-0 flex-col gap-2">
       {maxCharacterCount !== undefined && draft.length > maxCharacterCount ? (
         <ContentMessage
-          title="Content exceeds the character limit"
+          title={t`Content exceeds the character limit`}
           variant="warning"
           className="w-full"
         >
-          This file is longer than {maxCharacterCount} characters. You can read
-          and edit it, but trim it down before saving.
+          <Trans>
+            This file is longer than {maxCharacterCount} characters. You can
+            read and edit it, but trim it down before saving.
+          </Trans>
         </ContentMessage>
       ) : null}
       <MarkdownEditor
@@ -209,13 +214,13 @@ export function MarkdownFileEditor({
       {canPersist && isDirty && (
         <div className="flex gap-2">
           <Button
-            label="Save"
+            label={t`Save`}
             variant="highlight"
             isLoading={isSaving}
             onClick={() => void handleSave()}
           />
           <Button
-            label="Cancel"
+            label={t`Cancel`}
             variant="outline"
             disabled={isSaving}
             onClick={handleCancel}

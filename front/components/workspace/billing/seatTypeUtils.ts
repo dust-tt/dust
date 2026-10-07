@@ -10,20 +10,26 @@ import {
   LayersThree01,
   LayersTwo01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import type React from "react";
 import type { ComponentType } from "react";
 
-const SEAT_TYPE_DISPLAY_NAMES: Record<string, string> = {
-  free: "Free",
+const SEAT_TYPE_DISPLAY_NAMES: Record<string, MessageDescriptor | string> = {
+  free: msg`Free`,
   pro: "Pro",
   max: "Max",
   workspace: "Platform",
-  none: "None",
+  none: msg`None`,
 };
 
-export function seatTypeDisplayName(seatType: MembershipSeatType): string {
+export function seatTypeDisplayName(
+  seatType: MembershipSeatType,
+  t: (descriptor: MessageDescriptor) => string
+): string {
   const base = toBaseSeatType(seatType);
-  return SEAT_TYPE_DISPLAY_NAMES[base] ?? base;
+  const name = SEAT_TYPE_DISPLAY_NAMES[base] ?? base;
+  return typeof name === "string" ? name : t(name);
 }
 
 export const SEAT_TYPE_ICONS: Record<string, ComponentType> = {

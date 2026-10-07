@@ -6,6 +6,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
+import { createProxyAgent } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { Err, Ok } from "@app/types/shared/result";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
@@ -16,7 +17,7 @@ import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
 } from "undici";
-import { ProxyAgent, fetch as undiciFetch } from "undici";
+import { fetch as undiciFetch } from "undici";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 const GITHUB_TEAM_REVIEWER_FRAGMENT = `... on Team {
@@ -90,7 +91,7 @@ const createOctokit = async (
     const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
       undiciFetch(url, {
         ...options,
-        dispatcher: new ProxyAgent(
+        dispatcher: createProxyAgent(
           `http://${EnvironmentConfig.getEnvVariable(
             "PROXY_USER_NAME"
           )}:${EnvironmentConfig.getEnvVariable(

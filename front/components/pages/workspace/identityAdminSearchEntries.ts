@@ -2,10 +2,10 @@ import {
   COMPUTER_ALLOWED_DOMAINS_LABEL,
   COMPUTER_NETWORK_SECTION_LABEL,
 } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
-import { AGENT_REQUESTED_DOMAINS_LABEL } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import { msg } from "@lingui/core/macro";
 
 const I = ADMIN_SECTION_IDS.identity;
 const C = ADMIN_SECTION_IDS.computer;
@@ -21,8 +21,8 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.domain,
     [
-      ["Domain Verification", "verified domains domain status"],
-      ["Add Domain", "verify company domain"],
+      [msg`Domain Verification`, msg`verified domains domain status`],
+      [msg`Add Domain`, msg`verify company domain`],
     ],
     "identity"
   ),
@@ -31,10 +31,10 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     I.sso,
     [
       [
-        "Single Sign-On (SSO)",
-        "workos google oidc saml idp configure de-activate",
+        msg`Single Sign-On (SSO)`,
+        msg`workos google oidc saml idp configure de-activate`,
       ],
-      ["Enforce SSO login", "disable social logins"],
+      [msg`Enforce SSO login`, msg`disable social logins`],
     ],
     "identity"
   ),
@@ -43,8 +43,8 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     C.agentDomains,
     [
       [
-        AGENT_REQUESTED_DOMAINS_LABEL,
-        "computer sandbox approval per domain egress",
+        msg`Agent-requested domains`,
+        msg`computer sandbox approval per domain egress`,
       ],
     ],
     "network"
@@ -55,11 +55,11 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     [
       [
         COMPUTER_NETWORK_SECTION_LABEL,
-        "network allowlist workspace pod egress computer",
+        msg`network allowlist workspace pod egress computer`,
       ],
       [
         COMPUTER_ALLOWED_DOMAINS_LABEL,
-        "network allowlist wildcard exact domain workspace pod egress computer",
+        msg`network allowlist wildcard exact domain workspace pod egress computer`,
       ],
     ],
     "network"
@@ -68,15 +68,15 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.auditLogs,
     [
-      ["View Logs", "workspace activity logs audit"],
-      ["Configure Export", "siem export audit"],
+      [msg`View Logs`, msg`workspace activity logs audit`],
+      [msg`Configure Export`, msg`siem export audit`],
     ],
     "audit"
   ),
   ...adminSearchEntries(
     PAGE,
     G.audit,
-    [["Audit logs", "emit audit events workos"]],
+    [[msg`Audit logs`, msg`emit audit events workos`]],
     "audit"
   ),
 ];

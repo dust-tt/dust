@@ -7,6 +7,8 @@ import {
   Lightbulb04,
   Markdown,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   CallToolResult,
   TextContent,
@@ -17,6 +19,7 @@ export function MCPAgentMemoryRetrieveActionDetails({
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const parsedMemories = useMemo(
     () => parseMemoriesFromOutput(toolOutput),
     [toolOutput]
@@ -25,14 +28,16 @@ export function MCPAgentMemoryRetrieveActionDetails({
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
-      actionName="Retrieve Agent Memory"
+      actionName={t`Retrieve agent memory`}
       visual={Lightbulb04}
     >
       <div className="flex flex-col pt-4">
         <div className="flex flex-col gap-2">
-          <span className="heading-base">Saved memories</span>
+          <span className="heading-base">
+            <Trans>Saved memories</Trans>
+          </span>
           {parsedMemories.length === 0 ? (
-            <ActionCard actionText={"*No memory was retrieved.*"} />
+            <ActionCard actionText={`*${t`No memory was retrieved.`}*`} />
           ) : (
             <MemoriesCardList memories={parsedMemories} />
           )}
@@ -46,20 +51,22 @@ export function MCPAgentMemoryRecordActionDetails({
   toolParams,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const entries = Array.isArray(toolParams.entries) ? toolParams.entries : [];
+  const entryCount = entries.length;
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
-      actionName="Record Agent Memory"
+      actionName={t`Record agent memory`}
       visual={Lightbulb04}
     >
       <div className="flex flex-col pt-4">
         <div className="flex flex-col gap-2">
           <span className="heading-base">
-            {entries.length === 1 ? "Recorded memory" : "Recorded memories"}
+            {t`${plural(entryCount, { one: "Recorded memory", other: "Recorded memories" })}`}
           </span>
           {entries.length === 0 ? (
-            <ActionCard actionText={"*No entries were recorded.*"} />
+            <ActionCard actionText={`*${t`No entries were recorded.`}*`} />
           ) : (
             <MemoriesCardList memories={entries} />
           )}
@@ -74,16 +81,17 @@ export function MCPAgentMemoryEditActionDetails({
   displayContext,
   toolName,
 }: ToolExecutionDetailsProps & { toolName: string }) {
+  const { t } = useLingui();
   const updatedMemories = useMemo(
     () => parseMemoriesFromOutput(toolOutput),
     [toolOutput]
   );
   const toolNameText =
     toolName === "compact_memory"
-      ? "Compact Agent Memory"
-      : "Edit Agent Memory";
+      ? t`Compact agent memory`
+      : t`Edit agent memory`;
   const subTitleText =
-    toolName === "compact_memory" ? "Compacted memories" : "Edited memories";
+    toolName === "compact_memory" ? t`Compacted memories` : t`Edited memories`;
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
@@ -94,7 +102,7 @@ export function MCPAgentMemoryEditActionDetails({
         <div className="flex flex-col gap-2">
           <div className="heading-base">{subTitleText}</div>
           {updatedMemories.length === 0 ? (
-            <ActionCard actionText={"*No memories remaining.*"} />
+            <ActionCard actionText={`*${t`No memories remaining.`}*`} />
           ) : (
             <MemoriesCardList memories={updatedMemories} />
           )}
@@ -109,7 +117,9 @@ export function MCPAgentMemoryEraseActionDetails({
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const indexes = Array.isArray(toolParams.indexes) ? toolParams.indexes : [];
+  const erasedCount = indexes.length;
   const remainingMemories = useMemo(
     () => parseMemoriesFromOutput(toolOutput),
     [toolOutput]
@@ -117,24 +127,28 @@ export function MCPAgentMemoryEraseActionDetails({
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
-      actionName="Erase Agent Memory"
+      actionName={t`Erase agent memory`}
       visual={Lightbulb04}
     >
       <div className="flex flex-col gap-4 pt-4">
         <div className="flex flex-col gap-2">
-          <span className="heading-base">Output</span>
+          <span className="heading-base">
+            <Trans>Output</Trans>
+          </span>
           <ActionCard
             actionText={
               indexes.length === 0
-                ? "*No memory entries were erased.*"
-                : `*Erased ${indexes.length} ${indexes.length === 1 ? "memory" : "memories"}.*`
+                ? `*${t`No memory entries were erased.`}*`
+                : `*${t`${plural(erasedCount, { one: "Erased # memory.", other: "Erased # memories." })}`}*`
             }
           />
         </div>
         <div className="flex flex-col gap-2">
-          <div className="heading-base">Remaining memories</div>
+          <div className="heading-base">
+            <Trans>Remaining memories</Trans>
+          </div>
           {remainingMemories.length === 0 ? (
-            <ActionCard actionText={"*No memories remaining.*"} />
+            <ActionCard actionText={`*${t`No memories remaining.`}*`} />
           ) : (
             <MemoriesCardList memories={remainingMemories} />
           )}

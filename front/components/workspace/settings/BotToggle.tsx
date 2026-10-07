@@ -1,6 +1,9 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
@@ -54,6 +57,7 @@ export function BotToggle({
 
   const [isChangingBot, setIsChangingBot] = useState(false);
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const cellContext = useCellContext();
 
   const createBotConnectionAndDataSource = async () => {
@@ -104,12 +108,9 @@ export function BotToggle({
         // TODO: likely better to still make the call (but tricky since data source is not yet created).
         window.location.reload();
       } else {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to enable ${name}.`,
-          description:
-            createRes.error?.message ??
-            t`Could not create a new ${name} data source.`,
+          error: createRes.error,
         });
       }
     }

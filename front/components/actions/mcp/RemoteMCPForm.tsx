@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
   Separator,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -32,6 +33,7 @@ interface RemoteMCPFormProps {
 }
 
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
+  const { t } = useLingui();
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -49,6 +51,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     name: "metaFields",
   });
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
+  const lastSyncDate = lastSyncAt ? formatDateTime(lastSyncAt) : null;
+  const headerCount = (headerFields ?? []).length;
+  const metaFieldCount = (metaFields ?? []).length;
 
   const handleSynchronize = useCallback(async () => {
     setIsSynchronizing(true);
@@ -67,15 +72,26 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           variant="info"
           icon={AlertCircle}
           size="sm"
-          title="Synchronization warning"
+          title={t`Synchronization warning`}
         >
-          Server could not synchronize successfully. Last attempt{" "}
-          {lastSyncAt ? `on ${formatDateTime(lastSyncAt)}` : ""}: {lastError}
+          {lastSyncDate ? (
+            <Trans>
+              Server could not synchronize successfully. Last attempt on{" "}
+              {lastSyncDate}: {lastError}
+            </Trans>
+          ) : (
+            <Trans>
+              Server could not synchronize successfully. Last attempt:{" "}
+              {lastError}
+            </Trans>
+          )}
         </ContentMessage>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="url">Server URL & Icon</Label>
+        <Label htmlFor="url">
+          <Trans>Server URL & icon</Trans>
+        </Label>
         <div className="flex space-x-2">
           <div className="flex-grow">
             <Input
@@ -85,7 +101,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             />
           </div>
           <Button
-            label={isSynchronizing ? "Syncing..." : "Sync"}
+            label={isSynchronizing ? t`Syncing...` : t`Sync`}
             isLoading={isSynchronizing}
             icon={CloudArrowLeftRight}
             variant="outline"
@@ -142,40 +158,49 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
       <Collapsible>
         <CollapsibleTrigger>
-          <div className="heading-lg">Advanced</div>
+          <div className="heading-lg">
+            <Trans>Advanced</Trans>
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="flex flex-col gap-5 pt-3">
             {!mcpServer.authorization && (
               <div className="space-y-2">
-                <div className="heading-base">Bearer Token</div>
+                <div className="heading-base">
+                  <Trans>Bearer token</Trans>
+                </div>
                 <Input
                   {...form.register("sharedSecret")}
                   isError={!!form.formState.errors.sharedSecret}
                   message={form.formState.errors.sharedSecret?.message}
-                  placeholder="Paste the Bearer Token here"
+                  placeholder={t`Paste the bearer token here`}
                 />
                 <p className="text-xs text-primary-500">
-                  This will be sent alongside the request made to your server as
-                  a Bearer token in the headers.
+                  <Trans>
+                    This will be sent alongside the request made to your server
+                    as a Bearer token in the headers.
+                  </Trans>
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
               <div className="heading-base">
-                Networking & Headers ({(headerFields ?? []).length})
+                <Trans>Networking & headers ({headerCount})</Trans>
               </div>
               <MCPServerHeaders />
             </div>
 
             <div className="space-y-2">
               <div className="heading-base">
-                Meta Fields ({(metaFields ?? []).length})
+                <Trans>Meta fields ({metaFieldCount})</Trans>
               </div>
               <p className="text-xs text-primary-500">
-                Key-value pairs sent as <code className="font-mono">_meta</code>{" "}
-                on every tool call to this server.
+                <Trans>
+                  Key-value pairs sent as{" "}
+                  <code className="font-mono">_meta</code> on every tool call to
+                  this server.
+                </Trans>
               </p>
               <MCPServerMetaFields />
             </div>

@@ -1,0 +1,511 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:55+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Create \"{name}\" agent"
+msgstr "Créer l’agent « {name} »"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "\"{name}\" agent creation accepted"
+msgstr "Création de l’agent « {name} » acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "\"{name}\" agent creation rejected"
+msgstr "Création de l’agent « {name} » refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Delete \"{name}\" agent"
+msgstr "Supprimer l’agent « {name} »"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "\"{name}\" agent deletion accepted"
+msgstr "Suppression de l’agent « {name} » acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "\"{name}\" agent deletion rejected"
+msgstr "Suppression de l’agent « {name} » refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Change description to \"{description}\""
+msgstr "Remplacer la description par « {description} »"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Description change to \"{description}\" accepted"
+msgstr "Remplacement de la description par « {description} » accepté"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Description change to \"{description}\" rejected"
+msgstr "Remplacement de la description par « {description} » refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Change model to \"{modelName}\""
+msgstr "Passer au modèle « {modelName} »"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Model change to \"{modelName}\" accepted"
+msgstr "Passage au modèle « {modelName} » accepté"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Model change to \"{modelName}\" rejected"
+msgstr "Passage au modèle « {modelName} » refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Rename agent to \"{name}\""
+msgstr "Renommer l’agent en « {name} »"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Rename to \"{name}\" accepted"
+msgstr "Renommage en « {name} » accepté"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Rename to \"{name}\" rejected"
+msgstr "Renommage en « {name} » refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Publish agent"
+msgstr "Publier l’agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Unpublish agent"
+msgstr "Dépublier l’agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Agent published"
+msgstr "Agent publié"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Agent unpublished"
+msgstr "Agent dépublié"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Publish rejected"
+msgstr "Publication refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Unpublish rejected"
+msgstr "Dépublication refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Update agent editors"
+msgstr "Modifier les éditeurs de l’agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Editors update accepted"
+msgstr "Modification des éditeurs acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Editors update rejected"
+msgstr "Modification des éditeurs refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Update agent tags"
+msgstr "Modifier les tags de l’agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Tags update accepted"
+msgstr "Modification des tags acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Tags update rejected"
+msgstr "Modification des tags refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Remove structured output"
+msgstr "Supprimer la sortie structurée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Structured output removal accepted"
+msgstr "Suppression de la sortie structurée acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Structured output removal rejected"
+msgstr "Suppression de la sortie structurée refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Update structured output"
+msgstr "Modifier la sortie structurée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Structured output update accepted"
+msgstr "Modification de la sortie structurée acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Structured output update rejected"
+msgstr "Modification de la sortie structurée refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Update agent instructions"
+msgstr "Modifier les instructions de l’agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Instructions update accepted"
+msgstr "Modification des instructions acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Instructions update rejected"
+msgstr "Modification des instructions refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Add a skill"
+msgstr "Ajouter une compétence"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Remove a skill"
+msgstr "Retirer une compétence"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Skill added"
+msgstr "Compétence ajoutée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Skill removed"
+msgstr "Compétence retirée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Skill addition rejected"
+msgstr "Ajout de la compétence refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Skill removal rejected"
+msgstr "Retrait de la compétence refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Add a sub-agent"
+msgstr "Ajouter un sous-agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Remove a sub-agent"
+msgstr "Retirer un sous-agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Sub-agent added"
+msgstr "Sous-agent ajouté"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Sub-agent removed"
+msgstr "Sous-agent retiré"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Sub-agent addition rejected"
+msgstr "Ajout du sous-agent refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Sub-agent removal rejected"
+msgstr "Retrait du sous-agent refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Add a tool"
+msgstr "Ajouter un outil"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Remove a tool"
+msgstr "Retirer un outil"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Tool added"
+msgstr "Outil ajouté"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Tool removed"
+msgstr "Outil retiré"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Tool addition rejected"
+msgstr "Ajout de l’outil refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Tool removal rejected"
+msgstr "Retrait de l’outil refusé"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Agent suggestion"
+msgstr "Suggestion pour l’agent"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Agent suggestion accepted"
+msgstr "Suggestion pour l’agent acceptée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+msgid "Agent suggestion rejected"
+msgstr "Suggestion pour l’agent refusée"
+
+#: front/components/markdown/suggestion/AgentSuggestionActionCard.tsx
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Accept"
+msgstr "Accepter"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Published"
+msgstr "Publié"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Unpublished"
+msgstr "Non publié"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Loading…"
+msgstr "Chargement…"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Tags"
+msgstr "Tags"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "New tag"
+msgstr "Nouveau tag"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Structured output (JSON schema)"
+msgstr "Sortie structurée (schéma JSON)"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Description"
+msgstr "Description"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+#: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+msgid "Skills"
+msgstr "Compétences"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+#: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+msgid "Tools"
+msgstr "Outils"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+#: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+msgid "Sub-agents"
+msgstr "Sous-agents"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Model"
+msgstr "Modèle"
+
+#: front/components/markdown/suggestion/AgentSuggestionDetails.tsx
+msgid "Visibility"
+msgstr "Visibilité"
+
+#: front/components/markdown/suggestion/BatchSuggestionDirective.tsx
+#: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
+msgid "Suggested changes"
+msgstr "Modifications suggérées"
+
+#: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
+msgid "View in builder"
+msgstr "Voir dans l’éditeur"
+
+#: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
+msgid "Decline"
+msgstr "Refuser"
+
+#: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
+msgid "Allow"
+msgstr "Autoriser"
+
+#: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
+msgid "The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it."
+msgstr "L’agent a suggéré une amélioration pour un agent ou une compétence, mais vous n’avez pas les droits nécessaires pour la consulter."
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Review in instructions"
+msgstr "Examiner dans les instructions"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Add {displayName} tool"
+msgstr "Ajouter l’outil {displayName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} tool added"
+msgstr "Outil {displayName} ajouté"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Remove {displayName} tool"
+msgstr "Retirer l’outil {displayName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} tool removed"
+msgstr "Outil {displayName} retiré"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} tool rejected"
+msgstr "Outil {displayName} refusé"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Run {childAgentName}"
+msgstr "Exécuter {childAgentName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Run sub-agent"
+msgstr "Exécuter le sous-agent"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Add {displayName}"
+msgstr "Ajouter {displayName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} added"
+msgstr "{displayName} : ajouté"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Remove {displayName}"
+msgstr "Retirer {displayName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} removed"
+msgstr "{displayName} : retiré"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} dismissed"
+msgstr "{displayName} : ignoré"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Add {skillName} skill"
+msgstr "Ajouter la compétence {skillName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{skillName} skill added"
+msgstr "Compétence {skillName} ajoutée"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Remove {skillName} skill"
+msgstr "Retirer la compétence {skillName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{skillName} skill removed"
+msgstr "Compétence {skillName} retirée"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{skillName} skill suggestion rejected"
+msgstr "Suggestion de la compétence {skillName} refusée"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Unknown model"
+msgstr "Modèle inconnu"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgctxt "reasoning effort"
+msgid "Default"
+msgstr "Par défaut"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Change model reasoning to: {formattedReasoning}"
+msgstr "Changer le raisonnement du modèle : {formattedReasoning}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Change model to: {modelName}"
+msgstr "Changer de modèle : {modelName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Model changed to {modelName} with {formattedReasoning} reasoning"
+msgstr "Modèle remplacé par {modelName} avec le raisonnement {formattedReasoning}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{modelName} model with {formattedReasoning} reasoning suggestion rejected"
+msgstr "Suggestion du modèle {modelName} avec le raisonnement {formattedReasoning} refusée"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{titles} (+{rest} more)"
+msgstr "{titles} (+{rest} de plus)"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Selections:"
+msgstr "Sélections :"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Add {displayName} as knowledge source"
+msgstr "Ajouter {displayName} comme source de connaissances"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} knowledge added"
+msgstr "Connaissances {displayName} ajoutées"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Remove {displayName} knowledge source"
+msgstr "Retirer la source de connaissances {displayName}"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} knowledge removed"
+msgstr "Connaissances {displayName} retirées"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "{displayName} knowledge rejected"
+msgstr "Connaissances {displayName} refusées"
+
+#: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
+msgid "Loading suggestion"
+msgstr "Chargement de la suggestion"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "{count, plural, one {# accepted} other {# accepted}}"
+msgstr "{count, plural, one {# acceptée} other {# acceptées}}"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "{count, plural, one {# declined} other {# declined}}"
+msgstr "{count, plural, one {# refusée} other {# refusées}}"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "{count, plural, one {# outdated} other {# outdated}}"
+msgstr "{count, plural, one {# obsolète} other {# obsolètes}}"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "Reject all"
+msgstr "Tout refuser"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "Allow all"
+msgstr "Tout autoriser"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgctxt "verb, button label"
+msgid "Review"
+msgstr "Examiner"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "{reviewedCount, plural, one {# edit reviewed} other {# edits reviewed}}"
+msgstr "{reviewedCount, plural, one {# modification examinée} other {# modifications examinées}}"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "{pendingCount, plural, one {# edit ready for your review} other {# edits ready for your review}}"
+msgstr "{pendingCount, plural, one {# modification à examiner} other {# modifications à examiner}}"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "Edit {editNumber} of {editTotal}"
+msgstr "Modification {editNumber} sur {editTotal}"
+
+#: front/components/markdown/suggestion/SuggestionPile.tsx
+msgid "Allow remaining"
+msgstr "Autoriser le reste"
+
+#: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+msgid "Delete"
+msgstr "Supprimer"
+
+#: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+#: front/components/markdown/suggestion/useSuggestionTarget.tsx
+msgid "Agent"
+msgstr "Agent"
+
+#: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+#: front/components/markdown/suggestion/useSuggestionTarget.tsx
+msgid "Skill"
+msgstr "Compétence"

@@ -76,7 +76,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   plan_message_limit_exceeded: msg`You've reached the message limit of your plan.`,
   credits_exhausted: msg`Your workspace has run out of credits.`,
   user_cap_reached: msg`You've reached your usage limit.`,
-  group_limit_reached: msg`Your group has reached its usage limit.`,
+  group_shared_usage_limit_reached: msg`Your group has reached its shared usage limit.`,
   no_seat: msg`You don't have a seat in this workspace.`,
   model_disabled: msg`This model is disabled.`,
   global_agent_error: msg`This Dust agent couldn't be updated.`,

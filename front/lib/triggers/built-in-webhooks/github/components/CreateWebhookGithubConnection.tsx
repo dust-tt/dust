@@ -16,6 +16,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 export function CreateWebhookGithubConnection({
@@ -24,6 +25,7 @@ export function CreateWebhookGithubConnection({
   onReadyToSubmitChange,
   connectionId,
 }: WebhookCreateFormComponentProps) {
+  const { t } = useLingui();
   const [selectedRepositories, setSelectedRepositories] = useState<
     GithubRepository[]
   >([]);
@@ -140,21 +142,21 @@ export function CreateWebhookGithubConnection({
         <div className="mt-2 flex items-center gap-2 py-2">
           <Spinner size="sm" />
           <span className="text-sm text-muted-foreground">
-            Loading repositories and organizations...
+            <Trans>Loading repositories and organizations...</Trans>
           </span>
         </div>
       ) : (
         <>
           <div>
             <Label>
-              Repositories{" "}
+              <Trans>Repositories</Trans>{" "}
               {selectedRepositories.length === 0 &&
                 selectedOrganizations.length === 0 && (
                   <span className="text-warning">*</span>
                 )}
             </Label>
             <p className="text-sm text-muted-foreground">
-              Choose which repositories can activate this trigger
+              <Trans>Choose which repositories can activate this trigger</Trans>
             </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">
@@ -177,7 +179,7 @@ export function CreateWebhookGithubConnection({
                   >
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label="Add repository"
+                        label={t`Add repository`}
                         variant="outline"
                         icon={Plus}
                         size="sm"
@@ -186,7 +188,7 @@ export function CreateWebhookGithubConnection({
                     <DropdownMenuContent className="w-80" align="start">
                       <DropdownMenuSearchbar
                         name="repository"
-                        placeholder="Search repositories..."
+                        placeholder={t`Search repositories...`}
                         value={repoSearchQuery}
                         onChange={setRepoSearchQuery}
                       />
@@ -202,7 +204,7 @@ export function CreateWebhookGithubConnection({
                           ))
                         ) : (
                           <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No repositories found
+                            <Trans>No repositories found</Trans>
                           </div>
                         )}
                       </div>
@@ -215,14 +217,16 @@ export function CreateWebhookGithubConnection({
 
           <div>
             <Label>
-              Organizations{" "}
+              <Trans>Organizations</Trans>{" "}
               {selectedRepositories.length === 0 &&
                 selectedOrganizations.length === 0 && (
                   <span className="text-warning">*</span>
                 )}
             </Label>
             <p className="text-sm text-muted-foreground">
-              Choose which organizations can activate this trigger
+              <Trans>
+                Choose which organizations can activate this trigger
+              </Trans>
             </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">
@@ -245,7 +249,7 @@ export function CreateWebhookGithubConnection({
                   >
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label="Add organization"
+                        label={t`Add organization`}
                         variant="outline"
                         icon={Plus}
                         size="sm"
@@ -254,7 +258,7 @@ export function CreateWebhookGithubConnection({
                     <DropdownMenuContent className="w-80" align="start">
                       <DropdownMenuSearchbar
                         name="organization"
-                        placeholder="Search organizations..."
+                        placeholder={t`Search organizations...`}
                         value={orgSearchQuery}
                         onChange={setOrgSearchQuery}
                       />
@@ -270,7 +274,7 @@ export function CreateWebhookGithubConnection({
                           ))
                         ) : (
                           <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No organizations found
+                            <Trans>No organizations found</Trans>
                           </div>
                         )}
                       </div>
@@ -284,8 +288,10 @@ export function CreateWebhookGithubConnection({
           {selectedRepositories.length === 0 &&
             selectedOrganizations.length === 0 && (
               <p className="mt-1 text-xs text-warning">
-                Please select at least one repository or organization to create
-                the webhook
+                <Trans>
+                  Please select at least one repository or organization to
+                  create the webhook
+                </Trans>
               </p>
             )}
         </>

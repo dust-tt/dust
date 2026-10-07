@@ -1,4 +1,5 @@
 import { SearchInput } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef } from "react";
 
 interface SidebarSearchProps {
@@ -10,6 +11,7 @@ export function SidebarSearch({
   titleFilter,
   onTitleFilterChange,
 }: SidebarSearchProps) {
+  const { t } = useLingui();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export function SidebarSearch({
     <SearchInput
       ref={searchInputRef}
       name="search"
-      placeholder="Search"
+      placeholder={t`Search`}
       value={titleFilter}
       onChange={onTitleFilterChange}
     />

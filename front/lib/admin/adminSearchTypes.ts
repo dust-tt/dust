@@ -1,17 +1,20 @@
 import type { SubNavigationAdminId } from "@app/components/navigation/config";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
+import type { MessageDescriptor } from "@lingui/core";
 
 /** One searchable setting: where it lives and how people might ask for it. */
 export type AdminSettingEntry = {
-  label: string;
+  label: MessageDescriptor;
   pageId: SubNavigationAdminId;
   /** In-page tab (`?tab=`), when the target page is tabbed. */
   tab?: string;
   sectionId: AdminSectionId;
-  keywords?: string;
+  keywords?: MessageDescriptor;
 };
 
-type SearchItem = string | [label: string, keywords: string];
+type SearchItem =
+  | MessageDescriptor
+  | [label: MessageDescriptor, keywords: MessageDescriptor];
 
 /**
  * Build search entries for one section. Mirrors the playground `e()` helper.
@@ -23,8 +26,8 @@ export function adminSearchEntries(
   tab?: string
 ): AdminSettingEntry[] {
   return items.map((item) =>
-    typeof item === "string"
-      ? { pageId, sectionId, tab, label: item }
-      : { pageId, sectionId, tab, label: item[0], keywords: item[1] }
+    Array.isArray(item)
+      ? { pageId, sectionId, tab, label: item[0], keywords: item[1] }
+      : { pageId, sectionId, tab, label: item }
   );
 }

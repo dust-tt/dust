@@ -1,5 +1,5 @@
-import { useLingui } from "@lingui/react/macro";
-import { useMemo } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 export const KEY_ROLES = ["user", "admin"] as const;
@@ -14,27 +14,23 @@ export const isKeyRole = (value: string): value is KeyRole =>
  * - Valid positive decimal number → valid
  * - Rejects scientific notation (e.g., "1e5"), letters, negative numbers
  */
-export function useMonthlyCapDollarsSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.string().refine(
-        (value) => {
-          if (value === "") {
-            return true;
-          }
-          // Only allow digits and optional decimal point (no scientific notation)
-          // Must have at least one digit (reject "." alone)
-          if (!/^\d*\.?\d*$/.test(value) || !/\d/.test(value)) {
-            return false;
-          }
-          const num = parseFloat(value);
-          return !isNaN(num) && num >= 0;
-        },
-        { message: t`Monthly cap must be a positive number` }
-      ),
-    [t]
+export function getMonthlyCapDollarsSchema(
+  t: (descriptor: MessageDescriptor) => string
+) {
+  return z.string().refine(
+    (value) => {
+      if (value === "") {
+        return true;
+      }
+      // Only allow digits and optional decimal point (no scientific notation)
+      // Must have at least one digit (reject "." alone)
+      if (!/^\d*\.?\d*$/.test(value) || !/\d/.test(value)) {
+        return false;
+      }
+      const num = parseFloat(value);
+      return !isNaN(num) && num >= 0;
+    },
+    { message: t(msg`Monthly cap must be a positive number`) }
   );
 }
 
@@ -57,24 +53,20 @@ export function dollarsToMicroUsd(dollars: number | null): number | null {
  * from the input. Empty → unlimited. Otherwise a whole number of AWU credits
  * (min 1) — no decimals or scientific notation.
  */
-export function useMonthlyCapCreditsSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.string().refine(
-        (value) => {
-          if (value === "") {
-            return true;
-          }
-          if (!/^\d+$/.test(value)) {
-            return false;
-          }
-          return parseInt(value, 10) >= 1;
-        },
-        { message: t`Credit cap must be a whole number of credits (min 1)` }
-      ),
-    [t]
+export function getMonthlyCapCreditsSchema(
+  t: (descriptor: MessageDescriptor) => string
+) {
+  return z.string().refine(
+    (value) => {
+      if (value === "") {
+        return true;
+      }
+      if (!/^\d+$/.test(value)) {
+        return false;
+      }
+      return parseInt(value, 10) >= 1;
+    },
+    { message: t(msg`Credit cap must be a whole number of credits (min 1)`) }
   );
 }
 

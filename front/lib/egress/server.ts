@@ -1,15 +1,29 @@
 import config from "@app/lib/api/config";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import type { Dispatcher, RequestInfo, RequestInit, Response } from "undici";
-import { ProxyAgent, fetch as undiciFetch } from "undici";
+import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
+
+// Undici 8 changed two defaults. We keep the Undici 7 behavior until we roll them out on purpose:
+// - `allowH2: false`: use HTTP/1.1, even with servers that offer HTTP/2.
+// - `proxyTunnel: true`: reach plain `http://` URLs through a CONNECT tunnel, as for `https://`.
+/**
+ * @cc [owner:philipperolet,label:performance] http1-and-connect
+ * The returned agent MUST use HTTP/1.1 and MUST send every request, including plain `http://`
+ * ones, through a CONNECT tunnel to the proxy.
+ */
+export function createProxyAgent(proxyUrl: string): ProxyAgent {
+  return new ProxyAgent({ uri: proxyUrl, allowH2: false, proxyTunnel: true });
+}
+
+// Replaces Undici's default agent, which uses HTTP/2 since Undici 8. See `createProxyAgent`.
+const http1Agent = new Agent({ allowH2: false });
 
 export function getUntrustedEgressAgent(): ProxyAgent | undefined {
   const proxyHost = config.getUntrustedEgressProxyHost();
   const proxyPort = config.getUntrustedEgressProxyPort();
 
   if (proxyHost && proxyPort) {
-    const proxyUrl = `http://${proxyHost}:${proxyPort}`;
-    return new ProxyAgent(proxyUrl);
+    return createProxyAgent(`http://${proxyHost}:${proxyPort}`);
   }
 
   return undefined;
@@ -28,8 +42,7 @@ export function getStaticIPProxyAgent(): ProxyAgent | undefined {
   const port = EnvironmentConfig.getEnvVariable("PROXY_PORT");
 
   if (user && pass && host && port) {
-    const proxyUrl = `http://${user}:${pass}@${host}:${port}`;
-    return new ProxyAgent(proxyUrl);
+    return createProxyAgent(`http://${user}:${pass}@${host}:${port}`);
   }
 
   return undefined;
@@ -94,5 +107,5 @@ export function trustedFetch(
   input: RequestInfo,
   init?: RequestInit
 ): Promise<Response> {
-  return undiciFetch(input, init);
+  return undiciFetch(input, { ...init, dispatcher: http1Agent });
 }

@@ -3,6 +3,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useBatchEditFrameText } from "@app/lib/swr/frames";
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { RefObject } from "react";
 import { useCallback, useContext, useRef, useState } from "react";
 
@@ -80,6 +81,7 @@ export function useFrameEditSession({
   mutateFileContent: () => Promise<unknown>;
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const batchEditFrameText = useBatchEditFrameText({
@@ -132,9 +134,8 @@ export function useFrameEditSession({
       if (!(await flushEditables(iframeRef.current))) {
         sendNotification({
           type: "error",
-          title: "Couldn't save edits",
-          description:
-            "The Frame didn't respond. Your edits are still staged, try saving again.",
+          title: t`Couldn't save edits`,
+          description: t`The Frame didn't respond. Your edits are still staged, try saving again.`,
         });
         return;
       }
@@ -169,18 +170,18 @@ export function useFrameEditSession({
     remount,
     replacePendingEdits,
     sendNotification,
+    t,
   ]);
 
   const setMode = useCallback(
     async (next: FrameEditMode) => {
       if (next === "preview" && pendingEditsRef.current.length > 0) {
         const discard = await confirm({
-          title: "Discard unsaved edits?",
-          message:
-            "You have unsaved text edits. Leaving Edit will discard them.",
-          validateLabel: "Discard",
+          title: t`Discard unsaved edits?`,
+          message: t`You have unsaved text edits. Leaving Edit will discard them.`,
+          validateLabel: t`Discard`,
           validateVariant: "warning",
-          cancelLabel: "Cancel",
+          cancelLabel: t`Cancel`,
         });
         if (!discard) {
           return;
@@ -192,7 +193,7 @@ export function useFrameEditSession({
 
       setModeState(next);
     },
-    [confirm, remount, replacePendingEdits]
+    [confirm, remount, replacePendingEdits, t]
   );
 
   return {

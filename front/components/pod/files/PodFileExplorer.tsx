@@ -83,6 +83,8 @@ import {
   Tooltip,
   UploadCloud02,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import {
   useCallback,
@@ -93,8 +95,7 @@ import {
   useState,
 } from "react";
 
-const POD_FILE_MANAGEMENT_DISABLED_TOOLTIP =
-  "Adding files to Pods is disabled by your workspace admin.";
+const POD_FILE_MANAGEMENT_DISABLED_TOOLTIP = msg`Adding files to Pods is disabled by your workspace admin.`;
 
 interface AttachKnowledgeDropdownProps {
   buttonLabel: string;
@@ -111,6 +112,7 @@ function AttachKnowledgeDropdown({
   onUploadFileClick,
   onShowCompanyDataClick,
 }: AttachKnowledgeDropdownProps) {
+  const { t } = useLingui();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -124,17 +126,17 @@ function AttachKnowledgeDropdown({
       <DropdownMenuContent>
         <DropdownMenuItem
           icon={CloudArrowLeftRight}
-          label="From Company Data"
+          label={t`From Company Data`}
           onClick={onShowCompanyDataClick}
         />
         <DropdownMenuItem
           icon={Folder}
-          label="New folder"
+          label={t`New folder`}
           onClick={onCreateFolderClick}
         />
         <DropdownMenuItem
           icon={UploadCloud02}
-          label="Upload file"
+          label={t`Upload file`}
           onClick={onUploadFileClick}
         />
       </DropdownMenuContent>
@@ -154,6 +156,7 @@ function AttachKnowledgeButton({
   onShowCompanyDataClick,
   onUploadFileClick,
 }: AttachKnowledgeButtonProps) {
+  const { t } = useLingui();
   if (canManuallyManagePodFiles) {
     return (
       <AttachKnowledgeDropdown
@@ -167,7 +170,7 @@ function AttachKnowledgeButton({
   }
   return (
     <Tooltip
-      label={POD_FILE_MANAGEMENT_DISABLED_TOOLTIP}
+      label={t(POD_FILE_MANAGEMENT_DISABLED_TOOLTIP)}
       trigger={
         <div>
           <AttachKnowledgeDropdown
@@ -194,6 +197,7 @@ function NoCompanyDataDialog({
   onClose,
   onGoToCompanyData,
 }: NoCompanyDataDialogProps) {
+  const { t } = useLingui();
   return (
     <Dialog
       open={isOpen}
@@ -205,20 +209,24 @@ function NoCompanyDataDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>No data available in Company Data</DialogTitle>
+          <DialogTitle>
+            <Trans>No data available in Company Data</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          There is no data available in Company Data yet. Go to Company Data to
-          add data.
+          <Trans>
+            There is no data available in Company Data yet. Go to Company Data
+            to add data.
+          </Trans>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Close",
+            label: t`Close`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Go to Company Data",
+            label: t`Go to Company Data`,
             variant: "primary",
             onClick: onGoToCompanyData,
           }}
@@ -234,6 +242,7 @@ interface PodFileExplorerProps {
 }
 
 export function PodFileExplorer({ owner, pod }: PodFileExplorerProps) {
+  const { t } = useLingui();
   const isArchived = !!pod.archivedAt;
 
   if (isArchived) {
@@ -243,8 +252,8 @@ export function PodFileExplorer({ owner, pod }: PodFileExplorerProps) {
   return (
     <FileDropProvider>
       <DropzoneContainer
-        description="Drop files here to upload them."
-        title="Upload files"
+        description={t`Drop files here to upload them.`}
+        title={t`Upload files`}
       >
         <PodFileExplorerContent owner={owner} pod={pod} />
       </DropzoneContainer>
@@ -253,6 +262,7 @@ export function PodFileExplorer({ owner, pod }: PodFileExplorerProps) {
 }
 
 function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
+  const { t } = useLingui();
   const [framePreview, setFramePreview] = useState<{
     fileId: string;
     path: string;
@@ -311,7 +321,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       if (canBePinned) {
         const pinned = isPinned(entry.path);
         items.push({
-          label: pinned ? "Unpin from banner" : "Pin as Pod banner",
+          label: pinned ? t`Unpin from banner` : t`Pin as Pod banner`,
           icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
@@ -329,7 +339,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       if (canBeTab) {
         const asTab = isFileTab(entry.path);
         items.push({
-          label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
+          label: asTab ? t`Remove from Pod tabs` : t`Add as Pod tab`,
           icon: LayoutAlt02,
           onClick: (e) => {
             e.stopPropagation();
@@ -351,7 +361,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       return items;
     },
-    [isArchived, isEditor, isFileTab, isPinned, removeFileTab, togglePin]
+    [isArchived, isEditor, isFileTab, isPinned, removeFileTab, t, togglePin]
   );
 
   const canManuallyManagePodKnowledge =
@@ -556,10 +566,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
       if (entry.kind === "node") {
+        const fileName = entry.fileName;
         const confirmed = await confirm({
-          title: "Remove content node?",
-          message: `Are you sure you want to remove "${entry.fileName}" from this Pod?`,
-          validateLabel: "Remove",
+          title: t`Remove content node?`,
+          message: t`Are you sure you want to remove "${fileName}" from this Pod?`,
+          validateLabel: t`Remove`,
           validateVariant: "warning",
         });
         if (confirmed) {
@@ -574,10 +585,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           }
         }
       } else if (entry.kind === "folder") {
+        const folderName = entry.name;
         const confirmed = await confirm({
-          title: "Delete folder?",
-          message: `Are you sure you want to delete "${entry.name}" and all its contents? This action cannot be undone.`,
-          validateLabel: "Delete",
+          title: t`Delete folder?`,
+          message: t`Are you sure you want to delete "${folderName}" and all its contents? This action cannot be undone.`,
+          validateLabel: t`Delete`,
           validateVariant: "warning",
         });
         if (confirmed) {
@@ -587,10 +599,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           }
         }
       } else if (entry.kind === "frame_package") {
+        const frameName = entry.fileName;
         const confirmed = await confirm({
-          title: "Delete Frame?",
-          message: `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone.`,
-          validateLabel: "Delete",
+          title: t`Delete Frame?`,
+          message: t`Are you sure you want to delete the Frame "${frameName}"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone.`,
+          validateLabel: t`Delete`,
           validateVariant: "warning",
         });
         if (confirmed) {
@@ -602,10 +615,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           }
         }
       } else {
+        const fileName = entry.fileName;
         const confirmed = await confirm({
-          title: "Delete file?",
-          message: `Are you sure you want to delete "${entry.fileName}"? This action cannot be undone.`,
-          validateLabel: "Delete",
+          title: t`Delete file?`,
+          message: t`Are you sure you want to delete "${fileName}"? This action cannot be undone.`,
+          validateLabel: t`Delete`,
           validateVariant: "warning",
         });
         if (confirmed) {
@@ -622,6 +636,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       refreshPodContextAttachments,
       refreshPodFiles,
       removePodContextContentNodes,
+      t,
     ]
   );
 
@@ -707,7 +722,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   }, [globalSpaceDSVs.length]);
 
   const isUploading = podFileUpload.isProcessingFiles || isExtractingArchives;
-  const uploadButtonLabel = isUploading ? "Uploading..." : "Add";
+  const uploadButtonLabel = isUploading ? t`Uploading...` : t`Add`;
   const isAddKnowledgeDisabled = !canManuallyManagePodKnowledge || isUploading;
 
   const hasFiles = podGCSFiles.length > 0 || contentNodeEntries.length > 0;
@@ -812,8 +827,8 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     <EmptyCTA
       message={
         isArchived
-          ? "This Pod is archived. No files have been added."
-          : "No files have been added to this Pod yet."
+          ? t`This Pod is archived. No files have been added.`
+          : t`No files have been added to this Pod yet.`
       }
       action={addButton}
     />
@@ -884,7 +899,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           systemSpace={globalSpace}
           systemSpaceDataSourceViews={globalSpaceDSVs}
           initialSelectedDataSources={initialSelectedDataSources}
-          title="Add data from Company Data"
+          title={t`Add data from Company Data`}
         />
       )}
 

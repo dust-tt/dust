@@ -4,15 +4,15 @@ import type {
   CatalogKind,
   CatalogQuery,
   CatalogView,
-  DiscoverSkill,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   buildCatalogQuery,
   getItemDescription,
   getItemId,
   getItemName,
+  interleaveCatalogItems,
   toHydratedAgentCatalogItem,
-  toHydratedSkillCatalogItem,
+  toSearchSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   trackDiscoverItemDetailsOpen,
@@ -25,7 +25,7 @@ import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -33,7 +33,6 @@ import {
   tagsSorter,
 } from "@app/lib/utils";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -50,13 +49,16 @@ import {
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
-const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "popular", label: "Most Popular" },
-  { id: "favorites", label: "Favorites" },
-  { id: "mine", label: "Mine" },
+const CATALOG_VIEWS: { id: CatalogView; label: MessageDescriptor }[] = [
+  { id: "all", label: msg({ message: "All", context: "catalog filter" }) },
+  { id: "popular", label: msg`Most popular` },
+  { id: "favorites", label: msg`Favorites` },
+  { id: "mine", label: msg({ message: "Mine", context: "catalog filter" }) },
 ];
 
 const CATALOG_SKELETON_ROW_COUNT = 6;
@@ -68,20 +70,11 @@ const DEFAULT_FILTERS: CatalogFilters = {
   tagId: null,
 };
 
-const CATALOG_KINDS: { id: CatalogKind; label: string }[] = [
-  { id: "all", label: "Agents & Skills" },
-  { id: "agent", label: "Agents" },
-  { id: "skill", label: "Skills" },
+const CATALOG_KINDS: { id: CatalogKind; label: MessageDescriptor }[] = [
+  { id: "all", label: msg`Agents & skills` },
+  { id: "agent", label: msg`Agents` },
+  { id: "skill", label: msg`Skills` },
 ];
-
-function skillSearchString(skill: DiscoverSkill): string {
-  return [
-    skill.name,
-    ...(skill.relations.editors ?? []).map((editor) => editor.fullName),
-  ]
-    .join(" ")
-    .toLowerCase();
-}
 
 function capitalizeWords(text: string): string {
   return text.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -92,6 +85,7 @@ interface ItemAuthorProps {
 }
 
 export function ItemAuthor({ item }: ItemAuthorProps) {
+  const { t } = useLingui();
   if (item.isDustProvided) {
     return (
       <span className="flex shrink-0 items-center gap-1 text-highlight">
@@ -103,19 +97,18 @@ export function ItemAuthor({ item }: ItemAuthorProps) {
   if (item.authors.length === 0) {
     return null;
   }
+  const [author] = item.authors;
+  const others = item.authors.length - 1;
   return (
     <span className="truncate text-foreground">
-      {formatAuthors(item.authors)}
+      {others === 0
+        ? author
+        : t`${plural(others, {
+            one: `${author} and # other`,
+            other: `${author} and # others`,
+          })}`}
     </span>
   );
-}
-
-function formatAuthors(authors: readonly string[]): string {
-  if (authors.length === 1) {
-    return authors[0];
-  }
-  const others = authors.length - 1;
-  return `${authors[0]} and ${others} other${pluralize(others)}`;
 }
 
 interface DiscoverCatalogProps {
@@ -143,7 +136,7 @@ interface CatalogSourceProps extends CatalogActions {
   onClearFilters: () => void;
 }
 
-function HydratedCatalog({
+function FavoritesCatalog({
   owner,
   query,
   search,
@@ -155,12 +148,25 @@ function HydratedCatalog({
 }: CatalogSourceProps) {
   const { agentConfigurations, isLoading: isAgentsLoading } =
     useUnifiedAgentConfigurations({ workspaceId: owner.sId });
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      withUsage: true,
-    });
+  const {
+    skills,
+    resolvedSearchTerm,
+    isSkillsLoading,
+    isSkillsError,
+    hasMore,
+    loadMore,
+  } = useSearchSkillsInfinite({
+    owner,
+    searchTerm: query.searchTerm,
+    limit: query.limit,
+    selectionMode: "favorites_only",
+    disabled: !query.showSkills,
+  });
+  // Filter local agents with the displayed skills' query so both lists update together.
+  const itemsQuery = useMemo(
+    () => ({ ...query, searchTerm: resolvedSearchTerm ?? query.searchTerm }),
+    [query, resolvedSearchTerm]
+  );
 
   const activeAgents = useMemo(
     () => agentConfigurations.filter((a) => a.status === "active"),
@@ -179,55 +185,31 @@ function HydratedCatalog({
   );
 
   const items = useMemo(() => {
-    const agents = query.showAgents
+    const agents = itemsQuery.showAgents
       ? activeAgents
           .filter(
             (agent) =>
-              (query.view !== "favorites" || agent.userFavorite) &&
-              (query.view !== "mine" || agent.canEdit) &&
-              (query.tagId === null ||
-                agent.tags.some((tag) => tag.sId === query.tagId)) &&
-              (!query.searchTerm ||
-                subFilter(query.searchTerm, getAgentSearchString(agent)))
+              agent.userFavorite &&
+              (itemsQuery.tagId === null ||
+                agent.tags.some((tag) => tag.sId === itemsQuery.tagId)) &&
+              (!itemsQuery.searchTerm ||
+                subFilter(itemsQuery.searchTerm, getAgentSearchString(agent)))
           )
-          .map((agent) => ({
-            item: toHydratedAgentCatalogItem(agent),
-            searchString: getAgentSearchString(agent),
-            sortName: agent.name.toLowerCase(),
-            usage: agent.usage?.messageCount ?? 0,
-          }))
-      : [];
-    const skills = query.showSkills
-      ? skillsWithRelations
-          .filter(
-            (skill) =>
-              (query.view !== "favorites" || !!skill.isFavorite) &&
-              (query.view !== "mine" || skill.canWrite) &&
-              (!query.searchTerm ||
-                subFilter(query.searchTerm, skillSearchString(skill)))
+          .sort(
+            (a, b) =>
+              (itemsQuery.searchTerm
+                ? compareForFuzzySort(
+                    itemsQuery.searchTerm,
+                    getAgentSearchString(a),
+                    getAgentSearchString(b)
+                  )
+                : 0) ||
+              compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
           )
-          .map((skill) => ({
-            item: toHydratedSkillCatalogItem(skill),
-            searchString: skillSearchString(skill),
-            sortName: skill.name.toLowerCase(),
-            usage: skill.usage ?? 0,
-          }))
+          .map(toHydratedAgentCatalogItem)
       : [];
-    return [...agents, ...skills]
-      .sort(
-        (a, b) =>
-          (query.searchTerm
-            ? compareForFuzzySort(
-                query.searchTerm,
-                a.searchString,
-                b.searchString
-              )
-            : 0) ||
-          (query.view === "popular" ? b.usage - a.usage : 0) ||
-          compareStrings(a.sortName, b.sortName)
-      )
-      .map(({ item }) => item);
-  }, [activeAgents, query, skillsWithRelations]);
+    return interleaveCatalogItems(agents, skills.map(toSearchSkillCatalogItem));
+  }, [activeAgents, itemsQuery, skills]);
 
   return (
     <CatalogLayout
@@ -239,10 +221,11 @@ function HydratedCatalog({
     >
       <CatalogResults
         items={items}
-        itemsQuery={query}
-        isLoading={isAgentsLoading || isSkillsWithRelationsLoading}
-        hasError={false}
-        hasNextPage={false}
+        itemsQuery={itemsQuery}
+        isLoading={isAgentsLoading || isSkillsLoading}
+        hasError={isSkillsError}
+        hasNextPage={query.showSkills && hasMore}
+        onLoadMore={loadMore}
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
         {...actions}
@@ -333,7 +316,7 @@ export function DiscoverCatalog({
     setSearchTerm(searchTerm);
   }, [searchTerm, setSearchTerm]);
 
-  // Favorites stay hydrated because search results have no favorite flag.
+  // The Favorites view keeps agents in the database and searches only favorite skills.
   const useSearch = filters.view !== "favorites";
   const query = useMemo(
     () =>
@@ -380,7 +363,7 @@ export function DiscoverCatalog({
       {...actions}
     />
   ) : (
-    <HydratedCatalog
+    <FavoritesCatalog
       owner={owner}
       query={query}
       search={search}
@@ -412,11 +395,12 @@ function CatalogLayout({
   onUpdateFilters,
   children,
 }: CatalogLayoutProps) {
+  const { t } = useLingui();
   return (
     <div className="flex flex-col gap-8">
       <SearchInput
         name="discover-search"
-        placeholder="Search for agents or skills"
+        placeholder={t`Search for agents or skills`}
         value={search}
         onChange={onSearchChange}
       />
@@ -446,13 +430,17 @@ function CatalogFiltersNav({
   isTagsLoading,
   onUpdateFilters,
 }: CatalogFiltersNavProps) {
+  const { t } = useLingui();
   return (
-    <nav aria-label="Filter" className="flex flex-col gap-6 self-start">
+    <nav
+      aria-label={t({ message: "Filter", context: "noun, navigation label" })}
+      className="flex flex-col gap-6 self-start"
+    >
       <NavigationList>
         {CATALOG_VIEWS.map((v) => (
           <NavigationListItem
             key={v.id}
-            label={v.label}
+            label={t(v.label)}
             selected={view === v.id}
             onClick={() => onUpdateFilters({ view: v.id })}
           />
@@ -462,7 +450,7 @@ function CatalogFiltersNav({
         {CATALOG_KINDS.map((k) => (
           <NavigationListItem
             key={k.id}
-            label={k.label}
+            label={t(k.label)}
             selected={kind === k.id}
             onClick={() =>
               onUpdateFilters(
@@ -475,13 +463,13 @@ function CatalogFiltersNav({
       {kind !== "skill" &&
         (tags.length > 0 ? (
           <NavigationList>
-            {tags.map((t) => (
+            {tags.map((tag) => (
               <NavigationListItem
-                key={t.sId}
-                label={capitalizeWords(t.name)}
-                selected={tagId === t.sId}
+                key={tag.sId}
+                label={capitalizeWords(tag.name)}
+                selected={tagId === tag.sId}
                 onClick={() =>
-                  onUpdateFilters({ tagId: tagId === t.sId ? null : t.sId })
+                  onUpdateFilters({ tagId: tagId === tag.sId ? null : tag.sId })
                 }
               />
             ))}
@@ -525,6 +513,7 @@ function CatalogResults({
   onPin,
   onDetails,
 }: CatalogResultsProps) {
+  const { t } = useLingui();
   const isInitialLoading = isLoading && items.length === 0;
 
   return (
@@ -539,20 +528,20 @@ function CatalogResults({
       ) : items.length === 0 ? (
         hasError ? (
           <EmptyCTA
-            title="Unable to load agents and skills"
-            message="Try again in a moment."
+            title={t`Unable to load agents and skills`}
+            message={t`Try again in a moment.`}
             action={null}
           />
         ) : (
           <EmptyCTA
-            title="No agents or skills found"
-            message="Try another search or different filters."
+            title={t`No agents or skills found`}
+            message={t`Try another search or different filters.`}
             action={
               canClearFilters && (
                 <Button
                   variant="outline"
                   size="sm"
-                  label="Clear filters"
+                  label={t`Clear filters`}
                   onClick={onClearFilters}
                 />
               )
@@ -586,7 +575,7 @@ function CatalogResults({
           ))}
           {hasError && (
             <p className="py-4 text-center copy-sm text-warning-500">
-              Couldn't load more. Try again in a moment.
+              <Trans>Couldn't load more. Try again in a moment.</Trans>
             </p>
           )}
           {hasNextPage && onLoadMore && (
@@ -594,7 +583,7 @@ function CatalogResults({
               <Button
                 variant="outline"
                 size="sm"
-                label="Load more"
+                label={t`Load more`}
                 isLoading={isLoading}
                 onClick={onLoadMore}
               />
@@ -614,6 +603,7 @@ interface CatalogRowProps {
 }
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
+  const { t } = useLingui();
   const name = getItemName(item);
   const avatar =
     item.kind === "agent" ? (
@@ -621,7 +611,9 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
     ) : (
       <SkillCatalogAvatar icon={item.skill.icon} size="md" />
     );
-  const useLabel = item.kind === "agent" ? `Chat with ${name}` : `Use ${name}`;
+  const useLabel =
+    item.kind === "agent" ? t`Chat with ${name}` : t`Use ${name}`;
+  const activeUsersCount = item.activeUsersCount;
   return (
     <div className="group relative flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
       <div className="shrink-0 self-start">{avatar}</div>
@@ -638,11 +630,16 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
         </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
-          {item.activeUsersCount !== null && (
+          {activeUsersCount !== null && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <Icon visual={Users01} size="xs" />
-              {formatNumber(item.activeUsersCount)}
-              <span className="sr-only">active users</span>
+              <span aria-hidden>{formatNumber(activeUsersCount)}</span>
+              <span className="sr-only">
+                {t`${plural(activeUsersCount, {
+                  one: "# active user",
+                  other: "# active users",
+                })}`}
+              </span>
             </span>
           )}
         </div>
@@ -656,8 +653,8 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
             variant="ghost"
             size="sm"
             icon={Pin02}
-            tooltip="Pin to Featured"
-            aria-label={`Pin ${name} to Featured`}
+            tooltip={t`Pin to Featured`}
+            aria-label={t`Pin ${name} to Featured`}
             onClick={onPin}
             className={cn(
               "transition-opacity duration-150 motion-reduce:transition-none",
@@ -669,8 +666,8 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
         <Button
           variant="outline"
           size="sm"
-          label="Details"
-          aria-label={`Show ${name} details`}
+          label={t`Details`}
+          aria-label={t`Show ${name} details`}
           onClick={onDetails}
         />
       </div>

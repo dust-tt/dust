@@ -4,6 +4,8 @@ import type {
   PatchSkillResponseBody,
   PostSkillResponseBody,
 } from "@app/types/api/skills";
+import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -19,7 +21,7 @@ interface SubmitSkillBuilderFormResult {
    * Set when the skill itself was saved but its editors could not be. Reported apart from the
    * `Err` channel so callers do not present a saved skill as a failed save.
    */
-  editorsError: Error | null;
+  editorsError: APIError | Error | null;
 }
 
 export async function submitSkillBuilderForm({
@@ -36,7 +38,7 @@ export async function submitSkillBuilderForm({
    * the creator alone, so callers pass the creator rather than an empty list.
    */
   currentEditors?: LightUserType[];
-}): Promise<Result<SubmitSkillBuilderFormResult, Error>> {
+}): Promise<Result<SubmitSkillBuilderFormResult, APIError | Error>> {
   try {
     const endpoint = skillId
       ? `/api/w/${owner.sId}/skills/${skillId}`
@@ -75,10 +77,11 @@ export async function submitSkillBuilderForm({
     if (!response.ok) {
       const errorData = await response.json();
       return new Err(
-        new Error(
-          errorData.error?.message ??
-            (skillId ? "Failed to update skill" : "Failed to create skill")
-        )
+        isAPIErrorResponse(errorData)
+          ? errorData.error
+          : new Error(
+              skillId ? "Failed to update skill" : "Failed to create skill"
+            )
       );
     }
 
@@ -122,9 +125,9 @@ export async function submitSkillBuilderForm({
       const errorData = await editorsResponse.json();
       return new Ok({
         skill,
-        editorsError: new Error(
-          errorData.error?.message ?? "Failed to update skill editors"
-        ),
+        editorsError: isAPIErrorResponse(errorData)
+          ? errorData.error
+          : new Error("Failed to update skill editors"),
       });
     }
 

@@ -20,18 +20,18 @@ import {
   Markdown,
   MarkerPin01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function DataSourceNodeContentDetails({
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const dataSourceNodeContent = toolOutput
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { metadata, text } = dataSourceNodeContent || {};
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { sourceUrl } = metadata || {};
 
   return (
@@ -39,8 +39,8 @@ export function DataSourceNodeContentDetails({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? "Retrieving file content"
-          : "Retrieve file content"
+          ? t`Retrieving file content`
+          : t`Retrieve file content`
       }
       visual={File02}
     >
@@ -51,7 +51,6 @@ export function DataSourceNodeContentDetails({
               onClick={
                 sourceUrl ? () => window.open(sourceUrl, "_blank") : undefined
               }
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               tooltip={`${metadata.parentTitle || metadata.path}${metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""}`}
             >
               <CitationIcons>
@@ -79,11 +78,11 @@ export function FilesystemPathDetails({
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const filesystemPath = toolOutput
     ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { path } = filesystemPath || { path: [] };
 
   const breadcrumbItems: BreadcrumbsItem[] = path?.map((item) =>
@@ -116,12 +115,14 @@ export function FilesystemPathDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={
-        displayContext === "conversation" ? "Locating item" : "Locate item"
+        displayContext === "conversation" ? t`Locating item` : t`Locate item`
       }
       visual={MarkerPin01}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <span className="text-sm font-bold text-foreground">Location</span>
+        <span className="text-sm font-bold text-foreground">
+          <Trans>Location</Trans>
+        </span>
         <Breadcrumbs className="pl-2" items={breadcrumbItems} />
       </div>
     </ActionDetailsWrapper>

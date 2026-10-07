@@ -9,11 +9,13 @@ const RETRY_MIN_TIMEOUT_MS = 200;
 // Shared agent for calls to internal services (CoreAPI, OAuthAPI, in-cluster MCP servers).
 // - keepAlive: reuses TCP connections; both servers (Axum/Hyper) have no server-side idle
 //   timeout so 30s is safe. A pod closes its sockets on SIGTERM, see the retry below.
+// - allowH2: false keeps HTTP/1.1, the default before Undici 8, for in-cluster HTTPS servers.
 // - dns: caches DNS resolutions to avoid repeated dns.lookup() calls that saturate the
 //   libuv thread pool and drive up event loop utilisation.
 export const internalAgent = new Agent({
   keepAliveTimeout: 30_000,
   keepAliveMaxTimeout: 600_000,
+  allowH2: false,
 }).compose(
   dns({
     maxTTL: 30_000, // 30 s, safe for internal K8s services.

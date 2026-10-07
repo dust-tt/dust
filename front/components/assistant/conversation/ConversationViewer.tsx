@@ -49,7 +49,7 @@ import { useConversationAttachments } from "@app/hooks/conversations/useConversa
 import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
@@ -274,7 +274,7 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const isMobile = useIsMobile();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
 
@@ -1216,10 +1216,9 @@ export const ConversationViewer = ({
           if (limitCode) {
             setLimitReachedCode?.(limitCode);
           } else {
-            sendNotification({
+            sendApiErrorNotification({
               title: result.error.title,
-              description: result.error.message,
-              type: "error",
+              error: result.error.error,
             });
           }
 
@@ -1305,7 +1304,7 @@ export const ConversationViewer = ({
       agentBuilderContext?.skipToolsValidation,
       conversationId,
       mutateConversations,
-      sendNotification,
+      sendApiErrorNotification,
       setLimitReachedCode,
       submitMessage,
       user,

@@ -4,6 +4,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type DefaultAgentToggleProps = {
@@ -22,6 +23,7 @@ export function DefaultAgentToggle({
   agent,
   onRefresh,
 }: DefaultAgentToggleProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -59,7 +61,7 @@ export function DefaultAgentToggle({
     } catch {
       sendNotification({
         type: "error",
-        title: "Could not update agent. Please try again.",
+        title: t`Could not update agent. Please try again.`,
       });
     } finally {
       setIsUpdating(false);

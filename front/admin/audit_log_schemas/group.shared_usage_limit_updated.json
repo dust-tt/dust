@@ -1,0 +1,17 @@
+{
+  "action": "group.shared_usage_limit_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "kind": "string",
+    "awu_credits": "string",
+    "previous_kind": "string",
+    "previous_awu_credits": "string"
+  }
+}

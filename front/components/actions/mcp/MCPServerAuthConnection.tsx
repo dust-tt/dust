@@ -32,6 +32,9 @@ import {
   Tooltip,
   User01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   ForwardRefExoticComponent,
   RefAttributes,
@@ -40,15 +43,20 @@ import type {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
-  platform_actions: "Shared account",
-  personal_actions: "Personal accounts",
+export const OAUTH_USE_CASE_TO_LABEL: Record<
+  MCPOAuthUseCase,
+  MessageDescriptor
+> = {
+  platform_actions: msg`Shared account`,
+  personal_actions: msg`Personal accounts`,
 };
 
-export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
-  platform_actions: "All members will use the credentials you provide here.",
-  personal_actions:
-    "Each member logs in with their own credentials when they use the tool.",
+export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<
+  MCPOAuthUseCase,
+  MessageDescriptor
+> = {
+  platform_actions: msg`All members will use the credentials you provide here.`,
+  personal_actions: msg`Each member logs in with their own credentials when they use the tool.`,
 };
 
 const TOKEN_ENDPOINT_AUTH_METHOD_KEY = "token_endpoint_auth_method" as const;
@@ -56,11 +64,11 @@ const TOKEN_ENDPOINT_AUTH_METHOD_KEY = "token_endpoint_auth_method" as const;
 const TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS = [
   {
     value: "client_secret_post",
-    label: "Request body (recommended)",
+    label: msg`Request body (recommended)`,
   },
   {
     value: "client_secret_basic",
-    label: "Basic auth header",
+    label: msg`Basic auth header`,
   },
 ] as const;
 
@@ -116,6 +124,7 @@ export function MCPServerAuthConnection({
   credentialInputsOverride,
   lockUseCase = false,
 }: MCPServerAuthConnectionProps) {
+  const { t } = useLingui();
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
   const { field: useCaseField } = useController({
@@ -226,22 +235,27 @@ export function MCPServerAuthConnection({
     [availableScopes, canCustomizeScopes, selectedScopes]
   );
 
+  const enabledOptionalScopeCount = optionalScopeCount - disabledScopeCount;
+
   return (
     <div className="flex flex-col items-center gap-4">
       {lockUseCase && useCase ? (
         <div className="w-full space-y-1">
-          <div className="heading-lg text-foreground">Credentials</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Credentials</Trans>
+          </div>
           <div className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">
-              {OAUTH_USE_CASE_TO_LABEL[useCase]}
-            </span>
-            : {OAUTH_USE_CASE_TO_DESCRIPTION[useCase]}
+            <UseCaseSummary useCase={useCase} />
           </div>
         </div>
       ) : (
         <div className="w-full space-y-4">
           <div className="heading-lg text-foreground">
-            {supportsBoth ? "How do you want to connect?" : "Connection type"}
+            {supportsBoth ? (
+              <Trans>How do you want to connect?</Trans>
+            ) : (
+              <Trans>Connection type</Trans>
+            )}
           </div>
           <div className="grid w-full grid-cols-2 gap-4">
             <UseCaseCard
@@ -286,8 +300,8 @@ export function MCPServerAuthConnection({
             size="sm"
             label={
               disabledScopeCount > 0
-                ? `Customize scopes (${optionalScopeCount - disabledScopeCount}/${optionalScopeCount} optional enabled)`
-                : "Customize scopes"
+                ? t`Customize scopes (${enabledOptionalScopeCount}/${optionalScopeCount} optional enabled)`
+                : t`Customize scopes`
             }
             onClick={() => setIsScopeDialogOpen(true)}
           />
@@ -303,11 +317,17 @@ export function MCPServerAuthConnection({
 
       {documentationUrl && (
         <div className="w-full pt-6 text-sm text-muted-foreground">
-          Questions ? Read{" "}
-          <Hoverable href={documentationUrl} target="_blank" variant="primary">
-            our guide
-          </Hoverable>{" "}
-          on {toolName}.
+          <Trans>
+            Questions? Read{" "}
+            <Hoverable
+              href={documentationUrl}
+              target="_blank"
+              variant="primary"
+            >
+              our guide
+            </Hoverable>{" "}
+            on {toolName}.
+          </Trans>
         </div>
       )}
     </div>
@@ -331,6 +351,7 @@ function OAuthCredentialFields({
   onCredentialChange,
   serverId,
 }: OAuthCredentialFieldsProps) {
+  const { t } = useLingui();
   // Sparkle portals dropdown menus into the last open sheet by default
   // (useSheetContainer). These fields render inside a Dialog stacked above the
   // MCP server details Sheet, so the default would mount the menu behind the
@@ -389,7 +410,7 @@ function OAuthCredentialFields({
                     <Button
                       variant="outline"
                       isSelect
-                      label={
+                      label={t(
                         TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS.find(
                           (option) =>
                             option.value ===
@@ -397,7 +418,7 @@ function OAuthCredentialFields({
                               TOKEN_ENDPOINT_AUTH_METHOD_KEY
                             ] ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].value)
                         )?.label ?? TOKEN_ENDPOINT_AUTH_METHOD_OPTIONS[0].label
-                      }
+                      )}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -413,7 +434,7 @@ function OAuthCredentialFields({
                         <DropdownMenuRadioItem
                           key={option.value}
                           value={option.value}
-                          label={option.label}
+                          label={t(option.label)}
                           onClick={() =>
                             onCredentialChange(
                               TOKEN_ENDPOINT_AUTH_METHOD_KEY,
@@ -456,9 +477,12 @@ function UseCaseCard({
   toolName,
   onSelect,
 }: UseCaseCardProps) {
+  const { t } = useLingui();
   const icon = useCaseType === "personal_actions" ? User01 : Planet;
-  const supportLabel =
-    useCaseType === "personal_actions" ? "individual" : "shared";
+  const unsupportedLabel =
+    useCaseType === "personal_actions"
+      ? t`${toolName} does not support individual connection.`
+      : t`${toolName} does not support shared connection.`;
 
   const card = (
     <Card
@@ -485,11 +509,11 @@ function UseCaseCard({
               isSupported ? "text-highlight" : "text-muted-foreground"
             )}
           >
-            {OAUTH_USE_CASE_TO_LABEL[useCaseType]}
+            {t(OAUTH_USE_CASE_TO_LABEL[useCaseType])}
           </span>
         </div>
         <span className="text-sm text-muted-foreground">
-          {OAUTH_USE_CASE_TO_DESCRIPTION[useCaseType]}
+          {t(OAUTH_USE_CASE_TO_DESCRIPTION[useCaseType])}
         </span>
       </div>
     </Card>
@@ -497,13 +521,26 @@ function UseCaseCard({
 
   if (!isSupported) {
     return (
-      <Tooltip
-        label={`${toolName} does not support ${supportLabel} connection.`}
-        trigger={card}
-        tooltipTriggerAsChild
-      />
+      <Tooltip label={unsupportedLabel} trigger={card} tooltipTriggerAsChild />
     );
   }
 
   return card;
+}
+
+interface UseCaseSummaryProps {
+  useCase: MCPOAuthUseCase;
+}
+
+function UseCaseSummary({ useCase }: UseCaseSummaryProps) {
+  const { t } = useLingui();
+  const useCaseLabel = t(OAUTH_USE_CASE_TO_LABEL[useCase]);
+  const useCaseDescription = t(OAUTH_USE_CASE_TO_DESCRIPTION[useCase]);
+
+  return (
+    <Trans>
+      <span className="font-semibold text-foreground">{useCaseLabel}</span>:{" "}
+      {useCaseDescription}
+    </Trans>
+  );
 }

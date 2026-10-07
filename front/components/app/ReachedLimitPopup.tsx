@@ -2,12 +2,15 @@ import {
   FairUsageModal,
   fairUseSeatLimitFromPlan,
 } from "@app/components/FairUsageModal";
-import { formatLimitTimeframe } from "@app/lib/client/credits";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubmitMessageError } from "@app/types/assistant/conversation";
-import type { SubscriptionType } from "@app/types/plan";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+  SubscriptionType,
+} from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
@@ -21,6 +24,9 @@ import {
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState } from "react";
 
 export type WorkspaceLimit =
@@ -31,7 +37,7 @@ export type WorkspaceLimit =
   | "credits_exhausted"
   | "pool_credits_exhausted"
   | "user_credits_exhausted"
-  | "group_limit_reached"
+  | "group_shared_usage_limit_reached"
   | "no_seat";
 
 // Maps a raw API error.type string (from retry/edit endpoints) to the blocking
@@ -46,8 +52,8 @@ export function getWorkspaceLimitFromApiErrorType(
       return "pool_credits_exhausted";
     case "user_cap_reached":
       return "user_credits_exhausted";
-    case "group_limit_reached":
-      return "group_limit_reached";
+    case "group_shared_usage_limit_reached":
+      return "group_shared_usage_limit_reached";
     case "no_seat":
       return "no_seat";
     default:
@@ -67,8 +73,8 @@ export function getWorkspaceLimitForSubmitError(
       return "pool_credits_exhausted";
     case "user_cap_reached_error":
       return "user_credits_exhausted";
-    case "group_limit_reached_error":
-      return "group_limit_reached";
+    case "group_shared_usage_limit_reached_error":
+      return "group_shared_usage_limit_reached";
     case "no_seat_error":
       return "no_seat";
     case "user_not_found":
@@ -82,27 +88,98 @@ export function getWorkspaceLimitForSubmitError(
   }
 }
 
+type Translate = (descriptor: MessageDescriptor) => string;
+
+function getAwuCreditsLimitSentence(
+  credits: number,
+  timeframe: MaxAwuCreditsTimeframeType,
+  t: Translate
+): string {
+  switch (timeframe) {
+    case "day":
+      return t(
+        msg`Your account has reached its limit of ${plural(credits, {
+          one: "# credit",
+          other: "# credits",
+        })} over the past 24 hours.`
+      );
+    case "week":
+      return t(
+        msg`Your account has reached its limit of ${plural(credits, {
+          one: "# credit",
+          other: "# credits",
+        })} over the past 7 days.`
+      );
+    case "month":
+      return t(
+        msg`Your account has reached its limit of ${plural(credits, {
+          one: "# credit",
+          other: "# credits",
+        })} over the past 30 days.`
+      );
+    case "lifetime":
+      return t(
+        msg`Your account has reached its limit of ${plural(credits, {
+          one: "# credit",
+          other: "# credits",
+        })} for your current plan.`
+      );
+    default:
+      assertNeverAndIgnore(timeframe);
+      return "";
+  }
+}
+
+function getMessagesLimitSentence(
+  messages: number,
+  timeframe: MaxMessagesTimeframeType,
+  t: Translate
+): string {
+  switch (timeframe) {
+    case "day":
+      return t(
+        msg`Your workspace has reached its shared limit of ${plural(messages, {
+          one: "# message per user",
+          other: "# messages per user",
+        })} over the past 24 hours.`
+      );
+    case "lifetime":
+      return t(
+        msg`Your workspace has reached its shared limit of ${plural(messages, {
+          one: "# message per user",
+          other: "# messages per user",
+        })} for your current plan.`
+      );
+    default:
+      assertNeverAndIgnore(timeframe);
+      return "";
+  }
+}
+
 function getLimitPromptForCode(
   router: AppRouter,
   owner: WorkspaceType,
   code: WorkspaceLimit,
   subscription: SubscriptionType,
   displayFairUseModal: () => void,
-  isAdmin: boolean
+  isAdmin: boolean,
+  t: Translate
 ) {
   switch (code) {
     case "cant_invite_no_seats_available": {
       return {
-        title: "Plan Limits",
-        validateLabel: "Manage your subscription",
+        title: t(msg`Plan limits`),
+        validateLabel: t(msg`Manage your subscription`),
         onValidate: () => {
           void router.push(`/w/${owner.sId}/subscription`);
         },
         children: (
           <>
             <Page.P>
-              Workspace has reached its member limit. Please upgrade or remove
-              inactive members to add more.
+              <Trans>
+                Workspace has reached its member limit. Please upgrade or remove
+                inactive members to add more.
+              </Trans>
             </Page.P>
           </>
         ),
@@ -110,32 +187,36 @@ function getLimitPromptForCode(
     }
     case "cant_invite_free_plan":
       return {
-        title: "Free plan",
-        validateLabel: "Manage your subscription",
+        title: t(msg`Free plan`),
+        validateLabel: t(msg`Manage your subscription`),
         onValidate: () => {
           void router.push(`/w/${owner.sId}/subscription`);
         },
         children: (
           <>
             <Page.P>
-              You cannot invite other members with the free plan. Upgrade your
-              plan for unlimited members.
+              <Trans>
+                You cannot invite other members with the free plan. Upgrade your
+                plan for unlimited members.
+              </Trans>
             </Page.P>
           </>
         ),
       };
     case "cant_invite_payment_failure":
       return {
-        title: "Failed payment",
-        validateLabel: "Manage your subscription",
+        title: t(msg`Failed payment`),
+        validateLabel: t(msg`Manage your subscription`),
         onValidate: () => {
           void router.push(`/w/${owner.sId}/subscription`);
         },
         children: (
           <>
             <Page.P>
-              You cannot invite other members while your workspace has a failed
-              payment.
+              <Trans>
+                You cannot invite other members while your workspace has a
+                failed payment.
+              </Trans>
             </Page.P>
           </>
         ),
@@ -147,8 +228,8 @@ function getLimitPromptForCode(
 
       if (isFreeTrialPhonePlan(subscription.plan.code)) {
         return {
-          title: "Dust trial message limit reached",
-          validateLabel: isAdmin ? "Subscribe to Dust" : "Ok",
+          title: t(msg`Dust trial message limit reached`),
+          validateLabel: isAdmin ? t(msg`Subscribe to Dust`) : t(msg`Ok`),
           onValidate: isAdmin
             ? () => {
                 void router.push(`/w/${owner.sId}/subscription`);
@@ -157,8 +238,10 @@ function getLimitPromptForCode(
           children: (
             <>
               <Page.P>
-                You have reached the message limit under the trial. You can
-                subscribe to a paid plan to continue using Dust.
+                <Trans>
+                  You have reached the message limit under the trial. You can
+                  subscribe to a paid plan to continue using Dust.
+                </Trans>
               </Page.P>
             </>
           ),
@@ -166,47 +249,61 @@ function getLimitPromptForCode(
       } else {
         if (isAwuCreditsFairUseLimit) {
           return {
-            title: "Credit quota exceeded",
-            validateLabel: "Ok",
+            title: t(msg`Credit quota exceeded`),
+            validateLabel: t(msg`Ok`),
             children: (
               <p className="text-sm font-normal text-muted-foreground">
-                We've paused messaging for your account due to our fair usage
-                policy. Your account has reached its limit of{" "}
-                {assistantLimits.maxAwuCredits} credits{" "}
-                {formatLimitTimeframe(assistantLimits.maxAwuCreditsTimeframe)}.
-                Check our{" "}
-                <Hoverable
-                  variant="highlight"
-                  onClick={() => displayFairUseModal()}
-                >
-                  Fair Use policy
-                </Hoverable>
-                &nbsp; to learn more.
+                <Trans>
+                  We've paused messaging for your account due to our fair usage
+                  policy.
+                </Trans>{" "}
+                {getAwuCreditsLimitSentence(
+                  assistantLimits.maxAwuCredits,
+                  assistantLimits.maxAwuCreditsTimeframe,
+                  t
+                )}{" "}
+                <Trans>
+                  Check our{" "}
+                  <Hoverable
+                    variant="highlight"
+                    onClick={() => displayFairUseModal()}
+                  >
+                    Fair Use policy
+                  </Hoverable>{" "}
+                  to learn more.
+                </Trans>
               </p>
             ),
           };
         } else {
           return {
-            title: "Message quota exceeded",
-            validateLabel: "Ok",
+            title: t(msg`Message quota exceeded`),
+            validateLabel: t(msg`Ok`),
             children: (
               <p className="text-sm font-normal text-muted-foreground">
-                We've paused messaging for your workspace due to our fair usage
-                policy. Your workspace has reached its shared limit of{" "}
-                {subscription.plan.limits.assistant.maxMessages} messages per
-                user{" "}
-                {formatLimitTimeframe(
-                  subscription.plan.limits.assistant.maxMessagesTimeframe
-                )}
-                . This total limit is collectively shared by all users in the
-                workspace. Check our{" "}
-                <Hoverable
-                  variant="highlight"
-                  onClick={() => displayFairUseModal()}
-                >
-                  Fair Use policy
-                </Hoverable>
-                &nbsp; to learn more.
+                <Trans>
+                  We've paused messaging for your workspace due to our fair
+                  usage policy.
+                </Trans>{" "}
+                {getMessagesLimitSentence(
+                  assistantLimits.maxMessages,
+                  assistantLimits.maxMessagesTimeframe,
+                  t
+                )}{" "}
+                <Trans>
+                  This total limit is collectively shared by all users in the
+                  workspace.
+                </Trans>{" "}
+                <Trans>
+                  Check our{" "}
+                  <Hoverable
+                    variant="highlight"
+                    onClick={() => displayFairUseModal()}
+                  >
+                    Fair Use policy
+                  </Hoverable>{" "}
+                  to learn more.
+                </Trans>
               </p>
             ),
           };
@@ -220,8 +317,8 @@ function getLimitPromptForCode(
         ? `/w/${owner.sId}/credits`
         : `/w/${owner.sId}/developers/credits-usage`;
       return {
-        title: "Workspace out of credits",
-        validateLabel: isAdmin ? "Manage credits" : "Ok",
+        title: t(msg`Workspace out of credits`),
+        validateLabel: isAdmin ? t(msg`Manage credits`) : t(msg`Ok`),
         onValidate: isAdmin
           ? () => {
               void router.push(creditsManagementHref);
@@ -231,8 +328,12 @@ function getLimitPromptForCode(
           <>
             <Page.P>
               {isAdmin
-                ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
-                : "Your workspace has run out of credits. Please contact your administrator to purchase more credits."}
+                ? t(
+                    msg`Your workspace has run out of credits. Please purchase more credits to continue using Dust.`
+                  )
+                : t(
+                    msg`Your workspace has run out of credits. Please contact your administrator to purchase more credits.`
+                  )}
             </Page.P>
           </>
         ),
@@ -241,8 +342,8 @@ function getLimitPromptForCode(
 
     case "no_seat": {
       return {
-        title: "No seat assigned",
-        validateLabel: isAdmin ? "Go to usage page" : "Ok",
+        title: t(msg`No seat assigned`),
+        validateLabel: isAdmin ? t(msg`Go to usage page`) : t(msg`Ok`),
         onValidate: isAdmin
           ? () => {
               void router.push(`/w/${owner.sId}/credits?openChangeMySeat`);
@@ -252,8 +353,12 @@ function getLimitPromptForCode(
           <>
             <Page.P>
               {isAdmin
-                ? "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
-                : "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."}
+                ? t(
+                    msg`You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one.`
+                  )
+                : t(
+                    msg`You don't have a seat assigned in this workspace. Please contact your administrator to assign you one.`
+                  )}
             </Page.P>
           </>
         ),
@@ -265,8 +370,8 @@ function getLimitPromptForCode(
       // page, so there is nothing for an admin to change there.
       const canManageCap = isAdmin && isCreditPricedPlan(subscription.plan);
       return {
-        title: "Usage cap reached",
-        validateLabel: canManageCap ? "Go to Usage" : "Ok",
+        title: t(msg`Usage cap reached`),
+        validateLabel: canManageCap ? t(msg`Go to Usage`) : t(msg`Ok`),
         onValidate: canManageCap
           ? () => {
               void router.push(`/w/${owner.sId}/credits?openChangeMySeat`);
@@ -276,25 +381,35 @@ function getLimitPromptForCode(
           <>
             <Page.P>
               {canManageCap
-                ? "You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps."
+                ? t(
+                    msg`You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps.`
+                  )
                 : isAdmin
-                  ? "You have reached your personal usage cap. Please contact your Dust representative to adjust it."
-                  : "You have reached your personal usage cap. Please contact your administrator to increase it."}
+                  ? t(
+                      msg`You have reached your personal usage cap. Please contact your Dust representative to adjust it.`
+                    )
+                  : t(
+                      msg`You have reached your personal usage cap. Please contact your administrator to increase it.`
+                    )}
             </Page.P>
           </>
         ),
       };
     }
 
-    case "group_limit_reached":
+    case "group_shared_usage_limit_reached":
       return {
-        title: "Group usage limit reached",
-        validateLabel: "Ok",
+        title: t(msg`Shared usage limit reached`),
+        validateLabel: t(msg`Ok`),
         children: (
           <Page.P>
             {isAdmin
-              ? "Your group has reached its usage limit. You can adjust group limits on the usage page."
-              : "Your group has reached its usage limit. Please contact your group managers or administrator to increase it."}
+              ? t(
+                  msg`Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page.`
+                )
+              : t(
+                  msg`Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it.`
+                )}
           </Page.P>
         ),
       };
@@ -320,6 +435,7 @@ export function ReachedLimitPopup({
   owner: WorkspaceType;
   code: WorkspaceLimit;
 }) {
+  const { t } = useLingui();
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
   // Keep the last code that was shown while open so the closing animation
@@ -337,7 +453,8 @@ export function ReachedLimitPopup({
     activeCode,
     subscription,
     () => setIsFairUsageModalOpened(true),
-    isAdmin
+    isAdmin,
+    t
   );
 
   if (!limitPrompt) {
@@ -373,7 +490,7 @@ export function ReachedLimitPopup({
             leftButtonProps={
               onValidate
                 ? {
-                    label: "Cancel",
+                    label: t`Cancel`,
                     variant: "outline",
                   }
                 : undefined

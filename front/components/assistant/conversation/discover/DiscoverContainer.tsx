@@ -9,10 +9,18 @@ import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { forwardRef, useState } from "react";
 
 const DISCOVER_TABS = ["Featured", "Catalog"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
+
+const DISCOVER_TAB_LABELS: Record<DiscoverTab, MessageDescriptor> = {
+  Featured: msg({ message: "Featured", context: "discover tab" }),
+  Catalog: msg({ message: "Catalog", context: "discover tab" }),
+};
 
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: RichAgentMentionCandidate) => void;
@@ -29,6 +37,7 @@ export const DiscoverContainer = forwardRef<
   { onAgentConfigurationClick, onSkillClick, onFiltersChange, owner, user },
   ref
 ) {
+  const { t } = useLingui();
   const [tab, setTab] = useState<DiscoverTab>("Featured");
   const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
   const onPin = isAdmin(owner) ? setPinTarget : undefined;
@@ -41,14 +50,16 @@ export const DiscoverContainer = forwardRef<
     >
       <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-8">
         <div className="sticky top-0 z-30 flex flex-col gap-6 bg-(--color-panel-background) pt-10">
-          <h1 className="heading-2xl text-foreground">Discover</h1>
+          <h1 className="heading-2xl text-foreground">
+            <Trans context="page title">Discover</Trans>
+          </h1>
           <TabsList>
-            {DISCOVER_TABS.map((t) => (
+            {DISCOVER_TABS.map((discoverTab) => (
               <TabsTrigger
-                key={t}
-                value={t}
-                label={t}
-                onClick={() => setTab(t)}
+                key={discoverTab}
+                value={discoverTab}
+                label={t(DISCOVER_TAB_LABELS[discoverTab])}
+                onClick={() => setTab(discoverTab)}
               />
             ))}
           </TabsList>

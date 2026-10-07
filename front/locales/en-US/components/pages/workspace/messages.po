@@ -1,0 +1,901 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+msgid "Automations"
+msgstr "Automations"
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+msgid "Everything that runs on its own: who set it up, how often it runs, what it costs."
+msgstr "Everything that runs on its own: who set it up, how often it runs, what it costs."
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "Triggers"
+msgstr "Triggers"
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "Slack workflows"
+msgstr "Slack workflows"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Consumption"
+msgstr "Consumption"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Export"
+msgstr "Export"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Ask @analyst"
+msgstr "Ask @analyst"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Analytics"
+msgstr "Analytics"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Explore"
+msgstr "Explore"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Credits"
+msgstr "Credits"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+msgid "Manage credit limits for members and groups in your scope."
+msgstr "Manage credit limits for members and groups in your scope."
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Members"
+msgstr "Members"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+msgid "All managed groups"
+msgstr "All managed groups"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Integrations"
+msgstr "Integrations"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Connect Dust to the tools where your team already works."
+msgstr "Connect Dust to the tools where your team already works."
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Messaging"
+msgstr "Messaging"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Email"
+msgstr "Email"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Clients"
+msgstr "Clients"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Messaging apps"
+msgstr "Messaging apps"
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Manage team members and their roles."
+msgstr "Manage team members and their roles."
+
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Roles"
+msgstr "Roles"
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Billing and security"
+msgstr "Billing and security"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "Models"
+msgstr "Models"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "Providers"
+msgstr "Providers"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "Access tiers"
+msgstr "Access tiers"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "App Credentials"
+msgstr "App Credentials"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Security"
+msgstr "Security"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Verify your domain, manage authentication and network access."
+msgstr "Verify your domain, manage authentication and network access."
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Domains & SSO"
+msgstr "Domains & SSO"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Network"
+msgstr "Network"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Audit Logs"
+msgstr "Audit Logs"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Workspace credit usage"
+msgstr "Workspace credit usage"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgstr "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgstr "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Remove seat"
+msgstr "Remove seat"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Add credits"
+msgstr "Add credits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "No seat"
+msgstr "No seat"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "All seats"
+msgstr "All seats"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Breakdown in analytics"
+msgstr "Breakdown in analytics"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Control credit consumption across your workspace."
+msgstr "Control credit consumption across your workspace."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Change my seat"
+msgstr "Change my seat"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Credit Pool"
+msgstr "Credit Pool"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Loading Credit Pool"
+msgstr "Loading Credit Pool"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Failed to load Workspace Credit Pool"
+msgstr "Failed to load Workspace Credit Pool"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+msgstr "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "/{initialTotalCreditsFormatted} credits"
+msgstr "/{initialTotalCreditsFormatted} credits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "On target"
+msgstr "On target"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Off target"
+msgstr "Off target"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "{usedPercentage}% used"
+msgstr "{usedPercentage}% used"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Resets {resetAtFormatted}"
+msgstr "Resets {resetAtFormatted}"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "At your current rate, you have enough credits to finish the cycle."
+msgstr "At your current rate, you have enough credits to finish the cycle."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgstr "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} other {{overageCreditsFormatted} overage credits}}"
+msgstr "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} other {{overageCreditsFormatted} overage credits}}"
+
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Top-ups history"
+msgstr "Top-ups history"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Settings"
+msgstr "Settings"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Branding"
+msgstr "Branding"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+#: front/components/pages/workspace/brandingAdminSearchEntries.ts
+msgid "Workspace branding"
+msgstr "Workspace branding"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Workspace branding is not available for this workspace. Whitelabel frames must be enabled to customize your workspace logo."
+msgstr "Workspace branding is not available for this workspace. Whitelabel frames must be enabled to customize your workspace logo."
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "consumption usage breakdown"
+msgstr "consumption usage breakdown"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Consumption overview"
+msgstr "Consumption overview"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "credits used period"
+msgstr "credits used period"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Consumption chart"
+msgstr "Consumption chart"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "trend graph"
+msgstr "trend graph"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Attribution table"
+msgstr "Attribution table"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "agents members groups skills"
+msgstr "agents members groups skills"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Usage filters"
+msgstr "Usage filters"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "filter dimension scope"
+msgstr "filter dimension scope"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Self-improving skills consumption"
+msgstr "Self-improving skills consumption"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "self improving skills consumption current period spend"
+msgstr "self improving skills consumption current period spend"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Export analytics"
+msgstr "Export analytics"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "download csv export usage data raw"
+msgstr "download csv export usage data raw"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Export usage data"
+msgstr "Export usage data"
+
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "csv download raw data"
+msgstr "csv download raw data"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "schedule webhook owner agent credits pool enabled"
+msgstr "schedule webhook owner agent credits pool enabled"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "Set pool"
+msgstr "Set pool"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "workspace pool member pool"
+msgstr "workspace pool member pool"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "Filters"
+msgstr "Filters"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "type pool enabled"
+msgstr "type pool enabled"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "allow workflow spaces list revoke"
+msgstr "allow workflow spaces list revoke"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "Allow a workflow"
+msgstr "Allow a workflow"
+
+#: front/components/pages/workspace/automationsAdminSearchEntries.ts
+msgid "slack workflow spaces"
+msgstr "slack workflow spaces"
+
+#: front/components/pages/workspace/brandingAdminSearchEntries.ts
+msgid "whitelabel frames brand"
+msgstr "whitelabel frames brand"
+
+#: front/components/pages/workspace/brandingAdminSearchEntries.ts
+msgid "Logo"
+msgstr "Logo"
+
+#: front/components/pages/workspace/brandingAdminSearchEntries.ts
+msgid "shared frame header logo upload"
+msgstr "shared frame header logo upload"
+
+#: front/components/pages/workspace/brandingAdminSearchEntries.ts
+msgid "Icon"
+msgstr "Icon"
+
+#: front/components/pages/workspace/brandingAdminSearchEntries.ts
+msgid "favicon square upload"
+msgstr "favicon square upload"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Domain Verification"
+msgstr "Domain Verification"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "verified domains domain status"
+msgstr "verified domains domain status"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Add Domain"
+msgstr "Add Domain"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "verify company domain"
+msgstr "verify company domain"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Single Sign-On (SSO)"
+msgstr "Single Sign-On (SSO)"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "workos google oidc saml idp configure de-activate"
+msgstr "workos google oidc saml idp configure de-activate"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Enforce SSO login"
+msgstr "Enforce SSO login"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "disable social logins"
+msgstr "disable social logins"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Agent-requested domains"
+msgstr "Agent-requested domains"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "computer sandbox approval per domain egress"
+msgstr "computer sandbox approval per domain egress"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "network allowlist workspace pod egress computer"
+msgstr "network allowlist workspace pod egress computer"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "network allowlist wildcard exact domain workspace pod egress computer"
+msgstr "network allowlist wildcard exact domain workspace pod egress computer"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "View Logs"
+msgstr "View Logs"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "workspace activity logs audit"
+msgstr "workspace activity logs audit"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Configure Export"
+msgstr "Configure Export"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "siem export audit"
+msgstr "siem export audit"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Audit logs"
+msgstr "Audit logs"
+
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "emit audit events workos"
+msgstr "emit audit events workos"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "Slack Bot"
+msgstr "Slack Bot"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "slack reconnect"
+msgstr "slack reconnect"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "Microsoft Teams Bot"
+msgstr "Microsoft Teams Bot"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "teams"
+msgstr "teams"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "\"Sent via Agent\" Slack footer"
+msgstr "\"Sent via Agent\" Slack footer"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "remove footer user credentials sent via agent"
+msgstr "remove footer user credentials sent via agent"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "Email agents"
+msgstr "Email agents"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "reach agents by email AGENT_NAME@dust.team"
+msgstr "reach agents by email AGENT_NAME@dust.team"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "MCP server"
+msgstr "MCP server"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "external mcp clients connect manage"
+msgstr "external mcp clients connect manage"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "Browser Extension Tools"
+msgstr "Browser Extension Tools"
+
+#: front/components/pages/workspace/integrationsAdminSearchEntries.ts
+msgid "list read browser tabs extension"
+msgstr "list read browser tabs extension"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Model Providers"
+msgstr "Model Providers"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "ai models llm openai anthropic google"
+msgstr "ai models llm openai anthropic google"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "EU-hosted models only"
+msgstr "EU-hosted models only"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "regional data residency europe"
+msgstr "regional data residency europe"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Make all providers available"
+msgstr "Make all providers available"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "enable all providers"
+msgstr "enable all providers"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Provider list"
+msgstr "Provider list"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "toggle enable disable models"
+msgstr "toggle enable disable models"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Embedding model"
+msgstr "Embedding model"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "default embedding provider"
+msgstr "default embedding provider"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Workspace model tiers"
+msgstr "Workspace model tiers"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "model tiers workspace access tier standard advanced frontier"
+msgstr "model tiers workspace access tier standard advanced frontier"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Models tier"
+msgstr "Models tier"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "model tiers workspace defaults"
+msgstr "model tiers workspace defaults"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Workspace access"
+msgstr "Workspace access"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "model tiers highest workspace access standard advanced frontier"
+msgstr "model tiers highest workspace access standard advanced frontier"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Published agents"
+msgstr "Published agents"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "model tiers run above member tier published agents"
+msgstr "model tiers run above member tier published agents"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "dust apps providers api keys openai azure anthropic"
+msgstr "dust apps providers api keys openai azure anthropic"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Model Providers for Dust Apps"
+msgstr "Model Providers for Dust Apps"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "api key openai azure anthropic"
+msgstr "api key openai azure anthropic"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "Service Providers"
+msgstr "Service Providers"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "serpapi serper browserless google search web scrape"
+msgstr "serpapi serper browserless google search web scrape"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "App Credentials tab"
+msgstr "App Credentials tab"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+msgid "legacy dust apps credentials"
+msgstr "legacy dust apps credentials"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Invite members"
+msgstr "Invite members"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Create group"
+msgstr "Create group"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "people team roster roles"
+msgstr "people team roster roles"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "add member invite member email invitation"
+msgstr "add member invite member email invitation"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Pending invitations"
+msgstr "Pending invitations"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "invited pending invite"
+msgstr "invited pending invite"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Change member role"
+msgstr "Change member role"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "admin manager user role"
+msgstr "admin manager user role"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Auto-join Workspace"
+msgstr "Auto-join Workspace"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "verified domain auto join enrollment"
+msgstr "verified domain auto join enrollment"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "team groups"
+msgstr "team groups"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "add group new group"
+msgstr "add group new group"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Edit group"
+msgstr "Edit group"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "group members managers"
+msgstr "group members managers"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "Directory sync"
+msgstr "Directory sync"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "gsuite google workspace scim workos provisioning"
+msgstr "gsuite google workspace scim workos provisioning"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "role provisioning grantable roles groups"
+msgstr "role provisioning grantable roles groups"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "full administrative control role groups"
+msgstr "full administrative control role groups"
+
+#: front/components/pages/workspace/peopleAdminSearchEntries.ts
+msgid "members groups roles analytics"
+msgstr "members groups roles analytics"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Subscription"
+msgstr "Subscription"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "plan manage billing"
+msgstr "plan manage billing"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Your plan"
+msgstr "Your plan"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "current plan seats"
+msgstr "current plan seats"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Cancel subscription"
+msgstr "Cancel subscription"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "churn end billing period"
+msgstr "churn end billing period"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Resume subscription"
+msgstr "Resume subscription"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "undo cancel"
+msgstr "undo cancel"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Billing portal"
+msgstr "Billing portal"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "invoices payment method stripe"
+msgstr "invoices payment method stripe"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Choose a plan"
+msgstr "Choose a plan"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "upgrade pro business enterprise"
+msgstr "upgrade pro business enterprise"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "Upgrade to Enterprise seat-based plan"
+msgstr "Upgrade to Enterprise seat-based plan"
+
+#: front/components/pages/workspace/subscriptionAdminSearchEntries.ts
+msgid "business upsell"
+msgstr "business upsell"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Members usage"
+msgstr "Members usage"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "seats spend limit upgrade requests"
+msgstr "seats spend limit upgrade requests"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Members model tiers"
+msgstr "Members model tiers"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "model tiers member access tier per user standard advanced frontier"
+msgstr "model tiers member access tier per user standard advanced frontier"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Upgrade requests"
+msgstr "Upgrade requests"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "review member requests deny"
+msgstr "review member requests deny"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Change seat type"
+msgstr "Change seat type"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "upgrade seat assign seat remove seat"
+msgstr "upgrade seat assign seat remove seat"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Edit spend limit"
+msgstr "Edit spend limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "override member limit"
+msgstr "override member limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Groups usage"
+msgstr "Groups usage"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "group spend limit seat"
+msgstr "group spend limit seat"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Group model tiers"
+msgstr "Group model tiers"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "model tiers group access tier per group standard advanced frontier"
+msgstr "model tiers group access tier per group standard advanced frontier"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Group monthly spend limit"
+msgstr "Group monthly spend limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "per group limit"
+msgstr "per group limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "credit grants added credits expiration bonus purchased"
+msgstr "credit grants added credits expiration bonus purchased"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "buy top-up purchase additional credits"
+msgstr "buy top-up purchase additional credits"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Purchase additional credits"
+msgstr "Purchase additional credits"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "buy top-up programmatic"
+msgstr "buy top-up programmatic"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Default per-user workspace credit pool monthly limit"
+msgstr "Default per-user workspace credit pool monthly limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "spending policy default limit pool"
+msgstr "spending policy default limit pool"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Upgrade request"
+msgstr "Upgrade request"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "allow members request upgrade"
+msgstr "allow members request upgrade"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Require a reason for upgrade requests"
+msgstr "Require a reason for upgrade requests"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "justification"
+msgstr "justification"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Auto-upgrade seats"
+msgstr "Auto-upgrade seats"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "free pro max at limit"
+msgstr "free pro max at limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Credit spend checkpoint"
+msgstr "Credit spend checkpoint"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "pause agent message threshold"
+msgstr "pause agent message threshold"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Programmatic Usage"
+msgstr "Programmatic Usage"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "credits usage api keys triggers"
+msgstr "credits usage api keys triggers"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Programmatic monthly limit"
+msgstr "Programmatic monthly limit"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "api keys triggers block programmatic access"
+msgstr "api keys triggers block programmatic access"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Global spending cap"
+msgstr "Global spending cap"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "self improving skills monthly cap credits"
+msgstr "self improving skills monthly cap credits"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Default cost cap per skill"
+msgstr "Default cost cap per skill"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "self improving skills per run cap"
+msgstr "self improving skills per run cap"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Workspace credit pool threshold alert"
+msgstr "Workspace credit pool threshold alert"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "email alert pool percent"
+msgstr "email alert pool percent"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Upgrade request emails"
+msgstr "Upgrade request emails"
+
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "email admins managers"
+msgstr "email admins managers"

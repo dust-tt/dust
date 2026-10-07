@@ -18,9 +18,9 @@
 //     programmatic (API) cap state.
 //
 // `isUserBlockedByMetronome` is the unified read: a user is blocked iff the pool
-// is depleted or one of the caller-supplied verdicts (per-user cap, group limit)
+// is depleted or one of the caller-supplied verdicts (per-user cap, shared usage limit)
 // is set. It returns the reason ("credits_exhausted" / "user_cap_reached" /
-// "group_limit_reached") so callers can surface a tailored message; see
+// "group_shared_usage_limit_reached") so callers can surface a tailored message; see
 // `deriveBlockedReason` for the order. The DB columns remain the source of truth;
 // cache writes are gated on DB transaction commit via `invalidateCacheAfterCommit`,
 // and cache misses fall back to DB and repopulate the relevant keys.
@@ -58,7 +58,7 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 export type UserBlockedReason =
   | "credits_exhausted"
   | "user_cap_reached"
-  | "group_limit_reached"
+  | "group_shared_usage_limit_reached"
   | "no_seat";
 
 export type ProgrammaticCreditStatus = "active" | "depleted";
@@ -362,24 +362,24 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
 
 /**
  * @cc [owner:rfrenoy,label:product] blocked-reason-priority
- * Reasons MUST be reported in this order: `user_cap_reached` > `group_limit_reached` >
+ * Reasons MUST be reported in this order: `user_cap_reached` > `group_shared_usage_limit_reached` >
  * `credits_exhausted` (the member's most specific actionable blocker first). Each verdict is computed
- * independently, so raising a member's personal limit MUST NOT clear a group limit block.
+ * independently, so raising a member's personal limit MUST NOT clear a shared usage limit block.
  */
 function deriveBlockedReason({
   userCapBlocked,
-  groupLimitBlocked,
+  groupSharedUsageLimitBlocked,
   workspacePoolDepleted,
 }: {
   userCapBlocked: boolean;
-  groupLimitBlocked: boolean;
+  groupSharedUsageLimitBlocked: boolean;
   workspacePoolDepleted: boolean;
 }): UserBlockedReason | null {
   if (userCapBlocked) {
     return "user_cap_reached";
   }
-  if (groupLimitBlocked) {
-    return "group_limit_reached";
+  if (groupSharedUsageLimitBlocked) {
+    return "group_shared_usage_limit_reached";
   }
   if (workspacePoolDepleted) {
     return "credits_exhausted";
@@ -390,15 +390,15 @@ function deriveBlockedReason({
 export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
   user: UserResource,
-  // Whether the user has hit their per-user spend cap, and whether their limit
-  // group has used its limit, resolved from the Redis counters by the wrapper in
+  // Whether the user has hit their per-user spend cap, and whether their shared usage
+  // limit group has used its limit, resolved from the Redis counters by the wrapper in
   // `lib/api/credits/access_control.ts`. The pool/seat logic (no_seat, pool
   // depletion, personal-seat and free-seat carve-outs) stays defined here so it
   // lives in one place.
   {
     userCapBlocked,
-    groupLimitBlocked,
-  }: { userCapBlocked: boolean; groupLimitBlocked: boolean }
+    groupSharedUsageLimitBlocked,
+  }: { userCapBlocked: boolean; groupSharedUsageLimitBlocked: boolean }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;
@@ -457,8 +457,9 @@ export async function isUserBlockedByMetronome(
   return deriveBlockedReason({
     userCapBlocked,
     // A free seat never draws from the pool, so its usage is not recorded to a
-    // group and a group limit must not block it.
-    groupLimitBlocked: groupLimitBlocked && membership?.seatType !== "free",
+    // group and a shared usage limit must not block it.
+    groupSharedUsageLimitBlocked:
+      groupSharedUsageLimitBlocked && membership?.seatType !== "free",
     workspacePoolDepleted,
   });
 }

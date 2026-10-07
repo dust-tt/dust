@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type {
   AuditLogsPortal,
   AuditLogsPortalResponse,
@@ -48,6 +51,7 @@ export function useRemoveWorkspaceDomain({
   owner: LightWorkspaceType;
 }) {
   const { mutate } = useWorkspaceDomains({ owner, disabled: true });
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doRemoveWorkspaceDomain = async (domain: string) => {
@@ -61,10 +65,9 @@ export function useRemoveWorkspaceDomain({
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to remove domain",
-        description: errorData.message,
+        error: errorData,
       });
 
       return null;
@@ -115,6 +118,7 @@ export function useDisableWorkOSSSOConnection({
   owner: LightWorkspaceType;
 }) {
   const { mutate } = useWorkOSSSOStatus({ owner, disabled: true });
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doDisableWorkOSSSOConnection = async () => {
@@ -127,10 +131,9 @@ export function useDisableWorkOSSSOConnection({
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to disable WorkOS SSO",
-        description: errorData.message,
+        error: errorData,
       });
 
       return null;
@@ -181,6 +184,7 @@ export function useDisableWorkOSDirectorySyncConnection({
   owner: LightWorkspaceType;
 }) {
   const { mutate } = useWorkOSDSyncStatus({ owner, disabled: true });
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doDisableWorkOSDirectorySyncConnection = async () => {
@@ -193,10 +197,9 @@ export function useDisableWorkOSDirectorySyncConnection({
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to disable WorkOS Directory Sync",
-        description: errorData.message,
+        error: errorData,
       });
 
       return null;
@@ -226,7 +229,7 @@ export function useOpenAuditLogsPortal({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const openPortal = async (portal: AuditLogsPortal) => {
     // Open a blank window synchronously to avoid popup blockers.
@@ -241,10 +244,9 @@ export function useOpenAuditLogsPortal({
     if (!response.ok) {
       newWindow?.close();
       const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to open audit logs portal",
-        description: errorData.message,
+        error: errorData,
       });
       return;
     }

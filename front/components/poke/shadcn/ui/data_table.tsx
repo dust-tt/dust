@@ -141,7 +141,6 @@ export function PokeDataTable<TData, TValue>({
     ? [selectionColumn, ...columns]
     : columns;
 
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns: resolvedColumns,

@@ -18,6 +18,7 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type DeleteMemoryDialogProps = {
@@ -35,6 +36,7 @@ function DeleteMemoryDialog({
   isOpen,
   onClose,
 }: DeleteMemoryDialogProps) {
+  const { t } = useLingui();
   const { deleteMemory } = useDeleteAgentMemory({ owner, agentConfiguration });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -50,21 +52,25 @@ function DeleteMemoryDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Deletion</DialogTitle>
+          <DialogTitle>
+            <Trans>Confirm deletion</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <div>Are you sure you want to delete this memory ?</div>
+          <div>
+            <Trans>Are you sure you want to delete this memory?</Trans>
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             disabled: isLoading,
             variant: "outline",
             onClick: () => onClose(false),
           }}
           rightButtonProps={{
             isLoading,
-            label: "Delete",
+            label: t`Delete`,
             variant: "warning",
             disabled: isLoading,
             onClick: async () => {
@@ -89,6 +95,7 @@ export function AgentMemoryTab({
   owner,
   agentConfiguration,
 }: AgentMemoryTabProps) {
+  const { t } = useLingui();
   const { memories, isMemoriesLoading } = useAgentMemoriesForUser({
     owner,
     agentConfiguration,
@@ -114,8 +121,8 @@ export function AgentMemoryTab({
 
       <div className="flex flex-col gap-4">
         <Page.SectionHeader
-          title="Saved memories"
-          description="Personal details this agent remembers from your conversations."
+          title={t`Saved memories`}
+          description={t`Personal details this agent remembers from your conversations.`}
         />
 
         {isMemoriesLoading ? (
@@ -126,7 +133,7 @@ export function AgentMemoryTab({
           <>
             {memories.length === 0 ? (
               <div className="text-sm text-muted-foreground">
-                No memories yet.
+                <Trans>No memories yet.</Trans>
               </div>
             ) : (
               <div className="flex flex-col gap-3">

@@ -45,7 +45,6 @@ export function getSpaceIcon(
 
 export const CATEGORY_DETAILS: {
   [key in DataSourceViewCategory]: {
-    label: string;
     icon: React.ComponentType<{
       className?: string;
     }>;
@@ -53,28 +52,22 @@ export const CATEGORY_DETAILS: {
   };
 } = {
   managed: {
-    label: "Connected Data",
     icon: CloudArrowLeftRight,
   },
   folder: {
-    label: "Folders",
     icon: Folder,
   },
   website: {
-    label: "Websites",
     icon: Globe01,
   },
   apps: {
-    label: "Apps",
     icon: Terminal,
     flag: "legacy_dust_apps",
   },
   actions: {
-    label: "Tools",
     icon: MCP_SPECIFICATION.cardIcon,
   },
   triggers: {
-    label: "Triggers",
     icon: Zap,
   },
 };

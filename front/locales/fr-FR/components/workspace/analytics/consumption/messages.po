@@ -1,0 +1,399 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "By model"
+msgstr "Par modèle"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "By reasoning effort"
+msgstr "Par niveau de raisonnement"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "By tools"
+msgstr "Par outil"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "By users"
+msgstr "Par utilisateur"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "View all models for {selectedRowName}"
+msgstr "Voir tous les modèles pour {selectedRowName}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "View all reasoning effort for {selectedRowName}"
+msgstr "Voir tous les niveaux de raisonnement pour {selectedRowName}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "View all tools for {selectedRowName}"
+msgstr "Voir tous les outils pour {selectedRowName}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "View all members for {selectedRowName}"
+msgstr "Voir tous les membres pour {selectedRowName}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "View all"
+msgstr "Tout voir"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "Failed to load breakdown."
+msgstr "Impossible de charger le détail."
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
+msgid "No attributed consumption."
+msgstr "Aucune consommation attribuée."
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Not enough data to compute"
+msgstr "Données insuffisantes pour le calcul"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Active / total members"
+msgstr "Membres actifs / total"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Vs workspace avg"
+msgstr "Vs moy. du workspace"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Consumption share"
+msgstr "Part de la consommation"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Total credits"
+msgstr "Total des crédits"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "vs prev"
+msgstr "vs préc."
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Add to filters"
+msgstr "Ajouter aux filtres"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Remove from filters"
+msgstr "Retirer des filtres"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Expand breakdown for {name}"
+msgstr "Afficher le détail pour {name}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Collapse breakdown for {name}"
+msgstr "Masquer le détail pour {name}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Add {name} to filters"
+msgstr "Ajouter {name} aux filtres"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Remove {name} from filters"
+msgstr "Retirer {name} des filtres"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "Failed to load attribution."
+msgstr "Impossible de charger la répartition."
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "No results for \"{trimmedSearch}\". Only items with usage data appear here."
+msgstr "Aucun résultat pour « {trimmedSearch} ». Seuls les éléments disposant de données d’utilisation apparaissent ici."
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "No consumption over this period."
+msgstr "Aucune consommation sur cette période."
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Attribution"
+msgstr "Répartition"
+
+#: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+msgid "Search…"
+msgstr "Rechercher…"
+
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+msgid "Actual consumption"
+msgstr "Consommation réelle"
+
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+msgid "Target consumption"
+msgstr "Consommation cible"
+
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+msgid "{deltaAmount} ahead of target"
+msgstr "{deltaAmount} au-dessus de la cible"
+
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+msgid "{deltaAmount} behind target"
+msgstr "{deltaAmount} en dessous de la cible"
+
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Failed to load consumption."
+msgstr "Impossible de charger la consommation."
+
+#: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Credits"
+msgstr "Crédits"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Today (partial)"
+msgstr "Aujourd’hui (partiel)"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "This week (partial)"
+msgstr "Cette semaine (partielle)"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "This month (partial)"
+msgstr "Ce mois-ci (partiel)"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} so far today"
+msgstr "{total} jusqu’ici aujourd’hui"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} so far this week"
+msgstr "{total} jusqu’ici cette semaine"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} so far this month"
+msgstr "{total} jusqu’ici ce mois-ci"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Active users"
+msgstr "Utilisateurs actifs"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "{total} total"
+msgstr "{total} au total"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Consumption"
+msgstr "Consommation"
+
+#: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+msgid "Cumulative"
+msgstr "Cumulé"
+
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "Conversation"
+msgstr "Conversation"
+
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "Untitled conversation"
+msgstr "Conversation sans titre"
+
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "Total Credits"
+msgstr "Total des crédits"
+
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "Open conversation"
+msgstr "Ouvrir la conversation"
+
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
+msgid "Open {title}"
+msgstr "Ouvrir {title}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "Download raw data"
+msgstr "Télécharger les données brutes"
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "Raw data exports"
+msgstr "Exports de données brutes"
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "Exports are kept for a maximum of 7 days."
+msgstr "Les exports sont conservés 7 jours maximum."
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "Could not load exports."
+msgstr "Impossible de charger les exports."
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "The export failed to generate."
+msgstr "La génération de l’export a échoué."
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "Generating your export…"
+msgstr "Génération de votre export…"
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "Generating a new export…"
+msgstr "Génération d’un nouvel export…"
+
+#: front/components/workspace/analytics/consumption/ConsumptionExportPanel.tsx
+msgid "New export"
+msgstr "Nouvel export"
+
+#: front/components/workspace/analytics/consumption/ConsumptionOverview.tsx
+msgid "Overview unavailable. Charts and attribution may still load."
+msgstr "Vue d’ensemble indisponible. Les graphiques et la répartition peuvent tout de même se charger."
+
+#: front/components/workspace/analytics/consumption/ConsumptionOverview.tsx
+msgid "{startDate} to {endDate}"
+msgstr "Du {startDate} au {endDate}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionOverview.tsx
+msgid "{activeMembers} of {totalMembers} members active"
+msgstr "Membres actifs : {activeMembers} sur {totalMembers}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionOverview.tsx
+msgid "Latest indexed record {lastRecordTimeAgo}"
+msgstr "Dernier enregistrement indexé {lastRecordTimeAgo}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionOverview.tsx
+msgid "Updated {lastRecordTimeAgo}"
+msgstr "Mis à jour {lastRecordTimeAgo}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Daily"
+msgstr "Quotidien"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Weekly"
+msgstr "Hebdomadaire"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Monthly"
+msgstr "Mensuel"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "This cycle"
+msgstr "Ce cycle"
+
+#: front/components/workspace/analytics/consumption/ConsumptionPeriodSelector.tsx
+msgid "Last {days} days"
+msgstr "{days} derniers jours"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Manage in Credits"
+msgstr "Gérer dans Crédits"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Used this period"
+msgstr "Utilisés sur la période"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "{formattedTotalCredits} credits"
+msgstr "{formattedTotalCredits} crédits"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "{usedPercentage}% of {capCredits} cap"
+msgstr "{usedPercentage} % du plafond de {capCredits}"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "{formattedAverageCost} credits / message"
+msgstr "{formattedAverageCost} crédits / message"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Top agent"
+msgstr "Agent principal"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "{topAgentShare}% of total consumption"
+msgstr "{topAgentShare} % de la consommation totale"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Active Users"
+msgstr "Utilisateurs actifs"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Messages / active user"
+msgstr "Messages / utilisateur actif"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Total cost"
+msgstr "Coût total"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "{totalCost} credits"
+msgstr "{totalCost} crédits"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "Avg. cost/msg"
+msgstr "Coût moy./msg"
+
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
+msgid "{formattedAverageCost} credits"
+msgstr "{formattedAverageCost} crédits"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Messages"
+msgstr "Messages"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Invocations"
+msgstr "Appels"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Credits / message"
+msgstr "Crédits / message"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Credits / invocation"
+msgstr "Crédits / appel"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Agents"
+msgstr "Agents"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Members"
+msgstr "Membres"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Groups"
+msgstr "Groupes"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Models"
+msgstr "Modèles"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Tools"
+msgstr "Outils"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Skills"
+msgstr "Compétences"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Sources"
+msgstr "Sources"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Triggers"
+msgstr "Déclencheurs"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "API keys"
+msgstr "Clés API"
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Conversations"
+msgstr "Conversations"

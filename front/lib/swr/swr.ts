@@ -192,7 +192,6 @@ export async function getErrorFromResponse(response: Response) {
   }
 
   if (isAPIErrorResponse(errorData)) {
-    /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     return errorData.error.connectors_error
       ? errorData.error.connectors_error
       : errorData.error;

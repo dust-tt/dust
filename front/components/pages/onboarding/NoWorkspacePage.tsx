@@ -15,6 +15,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 function signOut() {
   datadogLogs.clearUser();
@@ -25,6 +26,7 @@ function signOut() {
 }
 
 export function NoWorkspacePage() {
+  const { t } = useLingui();
   const flow = useSearchParam("flow");
   const { user } = useUser();
   const { workspaceLookup, isWorkspaceLookupLoading } = useWorkspaceLookup({
@@ -45,6 +47,9 @@ export function NoWorkspacePage() {
   }
 
   const { workspace, status, workspaceVerifiedDomain } = workspaceLookup;
+  const firstName = user?.firstName;
+  const workspaceName = workspace.name;
+  const companyName = workspaceVerifiedDomain ?? workspaceName;
 
   // Show workspace picker if user has multiple WorkOS orgs, or in dev
   // mode fall back to local DB workspaces (no orgs in seeded envs).
@@ -58,7 +63,7 @@ export function NoWorkspacePage() {
   return (
     <Page variant="normal">
       <BarHeader
-        title="Joining Dust"
+        title={t`Joining Dust`}
         className="ml-10 lg:ml-0"
         rightActions={
           <div className="flex flex-row items-center">
@@ -66,7 +71,7 @@ export function NoWorkspacePage() {
               <WorkspacePicker user={user} workspace={workspace} />
             )}
             <Button
-              label="Sign out"
+              label={t`Sign out`}
               icon={LogOut01}
               variant="ghost"
               size="sm"
@@ -81,42 +86,49 @@ export function NoWorkspacePage() {
             <Icon visual={DustLogoSquare} size="md" />
           </div>
           <span className="heading-2xl text-foreground">
-            Hello {user?.firstName}!
+            <Trans>Hello {firstName}!</Trans>
           </span>
         </div>
         <div>
           {status === "auto-join-disabled" && (
             <div className="flex flex-col gap-4">
               <span className="heading-lg text-muted-foreground">
-                {workspaceVerifiedDomain ?? workspace.name} already has a Dust
-                workspace.
+                <Trans>{companyName} already has a Dust workspace.</Trans>
               </span>
               <span className="copy-md text-muted-foreground">
-                To join the existing workspace of your company,
-                <span className="font-semibold">
-                  {" "}
-                  please request an invitation from your <br />
-                  colleagues,
-                </span>{" "}
-                then use the link provided in the invitation email to access the
-                workspace.
+                <Trans>
+                  To join the existing workspace of your company,
+                  <span className="font-semibold">
+                    {" "}
+                    please request an invitation from your <br />
+                    colleagues,
+                  </span>{" "}
+                  then use the link provided in the invitation email to access
+                  the workspace.
+                </Trans>
               </span>
             </div>
           )}
           {status === "revoked" && (
             <div className="flex flex-col gap-4">
               <span className="heading-lg text-muted-foreground">
-                You no longer have access to {workspace.name}'s Dust workspace.
+                <Trans>
+                  You no longer have access to {workspaceName}'s Dust workspace.
+                </Trans>
               </span>
               <span className="copy-md text-muted-foreground">
-                You may have been removed from the workspace or the workspace
-                may have reached its maximum number of users.
+                <Trans>
+                  You may have been removed from the workspace or the workspace
+                  may have reached its maximum number of users.
+                </Trans>
                 <br />
-                Please{" "}
-                <span className="font-semibold">
-                  contact the administrator in {workspace.name}
-                </span>{" "}
-                for more informations or to add you again.
+                <Trans>
+                  Please{" "}
+                  <span className="font-semibold">
+                    contact the administrator in {workspaceName}
+                  </span>{" "}
+                  for more information or to add you again.
+                </Trans>
               </span>
             </div>
           )}

@@ -40,6 +40,7 @@ import {
   Robot,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React from "react";
 
 interface InputBarButtonsProps {
@@ -94,18 +95,20 @@ function SelectedAgentPill({
   InputBarButtonsProps,
   "buttonSize" | "isDefaultAgentUnavailable" | "isInputDisabled" | "space"
 > & { selectedAgent: RichAgentMention }) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
   const isPod = space ? isProjectType(space) : false;
   const defaultAgentUnavailableLabel = isPod
-    ? "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
-    : "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.";
+    ? t`This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error.`
+    : t`This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.`;
+  const selectedAgentName = selectedAgent.label;
 
   return (
     <div
       role="button"
       tabIndex={isInputDisabled ? -1 : 0}
-      aria-label={`Selected agent: ${selectedAgent.label}`}
+      aria-label={t`Selected agent: ${selectedAgentName}`}
       aria-disabled={isInputDisabled}
       className={cn(
         "inline-flex box-border items-center rounded-full heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
@@ -176,6 +179,7 @@ function InputBarAgentButton({
   | "selectedAgent"
   | "space"
 > & { showFooterButtons: boolean }) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const isWidthConstrained = useIsWidthConstrained();
 
@@ -211,7 +215,11 @@ function InputBarAgentButton({
             variant="ghost-secondary"
             size={buttonSize}
             icon={Robot}
-            label={!isWidthConstrained ? "Agent" : undefined}
+            label={
+              !isWidthConstrained
+                ? t({ message: "Agent", context: "button label" })
+                : undefined
+            }
             disabled={isInputDisabled}
             isRounded
             className={cn(

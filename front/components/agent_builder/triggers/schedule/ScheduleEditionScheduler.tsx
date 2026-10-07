@@ -1,4 +1,4 @@
-import { useDescribeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/useDescribeScheduleConfig";
+import { describeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/describeScheduleConfig";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
@@ -70,7 +70,6 @@ export function ScheduleEditionScheduler({
   owner,
 }: ScheduleEditionSchedulerProps) {
   const { t } = useLingui();
-  const describeScheduleConfig = useDescribeScheduleConfig();
   const { control, setValue, getFieldState, formState } =
     useFormContext<TriggerViewsSheetFormValues>();
 
@@ -177,7 +176,7 @@ export function ScheduleEditionScheduler({
         if (!resolvedConfig) {
           return undefined;
         }
-        const description = describeScheduleConfig(resolvedConfig);
+        const description = describeScheduleConfig(resolvedConfig, t);
         if (generatedTimezone) {
           const timezoneLabel = formatTimezone(generatedTimezone);
           return t`${description}, in ${timezoneLabel} timezone.`;
@@ -192,7 +191,6 @@ export function ScheduleEditionScheduler({
     resolvedConfig,
     generatedTimezone,
     cronErrorMessage,
-    describeScheduleConfig,
     t,
   ]);
 

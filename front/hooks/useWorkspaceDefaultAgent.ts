@@ -1,5 +1,9 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -14,6 +18,7 @@ export function useWorkspaceDefaultAgent({
   owner,
 }: UseWorkspaceDefaultAgentProps) {
   const [isChanging, setIsChanging] = useState(false);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
@@ -35,19 +40,10 @@ export function useWorkspaceDefaultAgent({
       });
 
       if (!res.ok) {
-        let description = "Failed to update the workspace default agent.";
-        try {
-          const body = await res.json();
-          if (body?.error?.message) {
-            description = body.error.message;
-          }
-        } catch {
-          // JSON parse failure — keep fallback.
-        }
-        sendNotification({
-          type: "error",
+        const errorData = await getErrorFromResponse(res);
+        sendApiErrorNotification({
           title: "Failed to update the workspace default agent",
-          description,
+          error: errorData,
         });
         return false;
       }

@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 import type {
@@ -18,6 +21,7 @@ export function useChangeMembersRoles({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateMembers } = useMembers({
     workspaceId: owner.sId,
@@ -63,20 +67,16 @@ export function useChangeMembersRoles({
         const errors = results.filter((res) => !res.ok);
 
         if (errors.length > 0) {
-          let description: string;
           if (errors.length === 1) {
             const body = await errors[0].json().catch(() => null);
-            description =
-              body?.error?.message ?? "Failed to update member role.";
+            sendApiErrorNotification({ title: "Update failed", error: body });
           } else {
-            description = `Failed to update members role for ${errors.length} member(s) (${members.length - errors.length} succeeded).`;
+            sendNotification({
+              type: "error",
+              title: "Update failed",
+              description: `Failed to update members role for ${errors.length} member(s) (${members.length - errors.length} succeeded).`,
+            });
           }
-
-          sendNotification({
-            type: "error",
-            title: "Update failed",
-            description,
-          });
           return false;
         } else {
           sendNotification({
@@ -99,7 +99,13 @@ export function useChangeMembersRoles({
         return false;
       }
     },
-    [owner.sId, sendNotification, mutateMembers, mutateSearchMembers]
+    [
+      owner.sId,
+      sendNotification,
+      sendApiErrorNotification,
+      mutateMembers,
+      mutateSearchMembers,
+    ]
   );
 
   return handleMembersRoleChange;

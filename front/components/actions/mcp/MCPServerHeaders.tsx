@@ -4,6 +4,7 @@ import {
   REDACTED_HEADER_VALUES_ERROR_MESSAGE,
 } from "@app/types/shared/utils/http_headers";
 import { Button, Input, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithCustomHeaders = {
@@ -12,6 +13,7 @@ type FormWithCustomHeaders = {
 };
 
 export function MCPServerHeaders() {
+  const { t } = useLingui();
   // `register` binds inputs via DOM refs so RHF tracks values natively without triggering React re-renders on each
   // keystroke. Using `update` instead would replace the field object (regenerating field.id), causing React to remount
   // the input on every keystroke and lose focus.
@@ -49,7 +51,7 @@ export function MCPServerHeaders() {
                 <div className="col-span-1">
                   <Input
                     {...register(`customHeaders.${index}.key`)}
-                    placeholder="Header Name"
+                    placeholder={t`Header name`}
                     disabled={isRedacted || isPredefined}
                     className="w-full"
                   />
@@ -57,7 +59,7 @@ export function MCPServerHeaders() {
                 <div className="col-span-2">
                   <Input
                     {...register(`customHeaders.${index}.value`)}
-                    placeholder="Header Value"
+                    placeholder={t`Header value`}
                     disabled={isRedacted}
                     className="w-full"
                   />
@@ -77,7 +79,7 @@ export function MCPServerHeaders() {
       <Button
         className="mt-4 self-start"
         variant="outline"
-        label="Add Header"
+        label={t`Add header`}
         onClick={() => append({ key: "", value: "" })}
       />
     </div>

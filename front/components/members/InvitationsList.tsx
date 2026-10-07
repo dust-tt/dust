@@ -1,6 +1,9 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { compareStrings } from "@app/lib/i18n/format";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
@@ -46,10 +49,12 @@ function InitialRoleCell({ role }: InitialRoleCellProps) {
 function getColumns({
   owner,
   sendNotification,
+  sendApiErrorNotification,
   labels,
 }: {
   owner: WorkspaceType;
   sendNotification: ReturnType<typeof useSendNotification>;
+  sendApiErrorNotification: ReturnType<typeof useSendApiErrorNotification>;
   labels: { invitationEmail: string; role: string; resend: string };
 }) {
   // Managers cannot resend invitations targeting the admin role (matches the
@@ -87,6 +92,7 @@ function getColumns({
                           emails: [info.row.original.inviteEmail],
                           invitationRole: info.row.original.initialRole,
                           sendNotification,
+                          sendApiErrorNotification,
                           isNewInvitation: false,
                         });
                       }}
@@ -146,6 +152,7 @@ export function InvitationsList({
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const filteredInvitations = useMemo(
     () =>
@@ -172,6 +179,7 @@ export function InvitationsList({
   const columns = getColumns({
     owner,
     sendNotification,
+    sendApiErrorNotification,
     labels: {
       invitationEmail: t`Invitation Email`,
       role: t`Role`,

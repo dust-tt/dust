@@ -1,0 +1,38 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Salesforce instance URL"
+msgstr "URL de l’instance Salesforce"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Must be a valid Salesforce domain in https and ending with .salesforce.com"
+msgstr "Doit être un domaine Salesforce valide en https et se terminer par .salesforce.com"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Client ID"
+msgstr "ID client"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "The client ID from your Salesforce connected app."
+msgstr "L’ID client de votre app connectée Salesforce."
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Client secret"
+msgstr "Secret client"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "The client secret from your Salesforce connected app."
+msgstr "Le secret client de votre app connectée Salesforce."

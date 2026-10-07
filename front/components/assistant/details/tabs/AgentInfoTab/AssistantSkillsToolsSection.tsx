@@ -34,6 +34,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, Button, Command, Spinner, Tooltip } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
 import type { ReactNode } from "react";
@@ -89,6 +91,7 @@ export function AssistantSkillsToolsSection({
   owner,
   isDustAgent,
 }: AssistantToolsSectionProps) {
+  const { t } = useLingui();
   const editedSections = useEditedAgentSections();
   const { mcpServers, isMCPServersLoading: isToolsLoading } = useMCPServers({
     owner,
@@ -187,6 +190,7 @@ export function AssistantSkillsToolsSection({
     useState(TOOLS_INITIAL_COUNT);
   const visibleTools = allTools.slice(0, visibleToolsCount);
   const hasMore = allTools.length > visibleToolsCount;
+  const toolsCount = allTools.length;
 
   const hasTools = allTools.length > 0 || addedSubAgentIds.length > 0;
   const hasSkills = sortedSkills.length > 0 || addedSkillIds.length > 0;
@@ -196,7 +200,9 @@ export function AssistantSkillsToolsSection({
       {hasSkills && (
         <div className="relative flex flex-col gap-5">
           {editedSections.has("skills") && <EditedSectionBar />}
-          <div className="heading-lg text-foreground">Skills</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Skills</Trans>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {isSkillsLoading ? (
               <div className="flex flex-row items-center gap-2">
@@ -223,7 +229,9 @@ export function AssistantSkillsToolsSection({
       {hasTools && (
         <div className="relative flex flex-col gap-5">
           {editedSections.has("tools") && <EditedSectionBar />}
-          <div className="heading-lg text-foreground">Tools</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Tools</Trans>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {isToolsLoading || isToolsetsLoading ? (
               <div className="flex flex-row items-center gap-2">
@@ -277,7 +285,10 @@ export function AssistantSkillsToolsSection({
           {hasMore && (
             <div className="flex w-full justify-center">
               <Button
-                label={`Show all ${allTools.length} tools`}
+                label={t`${plural(toolsCount, {
+                  one: "Show all # tool",
+                  other: "Show all # tools",
+                })}`}
                 variant="outline"
                 size="xs"
                 onClick={() => setVisibleToolsCount(allTools.length)}

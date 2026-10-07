@@ -1,6 +1,7 @@
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import { msg } from "@lingui/core/macro";
 
 const A = ADMIN_SECTION_IDS.automations;
 const PAGE = "automations" as const;
@@ -13,9 +14,9 @@ export const AUTOMATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     A.triggers,
     [
-      ["Triggers", "schedule webhook owner agent credits pool enabled"],
-      ["Set pool", "workspace pool member pool"],
-      ["Filters", "type pool enabled"],
+      [msg`Triggers`, msg`schedule webhook owner agent credits pool enabled`],
+      [msg`Set pool`, msg`workspace pool member pool`],
+      [msg`Filters`, msg`type pool enabled`],
     ],
     "triggers"
   ),
@@ -23,8 +24,8 @@ export const AUTOMATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     A.slackWorkflows,
     [
-      ["Slack workflows", "allow workflow spaces list revoke"],
-      ["Allow a workflow", "slack workflow spaces"],
+      [msg`Slack workflows`, msg`allow workflow spaces list revoke`],
+      [msg`Allow a workflow`, msg`slack workflow spaces`],
     ],
     "slack-workflows"
   ),

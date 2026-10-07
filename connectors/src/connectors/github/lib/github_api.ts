@@ -23,6 +23,7 @@ import {
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
+import { createProxyAgent } from "@connectors/lib/proxy";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -40,7 +41,7 @@ import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
 } from "undici";
-import { ProxyAgent, fetch as undiciFetch } from "undici";
+import { fetch as undiciFetch } from "undici";
 
 const API_PAGE_SIZE = 100;
 const REPOSITORIES_API_PAGE_SIZE = 25;
@@ -633,7 +634,7 @@ export async function getOctokit(
     const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
       undiciFetch(url, {
         ...options,
-        dispatcher: new ProxyAgent(
+        dispatcher: createProxyAgent(
           `http://${EnvironmentConfig.getEnvVariable(
             "PROXY_USER_NAME"
           )}:${EnvironmentConfig.getEnvVariable(

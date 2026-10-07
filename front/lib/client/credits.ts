@@ -47,55 +47,6 @@ export function toolUsageLabel(callCount: number): string {
   return `${callCount} use${pluralize(callCount)}`;
 }
 
-// Short recurring-period label for a fair-use timeframe (e.g. "per day").
-// Returns an empty string for the "lifetime" sentinel, which has no period.
-export function formatFairUseTimeframe(
-  timeframe: MaxAwuCreditsTimeframeType
-): string {
-  switch (timeframe) {
-    case "day":
-      return "per day";
-    case "week":
-      return "per week";
-    case "month":
-      return "per month";
-    case "lifetime":
-      return "";
-    default:
-      assertNeverAndIgnore(timeframe);
-      return "";
-  }
-}
-
-export function formatLimitTimeframe(
-  timeframe: MaxAwuCreditsTimeframeType,
-  variant: "sentence" | "compact" = "sentence"
-): string {
-  let windowLabel: string;
-  switch (timeframe) {
-    case "day":
-      windowLabel = "24 hours";
-      break;
-    case "week":
-      windowLabel = "7 days";
-      break;
-    case "month":
-      windowLabel = "30 days";
-      break;
-    case "lifetime":
-      return variant === "compact"
-        ? "on your current plan"
-        : "for your current plan";
-    default:
-      assertNeverAndIgnore(timeframe);
-      return "";
-  }
-
-  return variant === "compact"
-    ? `in the last ${windowLabel}`
-    : `over the past ${windowLabel}`;
-}
-
 export function formatCreditsCompact(credits: number): string {
   return formatNumber(credits, {
     notation: "compact",

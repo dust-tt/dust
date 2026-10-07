@@ -7,6 +7,7 @@ import {
 } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContentMessage, InfoCircle, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface PodNetworkSectionProps {
   owner: LightWorkspaceType;
@@ -23,6 +24,7 @@ export function PodNetworkSection({
   podId,
   canEdit,
 }: PodNetworkSectionProps) {
+  const { t } = useLingui();
   const {
     policy,
     requestedDomains,
@@ -47,22 +49,32 @@ export function PodNetworkSection({
         variant="warning"
         icon={InfoCircle}
         size="lg"
-        title="Failed to load"
+        title={t`Failed to load`}
       >
-        The Pod network settings could not be loaded.
+        <Trans>The Pod network settings could not be loaded.</Trans>
       </ContentMessage>
     );
   }
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="heading-lg">Network</div>
+      <div className="heading-lg">
+        <Trans>Network</Trans>
+      </div>
       <p className="text-sm text-muted-foreground">
-        This Pod's Computer can reach these domains on top of the workspace
-        allowlist. Changes apply to running Computers within about a minute.
-        {!canEdit
-          ? " You can request additional domains; a workspace admin reviews each request."
-          : ""}
+        <Trans>
+          This Pod's Computer can reach these domains on top of the workspace
+          allowlist. Changes apply to running Computers within about a minute.
+        </Trans>
+        {!canEdit && (
+          <>
+            {" "}
+            <Trans>
+              You can request additional domains; a workspace admin reviews each
+              request.
+            </Trans>
+          </>
+        )}
       </p>
 
       <EgressDomainListEditor
@@ -82,7 +94,7 @@ export function PodNetworkSection({
           isDismissingRequest ||
           isRequestingPodEgressDomain
         }
-        emptyMessage="No Pod-specific domains are currently allowed."
+        emptyMessage={t`No Pod-specific domains are currently allowed.`}
         readOnly={!canEdit}
         onRequestDomain={
           canEdit ? undefined : (domain) => requestPodEgressDomain(domain)

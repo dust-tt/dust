@@ -14,11 +14,18 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
 }));
 
 vi.mock("@app/hooks/useNotification", () => ({
+  useSendApiErrorNotification: () => vi.fn(),
   useSendNotification: () => vi.fn(),
 }));
 
 vi.mock("@app/lib/swr/files", () => ({
   writeFileContentByPath: vi.fn(),
+}));
+
+let liveSessionUrl: string | null = null;
+
+vi.mock("@app/lib/client/live_session", () => ({
+  getLiveSessionUrl: () => liveSessionUrl,
 }));
 
 const owner: LightWorkspaceType = {
@@ -58,6 +65,7 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
+    liveSessionUrl = null;
     vi.mocked(writeFileContentByPath).mockResolvedValue(new Ok(undefined));
   });
 
@@ -198,6 +206,23 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe(
       "# Notes, revised\n"
     );
+  });
+
+  it("keeps a live editor open when the file is fetched again, even cut", () => {
+    flags.add("co_edition");
+    liveSessionUrl = "ws://localhost/collab";
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    const firstKey = result.current.richEditor?.mountKey;
+    expect(result.current.richEditor?.live).toBe(true);
+
+    rerender(revised);
+    expect(result.current.richEditor?.mountKey).toBe(firstKey);
+
+    rerender({ ...revised, isTruncated: true });
+    expect(result.current.richEditor?.mountKey).toBe(firstKey);
   });
 
   it("lifts the conflict once the editor is clean and reopens on the new content", async () => {

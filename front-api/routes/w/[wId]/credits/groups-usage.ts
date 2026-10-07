@@ -1,5 +1,5 @@
-import { getGroupLimitsUsage } from "@app/lib/api/groups/group_limit";
-import type { GetGroupsUsageResponseBody } from "@app/types/api/groups/group_limit";
+import { getGroupSharedUsageLimits } from "@app/lib/api/groups/group_shared_usage_limit";
+import type { GetGroupsUsageResponseBody } from "@app/types/api/groups/shared_usage_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -14,19 +14,19 @@ app.get(
   async (ctx): HandlerResult<GetGroupsUsageResponseBody> => {
     const auth = ctx.get("auth");
 
-    const usage = await getGroupLimitsUsage(auth);
+    const usage = await getGroupSharedUsageLimits(auth);
     if (usage === null) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "feature_flag_not_found",
-          message: "Group limits are not available for this workspace.",
+          message: "Shared usage limits are not available for this workspace.",
         },
       });
     }
     return ctx.json({
       groups: usage.map(({ group, usedAwuCredits }) =>
-        group.toGroupLimitUsageJSON({ usedAwuCredits })
+        group.toSharedUsageLimitJSON({ usedAwuCredits })
       ),
     });
   }

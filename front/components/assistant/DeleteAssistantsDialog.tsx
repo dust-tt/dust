@@ -1,6 +1,5 @@
 import { useBatchDeleteAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -13,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface DeleteAssistantsDialogProps {
@@ -28,6 +28,7 @@ export function DeleteAssistantsDialog({
   owner,
   onSave,
 }: DeleteAssistantsDialogProps) {
+  const { t } = useLingui();
   const [isDeleting, setIsDeleting] = useState(false);
   const doDelete = useBatchDeleteAgentConfigurations({
     owner,
@@ -38,6 +39,7 @@ export function DeleteAssistantsDialog({
     (acc, a) => acc + (a.usage?.messageCount ?? 0),
     0
   );
+  const agentCount = agentConfigurations.length;
 
   return (
     <Dialog>
@@ -45,36 +47,47 @@ export function DeleteAssistantsDialog({
         <Button
           size="sm"
           variant="warning"
-          label="Archive"
+          label={t({ message: "Archive", context: "verb, button label" })}
           disabled={disabled}
         />
       </DialogTrigger>
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
           <DialogTitle>
-            Archiving {agentConfigurations.length} agents
+            <Plural
+              value={agentCount}
+              one="Archiving # agent"
+              other="Archiving # agents"
+            />
           </DialogTitle>
           <DialogDescription>
             <div>
               <span className="font-bold">
-                {total > 0 &&
-                  `These agents have been used ${total} time${pluralize(total)} in the last 30 days.`}
+                {total > 0 && (
+                  <Plural
+                    value={total}
+                    one="These agents have been used # time in the last 30 days."
+                    other="These agents have been used # times in the last 30 days."
+                  />
+                )}
               </span>{" "}
-              This will archive the agents for everyone.
+              <Trans>This will archive the agents for everyone.</Trans>
             </div>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="font-bold">
+            <Trans>Are you sure you want to proceed?</Trans>
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             disabled: isDeleting,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Archive the agents",
+            label: t`Archive the agents`,
             variant: "warning",
             disabled: isDeleting,
             onClick: async (e: React.MouseEvent) => {

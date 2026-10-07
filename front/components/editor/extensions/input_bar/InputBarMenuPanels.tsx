@@ -15,6 +15,7 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
 import type { RefObject } from "react";
@@ -70,6 +71,7 @@ export function InputBarMenuPanels({
   spaceId,
   subMenuRef,
 }: InputBarMenuPanelsProps) {
+  const { t } = useLingui();
   if (isAttachOnly) {
     return (
       <AttachContextSubMenuDropdown
@@ -131,7 +133,7 @@ export function InputBarMenuPanels({
       command={onCommand}
       clientRect={clientRect}
       dropdownHeaders={dropdownHeaders}
-      emptyMessage="No commands found"
+      emptyMessage={t`No commands found`}
       isLoading={isLoading}
       onClose={onClose}
       onItemDetails={onItemDetails}

@@ -900,16 +900,18 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
-    if (
-      onlyWhenIdle &&
-      ((await conversationResource.getRunningAgentMessage(auth, {
-        transaction: t,
-      })) ||
-        (await conversationResource.getRunningCompactionMessage(auth, {
+    if (onlyWhenIdle) {
+      const runningAgentMessage =
+        await conversationResource.getRunningAgentMessage(auth, {
           transaction: t,
-        })))
-    ) {
-      return null;
+        });
+      const runningCompactionMessage =
+        await conversationResource.getRunningCompactionMessage(auth, {
+          transaction: t,
+        });
+      if (runningAgentMessage || runningCompactionMessage) {
+        return null;
+      }
     }
 
     // We clear the hasError flag of a conversation when posting a new user message.
@@ -2532,12 +2534,12 @@ export async function checkMessagesLimit(
         });
       }
       // No seat auto-upgrade: a seat does not raise a group's budget.
-      if (blockedReason === "group_limit_reached") {
+      if (blockedReason === "group_shared_usage_limit_reached") {
         return new Err({
           status_code: 403,
           api_error: {
-            type: "group_limit_reached",
-            message: "Your group has reached its usage limit.",
+            type: "group_shared_usage_limit_reached",
+            message: "Your group has reached its shared usage limit.",
           },
         });
       }

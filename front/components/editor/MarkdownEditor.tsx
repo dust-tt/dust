@@ -5,6 +5,7 @@ import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPaste
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { cn, Toolbar } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import type { Editor, EditorOptions } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
@@ -220,7 +221,9 @@ function CharacterCountDisplay({
         isOverLimit ? "text-warning" : "text-muted-foreground"
       )}
     >
-      {count} / {maxCount} characters
+      <Trans>
+        {count} / {maxCount} characters
+      </Trans>
     </span>
   );
 }

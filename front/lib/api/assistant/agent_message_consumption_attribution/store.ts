@@ -7,7 +7,10 @@ import {
   buildRunUsageAttribution,
   buildToolAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
+import {
+  canEnableSkill,
+  getEnabledSkillIdsFromAction,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { skillIdsAttributedToAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/skill_attribution";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
@@ -628,13 +631,20 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
       .map((usage) => dustRunIdByRunModelId.get(usage.runModelId))
       .filter((dustRunId): dustRunId is string => dustRunId !== undefined)
   );
-  const actionsToEnrich = actions.filter(
+  const selectedActions = actions.filter(
     (action) =>
       action.stepContent.dustRunId !== null &&
       dustRunIdsToProcess.has(action.stepContent.dustRunId)
   );
+  // Sandbox child outputs are not tokenized, so they are only loaded to find enabled skills. A
+  // single sandbox command can make thousands of tool calls, hence the filter.
+  const actionsToEnrich = selectedActions.filter(
+    (action) =>
+      !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) ||
+      canEnableSkill(action)
+  );
   const [enrichedActions, skills] =
-    actionsToEnrich.length > 0
+    selectedActions.length > 0
       ? await Promise.all([
           AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
             actions: actionsToEnrich,
@@ -649,15 +659,16 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     enrichedActions.map((action) => [action.id, action])
   );
   const attributedSkillIdsByActionModelId = new Map<ModelId, string[]>();
-  for (const action of actionsToEnrich) {
+  for (const action of selectedActions) {
     const enrichedAction = enrichedActionByModelId.get(action.id);
-    assert(enrichedAction, "A selected action must have enriched output");
 
     attributedSkillIdsByActionModelId.set(
       action.id,
       skillIdsAttributedToAction({
         action,
-        enabledSkillIds: getEnabledSkillIdsFromAction(enrichedAction),
+        enabledSkillIds: enrichedAction
+          ? getEnabledSkillIdsFromAction(enrichedAction)
+          : [],
         skills,
       })
     );

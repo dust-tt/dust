@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/dfs/bench/git.py", line 113, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/dfs/bench/git.py", line 84, in main
+    run['mount'] = stack.unmount(mount)
+                   ~~~~~~~~~~~~~^^^^^^^
+  File "/dfs/bench/harness.py", line 112, in unmount
+    raise RuntimeError(f'mount {path.name} exited {code} with commit stats {commit}')
+RuntimeError: mount mount exited 0 with commit stats {'apply_ms': 44700.631281, 'batches': 6960, 'dropped_ops': 0, 'max_apply_ms': 234.812852, 'max_lag_ms': 371.686724, 'missed_windows': 267, 'ops': 39946}

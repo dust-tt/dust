@@ -177,21 +177,25 @@ export function useResolveAuthentication({
 
 interface UseValidateActionParams {
   owner: LightWorkspaceType;
-  onError: (errorMessage: string) => void;
 }
 
-export function useValidateAction({ owner, onError }: UseValidateActionParams) {
+export function useValidateAction({ owner }: UseValidateActionParams) {
   const { fetcher } = useFetcher();
   const [isValidating, setIsValidating] = useState(false);
 
   const validateAction = useCallback(
-    async (validation: ValidateActionRequest) => {
+    async (
+      validation: ValidateActionRequest
+    ): Promise<{ success: true } | { success: false; error: unknown }> => {
       setIsValidating(true);
 
       try {
         const request = getValidateActionRequest(owner.sId, validation);
         if (!request) {
-          return { success: false };
+          return {
+            success: false,
+            error: new Error("Unsupported validation context."),
+          };
         }
         await fetcher(request.url, {
           method: "POST",
@@ -204,13 +208,12 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
         if (isAlreadyResolvedError(error)) {
           return { success: true };
         }
-        onError("Failed to assess action approval. Please try again.");
-        return { success: false };
+        return { success: false, error };
       } finally {
         setIsValidating(false);
       }
     },
-    [owner.sId, onError, fetcher]
+    [owner.sId, fetcher]
   );
 
   return { validateAction, isValidating };

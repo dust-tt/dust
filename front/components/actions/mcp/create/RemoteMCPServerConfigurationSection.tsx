@@ -15,34 +15,50 @@ import {
   Label,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useController, useFormContext } from "react-hook-form";
+
+type Translate = (descriptor: MessageDescriptor) => string;
+
+function getBearerAuthMethodLabel(
+  t: Translate,
+  defaultServerConfig?: DefaultRemoteMCPServerConfig
+): string {
+  if (defaultServerConfig?.authMethod === "bearer") {
+    const serverName = defaultServerConfig.name;
+    return t(msg`${serverName} API key`);
+  }
+  return t(msg`Bearer token`);
+}
 
 function getAuthMethodLabel(
   authMethod: CreateMCPServerDialogFormValues["authMethod"],
+  t: Translate,
   defaultServerConfig?: DefaultRemoteMCPServerConfig
 ): string {
   switch (authMethod) {
     case "oauth-dynamic":
-      return "Automatic";
+      return t(msg`Automatic`);
     case "bearer":
-      if (defaultServerConfig?.authMethod === "bearer") {
-        return `${defaultServerConfig.name} API Key`;
-      }
-      return "Bearer token";
+      return getBearerAuthMethodLabel(t, defaultServerConfig);
     case "oauth-static":
-      return "Static OAuth";
+      return t(msg`Static OAuth`);
   }
 }
 
 function getBearerPlaceholder(
   authMethod: CreateMCPServerDialogFormValues["authMethod"],
+  t: Translate,
   defaultServerConfig?: DefaultRemoteMCPServerConfig
 ): string {
   if (defaultServerConfig?.authMethod === "bearer") {
-    return `Paste your ${defaultServerConfig.name} API key here`;
+    const serverName = defaultServerConfig.name;
+    return t(msg`Paste your ${serverName} API key here`);
   }
   if (authMethod === "bearer") {
-    return "Paste the Bearer Token here";
+    return t(msg`Paste the bearer token here`);
   }
   return "";
 }
@@ -68,6 +84,7 @@ export function RemoteMCPServerConfigurationSection({
   defaultServerConfig,
   onAuthorizationChange,
 }: RemoteMCPServerConfigurationSectionProps) {
+  const { t } = useLingui();
   const {
     register,
     formState: { errors },
@@ -96,7 +113,12 @@ export function RemoteMCPServerConfigurationSection({
     disabled: !isOpen || !isStaticOAuth,
   });
 
-  const authMethodLabel = getAuthMethodLabel(authMethod, defaultServerConfig);
+  const authMethodLabel = getAuthMethodLabel(
+    authMethod,
+    t,
+    defaultServerConfig
+  );
+  const presetName = defaultServerConfig?.name;
 
   return (
     <>
@@ -113,7 +135,7 @@ export function RemoteMCPServerConfigurationSection({
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
-                  See {defaultServerConfig.name} documentation.
+                  <Trans>See {presetName} documentation.</Trans>
                 </a>
               </>
             )}
@@ -128,7 +150,9 @@ export function RemoteMCPServerConfigurationSection({
 
       {!defaultServerConfig?.url && !defaultServerConfig?.hostDerivedOAuth && (
         <div className="space-y-2">
-          <Label htmlFor="url">URL</Label>
+          <Label htmlFor="url">
+            <Trans>URL</Trans>
+          </Label>
           <div className="flex space-x-2">
             <div className="flex-grow">
               <Input
@@ -149,7 +173,9 @@ export function RemoteMCPServerConfigurationSection({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Label>Authentication</Label>
+              <Label>
+                <Trans>Authentication</Trans>
+              </Label>
               <Tooltip
                 trigger={
                   <Icon
@@ -158,7 +184,7 @@ export function RemoteMCPServerConfigurationSection({
                     className="text-muted-foreground"
                   />
                 }
-                label="Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."
+                label={t`Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials.`}
               />
             </div>
             <DropdownMenu>
@@ -170,7 +196,7 @@ export function RemoteMCPServerConfigurationSection({
                   {!defaultServerConfig && (
                     <DropdownMenuRadioItem
                       value="oauth-dynamic"
-                      label="Automatic"
+                      label={t`Automatic`}
                       onClick={() => {
                         authMethodField.onChange("oauth-dynamic");
                         onAuthorizationChange(null);
@@ -181,11 +207,7 @@ export function RemoteMCPServerConfigurationSection({
                     defaultServerConfig?.authMethod === "bearer") && (
                     <DropdownMenuRadioItem
                       value="bearer"
-                      label={
-                        defaultServerConfig?.authMethod === "bearer"
-                          ? `${defaultServerConfig.name} API Key`
-                          : "Bearer token"
-                      }
+                      label={getBearerAuthMethodLabel(t, defaultServerConfig)}
                       onClick={() => {
                         authMethodField.onChange("bearer");
                         onAuthorizationChange(null);
@@ -195,7 +217,7 @@ export function RemoteMCPServerConfigurationSection({
                   {!defaultServerConfig && (
                     <DropdownMenuRadioItem
                       value="oauth-static"
-                      label="Static OAuth"
+                      label={t`Static OAuth`}
                       onClick={() => {
                         authMethodField.onChange("oauth-static");
                         onAuthorizationChange({
@@ -215,10 +237,12 @@ export function RemoteMCPServerConfigurationSection({
           {(authMethod === "oauth-dynamic" ||
             defaultServerConfig?.authMethod === "oauth-dynamic") && (
             <div className="text-xs text-muted-foreground">
-              Dust will automatically discover if OAuth authentication is
-              required. If OAuth is not needed, the server will be accessed
-              without authentication. Otherwise, Dust will try to use dynamic
-              client registration to get the OAuth credentials.
+              <Trans>
+                Dust will automatically discover if OAuth authentication is
+                required. If OAuth is not needed, the server will be accessed
+                without authentication. Otherwise, Dust will try to use dynamic
+                client registration to get the OAuth credentials.
+              </Trans>
             </div>
           )}
           {(authMethod === "bearer" ||
@@ -228,6 +252,7 @@ export function RemoteMCPServerConfigurationSection({
                 id="sharedSecret"
                 placeholder={getBearerPlaceholder(
                   authMethod,
+                  t,
                   defaultServerConfig
                 )}
                 disabled={authMethod !== "bearer"}
@@ -243,11 +268,11 @@ export function RemoteMCPServerConfigurationSection({
         <div className="text-xs text-muted-foreground">
           {isOAuthRedirectUriError ? (
             <div role="alert" className="flex items-center gap-2">
-              Could not load the redirect URI.
+              <Trans>Could not load the redirect URI.</Trans>
               <Button
                 variant="ghost"
                 size="xs"
-                label="Retry"
+                label={t`Retry`}
                 onClick={() =>
                   void mutateOAuthRedirectUri(undefined, {
                     throwOnError: false,
@@ -256,12 +281,14 @@ export function RemoteMCPServerConfigurationSection({
               />
             </div>
           ) : isOAuthRedirectUriLoading || !redirectUri ? (
-            <span role="status">Loading redirect URI…</span>
+            <span role="status">
+              <Trans>Loading redirect URI…</Trans>
+            </span>
           ) : (
-            <>
+            <Trans>
               In your OAuth app, allow this redirect URI:{" "}
               <strong className="break-all">{redirectUri}</strong>
-            </>
+            </Trans>
           )}
         </div>
       )}
