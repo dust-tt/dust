@@ -102,6 +102,10 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: SOURCE_ORIGIN_LABELS.gsheet,
     color: buildColorClass("emerald", 500),
   },
+  document_comment: {
+    label: SOURCE_ORIGIN_LABELS.document_comment,
+    color: buildColorClass("pink", 300),
+  },
   email: {
     label: SOURCE_ORIGIN_LABELS.email,
     color: buildColorClass("pink", 500),

@@ -110,9 +110,10 @@ describe("postCommentMention", () => {
 
     expect(result.isOk()).toBe(true);
     expect(postMock).toHaveBeenCalledTimes(1);
-    const [, { conversationResource, content, mentions }] =
+    const [, { conversationResource, content, mentions, context }] =
       postMock.mock.calls[0];
     expect(conversationResource.sId).toBe(conversation.sId);
+    expect(context.origin).toBe("document_comment");
     expect(mentions).toEqual([
       { configurationId: GLOBAL_AGENTS_SID.DUST },
       { type: "user", userId: "usr_yuka" },

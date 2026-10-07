@@ -15,6 +15,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   api: "programmatic",
   cli: "user",
   cli_programmatic: "programmatic",
+  document_comment: "user",
   email: "user",
   excel: "programmatic",
   extension: "user",

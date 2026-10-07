@@ -78,6 +78,7 @@ describe("conversation-unread workflow business logic", () => {
     extension: true,
     cli: true,
     cli_programmatic: true,
+    document_comment: true,
     email: false,
     api: false,
     onboarding_conversation: false,

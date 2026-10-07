@@ -505,6 +505,7 @@ const USER_MESSAGE_ORIGINS = [
   "api",
   "cli",
   "cli_programmatic",
+  "document_comment",
   "email",
   "excel",
   "extension",

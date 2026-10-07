@@ -64,6 +64,7 @@ export function getQueueForUserMessageOrigin(
       return "programmatic";
     case "agent_sidekick":
     case "analytics_panel":
+    case "document_comment":
     case "onboarding_conversation":
     case "project_kickoff":
     case "reinforced_skill_notification":
