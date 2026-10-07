@@ -17,6 +17,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import {
   prosemirrorJSONToYXmlFragment,
+  updateYFragment,
   yXmlFragmentToProsemirrorJSON,
 } from "@tiptap/y-tiptap";
 import * as Y from "yjs";
@@ -63,6 +64,47 @@ export function dfmToYDoc(source: string): Result<LiveDocument, string> {
   map.set("frontMatter", envelope.frontMatter);
   map.set("anchorOrder", envelope.anchorOrder);
   return new Ok({ doc, comments: getDocumentJSONComments(content) });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency] co-edition-ydoc-replace
+ * `replaceYDocContent` MUST change `doc` so that `yDocToDfm`, with the threads it returns, gives
+ * what it gives for `dfmToYDoc(source)`, in one transaction with `origin`, leaving what is equal
+ * in place so the people editing keep their cursors. It MUST refuse a file `loadDfm` refuses, with
+ * the same reason, without changing `doc`.
+ */
+export function replaceYDocContent(
+  doc: Y.Doc,
+  source: string,
+  origin: unknown
+): Result<DfmComment[], string> {
+  const loaded = loadDfm(source);
+  if (loaded.isErr()) {
+    return loaded;
+  }
+  const { envelope, content } = loaded.value;
+
+  const body = documentSchema.nodeFromJSON(
+    withoutDocumentJSONComments(content)
+  );
+  doc.transact(() => {
+    updateYFragment(doc, doc.getXmlFragment(BODY_FRAGMENT_NAME), body, {
+      mapping: new Map(),
+      isOMark: new Map(),
+    });
+    // Setting an unchanged value would still send an update to every editor.
+    const map = doc.getMap(ENVELOPE_MAP_NAME);
+    if (map.get("frontMatter") !== envelope.frontMatter) {
+      map.set("frontMatter", envelope.frontMatter);
+    }
+    if (
+      JSON.stringify(map.get("anchorOrder")) !==
+      JSON.stringify(envelope.anchorOrder)
+    ) {
+      map.set("anchorOrder", envelope.anchorOrder);
+    }
+  }, origin);
+  return new Ok(getDocumentJSONComments(content));
 }
 
 const withoutOrphanAnchors = (

@@ -6,6 +6,7 @@ import {
 import {
   dfmToYDoc,
   ENVELOPE_MAP_NAME,
+  replaceYDocContent,
   yDocToDfm,
 } from "@app/lib/api/collab/ydoc";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
@@ -168,5 +169,84 @@ describe("dfmToYDoc and yDocToDfm", () => {
     doc.getXmlFragment(BODY_FRAGMENT_NAME);
 
     expect(yDocToDfm({ doc, comments: [] }).isErr()).toBe(true);
+  });
+});
+
+describe("replaceYDocContent", () => {
+  const BEFORE =
+    "---\ntitle: x\n---\n\n# Title\n\nFirst paragraph.\n\nSecond paragraph.\n";
+
+  function loadLive(source: string) {
+    const live = dfmToYDoc(source);
+    if (live.isErr()) {
+      throw new Error(live.error);
+    }
+    return live.value;
+  }
+
+  it.each(FIXTURES)(
+    "write $name as dfmToYDoc would, threads included",
+    ({ source }) => {
+      const { doc } = loadLive(BEFORE);
+
+      const comments = replaceYDocContent(doc, source, "agent");
+
+      expect(comments.isOk()).toBe(true);
+      if (comments.isOk()) {
+        expect(yDocToDfm({ doc, comments: comments.value })).toEqual(
+          savedByEditor(source)
+        );
+      }
+    }
+  );
+
+  it("change only what differs, in one transaction with the origin, reaching a remote copy", () => {
+    const { doc, comments } = loadLive(BEFORE);
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    const untouched = remote.getXmlFragment(BODY_FRAGMENT_NAME).get(1);
+    const origins: unknown[] = [];
+    doc.on("update", (update: Uint8Array, origin: unknown) => {
+      origins.push(origin);
+      Y.applyUpdate(remote, update);
+    });
+
+    const replaced = replaceYDocContent(
+      doc,
+      BEFORE.replace("Second paragraph.", "Second paragraph, edited."),
+      "agent"
+    );
+
+    expect(replaced.isOk()).toBe(true);
+    expect(origins).toEqual(["agent"]);
+    expect(remote.getXmlFragment(BODY_FRAGMENT_NAME).get(1)).toBe(untouched);
+    expect(yDocToDfm({ doc: remote, comments })).toEqual(
+      savedByEditor(
+        BEFORE.replace("Second paragraph.", "Second paragraph, edited.")
+      )
+    );
+  });
+
+  it("change nothing when the source is the same", () => {
+    const { doc } = loadLive(BEFORE);
+    const updates: Uint8Array[] = [];
+    doc.on("update", (update: Uint8Array) => updates.push(update));
+
+    expect(replaceYDocContent(doc, BEFORE, "agent").isOk()).toBe(true);
+    expect(updates).toEqual([]);
+  });
+
+  it("refuse a file the editor refuses, with the same reason, changing nothing", () => {
+    const table = "| a | b |\n|---|---|\n| 1 | 2 |\n";
+    const editor = loadDfm(table);
+    const { doc, comments } = loadLive(BEFORE);
+
+    const replaced = replaceYDocContent(doc, table, "agent");
+
+    expect(editor.isErr() && replaced.isErr()).toBe(true);
+    if (editor.isErr() && replaced.isErr()) {
+      expect(replaced.error).toBe(editor.error);
+    }
+    expect(yDocToDfm({ doc, comments })).toEqual(savedByEditor(BEFORE));
   });
 });
