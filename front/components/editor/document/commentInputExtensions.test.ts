@@ -101,7 +101,7 @@ describe("commentInputExtensions", () => {
 
     expect(readMessageSuggestions(field.getMarkdown().trim())).toEqual(
       new Ok([
-        { kind: "text", text: "Better:" },
+        { kind: "text", text: "Better:\n\n" },
         { kind: "suggestion", suggestion },
       ])
     );
