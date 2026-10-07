@@ -15,6 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useState } from "react";
 
@@ -35,11 +36,12 @@ export function ExportContentDropdown({
   fileName,
   contentType,
 }: ExportContentDropdownProps) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const exportAsPdf = useExportFrameAsPdf({ owner });
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  const exportLabel = isExportingPdf ? "Exporting..." : "Export";
+  const exportLabel = isExportingPdf ? t`Exporting...` : t`Export`;
 
   const handleExportAsPng = () => {
     if (fileContent) {
@@ -71,8 +73,8 @@ export function ExportContentDropdown({
   // single code file.
   const codeDownloadLabel =
     contentType && isFrameV2ContentType(contentType)
-      ? "Source (.zip)"
-      : "Template";
+      ? t`Source (.zip)`
+      : t`Template`;
 
   const handleDownloadAsCode = () => {
     const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
@@ -96,10 +98,10 @@ export function ExportContentDropdown({
           <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
           <DropdownMenuSubContent>
             <DropdownMenuItem onClick={() => handleExportAsPdf("portrait")}>
-              Portrait
+              <Trans>Portrait</Trans>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExportAsPdf("landscape")}>
-              Landscape
+              <Trans>Landscape</Trans>
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>

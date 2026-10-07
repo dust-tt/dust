@@ -12,6 +12,7 @@ import {
   Rocket02,
   SpaceClosed,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface PublicInteractiveContentHeaderProps {
   title: string;
@@ -38,6 +39,7 @@ export function PublicInteractiveContentHeader({
   showSignUpCta = false,
   hasFrameFunctions = false,
 }: PublicInteractiveContentHeaderProps) {
+  const { t } = useLingui();
   const staticWebsiteUrl = config.getStaticWebsiteUrl();
   return (
     <AppLayoutTitle className="h-12 bg-primary-50 px-4 @container">
@@ -46,7 +48,7 @@ export function PublicInteractiveContentHeader({
           {logoUrl ? (
             <img
               src={logoUrl}
-              alt="Workspace logo"
+              alt={t`Workspace logo`}
               className="h-[32px] max-w-[120px] object-contain"
             />
           ) : (
@@ -77,7 +79,7 @@ export function PublicInteractiveContentHeader({
         <div className="grow-1 flex basis-12 justify-end md:basis-60">
           {!user && showSignUpCta && (
             <Button
-              label="Try it yourself"
+              label={t`Try it yourself`}
               href={`${staticWebsiteUrl}/?${UTM_PARAM}`}
               variant="outline"
               icon={Rocket02}
@@ -87,7 +89,7 @@ export function PublicInteractiveContentHeader({
           )}
           {user && conversationUrl && (
             <Button
-              label="Go to conversation"
+              label={t`Go to conversation`}
               href={conversationUrl}
               variant="outline"
               icon={MessageCircle01}
@@ -96,7 +98,7 @@ export function PublicInteractiveContentHeader({
           )}
           {user && projectUrl && (
             <Button
-              label="Go to Pod"
+              label={t`Go to Pod`}
               href={projectUrl}
               variant="outline"
               // TODO(projects) this does not show the correct icon for open projects.

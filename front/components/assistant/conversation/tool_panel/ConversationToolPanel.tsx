@@ -10,6 +10,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface ConversationToolPanelProps {
   owner: LightWorkspaceType;
@@ -25,7 +26,7 @@ function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
   if (isError) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        This tool could not be loaded.
+        <Trans>This tool could not be loaded.</Trans>
       </div>
     );
   }
@@ -72,7 +73,9 @@ export function ConversationToolPanel({ owner }: ConversationToolPanelProps) {
   return (
     <div className="flex h-panel flex-col bg-panel-background">
       <ConversationSidePanelHeader onClose={closePanel}>
-        <span className="text-sm font-medium text-foreground">Tool</span>
+        <span className="text-sm font-medium text-foreground">
+          <Trans context="side panel title">Tool</Trans>
+        </span>
       </ConversationSidePanelHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         <ToolPanelBody

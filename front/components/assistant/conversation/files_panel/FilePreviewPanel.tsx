@@ -30,7 +30,7 @@ import { contentTypeFromFileName } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Download01, Icon, Spinner } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
@@ -149,9 +149,11 @@ export function FilePreviewPanel({
             <Spinner />
           ) : (
             <p className="text-sm text-muted-foreground">
-              {target?.kind === "path"
-                ? "This file path could not be resolved."
-                : "This file is no longer available."}
+              {target?.kind === "path" ? (
+                <Trans>This file path could not be resolved.</Trans>
+              ) : (
+                <Trans>This file is no longer available.</Trans>
+              )}
             </p>
           )}
         </CenteredState>
@@ -182,7 +184,7 @@ export function FilePreviewPanel({
               {markdown.isDirty && (
                 <>
                   <Button
-                    label="Save"
+                    label={t`Save`}
                     variant="highlight"
                     size="xs"
                     isLoading={markdown.isSaving}
@@ -190,7 +192,7 @@ export function FilePreviewPanel({
                     onClick={() => void markdown.save()}
                   />
                   <Button
-                    label="Revert"
+                    label={t`Revert`}
                     variant="outline"
                     size="xs"
                     disabled={markdown.isSaving}
@@ -204,7 +206,7 @@ export function FilePreviewPanel({
             variant="ghost"
             size="sm"
             icon={Download01}
-            tooltip="Download"
+            tooltip={t({ message: "Download", context: "action" })}
             href={urls.downloadUrl}
             target="_blank"
             rel="noopener noreferrer"
