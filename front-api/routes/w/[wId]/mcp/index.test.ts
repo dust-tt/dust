@@ -8,6 +8,7 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -19,7 +20,12 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => ({
+  ...(await vi.importActual("@app/lib/api/audit/workos_audit")),
+  emitAuditLogEvent: vi.fn(),
+}));
 
 vi.mock(import("@app/lib/actions/mcp_metadata"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -37,6 +43,34 @@ vi.mock(import("@app/lib/actions/mcp_metadata"), async (importOriginal) => {
 });
 
 import { honoApp } from "@front-api/app";
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+});
+
+const SENTINEL_SECRET = "sentinel-shared-secret-9f3a";
+const SENTINEL_HEADER = "sentinel-header-value-9f3a";
+const SENTINEL_META = "sentinel-meta-value-9f3a";
+const SENTINEL_QUERY = "sentinel-api-key-9f3a";
+
+function dumpEmitCalls(): string {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(
+    vi.mocked(workosAudit.emitAuditLogEvent).mock.calls,
+    (_key, value: unknown) => {
+      if (typeof value === "function") {
+        return undefined;
+      }
+      if (value !== null && typeof value === "object") {
+        if (seen.has(value)) {
+          return undefined;
+        }
+        seen.add(value);
+      }
+      return value;
+    }
+  );
+}
 
 async function setup(role: MembershipRoleType = "admin") {
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
@@ -606,5 +640,184 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     expect(response.status).toBe(201);
     const body = await response.json();
     expect(body.success).toBe(true);
+  });
+});
+
+describe("POST /api/w/:wId/mcp/ catalog audit", () => {
+  it("emits mcp_server.created for a remote server", async () => {
+    const { workspace } = await setup();
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://catalog.example.com/mcp",
+      includeGlobal: false,
+    });
+
+    expect(response.status).toBe(201);
+    const body: { server: { sId: string } } = await response.json();
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.created",
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({
+            type: "mcp_server",
+            id: body.server.sId,
+            name: "Test Server",
+          }),
+        ],
+        metadata: {
+          server_type: "remote",
+          server_name: "Test Server",
+        },
+      })
+    );
+  });
+
+  it("emits mcp_server.created for an internal server", async () => {
+    const { workspace } = await setup();
+
+    const response = await postMcp(workspace, {
+      name: "agent_memory" as InternalMCPServerNameType,
+      serverType: "internal",
+      includeGlobal: false,
+    });
+
+    expect(response.status).toBe(201);
+    const body: { server: { sId: string; name: string } } =
+      await response.json();
+    expect(body.server.name).toBe("agent_memory");
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.created",
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({
+            type: "mcp_server",
+            id: body.server.sId,
+            name: "agent_memory",
+          }),
+        ],
+        metadata: {
+          server_type: "internal",
+          server_name: "agent_memory",
+          internal_name: "agent_memory",
+        },
+      })
+    );
+  });
+
+  it("still emits mcp_server.created when includeGlobal fails after the row is committed", async () => {
+    const { workspace, auth } = await setup();
+    const viewSpy = vi
+      .spyOn(MCPServerViewResource, "getMCPServerViewForSystemSpace")
+      .mockResolvedValue(null);
+
+    try {
+      const response = await postMcp(workspace, {
+        serverType: "remote",
+        url: "https://catalog.example.com/mcp",
+        includeGlobal: true,
+      });
+
+      expect(response.status).toBe(400);
+      expect(await RemoteMCPServerResource.listByWorkspace(auth)).toHaveLength(
+        1
+      );
+      expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
+      expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "mcp_server.created",
+          metadata: {
+            server_type: "remote",
+            server_name: "Test Server",
+          },
+        })
+      );
+    } finally {
+      viewSpy.mockRestore();
+    }
+  });
+
+  it("does not put secrets, header values, meta, or URL queries in catalog events", async () => {
+    const { workspace } = await setup();
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: `https://catalog.example.com/mcp?api_key=${SENTINEL_QUERY}`,
+      includeGlobal: false,
+      sharedSecret: SENTINEL_SECRET,
+      customHeaders: [{ key: "X-Api-Key", value: SENTINEL_HEADER }],
+    });
+    expect(response.status).toBe(201);
+    const body: { server: { sId: string } } = await response.json();
+
+    const credentials = await honoApp.request(
+      `/api/w/${workspace.sId}/mcp/${body.server.sId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sharedSecret: SENTINEL_SECRET,
+          customHeaders: [{ key: "X-Api-Key", value: SENTINEL_HEADER }],
+        }),
+      }
+    );
+    expect(credentials.status).toBe(200);
+
+    const meta = await honoApp.request(
+      `/api/w/${workspace.sId}/mcp/${body.server.sId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meta: { note: SENTINEL_META } }),
+      }
+    );
+    expect(meta.status).toBe(200);
+
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        action: "mcp_server.created",
+        metadata: {
+          server_type: "remote",
+          server_name: "Test Server",
+        },
+      })
+    );
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Test Server",
+          change_kind: "credentials",
+          changed_fields: "custom_headers,shared_secret",
+          shared_secret_change: "set",
+          custom_headers_change: "set",
+        },
+      })
+    );
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Test Server",
+          change_kind: "meta",
+          changed_fields: "meta",
+          meta_cleared: "false",
+        },
+      })
+    );
+
+    const dumped = dumpEmitCalls();
+    expect(dumped).not.toContain(SENTINEL_SECRET);
+    expect(dumped).not.toContain(SENTINEL_HEADER);
+    expect(dumped).not.toContain(SENTINEL_META);
+    expect(dumped).not.toContain(SENTINEL_QUERY);
   });
 });

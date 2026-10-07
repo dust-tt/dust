@@ -3,6 +3,7 @@ import {
   DEFAULT_MCP_SERVER_ICON,
 } from "@app/lib/actions/constants";
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -10,7 +11,12 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => ({
+  ...(await vi.importActual("@app/lib/api/audit/workos_audit")),
+  emitAuditLogEvent: vi.fn(),
+}));
 
 vi.mock(import("@app/lib/actions/mcp_metadata"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -21,6 +27,10 @@ vi.mock(import("@app/lib/actions/mcp_metadata"), async (importOriginal) => {
 });
 
 import { honoApp } from "@front-api/app";
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+});
 
 // A tool input schema with a Dust configurable input on a required path.
 const requiredDustInputSchema: JSONSchema = {
@@ -148,5 +158,16 @@ describe("POST /api/w/:wId/mcp/:serverId/sync", () => {
 
     const resynced = await RemoteMCPServerResource.fetchById(auth, server.sId);
     expect(resynced?.cachedToolsRequireConfiguration).toBe(false);
+
+    const catalogActions = vi
+      .mocked(workosAudit.emitAuditLogEvent)
+      .mock.calls.map((call) => call[0].action)
+      .filter(
+        (action) =>
+          action === "mcp_server.created" ||
+          action === "mcp_server.updated" ||
+          action === "mcp_server.deleted"
+      );
+    expect(catalogActions).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -10,7 +11,18 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => ({
+  ...(await vi.importActual("@app/lib/api/audit/workos_audit")),
+  emitAuditLogEvent: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+});
+
+const SENTINEL_SCOPE = "sentinel-oauth-scope-9f3a";
 
 async function setup(role: MembershipRoleType = "admin") {
   const { workspace, auth, globalSpace, systemSpace } =
@@ -109,6 +121,7 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.error.message).toBe(
       "Updates can only be performed on system views."
     );
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 
   it("should pin the authorized OAuth scope on all views of the same MCP server", async () => {
@@ -454,5 +467,114 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.success).toBe(true);
     expect(data.serverView.name).toBeNull();
     expect(data.serverView.description).toBeNull();
+  });
+
+  it("emits mcp_server.updated when the system view is renamed", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+
+    const response = await patchView(workspace.sId, systemView!.sId, {
+      name: "Renamed Server",
+      description: "Renamed description",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).serverView.name).toBe("Renamed Server");
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({
+            type: "mcp_server",
+            id: server.sId,
+            name: "Renamed Server",
+          }),
+        ],
+        metadata: {
+          server_type: "remote",
+          server_name: "Renamed Server",
+          change_kind: "display",
+          changed_fields: "description,name",
+          previous_name: "Catalog Server",
+        },
+      })
+    );
+  });
+
+  it("emits mcp_server.updated for an oauth change without the scope string", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+
+    const response = await patchView(workspace.sId, systemView!.sId, {
+      oAuthUseCase: "personal_actions",
+      oauthScope: SENTINEL_SCOPE,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).serverView.oAuthUseCase).toBe(
+      "personal_actions"
+    );
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Catalog Server",
+          change_kind: "oauth",
+          changed_fields: "oauth_scope,oauth_use_case",
+          oauth_use_case: "personal_actions",
+        },
+      })
+    );
+    expect(
+      JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
+    ).not.toContain(SENTINEL_SCOPE);
+  });
+
+  it("emits mcp_server.updated when skill restriction changes", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+
+    const response = await patchView(workspace.sId, systemView!.sId, {
+      isRestrictedToSkills: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).serverView.isRestrictedToSkills).toBe(true);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Catalog Server",
+          change_kind: "restriction",
+          changed_fields: "is_restricted_to_skills",
+          is_restricted_to_skills: "true",
+        },
+      })
+    );
   });
 });

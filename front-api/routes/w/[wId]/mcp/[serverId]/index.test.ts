@@ -1,18 +1,30 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { REDACTED_HEADER_VALUES_ERROR_MESSAGE } from "@app/types/shared/utils/http_headers";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => ({
+  ...(await vi.importActual("@app/lib/api/audit/workos_audit")),
+  emitAuditLogEvent: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+});
 
 async function setup(role: MembershipRoleType = "admin") {
-  const { workspace, auth, systemSpace } = await createPrivateApiMockRequest({
-    role,
-  });
-  return { workspace, space: systemSpace, auth };
+  const { workspace, auth, systemSpace, globalSpace } =
+    await createPrivateApiMockRequest({
+      role,
+    });
+  return { workspace, space: systemSpace, globalSpace, auth };
 }
 
 function serverUrl(wId: string, serverId: string) {
@@ -207,6 +219,7 @@ describe("DELETE /api/w/:wId/mcp/:serverId", () => {
 
     expect(response.status).toBe(401);
     expect(await response.json()).toHaveProperty("error");
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
 
     const stillExists = await RemoteMCPServerResource.fetchById(
       auth,
@@ -224,5 +237,195 @@ describe("DELETE /api/w/:wId/mcp/:serverId", () => {
       }
     );
     expect(stillExists).toStrictEqual(server);
+  });
+
+  it("emits mcp_server.deleted with the non-system space count", async () => {
+    const { workspace, auth, globalSpace } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+    await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      { method: "DELETE" }
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ deleted: true });
+    expect(
+      await RemoteMCPServerResource.fetchById(auth, server.sId)
+    ).toBeNull();
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.deleted",
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({
+            type: "mcp_server",
+            id: server.sId,
+            name: "Catalog Server",
+          }),
+        ],
+        metadata: {
+          server_type: "remote",
+          server_name: "Catalog Server",
+          space_count: "1",
+        },
+      })
+    );
+  });
+});
+
+describe("PATCH /api/w/:wId/mcp/:serverId catalog audit", () => {
+  it("emits mcp_server.updated for an icon change", async () => {
+    const { workspace } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ icon: "ActionRobotIcon" }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Catalog Server",
+          change_kind: "display",
+          changed_fields: "icon",
+        },
+      })
+    );
+  });
+
+  it("emits cleared credential changes without the secret values", async () => {
+    const { workspace } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sharedSecret: "", customHeaders: [] }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Catalog Server",
+          change_kind: "credentials",
+          changed_fields: "custom_headers,shared_secret",
+          shared_secret_change: "cleared",
+          custom_headers_change: "cleared",
+        },
+      })
+    );
+  });
+
+  it("emits mcp_server.updated when meta is cleared", async () => {
+    const { workspace } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Catalog Server",
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meta: null }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "remote",
+          server_name: "Catalog Server",
+          change_kind: "meta",
+          changed_fields: "meta",
+          meta_cleared: "true",
+        },
+      })
+    );
+  });
+
+  it("emits mcp_server.updated when internal credentials are set", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "slab",
+      useCase: null,
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.id),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sharedSecret: "slab-token" }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const dumped = JSON.stringify(
+      vi.mocked(workosAudit.emitAuditLogEvent).mock.calls
+    );
+    expect(dumped).not.toContain("slab-token");
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "mcp_server.updated",
+        metadata: {
+          server_type: "internal",
+          server_name: "slab",
+          internal_name: "slab",
+          change_kind: "credentials",
+          changed_fields: "shared_secret",
+          shared_secret_change: "set",
+        },
+      })
+    );
+  });
+
+  it("emits nothing for an internal meta-only patch", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "slab",
+      useCase: null,
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.id),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meta: { note: "ignored" } }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      success: true,
+      server: expect.objectContaining({ sId: server.id }),
+    });
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 });
