@@ -277,9 +277,11 @@ export async function suggestionsOfMentions(
   // This aims to prioritize them in the suggestions
   if (spaceId) {
     const conversationSpace = await SpaceResource.fetchById(auth, spaceId);
-    const conversationGroups = conversationSpace
-      ? await conversationSpace.fetchMembershipGroups(auth)
-      : [];
+    // Only prioritize members of a space the caller can read (and thus post in).
+    const conversationGroups =
+      conversationSpace && auth.can("read", conversationSpace)
+        ? await conversationSpace.fetchMembershipGroups(auth)
+        : [];
 
     const allMembers = await concurrentExecutor(
       conversationGroups,
