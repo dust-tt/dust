@@ -36,7 +36,7 @@ struct PodConversationsView: View {
         VStack(spacing: 0) {
             conversationListSection
         }
-        .background(Color.dustBackground)
+        .background(Color.dustBackground.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) {
             ConversationListBottomBar(
                 searchText: $viewModel.searchText,

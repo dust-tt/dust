@@ -37,7 +37,7 @@ struct ConversationListView: View {
             profileSection
             content
         }
-        .background(Color.dustMutedBackground)
+        .background(Color.dustMutedBackground.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) {
             ConversationListBottomBar(
                 searchText: $searchText,
