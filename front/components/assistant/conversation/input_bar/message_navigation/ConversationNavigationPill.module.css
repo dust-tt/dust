@@ -40,8 +40,8 @@
   background: conic-gradient(
     from var(--glint-angle),
     transparent 0deg 280deg,
-    color-mix(in srgb, var(--color-primary-500) 15%, transparent) 310deg,
-    color-mix(in srgb, var(--color-primary-500) 75%, transparent) 340deg,
+    color-mix(in srgb, var(--color-highlight-300) 15%, transparent) 310deg,
+    color-mix(in srgb, var(--color-highlight-300) 75%, transparent) 340deg,
     transparent 360deg
   ) border-box;
   mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
