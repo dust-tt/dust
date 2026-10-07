@@ -5,6 +5,7 @@ import {
 } from "@sparkle/lib/i18n/catalogs";
 import type { SparkleCatalogLocale } from "@sparkle/lib/i18n/locales";
 import { SparkleI18nContext } from "@sparkle/lib/i18n/useLingui";
+import { reportToDatadog } from "@sparkle/lib/reportToDatadog";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface SparkleI18nProviderProps {
@@ -46,10 +47,11 @@ export function SparkleI18nProvider({
         }
       })
       .catch((error) => {
-        console.warn(
-          `Failed to load the sparkle catalog of "${locale}"`,
-          error
-        );
+        reportToDatadog(error, {
+          source: "SparkleI18nProvider",
+          event: "catalog_load_failed",
+          locale,
+        });
       });
     return () => {
       isCurrent = false;
