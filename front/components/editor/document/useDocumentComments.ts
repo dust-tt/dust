@@ -1,15 +1,23 @@
+import {
+  parseInlineMarkdown,
+  serializeInlineMarkdown,
+} from "@app/components/editor/document/content";
 import { isWritableThread } from "@app/components/editor/document/dfm_persistence";
 import type { DocumentCommentDraft } from "@app/components/editor/document/DocumentComments";
 import {
   documentCommentsPluginKey,
   getClickedCommentIds,
   getCommentedTexts,
+  getCommentInlineContent,
   getCommentStarts,
   getDocumentComments,
+  getDraftInlineContent,
+  getSuggestableCommentIds,
   scrollToCommentHighlight,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
+import { suggestionBlock } from "@app/lib/markdown/dfm";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -53,6 +61,8 @@ interface EditorCommentsState {
   draft: DocumentCommentDraft | null;
   /** The text the pending draft covers. */
   draftQuote: string;
+  suggestable: Set<string>;
+  draftSuggestable: boolean;
 }
 
 const EMPTY_COMMENTS: DfmComment[] = [];
@@ -63,6 +73,8 @@ const EMPTY_STATE: EditorCommentsState = {
   activeId: null,
   draft: null,
   draftQuote: "",
+  suggestable: new Set(),
+  draftSuggestable: false,
 };
 
 const UNAVAILABLE_MESSAGE = msg`Commenting is unavailable.`;
@@ -75,6 +87,10 @@ const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
   a?.author.name === b?.author.name &&
   a?.createdAt === b?.createdAt &&
   a?.body === b?.body;
+const UNSUGGESTABLE_MESSAGE =
+  "Suggestions can only replace text within one paragraph.";
+const UNAPPLICABLE_MESSAGE =
+  "This suggestion can't replace the commented text. Another comment may cover part of it.";
 
 /** The document the commands would produce, or null when one of them refuses. */
 const previewDocument = (
@@ -121,6 +137,16 @@ export interface PanelFocusRequest {
  * answer for the threads currently shown, and as unknown while that answer is pending. Without a
  * verifier, every message MUST read as unknown, never as verified.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-comment-suggestion
+ * Applying a suggestion MUST require canWrite and an open thread, MUST replace the commented
+ * text with the suggestion's content, and only once that text change is in the document MUST it
+ * resolve the thread outside text undo history. It MUST be refused with a reason, leaving the
+ * document unchanged, when the text change is refused or filtered out, when the
+ * suggestion is not one paragraph of inline Markdown, the commented text spans more than one
+ * textblock, or the document would no longer save. A suggestion template MUST hold the current
+ * commented text as Markdown, so applying it unchanged leaves the text as it is.
+ */
 export const useDocumentComments = ({
   editor,
   canComment,
@@ -147,6 +173,12 @@ export const useDocumentComments = ({
           draftQuote: draft
             ? editor.state.doc.textBetween(draft.from, draft.to, " ")
             : "",
+          suggestable: getSuggestableCommentIds(editor.state.doc),
+          draftSuggestable: draft
+            ? editor.state.doc
+                .resolve(draft.from)
+                .sameParent(editor.state.doc.resolve(draft.to))
+            : false,
         };
       },
     }) ?? EMPTY_STATE;
@@ -250,6 +282,22 @@ export const useDocumentComments = ({
       return new Err(t(UNSAVABLE_MESSAGE));
     }
     return signed;
+  };
+
+  const suggestionTemplate = (
+    content: JSONContent[] | null
+  ): Result<string, string> => {
+    if (!content) {
+      return new Err(UNSUGGESTABLE_MESSAGE);
+    }
+    const markdown = serializeInlineMarkdown(content);
+    if (markdown.isErr()) {
+      return markdown;
+    }
+    const block = suggestionBlock(markdown.value);
+    return block.isOk()
+      ? block
+      : new Err("This text is too long or complex to suggest a change to.");
   };
 
   return {
@@ -417,6 +465,62 @@ export const useDocumentComments = ({
         editor.commands.setCommentResolved(id, resolved);
         requestFocus(focusNext);
       }
+    },
+    suggestable: state.suggestable,
+    draftSuggestable: canWrite && state.draftSuggestable,
+    /** A suggestion block holding the commented text, for the field to edit. */
+    suggestionTemplate: (id: string): Result<string, string> =>
+      editor
+        ? suggestionTemplate(getCommentInlineContent(editor.state.doc, id))
+        : new Err(UNAVAILABLE_MESSAGE),
+    draftSuggestionTemplate: (): Result<string, string> => {
+      const draft = editor
+        ? documentCommentsPluginKey.getState(editor.state)?.draft
+        : null;
+      return editor && draft
+        ? suggestionTemplate(getDraftInlineContent(editor.state.doc, draft))
+        : new Err(UNAVAILABLE_MESSAGE);
+    },
+    /** Replaces the commented text with the suggestion, then resolves the thread. */
+    applySuggestion: (
+      id: string,
+      suggestion: string,
+      focusNext: string | null
+    ): Result<void, string> => {
+      const thread = comments.find((comment) => comment.id === id);
+      if (!canWrite || !editor || thread?.status !== "open") {
+        return new Err(UNAVAILABLE_MESSAGE);
+      }
+      const content = parseInlineMarkdown(suggestion);
+      if (content.isErr()) {
+        return content;
+      }
+      const next = previewDocument(editor, (chain) =>
+        chain
+          .applyCommentSuggestion(id, content.value)
+          .setCommentResolved(id, true)
+      );
+      if (!next) {
+        return new Err(
+          getSuggestableCommentIds(editor.state.doc).has(id)
+            ? UNAPPLICABLE_MESSAGE
+            : UNSUGGESTABLE_MESSAGE
+        );
+      }
+      if (!isSavable(next.toJSON())) {
+        return new Err("This suggestion can't be saved in this document.");
+      }
+      // Two transactions: the text change is undoable, the resolution stays out of history.
+      const before = editor.state.doc;
+      if (
+        !editor.commands.applyCommentSuggestion(id, content.value) ||
+        editor.state.doc === before
+      ) {
+        return new Err(UNAPPLICABLE_MESSAGE);
+      }
+      editor.commands.setCommentResolved(id, true);
+      requestFocus(focusNext);
+      return new Ok(undefined);
     },
     remove: (id: string, focusNext: string | null) => {
       if (canWrite && editor) {

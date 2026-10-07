@@ -419,6 +419,11 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
+      /** Replaces the commented text with inline content that keeps the comment. */
+      applyCommentSuggestion: (
+        id: string,
+        content: JSONContent[]
+      ) => ReturnType;
       setActiveComment: (id: string | null) => ReturnType;
     };
   }
@@ -476,6 +481,57 @@ const canCarryCommentMark = (node: Node, parent: Node | null) => {
     !!parent?.type.allowsMarkType(markType) &&
     !node.marks.some((mark) => mark.type.excludes(markType))
   );
+};
+
+/** The text between `from` and `to` as inline nodes without comment marks, or null unless one textblock holds it. */
+const inlineContentBetween = (
+  doc: Node,
+  from: number,
+  to: number
+): JSONContent[] | null => {
+  const $from = doc.resolve(from);
+  if (!$from.parent.isTextblock || !$from.sameParent(doc.resolve(to))) {
+    return null;
+  }
+  const start = $from.start();
+  return (
+    withoutCommentMarks(
+      $from.parent.content.cut(from - start, to - start),
+      new Set()
+    ).toJSON() ?? []
+  );
+};
+
+/** The commented text as inline nodes, or null when the comment has no text or spans textblocks. */
+export const getCommentInlineContent = (
+  doc: Node,
+  id: string
+): JSONContent[] | null => {
+  const range = getCommentRanges(doc).get(id);
+  return range ? inlineContentBetween(doc, range.from, range.to) : null;
+};
+
+export const getDraftInlineContent = (
+  doc: Node,
+  draft: DocumentCommentDraft
+): JSONContent[] | null => inlineContentBetween(doc, draft.from, draft.to);
+
+const suggestableComments = new WeakMap<Node, Set<string>>();
+
+/** Comments whose text lies in one textblock, the ones a suggestion can replace. */
+export const getSuggestableCommentIds = (doc: Node): Set<string> => {
+  const cached = suggestableComments.get(doc);
+  if (cached) {
+    return cached;
+  }
+  const ids = new Set<string>();
+  for (const [id, { from, to }] of getCommentRanges(doc)) {
+    if (doc.resolve(from).sameParent(doc.resolve(to))) {
+      ids.add(id);
+    }
+  }
+  suggestableComments.set(doc, ids);
+  return ids;
 };
 
 /**
@@ -667,6 +723,17 @@ export const DocumentCommentMark = Mark.create({
  * Posting, replying to, resolving and deleting comments MUST stay out of text undo history.
  * Undoing text MUST NOT restore an old comments array or remove another user's replies.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-comment-suggestion-apply
+ * Applying a suggestion MUST replace exactly the text from the comment's first marked character
+ * to its last with the given inline content, which MUST carry the comment's mark wherever the
+ * mark can sit, in one text edit that undo reverts. The content MUST also carry the mark of
+ * every other comment with a thread whose text encloses the replaced text, so that comment stays
+ * one run. It MUST be refused, leaving the document unchanged, when the comment has no thread or
+ * no text, when its text spans more than one textblock, when the content cannot sit in that
+ * textblock, or when it would remove text of another comment with a thread that does not
+ * enclose the replaced text, or all the text of one that does.
+ */
 export const DocumentComments = Extension.create({
   name: "documentComments",
   addGlobalAttributes: () => [
@@ -807,6 +874,77 @@ export const DocumentComments = Extension.create({
             comments.filter((comment) => comment.id !== id)
           );
           tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    applyCommentSuggestion:
+      (id, content) =>
+      ({ state, tr, dispatch }) => {
+        const ranges = getCommentRanges(state.doc);
+        const range = ranges.get(id);
+        const threads = new Set(
+          getDocumentComments(state.doc).map((comment) => comment.id)
+        );
+        if (!range || !threads.has(id)) {
+          return false;
+        }
+        const $from = state.doc.resolve(range.from);
+        const $to = state.doc.resolve(range.to);
+        if (!$from.parent.isTextblock || !$from.sameParent($to)) {
+          return false;
+        }
+
+        const markType = state.schema.marks[COMMENT_MARK_NAME];
+        const marks = [markType.create({ id })];
+        const sameRange: string[] = [];
+        for (const [otherId, other] of ranges) {
+          if (
+            otherId === id ||
+            !threads.has(otherId) ||
+            other.to <= range.from ||
+            other.from >= range.to
+          ) {
+            continue;
+          }
+          if (other.from > range.from || other.to < range.to) {
+            return false;
+          }
+          marks.push(markType.create({ id: otherId }));
+          if (other.from === range.from && other.to === range.to) {
+            sameRange.push(otherId);
+          }
+        }
+
+        let replacement: Fragment;
+        try {
+          replacement = Fragment.fromArray(
+            content.map((json) => {
+              const node = state.schema.nodeFromJSON(json);
+              return canCarryCommentMark(node, $from.parent)
+                ? node.mark(
+                    marks.reduce((set, mark) => mark.addToSet(set), node.marks)
+                  )
+                : node;
+            })
+          );
+        } catch {
+          return false;
+        }
+        if (
+          !$from.parent.canReplace($from.index(), $to.indexAfter(), replacement)
+        ) {
+          return false;
+        }
+        let carriesMark = false;
+        replacement.forEach((node) => {
+          carriesMark ||= canCarryCommentMark(node, $from.parent);
+        });
+        if (sameRange.length > 0 && !carriesMark) {
+          return false;
+        }
+
+        if (dispatch) {
+          tr.replaceWith(range.from, range.to, replacement);
         }
         return true;
       },

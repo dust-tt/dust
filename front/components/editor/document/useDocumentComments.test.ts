@@ -7,7 +7,10 @@ import { parseDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { JSONContent } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
+import { Plugin } from "@tiptap/pm/state";
+import { ReplaceStep } from "@tiptap/pm/transform";
 import { Decoration } from "@tiptap/pm/view";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -22,6 +25,7 @@ async function renderCommentedEditor(
   {
     sign,
     verify,
+    isSavable,
   }: {
     sign?: (
       commentId: string,
@@ -29,6 +33,7 @@ async function renderCommentedEditor(
       body: string
     ) => Promise<Result<DfmMessage, string>>;
     verify?: DfmMessageVerifier;
+    isSavable?: (document: JSONContent) => boolean;
   } = {}
 ) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
@@ -45,7 +50,7 @@ async function renderCommentedEditor(
         editor: document.editor,
         canComment: document.editable,
         author: AUTHOR,
-        isSavable: document.isSavable,
+        isSavable: isSavable ?? document.isSavable,
         sign,
         verify: currentVerify,
       });
@@ -825,5 +830,256 @@ describe("useDocumentComments", () => {
       result.current.comments.select(null);
     });
     expect(highlight()).toBeNull();
+  });
+
+  describe("suggestions", () => {
+    const thread = (status = "open") =>
+      `:::annotations\n::comment{id=c1 status=${status}}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`;
+
+    it("offers the commented text as Markdown, which applied unchanged keeps the text", async () => {
+      const source = `Hi **:comment-start{id=c1}brave:comment-end{id=c1}** world\n\n${thread()}`;
+      const { result, onSave } = await renderCommentedEditor(source);
+
+      const template = result.current.comments.suggestionTemplate("c1");
+      expect(template.isOk() && template.value).toBe(
+        "```suggestion\n**brave**\n```"
+      );
+
+      act(() => {
+        expect(
+          result.current.comments
+            .applySuggestion("c1", "**brave**", null)
+            .isOk()
+        ).toBe(true);
+      });
+      await act(() => result.current.document.save());
+
+      expect(onSave.mock.calls[0][0]).toBe(
+        source.replace("status=open", "status=resolved")
+      );
+    });
+
+    it("replaces the commented text, keeps the comment on it and resolves the thread", async () => {
+      const { result, onSave } = await renderCommentedEditor(SOURCE);
+
+      act(() => {
+        expect(
+          result.current.comments
+            .applySuggestion("c1", "*over* here", null)
+            .isOk()
+        ).toBe(true);
+      });
+      await act(() => result.current.document.save());
+
+      expect(onSave.mock.calls[0][0]).toBe(
+        SOURCE.replace(
+          ":comment-start{id=c1}there:comment-end{id=c1}",
+          "*:comment-start{id=c1}over* here:comment-end{id=c1}"
+        ).replace("status=open", "status=resolved")
+      );
+    });
+
+    it("undoes the text change and leaves the thread resolved", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+
+      act(() => {
+        result.current.comments.applySuggestion("c1", "here", null);
+      });
+      act(() => {
+        result.current.document.editor?.commands.undo();
+      });
+
+      expect(result.current.comments.quotes.get("c1")).toBe("there");
+      expect(result.current.comments.comments[0].status).toBe("resolved");
+    });
+
+    it("deletes the commented text with an empty suggestion", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+
+      act(() => {
+        expect(
+          result.current.comments.applySuggestion("c1", "", null).isOk()
+        ).toBe(true);
+      });
+
+      expect(result.current.document.editor?.getText()).toBe("Hi ");
+      expect(result.current.comments.quotes.has("c1")).toBe(false);
+    });
+
+    it.each([
+      ["several paragraphs", "One\n\nTwo"],
+      ["a heading", "# Title"],
+      ["a comment anchor", ":comment-start{id=c2}x:comment-end{id=c2}"],
+    ])("refuses %s, leaving the document unchanged", async (_, suggestion) => {
+      const { result } = await renderCommentedEditor(SOURCE);
+
+      let applied: Result<void, string> | undefined;
+      act(() => {
+        applied = result.current.comments.applySuggestion(
+          "c1",
+          suggestion,
+          null
+        );
+      });
+
+      expect(applied?.isErr()).toBe(true);
+      expect(result.current.comments.quotes.get("c1")).toBe("there");
+      expect(result.current.comments.comments[0].status).toBe("open");
+      expect(result.current.document.dirty).toBe(false);
+    });
+
+    it("refuses a suggestion the document could not be saved with once resolved", async () => {
+      const { result } = await renderCommentedEditor(SOURCE, {
+        isSavable: (document) =>
+          !JSON.stringify(document).includes('"status":"resolved"'),
+      });
+
+      let applied: Result<void, string> | undefined;
+      act(() => {
+        applied = result.current.comments.applySuggestion("c1", "here", null);
+      });
+
+      expect(applied?.isErr()).toBe(true);
+      expect(result.current.comments.quotes.get("c1")).toBe("there");
+      expect(result.current.comments.comments[0].status).toBe("open");
+      expect(result.current.document.dirty).toBe(false);
+    });
+
+    it("refuses a comment spanning paragraphs", async () => {
+      const { result } = await renderCommentedEditor(
+        `:comment-start{id=c1}One\n\nTwo:comment-end{id=c1}\n\n${thread()}`
+      );
+
+      expect(result.current.comments.suggestable.has("c1")).toBe(false);
+      expect(result.current.comments.suggestionTemplate("c1").isErr()).toBe(
+        true
+      );
+      let applied: Result<void, string> | undefined;
+      act(() => {
+        applied = result.current.comments.applySuggestion("c1", "Three", null);
+      });
+      expect(applied?.isErr()).toBe(true);
+      expect(result.current.document.dirty).toBe(false);
+    });
+
+    const threads = (...ids: string[]) =>
+      `:::annotations\n${ids
+        .map(
+          (id) =>
+            `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n`
+        )
+        .join("\n")}:::\n`;
+
+    it("keeps an enclosing comment over the replacement", async () => {
+      const source = `the :comment-start{id=c2}quick :comment-start{id=c1}brown:comment-end{id=c1} fox:comment-end{id=c2}\n\n${threads("c1", "c2")}`;
+      const { result, onSave } = await renderCommentedEditor(source);
+
+      act(() => {
+        expect(
+          result.current.comments.applySuggestion("c1", "red", null).isOk()
+        ).toBe(true);
+      });
+      await act(() => result.current.document.save());
+
+      expect(result.current.comments.quotes.get("c2")).toBe("quick red fox");
+      expect(onSave.mock.calls[0][0]).toBe(
+        source
+          .replace("brown", "red")
+          .replace("{id=c1 status=open}", "{id=c1 status=resolved}")
+      );
+    });
+
+    it.each([
+      [
+        "a comment inside it",
+        `:comment-start{id=c1}alpha :comment-start{id=c2}beta:comment-end{id=c2} gamma:comment-end{id=c1}`,
+        "delta",
+      ],
+      [
+        "a comment over its edge",
+        `:comment-start{id=c2}alpha :comment-start{id=c1}beta:comment-end{id=c2} gamma:comment-end{id=c1}`,
+        "delta",
+      ],
+      [
+        "a comment on the same text",
+        `:comment-start{id=c2}:comment-start{id=c1}beta:comment-end{id=c1}:comment-end{id=c2}`,
+        "",
+      ],
+    ])(
+      "refuses to remove text %s holds, leaving the document unchanged",
+      async (_, text, suggestion) => {
+        const { result } = await renderCommentedEditor(
+          `${text}\n\n${threads("c1", "c2")}`
+        );
+        const quote = result.current.comments.quotes.get("c2");
+
+        let applied: Result<void, string> | undefined;
+        act(() => {
+          applied = result.current.comments.applySuggestion(
+            "c1",
+            suggestion,
+            null
+          );
+        });
+
+        expect(applied?.isErr()).toBe(true);
+        expect(result.current.comments.quotes.get("c2")).toBe(quote);
+        expect(result.current.comments.comments[0].status).toBe("open");
+        expect(result.current.document.dirty).toBe(false);
+      }
+    );
+
+    it("leaves the thread open when the text change is not applied", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      editor.registerPlugin(
+        new Plugin({
+          filterTransaction: (tr) =>
+            !tr.steps.some((step) => step instanceof ReplaceStep),
+        })
+      );
+
+      let applied: Result<void, string> | undefined;
+      act(() => {
+        applied = result.current.comments.applySuggestion("c1", "here", null);
+      });
+
+      expect(applied?.isErr()).toBe(true);
+      expect(result.current.comments.quotes.get("c1")).toBe("there");
+      expect(result.current.comments.comments[0].status).toBe("open");
+    });
+
+    it("refuses a resolved thread", async () => {
+      const { result } = await renderCommentedEditor(
+        SOURCE.replace("status=open", "status=resolved")
+      );
+
+      expect(
+        result.current.comments.applySuggestion("c1", "here", null).isErr()
+      ).toBe(true);
+      expect(result.current.comments.quotes.get("c1")).toBe("there");
+    });
+
+    it("offers the draft's text as a suggestion", async () => {
+      const { result } = await renderCommentedEditor("Hello brave world.\n");
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        select(editor, "brave");
+        result.current.comments.startDraft();
+      });
+
+      expect(result.current.comments.draftSuggestable).toBe(true);
+      const template = result.current.comments.draftSuggestionTemplate();
+      expect(template.isOk() && template.value).toBe(
+        "```suggestion\nbrave\n```"
+      );
+    });
   });
 });
