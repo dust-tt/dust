@@ -125,6 +125,28 @@ describe("createCollabHocuspocus", () => {
     await reopened.disconnect();
   });
 
+  it("keeps a document a client came back to during the grace period", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    vi.useFakeTimers();
+
+    const first = await hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
+    await first.transact((doc) => typeInto(doc, "Edit."));
+    await first.disconnect();
+
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS - 1);
+    const second = await hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
+    expect(hocuspocus.getDocumentsCount()).toBe(1);
+
+    await second.disconnect();
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS - 1);
+    expect(hocuspocus.getDocumentsCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(hocuspocus.getDocumentsCount()).toBe(0);
+    expect(loadLiveDocument).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps a document whose checkpoint failed after the grace period", async () => {
     vi.mocked(checkpointLiveDocument).mockResolvedValue(
       new Err("This file changed since it was loaded.")

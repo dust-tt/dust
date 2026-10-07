@@ -8,6 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import logger from "@app/logger/logger";
 import { parseLiveDocumentName } from "@app/types/collab";
+import type { Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
@@ -83,10 +84,13 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
     },
 
     async onLoadDocument({ context, document, documentName }) {
-      const loaded = await loadLiveDocument(context).catch((err: unknown) => {
+      let loaded: Awaited<ReturnType<typeof loadLiveDocument>>;
+      try {
+        loaded = await loadLiveDocument(context);
+      } catch (err) {
         document.destroy();
         return logUnexpected(documentName, "Collab document load failed")(err);
-      });
+      }
       if (loaded.isErr()) {
         document.destroy();
         refuse(documentName, loaded.error);
@@ -115,14 +119,17 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         throw new Error("The document was changed without a writer.");
       }
 
-      const checkpoint = await checkpointLiveDocument(
-        lastContext,
-        { doc: document, comments: session.comments },
-        session.checkpoint
-      ).catch((err: unknown) => {
+      let checkpoint: Result<LiveCheckpoint, string>;
+      try {
+        checkpoint = await checkpointLiveDocument(
+          lastContext,
+          { doc: document, comments: session.comments },
+          session.checkpoint
+        );
+      } catch (err) {
         session.checkpointFailed = true;
         return logUnexpected(documentName, "Collab checkpoint failed")(err);
-      });
+      }
       if (checkpoint.isErr()) {
         session.checkpointFailed = true;
         logger.error(
