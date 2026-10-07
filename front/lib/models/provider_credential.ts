@@ -3,13 +3,15 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { PlanGatewayType } from "@app/types/plan";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 export class ProviderCredentialModel extends WorkspaceAwareModel<ProviderCredentialModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare providerId: ByokModelProviderIdType;
+  // A BYOK model provider, or an AI gateway whose admin connection the workspace configured.
+  declare providerId: ByokModelProviderIdType | PlanGatewayType;
   declare credentialId: string;
   declare isHealthy: boolean;
   declare placeholder: string;

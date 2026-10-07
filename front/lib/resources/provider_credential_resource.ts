@@ -10,6 +10,7 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ModelProviderPostCredentialsBody } from "@app/types/oauth/oauth_api";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
@@ -71,6 +72,8 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     ProviderCredentialModel;
 
   private _credentials: ApiKeyCredentialsType;
+  // The table also holds AI gateway connections; this resource only ever loads BYOK rows.
+  readonly byokProviderId: ByokModelProviderIdType;
 
   constructor(
     model: ModelStatic<ProviderCredentialModel>,
@@ -78,6 +81,14 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     credentials: ApiKeyCredentialsType
   ) {
     super(ProviderCredentialModel, blob);
+    const byokProviderId = BYOK_MODEL_PROVIDER_IDS.find(
+      (id) => id === blob.providerId
+    );
+    assert(
+      byokProviderId,
+      `Provider credential ${blob.id} is not a BYOK provider credential.`
+    );
+    this.byokProviderId = byokProviderId;
     this._credentials = credentials;
   }
 
@@ -139,7 +150,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     transaction?: Transaction
   ): Promise<ProviderCredential[]> {
     const models = await ProviderCredentialResource.model.findAll({
-      where: { workspaceId: workspaceModelId },
+      where: {
+        workspaceId: workspaceModelId,
+        providerId: [...BYOK_MODEL_PROVIDER_IDS],
+      },
       transaction,
     });
 
@@ -152,7 +166,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     return resources.map((r) => ({
       id: r.id,
       workspaceId: r.workspaceId,
-      providerId: r.providerId,
+      providerId: r.byokProviderId,
       credentialId: r.credentialId,
       isHealthy: r.isHealthy,
       placeholder: r.placeholder,
@@ -169,7 +183,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   ): Promise<ProvidersHealth> {
     const models = await ProviderCredentialResource.model.findAll({
       attributes: ["providerId", "isHealthy"],
-      where: { workspaceId: workspaceModelId },
+      where: {
+        workspaceId: workspaceModelId,
+        providerId: [...BYOK_MODEL_PROVIDER_IDS],
+      },
       transaction,
     });
 
@@ -353,15 +370,15 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const user = auth.getNonNullableUser();
 
     const isHealthy = await isCredentialHealthy({
-      provider: this.providerId,
+      provider: this.byokProviderId,
       credentials: { api_key: apiKey },
       workspaceId: workspace.sId,
     });
 
     if (!isHealthy) {
       logger.warn(
-        { providerId: this.providerId, workspaceId: workspace.sId },
-        `Provided credentials for provider ${this.providerId} are not healthy.`
+        { providerId: this.byokProviderId, workspaceId: workspace.sId },
+        `Provided credentials for provider ${this.byokProviderId} are not healthy.`
       );
       return null;
     }
@@ -369,7 +386,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const oauthClient = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
     const oauthRes = await oauthClient.postCredentials({
-      provider: this.providerId,
+      provider: this.byokProviderId,
       workspaceId: workspace.sId,
       userId: user.sId,
       credentials: { api_key: apiKey },
@@ -378,7 +395,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     if (oauthRes.isErr()) {
       logger.error(
         {
-          providerId: this.providerId,
+          providerId: this.byokProviderId,
           error: oauthRes.error,
           workspaceId: workspace.sId,
         },
@@ -536,7 +553,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      providerId: this.providerId,
+      providerId: this.byokProviderId,
       credentialId: this.credentialId,
       isHealthy: this.isHealthy,
       placeholder: this.placeholder,
