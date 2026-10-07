@@ -8,9 +8,15 @@ import {
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { LiveCommentServerMessage } from "@app/types/collab";
+import type {
+  LiveCommentErrorCode,
+  LiveCommentServerMessage,
+} from "@app/types/collab";
 import {
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
@@ -24,9 +30,7 @@ import { Hocuspocus } from "@hocuspocus/server";
 import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
-
-// The socket id Hocuspocus reports when a direct connection disconnects.
-const DIRECT_CONNECTION_SOCKET_ID = "server";
+const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
@@ -41,13 +45,10 @@ interface LiveSession {
 const serverMessage = (message: LiveCommentServerMessage) =>
   JSON.stringify(message);
 
-const unavailableResult = (requestId: string) =>
-  serverMessage({
-    type: "result",
-    requestId,
-    error: "unavailable",
-    comment: null,
-  });
+const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
+  serverMessage({ type: "refused", requestId, error });
+
+type CommandResult = Awaited<ReturnType<typeof applyLiveCommentCommand>>;
 
 const commandRequestSchema = z.object({
   type: z.literal("command"),
@@ -126,11 +127,12 @@ export async function authenticateConnection(
  * A connection MUST receive the session's threads when it asks. A comment command MUST be applied
  * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
- * connection of the document and the document stored through that connection, so the checkpoint
- * writes them. A command its document unloaded before it finished MUST change nothing. Every
- * command carrying a request id MUST be answered, as `unavailable` when it is invalid, failed or
- * outlived its document, and a failing command MUST NOT stop the later ones. Any other message
- * that is not a valid client message MUST be ignored.
+ * connection of the document and the document stored, so the checkpoint writes them, through the
+ * connection that last changed its text, or through the commenter's when none did. A command its
+ * document unloaded before it finished MUST change nothing. Every command carrying a request id
+ * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
+ * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
+ * the later ones. Any other message that is not a valid client message MUST be ignored.
  */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const sessions = new WeakMap<Document, LiveSession>();
@@ -243,15 +245,9 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       session.checkpointFailed = false;
     },
 
-    async onDisconnect({ instance, document, socketId }) {
+    async onDisconnect({ instance, document }) {
       const session = sessions.get(document);
       if (!session || document.getConnections().length > 0) {
-        return;
-      }
-      if (
-        session.graceTimer !== undefined &&
-        socketId === DIRECT_CONNECTION_SOCKET_ID
-      ) {
         return;
       }
       // Holding the document as a direct connection keeps Hocuspocus from unloading it.
@@ -288,7 +284,9 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           ? commandRequestSchema.safeParse(json.value)
           : null;
         if (request?.success) {
-          connection.sendStateless(unavailableResult(request.data.requestId));
+          connection.sendStateless(
+            refusedMessage(request.data.requestId, "unavailable")
+          );
         }
         return;
       }
@@ -310,32 +308,37 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           },
           "Collab comment command failed"
         );
-      const run = async () => {
-        let result: Awaited<ReturnType<typeof applyLiveCommentCommand>>;
+      const apply = async (): Promise<CommandResult> => {
         try {
-          result = await applyLiveCommentCommand(
-            file,
-            session.comments,
-            command
-          );
+          const applied = await Promise.race([
+            applyLiveCommentCommand(file, session.comments, command),
+            setTimeoutAsync(COMMENT_COMMAND_TIMEOUT_MS),
+          ]);
+          if (applied === "timeout") {
+            logger.error(
+              { documentName, workspaceId: file.workspaceId },
+              "Collab comment command timed out"
+            );
+            return new Err("unavailable");
+          }
+          return applied;
         } catch (err) {
           logFailure(err);
-          result = new Err("unavailable");
+          return new Err("unavailable");
         }
+      };
+      const run = async () => {
         // Unloaded while the command waited or ran: a reload reads the file into a new document,
         // and storing this one would cancel that document's debounced store, keyed by name.
-        if (document.isDestroyed) {
-          connection.sendStateless(unavailableResult(requestId));
-          return;
-        }
-        if (result.isErr()) {
+        const result: CommandResult = document.isDestroyed
+          ? new Err("unavailable")
+          : await apply();
+        if (document.isDestroyed || result.isErr()) {
           connection.sendStateless(
-            serverMessage({
-              type: "result",
+            refusedMessage(
               requestId,
-              error: result.error,
-              comment: null,
-            })
+              result.isErr() ? result.error : "unavailable"
+            )
           );
           return;
         }
@@ -345,7 +348,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         // TODO(co-edition): a command still applies after its sender left, whose channel already
         // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;
-        session.lastChangedBy = file;
+        session.lastChangedBy ??= file;
         // TODO(co-edition): broadcast only the changed thread rather than every thread to every
         // connection.
         document.broadcastStateless(
@@ -353,9 +356,8 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         );
         connection.sendStateless(
           serverMessage({
-            type: "result",
+            type: "accepted",
             requestId,
-            error: null,
             comment: result.value.created,
           })
         );

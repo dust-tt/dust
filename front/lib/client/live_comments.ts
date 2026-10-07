@@ -22,10 +22,12 @@ export interface LiveCommentChannel {
 
 /**
  * @cc [owner:tdraier,label:product] live-comment-channel
- * The channel MUST ask the server for the threads when created, and MUST resolve each command
- * with the server's answer to that command only. Once closed it MUST NOT report threads, and
- * every command waiting or sent after MUST resolve as `unavailable`, so no caller waits for an
- * answer a lost connection will never bring.
+ * The channel MUST ask the server for the threads when created and each time the provider syncs
+ * again, and MUST resolve each command with the server's answer to that command only. A command
+ * sent while the provider is not synced, or waiting when its connection closes, MUST resolve as
+ * `unavailable`: the provider drops the messages it queued for a lost connection. Once closed the
+ * channel MUST NOT report threads, and every command waiting or sent after MUST resolve as
+ * `unavailable`, so no caller waits for an answer a lost connection will never bring.
  */
 export function createLiveCommentChannel(
   provider: HocuspocusProvider
@@ -40,6 +42,19 @@ export function createLiveCommentChannel(
 
   const sendMessage = (message: LiveCommentClientMessage) =>
     provider.sendStateless(JSON.stringify(message));
+  const requestThreads = () => sendMessage({ type: "threads" });
+  const answer = (
+    requestId: string,
+    result: Result<DfmComment | null, LiveCommentErrorCode>
+  ) => {
+    const resolve = pending.get(requestId);
+    pending.delete(requestId);
+    resolve?.(result);
+  };
+  const failPending = () => {
+    pending.forEach((resolve) => resolve(new Err("unavailable")));
+    pending.clear();
+  };
 
   const onStateless = ({ payload }: { payload: string }) => {
     const json = safeParseJSON(payload);
@@ -56,18 +71,19 @@ export function createLiveCommentChannel(
         listeners.forEach((listener) => listener(comments));
         return;
       }
-      case "result": {
-        const { requestId, error, comment } = message.data;
-        const resolve = pending.get(requestId);
-        pending.delete(requestId);
-        resolve?.(error === null ? new Ok(comment) : new Err(error));
+      case "accepted":
+        answer(message.data.requestId, new Ok(message.data.comment));
         return;
-      }
+      case "refused":
+        answer(message.data.requestId, new Err(message.data.error));
+        return;
     }
   };
 
   provider.on("stateless", onStateless);
-  sendMessage({ type: "threads" });
+  provider.on("synced", requestThreads);
+  provider.on("close", failPending);
+  requestThreads();
 
   return {
     getThreads: () => threads,
@@ -76,7 +92,7 @@ export function createLiveCommentChannel(
       return () => listeners.delete(listener);
     },
     send: (command) => {
-      if (closed) {
+      if (closed || !provider.isSynced) {
         return Promise.resolve(new Err("unavailable"));
       }
       // TODO(co-edition): `crypto.randomUUID` only exists in secure contexts, so this throws over
@@ -91,9 +107,10 @@ export function createLiveCommentChannel(
       closed = true;
       threads = null;
       provider.off("stateless", onStateless);
+      provider.off("synced", requestThreads);
+      provider.off("close", failPending);
       listeners.clear();
-      pending.forEach((resolve) => resolve(new Err("unavailable")));
-      pending.clear();
+      failPending();
     },
   };
 }
