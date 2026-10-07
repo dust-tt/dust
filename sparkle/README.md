@@ -25,12 +25,6 @@ npx vitest run --project=storybook             # full suite, ~2 minutes
 
 ## Accessibility
 
-Every story has an axe-core Accessibility panel. Components with known violations carry an
-`a11y-issues` tag, shown as a red "A11y" badge in the sidebar. The tags are maintained by a
-script — after fixing (or changing) components, refresh them and commit the diff:
-
-```
-npm run a11y:sync
-```
+Every story has an axe-core Accessibility panel; violations show up there as warnings.
 
 See `AGENTS.md` for the full workflow and conventions.

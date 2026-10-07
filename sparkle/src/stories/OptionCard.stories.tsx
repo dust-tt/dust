@@ -23,7 +23,7 @@ const meta = {
       },
     },
   },
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
 } satisfies Meta<typeof OptionCard>;
 
 export default meta;

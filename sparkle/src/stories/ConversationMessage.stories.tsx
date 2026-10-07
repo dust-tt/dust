@@ -26,7 +26,7 @@ import {
 
 const meta = {
   title: "Product/Conversation/ConversationMessage",
-  tags: ["deprecated", "!manifest", "a11y-issues"],
+  tags: ["deprecated", "!manifest"],
   parameters: {
     docs: {
       description: {

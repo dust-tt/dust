@@ -17,7 +17,7 @@ import {
 
 const meta = {
   title: "Lab/SidebarLayout",
-  tags: ["!manifest", "a11y-issues"],
+  tags: ["!manifest"],
   component: SidebarLayout,
   parameters: {
     docs: {

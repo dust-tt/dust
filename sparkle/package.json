@@ -16,7 +16,6 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:unit": "vitest run --config vitest.unit.config.ts",
-    "a11y:sync": "node scripts/sync-a11y-tags.mjs",
     "watch": "npm-watch"
   },
   "watch": {

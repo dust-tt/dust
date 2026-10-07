@@ -22,7 +22,7 @@ const meta = {
       },
     },
   },
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   decorators: [(Story) => <Story />],
   argTypes: {
     textColor: {

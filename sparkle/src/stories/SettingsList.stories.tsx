@@ -5,7 +5,6 @@ import { Input, SettingsList, SliderToggle } from "../index_with_tw_base";
 
 const meta = {
   title: "Lists/SettingsList",
-  tags: ["a11y-issues"],
   component: SettingsList,
   parameters: {
     docs: {

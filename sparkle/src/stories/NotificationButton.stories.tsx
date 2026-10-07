@@ -6,7 +6,6 @@ import { InfoCircle } from "@sparkle/icons";
 const meta: Meta<typeof NotificationButton> = {
   title: "Feedback & Status/NotificationButton",
   component: NotificationButton,
-  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {
