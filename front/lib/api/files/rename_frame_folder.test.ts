@@ -21,7 +21,10 @@ import {
   moveCanonicalFile,
   renameCanonicalFile,
 } from "@app/lib/api/files/file_system_ops";
-import { setupFrameSourceStorageTest } from "@app/lib/api/frames/source_storage.test_utils";
+import {
+  frameManifest,
+  setupFrameSourceStorageTest,
+} from "@app/lib/api/frames/source_storage.test_utils";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -222,5 +225,66 @@ describe("moveCanonicalFile on a Frames v2 package folder", () => {
     expect(reloaded?.toScopedPath(c.auth)).toBe(
       `conversation-${c.conversation.sId}/Status/${FRAME_MANIFEST_FILE}`
     );
+  });
+});
+
+describe("moving or renaming a Frames v2 manifest on its own", () => {
+  async function expectFrameUntouched(
+    c: Awaited<ReturnType<typeof setupFrameSourceStorageTest>>
+  ) {
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    expect(reloaded?.toScopedPath(c.auth)).toBe(
+      `${c.sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      "publication-1"
+    );
+    expect(fileStorageMock.getObject(c.sourceObjects[0])).toBe(frameManifest);
+  }
+
+  it("refuses to move the manifest into a Pod, pointing at the folder", async () => {
+    const c = await setupFrameSourceStorageTest({ inPod: true });
+    assert(c.pod, "The conversation should belong to a Pod");
+    mockStorageCopies();
+    const manifestPath = `${c.sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [manifestPath],
+    });
+    assert(fsResult.isOk());
+
+    const moved = await moveCanonicalFile(
+      c.auth,
+      fsResult.value,
+      manifestPath,
+      `pod-${c.pod.sId}/Status/${FRAME_MANIFEST_FILE}`
+    );
+
+    assert(moved.isErr());
+    expect(moved.error.code).toBe("invalid_path");
+    expect(moved.error.message).toContain(`\`${c.sourceDirectoryPath}\``);
+    await expectFrameUntouched(c);
+  });
+
+  it("refuses to rename the manifest", async () => {
+    const c = await setupFrameSourceStorageTest();
+    mockStorageCopies();
+    const manifestPath = `${c.sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [manifestPath],
+    });
+    assert(fsResult.isOk());
+
+    const renamed = await renameCanonicalFile(
+      c.auth,
+      fsResult.value,
+      manifestPath,
+      "old_manifest.json"
+    );
+
+    assert(renamed.isErr());
+    expect(renamed.error.code).toBe("invalid_path");
+    await expectFrameUntouched(c);
   });
 });

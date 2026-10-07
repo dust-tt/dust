@@ -368,6 +368,38 @@ async function fetchFrameV2PackageAt(
 }
 
 /**
+ * @cc [owner:avervaet,label:product;backend] frame-manifest-moves-only-with-its-folder
+ * When the file at `scopedPath` is the manifest of a registered Frames v2 package, this MUST
+ * return `invalid_path` naming the package folder, and every file move or rename MUST honor that
+ * refusal before any bytes move, leaving the Frame's registration and publication untouched.
+ * Otherwise it returns the FileResource linked to the path, if any.
+ */
+async function fetchRelocatableLinkedFileResource(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<Result<FileResource | undefined, DustFileSystemError>> {
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    scopedPath
+  );
+  if (linkedFileResource?.isFrameV2) {
+    // The manifest is the Frame's registration: relocating it alone would strand the sources and
+    // drop the publication that the Frame's share links serve.
+    return new Err(
+      new DustFileSystemError(
+        "invalid_path",
+        `\`${scopedPath}\` is a Frame's manifest and cannot be moved or renamed on its own. ` +
+          `Move or rename the Frame folder \`${path.posix.dirname(scopedPath)}\` instead.`
+      )
+    );
+  }
+
+  return new Ok(linkedFileResource);
+}
+
+/**
  * @cc [owner:davidebbo,label:product;backend] frame-folder-move-goes-through-the-frame-move
  * Moving the source folder of a registered Frames v2 package — renaming included, since a rename
  * is a move to a sibling path — MUST go through the Frame move. The package's `FileResource` is
@@ -493,23 +525,26 @@ export async function renameCanonicalFile(
     return new Err(registeredDestinationError());
   }
 
-  const linkedFileResource = await fetchLinkedFileResource(
+  const linkedFileResource = await fetchRelocatableLinkedFileResource(
     auth,
     dustFs,
     scopedPath
   );
+  if (linkedFileResource.isErr()) {
+    return linkedFileResource;
+  }
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
     return renameResult;
   }
 
-  if (linkedFileResource) {
+  if (linkedFileResource.value) {
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
-      await linkedFileResource.updateMount({
+      await linkedFileResource.value.updateMount({
         destFileName: path.posix.basename(dest),
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
@@ -571,7 +606,14 @@ export async function moveCanonicalFile(
   }
 
   // Look up the linked FileResource before the bytes move.
-  const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
+  const linkedFileResource = await fetchRelocatableLinkedFileResource(
+    auth,
+    dustFs,
+    src
+  );
+  if (linkedFileResource.isErr()) {
+    return linkedFileResource;
+  }
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
@@ -579,13 +621,13 @@ export async function moveCanonicalFile(
   }
 
   // Update the FileResource to point to the new location.
-  if (linkedFileResource) {
+  if (linkedFileResource.value) {
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
       const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFileResource.updateMount({
+      await linkedFileResource.value.updateMount({
         destFileName,
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,

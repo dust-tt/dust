@@ -91,7 +91,9 @@ export async function moveHandler(
 
       case "invalid_path":
         return new Err(
-          new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
+          new MCPError(`Invalid path: \`${dest}\`. ${err.message}`, {
+            tracked: false,
+          })
         );
 
       default:
