@@ -333,4 +333,76 @@ describe("Document comments", () => {
       );
     }
   );
+
+  it("applies a suggestion from its card and resolves the thread", async () => {
+    const { dom, editor } = await renderDocument(
+      SOURCE.replace("Note.", "Note.\n\n```suggestion\nover here\n```")
+    );
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = screen.getByRole("article", { name: "Comment by Daph" });
+    expect(thread.textContent).toContain("Suggested change");
+    fireEvent.click(within(thread).getByRole("button", { name: "Apply" }));
+
+    expect(editor.getText()).toBe("Hi over here");
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Apply" })).toBeNull()
+    );
+  });
+
+  it("shows each suggestion of a message as its own card", async () => {
+    const { dom, editor } = await renderDocument(
+      SOURCE.replace(
+        "Note.",
+        "Note.\n\nOption 1\n\n```suggestion\nover here\n```\n\nOption 2\n\n```suggestion\nyonder\n```"
+      )
+    );
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = screen.getByRole("article", { name: "Comment by Daph" });
+    expect(thread.textContent).toMatch(
+      /Option 1[\s\S]*Suggested change[\s\S]*over here[\s\S]*Option 2[\s\S]*Suggested change[\s\S]*yonder/
+    );
+    fireEvent.click(
+      within(thread).getAllByRole("button", { name: "Apply" })[1]
+    );
+
+    expect(editor.getText()).toBe("Hi yonder");
+  });
+
+  it("offers no Apply for a suggestion that is not one paragraph", async () => {
+    const { dom } = await renderDocument(
+      SOURCE.replace("Note.", "Note.\n\n```suggestion\n# Title\n```")
+    );
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = screen.getByRole("article", { name: "Comment by Daph" });
+    expect(thread.textContent).toContain("Suggested change");
+    expect(within(thread).queryByRole("button", { name: "Apply" })).toBeNull();
+  });
+
+  it("shows a blank suggestion as deleting the text", async () => {
+    const { dom } = await renderDocument(
+      SOURCE.replace("Note.", "Note.\n\n```suggestion\n   \n```")
+    );
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = screen.getByRole("article", { name: "Comment by Daph" });
+    expect(thread.textContent).toContain("Deletes the text.");
+  });
+
+  it("inserts the selected text as a suggestion in a new comment", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    fireEvent.click(screen.getByRole("button", { name: "Suggest a change" }));
+
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", {
+      name: "Comment",
+    });
+    expect(field.value).toBe("```suggestion\nbrave\n```");
+    expect(field.value.slice(field.selectionStart, field.selectionEnd)).toBe(
+      "brave"
+    );
+  });
 });

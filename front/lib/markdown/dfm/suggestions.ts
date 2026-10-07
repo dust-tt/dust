@@ -13,7 +13,7 @@ import { Err, Ok } from "@app/types/shared/result";
  * directive of its own and signs like any other body.
  */
 
-const SUGGESTION_LANGUAGE = "suggestion";
+export const SUGGESTION_LANGUAGE = "suggestion";
 const BACKTICK_RUN_PATTERN = /`+/g;
 
 export type DfmMessagePart =

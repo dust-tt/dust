@@ -86,6 +86,16 @@ is signed by the server for that agent (`front/lib/api/files/dfm_agent_comments.
 Unverified, such as one written from a sandbox or by an agent editing the file directly; without
 it, no message is marked.
 
+## Suggestions
+
+A message can suggest new wording for the commented text, in a `suggestion` block as on
+GitHub (see the DFM README). The panel shows the commented text as it is now next to the
+suggested text. Suggest, in the new comment and reply fields, adds a block holding the commented
+text as Markdown, selected so typing replaces it. Apply replaces the commented text, which keeps
+the comment, and resolves the thread; the text change is undoable, the resolution stays out of
+history. A suggestion applies only to a comment within one paragraph, heading or list item, and
+only when it is one paragraph of text: anything else is refused with the reason.
+
 ## Layout
 
 | File | Owns |
