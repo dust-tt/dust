@@ -13,8 +13,8 @@ import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
   invalidateCacheAfterCommit,
-  invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -130,12 +130,6 @@ export class KeyResource extends BaseResource<KeyModel> {
     { cacheId: API_KEY_CACHE_ID }
   );
 
-  private static invalidateKeyCache = invalidateCacheWithRedis(
-    KeyResource._fetchBySecretUncached,
-    KeyResource.keyCacheKeyResolver,
-    { cacheId: API_KEY_CACHE_ID }
-  );
-
   private static batchInvalidateKeyCache = batchInvalidateCacheWithRedis(
     KeyResource._fetchBySecretUncached,
     KeyResource.keyCacheKeyResolver,
@@ -170,8 +164,11 @@ export class KeyResource extends BaseResource<KeyModel> {
   ): Promise<[affectedCount: number]> {
     const oldSecret = this.secret;
     const result = await super.update(blob, transaction, where);
+    // `super.update` reloads the persisted row: when the secret was rotated since this instance was
+    // loaded, the cache entry under the persisted secret is the one serving requests.
+    const secrets = [...new Set([oldSecret, this.secret])];
     invalidateCacheAfterCommit(transaction, () =>
-      KeyResource.invalidateKeyCache(oldSecret)
+      KeyResource.batchInvalidateKeyCache(secrets.map((secret) => [secret]))
     );
     return result;
   }
@@ -531,23 +528,40 @@ export class KeyResource extends BaseResource<KeyModel> {
     await this.update({ role: newRole });
   }
 
-  // Adds or removes a single group from groupIds. Idempotent.
+  /**
+   * @cc [owner:fabiencelier,label:security;concurrency] key-group-membership-locked
+   * Adding or removing a group MUST start from the persisted `groupIds`, read under a row lock held
+   * until the transaction ends, so a concurrent change to the same key's groups is never lost.
+   * Idempotent.
+   */
   async setGroupMembership({
     group,
     isMember,
+    transaction,
   }: {
     group: GroupResource;
     isMember: boolean;
+    transaction?: Transaction;
   }): Promise<void> {
-    const hasGroup = this.groupIds.includes(group.id);
-    if (isMember === hasGroup) {
-      return;
-    }
+    await withTransaction(async (t) => {
+      const row = await KeyModel.findOne({
+        attributes: ["groupIds"],
+        where: { id: this.id, workspaceId: this.workspaceId },
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+      assert(row, `Key ${this.id} not found.`);
 
-    const groupIds = isMember
-      ? [...this.groupIds, group.id]
-      : this.groupIds.filter((id) => id !== group.id);
-    await this.update({ groupIds });
+      const hasGroup = row.groupIds.includes(group.id);
+      if (isMember === hasGroup) {
+        return;
+      }
+
+      const groupIds = isMember
+        ? [...row.groupIds, group.id]
+        : row.groupIds.filter((id) => id !== group.id);
+      await this.update({ groupIds }, t);
+    }, transaction);
   }
 
   private async fetchWorkspace(): Promise<LightWorkspaceType> {
