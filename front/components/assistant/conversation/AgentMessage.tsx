@@ -60,7 +60,10 @@ import { useConversationSandboxStatus } from "@app/hooks/conversations/useConver
 import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isFileWritingInternalTool } from "@app/lib/actions/file_writing_tools";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -304,6 +307,7 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const confirm = useContext(ConfirmContext);
 
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
@@ -1089,10 +1093,9 @@ export function AgentMessage({
       });
 
       if (result.isErr()) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Message not sent",
-          description: result.error.message,
+          error: result.error,
         });
       }
     },
@@ -1100,7 +1103,7 @@ export function AgentMessage({
       agentConfigurations,
       agentMessage.configuration,
       handleSubmit,
-      sendNotification,
+      sendApiErrorNotification,
     ]
   );
 

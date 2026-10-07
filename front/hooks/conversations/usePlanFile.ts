@@ -1,4 +1,4 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
@@ -50,7 +50,7 @@ export function useClosePlan({
   workspaceId: string;
   conversationId: string | null;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutate } = useSWRConfig();
   const [isClosing, setIsClosing] = useState(false);
 
@@ -65,10 +65,9 @@ export function useClosePlan({
       const res = await clientFetch(key, { method: "DELETE" });
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to archive plan",
-          description: errorData.message,
+          error: errorData,
         });
         return false;
       }
@@ -80,7 +79,7 @@ export function useClosePlan({
     } finally {
       setIsClosing(false);
     }
-  }, [workspaceId, conversationId, sendNotification, mutate]);
+  }, [workspaceId, conversationId, sendApiErrorNotification, mutate]);
 
   return { closePlan, isClosing };
 }

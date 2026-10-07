@@ -18,7 +18,7 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
@@ -169,7 +169,7 @@ export function ConversationContainerVirtuoso({
 
   const router = useAppRouter();
 
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const { hasFeature } = useFeatureFlags();
   const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
@@ -219,14 +219,13 @@ export function ConversationContainerVirtuoso({
       if (limitCode) {
         setLimitReachedCode(limitCode);
       } else {
-        sendNotification({
+        sendApiErrorNotification({
           title: error.title,
-          description: error.message,
-          type: "error",
+          error: error.error,
         });
       }
     },
-    [sendNotification]
+    [sendApiErrorNotification]
   );
 
   const handleConversationCreation = useCallback(
@@ -308,7 +307,7 @@ export function ConversationContainerVirtuoso({
         return new Err({
           code: "internal_error",
           name: conversationRes.error.title,
-          message: conversationRes.error.message,
+          message: conversationRes.error.title,
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.

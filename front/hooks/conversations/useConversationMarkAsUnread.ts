@@ -1,6 +1,6 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { usePodConversationsSummary } from "@app/hooks/conversations/usePodConversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PatchConversationsRequestBody } from "@app/types/api/assistant/conversation/types";
@@ -9,7 +9,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
 export function useConversationMarkAsUnread(owner: LightWorkspaceType) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -39,10 +39,9 @@ export function useConversationMarkAsUnread(owner: LightWorkspaceType) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
+        sendApiErrorNotification({
           title: "Error marking conversation as unread.",
-          description: errorData.message,
-          type: "error",
+          error: errorData,
         });
         return false;
       }
@@ -62,7 +61,7 @@ export function useConversationMarkAsUnread(owner: LightWorkspaceType) {
       owner.sId,
       mutateConversations,
       mutatePodConversationsSummary,
-      sendNotification,
+      sendApiErrorNotification,
     ]
   );
 }

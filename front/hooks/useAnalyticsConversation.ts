@@ -1,7 +1,7 @@
 import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
 import { describeAnalyticsView } from "@app/components/workspace/analytics/analyticsView";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -46,7 +46,7 @@ export function useAnalyticsConversation({
   user: UserType | null;
   view: AnalyticsViewInput;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
@@ -85,17 +85,16 @@ export function useAnalyticsConversation({
     if (result.isErr()) {
       setCreationFailed(true);
       setIsCreatingConversation(false);
-      sendNotification({
+      sendApiErrorNotification({
         title: result.error.title,
-        description: result.error.message,
-        type: "error",
+        error: result.error.error,
       });
       return;
     }
 
     setConversation(result.value);
     setIsCreatingConversation(false);
-  }, [createConversationWithMessage, sendNotification, view]);
+  }, [createConversationWithMessage, sendApiErrorNotification, view]);
 
   const resetConversation = useCallback(() => {
     hasStartedRef.current = false;

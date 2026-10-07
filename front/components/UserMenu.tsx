@@ -12,7 +12,10 @@ import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useDevMode } from "@app/hooks/useDevMode";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
 import { OPEN_USER_ANALYTICS_EVENT } from "@app/lib/analytics/events";
 import config from "@app/lib/api/config";
@@ -167,6 +170,7 @@ export function UserMenu({
   }, [router, userMenuModal]);
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const devMode = useDevMode();
   const privacyMask = usePrivacyMask();
   const { clearAllDraftsFromUser } = useConversationDrafts({
@@ -236,10 +240,9 @@ export function UserMenu({
           },
         });
         if (conversationRes.isErr()) {
-          sendNotification({
+          sendApiErrorNotification({
             title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
+            error: conversationRes.error.error,
           });
         } else {
           void router.push(
@@ -247,7 +250,7 @@ export function UserMenu({
           );
         }
       },
-      [createConversationWithMessage, owner, router, sendNotification]
+      [createConversationWithMessage, owner, router, sendApiErrorNotification]
     )
   );
 
