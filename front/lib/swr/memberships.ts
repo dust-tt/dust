@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
@@ -274,6 +277,7 @@ export function useBulkSetUserSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doBulkSetSpendLimit = useCallback(
@@ -292,10 +296,9 @@ export function useBulkSetUserSpendLimit({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update spend limit",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return null;
       }
@@ -313,7 +316,7 @@ export function useBulkSetUserSpendLimit({
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification]
   );
 
   return { doBulkSetSpendLimit };
@@ -360,7 +363,7 @@ export function useBulkSeatChangePreview({
 }: {
   workspaceId: string;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const doFetchSeatChangePreview = useCallback(
     async ({
@@ -378,10 +381,9 @@ export function useBulkSeatChangePreview({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to prepare seat change",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return null;
       }
@@ -389,7 +391,7 @@ export function useBulkSeatChangePreview({
       return BulkSeatChangePreviewResponseSchema.parse(await res.json())
         .preview;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendApiErrorNotification]
   );
 
   return { doFetchSeatChangePreview };
@@ -405,6 +407,7 @@ export function useBulkChangeSeatType({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doBulkChangeSeatType = useCallback(
@@ -429,10 +432,9 @@ export function useBulkChangeSeatType({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update seats",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return null;
       }
@@ -449,7 +451,7 @@ export function useBulkChangeSeatType({
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification]
   );
 
   return { doBulkChangeSeatType };
@@ -547,6 +549,7 @@ export function useUpdateMemberSeatType({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdateSeatType = useCallback(
@@ -574,10 +577,9 @@ export function useUpdateMemberSeatType({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update seat",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return false;
       }
@@ -596,7 +598,7 @@ export function useUpdateMemberSeatType({
       await invalidateMembersUsage(workspaceId);
       return true;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification]
   );
 
   return { doUpdateSeatType };
@@ -644,6 +646,7 @@ export function useUpdateUserSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdateSpendLimit = useCallback(
@@ -675,10 +678,9 @@ export function useUpdateUserSpendLimit({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update spend limit",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return null;
       }
@@ -708,7 +710,7 @@ export function useUpdateUserSpendLimit({
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification]
   );
 
   return { doUpdateSpendLimit };

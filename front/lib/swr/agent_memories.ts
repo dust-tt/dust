@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentMemoriesResponseBody } from "@app/types/api/assistant/configuration/memories";
@@ -42,6 +45,7 @@ export function useDeleteAgentMemory({
   owner: LightWorkspaceType;
   agentConfiguration: AgentConfigurationType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateMemories } = useAgentMemoriesForUser({
     owner,
@@ -63,11 +67,9 @@ export function useDeleteAgentMemory({
 
       if (!res.ok) {
         const json = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to delete memory",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          description: json.error?.message || "Failed to delete memory",
+          error: json,
         });
         return false;
       }
@@ -80,7 +82,13 @@ export function useDeleteAgentMemory({
       void mutateMemories();
       return true;
     },
-    [owner.sId, agentConfiguration, sendNotification, mutateMemories]
+    [
+      owner.sId,
+      agentConfiguration,
+      sendNotification,
+      sendApiErrorNotification,
+      mutateMemories,
+    ]
   );
 
   return { deleteMemory };

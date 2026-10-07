@@ -1,5 +1,8 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type {
   UserWakeUps,
   UserWakeUpWithConversation,
@@ -55,6 +58,7 @@ export function useCancelWakeUp({
   owner: LightWorkspaceType;
   conversationId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateWakeUps } = useConversationWakeUps({
     owner,
@@ -75,11 +79,9 @@ export function useCancelWakeUp({
 
       if (!res.ok) {
         const json = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to cancel wake-up",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          description: json.error?.message || "Failed to cancel wake-up",
+          error: json,
         });
         return false;
       }
@@ -99,6 +101,7 @@ export function useCancelWakeUp({
       owner.sId,
       conversationId,
       sendNotification,
+      sendApiErrorNotification,
       mutateWakeUps,
       mutateConversations,
     ]

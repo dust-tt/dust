@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -140,6 +143,7 @@ export function useUserAllowedModelTierMutations({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateUserAllowedModelTiers } = useUserAllowedModelTiers({
     owner,
@@ -162,10 +166,9 @@ export function useUserAllowedModelTierMutations({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to set model tier for user",
-            description: error.message,
+            error,
           });
           return false;
         }
@@ -188,7 +191,12 @@ export function useUserAllowedModelTierMutations({
         setIsMutating(false);
       }
     },
-    [owner.sId, mutateUserAllowedModelTiers, sendNotification]
+    [
+      owner.sId,
+      mutateUserAllowedModelTiers,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   const clearUserAllowedModelTier = useCallback(
@@ -206,10 +214,9 @@ export function useUserAllowedModelTierMutations({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to clear model tier override for user",
-            description: error.message,
+            error,
           });
           return false;
         }
@@ -232,7 +239,12 @@ export function useUserAllowedModelTierMutations({
         setIsMutating(false);
       }
     },
-    [owner.sId, mutateUserAllowedModelTiers, sendNotification]
+    [
+      owner.sId,
+      mutateUserAllowedModelTiers,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return {
@@ -247,6 +259,7 @@ export function useGroupAllowedModelTierMutations({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateGroupAllowedModelTiers } = useGroupAllowedModelTiers({
     owner,
@@ -269,10 +282,9 @@ export function useGroupAllowedModelTierMutations({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to set model tier for group",
-            description: error.message,
+            error,
           });
           return false;
         }
@@ -295,7 +307,12 @@ export function useGroupAllowedModelTierMutations({
         setIsMutating(false);
       }
     },
-    [owner.sId, mutateGroupAllowedModelTiers, sendNotification]
+    [
+      owner.sId,
+      mutateGroupAllowedModelTiers,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   const clearGroupAllowedModelTier = useCallback(
@@ -313,10 +330,9 @@ export function useGroupAllowedModelTierMutations({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to clear model tier for group",
-            description: error.message,
+            error,
           });
           return false;
         }
@@ -339,7 +355,12 @@ export function useGroupAllowedModelTierMutations({
         setIsMutating(false);
       }
     },
-    [owner.sId, mutateGroupAllowedModelTiers, sendNotification]
+    [
+      owner.sId,
+      mutateGroupAllowedModelTiers,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return {
@@ -354,6 +375,7 @@ export function useWorkspaceAllowedModelTierMutations({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateWorkspaceAllowedModelTiers } = useWorkspaceAllowedModelTiers({
     owner,
@@ -376,10 +398,9 @@ export function useWorkspaceAllowedModelTierMutations({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to set workspace model tier",
-            description: error.message,
+            error,
           });
           return false;
         }
@@ -402,7 +423,12 @@ export function useWorkspaceAllowedModelTierMutations({
         setIsMutating(false);
       }
     },
-    [owner.sId, mutateWorkspaceAllowedModelTiers, sendNotification]
+    [
+      owner.sId,
+      mutateWorkspaceAllowedModelTiers,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return {
