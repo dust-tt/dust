@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceType } from "@app/types/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -61,6 +66,20 @@ app.post(
 
     const { assistantDefaultSelected } = ctx.req.valid("json");
     await dataSource.setDefaultSelectedForAssistant(assistantDefaultSelected);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "datasource.updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("data_source", dataSource),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        data_source_name: dataSource.name,
+        field: "assistant_default_selected",
+      },
+    });
 
     return ctx.json({ dataSource: dataSource.toJSON() });
   }
