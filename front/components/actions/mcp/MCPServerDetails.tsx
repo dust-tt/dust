@@ -156,7 +156,7 @@ export function MCPServerDetails({
     },
     resolver: mcpServerView
       ? zodResolver(
-          getMCPServerFormSchema(mcpServerView, {
+          getMCPServerFormSchema(mcpServerView, t, {
             existingViewNames,
             initialName: mcpServerView.name ?? mcpServerView.server.name,
           })

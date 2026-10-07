@@ -65,8 +65,13 @@ import {
   Label,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 /**
  * Generate a unique view name for a multi-instance MCP server by trying
@@ -90,28 +95,29 @@ function getSubmitButtonLabel(
   isLoading: boolean,
   authorization: AuthorizationInfo | null,
   defaultServerConfig: DefaultRemoteMCPServerConfig | undefined,
-  oauthConnectionId: string | null
+  oauthConnectionId: string | null,
+  t: Translate
 ): string {
   if (isLoading) {
-    return "Loading...";
+    return t(msg`Loading...`);
   }
   if (oauthConnectionId) {
-    return "Save";
+    return t(msg`Save`);
   }
   if (authorization) {
-    return "Setup connection";
+    return t(msg`Setup connection`);
   }
   // Use "Next" for OAuth servers, "Save" for others
   if (defaultServerConfig?.authMethod === "oauth-dynamic") {
-    return "Next";
+    return t(msg`Next`);
   }
-  return "Save";
+  return t(msg`Save`);
 }
 
 function getServerErrorDomain(
   values: CreateMCPServerDialogFormValues,
   hostDerivedOAuth?: HostDerivedOAuthConfig
-): string {
+): string | null {
   const raw =
     values.remoteServerUrl ||
     (hostDerivedOAuth
@@ -119,13 +125,29 @@ function getServerErrorDomain(
       : undefined) ||
     "";
   if (!raw) {
-    return "the server";
+    return null;
   }
   try {
     return new URL(raw).hostname;
   } catch {
     return raw;
   }
+}
+
+function getServerErrorTitle(
+  {
+    domain,
+    isRemoteServerError,
+  }: { domain: string | null; isRemoteServerError: boolean },
+  t: Translate
+): string {
+  if (!isRemoteServerError) {
+    return t(msg`Failed to connect to the server`);
+  }
+  if (!domain) {
+    return t(msg`Server error`);
+  }
+  return t(msg`Server error from ${domain}`);
 }
 
 interface CreateMCPServerDialogProps {
@@ -149,6 +171,7 @@ export function CreateMCPServerDialog({
   defaultServerConfig,
   existingViewNames = [],
 }: CreateMCPServerDialogProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { hasFeature } = useFeatureFlags();
@@ -230,12 +253,13 @@ export function CreateMCPServerDialog({
     nameConflict: nameConflict?.name ?? null,
     conflictDetails: nameConflict?.conflictDetails ?? null,
     existingViewNames,
+    t,
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<{
     message: string;
-    domain: string;
+    domain: string | null;
     isRemoteServerError: boolean;
   } | null>(null);
 
@@ -357,6 +381,7 @@ export function CreateMCPServerDialog({
         return;
       }
       handleCreateMCPServerDialogSubmitError({
+        t,
         error: err,
         context: {
           provider: authorization?.provider ?? null,
@@ -397,10 +422,11 @@ export function CreateMCPServerDialog({
       return;
     }
 
+    const serverName = getMcpServerDisplayName(submitRes.value.server);
     sendNotification({
-      title: "Success",
+      title: t`Success`,
       type: "success",
-      description: `${getMcpServerDisplayName(submitRes.value.server)} added successfully.`,
+      description: t`${serverName} added successfully.`,
     });
     setMCPServerToShow(submitRes.value.server);
     setExternalIsLoading(false);
@@ -416,8 +442,8 @@ export function CreateMCPServerDialog({
     if (defaultServerConfig) {
       return defaultServerConfig.name;
     }
-    return "MCP Server";
-  }, [internalMCPServer, defaultServerConfig]);
+    return t`MCP server`;
+  }, [internalMCPServer, defaultServerConfig, t]);
 
   const toolIcon = useMemo(() => {
     if (internalMCPServer) {
@@ -493,8 +519,8 @@ export function CreateMCPServerDialog({
     if (!formHandle) {
       sendNotification({
         type: "error",
-        title: "Cannot submit credentials",
-        description: "The credentials form is not ready. Please retry.",
+        title: t`Cannot submit credentials`,
+        description: t`The credentials form is not ready. Please retry.`,
       });
       datadogLogger.error(
         {
@@ -523,7 +549,7 @@ export function CreateMCPServerDialog({
 
       if (createRes.isErr()) {
         sendApiErrorNotification({
-          title: "Failed to create server",
+          title: t`Failed to create server`,
           error: createRes.error,
         });
         return;
@@ -563,10 +589,11 @@ export function CreateMCPServerDialog({
         return;
       }
 
+      const serverName = getMcpServerDisplayName(createdServer);
       sendNotification({
-        title: "Success",
+        title: t`Success`,
         type: "success",
-        description: `${getMcpServerDisplayName(createdServer)} added successfully.`,
+        description: t`${serverName} added successfully.`,
       });
       setMCPServerToShow(createdServer);
       setIsOpen(false);
@@ -575,7 +602,7 @@ export function CreateMCPServerDialog({
       const e = normalizeError(err);
       sendNotification({
         type: "error",
-        title: "Failed to add the tool",
+        title: t`Failed to add the tool`,
         description: e.message,
       });
       datadogLogger.error(
@@ -608,7 +635,7 @@ export function CreateMCPServerDialog({
         <FormProvider form={form} asForm={false}>
           <DialogHeader>
             <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>
-              Configure {toolName}
+              <Trans>Configure {toolName}</Trans>
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto px-5 py-4">
@@ -618,32 +645,30 @@ export function CreateMCPServerDialog({
                   variant="warning"
                   icon={AlertCircle}
                   size="lg"
-                  title={
-                    serverError.isRemoteServerError
-                      ? `Server error from ${serverError.domain}`
-                      : "Failed to connect to the server"
-                  }
+                  title={getServerErrorTitle(serverError, t)}
                 >
                   {serverError.message}
                 </ContentMessage>
               )}
               {(needsCustomName || nameConflict) && (
                 <div className="space-y-2">
-                  <Label htmlFor="viewName">Tool name</Label>
+                  <Label htmlFor="viewName">
+                    <Trans>Tool name</Trans>
+                  </Label>
                   <Input
                     id="viewName"
                     placeholder={
                       needsCustomName
-                        ? "Enter a name for this instance"
-                        : "Enter a different name"
+                        ? t`Enter a name for this instance`
+                        : t`Enter a different name`
                     }
                     {...form.register("viewName")}
                     isError={!!viewNameError}
                     message={
                       viewNameError ??
                       (needsCustomName
-                        ? `${toolName} is already installed. This name tells them apart.`
-                        : "Choose a name that distinguishes this Tool.")
+                        ? t`${toolName} is already installed. This name tells them apart.`
+                        : t`Choose a name that distinguishes this tool.`)
                     }
                     messageStatus={viewNameError ? "error" : "info"}
                   />
@@ -695,7 +720,7 @@ export function CreateMCPServerDialog({
           </div>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "ghost",
               onClick: () => {
                 setIsOpen(false);
@@ -705,12 +730,13 @@ export function CreateMCPServerDialog({
             rightButtonProps={{
               isLoading: isLoading,
               label: hasStaticForm
-                ? "Connect"
+                ? t`Connect`
                 : getSubmitButtonLabel(
                     isLoading,
                     authorization,
                     defaultServerConfig,
-                    nameConflict?.oauthConnectionId ?? null
+                    nameConflict?.oauthConnectionId ?? null,
+                    t
                   ),
               variant: "primary",
               disabled: isSubmitDisabled,

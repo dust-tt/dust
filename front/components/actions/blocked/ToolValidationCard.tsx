@@ -25,6 +25,7 @@ import {
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const DEFAULT_ICON = PieChart01;
@@ -55,7 +56,9 @@ function ApprovalProgress({ current, total }: ApprovalProgressProps) {
   return (
     <div className="heading-xs shrink-0 text-muted-foreground">
       <span className="sr-only">
-        Approval {current} of {total}
+        <Trans>
+          Approval {current} of {total}
+        </Trans>
       </span>
       <span aria-hidden="true">
         {current}/{total}
@@ -106,11 +109,13 @@ function ToolValidationDetailsDialog({
   conversationId,
   isSubmitting,
 }: ToolValidationDetailsDialogProps) {
+  const { t } = useLingui();
+
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          label="Review details"
+          label={t`Review details`}
           variant="ghost"
           size="sm"
           className="min-h-11 sm:min-h-0"
@@ -166,6 +171,7 @@ export function ToolValidationCard({
   onValidate,
   onApproveForConversation,
 }: ToolValidationCardProps) {
+  const { t } = useLingui();
   const toolOverride = getToolOverride(validationRequest.metadata);
   const [submittingDecision, setSubmittingDecision] =
     useState<MCPValidationOutputType | null>(null);
@@ -208,7 +214,8 @@ export function ToolValidationCard({
     metadata: { agentName, mcpServerName },
   } = validationRequest;
 
-  const approvalTitle = `Allow ${agentName} to use ${asDisplayName(mcpServerName)}?`;
+  const serverName = asDisplayName(mcpServerName);
+  const approvalTitle = t`Allow ${agentName} to use ${serverName}?`;
   const displayLabel =
     validationRequest.metadata.displayLabel ??
     asDisplayName(validationRequest.metadata.toolName);
@@ -227,7 +234,7 @@ export function ToolValidationCard({
     Boolean(onApproveForConversation) &&
     validationRequest.stake === "medium" &&
     (validationRequest.argumentsRequiringApproval?.length ?? 0) > 0;
-  const approveLabel = toolOverride?.approveLabel ?? "Allow";
+  const triggeringUserName = triggeringUser?.fullName;
 
   return (
     <Card
@@ -281,18 +288,20 @@ export function ToolValidationCard({
         </>
       ) : (
         <div className="text-sm text-muted-foreground">
-          Waiting for{" "}
-          <span className="font-semibold text-foreground">
-            {triggeringUser?.fullName}
-          </span>{" "}
-          to confirm.
+          <Trans>
+            Waiting for{" "}
+            <span className="font-semibold text-foreground">
+              {triggeringUserName}
+            </span>{" "}
+            to confirm.
+          </Trans>
         </div>
       )}
 
       {canCurrentUserRespond && (
         <div className="flex flex-wrap justify-end gap-3">
           <Button
-            label="Decline"
+            label={t`Decline`}
             variant="outline"
             icon={XClose}
             disabled={isSubmitting}
@@ -301,10 +310,10 @@ export function ToolValidationCard({
           />
           {canAlwaysAllow && (
             <Button
-              label="Always allow"
+              label={t`Always allow`}
               variant="outline"
               icon={CheckDouble}
-              tooltip={getToolValidationAlwaysAllowLabel(validationRequest)}
+              tooltip={getToolValidationAlwaysAllowLabel(validationRequest, t)}
               disabled={isSubmitting}
               isLoading={submittingDecision === "always_approved"}
               onClick={() => void handleValidation("always_approved")}
@@ -312,17 +321,17 @@ export function ToolValidationCard({
           )}
           {canApproveForConversation && (
             <Button
-              label="Allow all inputs this session"
+              label={t`Allow all inputs this session`}
               variant="outline"
               icon={Check}
-              tooltip="Run this tool for the rest of this session without asking again, whatever the inputs. Nothing is saved afterwards."
+              tooltip={t`Run this tool for the rest of this session without asking again, whatever the inputs. Nothing is saved afterwards.`}
               disabled={isSubmitting}
               isLoading={isApprovingForConversation}
               onClick={() => void handleApproveForConversation()}
             />
           )}
           <Button
-            label={canAlwaysAllow ? `${approveLabel} once` : approveLabel}
+            label={canAlwaysAllow ? t`Allow once` : t`Allow`}
             variant="highlight"
             icon={Check}
             disabled={isSubmitting}

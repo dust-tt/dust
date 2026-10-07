@@ -21,11 +21,14 @@ import {
 } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 type ToolOverride = {
-  title?: (inputs: Record<string, unknown>) => string;
-  approveLabel?: string;
-  alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
+  title?: (inputs: Record<string, unknown>, t: Translate) => string;
+  alwaysAllowLabel?: MessageDescriptor;
   detailsInline?: boolean;
 };
 
@@ -46,120 +49,166 @@ const MCP_TOOL_OVERRIDES: Partial<
 > = {
   "dust-chrome-extension": {
     interact_with_page: {
-      title: (inputs) => `Allow agent to ${inputs.humanReadableDescription}?`,
-      alwaysAllowLabel: () => "Allow all the interactions with this tab",
+      title: (inputs, t) => {
+        const description = String(inputs.humanReadableDescription);
+        return t(msg`Allow agent to ${description}?`);
+      },
+      alwaysAllowLabel: msg`Allow all the interactions with this tab`,
     },
   },
   "dust-firefox-extension": {
     interact_with_page: {
-      title: (inputs) => `Allow agent to ${inputs.humanReadableDescription}?`,
-      alwaysAllowLabel: () => "Allow all the interactions with this tab",
+      title: (inputs, t) => {
+        const description = String(inputs.humanReadableDescription);
+        return t(msg`Allow agent to ${description}?`);
+      },
+      alwaysAllowLabel: msg`Allow all the interactions with this tab`,
     },
   },
   sandbox: {
     add_egress_domain: {
-      title: () => `Allow agent to add a domain to the Computer?`,
+      title: (_inputs, t) =>
+        t(msg`Allow agent to add a domain to the Computer?`),
       detailsInline: true,
     },
   },
   [POD_TASKS_SERVER_NAME]: {
     [CREATE_TASKS_TOOL_NAME]: {
-      title: (inputs) => {
+      title: (inputs, t) => {
         if (!isPodTasksCreateTasksInput(inputs)) {
-          return `Allow agent to create tasks?`;
+          return t(msg`Allow agent to create tasks?`);
         }
         const count = inputs.tasks.length;
-        return `Allow agent to create ${count} task${count === 1 ? "" : "s"}?`;
+        return t(
+          msg`${plural(count, {
+            one: "Allow agent to create # task?",
+            other: "Allow agent to create # tasks?",
+          })}`
+        );
       },
-      alwaysAllowLabel: () => `Always allow agents to create tasks`,
+      alwaysAllowLabel: msg`Always allow agents to create tasks`,
     },
     [UPDATE_TASKS_TOOL_NAME]: {
-      title: (inputs) => {
+      title: (inputs, t) => {
         if (!isPodTasksUpdateTasksInput(inputs)) {
-          return `Allow agent to update tasks?`;
+          return t(msg`Allow agent to update tasks?`);
         }
         const count = inputs.tasks.length;
         const doneCount = inputs.tasks.filter(
           (task) => task.doneRationale
         ).length;
         if (doneCount > 0 && doneCount === count) {
-          return `Allow agent to mark ${count} task${count === 1 ? "" : "s"} as done?`;
+          return t(
+            msg`${plural(count, {
+              one: "Allow agent to mark # task as done?",
+              other: "Allow agent to mark # tasks as done?",
+            })}`
+          );
         }
         if (doneCount > 0) {
-          return `Allow agent to update ${count} task${count === 1 ? "" : "s"} (${doneCount} marked as done)?`;
+          return t(
+            msg`${plural(count, {
+              one: `Allow agent to update # task (${doneCount} marked as done)?`,
+              other: `Allow agent to update # tasks (${doneCount} marked as done)?`,
+            })}`
+          );
         }
-        return `Allow agent to update ${count} task${count === 1 ? "" : "s"}?`;
+        return t(
+          msg`${plural(count, {
+            one: "Allow agent to update # task?",
+            other: "Allow agent to update # tasks?",
+          })}`
+        );
       },
-      alwaysAllowLabel: () => `Always allow agents to update tasks`,
+      alwaysAllowLabel: msg`Always allow agents to update tasks`,
     },
   },
   [POD_MANAGER_SERVER_NAME]: {
     [EDIT_INFORMATION_TOOL_NAME]: {
-      title: (inputs) => {
+      title: (inputs, t) => {
         if (!isPodManagerEditInformationInput(inputs)) {
-          return `Allow agent to edit Pod information?`;
+          return t(msg`Allow agent to edit Pod information?`);
         }
         const fields: string[] = [];
         if (inputs.title !== undefined) {
-          fields.push("title");
+          fields.push(t(msg({ message: "title", context: "Pod field" })));
         }
         if (inputs.description !== undefined) {
-          fields.push("description");
+          fields.push(t(msg({ message: "description", context: "Pod field" })));
         }
         if (inputs.access !== undefined) {
-          fields.push("access");
+          fields.push(t(msg({ message: "access", context: "Pod field" })));
         }
         if (inputs.pinnedFramePath !== undefined) {
-          fields.push("pinned frame");
+          fields.push(
+            t(msg({ message: "pinned frame", context: "Pod field" }))
+          );
         }
         if (fields.length === 0) {
-          return `Allow agent to edit Pod information?`;
+          return t(msg`Allow agent to edit Pod information?`);
         }
-        return `Allow agent to update Pod ${fields.join(", ")}?`;
+        const fieldList = fields.join(", ");
+        return t(msg`Allow agent to update Pod ${fieldList}?`);
       },
-      alwaysAllowLabel: () => `Always allow agents to edit Pod information`,
+      alwaysAllowLabel: msg`Always allow agents to edit Pod information`,
     },
     [UPDATE_MEMBERS_TOOL_NAME]: {
-      title: (inputs) => {
+      title: (inputs, t) => {
         if (!isPodManagerUpdateMembersInput(inputs)) {
-          return `Allow agent to update Pod members?`;
+          return t(msg`Allow agent to update Pod members?`);
         }
         const addCount = Object.keys(inputs.membersToAdd ?? {}).length;
         const removeCount = inputs.membersToRemove?.length ?? 0;
-        const parts: string[] = [];
+        if (addCount > 0 && removeCount > 0) {
+          return t(
+            msg`Allow agent to add ${addCount} and remove ${removeCount} Pod users?`
+          );
+        }
         if (addCount > 0) {
-          parts.push(`add ${addCount}`);
+          return t(
+            msg`${plural(addCount, {
+              one: "Allow agent to add # Pod user?",
+              other: "Allow agent to add # Pod users?",
+            })}`
+          );
         }
         if (removeCount > 0) {
-          parts.push(`remove ${removeCount}`);
+          return t(
+            msg`${plural(removeCount, {
+              one: "Allow agent to remove # Pod user?",
+              other: "Allow agent to remove # Pod users?",
+            })}`
+          );
         }
-        return `Allow agent to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
+        return t(msg`Allow agent to update Pod members?`);
       },
-      alwaysAllowLabel: () => `Always allow agents to update Pod members`,
+      alwaysAllowLabel: msg`Always allow agents to update Pod members`,
     },
     [SET_DEFAULT_AGENT_TOOL_NAME]: {
-      title: (inputs) => {
+      title: (inputs, t) => {
         if (!isPodManagerDefaultAgentInput(inputs)) {
-          return `Allow agent to set the Pod default agent?`;
+          return t(msg`Allow agent to set the Pod default agent?`);
         }
-        if (inputs.agentName === null) {
-          return `Allow agent to reset the Pod default agent to @dust?`;
+        const { agentName } = inputs;
+        if (agentName === null) {
+          return t(msg`Allow agent to reset the Pod default agent to @dust?`);
         }
-        return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
+        return t(
+          msg`Allow agent to set the Pod default agent to @${agentName}?`
+        );
       },
-      alwaysAllowLabel: () =>
-        "Always allow agents to set the Pod default agent",
+      alwaysAllowLabel: msg`Always allow agents to set the Pod default agent`,
     },
   },
   [WAKEUPS_SERVER_NAME]: {
     schedule_wakeup: {
-      title: () => `Allow agent to schedule a wake-up?`,
+      title: (_inputs, t) => t(msg`Allow agent to schedule a wake-up?`),
     },
     list_wakeups: {
-      title: () => `Allow agent to list wake-ups?`,
+      title: (_inputs, t) => t(msg`Allow agent to list wake-ups?`),
     },
     cancel_wakeup: {
-      title: () => `Allow agent to cancel a wake-up?`,
+      title: (_inputs, t) => t(msg`Allow agent to cancel a wake-up?`),
     },
   },
 };
@@ -171,14 +220,16 @@ export function getToolOverride(
 }
 
 export function getToolValidationAlwaysAllowLabel(
-  data: ToolValidationLabelData
+  data: ToolValidationLabelData,
+  t: Translate
 ): string {
+  const toolName = asDisplayName(data.metadata.toolName);
   if (data.stake !== "medium") {
-    return `Allow every time an agent uses the “${asDisplayName(data.metadata.toolName)}” tool`;
+    return t(msg`Allow every time an agent uses the “${toolName}” tool`);
   }
   const toolOverride = getToolOverride(data.metadata);
   if (toolOverride?.alwaysAllowLabel) {
-    return toolOverride.alwaysAllowLabel(data.inputs);
+    return t(toolOverride.alwaysAllowLabel);
   }
 
   if (data.approvalArgsLabel) {
@@ -196,20 +247,25 @@ export function getToolValidationAlwaysAllowLabel(
             typeof value === "boolean"
           ? String(value)
           : JSON.stringify(value);
+      const argName = asDisplayName(arg).toLowerCase();
 
       return {
-        label: `“${asDisplayName(arg).toLowerCase()}” is ${displayValue}`,
+        label: t(msg`“${argName}” is ${displayValue}`),
         value: displayValue,
       };
     });
 
   const [approvalScope] = approvalScopes;
-  let scopeLabel = "";
   if (approvalScopes.length === 1 && approvalScope) {
-    scopeLabel = ` only for ${approvalScope.value}`;
-  } else if (approvalScopes.length > 1) {
-    scopeLabel = ` only when ${approvalScopes.map(({ label }) => label).join(" and ")}`;
+    const { value } = approvalScope;
+    return t(msg`Always allow agents to ${toolName} only for ${value}`);
+  }
+  if (approvalScopes.length > 1) {
+    const conditions = approvalScopes
+      .map(({ label }) => label)
+      .reduce((previous, label) => t(msg`${previous} and ${label}`));
+    return t(msg`Always allow agents to ${toolName} only when ${conditions}`);
   }
 
-  return `Always allow agents to ${asDisplayName(data.metadata.toolName)}${scopeLabel}`;
+  return t(msg`Always allow agents to ${toolName}`);
 }

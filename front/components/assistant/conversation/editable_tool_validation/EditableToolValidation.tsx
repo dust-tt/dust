@@ -5,6 +5,7 @@ import { useEditAndValidateAction } from "@app/hooks/useEditAndValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 
 interface EditableToolValidationProps {
   blockedAction: ValidationRequiredToolExecution;
@@ -29,13 +30,14 @@ export function EditableToolValidation({
   onValidationStart,
   owner,
 }: EditableToolValidationProps) {
+  const { t } = useLingui();
   const { editAndValidateAction, isEditingAndValidating } =
     useEditAndValidateAction({ owner });
 
   const canAlwaysAllow =
     blockedAction.stake === "low" || blockedAction.stake === "medium";
   const alwaysAllowLabel = canAlwaysAllow
-    ? getToolValidationAlwaysAllowLabel(blockedAction)
+    ? getToolValidationAlwaysAllowLabel(blockedAction, t)
     : null;
 
   const handleApproveWithEditedArguments = async (input: {

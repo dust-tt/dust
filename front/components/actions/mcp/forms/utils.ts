@@ -13,6 +13,10 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import type { MCPServerViewNameConflictDetails } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 type SendErrorNotification = (title: string, description: string) => void;
 
@@ -32,6 +36,7 @@ interface LoadingControls {
 }
 
 interface HandleCreateMCPServerDialogSubmitErrorParams {
+  t: Translate;
   error: Error;
   context: ErrorContext;
   // For client-side and OAuth setup messages.
@@ -47,41 +52,47 @@ export function getMCPServerViewNameError({
   nameConflict,
   conflictDetails,
   existingViewNames,
+  t,
 }: {
   viewName: string | undefined;
   needsCustomName: boolean;
   nameConflict: string | null;
   conflictDetails?: MCPServerViewNameConflictDetails | null;
   existingViewNames: string[];
+  t: Translate;
 }): string | null {
   const trimmed = (viewName ?? "").trim();
   if (needsCustomName && !trimmed) {
-    return "Name is required.";
+    return t(msg`Name is required.`);
   }
   if (nameConflict) {
     // A cropped tool-name collision: name the existing connection and the
     // shared model-facing tool name so the cause is diagnosable.
     if (conflictDetails?.conflictingToolName) {
-      return (
-        `This name produces the tool "${conflictDetails.conflictingToolName}", ` +
-        `which already exists on the connection ` +
-        `"${conflictDetails.conflictingServerName}". Enter a different name.`
+      const { conflictingToolName, conflictingServerName } = conflictDetails;
+      return t(
+        msg`This name produces the tool "${conflictingToolName}", which already exists on the connection "${conflictingServerName}". Enter a different name.`
       );
     }
     if (!trimmed) {
-      return `The default name "${nameConflict}" conflicts with an existing Tool. Enter a different name.`;
+      return t(
+        msg`The default name "${nameConflict}" conflicts with an existing tool. Enter a different name.`
+      );
     }
     if (trimmed === nameConflict) {
-      return "This name conflicts with an existing Tool. Enter a different name.";
+      return t(
+        msg`This name conflicts with an existing tool. Enter a different name.`
+      );
     }
   }
   if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
-    return "This name is already in use.";
+    return t(msg`This name is already in use.`);
   }
   return null;
 }
 
 export function handleCreateMCPServerDialogSubmitError({
+  t,
   error,
   context,
   sendNotification,
@@ -95,7 +106,10 @@ export function handleCreateMCPServerDialogSubmitError({
   } = loading;
 
   if (!(error instanceof CreateMCPServerDialogSubmitError)) {
-    sendApiErrorNotification({ title: "Failed to create MCP server", error });
+    sendApiErrorNotification({
+      title: t(msg`Failed to create MCP server`),
+      error,
+    });
     setExternalIsLoading(false);
     setIsLoading(false);
     return;
@@ -106,7 +120,7 @@ export function handleCreateMCPServerDialogSubmitError({
   switch (error.kind) {
     case "discover_oauth_metadata": {
       sendApiErrorNotification({
-        title: "Failed to discover OAuth metadata for MCP server",
+        title: t(msg`Failed to discover OAuth metadata for MCP server`),
         error: error.cause,
       });
       setIsLoading(false);
@@ -114,15 +128,21 @@ export function handleCreateMCPServerDialogSubmitError({
     }
 
     case "missing_use_case": {
-      sendNotification("Missing use case", error.message);
+      sendNotification(
+        t(msg`Missing use case`),
+        t(msg`Please select a use case`)
+      );
       setIsLoading(false);
       return;
     }
 
     case "oauth_connection": {
-      const title = context.provider
-        ? `Failed to connect ${OAUTH_PROVIDER_NAMES[context.provider]}`
-        : "Failed to connect OAuth provider";
+      const providerName = context.provider
+        ? OAUTH_PROVIDER_NAMES[context.provider]
+        : null;
+      const title = providerName
+        ? t(msg`Failed to connect ${providerName}`)
+        : t(msg`Failed to connect OAuth provider`);
       sendNotification(title, error.message);
       setIsLoading(false);
       return;
@@ -130,7 +150,7 @@ export function handleCreateMCPServerDialogSubmitError({
 
     case "create_server": {
       sendApiErrorNotification({
-        title: "Failed to create MCP server",
+        title: t(msg`Failed to create MCP server`),
         error: error.cause,
       });
       setExternalIsLoading(false);

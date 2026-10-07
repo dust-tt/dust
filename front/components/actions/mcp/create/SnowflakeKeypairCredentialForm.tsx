@@ -12,26 +12,38 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Input, TextArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const snowflakeKeypairFormSchema = z.object({
-  account: z.string().min(1, "Account is required."),
-  username: z.string().min(1, "Username is required."),
-  role: z.string().min(1, "Role is required."),
-  warehouse: z.string().min(1, "Warehouse is required."),
-  privateKey: z.string().min(1, "Private key is required."),
-  privateKeyPassphrase: z.string().optional(),
-});
+function useSnowflakeKeypairFormSchema() {
+  const { t } = useLingui();
 
-type SnowflakeKeypairFormValues = z.infer<typeof snowflakeKeypairFormSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        account: z.string().min(1, t`Account is required.`),
+        username: z.string().min(1, t`Username is required.`),
+        role: z.string().min(1, t`Role is required.`),
+        warehouse: z.string().min(1, t`Warehouse is required.`),
+        privateKey: z.string().min(1, t`Private key is required.`),
+        privateKeyPassphrase: z.string().optional(),
+      }),
+    [t]
+  );
+}
+
+type SnowflakeKeypairFormValues = z.infer<
+  ReturnType<typeof useSnowflakeKeypairFormSchema>
+>;
 
 interface SnowflakeKeypairCredentialFormProps {
   owner: LightWorkspaceType;
@@ -42,6 +54,8 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   StaticCredentialFormHandle,
   SnowflakeKeypairCredentialFormProps
 >(function SnowflakeKeypairCredentialForm({ owner, onValidityChange }, ref) {
+  const { t } = useLingui();
+  const snowflakeKeypairFormSchema = useSnowflakeKeypairFormSchema();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +111,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
         const e = normalizeError(err);
         sendNotification({
           type: "error",
-          title: "Failed to save Snowflake credentials",
+          title: t`Failed to save Snowflake credentials`,
           description: e.message,
         });
         datadogLogger.error(
@@ -112,10 +126,11 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
         result = await response.json();
       } catch (err) {
         const e = normalizeError(err);
+        const status = response.status;
         sendNotification({
           type: "error",
-          title: "Failed to save Snowflake credentials",
-          description: `Unexpected response from server (status ${response.status}).`,
+          title: t`Failed to save Snowflake credentials`,
+          description: t`Unexpected response from server (status ${status}).`,
         });
         datadogLogger.error(
           {
@@ -130,7 +145,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
 
       if (!response.ok || isAPIErrorResponse(result)) {
         sendApiErrorNotification({
-          title: "Failed to save Snowflake credentials",
+          title: t`Failed to save Snowflake credentials`,
           error: result,
         });
         datadogLogger.error(
@@ -167,10 +182,10 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
             Object.values(errors)
               .map((err) => err?.message)
               .filter((m): m is string => typeof m === "string" && m.length > 0)
-              .join(" ") || "One or more fields are invalid.";
+              .join(" ") || t`One or more fields are invalid.`;
           sendNotification({
             type: "error",
-            title: "Please check the Snowflake credentials",
+            title: t`Please check the Snowflake credentials`,
             description,
           });
           datadogLogger.warn(
@@ -189,13 +204,15 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   return (
     <div className="w-full space-y-5 text-foreground">
       <p className="text-sm text-muted-foreground">
-        Enter credentials for a Snowflake service user configured for key-pair
-        authentication.
+        <Trans>
+          Enter credentials for a Snowflake service user configured for key-pair
+          authentication.
+        </Trans>
       </p>
 
       <Input
         {...form.register("account")}
-        label="Account"
+        label={t`Account`}
         placeholder="abc123.us-east-1"
         isError={!!form.formState.errors.account}
         message={form.formState.errors.account?.message}
@@ -203,25 +220,27 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
       <div className="grid grid-cols-2 gap-3">
         <Input
           {...form.register("username")}
-          label="Username"
+          label={t`Username`}
           isError={!!form.formState.errors.username}
           message={form.formState.errors.username?.message}
         />
         <Input
           {...form.register("role")}
-          label="Role"
+          label={t`Role`}
           isError={!!form.formState.errors.role}
           message={form.formState.errors.role?.message}
         />
       </div>
       <Input
         {...form.register("warehouse")}
-        label="Warehouse"
+        label={t`Warehouse`}
         isError={!!form.formState.errors.warehouse}
         message={form.formState.errors.warehouse?.message}
       />
       <div className="space-y-2">
-        <label className="text-sm font-medium">Private key (PEM format)</label>
+        <label className="text-sm font-medium">
+          <Trans>Private key (PEM format)</Trans>
+        </label>
         <TextArea
           {...form.register("privateKey")}
           placeholder="-----BEGIN PRIVATE KEY-----"
@@ -235,7 +254,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
       </div>
       <Input
         {...form.register("privateKeyPassphrase")}
-        label="Private key passphrase (optional)"
+        label={t`Private key passphrase (optional)`}
         type="password"
       />
     </div>

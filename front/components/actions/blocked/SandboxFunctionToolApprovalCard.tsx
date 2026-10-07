@@ -3,6 +3,7 @@ import type { FrameViewer } from "@app/components/assistant/conversation/actions
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface SandboxFunctionToolApprovalCardProps {
@@ -17,6 +18,7 @@ export function SandboxFunctionToolApprovalCard({
   viewer,
   onResolved,
 }: SandboxFunctionToolApprovalCardProps) {
+  const { t } = useLingui();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { validateAction, isValidating } = useValidateAction({
@@ -38,7 +40,7 @@ export function SandboxFunctionToolApprovalCard({
 
     if (!result.success) {
       // Shared frames render this card outside of any Notification.Area, so the error stays inline.
-      setErrorMessage("Failed to assess action approval. Please try again.");
+      setErrorMessage(t`Failed to assess action approval. Please try again.`);
       return false;
     }
 

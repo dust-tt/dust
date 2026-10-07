@@ -2,6 +2,7 @@ import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpS
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { Input, Label, TextArea } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useFormContext } from "react-hook-form";
 
 interface MCPServerViewFormProps {
@@ -9,6 +10,7 @@ interface MCPServerViewFormProps {
 }
 
 export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
+  const { t } = useLingui();
   const form = useFormContext<MCPServerFormValues>();
 
   return (
@@ -17,7 +19,7 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
         <div className="flex-grow">
           <Input
             {...form.register("name")}
-            label="Name"
+            label={t`Name`}
             isError={!!form.formState.errors.name}
             message={form.formState.errors.name?.message}
             messageStatus={form.formState.errors.name ? "error" : undefined}
@@ -27,7 +29,9 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="mcp-server-view-description">Description</Label>
+        <Label htmlFor="mcp-server-view-description">
+          <Trans>Description</Trans>
+        </Label>
         <TextArea
           id="mcp-server-view-description"
           {...form.register("description")}

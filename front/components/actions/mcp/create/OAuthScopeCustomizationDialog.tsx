@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface OAuthScopeCustomizationDialogProps {
@@ -25,6 +26,7 @@ export function OAuthScopeCustomizationDialog({
   selectedScopes,
   onConfirm,
 }: OAuthScopeCustomizationDialogProps) {
+  const { t } = useLingui();
   const [localSelected, setLocalSelected] = useState<Set<string>>(
     () => new Set(selectedScopes)
   );
@@ -67,12 +69,16 @@ export function OAuthScopeCustomizationDialog({
     >
       <DialogContent size="lg" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle>Customize OAuth scopes</DialogTitle>
+          <DialogTitle>
+            <Trans>Customize OAuth scopes</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <p className="text-sm text-muted-foreground">
-            Select which permissions to request. Required scopes cannot be
-            removed.
+            <Trans>
+              Select which permissions to request. Required scopes cannot be
+              removed.
+            </Trans>
           </p>
           <div className="mt-4 space-y-3">
             {availableScopes
@@ -84,9 +90,9 @@ export function OAuthScopeCustomizationDialog({
                 const isChecked = localSelected.has(scope.value);
                 const isDisabled = isRequired || isImplied;
                 const badge = isImplied
-                  ? "implied"
+                  ? t({ message: "implied", context: "OAuth scope badge" })
                   : isRequired
-                    ? "required"
+                    ? t({ message: "required", context: "OAuth scope badge" })
                     : undefined;
                 return {
                   key: scope.value,
@@ -140,12 +146,12 @@ export function OAuthScopeCustomizationDialog({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "ghost",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Apply",
+            label: t`Apply`,
             variant: "primary",
             onClick: handleConfirm,
           }}
