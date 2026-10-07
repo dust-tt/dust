@@ -176,8 +176,8 @@ export async function heartbeat() {
  * @cc [owner:philipperolet,label:error-handling] fire-and-forget-heartbeat
  * Records a heartbeat when called inside a Temporal activity and does nothing otherwise. It MUST
  * return synchronously and MUST NOT throw, inside or outside an activity, including once the
- * activity is cancelled. It does not report cancellation, which `Context.current().cancellationSignal`
- * exposes.
+ * activity is cancelled. It does not report cancellation, which
+ * `Context.current().cancellationSignal` exposes.
  */
 export function heartbeatWithoutCancelCheck(): void {
   getActivityContext()?.heartbeat();
