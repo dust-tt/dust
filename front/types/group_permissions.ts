@@ -37,6 +37,7 @@ export const GRANT_VERBS = [
   "read_usage",
   "set_usage_limits",
   "list",
+  "read_analytics",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 
@@ -54,6 +55,7 @@ export const GRANT_TYPES = [
   "make_discoverable",
   "use_workspace_pool",
   "group_manager",
+  "analytics_reader",
   "*",
 ] as const;
 export type GrantType = (typeof GRANT_TYPES)[number];
