@@ -855,6 +855,7 @@ export const CREDENTIALS_PROVIDERS = [
   "salesforce",
   "notion",
   "slack",
+  "shopify",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -990,7 +991,7 @@ export type OauthAPIGetCredentialsResponse = {
   credential: {
     credential_id: string;
     created: number;
-    provider: CredentialsProvider | OAuthProvider;
+    provider: CredentialsProvider;
     metadata: {
       workspace_id: string;
       user_id: string;
