@@ -112,8 +112,9 @@ async function shutdown(signal: NodeJS.Signals) {
   );
   server.close();
   // Terminating the sockets, not only closing Hocuspocus's connections, so no edit still on the
-  // wire arrives during the checkpoints.
-  ws.closeAll(1001, "Server shutting down", true);
+  // wire arrives during the checkpoints. No close frame is sent: browsers see a dropped connection
+  // and reconnect to the next server.
+  ws.closeAll(undefined, undefined, true);
   await checkpointAllDocuments(hocuspocus);
   logger.info("Collab server stopped");
   process.exit(0);
