@@ -146,7 +146,11 @@ describe("editAgentDocument", () => {
 
   it.each([
     ["removes an anchor", ":comment-end{id=c1}", ""],
-    ["adds an anchor", "Ship it", ":comment-start{id=c2}Ship it:comment-end{id=c2}"],
+    [
+      "adds an anchor",
+      "Ship it",
+      ":comment-start{id=c2}Ship it:comment-end{id=c2}",
+    ],
   ])("refuses an edit that %s", async (_, oldString, newString) => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
@@ -173,16 +177,21 @@ describe("editAgentDocument", () => {
       "---\ntitle: Plan\n---\n",
       "---\ntitle: Plan\n---\n\n# Plan\n\nFirst draft.\n",
     ],
-  ])("writes the body of %s with an empty old_string", async (_, source, expected) => {
-    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(source, "7"));
-    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
-      new Ok({ created: false, revision: "8" })
-    );
+  ])(
+    "writes the body of %s with an empty old_string",
+    async (_, source, expected) => {
+      vi.mocked(readCanonicalFileContent).mockResolvedValue(
+        stored(source, "7")
+      );
+      vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+        new Ok({ created: false, revision: "8" })
+      );
 
-    const result = await edit("", "# Plan\r\n\r\nFirst draft.\n\n");
-    expect(result.isOk() && result.value.replacements).toBe(1);
-    expect(written(0).content).toBe(expected);
-  });
+      const result = await edit("", "# Plan\r\n\r\nFirst draft.\n\n");
+      expect(result.isOk() && result.value.replacements).toBe(1);
+      expect(written(0).content).toBe(expected);
+    }
+  );
 
   it("refuses an empty old_string when the body has content", async () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
