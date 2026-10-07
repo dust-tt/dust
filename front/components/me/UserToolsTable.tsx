@@ -468,7 +468,11 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       >
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle
+              visual={
+                overridesDialog && getAvatar(overridesDialog.serverView.server)
+              }
+            >
               {overridesDialogServerName &&
                 t`Connect ${overridesDialogServerName}`}
             </DialogTitle>
