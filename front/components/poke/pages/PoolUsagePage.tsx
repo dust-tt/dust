@@ -16,6 +16,7 @@ import type { DefaultUserSpendLimitState } from "@app/components/workspace/Works
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   usePokeAwuPoolCurrentCycle,
@@ -57,7 +58,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -121,7 +121,6 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
 }
 
 export function PoolUsagePage() {
-  const { t } = useLingui();
   const owner = useWorkspace();
   usePokePageMetadata({ name: owner.name, subtitle: "Credits Usage" });
 
@@ -296,7 +295,7 @@ export function PoolUsagePage() {
           variant="outline"
           label={
             seatTypeFilter
-              ? seatTypeDisplayName(seatTypeFilter, t)
+              ? seatTypeDisplayName(seatTypeFilter, defaultLocaleI18n.t)
               : "All seats"
           }
           size="sm"
@@ -311,7 +310,7 @@ export function PoolUsagePage() {
         {SEAT_FILTER_OPTIONS.map((seatType) => (
           <DropdownMenuItem
             key={seatType}
-            label={seatTypeDisplayName(seatType, t)}
+            label={seatTypeDisplayName(seatType, defaultLocaleI18n.t)}
             icon={
               <Icon
                 visual={SEAT_TYPE_ICONS[seatType]}
