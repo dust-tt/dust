@@ -781,10 +781,6 @@ msgid "User provisioning"
 msgstr "User provisioning"
 
 #: front/components/workspace/DirectorySync.tsx
-msgid "Setting up"
-msgstr "Setting up"
-
-#: front/components/workspace/DirectorySync.tsx
 msgid "Configuring {connectionType} directory sync"
 msgstr "Configuring {connectionType} directory sync"
 

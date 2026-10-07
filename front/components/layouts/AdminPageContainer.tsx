@@ -18,7 +18,7 @@ export function AdminPageContainer({
   return (
     <div
       className={cn(
-        "mx-auto flex min-h-full w-full max-w-6xl shrink-0 flex-col px-4 py-4 sm:px-10 sm:py-8",
+        "mx-auto flex min-h-full w-full max-w-6xl shrink-0 flex-col px-4 sm:px-10",
         className
       )}
     >

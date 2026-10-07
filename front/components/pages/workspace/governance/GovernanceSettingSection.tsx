@@ -1,6 +1,5 @@
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
-import { Icon, Page } from "@dust-tt/sparkle";
 import type { ComponentType, ReactNode } from "react";
 
 interface GovernanceSettingSectionProps {
@@ -23,10 +22,7 @@ export const GovernanceSettingSection = ({
   return (
     <AdminSectionAnchor sectionId={sectionId}>
       <div className="flex flex-col">
-        <div className="flex items-center gap-2">
-          <Icon visual={icon} className="text-muted-foreground" />
-          <Page.H variant="h5">{label}</Page.H>
-        </div>
+        <span className="heading-base text-foreground">{label}</span>
       </div>
       <div className="w-full rounded-xl border border-border">
         <div className="divide-y divide-border">{children}</div>

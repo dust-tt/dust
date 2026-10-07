@@ -168,7 +168,7 @@ const getTextVariant = (name: string) => {
 export interface AvatarProps {
   size?: AvatarSizeType;
   /** Entity name; used for the initials fallback, its color, and the image alt text. */
-  name?: string;
+  name?: string | null;
   /** Emoji to display instead of an image or initials. */
   emoji?: string;
   /** Image URL (including emoji URLs) or an arbitrary React node to render. */
@@ -265,7 +265,8 @@ export function Avatar({
       {typeof visualToUse === "string" ? (
         <ImageWrapper
           src={visualToUse}
-          alt={name}
+          alt={name ?? undefined}
+          title={name ?? undefined}
           loading={lazyLoad ? "lazy" : undefined}
           decoding={lazyLoad ? "async" : undefined}
           className={cn(avatarVariants({ size }), "object-cover object-center")}

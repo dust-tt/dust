@@ -35,7 +35,6 @@ import type {
 } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
@@ -433,8 +432,8 @@ export const AdminActionsList = ({
 
           return (
             <DataTable.CellContent
-              avatarUrl={editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
-              avatarTooltipLabel={editedByUser?.fullName ?? undefined}
+              avatarName={editedByUser?.fullName ?? undefined}
+              avatarUrl={editedByUser?.imageUrl ?? undefined}
               roundedAvatar
             />
           );

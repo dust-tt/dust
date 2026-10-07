@@ -77,8 +77,8 @@ export function Cell({ children, className, column, ...props }: CellProps) {
 }
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
-  avatarUrl?: string;
-  avatarTooltipLabel?: string;
+  avatarName?: string | null;
+  avatarUrl?: string | null;
   icon?: React.ComponentType<{ className?: string }>;
   iconClassName?: string;
   roundedAvatar?: boolean;
@@ -96,8 +96,8 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
 }
 
 interface CellLeadingVisualProps {
-  avatarUrl?: string;
-  avatarTooltipLabel?: string;
+  avatarUrl?: string | null;
+  avatarName?: string | null;
   roundedAvatar?: boolean;
   avatarStack?: CellContentProps["avatarStack"];
   icon?: React.ComponentType<{ className?: string }>;
@@ -107,7 +107,7 @@ interface CellLeadingVisualProps {
 
 function CellLeadingVisual({
   avatarUrl,
-  avatarTooltipLabel,
+  avatarName,
   roundedAvatar,
   avatarStack,
   icon,
@@ -116,22 +116,10 @@ function CellLeadingVisual({
 }: CellLeadingVisualProps) {
   return (
     <>
-      {avatarUrl && avatarTooltipLabel && (
-        <Tooltip
-          trigger={
-            <Avatar
-              visual={avatarUrl}
-              size={avatarSize}
-              className="mr-2"
-              isRounded={roundedAvatar ?? false}
-            />
-          }
-          label={avatarTooltipLabel}
-        />
-      )}
-      {avatarUrl && !avatarTooltipLabel && (
+      {(avatarUrl || avatarName) && (
         <Avatar
           visual={avatarUrl}
+          name={avatarName}
           size={avatarSize}
           className="mr-2"
           isRounded={roundedAvatar ?? false}
@@ -227,7 +215,7 @@ export function CellContent({
   children,
   className,
   avatarUrl,
-  avatarTooltipLabel,
+  avatarName,
   roundedAvatar,
   icon,
   iconClassName,
@@ -257,7 +245,7 @@ export function CellContent({
     >
       <CellLeadingVisual
         avatarUrl={avatarUrl}
-        avatarTooltipLabel={avatarTooltipLabel}
+        avatarName={avatarName}
         roundedAvatar={roundedAvatar}
         avatarStack={avatarStack}
         icon={icon}

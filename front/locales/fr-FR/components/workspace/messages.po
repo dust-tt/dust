@@ -781,10 +781,6 @@ msgid "User provisioning"
 msgstr "Provisionnement des utilisateurs"
 
 #: front/components/workspace/DirectorySync.tsx
-msgid "Setting up"
-msgstr "Configuration en cours"
-
-#: front/components/workspace/DirectorySync.tsx
 msgid "Configuring {connectionType} directory sync"
 msgstr "Configuration de la synchronisation d’annuaire {connectionType}"
 

@@ -3,12 +3,8 @@ import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
 import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
-import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isSCIMEnabled } from "@app/lib/plans/scim";
-import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
 import {
   isRegularManualGroupKind,
@@ -26,7 +22,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuTrigger,
   EmptyCTA,
-  Hoverable,
+  Page,
   Plus,
   SearchInput,
   Spinner,
@@ -34,7 +30,7 @@ import {
   Users01,
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
-import { Trans, useLingui } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -59,7 +55,7 @@ interface WorkspaceGroupsListProps {
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
-  const { subscription, isManager } = useAuth();
+  const { isManager } = useAuth();
   const isGroupManagementEnabled = hasFeature("group_management");
   const { groups, isGroupsLoading } = useGroups({
     owner,
@@ -68,8 +64,6 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
     managedOnly: !isManager,
   });
 
-  const router = useAppRouter();
-  const isScimAllowed = isSCIMEnabled(subscription.plan);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -85,7 +79,6 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
 
   const confirm = useContext(ConfirmContext);
   const { doDeleteGroup } = useDeleteGroup({ owner });
-  const { hasPermission } = useWorkspacePermissions();
 
   const columns: ColumnDef<GroupRowData>[] = useMemo(
     () => [
@@ -258,22 +251,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   }, [groups, handleDeleteGroup]);
 
   return (
-    <div className="flex flex-col gap-4">
-      {isScimAllowed && hasPermission("admin", "security") && (
-        <LinkedSectionNotice>
-          <Trans>
-            User provisioning is configured in{" "}
-            <Hoverable
-              variant="primary"
-              onClick={() =>
-                void router.push(`/w/${owner.sId}/identity-and-provisioning`)
-              }
-            >
-              IT & Security → User provisioning
-            </Hoverable>
-          </Trans>
-        </LinkedSectionNotice>
-      )}
+    <Page.Vertical gap="sm" align="stretch">
       {isGroupsLoading && (
         <div className="flex items-center justify-center py-8">
           <Spinner size="lg" />
@@ -336,6 +314,6 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         groupId={viewedProvisionedGroup?.groupId ?? null}
         groupName={viewedProvisionedGroup?.name ?? ""}
       />
-    </div>
+    </Page.Vertical>
   );
 }
