@@ -34,6 +34,8 @@ import {
   Edit04,
   LoadingBlock,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { cloneElement, useState } from "react";
 
@@ -54,7 +56,10 @@ const OUTCOME_TEXT_CLASS_NAMES: Record<
 };
 
 // E.g. "3 accepted, 1 declined", leaving out outcomes nobody got.
-function formatReviewOutcomes(batches: BatchSuggestionType[]): ReactNode {
+function formatReviewOutcomes(
+  batches: BatchSuggestionType[],
+  t: (descriptor: MessageDescriptor) => string
+): ReactNode {
   return (["approved", "rejected", "outdated"] as const)
     .flatMap((state) => {
       const count = batches.filter((b) => b.state === state).length;
@@ -65,7 +70,7 @@ function formatReviewOutcomes(batches: BatchSuggestionType[]): ReactNode {
       <span key={state}>
         {index > 0 && ", "}
         <span className={OUTCOME_TEXT_CLASS_NAMES[chip.color]}>
-          {count} {chip.label.toLowerCase()}
+          {count} {t(chip.label).toLowerCase()}
         </span>
       </span>
     ));
@@ -76,6 +81,7 @@ interface SuggestionStateChipProps {
 }
 
 function SuggestionStateChip({ state }: SuggestionStateChipProps) {
+  const { t } = useLingui();
   const chip = getSuggestionStateChip(state);
   if (!chip) {
     return null;
@@ -85,7 +91,7 @@ function SuggestionStateChip({ state }: SuggestionStateChipProps) {
       size="xs"
       color={chip.color}
       icon={chip.icon}
-      label={chip.label}
+      label={t(chip.label)}
       className="ml-auto shrink-0"
     />
   );
@@ -206,6 +212,7 @@ export function ConversationSuggestionPile({
   batchIds,
   recap,
 }: ConversationSuggestionPileProps) {
+  const { t } = useLingui();
   const { batches, isBatchesLoading } = useSuggestionBatches({
     batchIds,
     workspaceId: owner.sId,
@@ -283,7 +290,7 @@ export function ConversationSuggestionPile({
           title={
             <>
               {formatEditCount(pileBatches.length)} reviewed ·{" "}
-              {formatReviewOutcomes(pileBatches)}
+              {formatReviewOutcomes(pileBatches, t)}
             </>
           }
           recap={recap}

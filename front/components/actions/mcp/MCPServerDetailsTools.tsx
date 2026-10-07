@@ -36,6 +36,8 @@ import {
   SliderToggle,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -448,6 +450,7 @@ interface MCPServerDetailsToolsBulkBarProps {
 export function MCPServerDetailsToolsBulkBar({
   controller,
 }: MCPServerDetailsToolsBulkBarProps) {
+  const { t } = useLingui();
   const {
     selectedToolNames,
     visibleTools,
@@ -455,12 +458,12 @@ export function MCPServerDetailsToolsBulkBar({
     selectionStakeLevels,
     applyToSelection,
   } = controller;
+  const toolCount = visibleTools.length;
 
   return (
     <BulkSelectionBar
       selectedCount={selectedToolNames.length}
-      totalCount={visibleTools.length}
-      itemLabel="tool"
+      selectAllLabel={t`Select all ${plural(toolCount, { one: "# tool", other: "# tools" })}`}
       canSelectAll={false}
       onSelectAll={() => {}}
       onClear={clearSelection}

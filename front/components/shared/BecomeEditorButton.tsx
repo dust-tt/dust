@@ -1,4 +1,5 @@
 import { Button, UsersPlus } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface BecomeEditorButtonProps {
   isLoading: boolean;
@@ -9,12 +10,14 @@ export function BecomeEditorButton({
   isLoading,
   onClick,
 }: BecomeEditorButtonProps) {
+  const { t } = useLingui();
+
   return (
     <Button
       variant="outline"
       size="sm"
       icon={UsersPlus}
-      label={isLoading ? "Becoming an editor..." : "Become an editor"}
+      label={isLoading ? t`Becoming an editor...` : t`Become an editor`}
       isLoading={isLoading}
       disabled={isLoading}
       onClick={onClick}

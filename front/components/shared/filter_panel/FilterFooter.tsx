@@ -1,4 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface FilterFooterProps {
   onClearAll: () => void;
@@ -13,18 +14,25 @@ export function FilterFooter({
   onApply,
   applyDisabled,
 }: FilterFooterProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex items-center justify-between border-t border-border p-2 dark:border-border-dark">
       <Button
-        label="Clear filters"
+        label={t`Clear filters`}
         size="xmini"
         variant="ghost-secondary"
         onClick={onClearAll}
       />
       <div className="flex items-center gap-2">
-        <Button label="Cancel" size="sm" variant="outline" onClick={onCancel} />
         <Button
-          label="Apply"
+          label={t`Cancel`}
+          size="sm"
+          variant="outline"
+          onClick={onCancel}
+        />
+        <Button
+          label={t`Apply`}
           size="sm"
           variant="highlight"
           onClick={onApply}

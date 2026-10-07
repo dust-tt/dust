@@ -1,6 +1,7 @@
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Chip, Input, SliderToggle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import type { SensitivityLabelsController } from "./types";
 
@@ -15,6 +16,7 @@ export function MicrosoftLabelsSelector({
   controller,
   readOnly,
 }: MicrosoftLabelsSelectorProps) {
+  const { t } = useLingui();
   const [searchText, setSearchText] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -69,7 +71,9 @@ export function MicrosoftLabelsSelector({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="heading-sm text-foreground">Allowed labels</span>
+        <span className="heading-sm text-foreground">
+          <Trans>Allowed labels</Trans>
+        </span>
         <SliderToggle
           selected={isEnabled}
           onClick={handleToggle}
@@ -77,13 +81,15 @@ export function MicrosoftLabelsSelector({
         />
       </div>
       <span className="text-xs text-muted-foreground">
-        Only labeled content matching one of these labels will be synced.
-        Unlabeled content is always included.
+        <Trans>
+          Only labeled content matching one of these labels will be synced.
+          Unlabeled content is always included.
+        </Trans>
       </span>
       {isEnabled && (
         <div className="flex flex-col gap-2">
           <Input
-            placeholder="Type a label"
+            placeholder={t`Type a label`}
             value={searchText}
             disabled={isDisabled}
             onChange={(e) => setSearchText(e.target.value)}
@@ -94,14 +100,16 @@ export function MicrosoftLabelsSelector({
             <div className="max-h-48 overflow-auto rounded-md border border-border bg-background shadow-md">
               {hasError ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground">
-                  Labels could not be retrieved. You must reconnect your
-                  Microsoft connection to grant the necessary permissions.
+                  <Trans>
+                    Labels could not be retrieved. You must reconnect your
+                    Microsoft connection to grant the necessary permissions.
+                  </Trans>
                 </p>
               ) : filteredLabels.length === 0 ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground">
                   {labels.length === 0
-                    ? "No labels found. Configure them in your Microsoft Purview console first."
-                    : "No matching labels."}
+                    ? t`No labels found. Configure them in your Microsoft Purview console first.`
+                    : t`No matching labels.`}
                 </p>
               ) : (
                 filteredLabels.map((label) => (

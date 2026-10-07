@@ -1,6 +1,7 @@
 import { EditorContent } from "@app/components/editor/EditorContent";
 import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { DiffBlock } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { Extensions } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 
@@ -29,7 +30,9 @@ export function SuggestionNewInstructionsBlock({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">Instructions</span>
+      <span className="text-sm text-muted-foreground">
+        <Trans>Instructions</Trans>
+      </span>
       <DiffBlock
         isCollapsible={layout === "boxed"}
         variant={layout === "inline" ? "plain" : "borderless"}

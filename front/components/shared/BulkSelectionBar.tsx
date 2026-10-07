@@ -1,11 +1,11 @@
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Avatar, Button, cn, Hoverable, Spinner } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps, ReactNode } from "react";
 
 interface BulkSelectionBarProps {
   selectedCount: number;
-  totalCount: number;
-  itemLabel: string;
+  selectAllLabel: string;
   canSelectAll: boolean;
   onSelectAll: () => void;
   onClear: () => void;
@@ -18,8 +18,7 @@ interface BulkSelectionBarProps {
 
 export function BulkSelectionBar({
   selectedCount,
-  totalCount,
-  itemLabel,
+  selectAllLabel,
   canSelectAll,
   onSelectAll,
   onClear,
@@ -28,6 +27,8 @@ export function BulkSelectionBar({
   selectedAvatars,
   children,
 }: BulkSelectionBarProps) {
+  const { t } = useLingui();
+
   if (selectedCount === 0) {
     return null;
   }
@@ -47,11 +48,12 @@ export function BulkSelectionBar({
           {selectedAvatars && selectedAvatars.length > 0 && (
             <Avatar.Stack avatars={selectedAvatars} size="xs" />
           )}
-          <span>{selectedCount} selected</span>
+          <span>
+            {t`${plural(selectedCount, { one: "# selected", other: "# selected" })}`}
+          </span>
           {canSelectAll && (
             <Hoverable variant="highlight" onClick={onSelectAll}>
-              Select all {totalCount} {itemLabel}
-              {pluralize(totalCount)}
+              {selectAllLabel}
             </Hoverable>
           )}
         </div>
@@ -61,7 +63,7 @@ export function BulkSelectionBar({
             size="sm"
             variant="ghost-secondary"
             className="text-xs"
-            label="Clear all"
+            label={t`Clear all`}
             onClick={onClear}
             disabled={disabled}
           />

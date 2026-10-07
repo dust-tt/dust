@@ -25,6 +25,7 @@ import {
   Eye,
   MessagePlusCircle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React from "react";
 
 interface MentionDropdownProps {
@@ -44,6 +45,7 @@ export const MentionDropdown = React.forwardRef<
   HTMLDivElement,
   MentionDropdownProps
 >(({ mention, owner, children, onSeeAgentDetails }, ref) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const clientType = useClientType();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -69,6 +71,8 @@ export const MentionDropdown = React.forwardRef<
       setQueryParam(router, "agentDetails", mention.id);
     };
 
+    const agentName = mention.label;
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -78,13 +82,13 @@ export const MentionDropdown = React.forwardRef<
           <DropdownMenuItem
             onClick={handleAgentStartConversation}
             icon={MessagePlusCircle}
-            label={`New conversation with @${mention.label}`}
+            label={t`New conversation with @${agentName}`}
           />
           {clientType !== "extension" && (
             <DropdownMenuItem
               onClick={handleAgentSeeDetails}
               icon={Eye}
-              label={`About @${mention.label}`}
+              label={t`About @${agentName}`}
             />
           )}
         </DropdownMenuContent>

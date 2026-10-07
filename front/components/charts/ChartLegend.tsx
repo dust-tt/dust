@@ -10,7 +10,7 @@ export type LegendEntry = {
 export function legendFromConstant<K extends string>(
   legend: ReadonlyArray<{ key: K; label: string }>,
   palette: Readonly<Record<K, string>>,
-  options?: { includeVersionMarker?: boolean }
+  options?: { versionMarkerLabel?: string }
 ): LegendEntry[] {
   const base: LegendEntry[] = legend.map(({ key, label }) => ({
     key: String(key),
@@ -18,10 +18,10 @@ export function legendFromConstant<K extends string>(
     colorClassName: palette[key],
   }));
 
-  if (options?.includeVersionMarker) {
+  if (options?.versionMarkerLabel) {
     base.push({
       key: "versionMarkers",
-      label: "Version",
+      label: options.versionMarkerLabel,
       colorClassName: "text-primary-300",
     });
   }

@@ -16,6 +16,7 @@ import {
 } from "@app/components/shared/filter_panel/searchFilter";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 // The search endpoints accept at most 100 IDs per filter.
@@ -40,6 +41,7 @@ export function useSearchPageHashState<
   defaultTabId: TabId;
   hashParam?: string;
 }) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const [value, setValue] = useHashParam(hashParam);
   const { tabId, selection } = useMemo(
@@ -62,6 +64,7 @@ export function useSearchPageHashState<
       knownOptions,
       facets,
       currentUserId: user.sId,
+      t,
     });
   const { filter, unresolvedCategories, unresolvedKeys } = resolve(undefined);
 

@@ -15,6 +15,8 @@ import {
   DropdownMenuTagList,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
@@ -45,6 +47,7 @@ export const AgentEditBar = ({
   tags,
   mutateAgentConfigurations,
 }: AgentEditBarProps) => {
+  const { t } = useLingui();
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -77,8 +80,7 @@ export const AgentEditBar = ({
   return (
     <BulkSelectionBar
       selectedCount={selectedCount}
-      totalCount={totalCount}
-      itemLabel="agent"
+      selectAllLabel={t`Select all ${plural(totalCount, { one: "# agent", other: "# agents" })}`}
       canSelectAll={totalCount > selectedCount}
       onSelectAll={onSelectAll}
       onClear={onClear}

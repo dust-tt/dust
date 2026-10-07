@@ -153,8 +153,10 @@ export function FeedbackDistributionChart({
       })),
       FEEDBACK_DISTRIBUTION_PALETTE,
       {
-        includeVersionMarker:
-          isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
+        versionMarkerLabel:
+          isCustomAgent && mode === "timeRange" && versionMarkers.length > 0
+            ? t`Version`
+            : undefined,
       }
     ),
     { skip: (item) => item.key === "versionMarkers" }

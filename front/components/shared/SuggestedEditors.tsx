@@ -3,6 +3,7 @@ import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
 import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import { Avatar } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface SuggestedEditorRowProps {
@@ -18,8 +19,9 @@ function SuggestedEditorRow({
   member,
   isMembersLoading,
 }: SuggestedEditorRowProps) {
+  const { t } = useLingui();
   const displayName =
-    member?.fullName ?? (isMembersLoading ? "Loading…" : userId);
+    member?.fullName ?? (isMembersLoading ? t`Loading…` : userId);
 
   return (
     <SuggestedChangeRow
@@ -60,7 +62,9 @@ export function SuggestedEditors({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">Editors</span>
+      <span className="text-sm text-muted-foreground">
+        <Trans>Editors</Trans>
+      </span>
       <div className="divide-y divide-border">
         {addUserIds.map((userId) => (
           <SuggestedEditorRow

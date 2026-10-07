@@ -1,6 +1,7 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { Button } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 
 interface MembersSelectionBannerProps {
@@ -31,8 +32,7 @@ export function MembersSelectionBanner({
   return (
     <BulkSelectionBar
       selectedCount={selectedCount}
-      totalCount={totalCount}
-      itemLabel="member"
+      selectAllLabel={t`Select all ${plural(totalCount, { one: "# member", other: "# members" })}`}
       canSelectAll={hasMorePagesToSelect}
       onSelectAll={onSelectAllAcrossPages}
       onClear={onClear}

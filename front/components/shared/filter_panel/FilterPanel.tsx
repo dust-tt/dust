@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -76,6 +77,7 @@ export function FilterPanel<
   onOpen,
   onClearAll,
 }: FilterPanelProps<Category, Option>) {
+  const { t } = useLingui();
   const {
     isOpen,
     setIsOpen,
@@ -117,6 +119,7 @@ export function FilterPanel<
   );
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
   const activeCategoryContent = renderCategoryContent?.(activeCategory);
+  const activeCategoryLabel = categoryLabels[activeCategory].toLowerCase();
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -138,7 +141,7 @@ export function FilterPanel<
       <PopoverTrigger asChild>
         <Button
           icon={FilterFunnel01}
-          label="Filters"
+          label={t`Filters`}
           size="sm"
           variant="outline"
           isCounter={appliedSelectionCount > 0}
@@ -169,7 +172,7 @@ export function FilterPanel<
               title={categoryLabels[activeCategory]}
               action={
                 <Button
-                  label="Clear"
+                  label={t({ message: "Clear", context: "clear a filter" })}
                   size="xmini"
                   variant="ghost-secondary"
                   onClick={() => clearCategory(activeCategory)}
@@ -188,7 +191,7 @@ export function FilterPanel<
                     setSearchText(value);
                     resetContentScroll();
                   }}
-                  placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
+                  placeholder={t`Search ${activeCategoryLabel}`}
                 />
               )}
             </FilterSection>
@@ -198,7 +201,7 @@ export function FilterPanel<
             >
               {isError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                  Failed to load filters.
+                  <Trans>Failed to load filters.</Trans>
                 </div>
               ) : activeCategoryContent ? (
                 activeCategoryContent
@@ -215,7 +218,7 @@ export function FilterPanel<
                   onSelectAll={() =>
                     selectAllFiltered(activeCategory, unselectedOptions)
                   }
-                  selectAllLabel="Select all"
+                  selectAllLabel={t`Select all`}
                   hasSelectableOptions={unselectedOptions.length > 0}
                   renderIcon={renderIcon}
                   status={

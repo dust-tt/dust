@@ -1,4 +1,5 @@
 import { Chip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 export type SuggestedChangeAction = "add" | "remove";
@@ -16,6 +17,8 @@ export function SuggestedChangeRow({
   title,
   description,
 }: SuggestedChangeRowProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex items-center gap-3 py-2.5">
       {visual}
@@ -30,7 +33,11 @@ export function SuggestedChangeRow({
       <Chip
         size="xs"
         color={action === "add" ? "highlight" : "warning"}
-        label={action === "add" ? "Add" : "Remove"}
+        label={
+          action === "add"
+            ? t({ message: "Add", context: "suggested change" })
+            : t({ message: "Remove", context: "suggested change" })
+        }
       />
     </div>
   );

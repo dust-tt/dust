@@ -9,7 +9,7 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
-import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { getSearchFilterCategorySingularLabels } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -476,7 +476,7 @@ export function ManageSkillsPage({
             summaries={getFilterSummaries(
               filter,
               SKILL_FILTER_CATEGORIES,
-              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+              getSearchFilterCategorySingularLabels(t)
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))

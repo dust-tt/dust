@@ -2,7 +2,6 @@ import type {
   CategoryFilter,
   FilterOptionBase,
 } from "@app/components/shared/filter_panel/filterState";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ChevronDown,
@@ -15,6 +14,8 @@ import {
   NavigationListLabel,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -43,6 +44,7 @@ export function FilterSelectionSummary<
   renderIcon,
   className,
 }: FilterSelectionSummaryProps<Category, Option>) {
+  const { t } = useLingui();
   // Sections are open by default; a category lands here once the user
   // collapses it.
   const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(
@@ -70,7 +72,10 @@ export function FilterSelectionSummary<
     <div className={cn("flex h-full w-52 flex-col p-2", className)}>
       <NavigationListLabel
         className="bg-transparent pt-1.5 font-medium"
-        label={`${selectionCount} filter${pluralize(selectionCount)} selected`}
+        label={t`${plural(selectionCount, {
+          one: "# filter selected",
+          other: "# filters selected",
+        })}`}
       />
       <NavigationList className="min-h-0 flex-1">
         {categoriesWithSelection.length > 0 &&
@@ -84,7 +89,10 @@ export function FilterSelectionSummary<
                   action={
                     <div className="flex items-center gap-1">
                       <Button
-                        label="Clear"
+                        label={t({
+                          message: "Clear",
+                          context: "clear a filter",
+                        })}
                         size="xmini"
                         variant="ghost-secondary"
                         onClick={() => onClearCategory(category)}
@@ -93,7 +101,7 @@ export function FilterSelectionSummary<
                         icon={isCategoryOpen ? ChevronDown : ChevronRight}
                         size="xmini"
                         variant="ghost"
-                        tooltip={isCategoryOpen ? "Collapse" : "Expand"}
+                        tooltip={isCategoryOpen ? t`Collapse` : t`Expand`}
                         onClick={() => handleToggleCategoryOpen(category)}
                       />
                     </div>
