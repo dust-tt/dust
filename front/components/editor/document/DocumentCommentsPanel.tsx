@@ -144,20 +144,21 @@ const SuggestionCard = ({
   renderBody,
   onApply,
 }: SuggestionCardProps) => {
+  const { t } = useLingui();
   const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border text-sm">
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted-background py-1 pl-2 pr-1">
         <span className="text-xs font-medium text-muted-foreground">
-          Suggested change
+          <Trans>Suggested change</Trans>
         </span>
         {onApply && (
           <Button
             type="button"
             variant="outline"
             size="xs"
-            label="Apply"
+            label={t`Apply`}
             onClick={(event) => {
               event.stopPropagation();
               const applied = onApply();
@@ -167,16 +168,16 @@ const SuggestionCard = ({
         )}
       </div>
       <div className="bg-warning-100/60 px-2 py-1 line-through decoration-foreground/40 wrap-anywhere dark:bg-warning-500/20">
-        <span className="sr-only">Replaces: </span>
-        {quote || "The commented text was removed."}
+        <span className="sr-only">{t`Replaces:`} </span>
+        {quote || t`The commented text was removed.`}
       </div>
       <div className="bg-success-100/60 px-2 py-1 dark:bg-success-500/20">
-        <span className="sr-only">With: </span>
+        <span className="sr-only">{t`With:`} </span>
         {suggestion.trim() ? (
           renderBody(suggestion)
         ) : (
           <span className="text-xs text-muted-foreground">
-            Deletes the text.
+            <Trans>Deletes the text.</Trans>
           </span>
         )}
       </div>

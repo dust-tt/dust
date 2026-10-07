@@ -171,13 +171,13 @@ export const DocumentCommentInput = ({
         </div>
         {onSuggest && (
           <Tooltip
-            label="Suggest a change"
+            label={t`Suggest a change`}
             tooltipTriggerAsChild
             mountPortalContainer={mountPortalContainer}
             trigger={
               <button
                 type="button"
-                aria-label="Suggest a change"
+                aria-label={t`Suggest a change`}
                 aria-disabled={pending}
                 onClick={suggest}
                 className={cn(
