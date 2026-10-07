@@ -12,6 +12,7 @@ import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
 import {
+  ACCESS_RECHECK_INTERVAL_MS,
   checkpointAllDocuments,
   createCollabHocuspocus,
   recheckAllConnections,
@@ -106,7 +107,6 @@ server.on("error", (err) => {
 
 // Access is checked again on open connections, so a user who loses it does not keep editing until
 // a reconnect. A sweep still running skips the next one.
-const ACCESS_RECHECK_INTERVAL_MS = 60_000;
 let rechecking = false;
 const recheckTimer = setInterval(() => {
   if (rechecking) {

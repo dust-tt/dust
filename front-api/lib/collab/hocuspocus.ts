@@ -8,6 +8,7 @@ import {
   checkLiveAccess,
   checkpointLiveDocument,
   loadLiveDocument,
+  recheckLiveAccess,
 } from "@app/lib/api/collab/live_file";
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
@@ -582,9 +583,12 @@ export async function writeLiveSource(
 // Hocuspocus's `Forbidden`, from `@hocuspocus/common`.
 const FORBIDDEN = { code: 4403, reason: "Forbidden" };
 
+export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 /**
- * @cc [owner:PopDaph,label:security] collab-access-recheck
- * Every open WebSocket connection MUST be checked again with `checkLiveAccess`, with an
+ * @cc [owner:PopDaph,label:security;performance] collab-access-recheck
+ * The collab server MUST call this every `ACCESS_RECHECK_INTERVAL_MS`. Every open WebSocket
+ * connection of this process MUST be checked again with `recheckLiveAccess`, with an
  * Authenticator freshly built for its user in this sweep, and MUST be closed when the check fails.
  * A failure checking one user and document MUST NOT stop the others: it is logged and their
  * connections stay open until the next sweep, an exception to `no-catching-own-errors` limited to
@@ -593,7 +597,9 @@ const FORBIDDEN = { code: 4403, reason: "Forbidden" };
 export async function recheckAllConnections(
   hocuspocus: Hocuspocus<LiveFile>
 ): Promise<void> {
-  // One check per user and document, however many tabs they have open.
+  const startedAt = Date.now();
+  // One check per user and document, however many tabs they have open. Each process sweeps only
+  // its own connections, so the work spreads over replicas.
   const groups = new Map<string, Connection[]>();
   for (const document of hocuspocus.documents.values()) {
     for (const connection of document.getConnections()) {
@@ -621,18 +627,21 @@ export async function recheckAllConnections(
     return built;
   };
 
+  let closed = 0;
+  let failed = 0;
   await concurrentExecutor(
     [...groups.values()],
     async (connections) => {
       const { auth, workspaceId, canonicalPath } = connections[0].context;
-      let access: Result<LiveFile, LiveAccessError>;
+      let access: Result<void, LiveAccessError>;
       try {
         const fresh = await authenticatorFor(
           auth.getNonNullableUser().sId,
           workspaceId
         );
-        access = await checkLiveAccess(fresh, canonicalPath);
+        access = await recheckLiveAccess(fresh, canonicalPath);
       } catch (err) {
+        failed++;
         logger.error(
           { err: normalizeError(err), workspaceId },
           "Collab access re-check failed"
@@ -649,7 +658,19 @@ export async function recheckAllConnections(
       for (const connection of connections) {
         connection.close(FORBIDDEN);
       }
+      closed += connections.length;
     },
     { concurrency: 8 }
+  );
+
+  // A sweep growing close to the interval means revocation gets slower: time to scale.
+  logger.info(
+    {
+      checked: groups.size,
+      closed,
+      failed,
+      durationMs: Date.now() - startedAt,
+    },
+    "Collab access re-check done"
   );
 }

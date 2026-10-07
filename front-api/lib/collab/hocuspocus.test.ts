@@ -1056,6 +1056,16 @@ describe("recheckAllConnections", () => {
     expect(document.getConnectionsCount()).toBe(1);
   });
 
+  it("does not read the file from storage", async () => {
+    const { hocuspocus } = await openConnection();
+    const stat = vi.spyOn(DustFileSystem.prototype, "stat");
+
+    await recheckAllConnections(hocuspocus);
+
+    expect(stat).not.toHaveBeenCalled();
+    stat.mockRestore();
+  });
+
   it("closes a connection once co_edition is turned off", async () => {
     const { hocuspocus, document, workspace } = await openConnection();
     await FeatureFlagResource.disable(workspace, "co_edition");

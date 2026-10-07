@@ -103,18 +103,15 @@ export type LiveAccessError =
     }
   | LiveFileError;
 
-/**
- * @cc [owner:PopDaph,label:security] live-access
- * A live session MUST be opened only for a member of the workspace, in a workspace with
- * `co_edition` that `validateWorkspaceAccess` lets through, for a file `openLiveFile` opens for
- * them with write access. `auth` MUST be built for this check: an Authenticator keeps the
- * membership, plan and workspace it was built with. Minting a ticket, connecting and re-checking
- * an open connection MUST all go through it.
- */
-export async function checkLiveAccess(
-  auth: Authenticator,
-  canonicalPath: string
-): Promise<Result<LiveFile, LiveAccessError>> {
+const READ_ONLY: LiveAccessError = {
+  code: "read_only",
+  message: "Live editing needs write access to this file.",
+};
+
+/** Membership, `co_edition` and the workspace's status: a live session's needs besides the file. */
+async function checkLiveSessionRights(
+  auth: Authenticator
+): Promise<Result<void, LiveAccessError>> {
   if (!auth.user() || !auth.isUser()) {
     return new Err({
       code: "not_member",
@@ -136,15 +133,56 @@ export async function checkLiveAccess(
       workspaceError,
     });
   }
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:PopDaph,label:security] live-access
+ * A live session MUST be opened only for a member of the workspace, in a workspace with
+ * `co_edition` that `validateWorkspaceAccess` lets through, for a file `openLiveFile` opens for
+ * them with write access. `auth` MUST be built for this check: an Authenticator keeps the
+ * membership, plan and workspace it was built with. Minting a ticket and connecting MUST both go
+ * through it.
+ */
+export async function checkLiveAccess(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<LiveFile, LiveAccessError>> {
+  const rights = await checkLiveSessionRights(auth);
+  if (rights.isErr()) {
+    return new Err(rights.error);
+  }
   const file = await openLiveFile(auth, canonicalPath);
   if (file.isOk() && !file.value.canWrite) {
     // Readers get the file without live editing for now.
-    return new Err({
-      code: "read_only",
-      message: "Live editing needs write access to this file.",
-    });
+    return new Err(READ_ONLY);
   }
   return file;
+}
+
+/**
+ * @cc [owner:PopDaph,label:security;performance] live-access-recheck
+ * Re-checking an open session MUST apply the same membership, `co_edition`, workspace and write
+ * access checks as `checkLiveAccess`, with an Authenticator built for it. It MUST NOT read the file
+ * from storage: existence, type and size do not decide access, and a re-check runs for every open
+ * session.
+ */
+export async function recheckLiveAccess(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<void, LiveAccessError>> {
+  const rights = await checkLiveSessionRights(auth);
+  if (rights.isErr()) {
+    return rights;
+  }
+  const dustFs = await DustFileSystem.fromScopedPath(auth, canonicalPath);
+  if (dustFs.isErr()) {
+    return new Err({ code: "unavailable", message: dustFs.error.message });
+  }
+  if (dustFs.value.checkWriteAccess(canonicalPath).isErr()) {
+    return new Err(READ_ONLY);
+  }
+  return new Ok(undefined);
 }
 
 /** The file as the live document last read or wrote it. */
