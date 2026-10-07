@@ -13,6 +13,18 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/hooks/useEdgeeConnection.ts
+msgid "Failed to save the Edgee connection"
+msgstr "Failed to save the Edgee connection"
+
+#: front/hooks/useEdgeeConnection.ts
+msgid "Edgee connection saved"
+msgstr "Edgee connection saved"
+
+#: front/hooks/useEdgeeConnection.ts
+msgid "Model calls now go through your Edgee organization."
+msgstr "Model calls now go through your Edgee organization."
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Could not save the language"
