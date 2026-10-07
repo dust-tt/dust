@@ -13,7 +13,7 @@ import { Markdown } from "@tiptap/markdown";
 import type { StarterKitOptions } from "@tiptap/starter-kit";
 import { StarterKit } from "@tiptap/starter-kit";
 
-type Translate = (descriptor: MessageDescriptor) => string;
+export type Translate = (descriptor: MessageDescriptor) => string;
 
 const starterKitOptions: Partial<StarterKitOptions> = {
   heading: {
@@ -66,12 +66,12 @@ const starterKitOptions: Partial<StarterKitOptions> = {
   },
 };
 
-/** The schema; a live document keeps comment marks without a thread and drops StarterKit's undo. */
+/** The schema; a live document protects comment marks without a thread and drops StarterKit's undo. */
 const buildSchemaExtensions = ({ live }: { live: boolean }): AnyExtension[] => [
   DocumentAnchors,
   DocumentComments,
   live
-    ? DocumentCommentMark.configure({ dropOrphanMarks: false })
+    ? DocumentCommentMark.configure({ holdsThreads: false })
     : DocumentCommentMark,
   DocumentCommentAnchor,
   StarterKit.configure(
@@ -84,7 +84,7 @@ export const documentExtensions = buildSchemaExtensions({ live: false });
 
 /**
  * The editor's extensions. A live document drops StarterKit's undo history for the
- * collaboration one, and keeps comment marks whose thread its editor does not hold.
+ * collaboration one, and protects comment marks whose thread its editor does not hold.
  */
 export const buildDocumentEditorExtensions = (
   t: Translate,

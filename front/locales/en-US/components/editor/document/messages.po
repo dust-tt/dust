@@ -189,6 +189,22 @@ msgid "Retry"
 msgstr "Retry"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Connecting…"
+msgstr "Connecting…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Live"
+msgstr "Live"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Reconnecting…"
+msgstr "Reconnecting…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Live editing unavailable"
+msgstr "Live editing unavailable"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
 msgstr "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
 

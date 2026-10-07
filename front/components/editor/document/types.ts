@@ -56,6 +56,9 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
 }
 
+/** Where a live document's connection stands, shown in place of the save status. */
+export type LiveStatus = "connecting" | "live" | "offline" | "refused";
+
 export interface DocumentDraftState {
   dirty: boolean;
   saving: boolean;

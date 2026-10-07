@@ -585,7 +585,7 @@ const inheritEnclosingComments = (
  * When a transaction puts the mark of a comment without a thread on text, such as an undo
  * restoring text after its comment was deleted, that mark MUST be removed from the whole
  * document, since saving fails on an anchor without a thread. A live document, configured with
- * `dropOrphanMarks: false`, MUST keep such marks: its editor does not hold the threads, and a
+ * `holdsThreads: false`, MUST keep such marks: its editor does not hold the threads, and a
  * removal would spread to every other editor.
  */
 const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
@@ -616,8 +616,13 @@ const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
  * A transaction MUST be refused when it takes the comment mark off the first or last character
  * of a comment that has a thread after it, without deleting that character, such as inline code
  * or a code block over a comment's edge, since saving would then shrink or drop the comment.
+ * With `holdsThreads: false`, every marked comment counts as having a thread.
  */
-const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
+const takesCommentEdge = (
+  transaction: Transaction,
+  before: EditorState,
+  holdsThreads: boolean
+) => {
   if (
     !transaction.steps.some(
       (step) =>
@@ -632,7 +637,7 @@ const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
     getDocumentComments(transaction.doc).map((comment) => comment.id)
   );
   for (const [id, { from, to }] of getCommentRanges(before.doc)) {
-    if (!threadsAfter.has(id)) {
+    if (holdsThreads && !threadsAfter.has(id)) {
       continue;
     }
     const range = after.get(id);
@@ -648,9 +653,9 @@ const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
   return false;
 };
 
-export const DocumentCommentMark = Mark.create<{ dropOrphanMarks: boolean }>({
+export const DocumentCommentMark = Mark.create<{ holdsThreads: boolean }>({
   name: COMMENT_MARK_NAME,
-  addOptions: () => ({ dropOrphanMarks: true }),
+  addOptions: () => ({ holdsThreads: true }),
   inclusive: false,
   excludes: "",
   addAttributes: () => ({
@@ -665,7 +670,7 @@ export const DocumentCommentMark = Mark.create<{ dropOrphanMarks: boolean }>({
   parseHTML: () => [],
   renderHTML: ({ HTMLAttributes }) => ["span", HTMLAttributes, 0],
   addProseMirrorPlugins() {
-    const { dropOrphanMarks } = this.options;
+    const { holdsThreads } = this.options;
     // ProseMirror runs transformPasted before deciding whether a drop moves or copies; the drop
     // event arrives first. Asking the dragCopies props, this one included, gives ProseMirror's
     // own answer.
@@ -695,17 +700,18 @@ export const DocumentCommentMark = Mark.create<{ dropOrphanMarks: boolean }>({
             ),
         },
         filterTransaction: (transaction, state) =>
-          !takesCommentEdge(transaction, state),
+          !takesCommentEdge(transaction, state, holdsThreads),
         appendTransaction: (transactions, _oldState, newState) => {
           const changed = changedRanges(transactions);
           if (changed.length === 0) {
             return null;
           }
           const tr = newState.tr;
-          if (dropOrphanMarks) {
+          if (holdsThreads) {
             dropOrphanCommentMarks(tr, changed);
           }
-          if (getDocumentComments(tr.doc).length > 0) {
+          // Without the threads, marks are the only sign of a comment.
+          if (!holdsThreads || getDocumentComments(tr.doc).length > 0) {
             inheritEnclosingComments(tr, changed);
           }
           return tr.docChanged ? tr : null;

@@ -2,6 +2,10 @@ import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
+import {
+  getDocumentJSONComments,
+  withDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type {
   DocumentProps,
@@ -11,7 +15,7 @@ import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import type { JSONContent } from "@tiptap/core";
+import type { AnyExtension, JSONContent } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
@@ -47,6 +51,13 @@ interface UseDocumentEditorProps {
   autosaveDebounceMs: number;
   onSave: DocumentProps["onSave"];
   onStateChange: DocumentProps["onStateChange"];
+  /** Binds the editor to a synced shared document instead of the file's content. */
+  live?: {
+    /** The live extensions, bound to the shared document. */
+    extensions: AnyExtension[];
+    /** Editing pauses while the connection is down. */
+    connected: boolean;
+  };
 }
 
 /**
@@ -67,12 +78,19 @@ interface UseDocumentEditorProps {
  * saves. Cmd/Ctrl+S MUST allow an immediate save. Parent renders and callback identity changes
  * MUST NOT restart the debounce. Saves MUST use the latest committed callback.
  */
+/**
+ * @cc [owner:PopDaph,label:product] document-live-editing
+ * A live editor MUST edit the shared document only: it MUST NOT save, autosave or report a
+ * draft, and it is editable only while connected. It shows the file's comment threads, which
+ * can be stale; keeping comment marks without a thread is up to the live extensions.
+ */
 export const useDocumentEditor = ({
   initialContent,
   readOnly,
   autosaveDebounceMs,
   onSave,
   onStateChange,
+  live,
 }: UseDocumentEditorProps) => {
   const { t } = useLingui();
   const saveErrorMessage = t(SAVE_ERROR_MESSAGE);
@@ -86,9 +104,14 @@ export const useDocumentEditor = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
-  const editable = !readOnly && onSave !== undefined && initial.isOk();
+  const editable =
+    !readOnly &&
+    initial.isOk() &&
+    (live ? live.connected : onSave !== undefined);
+  // A live editor never saves: the session owns the file.
+  const persist = live ? undefined : onSave;
   const persistenceRef = useRef({
-    onSave,
+    onSave: persist,
     onStateChange,
     editable,
     saveErrorMessage,
@@ -101,18 +124,26 @@ export const useDocumentEditor = ({
 
   useLayoutEffect(() => {
     persistenceRef.current = {
-      onSave,
+      onSave: persist,
       onStateChange,
       editable,
       saveErrorMessage,
     };
-  }, [onSave, onStateChange, editable, saveErrorMessage]);
+  }, [persist, onStateChange, editable, saveErrorMessage]);
 
-  const extensions = useMemo(() => buildDocumentEditorExtensions(t), [t]);
+  const savedExtensions = useMemo(() => buildDocumentEditorExtensions(t), [t]);
 
   const editor = useEditor({
-    extensions,
-    content: initial.isOk() ? initial.value.content : "",
+    extensions: live?.extensions ?? savedExtensions,
+    // A live body comes from the shared document; only the threads come from the file.
+    content: !initial.isOk()
+      ? ""
+      : live
+        ? withDocumentJSONComments(
+            { type: "doc", content: [{ type: "paragraph" }] },
+            getDocumentJSONComments(initial.value.content)
+          )
+        : initial.value.content,
     contentType: "json",
     immediatelyRender: false,
     editable,
@@ -125,11 +156,17 @@ export const useDocumentEditor = ({
           "min-h-96 text-base leading-7 wrap-anywhere caret-foreground outline-none [&>:first-child]:mt-0",
           "[&>h1:first-child]:mb-6 [&>h1:first-child]:heading-3xl @sm:[&>h1:first-child]:heading-4xl",
           "[&_.is-empty]:before:pointer-events-none [&_.is-empty]:before:float-left [&_.is-empty]:before:h-0 [&_.is-empty]:before:text-muted-foreground [&_.is-empty]:before:content-[attr(data-placeholder)]",
-          "[&_h1.is-empty]:before:text-foreground/35 print:[&_.is-empty]:before:hidden"
+          "[&_h1.is-empty]:before:text-foreground/35 print:[&_.is-empty]:before:hidden",
+          // Other people's carets in a live document; their color comes inline.
+          String.raw`[&_.collaboration-carets\_\_caret]:pointer-events-none [&_.collaboration-carets\_\_caret]:relative [&_.collaboration-carets\_\_caret]:-mx-px [&_.collaboration-carets\_\_caret]:border-x [&_.collaboration-carets\_\_caret]:[word-break:normal]`,
+          String.raw`[&_.collaboration-carets\_\_label]:absolute [&_.collaboration-carets\_\_label]:-top-[1.4em] [&_.collaboration-carets\_\_label]:-left-px [&_.collaboration-carets\_\_label]:rounded-[3px_3px_3px_0] [&_.collaboration-carets\_\_label]:px-1 [&_.collaboration-carets\_\_label]:py-px [&_.collaboration-carets\_\_label]:text-xs [&_.collaboration-carets\_\_label]:leading-normal [&_.collaboration-carets\_\_label]:font-semibold [&_.collaboration-carets\_\_label]:whitespace-nowrap [&_.collaboration-carets\_\_label]:text-white [&_.collaboration-carets\_\_label]:select-none`
         ),
       },
     },
     onCreate: ({ editor }) => {
+      if (live) {
+        return;
+      }
       // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
       const document = editor.getJSON();

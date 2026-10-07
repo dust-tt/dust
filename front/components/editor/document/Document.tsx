@@ -8,16 +8,21 @@ import {
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsPanel";
 import {
+  DocumentLiveStatus,
   DocumentStatus,
   StatusRow,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
-import type { DocumentProps } from "@app/components/editor/document/types";
+import type {
+  DocumentProps,
+  LiveStatus,
+} from "@app/components/editor/document/types";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
 import { cn } from "@dust-tt/sparkle";
+import type { AnyExtension } from "@tiptap/core";
 import type React from "react";
 import { useId, useRef } from "react";
 
@@ -47,7 +52,18 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
  * first, then cycle outward on repeated clicks.
  */
-export const Document = ({
+export const Document = (props: DocumentProps) => <DocumentView {...props} />;
+
+interface DocumentViewProps extends DocumentProps {
+  liveView?: {
+    status: LiveStatus;
+    /** Bound to the shared document once synced; until then the file shows read-only. */
+    binding: { extensions: AnyExtension[]; connected: boolean } | null;
+  };
+}
+
+/** The editor itself, saving the file or, given live extensions, editing a shared document. */
+const DocumentView = ({
   initialContent,
   className,
   mountPortalContainer,
@@ -55,6 +71,7 @@ export const Document = ({
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
   onStateChange,
+  liveView,
   badge,
   commentAuthor,
   renderCommentAuthorAvatar,
@@ -62,7 +79,7 @@ export const Document = ({
   verifyCommentMessage,
   renderCommentBody,
   commentInputExtensions,
-}: DocumentProps) => {
+}: DocumentViewProps) => {
   const {
     editor,
     editable,
@@ -74,15 +91,18 @@ export const Document = ({
     isSavable,
   } = useDocumentEditor({
     initialContent,
-    readOnly,
+    readOnly: readOnly || liveView?.binding === null,
     autosaveDebounceMs,
     onSave,
     onStateChange,
+    live: liveView?.binding ?? undefined,
   });
+  const isLive = liveView !== undefined;
   const blockMenu = useDocumentBlockMenu(editor, editable);
   const comments = useDocumentComments({
     editor,
-    canComment: editable,
+    // Threads are not served by the live session yet.
+    canComment: editable && !isLive,
     author: commentAuthor,
     isSavable,
     sign: signCommentMessage,
@@ -163,7 +183,7 @@ export const Document = ({
           )}
         >
           <DocumentStatus
-            editable={editable}
+            editable={editable && !isLive}
             dirty={dirty}
             saving={saving}
             error={error}
@@ -171,6 +191,7 @@ export const Document = ({
             onRetry={save}
             badge={badge}
           >
+            {liveView && <DocumentLiveStatus status={liveView.status} />}
             {showCommentsToggle && (
               <DocumentCommentsToggle panelId={panelId} comments={comments} />
             )}
