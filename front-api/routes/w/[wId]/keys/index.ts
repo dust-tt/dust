@@ -22,6 +22,8 @@ const CreateKeyPostBodySchema = z.object({
   // = unlimited.
   monthly_cap_awu_credits: z.number().nullish(),
   role: z.enum(["user", "admin"]).optional(),
+  // Groups whose analytics the key can read. Rejected for admin keys, which read every group.
+  analytics_group_ids: z.array(z.string()).optional(),
 });
 
 // Mounted at /api/w/:wId/keys.
@@ -58,6 +60,7 @@ app.post(
       monthly_cap_micro_usd,
       monthly_cap_awu_credits,
       role,
+      analytics_group_ids,
     } = ctx.req.valid("json");
 
     const keyRes = await createApiKey(auth, {
@@ -66,6 +69,7 @@ app.post(
       monthlyCapMicroUsd: monthly_cap_micro_usd ?? null,
       monthlyCapAwuCredits: monthly_cap_awu_credits ?? null,
       role: role ?? "user",
+      analyticsGroupIds: analytics_group_ids ?? [],
     });
 
     if (keyRes.isErr()) {

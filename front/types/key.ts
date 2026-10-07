@@ -1,3 +1,4 @@
+import type { GroupType } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { SpaceType } from "@app/types/space";
 import type { RoleType } from "@app/types/user";
@@ -11,6 +12,8 @@ export type KeyType = {
   status: string;
   name: string;
   spaces: SpaceType[];
+  // Groups whose analytics the key can read through an `analytics_reader` grant.
+  analyticsGroups: GroupType[];
   role: RoleType;
   monthlyCapMicroUsd: number | null;
   monthlyCapAwuCredits: number | null;

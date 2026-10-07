@@ -10,11 +10,14 @@ import {
 } from "@app/lib/api/keys/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -103,6 +106,55 @@ async function resolveApiKeyGroups(
 }
 
 /**
+ * @cc [owner:fabiencelier,label:security;product] analytics-groups
+ * `analyticsGroupIds` MUST be empty for an `admin` key, which already reads every group's analytics,
+ * and fail with `invalid_request_error` otherwise. Every id MUST resolve in the workspace to a
+ * manual or provisioned group.
+ */
+async function resolveAnalyticsGroups(
+  auth: Authenticator,
+  {
+    analyticsGroupIds,
+    role,
+  }: { analyticsGroupIds: string[]; role: "user" | "admin" }
+): Promise<Result<GroupResource[], DustError<CreateApiKeyErrorCode>>> {
+  const groupIds = [...new Set(analyticsGroupIds)];
+  if (groupIds.length === 0) {
+    return new Ok([]);
+  }
+  if (role === "admin") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "An admin API key already reads the analytics of every group."
+      )
+    );
+  }
+
+  const groupsRes = await GroupResource.fetchByIds(auth, groupIds);
+  if (groupsRes.isErr()) {
+    return new Err(
+      new DustError("group_not_found", "Some analytics groups were not found.")
+    );
+  }
+  if (!groupsRes.value.every((group) => isCapEligibleGroupKind(group.kind))) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Analytics access can only be granted on manual or provisioned groups."
+      )
+    );
+  }
+
+  return new Ok(groupsRes.value);
+}
+
+/**
+ * @cc [owner:fabiencelier,label:security;backend] key-created-with-analytics-access
+ * The key and its `read_analytics` grants on the analytics groups MUST be created atomically: a
+ * failed grant MUST leave no key behind.
+ */
+/**
  * Create a non-system API key for the workspace: validates the name, the spend caps and the
  * requested scope, resolves the groups the key carries, enforces the per-workspace creation rate
  * limit, then persists the key, applies the per-key credit cap and emits the audit log event.
@@ -115,6 +167,7 @@ export async function createApiKey(
     monthlyCapMicroUsd,
     monthlyCapAwuCredits,
     role,
+    analyticsGroupIds,
   }: {
     name: string;
     spaceIds: string[];
@@ -122,6 +175,8 @@ export async function createApiKey(
     // Per-key credit cap in AWU credits (credit-priced plans only). null = unlimited.
     monthlyCapAwuCredits: number | null;
     role: "user" | "admin";
+    // sIds of the groups whose analytics the key can read (non-admin keys only).
+    analyticsGroupIds: string[];
   }
 ): Promise<Result<KeyResource, DustError<CreateApiKeyErrorCode>>> {
   const user = auth.getNonNullableUser();
@@ -192,6 +247,18 @@ export async function createApiKey(
   }
   const resolvedGroups = groupsRes.value;
 
+  const analyticsGroupsRes = await resolveAnalyticsGroups(auth, {
+    analyticsGroupIds,
+    role,
+  });
+  if (analyticsGroupsRes.isErr()) {
+    return analyticsGroupsRes;
+  }
+  // Sorted so concurrent creations take the grant-tuple locks in the same order.
+  const analyticsGroups = [...analyticsGroupsRes.value].sort(
+    (a, b) => a.id - b.id
+  );
+
   const remaining = await rateLimiter({
     key: `api_key_creation_${owner.sId}`,
     maxPerTimeframe: MAX_API_KEY_CREATION_PER_DAY,
@@ -208,18 +275,31 @@ export async function createApiKey(
     );
   }
 
-  const key = await KeyResource.makeNew(
-    {
-      name: trimmedName,
-      status: "active",
-      userId: user.id,
-      workspaceId: owner.id,
-      isSystem: false,
-      role,
-      monthlyCapMicroUsd,
-    },
-    resolvedGroups
-  );
+  const key = await withTransaction(async (transaction) => {
+    const key = await KeyResource.makeNew(
+      {
+        name: trimmedName,
+        status: "active",
+        userId: user.id,
+        workspaceId: owner.id,
+        isSystem: false,
+        role,
+        monthlyCapMicroUsd,
+      },
+      resolvedGroups,
+      { transaction }
+    );
+    for (const group of analyticsGroups) {
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
+        grantType: "analytics_reader",
+        resourceType: "group",
+        resourceId: group.id,
+        transaction,
+      });
+    }
+    return key;
+  });
 
   void emitAuditLogEvent({
     auth,
@@ -234,6 +314,7 @@ export async function createApiKey(
     context: getAuditLogContext(auth),
     metadata: {
       group_ids: resolvedGroups.map((g) => g.sId).join(","),
+      analytics_group_ids: analyticsGroups.map((g) => g.sId).join(","),
       role,
     },
   });
