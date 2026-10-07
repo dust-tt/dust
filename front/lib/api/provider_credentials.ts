@@ -125,7 +125,7 @@ export async function getLlmCredentials(
 
   const credentials = mapOauthCredentialsToLlmCredentials(
     providerCredentials.map((cred) => ({
-      providerId: cred.providerId,
+      providerId: cred.byokProviderId,
       content: cred.credentials,
     }))
   );
