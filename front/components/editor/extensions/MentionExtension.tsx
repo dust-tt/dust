@@ -266,6 +266,10 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           // Send to backend to parse mentions.
           parseMentionsOnBackend(markdown, owner.sId)
             .then((processedMarkdown: string) => {
+              // The editor may have been frozen, such as while its content is sent, or destroyed.
+              if (editor.isDestroyed || !editor.isEditable) {
+                return;
+              }
               const chain = editor.chain().focus().deleteRange({ from, to });
               if (processedMarkdown) {
                 chain.insertContentAt(from, processedMarkdown, {
@@ -278,7 +282,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
               logger.error("Failed to parse mentions:", error);
               // Fallback to the default paste behavior.
               // Safety check for Safari: ensure editor is not destroyed before dispatch
-              if (!editor.isDestroyed) {
+              if (!editor.isDestroyed && editor.isEditable) {
                 const transaction = state.tr.replaceRange(from, to, slice);
                 view.dispatch(transaction);
               }

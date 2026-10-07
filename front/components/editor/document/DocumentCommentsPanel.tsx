@@ -27,6 +27,7 @@ import {
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { Extensions } from "@tiptap/core";
 import type { ComponentType, ReactNode } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
@@ -255,66 +256,6 @@ const MessageBody = ({
   );
 };
 
-interface ReplyComposerProps {
-  author: DfmAuthor | undefined;
-  renderAuthorAvatar: RenderAuthorAvatar;
-  onReply: (body: string) => Promise<Result<void, string>>;
-  /** Escape clears the field and hands focus back to the thread. */
-  onCancel: () => void;
-  onSuggest?: () => Result<string, string>;
-  mountPortalContainer?: HTMLElement;
-}
-
-const ReplyComposer = ({
-  author,
-  renderAuthorAvatar,
-  onReply,
-  onCancel,
-  onSuggest,
-  mountPortalContainer,
-}: ReplyComposerProps) => {
-  const { t } = useLingui();
-  const [body, setBody] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-
-  return (
-    <DocumentCommentInput
-      label={t`Reply`}
-      placeholder={t`Reply…`}
-      author={author}
-      renderAuthorAvatar={renderAuthorAvatar}
-      value={body}
-      onChange={setBody}
-      onSubmit={async (trimmed) => {
-        setSending(true);
-        let replied: Result<void, string>;
-        try {
-          replied = await onReply(trimmed);
-        } finally {
-          setSending(false);
-        }
-        if (replied.isErr()) {
-          setError(replied.error);
-          return;
-        }
-        setError(null);
-        setBody("");
-      }}
-      onCancel={() => {
-        setBody("");
-        setError(null);
-        onCancel();
-      }}
-      error={error}
-      pending={sending}
-      onSuggest={onSuggest}
-      mountPortalContainer={mountPortalContainer}
-      className="-mb-1 border-t border-border pt-2"
-    />
-  );
-};
-
 interface DraftCardProps {
   author: DfmAuthor;
   renderAuthorAvatar: RenderAuthorAvatar;
@@ -324,6 +265,7 @@ interface DraftCardProps {
   onSubmit: (body: string) => Promise<Result<void, string>>;
   onCancel: () => void;
   onSuggest?: () => Result<string, string>;
+  inputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
 }
 
@@ -335,12 +277,10 @@ const DraftCard = ({
   onSubmit,
   onCancel,
   onSuggest,
+  inputExtensions,
   mountPortalContainer,
 }: DraftCardProps) => {
   const { t } = useLingui();
-  const [body, setBody] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -364,24 +304,12 @@ const DraftCard = ({
         placeholder={t`Add a comment…`}
         author={author}
         renderAuthorAvatar={renderAuthorAvatar}
-        value={body}
-        onChange={setBody}
-        onSubmit={async (trimmed) => {
-          setSending(true);
-          let submitted: Result<void, string>;
-          try {
-            submitted = await onSubmit(trimmed);
-          } finally {
-            setSending(false);
-          }
-          setError(submitted.isErr() ? submitted.error : null);
-        }}
+        onSubmit={onSubmit}
         onCancel={onCancel}
-        error={error}
-        pending={sending}
         // Hidden elements ignore focus(), so wait until the panel shows.
         autoFocus={visible}
         onSuggest={onSuggest}
+        extensions={inputExtensions}
         mountPortalContainer={mountPortalContainer}
       />
     </article>
@@ -403,6 +331,7 @@ interface CommentThreadProps {
   renderBody: (body: string) => ReactNode;
   onSuggest?: () => Result<string, string>;
   onApplySuggestion?: (suggestion: string) => Result<void, string>;
+  inputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -422,6 +351,7 @@ const CommentThread = ({
   renderBody,
   onSuggest,
   onApplySuggestion,
+  inputExtensions,
   mountPortalContainer,
   renderAuthorAvatar,
 }: CommentThreadProps) => {
@@ -532,13 +462,18 @@ const CommentThread = ({
           </ul>
         )}
         {canWrite && active && !resolved && (
-          <ReplyComposer
+          <DocumentCommentInput
+            label={t`Reply`}
+            placeholder={t`Reply…`}
             author={author}
             renderAuthorAvatar={renderAuthorAvatar}
-            onReply={onReply}
+            onSubmit={onReply}
+            // Escape clears the field and hands focus back to the thread.
             onCancel={() => ref.current?.focus()}
             onSuggest={onSuggest}
+            extensions={inputExtensions}
             mountPortalContainer={mountPortalContainer}
+            className="-mb-1 border-t border-border pt-2"
           />
         )}
       </div>
@@ -550,6 +485,7 @@ interface DocumentCommentsPanelProps {
   id: string;
   comments: DocumentCommentsController;
   renderCommentBody: (body: string) => ReactNode;
+  commentInputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -564,18 +500,19 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * @cc [owner:tdraier,label:react] document-comment-draft-card
  * While a draft is pending and the user can comment, the panel MUST show a new comment card
  * among the open threads at the draft's place in document order, with its field focused once
- * the panel is visible. Escape in the field and closing the panel MUST cancel the draft; a
- * pointer press elsewhere MUST NOT, so typed text survives a stray click. Enter MUST submit the
- * trimmed text. A refused submission MUST keep the typed text and show the reason.
+ * the panel is visible. Escape the field hands to its onCancel (see `document-comment-input`)
+ * and closing the panel MUST cancel the draft; a pointer press elsewhere MUST NOT, so typed text
+ * survives a stray click. Enter MUST submit the trimmed Markdown, outside a list item. A refused submission MUST keep the typed text and show the reason.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comments-panel
  * The panel MUST list open threads in document order, then resolved threads in a collapsed
  * group. Reply and moderation controls MUST render only when canWrite, and replies only on the
- * active open thread. Escape inside a reply field MUST clear it and return focus to its
- * thread, not close the panel. After resolving, reopening or deleting a thread, focus MUST
- * move to a neighbouring thread or to the panel heading. Opening or closing the panel MUST NOT
- * change the document.
+ * active open thread. Escape inside a reply field MUST NOT close the panel; when the field hands
+ * it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST
+ * return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
+ * neighbouring thread or to the panel heading. Opening or closing the panel MUST NOT change the
+ * document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars
@@ -587,6 +524,7 @@ export const DocumentCommentsPanel = ({
   id,
   comments,
   renderCommentBody,
+  commentInputExtensions,
   mountPortalContainer,
   renderAuthorAvatar,
 }: DocumentCommentsPanelProps) => {
@@ -682,6 +620,7 @@ export const DocumentCommentsPanel = ({
         }}
         renderAuthorAvatar={renderVisibleAvatar}
         renderBody={renderCommentBody}
+        inputExtensions={commentInputExtensions}
         onSuggest={
           canSuggest ? () => suggestionTemplate(comment.id) : undefined
         }
@@ -771,6 +710,7 @@ export const DocumentCommentsPanel = ({
             onSubmit={submitDraft}
             onCancel={cancelDraft}
             onSuggest={draftSuggestable ? draftSuggestionTemplate : undefined}
+            inputExtensions={commentInputExtensions}
             mountPortalContainer={mountPortalContainer}
           />
         )}

@@ -1,174 +1,251 @@
-import type { DocumentProps } from "@app/components/editor/document/types";
-import type { DfmAuthor } from "@app/lib/markdown/dfm";
-import type { Result } from "@app/types/shared/result";
 import {
-  ArrowUp,
-  cn,
-  Edit04,
-  Icon,
-  Spinner,
-  TextArea,
-  Tooltip,
-} from "@dust-tt/sparkle";
+  commentInputExtensions,
+  commentMarkdown,
+} from "@app/components/editor/document/commentInputExtensions";
+import type { DocumentProps } from "@app/components/editor/document/types";
+import { EditorContent } from "@app/components/editor/EditorContent";
+import type { DfmAuthor } from "@app/lib/markdown/dfm";
+import { SUGGESTION_LANGUAGE } from "@app/lib/markdown/dfm";
+import type { Result } from "@app/types/shared/result";
+import { ArrowUp, cn, Edit04, Icon, Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
+import type { Editor, Extensions } from "@tiptap/core";
+import { useEditor } from "@tiptap/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 interface DocumentCommentInputProps {
   label: string;
   placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-  /** Receives the trimmed text. */
-  onSubmit: (body: string) => void | Promise<void>;
-  /** Handles Escape inside the field. Without it Escape bubbles to the parent. */
+  /** Receives the trimmed Markdown. Ok clears the field; Err keeps the text and shows the reason. */
+  onSubmit: (body: string) => Promise<Result<void, string>>;
+  /**
+   * Handles Escape inside the field, after clearing it, unless a submission is pending. Without it
+   * Escape bubbles to the parent.
+   */
   onCancel?: () => void;
   author?: DfmAuthor;
   renderAuthorAvatar: DocumentProps["renderCommentAuthorAvatar"];
-  /** Why the last submission was refused, shown under the field. */
-  error?: string | null;
   /** Focuses the field while true, once it is visible. */
   autoFocus?: boolean;
-  /** A submission is being sent: the text is frozen and Send shows progress. */
-  pending?: boolean;
   onSuggest?: () => Result<string, string>;
+  /** Added to the field's editor when it mounts, such as mentions. */
+  extensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   className?: string;
 }
 
-interface Selection {
-  start: number;
-  end: number;
-}
+const NO_EXTENSIONS: Extensions = [];
+
+/** Text, a mention or a code block: line breaks and empty blocks alone are blank. */
+const hasContent = (editor: Editor | null) => {
+  let found = false;
+  editor?.state.doc.descendants((node) => {
+    found ||= node.isText
+      ? !!node.text?.trim()
+      : (node.isAtom && node.type.name !== "hardBreak") ||
+        node.type.name === "codeBlock";
+    return !found;
+  });
+  return found;
+};
+
+/** Selects the text of the last suggestion block, so typing replaces it. */
+const selectLastSuggestion = (editor: Editor) => {
+  let range: { from: number; to: number } | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (
+      node.type.name === "codeBlock" &&
+      node.attrs.language === SUGGESTION_LANGUAGE
+    ) {
+      range = { from: pos + 1, to: pos + 1 + node.content.size };
+    }
+  });
+  if (range) {
+    editor.commands.setTextSelection(range);
+  }
+};
 
 /**
  * @cc [owner:tdraier,label:react] document-comment-input-suggest
  * With onSuggest, the field MUST offer a Suggest button that appends the suggestion block after
- * the typed text, separated by a blank line, focuses the field and selects the block's text so
- * typing replaces it. A refused suggestion MUST leave the text unchanged and show the reason
- * until the text changes or is submitted. While pending, Suggest MUST NOT change the text.
+ * the typed content, focuses the field and selects the block's text so typing replaces it. A
+ * refused suggestion MUST leave the content unchanged and show the reason until the content
+ * changes or is submitted. While pending, Suggest MUST NOT change the content.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-input
- * Enter MUST submit and Shift+Enter MUST insert a line break, except while an input method
- * is composing text. Blank text MUST NOT submit. The field's height MUST follow its value,
- * including when the value is cleared. While pending, the text MUST NOT change or submit again,
- * and Send MUST show progress.
+ * Enter MUST submit the content as trimmed Markdown, mentions and suggestion blocks included,
+ * and Shift+Enter MUST insert a line break, except while an input method is composing text or a
+ * mention list is open, and except in a list item, where Enter MUST split the item (see
+ * `comment-input-keymap`) and Send MUST still submit. Content without text, a mention or a code block MUST NOT submit, even
+ * when line breaks or empty blocks make its Markdown non-empty. While a submission is pending,
+ * the content MUST NOT change or submit again, and Send MUST show progress. An accepted submission
+ * MUST clear the field; a refused one MUST keep the content and show the reason. Once a submission
+ * sent while the field had focus is no longer pending, focus MUST return to the field if it is
+ * still mounted. Escape that closes a mention list or arrives while an input method is composing
+ * text MUST NOT reach the parent nor clear the field. Otherwise, Escape with onCancel MUST NOT
+ * reach the parent and MUST clear the field then call onCancel, unless a submission is pending,
+ * when it MUST do neither.
  */
 export const DocumentCommentInput = ({
   label,
   placeholder,
-  value,
-  onChange,
   onSubmit,
   onCancel,
   author,
   renderAuthorAvatar,
-  error,
   autoFocus = false,
-  pending = false,
   onSuggest,
+  extensions = NO_EXTENSIONS,
   mountPortalContainer,
   className,
 }: DocumentCommentInputProps) => {
   const { t } = useLingui();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pendingSelectionRef = useRef<Selection | null>(null);
-  const [refusedSuggestion, setRefusedSuggestion] = useState<{
-    reason: string;
-    value: string;
-  } | null>(null);
-  // Typing clears a refusal; this also hides it once the host changes the text, such as on Escape.
-  const suggestError =
-    refusedSuggestion?.value === value ? refusedSuggestion.reason : null;
-  const trimmed = value.trim();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [filled, setFilled] = useState(false);
+  const pendingRef = useRef(false);
+  const refocusRef = useRef(false);
+  const submitRef = useRef<() => void>(() => undefined);
 
-  // Runs on every value change, though it reads none: the height follows the rendered value.
+  // Captured at mount: a changed extension list or props object would reconfigure the editor.
+  const [options] = useState(() => ({
+    extensions: commentInputExtensions({
+      placeholder,
+      suggestionLabel: t`Suggested change`,
+      hostExtensions: extensions,
+      onSubmit: submitRef,
+    }),
+    editorProps: {
+      attributes: {
+        role: "textbox",
+        "aria-label": label,
+        "aria-multiline": "true",
+        class: cn(
+          "max-h-60 min-h-7 overflow-y-auto py-1 text-sm leading-5 wrap-anywhere outline-none",
+          "[&_.is-empty]:before:pointer-events-none [&_.is-empty]:before:float-left [&_.is-empty]:before:h-0 [&_.is-empty]:before:text-muted-foreground [&_.is-empty]:before:content-[attr(data-placeholder)]"
+        ),
+      },
+    },
+  }));
+  const editor = useEditor({
+    ...options,
+    immediatelyRender: false,
+    onUpdate: ({ editor }) => {
+      setError(null);
+      setFilled(hasContent(editor));
+    },
+  });
+
   useLayoutEffect(() => {
-    const field = textareaRef.current;
-    if (field) {
-      field.style.height = "auto";
-      field.style.height = `${field.scrollHeight}px`;
+    if (editor && !editor.isDestroyed) {
+      editor.setEditable(!pending, false);
+      editor.view.dom.setAttribute("aria-busy", String(pending));
+      // Not editable while pending, the field lost focus: give it back once editable again.
+      if (!pending && refocusRef.current) {
+        refocusRef.current = false;
+        editor.commands.focus();
+      }
     }
-    const selection = pendingSelectionRef.current;
-    if (field && selection) {
-      pendingSelectionRef.current = null;
-      field.focus();
-      field.setSelectionRange(selection.start, selection.end);
-    }
-  }, [value]);
+  }, [editor, pending]);
 
   useEffect(() => {
-    if (autoFocus) {
-      textareaRef.current?.focus();
+    if (autoFocus && editor) {
+      editor.commands.focus("end");
     }
-  }, [autoFocus]);
+  }, [autoFocus, editor]);
 
-  const submit = () => {
-    if (trimmed && !pending) {
-      setRefusedSuggestion(null);
-      void onSubmit(trimmed);
+  const submit = async () => {
+    if (!editor || pendingRef.current || !hasContent(editor)) {
+      return;
+    }
+    const body = commentMarkdown(editor);
+    refocusRef.current = editor.isFocused;
+    pendingRef.current = true;
+    setPending(true);
+    setError(null);
+    let submitted: Result<void, string>;
+    try {
+      submitted = await onSubmit(body);
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+    if (submitted.isErr()) {
+      setError(submitted.error);
+      return;
+    }
+    setError(null);
+    if (!editor.isDestroyed) {
+      editor.commands.clearContent(true);
     }
   };
+  useLayoutEffect(() => {
+    submitRef.current = () => {
+      void submit();
+    };
+  });
 
   const suggest = () => {
     if (pending) {
       return;
     }
     const block = onSuggest?.();
-    if (!block) {
+    if (!block || !editor) {
       return;
     }
     if (block.isErr()) {
-      setRefusedSuggestion({ reason: block.error, value });
+      setError(block.error);
       return;
     }
-    setRefusedSuggestion(null);
-    const prefix = value.trimEnd() ? `${value.trimEnd()}\n\n` : "";
-    const start = prefix.length + block.value.indexOf("\n") + 1;
-    const end = prefix.length + block.value.lastIndexOf("\n");
-    pendingSelectionRef.current = { start, end: Math.max(start, end) };
-    onChange(`${prefix}${block.value}`);
+    const { doc } = editor.state;
+    const last = doc.lastChild;
+    const lastIsBlank =
+      !!last && last.type.name === "paragraph" && last.content.size === 0;
+    const at = lastIsBlank
+      ? { from: doc.content.size - last.nodeSize, to: doc.content.size }
+      : doc.content.size;
+    editor
+      .chain()
+      .insertContentAt(at, block.value, { contentType: "markdown" })
+      .run();
+    selectLastSuggestion(editor);
+    editor.commands.focus();
   };
 
   return (
-    <div className={className} onClick={(event) => event.stopPropagation()}>
+    <div
+      role="group"
+      className={className}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        // The field already used it, such as to close the mention list or end a composition.
+        if (event.defaultPrevented || event.nativeEvent.isComposing) {
+          event.stopPropagation();
+          return;
+        }
+        if (onCancel) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (pending) {
+            return;
+          }
+          editor?.commands.clearContent(true);
+          setError(null);
+          onCancel();
+        }
+      }}
+    >
       <div className="flex items-start gap-2">
         {author && (
           <span aria-hidden="true" className="mt-1">
             {renderAuthorAvatar(author, "xxs")}
           </span>
         )}
-        {/* TextArea's own wrapper does not grow, so give it a flex item to fill. */}
-        <div className="min-w-0 flex-1">
-          <TextArea
-            ref={textareaRef}
-            aria-label={label}
-            placeholder={placeholder}
-            value={value}
-            readOnly={pending}
-            aria-busy={pending}
-            minRows={1}
-            resize="none"
-            onChange={(event) => {
-              setRefusedSuggestion(null);
-              onChange(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.nativeEvent.isComposing) {
-                return;
-              }
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                submit();
-              } else if (event.key === "Escape" && onCancel) {
-                event.preventDefault();
-                event.stopPropagation();
-                onCancel();
-              }
-            }}
-            className="min-h-7 rounded-none border-0 bg-transparent px-0 py-1 text-sm leading-5 shadow-none focus-visible:ring-0"
-          />
-        </div>
+        <EditorContent editor={editor} className="min-w-0 flex-1" />
         {onSuggest && (
           <Tooltip
             label={t`Suggest a change`}
@@ -180,6 +257,7 @@ export const DocumentCommentInput = ({
                 aria-label={t`Suggest a change`}
                 aria-disabled={pending}
                 onClick={suggest}
+                disabled={pending}
                 className={cn(
                   "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-hover hover:text-foreground motion-reduce:transition-none",
                   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -194,12 +272,12 @@ export const DocumentCommentInput = ({
           type="button"
           aria-label={pending ? t`Sending` : t`Send`}
           aria-disabled={pending}
-          tabIndex={trimmed ? 0 : -1}
-          onClick={submit}
+          tabIndex={filled ? 0 : -1}
+          onClick={() => void submit()}
           className={cn(
             "mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-50 transition-opacity motion-reduce:transition-none",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            trimmed ? "opacity-100" : "pointer-events-none opacity-0"
+            filled || pending ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         >
           {pending ? (
@@ -209,9 +287,9 @@ export const DocumentCommentInput = ({
           )}
         </button>
       </div>
-      {(suggestError ?? error) && (
+      {error && (
         <p role="alert" className="pb-1 text-xs text-warning-500">
-          {suggestError ?? error}
+          {error}
         </p>
       )}
     </div>

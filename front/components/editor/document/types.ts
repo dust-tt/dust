@@ -2,6 +2,7 @@
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
+import type { Extensions } from "@tiptap/core";
 import type { ReactNode } from "react";
 
 /** Ok once the content is stored, Err with a message the editor shows next to Retry. */
@@ -48,6 +49,11 @@ export interface DocumentProps {
   /** Checks a message's signature; without it, messages are shown without a verification mark. */
   verifyCommentMessage?: DfmMessageVerifier;
   renderCommentBody: (body: string) => ReactNode;
+  /**
+   * Added to the comment and reply fields' editors, such as mentions. Each field captures them
+   * when it mounts, so keep the list stable.
+   */
+  commentInputExtensions?: Extensions;
 }
 
 export interface DocumentDraftState {

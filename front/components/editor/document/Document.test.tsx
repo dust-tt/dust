@@ -3,7 +3,7 @@ import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import {
   act,
   fireEvent,
@@ -78,6 +78,20 @@ function startComment(dom: HTMLElement, editor: Editor, text: string) {
     altKey: true,
   });
 }
+
+/** The comment field's own editor, once it has mounted. */
+const findCommentField = async (name: string) => {
+  const field = await screen.findByRole("textbox", { name });
+  if (!hasEditor(field)) {
+    throw new Error(`No editor in the ${name} field.`);
+  }
+  return field;
+};
+
+const typeComment = (field: HTMLElement & { editor: Editor }, text: string) =>
+  act(() => {
+    field.editor.commands.insertContent(text);
+  });
 
 describe("Document comments", () => {
   beforeEach(() => {
@@ -159,10 +173,10 @@ describe("Document comments", () => {
     const card = screen.getByRole("article", { name: "New comment" });
     expect(panel.contains(card)).toBe(true);
     expect(card.textContent).toContain("brave");
-    const field = screen.getByRole("textbox", { name: "Comment" });
-    expect(document.activeElement).toBe(field);
+    const field = await findCommentField("Comment");
+    await waitFor(() => expect(document.activeElement).toBe(field));
 
-    fireEvent.change(field, { target: { value: "Too bold?" } });
+    typeComment(field, "Too bold?");
     fireEvent.keyDown(field, { key: "Enter" });
 
     await waitFor(() =>
@@ -179,27 +193,21 @@ describe("Document comments", () => {
     fireEvent.click(screen.getByRole("button", { name: "Comments" }));
     fireEvent.click(screen.getByRole("button", { name: "Close comments" }));
     startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
 
-    await waitFor(() =>
-      expect(document.activeElement).toBe(
-        screen.getByRole("textbox", { name: "Comment" })
-      )
-    );
+    await waitFor(() => expect(document.activeElement).toBe(field));
   });
 
   it("keeps the draft and its text on a pointer press outside the card", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
     startComment(dom, editor, "brave");
-    const field = screen.getByRole("textbox", { name: "Comment" });
-    fireEvent.change(field, { target: { value: "Too bold?" } });
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
     fireEvent.pointerDown(dom);
 
     expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
-    expect(screen.getByRole("textbox", { name: "Comment" })).toHaveProperty(
-      "value",
-      "Too bold?"
-    );
+    expect(field.editor.getText()).toBe("Too bold?");
   });
 
   it("freezes a new comment and shows progress while the server signs it", async () => {
@@ -218,14 +226,14 @@ describe("Document comments", () => {
     );
 
     startComment(dom, editor, "brave");
-    const field = screen.getByRole("textbox", { name: "Comment" });
-    fireEvent.change(field, { target: { value: "Too bold?" } });
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
     fireEvent.keyDown(field, { key: "Enter" });
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Sending" })).toBeDefined()
     );
-    expect(field).toHaveProperty("readOnly", true);
+    expect(field.editor.isEditable).toBe(false);
     fireEvent.keyDown(field, { key: "Enter" });
     expect(sign).toHaveBeenCalledTimes(1);
 
@@ -236,17 +244,134 @@ describe("Document comments", () => {
     expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
   });
 
+  it("keeps a new comment and its text on Escape while it is being sent", async () => {
+    let finishSigning = () => undefined as unknown;
+    const sign = vi.fn(
+      (_commentId: string, _thread: DfmMessage[], body: string) =>
+        new Promise<Result<DfmMessage, string>>((resolve) => {
+          finishSigning = () =>
+            resolve(new Ok({ author: AUTHOR, createdAt: AT, body }));
+        })
+    );
+    const { dom, editor } = await renderDocument(
+      "Hello brave world.\n",
+      undefined,
+      sign
+    );
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Sending" })).toBeDefined()
+    );
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(
+      screen.getByRole("complementary", { name: "Comments" }).dataset.state
+    ).toBe("open");
+    expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
+    expect(field.editor.getText()).toBe("Too bold?");
+
+    await act(async () => {
+      finishSigning();
+    });
+  });
+
+  it("gives focus back to the field once a refused comment is no longer pending", async () => {
+    let refuse = () => undefined as unknown;
+    const sign = vi.fn(
+      () =>
+        new Promise<Result<DfmMessage, string>>((resolve) => {
+          refuse = () => resolve(new Err("Could not sign."));
+        })
+    );
+    const { dom, editor } = await renderDocument(
+      "Hello brave world.\n",
+      undefined,
+      sign
+    );
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    typeComment(field, "Too bold?");
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Sending" })).toBeDefined()
+    );
+    // Browsers move focus out of a field that is no longer editable.
+    act(() => field.blur());
+
+    await act(async () => {
+      refuse();
+    });
+
+    expect(screen.getByRole("alert").textContent).toBe("Could not sign.");
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
   it("cancels the draft on Escape and keeps the document unchanged", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
     const before = JSON.stringify(editor.getJSON());
 
     startComment(dom, editor, "brave");
-    fireEvent.keyDown(screen.getByRole("textbox", { name: "Comment" }), {
-      key: "Escape",
-    });
+    fireEvent.keyDown(await findCommentField("Comment"), { key: "Escape" });
 
     expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
     expect(JSON.stringify(editor.getJSON())).toBe(before);
+  });
+
+  it("does not submit line breaks alone", async () => {
+    const sign = vi.fn();
+    const { dom, editor } = await renderDocument(
+      "Hello brave world.\n",
+      undefined,
+      sign
+    );
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    act(() => {
+      field.editor.chain().setHardBreak().setHardBreak().run();
+    });
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+
+    expect(sign).not.toHaveBeenCalled();
+    expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
+  });
+
+  it("submits text followed by a line break", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
+    act(() => {
+      field.editor.commands.setHardBreak();
+    });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("article", { name: "Comment by Tom" }).textContent
+      ).toContain("Too bold?")
+    );
+  });
+
+  it("keeps the draft on Escape while an input method is composing", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
+    fireEvent.keyDown(field, { key: "Escape", isComposing: true });
+
+    expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
+    expect(field.editor.getText()).toBe("Too bold?");
   });
 
   it("places the card among open threads in document order", async () => {
@@ -395,14 +520,17 @@ describe("Document comments", () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
     startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Softer?");
     fireEvent.click(screen.getByRole("button", { name: "Suggest a change" }));
 
-    const field = screen.getByRole<HTMLTextAreaElement>("textbox", {
-      name: "Comment",
-    });
-    expect(field.value).toBe("```suggestion\nbrave\n```");
-    expect(field.value.slice(field.selectionStart, field.selectionEnd)).toBe(
-      "brave"
+    expect(field.editor.getMarkdown().trim()).toBe(
+      "Softer?\n\n```suggestion\nbrave\n```"
     );
+    const { from, to } = field.editor.state.selection;
+    expect(field.editor.state.doc.textBetween(from, to)).toBe("brave");
+    expect(
+      within(field).getByText("Suggested change", { exact: false })
+    ).toBeDefined();
   });
 });

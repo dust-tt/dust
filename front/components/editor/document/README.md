@@ -72,6 +72,11 @@ conversation, waiting while an agent runs there: the file's own conversation, or
 a conversation created in the pod on first use and found again by path. Mentioned agents then
 answer there and mentioned users are notified, as for any conversation message.
 
+The new comment and reply fields are small TipTap editors whose content is submitted as Markdown.
+With `commentInputExtensions`, the host adds extensions to them; the file preview adds the
+conversation input's mention extension, so typing `@` picks an agent or a user and shows it as
+a chip.
+
 ## Signatures
 
 The editor never signs anything. With `signCommentMessage`, posting a comment or a reply asks the
@@ -91,9 +96,9 @@ it, no message is marked.
 A message can suggest new wording for the commented text, in a `suggestion` block as on
 GitHub (see the DFM README). The panel shows the commented text as it is now next to the
 suggested text. Suggest, in the new comment and reply fields, adds a block holding the commented
-text as Markdown, selected so typing replaces it. Apply replaces the commented text, which keeps
-the comment, and resolves the thread; the text change is undoable, the resolution stays out of
-history. A suggestion applies only to a comment within one paragraph, heading or list item, and
+text as Markdown, shown as a suggested change and selected so typing replaces it. Apply
+replaces the commented text, which keeps the comment, and resolves the thread; the text change
+is undoable, the resolution stays out of history. A suggestion applies only to a comment within one paragraph, heading or list item, and
 only when it is one paragraph of text: anything else is refused with the reason.
 
 ## Layout
@@ -115,6 +120,7 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `DocumentCommentAnchor.ts` | Anchor directives in Markdown, and anchors to marks and back. |
 | `useDocumentComments.ts` | Comment state and actions for the components below. |
 | `DocumentCommentsPanel.tsx`, `DocumentCommentInput.tsx`, `DocumentCommentMarkers.tsx` | The threads panel with the new comment card, the message field and the gutter markers. |
+| `commentInputExtensions.ts` | The message field's schema, its Markdown and its keys. |
 
 Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`
 for the save on unmount, `useDocumentComments.test.ts` for comments through the editor. The editor's interaction tests lived in Sparkle stories and are not

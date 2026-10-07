@@ -1,4 +1,6 @@
 import { Document } from "@app/components/editor/document";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
@@ -18,6 +20,7 @@ import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
+import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -32,7 +35,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -344,6 +347,22 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
     owner,
     filePath: editor.path,
   });
+  const commentInputExtensions = useMemo(() => {
+    // Suggestions rank the conversation's participants, or the pod's members, first.
+    const scope = parseCanonicalScopedPath(editor.path)?.scope;
+    return [
+      MentionExtension.configure({
+        owner,
+        suggestion: createMentionSuggestion({
+          owner,
+          conversationId:
+            scope?.kind === "canonical-conversation" ? scope.id : null,
+          spaceId: scope?.kind === "canonical-pod" ? scope.id : undefined,
+          select: { agents: true, users: true },
+        }),
+      }),
+    ];
+  }, [owner, editor.path]);
 
   return (
     <Document
@@ -358,6 +377,7 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       renderCommentBody={(body) => (
         <CommentBodyMarkdown owner={owner} body={body} />
       )}
+      commentInputExtensions={commentInputExtensions}
       badge={<CoEditionBadge />}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
