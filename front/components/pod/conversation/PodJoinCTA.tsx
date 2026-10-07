@@ -1,6 +1,7 @@
 import { useJoinPod } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, EmptyCTA } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface PodJoinCTAProps {
@@ -18,6 +19,7 @@ export function PodJoinCTA({
   isRestricted,
   userName,
 }: PodJoinCTAProps) {
+  const { t } = useLingui();
   const [isJoining, setIsJoining] = useState(false);
   const doJoin = useJoinPod({ owner, podId, podName, userName });
 
@@ -30,12 +32,12 @@ export function PodJoinCTA({
   };
 
   const message = isRestricted
-    ? "You need to be invited to participate in this Pod."
-    : "Join this Pod to participate in conversations.";
+    ? t`You need to be invited to participate in this Pod.`
+    : t`Join this Pod to participate in conversations.`;
 
   const action = isRestricted ? null : (
     <Button
-      label={isJoining ? "Joining..." : `Join the ${podName} Pod`}
+      label={isJoining ? t`Joining...` : t`Join the ${podName} Pod`}
       variant="highlight"
       onClick={handleJoin}
       disabled={isJoining}

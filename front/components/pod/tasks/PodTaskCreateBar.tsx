@@ -1,6 +1,7 @@
 import { AddTaskComposer } from "@app/components/pod/tasks/AddTaskComposer";
 import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 export function PodTaskCreateBar() {
   const {
@@ -27,7 +28,7 @@ export function PodTaskCreateBar() {
   if (podMembers.length === 0 || !defaultNewAssigneeId) {
     return (
       <p className="text-sm text-muted-foreground">
-        No Pod members available to assign.
+        <Trans>No Pod members available to assign.</Trans>
       </p>
     );
   }

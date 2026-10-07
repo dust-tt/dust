@@ -15,6 +15,7 @@ import {
   Minimize01,
   Pin02,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -44,6 +45,7 @@ function PodPinnedBannerControls({
   onUnpin,
   onToggleFullscreen,
 }: PodPinnedBannerControlsProps) {
+  const { t } = useLingui();
   return (
     <div
       className={cn(
@@ -56,7 +58,7 @@ function PodPinnedBannerControls({
           icon={EyeOff}
           variant="ghost"
           size="xs"
-          tooltip="Hide"
+          tooltip={t`Hide`}
           onClick={onHide}
         />
         {isEditor && (
@@ -64,7 +66,7 @@ function PodPinnedBannerControls({
             icon={Pin02}
             variant="ghost"
             size="xs"
-            tooltip="Unpin"
+            tooltip={t`Unpin`}
             onClick={onUnpin}
           />
         )}
@@ -72,7 +74,7 @@ function PodPinnedBannerControls({
           icon={isFullscreen ? Minimize01 : Maximize01}
           variant="ghost"
           size="xs"
-          tooltip={isFullscreen ? "Exit full screen" : "Open in full screen"}
+          tooltip={isFullscreen ? t`Exit full screen` : t`Open in full screen`}
           onClick={onToggleFullscreen}
         />
       </div>
@@ -91,6 +93,7 @@ function PodPinnedBannerCollapsedAffordance({
   onShow,
   onOpenFullscreen,
 }: PodPinnedBannerCollapsedAffordanceProps) {
+  const { t } = useLingui();
   return (
     <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
       <Pin02 className="h-3.5 w-3.5 shrink-0" />
@@ -102,13 +105,13 @@ function PodPinnedBannerCollapsedAffordance({
       <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
       </span>
-      <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
+      <Button label={t`Show`} variant="ghost" size="xs" onClick={onShow} />
       <div className="ml-auto flex items-center gap-0.5">
         <Button
           icon={Maximize01}
           variant="ghost"
           size="xs"
-          tooltip="Open in full screen"
+          tooltip={t`Open in full screen`}
           onClick={onOpenFullscreen}
         />
       </div>

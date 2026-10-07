@@ -6,7 +6,6 @@ import { useLayoutEffect } from "react";
 
 export const DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS = 200;
 export const NEW_MANUAL_TASK_MAX_CHARS = 256;
-export const MANUAL_ADD_TASK_PLACEHOLDER = "Add a task...";
 
 /** Tasks are visually multi-line (soft wrap) but must not contain newline characters. */
 export function stripNewlines(value: string): string {
