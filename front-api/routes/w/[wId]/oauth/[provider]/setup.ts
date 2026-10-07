@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
+import {
+  OAUTH_FINALIZE_NONCE_MAX_AGE_SECONDS,
+  oauthFinalizeNonceCookieName,
+  oauthFinalizeNonceCookieOptions,
+} from "@app/lib/api/oauth/finalize_binding";
 import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import type { GetOAuthSetupResponseBody } from "@app/types/api/oauth";
 import {
@@ -12,6 +17,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { setCookie } from "hono/cookie";
 import { z } from "zod";
 
 const ProviderParamSchema = z.object({
@@ -90,6 +96,7 @@ app.get(
         case "connection_creation_failed":
         case "connection_not_implemented":
         case "connection_finalization_failed":
+        case "connection_ownership_mismatch":
         case "credential_retrieval_failed":
           return apiError(ctx, {
             status_code: 500,
@@ -103,7 +110,19 @@ app.get(
       }
     }
 
-    return ctx.json({ redirectUrl: urlRes.value });
+    // Bind the OAuth state (connection id) to this browser via an HttpOnly
+    // nonce cookie. Finalize rejects when the cookie is missing or mismatched.
+    setCookie(
+      ctx,
+      oauthFinalizeNonceCookieName(urlRes.value.connectionId),
+      urlRes.value.finalizeNonce,
+      {
+        ...oauthFinalizeNonceCookieOptions(),
+        maxAge: OAUTH_FINALIZE_NONCE_MAX_AGE_SECONDS,
+      }
+    );
+
+    return ctx.json({ redirectUrl: urlRes.value.setupUrl });
   }
 );
 

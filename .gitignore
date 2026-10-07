@@ -53,3 +53,6 @@ thoughts/*
 # Sandbox provider build scratch dirs
 /front/lib/api/sandbox/providers/sandbox-build-*/
 
+
+# Local SwiftPM / Xcode build scratch
+.build/

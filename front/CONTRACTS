@@ -732,6 +732,15 @@ if it returns Err. This ensures the connection belongs to the calling user in th
 workspace; without the check any workspace member can obtain another user's live OAuth
 access token by supplying a foreign connectionId.
 
+@cc [owner:flvndvd,label:security;backend] oauth-finalize-ownership-and-state-binding
+OAuth finalize (`finalizeConnection` / `GET /api/oauth/:provider/finalize`) MUST verify
+connection metadata `user_id` and `workspace_id` against the authenticated session (using
+the session workspace claim when `auth.workspace()` is null for cross-region) and MUST
+verify the setup-time `finalize_nonce` HttpOnly cookie (against the stored
+`finalize_nonce_hash`) before exchanging the authorization
+code. Missing identity or nonce MUST fail closed; do not skip checks to preserve the
+nullable-auth path. The plaintext nonce MUST NOT be stored in connection metadata.
+
 @cc [owner:sfriquet,label:product] no-locale-less-date-time-calls
 Outside tests, `toLocaleDateString` and `toLocaleTimeString` MUST NOT be called without a locale
 (no argument, or `undefined` as the locale): dates and times MUST be formatted with `formatDate` or

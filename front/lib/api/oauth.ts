@@ -3,6 +3,13 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
+import {
+  generateOAuthFinalizeNonce,
+  hashOAuthFinalizeNonce,
+  OAUTH_FINALIZE_NONCE_METADATA_KEY,
+  oauthFinalizeNoncesMatch,
+  scrubFinalizeNonceFromMetadata,
+} from "@app/lib/api/oauth/finalize_binding";
 import { verifyWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
@@ -59,10 +66,28 @@ export type OAuthError = {
     | "connection_creation_failed"
     | "connection_not_implemented"
     | "connection_finalization_failed"
+    | "connection_ownership_mismatch"
     | "credential_retrieval_failed"
     | "mcp_server_connection_not_found";
   message: string;
   oAuthAPIError?: OAuthAPIError;
+};
+
+export type OAuthSetupResult = {
+  setupUrl: string;
+  connectionId: string;
+  finalizeNonce: string;
+};
+
+export type FinalizeConnectionOptions = {
+  /**
+   * Workspace sId from the session cookie/JWT claim. Used when
+   * `auth.workspace()` is null (cross-region callback) so ownership can still
+   * be checked against the initiating workspace without a local workspace row.
+   */
+  sessionWorkspaceId?: string;
+  /** Nonce from the HttpOnly cookie set at setup for this connection. */
+  finalizeNonce?: string;
 };
 
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
@@ -111,6 +136,15 @@ export function getProviderStrategy(
  * finalization.
  */
 /**
+ * @cc [owner:flvndvd,label:security] oauth-setup-binds-finalize-nonce
+ * Connection creation MUST stamp `hashOAuthFinalizeNonce(nonce)` on connection
+ * metadata (after spreading caller extraConfig so it cannot be overwritten) and
+ * return the plaintext nonce so the setup route can set a matching HttpOnly
+ * cookie. Finalize MUST reject when the cookie does not match — see
+ * `oauth-finalize-requires-ownership`. Connection metadata MUST never store the
+ * plaintext cookie value.
+ */
+/**
  * @cc [owner:spolu,label:security;logging] no-oauth-setup-config-values-in-logs
  * Setup validation failures MUST NOT log extraConfig values, except extraConfig.mcp_server_id,
  * which MAY be logged as a non-secret diagnostic identifier. Configuration payloads MUST be
@@ -122,7 +156,7 @@ export async function createConnectionAndGetSetupUrl(
   useCase: OAuthUseCase,
   extraConfig: ExtraConfigType,
   openerOrigin?: string
-): Promise<Result<string, OAuthError>> {
+): Promise<Result<OAuthSetupResult, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const providerStrategy = getProviderStrategy(provider);
@@ -254,6 +288,12 @@ export async function createConnectionAndGetSetupUrl(
   // never persist it on the OAuth connection metadata.
   const { mcp_server_id: _mcpServerId, ...connectionExtraConfig } = extraConfig;
 
+  const finalizeNonce = generateOAuthFinalizeNonce();
+
+  // Identity and finalize binding MUST be written after spreading caller
+  // extraConfig so a malicious client cannot overwrite user_id / workspace_id /
+  // finalize_nonce_hash via setup query params.
+
   // Defense in depth: only persist opener origins that are trusted Dust
   // surfaces. The setup route also rejects untrusted query values with 400.
   const trustedOpenerOrigin =
@@ -270,9 +310,10 @@ export async function createConnectionAndGetSetupUrl(
 
   const metadata: Record<string, unknown> = {
     use_case: useCase,
+    ...connectionExtraConfig,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
-    ...connectionExtraConfig,
+    [OAUTH_FINALIZE_NONCE_METADATA_KEY]: hashOAuthFinalizeNonce(finalizeNonce),
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
     ...(trustedOpenerOrigin && { opener_origin: trustedOpenerOrigin }),
   };
@@ -319,32 +360,108 @@ export async function createConnectionAndGetSetupUrl(
       ? await hasFeatureFlag(auth, "sensitivity_labels")
       : false;
 
-  return new Ok(
-    providerStrategy.setupUri({
+  return new Ok({
+    setupUrl: providerStrategy.setupUri({
       connection,
       extraConfig,
       relatedCredential,
       useCase,
       clientId,
       forceLabelsScope,
-    })
-  );
+    }),
+    connectionId: connection.connection_id,
+    finalizeNonce,
+  });
+}
+
+/**
+ * @cc [owner:flvndvd,label:security] oauth-finalize-requires-ownership
+ * Before exchanging the authorization code, `finalizeConnection` MUST verify
+ * that `connection.metadata.user_id` and `workspace_id` match the authenticated
+ * session user and workspace (using `sessionWorkspaceId` when
+ * `auth.workspace()` is null for cross-region), and that the presented
+ * finalize nonce hashes to `connection.metadata.finalize_nonce_hash`.
+ * It MUST NOT call the OAuth service finalize API when any of those checks fail,
+ * and MUST NOT skip checks when auth/workspace is missing. On success it MUST
+ * scrub `finalize_nonce_hash` from the returned connection metadata.
+ * Fails closed when identity cannot be established — including cross-region
+ * callbacks that lack a session workspace claim.
+ */
+function assertFinalizeOwnership({
+  auth,
+  connection,
+  options,
+}: {
+  auth: Authenticator | null;
+  connection: OAuthConnectionType;
+  options: FinalizeConnectionOptions;
+}): Result<void, OAuthError> {
+  const sessionUserId = auth?.user()?.sId;
+  const connectionUserId = connection.metadata.user_id;
+  const connectionWorkspaceId = connection.metadata.workspace_id;
+  const sessionWorkspaceId =
+    auth?.workspace()?.sId ?? options.sessionWorkspaceId;
+  const expectedNonce = connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY];
+
+  if (
+    !sessionUserId ||
+    !isString(connectionUserId) ||
+    sessionUserId !== connectionUserId
+  ) {
+    return new Err({
+      code: "connection_ownership_mismatch",
+      message:
+        "Failed to finalize connection: authenticated user does not own this connection",
+    });
+  }
+
+  if (
+    !sessionWorkspaceId ||
+    !isString(connectionWorkspaceId) ||
+    sessionWorkspaceId !== connectionWorkspaceId
+  ) {
+    return new Err({
+      code: "connection_ownership_mismatch",
+      message:
+        "Failed to finalize connection: authenticated workspace does not own this connection",
+    });
+  }
+
+  if (!oauthFinalizeNoncesMatch(expectedNonce, options.finalizeNonce)) {
+    return new Err({
+      code: "connection_ownership_mismatch",
+      message:
+        "Failed to finalize connection: OAuth finalize nonce mismatch or missing",
+    });
+  }
+
+  return new Ok(undefined);
 }
 
 /**
  * @cc [owner:flvndvd,label:backend] tolerate-missing-workspace
- * `auth` MAY be null or carry no workspace: the callback session can reference a workspace
- * unknown to this region. Finalization MUST NOT fail or call workspace-requiring accessors
- * before the connection is finalized. The `oauth.authorized` audit event is emitted when a
+ * `auth` MAY be null or carry no workspace: the callback session can reference a
+ * workspace unknown to this region. Finalization MUST NOT call
+ * workspace-requiring accessors for audit logging. Ownership MUST still be
+ * verified via `auth.user()` and `sessionWorkspaceId` (see
+ * `oauth-finalize-requires-ownership`); missing identity fails closed rather than
+ * skipping the check. The `oauth.authorized` audit event is emitted when a
  * workspace is present; otherwise a warning is logged since no audit target exists.
+ *
+ * Architectural note: a Dust session with neither `auth.workspace()` nor a
+ * `sessionWorkspaceId` claim cannot be safely bound to a connection's
+ * `workspace_id`. We fail closed in that case rather than weakening ownership.
+ * Legitimate cross-region callbacks still work because they retain the workspace
+ * claim on the session cookie even when the workspace row is absent locally.
  */
 export async function finalizeConnection(
   auth: Authenticator | null,
   provider: OAuthProvider,
-  query: ParsedUrlQuery
+  query: ParsedUrlQuery,
+  options: FinalizeConnectionOptions = {}
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
   const childLogger = logger.child({
-    workspaceId: auth?.workspace()?.sId,
+    workspaceId: auth?.workspace()?.sId ?? options.sessionWorkspaceId,
     userId: auth?.user()?.sId,
     provider,
   });
@@ -402,7 +519,8 @@ export async function finalizeConnection(
 
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
-  // Fetching the connection metadata is necessary to build the redirect URI.
+  // Fetching the connection metadata is necessary to build the redirect URI
+  // and to enforce ownership / finalize-nonce binding before code exchange.
   const connectionRes = await api.getConnectionMetadata({
     connectionId,
   });
@@ -419,6 +537,24 @@ export async function finalizeConnection(
   }
 
   const connection = connectionRes.value.connection;
+
+  const ownershipRes = assertFinalizeOwnership({
+    auth,
+    connection,
+    options,
+  });
+  if (ownershipRes.isErr()) {
+    childLogger.error(
+      {
+        connectionId,
+        step: "ownership_validation",
+        connectionUserId: connection.metadata.user_id,
+        connectionWorkspaceId: connection.metadata.workspace_id,
+      },
+      "OAuth: Refusing to finalize connection — ownership or finalize nonce mismatch"
+    );
+    return ownershipRes;
+  }
 
   const cRes = await api.finalizeConnection({
     provider,
@@ -474,7 +610,12 @@ export async function finalizeConnection(
     );
   }
 
-  return new Ok(cRes.value.connection);
+  // Do not return the finalize-nonce hash to callers; it is only needed for the
+  // ownership check above and should not circulate after a successful finalize.
+  return new Ok({
+    ...cRes.value.connection,
+    metadata: scrubFinalizeNonceFromMetadata(cRes.value.connection.metadata),
+  });
 }
 
 export async function checkConnectionOwnership(
