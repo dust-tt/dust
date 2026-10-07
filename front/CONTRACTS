@@ -443,8 +443,10 @@ described below.
 @cc [label:audit-logging;security] audit-workspace-first-target
 Audit targets must include the workspace as the first target.
 
-- Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
-- Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
+- Use `buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())` or
+  `buildAuditLogTarget("workspace", workspace)`
+- Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName }`,
+  `{ type: "api_key", id: key.sId, name: key.name }`, etc.
 
 @cc [label:audit-logging;security] audit-action-naming
 Audit action names must follow `<resource>.<verb>` dot notation.

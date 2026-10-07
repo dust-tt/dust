@@ -28,6 +28,12 @@ export function getMCPServerOAuthSettings(
   return { useCase: view.oAuthUseCase, scope: view.oauthScope };
 }
 
+/**
+ * @cc [label:audit-logging;security] mcp-server-credentials-audit-no-secrets
+ * Credential audit metadata may record only which fields changed
+ * (`shared_secret_updated`, `custom_headers_updated` as strings). It must never
+ * include secret values, header values, connection ids, or credential ids.
+ */
 export function emitMCPServerCredentialsUpdatedAuditLog(
   auth: Authenticator,
   server: MCPServerAuditTarget,
@@ -54,6 +60,12 @@ export function emitMCPServerCredentialsUpdatedAuditLog(
   });
 }
 
+/**
+ * @cc [label:audit-logging;security] mcp-server-oauth-settings-audit-no-scope
+ * OAuth settings audit metadata may include use-case before/after values and
+ * `oauth_scope_changed` as `"true"` or `"false"`. It must never include the
+ * OAuth scope string itself.
+ */
 export function emitMCPServerOAuthSettingsUpdatedAuditLog(
   auth: Authenticator,
   server: MCPServerAuditTarget,
