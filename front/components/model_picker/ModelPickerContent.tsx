@@ -42,6 +42,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -95,6 +96,8 @@ export function ModelPickerContent({
   onChangeEffort,
   confirm,
 }: ModelPickerContentProps) {
+  const { t } = useLingui();
+
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
@@ -103,7 +106,7 @@ export function ModelPickerContent({
     >
       {tiers.length > 0 && (
         <DropdownMenuLabel className="flex items-center gap-1 text-sm">
-          Model tier
+          <Trans>Model tier</Trans>
           {hint && (
             <PopoverRoot>
               <PopoverTrigger asChild>
@@ -112,7 +115,7 @@ export function ModelPickerContent({
                   size="xs"
                   icon={InfoCircle}
                   className="-my-1 text-muted-foreground"
-                  aria-label="About model tiers"
+                  aria-label={t`About model tiers`}
                   onClick={(e) => e.stopPropagation()}
                 />
               </PopoverTrigger>
@@ -132,7 +135,7 @@ export function ModelPickerContent({
                     rel="noopener noreferrer"
                     className="text-xs underline"
                   >
-                    Learn more
+                    <Trans>Learn more</Trans>
                   </LinkWrapper>
                 </div>
               </PopoverContent>
@@ -151,9 +154,9 @@ export function ModelPickerContent({
             <DropdownMenuItem
               key={tier.id}
               icon={MODEL_TIER_ICON[tier.id]}
-              label={tier.name}
+              label={t(tier.name)}
               disabled
-              tooltip={getModelLockTooltip(lockReason)}
+              tooltip={getModelLockTooltip(t, lockReason)}
               endComponent={
                 <Icon
                   visual={Lock01}
@@ -174,12 +177,12 @@ export function ModelPickerContent({
           <DropdownMenuItem
             key={tier.id}
             icon={MODEL_TIER_ICON[tier.id]}
-            label={tier.name}
+            label={t(tier.name)}
             className="text-foreground"
             endComponent={
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-                  {getTierResolvedModelLabel(tier.id, streams)}
+                  {getTierResolvedModelLabel(t, tier.id, streams)}
                   {regionalFlag}
                 </span>
                 {isSelected && (
@@ -199,7 +202,7 @@ export function ModelPickerContent({
       {tiers.length > 0 && <DropdownMenuSeparator />}
 
       <DropdownMenuItem
-        label="More models"
+        label={t`More models`}
         endComponent={
           <Icon
             visual={isMakersExpanded ? ChevronDown : ChevronRight}

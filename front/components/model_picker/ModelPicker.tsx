@@ -22,11 +22,11 @@ import {
   getInitialEffort,
   getModelTier,
   getModelWithReasoningEffortLabel,
-  getReasoningEffortLabel,
   getTierFallbackMessage,
   getTierLockReason,
   isModelLocked,
   isSameSelection,
+  LOWERCASE_REASONING_EFFORT_LABELS,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
 import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
@@ -50,6 +50,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -114,6 +115,7 @@ export function ModelPicker({
 
   const { isDark } = useTheme();
 
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
@@ -283,7 +285,7 @@ export function ModelPicker({
   const degradedModelTooltip =
     shown.display.kind === "model" &&
     degradedModelIds.has(shown.display.model.modelId)
-      ? getDegradedModelTooltip(shown.display.model.displayName)
+      ? getDegradedModelTooltip(t, shown.display.model.displayName)
       : null;
   const shownTier =
     shown.display.kind === "tier" ? getModelTier(shown.display.tierId) : null;
@@ -294,27 +296,31 @@ export function ModelPicker({
     shownTier &&
     fallbackResolution &&
     fallbackStreamIds.has(shownTier.metaModelId)
-      ? getTierFallbackMessage(shownTier.name, fallbackResolution.displayName)
+      ? getTierFallbackMessage(
+          t,
+          t(shownTier.name),
+          fallbackResolution.displayName
+        )
       : null;
   const degradationTooltip = degradedModelTooltip ?? tierFallbackMessage;
 
   // composer -> eventual fallback message. Agent builder -> fallback hint
   const menuHint =
-    tierFallbackMessage ?? (showAutoModelsHint ? AUTO_MODELS_HINT : null);
+    tierFallbackMessage ?? (showAutoModelsHint ? t(AUTO_MODELS_HINT) : null);
 
   // Model name and reasoning effort read as one string for the tooltip and the
   // accessible name, but the visible trigger splits the effort into its own
   // chip so it reads as a modifier rather than part of the model's name.
-  const label = getModelWithReasoningEffortLabel(shown.display);
+  const label = getModelWithReasoningEffortLabel(t, shown.display);
 
   const triggerLabel =
     shown.display.kind === "tier"
-      ? getModelTier(shown.display.tierId).name
+      ? t(getModelTier(shown.display.tierId).name)
       : shown.display.model.displayName;
 
   const effortLabel =
-    shown.display.kind === "model"
-      ? getReasoningEffortLabel(shown.display.effort)?.toLowerCase()
+    shown.display.kind === "model" && shown.display.effort !== "none"
+      ? t(LOWERCASE_REASONING_EFFORT_LABELS[shown.display.effort])
       : null;
 
   return (
@@ -353,9 +359,9 @@ export function ModelPicker({
           isSelect={showLabel && showDropdownArrow}
           tooltip={
             degradationTooltip ??
-            (showLabel ? undefined : `Model picker: ${label}`)
+            (showLabel ? undefined : t`Model picker: ${label}`)
           }
-          aria-label={`Model picker: ${label}`}
+          aria-label={t`Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>

@@ -58,7 +58,7 @@ export function ErrorMessage({
     modelResolutionMethod,
     errorCategory: error.metadata?.category,
   });
-  const retryTierName = retryTier ? getModelTier(retryTier).name : null;
+  const retryTierName = retryTier ? t(getModelTier(retryTier).name) : null;
   const failedModelConfig = failedModel
     ? getSupportedModelConfig(failedModel)
     : null;

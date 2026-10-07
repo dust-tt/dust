@@ -10,6 +10,7 @@ import {
   AgentSuggestionActionCard,
   mapSuggestionStateToCardState,
 } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import { REASONING_EFFORT_LABELS } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
@@ -448,7 +449,7 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   const effort =
     suggestion.reasoningEffort ?? relations.model?.defaultReasoningEffort;
   const formattedReasoning = effort
-    ? effort.charAt(0).toUpperCase() + effort.slice(1)
+    ? t(REASONING_EFFORT_LABELS[effort])
     : t({ message: "Default", context: "reasoning effort" });
 
   return (

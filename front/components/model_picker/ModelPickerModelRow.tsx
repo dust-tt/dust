@@ -15,6 +15,7 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactNode } from "react";
 import { useRef } from "react";
 
@@ -51,6 +52,7 @@ export function ModelPickerModelRow({
   onChangeEffort,
   onRevert,
 }: ModelPickerModelRowProps) {
+  const { t } = useLingui();
   const itemRef = useRef<HTMLDivElement>(null);
 
   if (lockReason) {
@@ -62,7 +64,7 @@ export function ModelPickerModelRow({
         inset={inset}
         truncateText
         disabled
-        tooltip={getModelLockTooltip(lockReason)}
+        tooltip={getModelLockTooltip(t, lockReason)}
         endComponent={
           <div className="flex items-center gap-2">
             {regionalFlag}
@@ -92,16 +94,18 @@ export function ModelPickerModelRow({
       </div>
     ) : undefined;
 
+  const { displayName } = model;
+
   return (
     <>
       <DropdownMenuItem
         ref={itemRef}
-        label={`${model.displayName}${isDefault ? " (Default)" : ""}`}
+        label={isDefault ? t`${displayName} (Default)` : displayName}
         icon={icon}
         inset={inset}
         truncateText
         tooltip={
-          isDegraded ? getDegradedModelTooltip(model.displayName) : undefined
+          isDegraded ? getDegradedModelTooltip(t, displayName) : undefined
         }
         endComponent={endComponent}
         onClick={() => {

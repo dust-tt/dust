@@ -1,3 +1,4 @@
+import { MODELS_TIER_DISPLAY_NAMES } from "@app/components/model_picker/modelPickerUtils";
 import {
   seatTypeChipColor,
   seatTypeDisplayName,
@@ -42,7 +43,6 @@ import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
-import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isMembershipSeatType,
@@ -1447,7 +1447,9 @@ export function MembersUsageTable({
           fairUse: m.fairUse ?? null,
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
-            return maxTierName ? getModelsTierDisplayName(maxTierName) : "--";
+            return maxTierName
+              ? t(MODELS_TIER_DISPLAY_NAMES[maxTierName])
+              : "--";
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [

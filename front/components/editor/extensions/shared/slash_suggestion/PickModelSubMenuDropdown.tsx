@@ -76,8 +76,9 @@ export const PickModelSubMenuDropdown = forwardRef<
           models,
           query,
           streams,
+          t,
         }),
-      [getModelIcon, lockPremiumEfforts, models, query, streams]
+      [getModelIcon, lockPremiumEfforts, models, query, streams, t]
     );
 
     // Enter picks the first model at its initial effort, like the model picker does.

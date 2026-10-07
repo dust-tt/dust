@@ -1136,7 +1136,7 @@ export function AgentMessage({
       : null;
   const perMessageModelLabel =
     perMessageModel && agentMessage.resolvedModel
-      ? getModelWithReasoningEffortLabel({
+      ? getModelWithReasoningEffortLabel(t, {
           kind: "model",
           model: perMessageModel,
           effort: agentMessage.resolvedModel.reasoningEffort,

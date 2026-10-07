@@ -4,6 +4,7 @@ import { serializeFilterHash } from "@app/components/shared/filter_panel/filterH
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import { i18n } from "@app/lib/i18n/i18n";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -772,7 +773,9 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {
-        name: getModelFilterDisplayName("claude-sonnet-5"),
+        name: getModelFilterDisplayName("claude-sonnet-5", (descriptor) =>
+          i18n._(descriptor)
+        ),
       })
     );
     const facetBodies = fetcherWithBody.mock.calls
@@ -846,7 +849,9 @@ describe("search-backed Manage Agents", () => {
       await userEvent.click(screen.getByRole("button", { name: "Filters" }));
       await userEvent.click(
         await screen.findByRole("checkbox", {
-          name: getModelFilterDisplayName("claude-sonnet-5"),
+          name: getModelFilterDisplayName("claude-sonnet-5", (descriptor) =>
+            i18n._(descriptor)
+          ),
         })
       );
       await userEvent.click(screen.getByRole("button", { name: "Apply" }));

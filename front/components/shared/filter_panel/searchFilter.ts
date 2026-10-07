@@ -123,10 +123,13 @@ const ACCESS_FILTER_OPTIONS: {
   { id: "hidden", name: msg`Not published` },
 ];
 
-export function getModelFilterDisplayName(modelId: string): string {
+export function getModelFilterDisplayName(
+  modelId: string,
+  t: Translate
+): string {
   const tierId = getTierIdForMetaModelId(modelId);
   if (tierId) {
-    return getModelTier(tierId).name;
+    return t(getModelTier(tierId).name);
   }
   return (
     getSupportedModelConfigs().find((model) => model.modelId === modelId)
@@ -219,7 +222,7 @@ export function getSearchFilterOptions(
         .map(({ modelId }): SearchFilterOption => ({
           category: "model",
           id: modelId,
-          name: getModelFilterDisplayName(modelId),
+          name: getModelFilterDisplayName(modelId, t),
           disabled: false,
         }))
         .toSorted((a, b) => compareStrings(a.name, b.name));
