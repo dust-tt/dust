@@ -87,10 +87,8 @@ const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
   a?.author.name === b?.author.name &&
   a?.createdAt === b?.createdAt &&
   a?.body === b?.body;
-const UNSUGGESTABLE_MESSAGE =
-  "Suggestions can only replace text within one paragraph.";
-const UNAPPLICABLE_MESSAGE =
-  "This suggestion can't replace the commented text. Another comment may cover part of it.";
+const UNSUGGESTABLE_MESSAGE = msg`Suggestions can only replace text within one paragraph.`;
+const UNAPPLICABLE_MESSAGE = msg`This suggestion can't replace the commented text. Another comment may cover part of it.`;
 
 /** The document the commands would produce, or null when one of them refuses. */
 const previewDocument = (
@@ -288,7 +286,7 @@ export const useDocumentComments = ({
     content: JSONContent[] | null
   ): Result<string, string> => {
     if (!content) {
-      return new Err(UNSUGGESTABLE_MESSAGE);
+      return new Err(t(UNSUGGESTABLE_MESSAGE));
     }
     const markdown = serializeInlineMarkdown(content);
     if (markdown.isErr()) {
@@ -297,7 +295,7 @@ export const useDocumentComments = ({
     const block = suggestionBlock(markdown.value);
     return block.isOk()
       ? block
-      : new Err("This text is too long or complex to suggest a change to.");
+      : new Err(t`This text is too long or complex to suggest a change to.`);
   };
 
   return {
@@ -472,14 +470,14 @@ export const useDocumentComments = ({
     suggestionTemplate: (id: string): Result<string, string> =>
       editor
         ? suggestionTemplate(getCommentInlineContent(editor.state.doc, id))
-        : new Err(UNAVAILABLE_MESSAGE),
+        : new Err(t(UNAVAILABLE_MESSAGE)),
     draftSuggestionTemplate: (): Result<string, string> => {
       const draft = editor
         ? documentCommentsPluginKey.getState(editor.state)?.draft
         : null;
       return editor && draft
         ? suggestionTemplate(getDraftInlineContent(editor.state.doc, draft))
-        : new Err(UNAVAILABLE_MESSAGE);
+        : new Err(t(UNAVAILABLE_MESSAGE));
     },
     /** Replaces the commented text with the suggestion, then resolves the thread. */
     applySuggestion: (
@@ -493,7 +491,7 @@ export const useDocumentComments = ({
           )
         : undefined;
       if (!canWrite || !editor || thread?.status !== "open") {
-        return new Err(UNAVAILABLE_MESSAGE);
+        return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const content = parseInlineMarkdown(suggestion);
       if (content.isErr()) {
@@ -507,12 +505,12 @@ export const useDocumentComments = ({
       if (!next) {
         return new Err(
           getSuggestableCommentIds(editor.state.doc).has(id)
-            ? UNAPPLICABLE_MESSAGE
-            : UNSUGGESTABLE_MESSAGE
+            ? t(UNAPPLICABLE_MESSAGE)
+            : t(UNSUGGESTABLE_MESSAGE)
         );
       }
       if (!isSavable(next.toJSON())) {
-        return new Err("This suggestion can't be saved in this document.");
+        return new Err(t`This suggestion can't be saved in this document.`);
       }
       // Two transactions: the text change is undoable, the resolution stays out of history.
       const before = editor.state.doc;
@@ -520,7 +518,7 @@ export const useDocumentComments = ({
         !editor.commands.applyCommentSuggestion(id, content.value) ||
         editor.state.doc === before
       ) {
-        return new Err(UNAPPLICABLE_MESSAGE);
+        return new Err(t(UNAPPLICABLE_MESSAGE));
       }
       editor.commands.setCommentResolved(id, true);
       requestFocus(focusNext);

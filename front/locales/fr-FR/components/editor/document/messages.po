@@ -295,12 +295,28 @@ msgid "This comment can't be saved in this document. Try shortening or simplifyi
 msgstr "Ce commentaire ne peut pas être enregistré dans ce document. Essayez de le raccourcir ou de le simplifier."
 
 #: front/components/editor/document/useDocumentComments.ts
+msgid "Suggestions can only replace text within one paragraph."
+msgstr "Une suggestion ne peut remplacer que du texte au sein d’un même paragraphe."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This suggestion can't replace the commented text. Another comment may cover part of it."
+msgstr "Cette suggestion ne peut pas remplacer le texte commenté. Un autre commentaire en couvre peut-être une partie."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This text is too long or complex to suggest a change to."
+msgstr "Ce texte est trop long ou trop complexe pour y suggérer une modification."
+
+#: front/components/editor/document/useDocumentComments.ts
 msgid "This comment was deleted."
 msgstr "Ce commentaire a été supprimé."
 
 #: front/components/editor/document/useDocumentComments.ts
 msgid "This thread changed while sending. Send again."
 msgstr "Cette discussion a changé pendant l’envoi. Renvoyez votre message."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This suggestion can't be saved in this document."
+msgstr "Cette suggestion ne peut pas être enregistrée dans ce document."
 
 #: front/components/editor/document/useDocumentEditor.ts
 msgid "Could not save. Your changes are still here. Try again."
