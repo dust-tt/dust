@@ -157,12 +157,6 @@ function getActivityContext(): Context | null {
 
 // This function allows to heartbeat back to the temporal workflow, but also
 // awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
-/**
- * @cc [owner:philipperolet,label:error-handling] await-heartbeat
- * Inside a cancelled Temporal activity, the returned promise rejects with `CancelledFailure`.
- * Callers MUST await it (or otherwise handle the rejection); fire-and-forget callers such as timers
- * MUST use `heartbeatWithoutCancelCheck` instead.
- */
 export async function heartbeat() {
   const context = getActivityContext();
   if (!context) {
@@ -172,13 +166,8 @@ export async function heartbeat() {
   await context.sleep(0);
 }
 
-/**
- * @cc [owner:philipperolet,label:error-handling] fire-and-forget-heartbeat
- * Records a heartbeat when called inside a Temporal activity and does nothing otherwise. It MUST
- * return synchronously and MUST NOT throw, inside or outside an activity, including once the
- * activity is cancelled. It does not report cancellation, which
- * `Context.current().cancellationSignal` exposes.
- */
+// Unlike `heartbeat`, never rejects on cancellation, so it can be called without awaiting (e.g.
+// from timers).
 export function heartbeatWithoutCancelCheck(): void {
   getActivityContext()?.heartbeat();
 }
