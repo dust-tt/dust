@@ -22,6 +22,11 @@ export interface DocumentProps {
   autosaveDebounceMs?: number;
   /** Enables editing. Receives the DFM source to persist; resolve Ok once stored, Err with the reason. */
   onSave?: (content: string) => Promise<DocumentSaveResult>;
+  /**
+   * Edits the document live with everyone else in the session instead of saving it. The file's
+   * content shows read-only until the session has synced. Commenting is off for now.
+   */
+  live?: DocumentLiveSession;
   /** Reports the draft state, so the host can hold navigation while edits are unsaved. */
   onStateChange?: (state: DocumentDraftState) => void;
   /** Shown at the left of the status row, the save status at its right: a marker from the host. */
@@ -54,6 +59,14 @@ export interface DocumentProps {
    * when it mounts, so keep the list stable.
    */
   commentInputExtensions?: Extensions;
+}
+
+/** Where and as whom a Document joins its live session. */
+export interface DocumentLiveSession {
+  url: string;
+  documentName: string;
+  token: string;
+  user: { name: string; color: string };
 }
 
 /** Where a live document's connection stands, shown in place of the save status. */

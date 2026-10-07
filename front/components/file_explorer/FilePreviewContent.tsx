@@ -14,9 +14,14 @@ import {
   useSignDfmCommentMessage,
 } from "@app/hooks/useDfmCommentSignatures";
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import {
+  getLiveSessionUrl,
+  liveCaretColor,
+} from "@app/lib/client/live_session";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
+import { toLiveDocumentName } from "@app/types/collab";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
@@ -364,11 +369,24 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
     ];
   }, [owner, editor.path]);
 
+  const liveUrl = getLiveSessionUrl();
+  const live =
+    editor.live && liveUrl && user
+      ? {
+          url: liveUrl,
+          documentName: toLiveDocumentName(owner.sId, editor.path),
+          // Dev-only token: the user id. Real tickets come with the session's auth.
+          token: user.sId,
+          user: { name: user.fullName, color: liveCaretColor(user.sId) },
+        }
+      : undefined;
+
   return (
     <Document
       initialContent={editor.initialContent}
-      onSave={editor.onSave}
-      onStateChange={editor.onStateChange}
+      onSave={live ? undefined : editor.onSave}
+      onStateChange={live ? undefined : editor.onStateChange}
+      live={live}
       commentAuthor={
         user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
       }
