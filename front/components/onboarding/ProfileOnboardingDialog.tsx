@@ -10,6 +10,7 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { ONBOARDING_PROFILE_PENDING_METADATA_KEY } from "@app/types/onboarding";
 import { Dialog, DialogContent, DialogTitle, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 /**
  * Unskippable dialog shown on top of the application until the user has
@@ -75,7 +76,9 @@ function ProfileOnboardingDialogContent({
         isAlertDialog
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <DialogTitle className="sr-only">Welcome to Dust</DialogTitle>
+        <DialogTitle className="sr-only">
+          <Trans>Welcome to Dust</Trans>
+        </DialogTitle>
         <div className="flex-1 overflow-y-auto px-12 py-8">
           {form.isWelcomeDataLoading ? (
             <div className="flex h-full items-center justify-center">

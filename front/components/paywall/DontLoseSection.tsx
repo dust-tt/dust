@@ -8,6 +8,8 @@ import {
   Robot,
   Stars02,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 
 interface DontLoseSectionProps {
@@ -53,6 +55,7 @@ function DontLoseItem({
 }
 
 export function DontLoseSection({ owner }: DontLoseSectionProps) {
+  const { t } = useLingui();
   // Fetch agent configurations to get count
   const {
     agentConfigurations,
@@ -70,35 +73,40 @@ export function DontLoseSection({ owner }: DontLoseSectionProps) {
   // Only show agent count if 10 or more agents
   const agentTitle =
     !isAgentConfigurationsError && agentCount >= 10
-      ? `Your ${agentCount} custom agents`
-      : "Your custom agents";
+      ? t`${plural(agentCount, {
+          one: "Your # custom agent",
+          other: "Your # custom agents",
+        })}`
+      : t`Your custom agents`;
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="text-lg font-semibold text-foreground">Don't lose:</h2>
+      <h2 className="text-lg font-semibold text-foreground">
+        <Trans>Don't lose:</Trans>
+      </h2>
       <div className="flex flex-col gap-5">
         <DontLoseItem
           icon={Robot}
           title={agentTitle}
-          description="All the AI agents you've configured with your workflows"
+          description={t`All the AI agents you've configured with your workflows`}
           isLoading={isLoading}
         />
         <DontLoseItem
           icon={MessageChatSquare}
-          title="Your conversation history & context"
-          description="Everything your agents have learned from your interactions"
+          title={t`Your conversation history & context`}
+          description={t`Everything your agents have learned from your interactions`}
           isLoading={isLoading}
         />
         <DontLoseItem
           icon={CloudArrowLeftRight}
-          title="Your connected company data"
-          description="All your connected company data."
+          title={t`Your connected company data`}
+          description={t`All your connected company data.`}
           isLoading={isLoading}
         />
         <DontLoseItem
           icon={Stars02}
-          title="Your advanced AI models access"
-          description="Access to GPT-5, Claude 4.5, Gemini, and Mistral"
+          title={t`Your advanced AI models access`}
+          description={t`Access to GPT-5, Claude 4.5, Gemini, and Mistral`}
           isLoading={isLoading}
         />
       </div>

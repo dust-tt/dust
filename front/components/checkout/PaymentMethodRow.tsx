@@ -1,4 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { SVGComponentProps } from "react-svg-credit-card-payment-icons";
 import {
   AmericanExpressFlatIcon,
@@ -79,6 +80,8 @@ export function PaymentMethodRow({
   paymentMethod,
   onRestart,
 }: PaymentMethodRowProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex w-full items-center justify-between rounded-xl bg-muted-background p-3">
       <div className="flex items-center gap-2">
@@ -95,7 +98,12 @@ export function PaymentMethodRow({
             : `IBAN •••• ${paymentMethod.last4}`}
         </span>
       </div>
-      <Button label="Change" variant="ghost" size="sm" onClick={onRestart} />
+      <Button
+        label={t({ message: "Change", context: "verb, button label" })}
+        variant="ghost"
+        size="sm"
+        onClick={onRestart}
+      />
     </div>
   );
 }
