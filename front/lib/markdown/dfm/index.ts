@@ -17,6 +17,11 @@ export {
 export { parseDfm, serializeDfm } from "@app/lib/markdown/dfm/document";
 export { anchorComment } from "@app/lib/markdown/dfm/operations";
 export { messageSignaturePayload } from "@app/lib/markdown/dfm/signatures";
+export type { DfmMessagePart } from "@app/lib/markdown/dfm/suggestions";
+export {
+  readMessageSuggestions,
+  suggestionBlock,
+} from "@app/lib/markdown/dfm/suggestions";
 export type {
   DfmAnchor,
   DfmAnchorDirective,
