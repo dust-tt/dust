@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockDistribution,
   mockExecuteWithLock,
-  mockGaugeDelta,
+  mockIncrement,
   mockGetSandboxImage,
   mockGetSandboxProvider,
   mockProviderCreate,
@@ -15,7 +15,7 @@ const {
 } = vi.hoisted(() => ({
   mockDistribution: vi.fn(),
   mockExecuteWithLock: vi.fn(),
-  mockGaugeDelta: vi.fn(),
+  mockIncrement: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
   mockProviderCreate: vi.fn(),
@@ -28,9 +28,8 @@ const {
 
 vi.mock("@app/lib/utils/statsd", () => ({
   statsDMetrics: {
-    increment: vi.fn(),
+    increment: mockIncrement,
     distribution: mockDistribution,
-    gaugeDelta: mockGaugeDelta,
   },
 }));
 
@@ -555,8 +554,8 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
       );
       expect(reloaded?.status).toBe("deleted");
       if (status === "running") {
-        expect(mockGaugeDelta).toHaveBeenCalledWith(
-          "sandbox.lifecycle.running",
+        expect(mockIncrement).toHaveBeenCalledWith(
+          "sandbox.lifecycle.running_delta",
           -1,
           expect.arrayContaining([
             expect.stringMatching(/^region:/),
@@ -564,7 +563,11 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
           ])
         );
       } else {
-        expect(mockGaugeDelta).not.toHaveBeenCalled();
+        expect(mockIncrement).not.toHaveBeenCalledWith(
+          "sandbox.lifecycle.running_delta",
+          expect.anything(),
+          expect.anything()
+        );
       }
     }
   );
@@ -1810,7 +1813,7 @@ describe("SandboxResource.ensureActive", () => {
   });
 });
 
-describe("sandbox.lifecycle.running gauge", () => {
+describe("sandbox.lifecycle.running_delta counter", () => {
   let authenticator: Authenticator;
   let conversation: ConversationType;
   let conversationResource: ConversationResource;
@@ -1860,19 +1863,19 @@ describe("sandbox.lifecycle.running gauge", () => {
     conversationResource = fetched;
   });
 
-  function expectRunningGauge(
+  function expectRunningDelta(
     delta: 1 | -1,
     sandboxType: "conversation" | "frame"
   ) {
-    expect(mockGaugeDelta).toHaveBeenCalledWith(
-      "sandbox.lifecycle.running",
+    expect(mockIncrement).toHaveBeenCalledWith(
+      "sandbox.lifecycle.running_delta",
       delta,
       expect.arrayContaining([
         expect.stringMatching(/^region:/),
         `sandbox_type:${sandboxType}`,
       ])
     );
-    for (const call of mockGaugeDelta.mock.calls) {
+    for (const call of mockIncrement.mock.calls) {
       const tags = call[2] ?? [];
       expect(tags).not.toEqual(
         expect.arrayContaining([expect.stringMatching(/workspace/i)])
@@ -1887,7 +1890,7 @@ describe("sandbox.lifecycle.running gauge", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expectRunningGauge(1, "conversation");
+    expectRunningDelta(1, "conversation");
   });
 
   it("increments on frame sandbox wake", async () => {
@@ -1916,7 +1919,7 @@ describe("sandbox.lifecycle.running gauge", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expectRunningGauge(1, "frame");
+    expectRunningDelta(1, "frame");
   });
 
   it("decrements on pause (sleep)", async () => {
@@ -1931,7 +1934,7 @@ describe("sandbox.lifecycle.running gauge", () => {
       );
 
     expect(result.isOk()).toBe(true);
-    expectRunningGauge(-1, "conversation");
+    expectRunningDelta(-1, "conversation");
   });
 
   it("decrements on pause for approval", async () => {
@@ -1945,7 +1948,7 @@ describe("sandbox.lifecycle.running gauge", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expectRunningGauge(-1, "conversation");
+    expectRunningDelta(-1, "conversation");
   });
 
   it("does not decrement when destroying an already-paused sandbox", async () => {
@@ -1960,7 +1963,11 @@ describe("sandbox.lifecycle.running gauge", () => {
       );
 
     expect(result.isOk()).toBe(true);
-    expect(mockGaugeDelta).not.toHaveBeenCalled();
+    expect(mockIncrement).not.toHaveBeenCalledWith(
+      "sandbox.lifecycle.running_delta",
+      expect.anything(),
+      expect.anything()
+    );
   });
 });
 
