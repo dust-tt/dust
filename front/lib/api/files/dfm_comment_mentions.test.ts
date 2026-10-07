@@ -118,7 +118,28 @@ describe("postCommentMention", () => {
       { type: "user", userId: "usr_yuka" },
     ]);
     expect(content).toBe(
-      `Comment on \`${documentPath}\`:\n\n> Ship on Thursday.\n\n${MENTIONING.message.body}`
+      [
+        `Comment in thread \`c1\` of the document \`${documentPath}\`, in this conversation's files:`,
+        "> Ship on Thursday.",
+        MENTIONING.message.body,
+      ].join("\n\n")
+    );
+  });
+
+  it("names where a pod document lives, and leaves the quote out without one", async () => {
+    const { pod, memberAuth } = await podMemberAuth();
+    const documentPath = `pod-${pod.sId}/notes.md`;
+
+    await postCommentMention(memberAuth, {
+      documentPath,
+      newMessage: comment("Over to :mention_user[Yuka]{sId=usr_yuka}.", null),
+    });
+
+    expect(postMock.mock.calls[0][1].content).toBe(
+      [
+        `Comment in thread \`c1\` of the document \`${documentPath}\`, in the pod "${pod.name}":`,
+        "Over to :mention_user[Yuka]{sId=usr_yuka}.",
+      ].join("\n\n")
     );
   });
 
