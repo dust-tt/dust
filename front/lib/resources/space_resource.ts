@@ -557,6 +557,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  /**
+   * @cc [owner:avervaet,label:backend;product] page-counts-readable-only
+   * Pods the caller cannot read MUST NOT count toward `limit`, `hasMore` or the cursor: a page
+   * holds up to `limit` readable Pods, and `hasMore` is true only when more readable Pods match.
+   */
   static async searchProjectsByNamePaginated(
     auth: Authenticator,
     {
@@ -575,6 +580,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
+    // Read on a Pod only ever comes from its grants, never from a workspace role, so the caller's
+    // readable ids are exactly the Pods they can read and can be filtered on before the limit.
+    const readableSpaces = auth.getReadableSpaceModelIds();
+    if (
+      readableSpaces.kind === "ids" &&
+      readableSpaces.resourceIds.length === 0
+    ) {
+      return { spaces: [], hasMore: false, lastValue: null };
+    }
+
     const cursorOperator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
 
     const fetchLimit = pagination.limit + 1;
@@ -583,6 +598,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const spaces = await this.baseFetch(auth, {
       where: {
+        ...(readableSpaces.kind === "ids"
+          ? { id: { [Op.in]: readableSpaces.resourceIds } }
+          : {}),
         kind: "project",
         ...(query?.trim() && { name: { [Op.iLike]: `%${query}%` } }),
         ...(pagination.lastValue && {

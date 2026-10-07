@@ -2277,6 +2277,39 @@ describe("searchProjectsByNamePaginated", () => {
     expect(result.spaces.some((s) => s.id === permittedSpace2.id)).toBe(true);
     expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
   });
+
+  it("does not let unreadable projects use up the page", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Unreadable projects sort before the readable one.
+    for (const name of ["Pod A", "Pod B", "Pod C", "Pod D"]) {
+      await SpaceFactory.project(workspace, undefined, { name });
+    }
+    const readableSpace = await SpaceFactory.project(workspace, undefined, {
+      name: "Pod E",
+    });
+    await readableSpace.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      query: "pod",
+      pagination: { limit: 3, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.map((s) => s.id)).toEqual([readableSpace.id]);
+    expect(result.hasMore).toBe(false);
+  });
 });
 
 // List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
