@@ -2200,7 +2200,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+          this.isPrivileged()
+            ? "Only workspace admins can update a group that gives admin-level permissions."
+            : `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
     }
@@ -2295,7 +2297,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+          this.isPrivileged()
+            ? "Only workspace admins can update a group that gives admin-level permissions."
+            : `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
     }
@@ -2628,7 +2632,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    *   they are linked to, so the permission is checked on that resource and never on the
    *   group itself.
    * - system: nothing, it is internal to the workspace.
-   * A privileged group (see `isPrivileged`) is read-only for everyone but workspace admins.
+   * On a privileged group (see `isPrivileged`), only workspace admins hold write and admin.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"

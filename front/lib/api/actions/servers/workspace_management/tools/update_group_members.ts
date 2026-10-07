@@ -67,7 +67,7 @@ export async function updateGroupMembers(
 
   // Being a manager is not enough for a privileged group: changing its members gives or removes
   // admin-level powers. The resource re-checks this; refusing here gives a clear reason.
-  if (group.isPrivileged() && !auth.isAdmin()) {
+  if (!auth.can("write", group) && group.isPrivileged()) {
     return new Err(
       new MCPError(
         `Group ${group.name} [${group.sId}] gives admin-level permissions; only workspace admins can manage its members.`,
