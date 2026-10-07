@@ -233,7 +233,7 @@ function ConsumptionDailyTooltip({
     .sort((a, b) => b.credits - a.credits);
 
   const totalCredits = rows.reduce((sum, row) => sum + row.credits, 0);
-  const total = formatCreditValue(totalCredits);
+  const total = formatCreditValue(totalCredits, t);
   const isPartial = datum.timestamp === partialTimestamp;
   const { activeUsers } = datum;
 

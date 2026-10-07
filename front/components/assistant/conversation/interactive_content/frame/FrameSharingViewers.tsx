@@ -1,5 +1,6 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDateTime, formatTimeDistance } from "@app/lib/i18n/format";
 import type { FileViewerType } from "@app/types/file_viewers";
 import {
@@ -192,7 +193,12 @@ function ViewerRow({ viewer }: ViewerRowProps) {
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const timeAgo = formatTimeDistance(lastViewedAt, new Date());
+  const timeAgo = formatTimeDistance(
+    lastViewedAt,
+    new Date(),
+    undefined,
+    getActiveLocale()
+  );
 
   return (
     <FrameSharingRow label={viewer.email}>

@@ -84,7 +84,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
           ? t(descriptionDescriptor)
           : null;
         const updatedDate = file.updatedAt
-          ? formatCalendarDate(file.updatedAt)
+          ? formatCalendarDate(file.updatedAt, t)
           : null;
 
         return (
@@ -113,7 +113,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                       </>
                     ) : file.createdAt ? (
                       <>
-                        <span>{formatCalendarDate(file.createdAt)}</span>
+                        <span>{formatCalendarDate(file.createdAt, t)}</span>
                         <span className="mx-1">{"\u00B7"}</span>
                         <time>
                           {formatTime(file.createdAt, FILE_TIME_OPTIONS)}

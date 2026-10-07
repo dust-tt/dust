@@ -12,7 +12,10 @@ import type {
 import { TIMEFRAME_SECONDS } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // Format a number of AWU credits for display (thousands separators, at most
 // one decimal). Shared across the credits usage table and the message /
@@ -38,13 +41,19 @@ export function formatCreditsPrecise(credits: number): string {
   return formatNumber(credits, { maximumFractionDigits: 6 });
 }
 
-export function formatCreditValue(credits: number): string {
+export function formatCreditValue(credits: number, t: Translate): string {
   const displayedCredits = Math.round(credits * 10) / 10;
-  return `${formatCredits(credits)} credit${pluralize(displayedCredits)}`;
+  const formattedCredits = formatCredits(credits);
+  return t(
+    msg`${plural(displayedCredits, {
+      one: `${formattedCredits} credit`,
+      other: `${formattedCredits} credits`,
+    })}`
+  );
 }
 
-export function toolUsageLabel(callCount: number): string {
-  return `${callCount} use${pluralize(callCount)}`;
+export function toolUsageLabel(callCount: number, t: Translate): string {
+  return t(msg`${plural(callCount, { one: "# use", other: "# uses" })}`);
 }
 
 export function formatCreditsCompact(credits: number): string {
@@ -70,9 +79,10 @@ export function formatMicroUsdCompact(microUsd: number): string {
  * The day label MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
  * formatters, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`, which is the
  * browser's when the `localisation` flag is off: a French browser MUST then get "tomorrow", not
- * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`.
+ * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`, and the "on …" phrases from the
+ * `t` passed by the caller.
  */
-export function formatRelativeResetDay(isoDate: string): string {
+export function formatRelativeResetDay(isoDate: string, t: Translate): string {
   const resetAt = new Date(isoDate);
   const now = new Date();
   const resetDayMs = Date.UTC(
@@ -98,13 +108,19 @@ export function formatRelativeResetDay(isoDate: string): string {
     );
   }
   if (delayDays < 7) {
-    return `on ${formatDate(resetAt, { weekday: "long", timeZone: "UTC" }, locale)}`;
+    const weekday = formatDate(
+      resetAt,
+      { weekday: "long", timeZone: "UTC" },
+      locale
+    );
+    return t(msg`on ${weekday}`);
   }
-  return `on ${formatDate(
+  const date = formatDate(
     resetAt,
     { month: "short", day: "numeric", timeZone: "UTC" },
     locale
-  )}`;
+  );
+  return t(msg`on ${date}`);
 }
 
 // Browser display only: tolerates an unrecognized timeframe (the server may

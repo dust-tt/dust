@@ -26,6 +26,7 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
@@ -213,6 +214,7 @@ function InvocationRow({
   owner,
   frameId,
 }: InvocationRowProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
 
   const {
@@ -234,7 +236,7 @@ function InvocationRow({
       <CollapsibleTrigger>
         <div className="my-2 flex w-full items-center justify-between gap-4">
           <span className="text-sm">
-            {formatCalendarDateTime(new Date(invocation.createdAt))}
+            {formatCalendarDateTime(new Date(invocation.createdAt), t)}
           </span>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>{invocation.user ?? "—"}</span>

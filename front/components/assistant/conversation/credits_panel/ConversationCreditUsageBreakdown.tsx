@@ -50,6 +50,7 @@ function CreditBreakdownCard({
   labelBadge,
   value,
 }: CreditBreakdownCardProps) {
+  const { t } = useLingui();
   return (
     <div className="flex min-w-0 flex-col justify-center gap-2 rounded-xl border border-border bg-background p-4">
       <div className="flex items-start justify-between gap-2">
@@ -67,7 +68,7 @@ function CreditBreakdownCard({
       </div>
       <div className="min-w-0">
         <p className="text-base font-semibold text-foreground">
-          {formatCreditValue(value)}
+          {formatCreditValue(value, t)}
         </p>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
@@ -115,7 +116,7 @@ function ToolBreakdownCards({
         <CreditBreakdownCard
           key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
           label={tool.label}
-          description={toolUsageLabel(tool.callCount)}
+          description={toolUsageLabel(tool.callCount, t)}
           value={tool.attributedCredits}
           icon={getActionStepIcon(tool)}
         />
@@ -124,7 +125,7 @@ function ToolBreakdownCards({
         <CreditBreakdownCard
           label={t`Other tools`}
           labelBadge={String(remainingTools.length)}
-          description={toolUsageLabel(remainingToolCallCount)}
+          description={toolUsageLabel(remainingToolCallCount, t)}
           value={remainingToolCredits}
           icon={InternalActionIcons.ToolsIcon}
         />
@@ -139,6 +140,7 @@ interface ModelRowProps {
 }
 
 function ModelRow({ isDark, model }: ModelRowProps) {
+  const { t } = useLingui();
   const modelIcon = getModelLogoByModelId(model.modelId, isDark);
 
   return (
@@ -152,7 +154,7 @@ function ModelRow({ isDark, model }: ModelRowProps) {
         </span>
       </div>
       <span className="shrink-0 text-base font-semibold text-muted-foreground">
-        {formatCreditValue(model.attributedCredits)}
+        {formatCreditValue(model.attributedCredits, t)}
       </span>
     </div>
   );
@@ -216,7 +218,7 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
             </span>
           </div>
           <span className="shrink-0 text-base font-semibold text-muted-foreground">
-            {formatCreditValue(agent.billedCredits)}
+            {formatCreditValue(agent.billedCredits, t)}
           </span>
         </div>
       </CollapsibleTrigger>

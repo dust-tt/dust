@@ -13,6 +13,7 @@ import {
   useRedirectAwayFromCheckoutIfAlreadyPaid,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
+import { formatNumber } from "@app/lib/i18n/format";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -727,7 +728,7 @@ function CheckoutSuccessPage({
   const { t } = useLingui();
   const router = useAppRouter();
   const planName = seatType === "max" ? "Max" : "Pro";
-  const monthlyCredits = seatType === "max" ? "40,000" : "8,000";
+  const monthlyCredits = formatNumber(seatType === "max" ? 40_000 : 8_000);
 
   return (
     <main className="flex h-screen flex-col items-center justify-center gap-4 bg-white px-6 pb-24 pt-6">

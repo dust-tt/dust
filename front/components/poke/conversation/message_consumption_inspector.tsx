@@ -23,6 +23,7 @@ import {
   ProgressBar,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { Variants } from "framer-motion";
 import {
   AnimatePresence,
@@ -93,6 +94,7 @@ interface ModelRowProps {
 }
 
 function ModelRow({ directMessageCredits, isDark, model }: ModelRowProps) {
+  const { t } = useLingui();
   const modelIcon = getModelLogoByModelId(model.modelId, isDark);
 
   return (
@@ -114,7 +116,7 @@ function ModelRow({ directMessageCredits, isDark, model }: ModelRowProps) {
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-semibold tabular-nums text-foreground">
-          {formatCreditValue(model.attributedCredits)}
+          {formatCreditValue(model.attributedCredits, t)}
         </p>
         <p className="text-xs tabular-nums text-muted-foreground">
           {formatShare(model.attributedCredits, directMessageCredits)} of direct
@@ -131,6 +133,7 @@ interface ToolRowProps {
 }
 
 function ToolRow({ tool, totalCredits }: ToolRowProps) {
+  const { t } = useLingui();
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-border bg-background p-3">
       <div className="flex min-w-0 items-start justify-between gap-4">
@@ -144,7 +147,7 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <p className="text-sm font-medium text-foreground">{tool.label}</p>
-            <Chip size="mini" label={toolUsageLabel(tool.callCount)} />
+            <Chip size="mini" label={toolUsageLabel(tool.callCount, t)} />
             {tool.pending && (
               <Chip size="mini" color="warning" label="Pending" />
             )}
@@ -158,13 +161,13 @@ function ToolRow({ tool, totalCredits }: ToolRowProps) {
         <div>
           <dt className="text-xs text-muted-foreground">Input/output</dt>
           <dd className="text-sm font-semibold tabular-nums text-foreground">
-            {formatCreditValue(tool.attributedCredits)}
+            {formatCreditValue(tool.attributedCredits, t)}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Direct tool charge</dt>
           <dd className="text-sm font-semibold tabular-nums text-foreground">
-            {formatCreditValue(tool.directCredits)}
+            {formatCreditValue(tool.directCredits, t)}
           </dd>
         </div>
       </dl>
@@ -187,6 +190,7 @@ function MessageConsumptionBreakdown({
   messageId,
   totalCredits,
 }: MessageConsumptionBreakdownProps) {
+  const { t } = useLingui();
   const rankedTools = [...details.tools].sort(
     (left, right) => right.attributedCredits - left.attributedCredits
   );
@@ -235,7 +239,7 @@ function MessageConsumptionBreakdown({
                   Context and reasoning
                 </dt>
                 <dd className="text-sm font-semibold tabular-nums text-foreground">
-                  {formatCreditValue(details.agentWorkCredits)}
+                  {formatCreditValue(details.agentWorkCredits, t)}
                   &nbsp;
                   <span className="font-normal text-muted-foreground">
                     {formatShare(details.agentWorkCredits, totalCredits)}
@@ -248,7 +252,7 @@ function MessageConsumptionBreakdown({
                   Tools
                 </dt>
                 <dd className="text-sm font-semibold tabular-nums text-foreground">
-                  {formatCreditValue(toolCredits)}&nbsp;
+                  {formatCreditValue(toolCredits, t)}&nbsp;
                   <span className="font-normal text-muted-foreground">
                     {formatShare(toolCredits, totalCredits)}
                   </span>
@@ -258,7 +262,7 @@ function MessageConsumptionBreakdown({
             {!isReconciled && (
               <p className="text-xs text-warning">
                 Attribution differs from the authoritative bill by&nbsp;
-                {formatCreditValue(attributionDeltaCredits)}.
+                {formatCreditValue(attributionDeltaCredits, t)}.
               </p>
             )}
           </div>
@@ -283,7 +287,8 @@ function MessageConsumptionBreakdown({
               {rankedTools.length} tool
               {pluralize(rankedTools.length)}&nbsp;·&nbsp;
               {toolUsageLabel(
-                rankedTools.reduce((total, tool) => total + tool.callCount, 0)
+                rankedTools.reduce((total, tool) => total + tool.callCount, 0),
+                t
               )}
             </p>
           </div>
@@ -349,6 +354,7 @@ export function PokeMessageConsumptionInspector({
   subAgentBilledCredits,
   workspaceId,
 }: PokeMessageConsumptionInspectorProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const shouldReduceMotion = Boolean(useReducedMotion());
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -412,7 +418,7 @@ export function PokeMessageConsumptionInspector({
               {(!hasAuthoritativeBill || resolvedSubAgentBilledCredits > 0) && (
                 <p className="truncate text-xs text-muted-foreground">
                   {hasAuthoritativeBill
-                    ? `Includes ${formatCreditValue(resolvedSubAgentBilledCredits)} from sub-agents`
+                    ? `Includes ${formatCreditValue(resolvedSubAgentBilledCredits, t)} from sub-agents`
                     : "No authoritative charge recorded yet"}
                 </p>
               )}
@@ -421,7 +427,7 @@ export function PokeMessageConsumptionInspector({
           <div className="shrink-0 text-right">
             <p className="text-base font-semibold tabular-nums text-foreground">
               {hasAuthoritativeBill
-                ? formatCreditValue(totalCredits)
+                ? formatCreditValue(totalCredits, t)
                 : "Not billed"}
             </p>
           </div>
@@ -469,7 +475,7 @@ export function PokeMessageConsumptionInspector({
                   </p>
                   <p className="text-sm font-semibold tabular-nums text-foreground">
                     {hasAuthoritativeBill
-                      ? formatCreditValue(totalCredits)
+                      ? formatCreditValue(totalCredits, t)
                       : "Not billed"}
                   </p>
                 </div>

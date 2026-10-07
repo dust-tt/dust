@@ -86,7 +86,7 @@ export function PersonalUsageCard({
     ? premiumModelUsage.usedMessages >= premiumModelUsage.limitMessages
     : false;
   const nextPremiumModelRefillDate = premiumModelUsage?.nextRefill
-    ? formatRelativeResetDay(premiumModelUsage.nextRefill.availableAt)
+    ? formatRelativeResetDay(premiumModelUsage.nextRefill.availableAt, t)
     : null;
   const fairUseCreditsPercentage = fairUseAwuCreditsState
     ? Math.min(
@@ -116,15 +116,18 @@ export function PersonalUsageCard({
     fairUseAwuCreditsState?.windowKind === "fixed" &&
     fairUseAwuCreditsState.nextResetAt
   ) {
-    const resetDay = formatRelativeResetDay(fairUseAwuCreditsState.nextResetAt);
+    const resetDay = formatRelativeResetDay(
+      fairUseAwuCreditsState.nextResetAt,
+      t
+    );
     fairUseResetLabel = t`Resets ${resetDay}`;
   } else if (fairUseWindowDays !== null) {
     fairUseResetLabel = formatRollingResetLabel(fairUseWindowDays);
   }
   let fairUseRefillLabel: string | null = null;
   if (isFairUseCreditsAtLimit && nextFairUseRefill) {
-    const refillCredits = formatCreditValue(nextFairUseRefill.credits);
-    const refillDay = formatRelativeResetDay(nextFairUseRefill.date);
+    const refillCredits = formatCreditValue(nextFairUseRefill.credits, t);
+    const refillDay = formatRelativeResetDay(nextFairUseRefill.date, t);
     fairUseRefillLabel = t`${refillCredits} available again ${refillDay}`;
   }
   const premiumModelWindowDays = premiumModelUsage?.windowDays ?? 0;

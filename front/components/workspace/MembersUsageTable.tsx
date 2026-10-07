@@ -970,7 +970,7 @@ function buildFairUseCreditsColumn(
             : 0;
       const isAtLimit = limitCredits > 0 && usedCredits >= limitCredits;
       const usedLabel = formatCredits(usedCredits);
-      const limitLabel = formatCreditValue(limitCredits);
+      const limitLabel = formatCreditValue(limitCredits, t);
       const bar = (
         <ProgressBar
           aria-label={t(msg`Fair-use credits usage`)}

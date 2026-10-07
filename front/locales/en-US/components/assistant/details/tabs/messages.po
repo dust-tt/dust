@@ -89,6 +89,18 @@ msgid "No memories yet."
 msgstr "No memories yet."
 
 #: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Runs {schedule}."
+msgstr "Runs {schedule}."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Triggered by {event} events."
+msgstr "Triggered by {event} events."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Triggered by webhook events."
+msgstr "Triggered by webhook events."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
 msgid "Trigger deleted"
 msgstr "Trigger deleted"
 

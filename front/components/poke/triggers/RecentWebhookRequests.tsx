@@ -16,6 +16,7 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const PAGE_SIZE = 15;
@@ -74,6 +75,7 @@ function PokeRecentWebhookRequestsContent({
   owner,
   triggerId,
 }: PokeRecentWebhookRequestsContentProps) {
+  const { t } = useLingui();
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [statusFilter, setStatusFilter] = useState<
     WebhookRequestTriggerStatus | undefined
@@ -160,7 +162,7 @@ function PokeRecentWebhookRequestsContent({
                 <Collapsible defaultOpen={false}>
                   <CollapsibleTrigger>
                     <div className="my-2 flex w-full items-center justify-between gap-4">
-                      {formatCalendarDateTime(new Date(request.timestamp))}
+                      {formatCalendarDateTime(new Date(request.timestamp), t)}
                       <WebhookRequestStatusBadge status={request.status} />
                     </div>
                   </CollapsibleTrigger>

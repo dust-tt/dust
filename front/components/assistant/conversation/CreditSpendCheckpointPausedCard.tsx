@@ -54,7 +54,7 @@ export function CreditSpendCheckpointPausedCard({
   });
   const displayedCredits = consumption?.totalBilledCredits ?? creditsUsed;
   const formattedCredits =
-    displayedCredits !== null ? formatCreditValue(displayedCredits) : null;
+    displayedCredits !== null ? formatCreditValue(displayedCredits, t) : null;
   const triggeringUserName = triggeringUser?.fullName;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({

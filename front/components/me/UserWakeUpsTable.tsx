@@ -1,23 +1,26 @@
 import type { UserWakeUpWithConversation } from "@app/lib/api/assistant/wakeups";
+import { describeWakeUpSchedule } from "@app/lib/client/wakeup_schedule";
 import { formatDateTime } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { useUserWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
-import {
-  describeWakeUpSchedule,
-  getNextWakeUpFireAtFromScheduleConfig,
-} from "@app/lib/utils/wakeup_description";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import type { UserWakeUpType } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DataTable, Spinner, Tooltip } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 const WAKE_UPS_PAGE_SIZE = 10;
 
-function formatSchedule(wakeUp: UserWakeUpType, onceLabel: string): string {
+function formatSchedule(
+  wakeUp: UserWakeUpType,
+  onceLabel: string,
+  t: (descriptor: MessageDescriptor) => string
+): string {
   switch (wakeUp.scheduleConfig.type) {
     case "one_shot":
       // `describeWakeUpSchedule` renders a one-shot as its time of day alone ("at 11:06"), which cannot
@@ -25,7 +28,7 @@ function formatSchedule(wakeUp: UserWakeUpType, onceLabel: string): string {
       // Here the column answers "does this repeat?" instead.
       return onceLabel;
     case "cron":
-      return describeWakeUpSchedule(wakeUp);
+      return describeWakeUpSchedule(wakeUp, t);
     default:
       assertNeverAndIgnore(wakeUp.scheduleConfig);
       return "";
@@ -111,7 +114,7 @@ export function UserWakeUpsTable({ owner, onNavigate }: UserWakeUpsTableProps) {
         cell: (info) => (
           <DataTable.CellContent className="w-full justify-start text-left">
             <span className="truncate text-sm text-muted-foreground">
-              {formatSchedule(info.row.original.wakeUp, t`once`)}
+              {formatSchedule(info.row.original.wakeUp, t`once`, t)}
             </span>
           </DataTable.CellContent>
         ),

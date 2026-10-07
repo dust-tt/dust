@@ -85,7 +85,7 @@ function ConsumptionBurnUpTooltip({
 
   const delta = datum.target !== null ? datum.actual - datum.target : null;
   const deltaAmount =
-    delta !== null ? formatCreditValue(Math.abs(delta)) : null;
+    delta !== null ? formatCreditValue(Math.abs(delta), t) : null;
 
   return (
     <ChartTooltipCard

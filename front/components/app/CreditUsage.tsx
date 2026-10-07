@@ -128,7 +128,7 @@ function getRollingWindowUsageDescription(
     return getLifetimeUsageDescription(state, t);
   }
   if (state.isFixedWindow && state.nextResetAt) {
-    const resetDay = formatRelativeResetDay(state.nextResetAt);
+    const resetDay = formatRelativeResetDay(state.nextResetAt, t);
     return t(msg`Resets ${resetDay}`);
   }
   const windowDays =

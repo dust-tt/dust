@@ -51,6 +51,7 @@ import {
 } from "@app/lib/client/model_tiers";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatNumber } from "@app/lib/i18n/format";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
@@ -839,6 +840,8 @@ export function UsagePage() {
         )
       : 0);
 
+  const usedPercent = formatNumber(usedPercentage / 100, { style: "percent" });
+
   const cycleElapsedPercentage = consumptionOverview
     ? cycleElapsedPercent(consumptionOverview.period)
     : 0;
@@ -1118,7 +1121,7 @@ export function UsagePage() {
                     />
                     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
                       <span>
-                        <Trans>{usedPercentage}% used</Trans>
+                        <Trans>{usedPercent} used</Trans>
                       </span>
                       {resetAt && (
                         <span>

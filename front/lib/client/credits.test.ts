@@ -1,7 +1,10 @@
 import { setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
+import type { MessageDescriptor } from "@lingui/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { formatAvgCredits, formatRelativeResetDay } from "./credits";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 describe("formatAvgCredits", () => {
   beforeEach(() => {
@@ -47,19 +50,27 @@ describe("formatRelativeResetDay", () => {
     ["2025-09-30T12:00:00Z", "on Sep 30"],
     ["2025-10-06T12:00:00Z", "on Oct 6"],
   ])("labels %s as %s", (isoDate, expected) => {
-    expect(formatRelativeResetDay(isoDate)).toBe(expected);
+    expect(formatRelativeResetDay(isoDate, translate)).toBe(expected);
   });
 
   it("formats in the UI locale, not the format locale", async () => {
     setFormatLocale("fr-FR");
-    expect(formatRelativeResetDay("2025-09-24T00:30:00Z")).toBe("tomorrow");
+    expect(formatRelativeResetDay("2025-09-24T00:30:00Z", translate)).toBe(
+      "tomorrow"
+    );
 
     i18n.loadAndActivate({
       locale: "fr-FR",
       messages: await loadCatalog("fr-FR"),
     });
-    expect(formatRelativeResetDay("2025-09-23T12:00:00Z")).toBe("aujourd’hui");
-    expect(formatRelativeResetDay("2025-09-24T00:30:00Z")).toBe("demain");
-    expect(formatRelativeResetDay("2025-09-25T12:00:00Z")).toBe("on jeudi");
+    expect(formatRelativeResetDay("2025-09-23T12:00:00Z", translate)).toBe(
+      "aujourd’hui"
+    );
+    expect(formatRelativeResetDay("2025-09-24T00:30:00Z", translate)).toBe(
+      "demain"
+    );
+    expect(formatRelativeResetDay("2025-09-25T12:00:00Z", translate)).toBe(
+      "jeudi"
+    );
   });
 });

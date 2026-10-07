@@ -227,8 +227,8 @@ msgid "Off target"
 msgstr "Hors objectif"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "{usedPercentage}% used"
-msgstr "{usedPercentage} % utilisé"
+msgid "{usedPercent} used"
+msgstr "{usedPercent} utilisé"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Resets {resetAtFormatted}"

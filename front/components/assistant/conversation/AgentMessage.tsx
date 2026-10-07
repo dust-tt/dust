@@ -1019,7 +1019,10 @@ export function AgentMessage({
 
     if (agentMessage.costCredits !== null && agentMessage.costCredits > 0) {
       const formattedCredits = formatCredits(agentMessage.costCredits);
-      const formattedCreditValue = formatCreditValue(agentMessage.costCredits);
+      const formattedCreditValue = formatCreditValue(
+        agentMessage.costCredits,
+        t
+      );
       const creditCostTrigger = (
         <Button
           variant="ghost-secondary"

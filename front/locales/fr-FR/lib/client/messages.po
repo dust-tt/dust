@@ -13,6 +13,34 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/lib/client/calendar_date.ts
+msgid "{day} at {time}"
+msgstr "{day} à {time}"
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday}"
+msgstr "{weekday} dernier"
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday} at {time}"
+msgstr "{weekday} dernier à {time}"
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} crédit} other {{formattedCredits} crédits}}"
+
+#: front/lib/client/credits.ts
+msgid "{callCount, plural, one {# use} other {# uses}}"
+msgstr "{callCount, plural, one {# utilisation} other {# utilisations}}"
+
+#: front/lib/client/credits.ts
+msgid "on {weekday}"
+msgstr "{weekday}"
+
+#: front/lib/client/credits.ts
+msgid "on {date}"
+msgstr "le {date}"
+
 #: front/lib/client/greetings.ts
 msgid "What’s next, {name}?"
 msgstr "Et maintenant, {name} ?"
@@ -52,3 +80,7 @@ msgstr "Qu’est-ce qui se prépare, {name} ?"
 #: front/lib/client/greetings.ts
 msgid "Ready when you are, {name}."
 msgstr "Quand vous voulez, {name}."
+
+#: front/lib/client/wakeup_schedule.ts
+msgid "at {time}"
+msgstr "à {time}"

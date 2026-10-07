@@ -1,13 +1,19 @@
+import { useDescribeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/useDescribeScheduleConfig";
 import { TriggerStatusChip } from "@app/components/triggers/TriggerStatusChip";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
-import { getTriggerDescription } from "@app/lib/utils/trigger_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import type {
+  ScheduleConfig,
+  TriggerType,
+} from "@app/types/assistant/triggers";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCard,
@@ -25,6 +31,8 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
@@ -36,6 +44,28 @@ function getTriggerIcon(trigger: TriggerType) {
       return Bell01;
     default:
       assertNever(trigger);
+  }
+}
+
+function getTriggerDescription(
+  trigger: TriggerType,
+  describeScheduleConfig: (config: ScheduleConfig) => string,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  switch (trigger.kind) {
+    case "schedule": {
+      const schedule = describeScheduleConfig(trigger.configuration);
+      return schedule ? t(msg`Runs ${schedule}.`) : "";
+    }
+    case "webhook": {
+      const event = trigger.configuration.event;
+      return event
+        ? t(msg`Triggered by ${event} events.`)
+        : t(msg`Triggered by webhook events.`);
+    }
+    default:
+      assertNeverAndIgnore(trigger);
+      return "";
   }
 }
 
@@ -53,6 +83,7 @@ export function AgentTriggersTab({
   onAddTrigger,
 }: AgentTriggersTabProps) {
   const { t } = useLingui();
+  const describeScheduleConfig = useDescribeScheduleConfig();
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
@@ -136,10 +167,16 @@ export function AgentTriggersTab({
               label={trigger.name}
               description={
                 trigger.status === "enabled" ? (
-                  getTriggerDescription(trigger)
+                  getTriggerDescription(trigger, describeScheduleConfig, t)
                 ) : (
                   <div className="flex flex-col items-start gap-1">
-                    <span>{getTriggerDescription(trigger)}</span>
+                    <span>
+                      {getTriggerDescription(
+                        trigger,
+                        describeScheduleConfig,
+                        t
+                      )}
+                    </span>
                     <TriggerStatusChip status={trigger.status} />
                   </div>
                 )

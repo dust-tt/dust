@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface PokeConversationConsumptionInspectorProps {
   conversationId: string;
@@ -21,6 +22,7 @@ export function PokeConversationConsumptionInspector({
   onOpenChange,
   workspaceId,
 }: PokeConversationConsumptionInspectorProps) {
+  const { t } = useLingui();
   const { consumption, isConsumptionError, isConsumptionLoading } =
     usePokeConversationConsumption({
       conversationId,
@@ -75,7 +77,7 @@ export function PokeConversationConsumptionInspector({
             <div className="flex items-baseline justify-between gap-4">
               <span className="text-sm text-muted-foreground">Total used</span>
               <span className="text-lg font-semibold text-foreground">
-                {formatCreditValue(consumption.billedCredits)}
+                {formatCreditValue(consumption.billedCredits, t)}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
