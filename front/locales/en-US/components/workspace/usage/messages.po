@@ -1,0 +1,151 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
+msgid "Cost management"
+msgstr "Cost management"
+
+#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
+msgid "Credit spend checkpoint"
+msgstr "Credit spend checkpoint"
+
+#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
+msgid "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
+msgstr "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
+
+#: front/components/workspace/usage/LockedSection.tsx
+msgid "Top up your credit pool to enable these settings"
+msgstr "Top up your credit pool to enable these settings"
+
+#: front/components/workspace/usage/ModelTiersSettingsCard.tsx
+msgid "Models tier"
+msgstr "Models tier"
+
+#: front/components/workspace/usage/ModelTiersSettingsCard.tsx
+msgid "Workspace access"
+msgstr "Workspace access"
+
+#: front/components/workspace/usage/ModelTiersSettingsCard.tsx
+msgid "Set the highest model tier available to all members of this workspace."
+msgstr "Set the highest model tier available to all members of this workspace."
+
+#: front/components/workspace/usage/ModelTiersSettingsCard.tsx
+msgid "Published agents"
+msgstr "Published agents"
+
+#: front/components/workspace/usage/ModelTiersSettingsCard.tsx
+msgid "Allow all members to run published agents even when the agent's model tier is above their own access."
+msgstr "Allow all members to run published agents even when the agent's model tier is above their own access."
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Notifications"
+msgstr "Notifications"
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Customize when and how you receive usage-based notifications."
+msgstr "Customize when and how you receive usage-based notifications."
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Workspace credit pool threshold alert"
+msgstr "Workspace credit pool threshold alert"
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Email all workspace admins when your remaining workspace credit pool balance drops below this amount. <0>Set to 0 to disable.</0>"
+msgstr "Email all workspace admins when your remaining workspace credit pool balance drops below this amount. <0>Set to 0 to disable.</0>"
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Disabled"
+msgstr "Disabled"
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "credits"
+msgstr "credits"
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Upgrade request emails"
+msgstr "Upgrade request emails"
+
+#: front/components/workspace/usage/UsageNotificationsCard.tsx
+msgid "Email all workspace admins and managers when a member requests a spend-limit upgrade."
+msgstr "Email all workspace admins and managers when a member requests a spend-limit upgrade."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Programmatic usage"
+msgstr "Programmatic usage"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Programmatic monthly limit"
+msgstr "Programmatic monthly limit"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Maximum credits allowed for programmatic usage per month. <0>Set to 0 to block all programmatic access.</0>"
+msgstr "Maximum credits allowed for programmatic usage per month. <0>Set to 0 to block all programmatic access.</0>"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "No access"
+msgstr "No access"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Spending policies"
+msgstr "Spending policies"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Default per-user workspace credit pool monthly limit"
+msgstr "Default per-user workspace credit pool monthly limit"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Define the workspace credit pool credit limit for users per month in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
+msgstr "Define the workspace credit pool credit limit for users per month in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Define the total amount of credits each user can consume from the workspace credit pool per month. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
+msgstr "Define the total amount of credits each user can consume from the workspace credit pool per month. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "credits/month"
+msgstr "credits/month"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Upgrade request"
+msgstr "Upgrade request"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on this page."
+msgstr "Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on this page."
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Enable upgrade requests to enable this setting"
+msgstr "Enable upgrade requests to enable this setting"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Require a reason for upgrade requests"
+msgstr "Require a reason for upgrade requests"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Members must explain why they need an upgrade before their request can be submitted."
+msgstr "Members must explain why they need an upgrade before their request can be submitted."
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Auto-upgrade seats"
+msgstr "Auto-upgrade seats"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+msgstr "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn't available on your current plan. Upgrade to a paid plan to enable it.</0>"
+msgstr "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn't available on your current plan. Upgrade to a paid plan to enable it.</0>"

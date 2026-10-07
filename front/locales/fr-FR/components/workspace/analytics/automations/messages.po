@@ -1,0 +1,353 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Allow a Slack workflow"
+msgstr "Autoriser un workflow Slack"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Anyone who can run the workflow in Slack will be able to summon agents through it, guests included."
+msgstr "Toute personne pouvant exécuter le workflow dans Slack pourra solliciter des agents par son intermédiaire, invités compris."
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Workflow name"
+msgstr "Nom du workflow"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "e.g. Weekly report"
+msgstr "ex. : Rapport hebdomadaire"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "The sender name shown in Slack on the workflow's messages. It has to match exactly, spelling and capitalization included."
+msgstr "Le nom d’expéditeur affiché dans Slack sur les messages du workflow. Il doit correspondre exactement, orthographe et majuscules comprises."
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Spaces it can reach"
+msgstr "Espaces accessibles"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Add spaces"
+msgstr "Ajouter des espaces"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Search spaces"
+msgstr "Rechercher des espaces"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "No space found"
+msgstr "Aucun espace trouvé"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "The workflow always reaches agents shared in {GLOBAL_SPACE_NAME}. Add spaces to let it summon their agents too."
+msgstr "Le workflow a toujours accès aux agents partagés dans {GLOBAL_SPACE_NAME}. Ajoutez des espaces pour qu’il puisse aussi solliciter leurs agents."
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+msgid "Allow"
+msgstr "Autoriser"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search agents"
+msgstr "Rechercher des agents"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search members"
+msgstr "Rechercher des membres"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search type"
+msgstr "Rechercher un type"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Search pool"
+msgstr "Rechercher une réserve"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Schedule"
+msgstr "Planification"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Webhook"
+msgstr "Webhook"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Filters"
+msgstr "Filtres"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Clear"
+msgstr "Effacer"
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Failed to load filters."
+msgstr "Impossible de charger les filtres."
+
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Credits"
+msgstr "Crédits"
+
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "{workspaceShare}% of workspace consumption"
+msgstr "{workspaceShare} % de la consommation du workspace"
+
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+msgid "Triggers enabled"
+msgstr "Déclencheurs activés"
+
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+msgid "{disabledCount, plural, one {# disabled} other {# disabled}}"
+msgstr "{disabledCount, plural, one {# désactivée} other {# désactivées}}"
+
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+msgid "Workspace pool"
+msgstr "Réserve du workspace"
+
+#: front/components/workspace/analytics/automations/AutomationsOverview.tsx
+msgid "{memberPoolCount} on member pool"
+msgstr "{memberPoolCount} sur la réserve des membres"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "Compared to the median across all triggers for this period."
+msgstr "Par rapport à la médiane de tous les déclencheurs sur cette période."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "Compared to the median across your triggers for this period."
+msgstr "Par rapport à la médiane de vos déclencheurs sur cette période."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "What consumes credits"
+msgstr "Ce qui consomme des crédits"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "What tool is used"
+msgstr "Outil utilisé"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "What model is used"
+msgstr "Modèle utilisé"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "What skill is used"
+msgstr "Compétence utilisée"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "no comparison available"
+msgstr "aucune comparaison disponible"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "{multiple}x more than most"
+msgstr "{multiple} fois plus que la plupart"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "{multiple}x less than most"
+msgstr "{multiple} fois moins que la plupart"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "about typical"
+msgstr "dans la norme"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "Failed to load breakdown."
+msgstr "Impossible de charger le détail."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "No attributed consumption."
+msgstr "Aucune consommation attribuée."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "{percentage}% of its credits"
+msgstr "{percentage} % de ses crédits"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "How often it runs"
+msgstr "Fréquence d’exécution"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "<0>{runCount}</0> <1>times</1>"
+msgstr "<0>{runCount}</0> <1>fois</1>"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "What each run costs"
+msgstr "Coût par exécution"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
+msgid "<0>{formattedCostPerRun}</0> <1>credits</1>"
+msgstr "<0>{formattedCostPerRun}</0> <1>crédits</1>"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Disabled while the workspace is being relocated."
+msgstr "Désactivée pendant le transfert du workspace."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Disabled following a plan downgrade."
+msgstr "Désactivée suite au passage à un forfait inférieur."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Owner"
+msgstr "Propriétaire"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Enabled"
+msgstr "Activée"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Disable this automation?"
+msgstr "Désactiver cette automatisation ?"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "\"{triggerName}\" will stop running for {ownerName}. A manager or admin will be able to re-enable it."
+msgstr "« {triggerName} » ne s’exécutera plus pour {ownerName}. Un manager ou un administrateur pourra la réactiver."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Disable"
+msgstr "Désactiver"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Search…"
+msgstr "Rechercher…"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Select all {totalCount, plural, one {# automation} other {# automations}}"
+msgstr "{totalCount, plural, one {Sélectionner # automatisation} other {Sélectionner les # automatisations}}"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Set pool"
+msgstr "Définir la réserve"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Failed to load triggers."
+msgstr "Impossible de charger les déclencheurs."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "No results for \"{trimmedSearch}\". Only items with usage data appear here."
+msgstr "Aucun résultat pour « {trimmedSearch} ». Seuls les éléments disposant de données d’utilisation apparaissent ici."
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "No automation ran over this period."
+msgstr "Aucune automatisation n’a été exécutée sur cette période."
+
+#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+msgid "Set the pool for {triggerCount, plural, one {# automation} other {# automations}}"
+msgstr "Définir la réserve {triggerCount, plural, one {d’# automatisation} other {de # automatisations}}"
+
+#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+msgid "Runs are billed to the workspace's credits, or to the credits of the member who owns each automation."
+msgstr "Les exécutions sont facturées sur les crédits du workspace, ou sur ceux du membre propriétaire de chaque automatisation."
+
+#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+msgid "Validate"
+msgstr "Valider"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Workflows allowed"
+msgstr "Workflows autorisés"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Revoke this Slack workflow?"
+msgstr "Révoquer ce workflow Slack ?"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "\"{botName}\" will no longer be able to summon agents from Slack."
+msgstr "« {botName} » ne pourra plus solliciter d’agents depuis Slack."
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Revoke"
+msgstr "Révoquer"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Workflow"
+msgstr "Workflow"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Spaces"
+msgstr "Espaces"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Added"
+msgstr "Ajouté"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Revoke workflow"
+msgstr "Révoquer le workflow"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Allow a workflow"
+msgstr "Autoriser un workflow"
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "Connect the Dust Slack bot to let Slack workflows summon agents."
+msgstr "Connectez le bot Slack de Dust pour permettre aux workflows Slack de solliciter des agents."
+
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+msgid "No Slack workflow can summon agents yet."
+msgstr "Aucun workflow Slack ne peut encore solliciter d’agents."
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "This webhook lives in a space you don't have access to."
+msgstr "Ce webhook se trouve dans un espace auquel vous n’avez pas accès."
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "{webhookSourceName} webhook"
+msgstr "Webhook {webhookSourceName}"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Agent"
+msgstr "Agent"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Type"
+msgstr "Type"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Collapse breakdown for {name}"
+msgstr "Masquer le détail pour {name}"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Expand breakdown for {name}"
+msgstr "Afficher le détail pour {name}"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+msgid "Member"
+msgstr "Membre"
+
+#: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
+msgid "Pool"
+msgstr "Réserve"

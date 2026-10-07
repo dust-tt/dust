@@ -1,0 +1,50 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Allowed labels"
+msgstr "Étiquettes autorisées"
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Only labeled content matching one of these labels will be synced. Unlabeled content is always included."
+msgstr "Seuls les contenus portant l’une de ces étiquettes seront synchronisés. Les contenus sans étiquette sont toujours inclus."
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Type a label"
+msgstr "Saisissez une étiquette"
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Labels could not be retrieved. You must reconnect your Microsoft connection to grant the necessary permissions."
+msgstr "Impossible de récupérer les étiquettes. Vous devez reconnecter votre connexion Microsoft pour accorder les permissions nécessaires."
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "No labels found. Configure them in your Microsoft Purview console first."
+msgstr "Aucune étiquette trouvée. Configurez-les d’abord dans votre console Microsoft Purview."
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "No matching labels."
+msgstr "Aucune étiquette correspondante."
+
+#: front/components/shared/labels/useSensitivityLabelsController.ts
+msgid "Failed to update labels setting"
+msgstr "Impossible de mettre à jour le paramètre des étiquettes"
+
+#: front/components/shared/labels/useSensitivityLabelsController.ts
+msgid "Failed to update sensitivity labels setting"
+msgstr "Impossible de mettre à jour le paramètre des étiquettes de confidentialité"
+
+#: front/components/shared/labels/useSensitivityLabelsController.ts
+msgid "An unknown error occurred."
+msgstr "Une erreur inconnue s’est produite."

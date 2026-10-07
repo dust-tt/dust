@@ -1,7 +1,8 @@
-import { lingui } from "@lingui/vite-plugin";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vitest/config";
+
+import { linguiMergedCatalogPlugin } from "../front/scripts/i18n/merged_catalog";
 
 // Tests in front-api/ reuse front's vitest setup (DB transaction isolation,
 // Redis mocks, file storage mocks, etc.) so they work the same way as Next
@@ -10,7 +11,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [
     react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
-    lingui(),
+    linguiMergedCatalogPlugin(),
   ],
   test: {
     globals: true,

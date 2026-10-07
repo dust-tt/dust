@@ -14,6 +14,6 @@ export const linguiMacroLoader: RuleSetUseItem = {
 };
 
 export const linguiCatalogRule: RuleSetRule = {
-  test: /\.po$/,
-  use: { loader: "@lingui/loader" },
+  test: /\.catalog$/,
+  use: { loader: require.resolve("./lingui_catalog_loader") },
 };

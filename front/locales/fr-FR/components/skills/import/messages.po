@@ -1,0 +1,175 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/skills/import/ConnectWorkspaceGitHubMessage.tsx
+msgid "Connect GitHub to import from private repositories"
+msgstr "Connectez GitHub pour importer depuis des dépôts privés"
+
+#: front/components/skills/import/ConnectWorkspaceGitHubMessage.tsx
+msgid "Connect a GitHub account to grant access. All workspace members will share this connection."
+msgstr "Connectez un compte GitHub pour accorder l’accès. Tous les membres du workspace partageront cette connexion."
+
+#: front/components/skills/import/ConnectWorkspaceGitHubMessage.tsx
+msgid "Connect GitHub"
+msgstr "Connecter GitHub"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Skill name already in use"
+msgstr "Nom de compétence déjà utilisé"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Override existing skill"
+msgstr "Remplacer la compétence existante"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Invalid skill format"
+msgstr "Format de compétence invalide"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Skill name"
+msgstr "Nom de la compétence"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Status"
+msgstr "Statut"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Detecting skills"
+msgstr "Détection des compétences"
+
+#: front/components/skills/import/DetectedSkillsList.tsx
+msgid "Detection failed"
+msgstr "Échec de la détection"
+
+#: front/components/skills/import/GitHubConnectionRow.tsx
+msgid "Access repository - Shared connection"
+msgstr "Accès aux dépôts - Connexion partagée"
+
+#: front/components/skills/import/GitHubConnectionRow.tsx
+msgid "Connected"
+msgstr "Connecté"
+
+#: front/components/skills/import/GitHubConnectionRow.tsx
+msgid "Disconnect"
+msgstr "Déconnecter"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Only .zip or .skill files are accepted."
+msgstr "Seuls les fichiers .zip ou .skill sont acceptés."
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Drop files here"
+msgstr "Déposez les fichiers ici"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Upload .zip or .skill files"
+msgstr "Importer des fichiers .zip ou .skill"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Uploading files..."
+msgstr "Importation des fichiers…"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Drag and drop or click to upload"
+msgstr "Glissez-déposez ou cliquez pour importer"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Upload files"
+msgstr "Importer des fichiers"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "File requirements"
+msgstr "Exigences relatives aux fichiers"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "The imported .zip or .skill archive must include a SKILL.md file"
+msgstr "L’archive .zip ou .skill importée doit contenir un fichier SKILL.md"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "This file must contain the skill name and description formatted in YAML"
+msgstr "Ce fichier doit contenir le nom et la description de la compétence au format YAML"
+
+#: front/components/skills/import/ImportFromFilesTab.tsx
+msgid "Read more about importing skills <0>here</0>."
+msgstr "En savoir plus sur l’importation de compétences <0>ici</0>."
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "GitHub connection can't access this repository"
+msgstr "La connexion GitHub ne peut pas accéder à ce dépôt"
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "The currently connected GitHub account can't access this repository. Check the URL or reconnect with an account that has access."
+msgstr "Le compte GitHub actuellement connecté ne peut pas accéder à ce dépôt. Vérifiez l’URL ou reconnectez-vous avec un compte qui y a accès."
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "The currently connected GitHub account can't access this repository. Check the URL or ask an admin to reconnect with an account that has access."
+msgstr "Le compte GitHub actuellement connecté ne peut pas accéder à ce dépôt. Vérifiez l’URL ou demandez à un administrateur de le reconnecter avec un compte qui y a accès."
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "Repository not found"
+msgstr "Dépôt introuvable"
+
+#: front/components/skills/import/ImportFromRepositoryTab.tsx
+msgid "Check the URL. For private repos, ask an admin to connect a GitHub account with access."
+msgstr "Vérifiez l’URL. Pour les dépôts privés, demandez à un administrateur de connecter un compte GitHub qui y a accès."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Enter a GitHub repository URL to detect skills."
+msgstr "Saisissez l’URL d’un dépôt GitHub pour détecter les compétences."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Upload a .zip or .skill file with your skills."
+msgstr "Importez un fichier .zip ou .skill contenant vos compétences."
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Detecting skills..."
+msgstr "Détection des compétences…"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "{detectedCount, plural, one {# skill detected. Select the ones to import.} other {# skills detected. Select the ones to import.}}"
+msgstr "{detectedCount, plural, one {# compétence détectée. Sélectionnez celles à importer.} other {# compétences détectées. Sélectionnez celles à importer.}}"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Import skills"
+msgstr "Importer des compétences"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Repository"
+msgstr "Dépôt"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Files"
+msgstr "Fichiers"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgctxt "verb, button label"
+msgid "Import"
+msgstr "Importer"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Importing skills"
+msgstr "Importation des compétences"
+
+#: front/components/skills/import/formSchema.ts
+msgid "Select at least one skill to import"
+msgstr "Sélectionnez au moins une compétence à importer"
+
+#: front/components/skills/import/formSchema.ts
+msgid "A repository URL is required"
+msgstr "L’URL du dépôt est obligatoire"

@@ -1,0 +1,252 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Successfully removed {triggerName}"
+msgstr "{triggerName} a bien été supprimé"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Trigger \"{triggerName}\" will be removed when you save the agent."
+msgstr "Le déclencheur « {triggerName} » sera supprimé lorsque vous enregistrerez l’agent."
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Triggers"
+msgstr "Déclencheurs"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Run agents based on events. Need help? Check our <0>guide</0>."
+msgstr "Exécutez des agents en fonction d’événements. Besoin d’aide ? Consultez notre <0>guide</0>."
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Add triggers"
+msgstr "Ajouter des déclencheurs"
+
+#: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
+msgid "Other members' triggers"
+msgstr "Déclencheurs des autres membres"
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Request history"
+msgstr "Historique des requêtes"
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Loading recent requests..."
+msgstr "Chargement des requêtes récentes…"
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Unable to load recent webhook requests."
+msgstr "Impossible de charger les requêtes webhook récentes."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "No webhook requests yet."
+msgstr "Aucune requête webhook pour l’instant."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Some requests were not processed for this trigger."
+msgstr "Certaines requêtes n’ont pas été traitées pour ce déclencheur."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "Contact <0>support@dust.tt</0> to increase the rate limit for this trigger."
+msgstr "Contactez <0>support@dust.tt</0> pour augmenter la limite de fréquence de ce déclencheur."
+
+#: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
+msgid "No payload available."
+msgstr "Aucun payload disponible."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Runs {schedule}."
+msgstr "Exécution : {schedule}."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Triggered by {event} events on {sourceName}'s source."
+msgstr "Déclenché par les événements {event} de la source {sourceName}."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Triggered on {sourceName}'s source."
+msgstr "Déclenché sur la source {sourceName}."
+
+#: front/components/agent_builder/triggers/TriggerCard.tsx
+msgid "Managed by <0>{editorName}</0>."
+msgstr "Géré par <0>{editorName}</0>."
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgid "Expression too deeply nested (depth > 4)"
+msgstr "Expression trop imbriquée (profondeur > 4)"
+
+#: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
+msgid "Error parsing filter expression: {errorMessage}. Please check the filter syntax."
+msgstr "Erreur lors de l’analyse de l’expression de filtre : {errorMessage}. Veuillez vérifier la syntaxe du filtre."
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "My conversations (default)"
+msgstr "Mes conversations (par défaut)"
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "Search..."
+msgstr "Rechercher…"
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "Run in my conversations."
+msgstr "Exécuter dans mes conversations."
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "No description available."
+msgstr "Aucune description disponible."
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "No matches"
+msgstr "Aucun résultat"
+
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+msgid "No Pods"
+msgstr "Aucun Pod"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "My credits"
+msgstr "Mes crédits"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Workspace credits"
+msgstr "Crédits du workspace"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
+msgstr "Avec votre forfait, les automatisations doivent être facturées sur la réserve de crédits du workspace, que vous n’êtes pas autorisé à utiliser. Demandez l’accès à un administrateur du workspace."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Your plan doesn't support charging automations to personal credits."
+msgstr "Votre forfait ne permet pas de facturer les automatisations sur les crédits personnels."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "You don't have permission to charge automations to the workspace credit pool."
+msgstr "Vous n’êtes pas autorisé à facturer les automatisations sur la réserve de crédits du workspace."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Credits"
+msgstr "Crédits"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Which pool this trigger's runs take credits from."
+msgstr "Réserve sur laquelle les exécutions de ce déclencheur consomment des crédits."
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgctxt "placeholder, no option selected"
+msgid "Select"
+msgstr "Sélectionner"
+
+#: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
+msgid "Charge to"
+msgstr "Facturer à"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Search triggers..."
+msgstr "Rechercher des déclencheurs…"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Schedule"
+msgstr "Planification"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Trigger this agent on a schedule"
+msgstr "Déclencher cet agent selon une planification"
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "Trigger this agent with {webhookSourceName}."
+msgstr "Déclencher cet agent avec {webhookSourceName}."
+
+#: front/components/agent_builder/triggers/TriggerSelectionPage.tsx
+msgid "No triggers found matching your search"
+msgstr "Aucun déclencheur ne correspond à votre recherche"
+
+#: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
+msgid "Status"
+msgstr "Statut"
+
+#: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
+msgid "This trigger's status is managed by Dust."
+msgstr "Le statut de ce déclencheur est géré par Dust."
+
+#: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
+msgid "Only a manager or an admin can re-enable this trigger."
+msgstr "Seul un manager ou un administrateur peut réactiver ce déclencheur."
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Please select an event"
+msgstr "Veuillez sélectionner un événement"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Edit schedule"
+msgstr "Modifier la planification"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "View schedule"
+msgstr "Voir la planification"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Create schedule"
+msgstr "Créer une planification"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Edit trigger"
+msgstr "Modifier le déclencheur"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "View trigger"
+msgstr "Voir le déclencheur"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Create {webhookSourceName} trigger"
+msgstr "Créer un déclencheur {webhookSourceName}"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Create trigger"
+msgstr "Créer un déclencheur"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Succeeded"
+msgstr "Réussie"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Failed"
+msgstr "Échec"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Not matched"
+msgstr "Sans correspondance"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Rate limited"
+msgstr "Limite atteinte"
+
+#: front/components/agent_builder/triggers/WebhookRequestStatusBadge.tsx
+msgid "Out of credits"
+msgstr "Crédits épuisés"

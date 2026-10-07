@@ -1,0 +1,62 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/builder/skills/CreateSkillPage.tsx
+msgid "Dust - New skill"
+msgstr "Dust - Nouvelle compétence"
+
+#: front/components/pages/builder/skills/EditSkillPage.tsx
+msgid "Dust - Skill"
+msgstr "Dust - Compétence"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Could not load skills. Please try again."
+msgstr "Impossible de charger les compétences. Veuillez réessayer."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Retry"
+msgstr "Réessayer"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "No skills match your search."
+msgstr "Aucune compétence ne correspond à votre recherche."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "No skills to show."
+msgstr "Aucune compétence à afficher."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Dust - Manage skills"
+msgstr "Dust - Gérer les compétences"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Search skills"
+msgstr "Rechercher des compétences"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Search for skills"
+msgstr "Rechercher des compétences"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Manage skills"
+msgstr "Gérer les compétences"
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Reusable packages of instructions and tools that agents can share."
+msgstr "Ensembles réutilisables d’instructions et d’outils que les agents peuvent partager."
+
+#: front/components/pages/builder/skills/ManageSkillsPage.tsx
+msgid "Hidden skills"
+msgstr "Compétences masquées"

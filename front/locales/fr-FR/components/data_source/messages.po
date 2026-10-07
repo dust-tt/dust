@@ -1,0 +1,1367 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Failed to enable BigQuery use metadata for DBML"
+msgstr "Impossible d’activer l’utilisation des métadonnées BigQuery pour DBML"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Invalid maximum bytes billed"
+msgstr "Nombre maximal d’octets facturés invalide"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Enter a non-negative number of GB, or leave empty for no limit."
+msgstr "Saisissez un nombre de Go positif ou nul, ou laissez vide pour ne fixer aucune limite."
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Maximum bytes billed updated"
+msgstr "Nombre maximal d’octets facturés mis à jour"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "No limit will be applied to BigQuery queries."
+msgstr "Aucune limite ne sera appliquée aux requêtes BigQuery."
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Queries will be limited to {trimmed} GB billed."
+msgstr "Les requêtes seront limitées à {trimmed} Go facturés."
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Failed to update maximum bytes billed"
+msgstr "Impossible de mettre à jour le nombre maximal d’octets facturés"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Use descriptions"
+msgstr "Utiliser les descriptions"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to Agents."
+msgstr "Les descriptions de vos tables et colonnes définies dans BigQuery serviront à décrire les schémas aux agents."
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Maximum bytes billed"
+msgstr "Nombre maximal d’octets facturés"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "Cap how many bytes a Dust-run BigQuery query may bill. Leave empty or 0 for no limit."
+msgstr "Plafonnez le nombre d’octets qu’une requête BigQuery lancée par Dust peut facturer. Laissez vide ou à 0 pour ne fixer aucune limite."
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgid "No limit"
+msgstr "Aucune limite"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+msgctxt "gigabytes unit"
+msgid "GB"
+msgstr "Go"
+
+#: front/components/data_source/BigQueryOptionsView.tsx
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+#: front/components/data_source/ZendeskConfigView.tsx
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/data_source/ConnectorOptionsPdfEnabled.tsx
+msgid "Enable PDF syncing"
+msgstr "Activer la synchronisation des PDF"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Failed to update the permissions"
+msgstr "Impossible de mettre à jour les permissions"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Failed to update the connection"
+msgstr "Impossible de mettre à jour la connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "The connection was updated but the credential could not be set."
+msgstr "La connexion a été mise à jour, mais les identifiants n’ont pas pu être enregistrés."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Successfully updated connection"
+msgstr "Connexion mise à jour"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "The connection was successfully updated."
+msgstr "La connexion a bien été mise à jour."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "The authenticated user needs higher permissions from your service provider."
+msgstr "L’utilisateur authentifié a besoin de permissions plus élevées auprès de votre fournisseur de service."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Failed to update the permissions of the data source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists."
+msgstr "Impossible de mettre à jour les permissions de la source de données. Réessayez de vous reconnecter, ou contactez support@dust.tt si le problème persiste."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Manage connection"
+msgstr "Gérer la connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "<0>You</0> set it up on {setupDate}"
+msgstr "<0>Vous</0> l’avez configurée le {setupDate}"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "<0>You</0> set it up."
+msgstr "<0>Vous</0> l’avez configurée."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "<0>{ownerFullName}</0> set it up on {setupDate}"
+msgstr "<0>{ownerFullName}</0> l’a configurée le {setupDate}"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "<0>{ownerFullName}</0> set it up."
+msgstr "<0>{ownerFullName}</0> l’a configurée."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "{connectorName} data & permissions"
+msgstr "Données et permissions {connectorName}"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Migration required"
+msgstr "Migration requise"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "You are using a legacy way to connect your Slack workspace to Dust. Starting December 2025, all Slack connections require customers to create their own Slack app. This change ensures optimal performance and reliable real-time syncing."
+msgstr "Vous utilisez une ancienne méthode pour connecter votre workspace Slack à Dust. Depuis décembre 2025, toutes les connexions Slack nécessitent que les clients créent leur propre app Slack. Ce changement garantit des performances optimales et une synchronisation en temps réel fiable."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Please follow the instructions of the section <0>\"Setting up the Connection\"</0> in our <1>official documentation</1> and enter your credentials below to <2>complete the migration before March 3, 2026</2>."
+msgstr "Suivez les instructions de la section <0>« Setting up the Connection »</0> de notre <1>documentation officielle</1> et saisissez vos identifiants ci-dessous pour <2>terminer la migration avant le 3 mars 2026</2>."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Important"
+msgstr "Important"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "<0>Editing</0> can break the existing data structure in Dust and Agents using them."
+msgstr "<0>Toute modification</0> peut casser la structure de données existante dans Dust et les agents qui l’utilisent."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Read our <0>Playbook</0>."
+msgstr "Consultez notre <0>guide pratique</0>."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Connection owner"
+msgstr "Propriétaire de la connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Authorized with Microsoft account <0>{microsoftAccount}</0>."
+msgstr "Autorisée avec le compte Microsoft <0>{microsoftAccount}</0>."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Editing permissions"
+msgstr "Modification des permissions"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "You are not the owner of this connection."
+msgstr "Vous n’êtes pas propriétaire de cette connexion."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and Agents using them."
+msgstr "Modifier les permissions avec un autre compte risque de casser la structure de données existante dans Dust et les agents qui l’utilisent."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Edit permissions"
+msgstr "Modifier les permissions"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Editing permissions is temporarily disabled"
+msgstr "La modification des permissions est temporairement désactivée"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Are you sure?"
+msgstr "Êtes-vous sûr ?"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "The changes you are about to make may break existing {connectorName} data sources and the agents using them. Are you sure you want to continue?"
+msgstr "Les modifications que vous allez effectuer peuvent casser les sources de données {connectorName} existantes et les agents qui les utilisent. Voulez-vous vraiment continuer ?"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+#: front/components/data_source/DocumentLimitPopup.tsx
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/MultipleFilesUpload.tsx
+#: front/components/data_source/RequestDataSourceModal.tsx
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Continue"
+msgstr "Continuer"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Successfully deleted connection"
+msgstr "Connexion supprimée"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "The connection has been successfully deleted."
+msgstr "La connexion a bien été supprimée."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Error deleting connection"
+msgstr "Erreur lors de la suppression de la connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Deleting {connectorName} connection"
+msgstr "Suppression de la connexion {connectorName}"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "<0>Deleting</0> will break Agents using this data."
+msgstr "<0>La suppression</0> cassera les agents qui utilisent ces données."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Connection removal requires support"
+msgstr "La suppression de la connexion nécessite le support"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Removing a connection permanently deletes its synced data and may break agents or spaces that rely on it. Contact <0>support@dust.tt</0> to be assisted with the removal of this connection."
+msgstr "Supprimer une connexion efface définitivement ses données synchronisées et peut casser les agents ou les espaces qui en dépendent. Contactez <0>support@dust.tt</0> pour être accompagné dans la suppression de cette connexion."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Delete connection"
+msgstr "Supprimer la connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "The changes you are about to make will break existing agents using {connectorName}. Are you sure you want to continue?"
+msgstr "Les modifications que vous allez effectuer casseront les agents existants qui utilisent {connectorName}. Voulez-vous vraiment continuer ?"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "Delete"
+msgstr "Supprimer"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Error saving connector configuration"
+msgstr "Erreur lors de l’enregistrement de la configuration du connecteur"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "An unexpected error occurred while saving connector configuration."
+msgstr "Une erreur inattendue s’est produite lors de l’enregistrement de la configuration du connecteur."
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Manage {dataSourceDisplayName}"
+msgstr "Gérer {dataSourceDisplayName}"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Manage {dataSourceDisplayName} connection"
+msgstr "Gérer la connexion {dataSourceDisplayName}"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Edit connection"
+msgstr "Modifier la connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Setup private integration"
+msgstr "Configurer l’intégration privée"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Connection options"
+msgstr "Options de connexion"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Advanced"
+msgstr "Avancé"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Saving..."
+msgstr "Enregistrement…"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "Sensitive data synchronization"
+msgstr "Synchronisation de données sensibles"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "You are synchronizing data from private sources: {privateNodeTitles} and {hiddenPrivateNodeCount} more. Is this okay?"
+msgstr "Vous synchronisez des données provenant de sources privées : {privateNodeTitles} et {hiddenPrivateNodeCount} autres. Voulez-vous continuer ?"
+
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+msgid "{privateNodeCount, plural, one {You are synchronizing data from a private source: {privateNodeTitles}. Is this okay?} other {You are synchronizing data from private sources: {privateNodeTitles}. Is this okay?}}"
+msgstr "{privateNodeCount, plural, one {Vous synchronisez des données provenant d’une source privée : {privateNodeTitles}. Voulez-vous continuer ?} other {Vous synchronisez des données provenant de sources privées : {privateNodeTitles}. Voulez-vous continuer ?}}"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Connection setup"
+msgstr "Configuration de la connexion"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Connecting {providerName}"
+msgstr "Connexion de {providerName}"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Read our guide"
+msgstr "Consulter notre guide"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Disclosure"
+msgstr "Mention légale"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Dust's use of information received from the Google APIs will adhere to <0>Google API Services User Data Policy</0>, including the Limited Use requirements."
+msgstr "L’utilisation par Dust des informations reçues des API Google respectera la <0>Google API Services User Data Policy</0>, y compris les exigences de Limited Use."
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Notice on data processing"
+msgstr "Avis sur le traitement des données"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "By connecting Google Drive, you acknowledge and agree that within your Google Drive, the data contained in the files and folders that you choose to synchronize with Dust will be transmitted to third-party entities, including but not limited to Artificial Intelligence (AI) model providers, for the purpose of processing and analysis. This process is an integral part of the functionality of our service and is subject to the terms outlined in our Privacy Policy and Terms of Service."
+msgstr "En connectant Google Drive, vous reconnaissez et acceptez que, dans votre Google Drive, les données contenues dans les fichiers et dossiers que vous choisissez de synchroniser avec Dust seront transmises à des tiers, notamment à des fournisseurs de modèles d’intelligence artificielle (IA), à des fins de traitement et d’analyse. Ce traitement fait partie intégrante du fonctionnement de notre service et est soumis aux conditions énoncées dans notre Politique de confidentialité et nos Conditions d’utilisation."
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Limitations"
+msgstr "Limites"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Connecting..."
+msgstr "Connexion en cours..."
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Acknowledge and connect"
+msgstr "Accepter et connecter"
+
+#: front/components/data_source/CreateConnectionOAuthModal.tsx
+msgid "Connect"
+msgstr "Connecter"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "All fields must have a value"
+msgstr "Tous les champs doivent être renseignés"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Invalid JSON"
+msgstr "JSON invalide"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "No locations found - make sure you follow the instructions in the guide."
+msgstr "Aucun emplacement trouvé - vérifiez que vous avez suivi les instructions du guide."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Failed to create connection: cannot verify those credentials."
+msgstr "Impossible de créer la connexion : ces identifiants ne peuvent pas être vérifiés."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Failed to create BigQuery connection: {errorMessage}"
+msgstr "Impossible de créer la connexion BigQuery : {errorMessage}"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Failed to update connection: cannot verify those credentials."
+msgstr "Impossible de mettre à jour la connexion : ces identifiants ne peuvent pas être vérifiés."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Failed to update BigQuery connection: {errorMessage}"
+msgstr "Impossible de mettre à jour la connexion BigQuery : {errorMessage}"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Connection error"
+msgstr "Erreur de connexion"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "BigQuery credentials"
+msgstr "Identifiants BigQuery"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Paste service account JSON here"
+msgstr "Collez ici le JSON du compte de service"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Select location"
+msgstr "Sélectionner l’emplacement"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "This location contains connectable tables, for example: <0>{tableExamples}</0>"
+msgstr "Cet emplacement contient des tables connectables, par exemple : <0>{tableExamples}</0>"
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "{tableCount, plural, one {# table} other {# tables}}"
+msgstr "{tableCount, plural, one {# table} other {# tables}}"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
+msgstr "Identifiant de compte Snowflake invalide. Format attendu, par ex. abc123.us-east-1 ou myorg-myaccount (ne collez pas d’URL ni de nom d’hôte)."
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Failed to create Snowflake connection: {errorMessage}"
+msgstr "Impossible de créer la connexion Snowflake : {errorMessage}"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Failed to update Snowflake connection: {errorMessage}"
+msgstr "Impossible de mettre à jour la connexion Snowflake : {errorMessage}"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Snowflake credentials"
+msgstr "Identifiants Snowflake"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Authentication method"
+msgstr "Méthode d’authentification"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Username & password"
+msgstr "Nom d’utilisateur et mot de passe"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Key pair authentication"
+msgstr "Authentification par paire de clés"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Snowflake account identifier"
+msgstr "Identifiant du compte Snowflake"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Invalid format. Use an account identifier like <0>abc123.us-east-1</0> or <1>myorg-myaccount</1>."
+msgstr "Format invalide. Utilisez un identifiant de compte comme <0>abc123.us-east-1</0> ou <1>myorg-myaccount</1>."
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Role"
+msgstr "Rôle"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Warehouse"
+msgstr "Entrepôt"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Username"
+msgstr "Nom d’utilisateur"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Password"
+msgstr "Mot de passe"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Private key (PEM format)"
+msgstr "Clé privée (format PEM)"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Private key passphrase (optional)"
+msgstr "Phrase secrète de la clé privée (facultatif)"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Leave empty if key is not encrypted"
+msgstr "Laissez vide si la clé n’est pas chiffrée"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "To use key-pair authentication:"
+msgstr "Pour utiliser l’authentification par paire de clés :"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Generate an RSA key pair (minimum 2048 bits)"
+msgstr "Générez une paire de clés RSA (2048 bits minimum)"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Register the public key with your Snowflake user"
+msgstr "Associez la clé publique à votre utilisateur Snowflake"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Paste the private key above in PEM format"
+msgstr "Collez la clé privée ci-dessus au format PEM"
+
+#: front/components/data_source/DataSourcePicker.tsx
+msgid "No data source"
+msgstr "Aucune source de données"
+
+#: front/components/data_source/DataSourcePicker.tsx
+msgid "Select data source"
+msgstr "Sélectionner une source de données"
+
+#: front/components/data_source/DataSourcePicker.tsx
+msgid "Create data source"
+msgstr "Créer une source de données"
+
+#: front/components/data_source/DataSourcePicker.tsx
+msgid "Search"
+msgstr "Rechercher"
+
+#: front/components/data_source/DataSourcePicker.tsx
+msgid "No data sources found"
+msgstr "Aucune source de données trouvée"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Error loading synchronization information"
+msgstr "Erreur lors du chargement des informations de synchronisation"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Our access to your account has been revoked. Re-authorize to keep the connection up-to-date."
+msgstr "Notre accès à votre compte a été révoqué. Autorisez-le à nouveau pour maintenir la connexion à jour."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Re-authorization required"
+msgstr "Nouvelle autorisation requise"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "We have encountered an error with {providerName}. We sent you an email to resolve the issue."
+msgstr "Nous avons rencontré une erreur avec {providerName}. Nous vous avons envoyé un e-mail pour résoudre le problème."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Synchronization failed"
+msgstr "Échec de la synchronisation"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "We are having trouble retrieving your data from {providerName}. Synchronization will resume automatically once the issue is resolved."
+msgstr "Nous avons du mal à récupérer vos données depuis {providerName}. La synchronisation reprendra automatiquement une fois le problème résolu."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Synchronization delayed"
+msgstr "Synchronisation retardée"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "The synchronization failed because too many excessively large pages were found."
+msgstr "La synchronisation a échoué, car trop de pages excessivement volumineuses ont été trouvées."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Pages too large"
+msgstr "Pages trop volumineuses"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "The synchronization failed to retrieve any content."
+msgstr "La synchronisation n’a récupéré aucun contenu."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Empty content"
+msgstr "Contenu vide"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "The synchronization failed because the website blocks automated visits."
+msgstr "La synchronisation a échoué, car le site web bloque les visites automatisées."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Access blocked"
+msgstr "Accès bloqué"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "The website synchronization reached the maximum page limit."
+msgstr "La synchronisation du site web a atteint la limite maximale de pages."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Limit reached"
+msgstr "Limite atteinte"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "We need read-only access to your database to synchronize data. Please update the permissions and try again."
+msgstr "Nous avons besoin d’un accès en lecture seule à votre base de données pour synchroniser les données. Mettez à jour les permissions et réessayez."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "We encountered a network error while trying to connect to your database. Please check your network connection and try again."
+msgstr "Une erreur réseau s’est produite lors de la connexion à votre base de données. Vérifiez votre connexion réseau et réessayez."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "You've exceeded the total storage quota of {quota} for your workspace. Contact support@dust.tt to upgrade your plan."
+msgstr "Vous avez dépassé le quota de stockage total de {quota} pour votre workspace. Contactez support@dust.tt pour changer de forfait."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Quota exceeded"
+msgstr "Quota dépassé"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Your current plan does not allow API access, which is required to synchronize data. Contact support@dust.tt to upgrade your plan."
+msgstr "Votre forfait actuel ne permet pas l’accès à l’API, nécessaire pour synchroniser les données. Contactez support@dust.tt pour changer de forfait."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "This workspace has been moved to another region. Contact support@dust.tt if you still see this connection."
+msgstr "Ce workspace a été déplacé dans une autre région. Contactez support@dust.tt si vous voyez encore cette connexion."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Synchronization is paused. New content won't be synced until resumed."
+msgstr "La synchronisation est en pause. Les nouveaux contenus ne seront pas synchronisés avant sa reprise."
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Paused"
+msgstr "En pause"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Synchronizing ({firstSyncProgress})"
+msgstr "Synchronisation ({firstSyncProgress})"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Synchronizing"
+msgstr "Synchronisation"
+
+#: front/components/data_source/DataSourceSyncChip.tsx
+msgid "Pending"
+msgstr "En attente"
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+msgid "Checking usage..."
+msgstr "Vérification de l’utilisation..."
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+msgid "Failed to check usage."
+msgstr "Impossible de vérifier l’utilisation."
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+msgid "No usage data available."
+msgstr "Aucune donnée d’utilisation disponible."
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+msgid "{agentCount, plural, one {# agent currently uses \"{name}\": {agentNames}.} other {# agents currently use \"{name}\": {agentNames}.}}"
+msgstr "{agentCount, plural, one {# agent utilise actuellement « {name} » : {agentNames}.} other {# agents utilisent actuellement « {name} » : {agentNames}.}}"
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+msgid "No agents are using \"{name}\"."
+msgstr "Aucun agent n’utilise « {name} »."
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "Confirm deletion"
+msgstr "Confirmer la suppression"
+
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "Are you sure you want to delete?"
+msgstr "Voulez-vous vraiment supprimer ?"
+
+#: front/components/data_source/DocumentLimitPopup.tsx
+msgid "{planName} plan"
+msgstr "Forfait {planName}"
+
+#: front/components/data_source/DocumentLimitPopup.tsx
+msgid "You have reached the limit of documents per data source ({documentCount, plural, one {# document} other {# documents}}). Upgrade your plan for unlimited documents and data sources."
+msgstr "Vous avez atteint la limite de documents par source de données ({documentCount, plural, one {# document} other {# documents}}). Passez à un forfait supérieur pour des documents et des sources de données illimités."
+
+#: front/components/data_source/DocumentLimitPopup.tsx
+msgid "Check Dust plans"
+msgstr "Voir les forfaits Dust"
+
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "{contentNodeType, select, document {Document deletion submitted} table {Table deletion submitted} other {Folder deletion submitted}}"
+msgstr "{contentNodeType, select, document {Suppression du document demandée} table {Suppression de la table demandée} other {Suppression du dossier demandée}}"
+
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "{contentNodeType, select, document {Deletion of document {contentNodeTitle} is ongoing, it will complete shortly.} table {Deletion of table {contentNodeTitle} is ongoing, it will complete shortly.} other {Deletion of folder {contentNodeTitle} is ongoing, it will complete shortly.}}"
+msgstr "{contentNodeType, select, document {La suppression du document {contentNodeTitle} est en cours et sera bientôt terminée.} table {La suppression de la table {contentNodeTitle} est en cours et sera bientôt terminée.} other {La suppression du dossier {contentNodeTitle} est en cours et sera bientôt terminée.}}"
+
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "{contentNodeType, select, document {Error deleting document} table {Error deleting table} other {Error deleting folder}}"
+msgstr "{contentNodeType, select, document {Erreur lors de la suppression du document} table {Erreur lors de la suppression de la table} other {Erreur lors de la suppression du dossier}}"
+
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "{contentNodeType, select, document {An error occurred while deleting your document.} table {An error occurred while deleting your table.} other {An error occurred while deleting your folder.}}"
+msgstr "{contentNodeType, select, document {Une erreur s’est produite lors de la suppression de votre document.} table {Une erreur s’est produite lors de la suppression de votre table.} other {Une erreur s’est produite lors de la suppression de votre dossier.}}"
+
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "{contentNodeType, select, document {Are you sure you want to delete document '{contentNodeTitle}'?} table {Are you sure you want to delete table '{contentNodeTitle}'?} other {Are you sure you want to delete folder '{contentNodeTitle}'?}}"
+msgstr "{contentNodeType, select, document {Voulez-vous vraiment supprimer le document « {contentNodeTitle} » ?} table {Voulez-vous vraiment supprimer la table « {contentNodeTitle} » ?} other {Voulez-vous vraiment supprimer le dossier « {contentNodeTitle} » ?}}"
+
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+msgid "This action cannot be undone."
+msgstr "Cette action est irréversible."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Empty document content"
+msgstr "Contenu du document vide"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "The uploaded file is empty. Please upload a file with content."
+msgstr "Le fichier importé est vide. Importez un fichier avec du contenu."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Error fetching document content"
+msgstr "Erreur lors de la récupération du contenu du document"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Missing document title"
+msgstr "Titre du document manquant"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "You must provide a title for the document."
+msgstr "Vous devez indiquer un titre pour le document."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Missing document content"
+msgstr "Contenu du document manquant"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "You must provide content for the document. Either upload a file or specify the content."
+msgstr "Vous devez fournir le contenu du document. Importez un fichier ou saisissez le contenu."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Invalid document"
+msgstr "Document invalide"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Please fill in all required fields."
+msgstr "Veuillez remplir tous les champs obligatoires."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Multiple files"
+msgstr "Plusieurs fichiers"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Please upload only one file at a time."
+msgstr "Importez un seul fichier à la fois."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Error uploading file"
+msgstr "Erreur lors de l’import du fichier"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Edit document"
+msgstr "Modifier le document"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Add document"
+msgstr "Ajouter un document"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Content cannot be loaded."
+msgstr "Impossible de charger le contenu."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Document title"
+msgstr "Titre du document"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "You must provide a title."
+msgstr "Vous devez indiquer un titre."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Associated URL"
+msgstr "URL associée"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "The URL of the associated document (if any). Will be used to link users to the original document in agents citations."
+msgstr "L’URL du document associé (le cas échéant). Elle sera utilisée pour renvoyer les utilisateurs vers le document d’origine dans les citations des agents."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Text content"
+msgstr "Contenu texte"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Copy paste content or upload a file ({supportedFileExtensions}). \n"
+" Up to {maxDocumentSizeMb} MB of raw text."
+msgstr "Copiez-collez le contenu ou importez un fichier ({supportedFileExtensions}). \n"
+" Jusqu’à {maxDocumentSizeMb} Mo de texte brut."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Uploading..."
+msgstr "Import en cours..."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Upload file"
+msgstr "Importer un fichier"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Your document content..."
+msgstr "Contenu de votre document..."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "You must upload a file or specify the content of the document."
+msgstr "Vous devez importer un fichier ou saisir le contenu du document."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Labels"
+msgstr "Libellés"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Hide"
+msgstr "Masquer"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Show"
+msgstr "Afficher"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Labels can be set to filter data source retrieval."
+msgstr "Les libellés permettent de filtrer la récupération dans la source de données."
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Add label"
+msgstr "Ajouter un libellé"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgctxt "noun, document label"
+msgid "Label"
+msgstr "Libellé"
+
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: front/components/data_source/GithubCodeEnableView.tsx
+msgid "Failed to enable GitHub code sync"
+msgstr "Impossible d’activer la synchronisation du code GitHub"
+
+#: front/components/data_source/GithubCodeEnableView.tsx
+msgid "Code synchronization"
+msgstr "Synchronisation du code"
+
+#: front/components/data_source/GithubCodeEnableView.tsx
+msgid "Your GitHub repositories code is synced with Dust every 8h."
+msgstr "Le code de vos dépôts GitHub est synchronisé avec Dust toutes les 8 h."
+
+#: front/components/data_source/IntercomConfigView.tsx
+msgid "Failed to edit Intercom configuration"
+msgstr "Impossible de modifier la configuration Intercom"
+
+#: front/components/data_source/IntercomConfigView.tsx
+msgid "Sync Intercom notes from conversations"
+msgstr "Synchroniser les notes Intercom des conversations"
+
+#: front/components/data_source/IntercomConfigView.tsx
+msgid "If activated, Dust will also sync the notes from the conversations you've selected."
+msgstr "Si cette option est activée, Dust synchronisera aussi les notes des conversations sélectionnées."
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Use a service principal"
+msgstr "Utiliser un principal de service"
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Tenant ID"
+msgstr "ID du tenant"
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Client ID"
+msgstr "ID client"
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Service account secret"
+msgstr "Secret du compte de service"
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Save this secret - you'll need to re-enter it each time you configure this connector"
+msgstr "Conservez ce secret - vous devrez le saisir à nouveau à chaque configuration de ce connecteur"
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Selected SharePoint sites Dust will have access to (one per line)."
+msgstr "Sites SharePoint sélectionnés auxquels Dust aura accès (un par ligne)."
+
+#: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+msgid "Provide the SharePoint site identifiers assigned to the service principal. Enter one identifier per line. This is not required if your service principal has access to all sites."
+msgstr "Indiquez les identifiants des sites SharePoint attribués au principal de service, un par ligne. Ce n’est pas nécessaire si votre principal de service a accès à tous les sites."
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "Replace existing files?"
+msgstr "Remplacer les fichiers existants ?"
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "A file named <0>{duplicateFileName}</0> already exists in this folder. Do you want to replace it?"
+msgstr "Un fichier nommé <0>{duplicateFileName}</0> existe déjà dans ce dossier. Voulez-vous le remplacer ?"
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "{duplicateFileCount, plural, one {# file already exists in this folder:} other {# files already exist in this folder:}}"
+msgstr "{duplicateFileCount, plural, one {# fichier existe déjà dans ce dossier :} other {# fichiers existent déjà dans ce dossier :}}"
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "and {hiddenDuplicateFileCount} more..."
+msgstr "et {hiddenDuplicateFileCount} autres..."
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "Do you want to replace them?"
+msgstr "Voulez-vous les remplacer ?"
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "Replace"
+msgstr "Remplacer"
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "Uploading files"
+msgstr "Import des fichiers"
+
+#: front/components/data_source/MultipleFilesUpload.tsx
+msgid "Processing files {completedFileCount} / {totalFileCount}"
+msgstr "Traitement des fichiers {completedFileCount} / {totalFileCount}"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Error sending email"
+msgstr "Erreur lors de l’envoi de l’e-mail"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "An unexpected error occurred while sending email."
+msgstr "Une erreur inattendue s’est produite lors de l’envoi de l’e-mail."
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Email sent!"
+msgstr "E-mail envoyé !"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Your request was sent to {adminFullName}."
+msgstr "Votre demande a été envoyée à {adminFullName}."
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "An unexpected error occurred while sending the request."
+msgstr "Une erreur inattendue s’est produite lors de l’envoi de la demande."
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgctxt "verb, button label"
+msgid "Request"
+msgstr "Demander"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Requesting data sources"
+msgstr "Demande de sources de données"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "You have no connection set up. Ask an admin to set one up."
+msgstr "Vous n’avez configuré aucune connexion. Demandez à un administrateur d’en configurer une."
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Where are the requested data hosted?"
+msgstr "Où sont hébergées les données demandées ?"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Pick your platform"
+msgstr "Choisissez votre plateforme"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "{adminDisplayName} is the administrator for the {selectedDataSourceName} connection within Dust. Send an email to {adminDisplayName}, explaining your request."
+msgstr "{adminDisplayName} est l’administrateur de la connexion {selectedDataSourceName} dans Dust. Envoyez un e-mail à {adminDisplayName} pour expliquer votre demande."
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Hello {adminFullName},"
+msgstr "Bonjour {adminFullName},"
+
+#: front/components/data_source/RequestDataSourceModal.tsx
+msgid "Send"
+msgstr "Envoyer"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Failed to fetch webhook configuration"
+msgstr "Impossible de récupérer la configuration du webhook"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "An error occurred"
+msgstr "Une erreur s’est produite"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Failed to create credential"
+msgstr "Impossible de créer les identifiants"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Failed to set connector configuration"
+msgstr "Impossible d’enregistrer la configuration du connecteur"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Private integration setup successfully"
+msgstr "Intégration privée configurée"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Your Notion connector will now use the private integration token."
+msgstr "Votre connecteur Notion utilisera désormais le jeton d’intégration privée."
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Failed to setup private integration"
+msgstr "Impossible de configurer l’intégration privée"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Setup Notion private integration"
+msgstr "Configurer l’intégration privée Notion"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Integration token"
+msgstr "Jeton d’intégration"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Paste your Notion integration token below."
+msgstr "Collez votre jeton d’intégration Notion ci-dessous."
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Webhook URL"
+msgstr "URL du webhook"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Use this URL to set up Notion webhooks."
+msgstr "Utilisez cette URL pour configurer les webhooks Notion."
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Copied!"
+msgstr "Copié !"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Copy to clipboard"
+msgstr "Copier dans le presse-papiers"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Verification token"
+msgstr "Jeton de vérification"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Use this token to verify your webhook in Notion."
+msgstr "Utilisez ce jeton pour vérifier votre webhook dans Notion."
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Set the webhook URL in your Notion integration and come back here to get the token."
+msgstr "Renseignez l’URL du webhook dans votre intégration Notion, puis revenez ici pour obtenir le jeton."
+
+#: front/components/data_source/SlackOAuthExtraConfig.tsx
+msgid "Slack app client ID"
+msgstr "ID client de l’app Slack"
+
+#: front/components/data_source/SlackOAuthExtraConfig.tsx
+msgid "The Client ID from your Slack app's, available on the Basic Information page."
+msgstr "Le Client ID de votre app Slack, disponible sur la page « Basic Information »."
+
+#: front/components/data_source/SlackOAuthExtraConfig.tsx
+msgid "Slack app client secret"
+msgstr "Secret client de l’app Slack"
+
+#: front/components/data_source/SlackOAuthExtraConfig.tsx
+msgid "The Client Secret from your Slack app's, available on the Basic Information page."
+msgstr "Le Client Secret de votre app Slack, disponible sur la page « Basic Information »."
+
+#: front/components/data_source/SlackOAuthExtraConfig.tsx
+msgid "Slack app signing secret"
+msgstr "Secret de signature de l’app Slack"
+
+#: front/components/data_source/SlackOAuthExtraConfig.tsx
+msgid "The Signing Secret from your Slack app's, available on the Basic Information page."
+msgstr "Le Signing Secret de votre app Slack, disponible sur la page « Basic Information »."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Error"
+msgstr "Erreur"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Cannot save the table: the file is still loading."
+msgstr "Impossible d’enregistrer la table : le fichier est encore en cours de chargement."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Missing file"
+msgstr "Fichier manquant"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "You must upload a file to create a table."
+msgstr "Vous devez importer un fichier pour créer une table."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Invalid name"
+msgstr "Nom invalide"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "You must provide a valid name for the table."
+msgstr "Vous devez indiquer un nom valide pour la table."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Invalid description"
+msgstr "Description invalide"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "You must provide a description for the table."
+msgstr "Vous devez indiquer une description pour la table."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Invalid table"
+msgstr "Table invalide"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Please fill all the required fields."
+msgstr "Veuillez remplir tous les champs obligatoires."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Edit table"
+msgstr "Modifier la table"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Add table"
+msgstr "Ajouter une table"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Table name"
+msgstr "Nom de la table"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Invalid name: Must be lowercase alphanumeric, max 32 characters and no space."
+msgstr "Nom invalide : il doit être alphanumérique en minuscules, sans espace et faire 32 caractères au maximum."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Description"
+msgstr "Description"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Describe the content of your data. It will be used by the LLM model to generate relevant queries."
+msgstr "Décrivez le contenu de vos données. Le LLM s’en servira pour générer des requêtes pertinentes."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "This table contains..."
+msgstr "Cette table contient..."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "You need to provide a description for your data file."
+msgstr "Vous devez indiquer une description pour votre fichier de données."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Data file"
+msgstr "Fichier de données"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Select your data file for extraction. Supported formats: CSV, XLSX. Maximum file size: {maxFileSize}."
+msgstr "Sélectionnez votre fichier de données à extraire. Formats pris en charge : CSV, XLSX. Taille maximale : {maxFileSize}."
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Replace file"
+msgstr "Remplacer le fichier"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "Warning: Large file (5MB+)"
+msgstr "Attention : fichier volumineux (5 Mo et plus)"
+
+#: front/components/data_source/TableUploadOrEditModal.tsx
+msgid "This file is large and may take a while to upload."
+msgstr "Ce fichier est volumineux, son import peut prendre un certain temps."
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Retention period updated"
+msgstr "Durée de conservation mise à jour"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "{retentionDays, plural, one {The retention period has been updated to # day.} other {The retention period has been updated to # days.}}"
+msgstr "{retentionDays, plural, one {La durée de conservation est désormais de # jour.} other {La durée de conservation est désormais de # jours.}}"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Failed to edit Zendesk configuration"
+msgstr "Impossible de modifier la configuration Zendesk"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "An unknown error occurred"
+msgstr "Une erreur inconnue s’est produite"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Invalid retention period"
+msgstr "Durée de conservation invalide"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Retention period must be a positive integer."
+msgstr "La durée de conservation doit être un entier positif."
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Sync unresolved tickets"
+msgstr "Synchroniser les tickets non résolus"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "If activated, Dust will also sync the unresolved tickets."
+msgstr "Si cette option est activée, Dust synchronisera aussi les tickets non résolus."
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Hide customer information"
+msgstr "Masquer les informations client"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Enable this option to prevent customer names and email addresses from being synced with Dust. This does not impact data within tickets, only the metadata attached to tickets."
+msgstr "Activez cette option pour empêcher la synchronisation des noms et adresses e-mail des clients avec Dust. Cela n’affecte pas les données des tickets, seulement les métadonnées qui leur sont associées."
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Data retention period"
+msgstr "Durée de conservation des données"
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "Set the retention period (in days), tickets older than the retention period will not be synced with Dust."
+msgstr "Définissez la durée de conservation (en jours) : les tickets plus anciens ne seront pas synchronisés avec Dust."
+
+#: front/components/data_source/ZendeskConfigView.tsx
+msgid "{savedRetentionDays, plural, one {# day} other {# days}}"
+msgstr "{savedRetentionDays, plural, one {# jour} other {# jours}}"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Invalid field ID"
+msgstr "ID de champ invalide"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Field ID cannot be empty."
+msgstr "L’ID du champ ne peut pas être vide."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Field ID must be a positive number."
+msgstr "L’ID du champ doit être un nombre positif."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Field already added"
+msgstr "Champ déjà ajouté"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "This custom field is already configured."
+msgstr "Ce champ personnalisé est déjà configuré."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Custom field added"
+msgstr "Champ personnalisé ajouté"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Added custom field with ID {numericFieldId}."
+msgstr "Champ personnalisé ajouté avec l’ID {numericFieldId}."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Failed to add custom field"
+msgstr "Impossible d’ajouter le champ personnalisé"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Field not found"
+msgstr "Champ introuvable"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "The field is not configured."
+msgstr "Ce champ n’est pas configuré."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Custom field removed"
+msgstr "Champ personnalisé retiré"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Removed custom field \"{fieldName}\"."
+msgstr "Champ personnalisé « {fieldName} » retiré."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Failed to remove custom field"
+msgstr "Impossible de retirer le champ personnalisé"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Custom field tags"
+msgstr "Tags de champs personnalisés"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Configure custom ticket field that should be included as tags when syncing tickets. Custom field values will be added as tags in the format \"fieldName:value\"."
+msgstr "Configurez les champs de ticket personnalisés à inclure comme tags lors de la synchronisation des tickets. Leurs valeurs seront ajoutées comme tags au format « fieldName:value »."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Enter custom field ID"
+msgstr "Saisissez l’ID du champ personnalisé"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Add field"
+msgstr "Ajouter un champ"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Enter the numeric ID of the custom field from Zendesk. You can find this in your Zendesk admin settings under Fields."
+msgstr "Saisissez l’ID numérique du champ personnalisé Zendesk. Vous le trouverez dans les paramètres d’administration Zendesk, sous « Fields »."
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+msgid "Field ID: {fieldId}"
+msgstr "ID du champ : {fieldId}"
+
+#: front/components/data_source/ZendeskCustomTagFilters.tsx
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "No tag filters configured."
+msgstr "Aucun filtre de tags configuré."
+
+#: front/components/data_source/ZendeskOAuthExtraConfig.tsx
+msgid "Zendesk account subdomain"
+msgstr "Sous-domaine du compte Zendesk"
+
+#: front/components/data_source/ZendeskOAuthExtraConfig.tsx
+msgid "The first part of your Zendesk account URL."
+msgstr "La première partie de l’URL de votre compte Zendesk."
+
+#: front/components/data_source/ZendeskOrganizationTagFilters.tsx
+msgid "Organization tag filters"
+msgstr "Filtres de tags d’organisation"
+
+#: front/components/data_source/ZendeskOrganizationTagFilters.tsx
+msgid "Include or exclude tickets from the sync based on their associated organization. These filters only apply to future syncing and will not retroactively remove already-synced tickets."
+msgstr "Incluez ou excluez des tickets de la synchronisation selon leur organisation. Ces filtres ne s’appliquent qu’aux synchronisations futures et ne retirent pas les tickets déjà synchronisés."
+
+#: front/components/data_source/ZendeskOrganizationTagFilters.tsx
+#: front/components/data_source/ZendeskTagFilters.tsx
+#: front/components/data_source/ZendeskTicketTagFilters.tsx
+msgid "Enter tag name"
+msgstr "Saisissez le nom du tag"
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Rate limit transactions per second updated"
+msgstr "Limite de transactions par seconde mise à jour"
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "The rate limit transactions per second has been updated to {configValue}."
+msgstr "La limite de transactions par seconde est désormais de {configValue}."
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Invalid rate limit transactions per second"
+msgstr "Limite de transactions par seconde invalide"
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Rate limit transactions per second must be a positive integer."
+msgstr "La limite de transactions par seconde doit être un entier positif."
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Rate limit transactions per second"
+msgstr "Limite de transactions par seconde"
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Set a transaction-per-second limit to manage Zendesk rate restrictions. Leave empty to disable."
+msgstr "Définissez une limite de transactions par seconde pour respecter les restrictions de débit de Zendesk. Laissez vide pour la désactiver."
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "{rateLimitTransactionsPerSecond} tps"
+msgstr "{rateLimitTransactionsPerSecond} tps"
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "Disabled"
+msgstr "Désactivé"
+
+#: front/components/data_source/ZendeskRateLimitConfig.tsx
+msgid "transactions per second"
+msgstr "transactions par seconde"
+
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Include tags"
+msgstr "Inclure des tags"
+
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Exclude tags"
+msgstr "Exclure des tags"
+
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Add"
+msgstr "Ajouter"
+
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Add tags"
+msgstr "Ajouter des tags"
+
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Include tags (sync only items with these tags):"
+msgstr "Tags inclus (synchroniser uniquement les éléments avec ces tags) :"
+
+#: front/components/data_source/ZendeskTagFilters.tsx
+msgid "Exclude tags (don't sync items with these tags):"
+msgstr "Tags exclus (ne pas synchroniser les éléments avec ces tags) :"
+
+#: front/components/data_source/ZendeskTicketTagFilters.tsx
+msgid "Ticket tag filters"
+msgstr "Filtres de tags de tickets"
+
+#: front/components/data_source/ZendeskTicketTagFilters.tsx
+msgid "Include or exclude tickets from the sync based on their tags. These filters only apply to future syncing and will not retroactively remove already-synced tickets."
+msgstr "Incluez ou excluez des tickets de la synchronisation selon leurs tags. Ces filtres ne s’appliquent qu’aux synchronisations futures et ne retirent pas les tickets déjà synchronisés."

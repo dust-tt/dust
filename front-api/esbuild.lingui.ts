@@ -1,23 +1,19 @@
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 
 import { transformAsync } from "@babel/core";
-import {
-  createCompiledCatalog,
-  getCatalogForFile,
-  getCatalogs,
-} from "@lingui/cli/api";
-import { getConfig } from "@lingui/conf";
 import type esbuild from "esbuild";
 
-const REPO_ROOT = path.resolve(__dirname, "..");
+import {
+  compileMergedCatalog,
+  MERGED_CATALOG_FILE_REGEX,
+} from "../front/scripts/i18n/merged_catalog";
 
 const MACRO_IMPORT_REGEX = /from ["']@lingui\/(?:core|react)\/macro["']/;
 
 // Mirrors the Vite setup (`@lingui/babel-plugin-lingui-macro` +
-// `@lingui/vite-plugin`) for front-api's esbuild bundle: macros are compiled
-// with Babel before esbuild strips the types, and `.po` catalogs are compiled
-// to JS modules exporting `messages`.
+// `linguiMergedCatalogPlugin`) for front-api's esbuild bundle: macros are compiled
+// with Babel before esbuild strips the types, and `.catalog` imports are
+// compiled to JS modules exporting the merged `messages` of every catalog.
 export const linguiPlugin: esbuild.Plugin = {
   name: "lingui",
   setup(build) {
@@ -42,27 +38,9 @@ export const linguiPlugin: esbuild.Plugin = {
       return { contents: result?.code ?? "", loader: isTsx ? "tsx" : "ts" };
     });
 
-    build.onLoad({ filter: /\.po$/ }, async (args) => {
-      const config = getConfig({ cwd: REPO_ROOT });
-      const fileCatalog = getCatalogForFile(
-        path.relative(config.rootDir, args.path),
-        await getCatalogs(config)
-      );
-      if (!fileCatalog) {
-        throw new Error(`${args.path} is not a Lingui catalog.`);
-      }
-      const { locale, catalog } = fileCatalog;
-      const { messages } = await catalog.getTranslations(locale, {
-        fallbackLocales: config.fallbackLocales,
-        sourceLocale: config.sourceLocale,
-      });
-      const { source, errors } = createCompiledCatalog(locale, messages, {
-        namespace: "es",
-      });
-      if (errors.length > 0) {
-        throw new Error(`Failed to compile Lingui catalog ${args.path}.`);
-      }
-      return { contents: source, loader: "js" };
+    build.onLoad({ filter: MERGED_CATALOG_FILE_REGEX }, async (args) => {
+      const { source, dependencies } = await compileMergedCatalog(args.path);
+      return { contents: source, loader: "js", watchFiles: dependencies };
     });
   },
 };
