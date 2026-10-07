@@ -103,9 +103,10 @@ export function getCalendarDay(date: Date | number): CalendarDay | null {
  */
 /**
  * @cc [owner:sfriquet,label:product] calendar-label-starts-uppercase
- * Labels returned by `formatCalendarDate` and `formatCalendarDateTime` MUST start with an uppercase
- * letter when they start with a letter, in every locale: a French "dimanche dernier à 09:30" MUST
- * read "Dimanche dernier à 09:30", like "Hier à 09:30".
+ * Labels returned by `formatCalendarDate` and `formatCalendarDateTime` are standalone labels and
+ * MUST start with an uppercase letter when they start with a letter, in every locale. Callers MUST
+ * NOT insert them inside a sentence; a sentence built around a day MUST use `getCalendarDay`, whose
+ * `day` stays lowercase.
  */
 export function formatCalendarDate(date: Date | number, t: Translate): string {
   const calendarDay = getCalendarDay(date);
