@@ -14,7 +14,9 @@ interface SparkleLocaleProviderProps {
  * messages. Front MUST preload that sparkle locale before activating its own (see
  * `UserLocaleSync`), otherwise sparkle renders English.
  */
-export function SparkleLocaleProvider({ children }: SparkleLocaleProviderProps) {
+export function SparkleLocaleProvider({
+  children,
+}: SparkleLocaleProviderProps) {
   const { i18n } = useLingui();
   return (
     <SparkleI18nProvider locale={getSparkleLocale(i18n.locale)}>
