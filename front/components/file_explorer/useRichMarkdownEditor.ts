@@ -13,6 +13,8 @@ export interface MarkdownRichEditor {
   mountKey: string;
   /** Scoped path of the file the editor writes. */
   path: string;
+  /** The document is edited in the live session instead of saved by this editor. */
+  live: boolean;
   initialContent: string;
   onSave: (content: string) => Promise<DocumentSaveResult>;
   onStateChange: (state: DocumentDraftState) => void;
@@ -21,6 +23,8 @@ export interface MarkdownRichEditor {
 interface UseRichMarkdownEditorParams {
   /** The rich editor is wanted for this file: the flag is on and the file is editable. */
   enabled: boolean;
+  /** A live session server is reachable: the editor joins it instead of saving. */
+  live: boolean;
   entryPath: string | undefined;
   isActive: boolean;
   /** The file text as fetched, or null while it loads. */
@@ -78,6 +82,7 @@ function isOwnWrite(
  */
 export function useRichMarkdownEditor({
   enabled,
+  live,
   entryPath,
   isActive,
   rawContent,
@@ -116,6 +121,9 @@ export function useRichMarkdownEditor({
     }
     if (base === null) {
       setOpened({ content: source, truncated: isTruncated });
+    } else if (live) {
+      // The live session holds the document; a newer fetch of the file must not reopen it.
+      return;
     } else if (isOwnWrite(writtenRef.current, entryPath, source)) {
       // Our own write came back from the cache; the version it raced is overwritten anyway.
       setOpened({ content: source, truncated: false });
@@ -128,7 +136,16 @@ export function useRichMarkdownEditor({
       setOpened({ content: source, truncated: false });
       setVersion((current) => current + 1);
     }
-  }, [opens, source, base, draft.dirty, draft.saving, isTruncated, entryPath]);
+  }, [
+    opens,
+    source,
+    base,
+    draft.dirty,
+    draft.saving,
+    isTruncated,
+    entryPath,
+    live,
+  ]);
 
   const save = async (content: string): Promise<DocumentSaveResult> => {
     // A foreign version arrived while the editor was dirty: the fetched content moved away from
@@ -156,6 +173,7 @@ export function useRichMarkdownEditor({
       ? {
           mountKey: `${entryPath}:${version}`,
           path: entryPath,
+          live,
           initialContent: base ?? source,
           onSave: save,
           onStateChange: setDraft,

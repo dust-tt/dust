@@ -1,0 +1,138 @@
+import type {
+  DocumentLiveSession,
+  LiveStatus,
+} from "@app/components/editor/document/types";
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import { useEffect, useRef, useState } from "react";
+import * as Y from "yjs";
+
+/** A shared document synced with the server, and the connection that keeps it in sync. */
+export interface LiveConnection {
+  /** Unique per connection: an editor bound to one never outlives it. */
+  id: number;
+  document: Y.Doc;
+  provider: HocuspocusProvider;
+  close: () => void;
+}
+
+let nextConnectionId = 0;
+
+const RECONNECT_DELAY_MS = 1_000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
+
+/**
+ * @cc [owner:PopDaph,label:product] document-live-reconnect
+ * A shared document MUST be shown only once it has synced with the server. After a disconnect,
+ * or the server closing the document, its connection MUST NOT reconnect: the server may hold
+ * another copy of the document by then, and merging the old one into it would duplicate the
+ * content. A fresh document and connection MUST take over, and the old document stays on
+ * screen, read-only, until the new one has synced.
+ * Joining another document, or as another user, MUST close the current connection at once.
+ */
+export function useLiveSession(live: DocumentLiveSession | undefined): {
+  connection: LiveConnection | null;
+  status: LiveStatus;
+} {
+  const [connection, setConnection] = useState<LiveConnection | null>(null);
+  const [status, setStatus] = useState<LiveStatus>("connecting");
+  const [attempt, setAttempt] = useState(0);
+  const shownRef = useRef<LiveConnection | null>(null);
+  // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
+  const failuresRef = useRef(0);
+
+  const url = live?.url;
+  const documentName = live?.documentName;
+  const token = live?.token;
+
+  // Another document or user: what is shown belongs to the previous one.
+  useEffect(
+    () => () => {
+      shownRef.current?.close();
+      shownRef.current = null;
+      failuresRef.current = 0;
+      setConnection(null);
+      setStatus("connecting");
+    },
+    [url, documentName, token]
+  );
+
+  useEffect(() => {
+    if (
+      url === undefined ||
+      documentName === undefined ||
+      token === undefined
+    ) {
+      return;
+    }
+    const document = new Y.Doc();
+    let synced = false;
+    // Disconnected: no more updates. Destroyed: the document is gone too.
+    let closed = false;
+    let destroyed = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const close = () => {
+      if (destroyed) {
+        return;
+      }
+      destroyed = true;
+      if (!closed) {
+        closed = true;
+        provider.destroy();
+      }
+      document.destroy();
+    };
+    // The provider's own retry outlives its destroy, so a fresh one always takes over instead.
+    const onLost = () => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      provider.destroy();
+      if (synced) {
+        setStatus("offline");
+      }
+      const delay = Math.min(
+        RECONNECT_DELAY_MS * 2 ** failuresRef.current,
+        MAX_RECONNECT_DELAY_MS
+      );
+      failuresRef.current++;
+      retry = setTimeout(() => setAttempt((current) => current + 1), delay);
+    };
+    const provider = new HocuspocusProvider({
+      url,
+      name: documentName,
+      token,
+      document,
+      onSynced: ({ state }) => {
+        if (!state || synced || closed) {
+          return;
+        }
+        synced = true;
+        failuresRef.current = 0;
+        const next = { id: nextConnectionId++, document, provider, close };
+        shownRef.current = next;
+        setConnection(next);
+        setStatus("live");
+      },
+      onDisconnect: onLost,
+      // Also sent alone, without a disconnect, when the server closes the document.
+      onClose: onLost,
+      onAuthenticationFailed: () => setStatus("refused"),
+    });
+
+    return () => {
+      clearTimeout(retry);
+      // The shown connection outlives its effect: it closes once replaced, or on unmount.
+      if (shownRef.current?.provider !== provider) {
+        close();
+      }
+    };
+  }, [url, documentName, token, attempt]);
+
+  // Closed after the swap has rendered, so no editor is left bound to a destroyed document.
+  useEffect(() => {
+    return () => connection?.close();
+  }, [connection]);
+
+  return { connection, status };
+}

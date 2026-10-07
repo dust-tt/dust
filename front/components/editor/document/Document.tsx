@@ -24,7 +24,12 @@ import { EditorContent } from "@app/components/editor/EditorContent";
 import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension } from "@tiptap/core";
 import type React from "react";
-import { useId, useRef } from "react";
+import { lazy, Suspense, useId, useRef } from "react";
+
+// Loaded only for a live document, so other editors never download Yjs and its provider.
+const LiveDocument = lazy(
+  () => import("@app/components/editor/document/LiveDocument")
+);
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
@@ -38,9 +43,9 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only
- * When readOnly is true or onSave is absent, Document MUST disable editing, formatting
- * controls, and save callbacks, including when these props change after mount. Hosts MUST
- * apply their permissions through readOnly. Losing editability MUST preserve unsaved
+ * When readOnly is true, or neither onSave nor live is given, Document MUST disable editing,
+ * formatting controls, and save callbacks, including when these props change after mount.
+ * Hosts MUST apply their permissions through readOnly. Losing editability MUST preserve unsaved
  * content and show that saving is unavailable, without offering a Retry action.
  */
 /**
@@ -52,7 +57,21 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
  * first, then cycle outward on repeated clicks.
  */
-export const Document = (props: DocumentProps) => <DocumentView {...props} />;
+export const Document = (props: DocumentProps) =>
+  props.live ? (
+    <Suspense
+      fallback={
+        <DocumentView
+          {...props}
+          liveView={{ status: "connecting", binding: null }}
+        />
+      }
+    >
+      <LiveDocument {...props} live={props.live} />
+    </Suspense>
+  ) : (
+    <DocumentView {...props} />
+  );
 
 interface DocumentViewProps extends DocumentProps {
   liveView?: {
@@ -62,8 +81,8 @@ interface DocumentViewProps extends DocumentProps {
   };
 }
 
-/** The editor itself, saving the file or, given live extensions, editing a shared document. */
-const DocumentView = ({
+/** The editor itself; `Document` picks the live or the file-saving mode around it. */
+export const DocumentView = ({
   initialContent,
   className,
   mountPortalContainer,
