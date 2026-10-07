@@ -1,0 +1,259 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+msgid "Automations"
+msgstr "Automations"
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+msgid "Everything that runs on its own: who set it up, how often it runs, what it costs."
+msgstr "Everything that runs on its own: who set it up, how often it runs, what it costs."
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+msgid "Triggers"
+msgstr "Triggers"
+
+#: front/components/pages/workspace/AnalyticsAutomationsPage.tsx
+msgid "Slack workflows"
+msgstr "Slack workflows"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Consumption"
+msgstr "Consumption"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Export"
+msgstr "Export"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Ask @analyst"
+msgstr "Ask @analyst"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Analytics"
+msgstr "Analytics"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Explore"
+msgstr "Explore"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Credits"
+msgstr "Credits"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+msgid "Manage credit limits for members and groups in your scope."
+msgstr "Manage credit limits for members and groups in your scope."
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Members"
+msgstr "Members"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+msgid "All managed groups"
+msgstr "All managed groups"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Integrations"
+msgstr "Integrations"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Connect Dust to the tools where your team already works."
+msgstr "Connect Dust to the tools where your team already works."
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Messaging"
+msgstr "Messaging"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Email"
+msgstr "Email"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Clients"
+msgstr "Clients"
+
+#: front/components/pages/workspace/IntegrationsPage.tsx
+msgid "Messaging apps"
+msgstr "Messaging apps"
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Manage team members and their roles."
+msgstr "Manage team members and their roles."
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Roles"
+msgstr "Roles"
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Billing and security"
+msgstr "Billing and security"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "Models"
+msgstr "Models"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "Providers"
+msgstr "Providers"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "Access tiers"
+msgstr "Access tiers"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+msgid "App Credentials"
+msgstr "App Credentials"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Security"
+msgstr "Security"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Verify your domain, manage authentication and network access."
+msgstr "Verify your domain, manage authentication and network access."
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Domains & SSO"
+msgstr "Domains & SSO"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Network"
+msgstr "Network"
+
+#: front/components/pages/workspace/SecurityPage.tsx
+msgid "Audit Logs"
+msgstr "Audit Logs"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Workspace credit usage"
+msgstr "Workspace credit usage"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgstr "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgstr "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Remove seat"
+msgstr "Remove seat"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Add credits"
+msgstr "Add credits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "No seat"
+msgstr "No seat"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "All seats"
+msgstr "All seats"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Breakdown in analytics"
+msgstr "Breakdown in analytics"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Control credit consumption across your workspace."
+msgstr "Control credit consumption across your workspace."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Change my seat"
+msgstr "Change my seat"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Credit Pool"
+msgstr "Credit Pool"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Loading Credit Pool"
+msgstr "Loading Credit Pool"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Failed to load Workspace Credit Pool"
+msgstr "Failed to load Workspace Credit Pool"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+msgstr "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "/{initialTotalCreditsFormatted} credits"
+msgstr "/{initialTotalCreditsFormatted} credits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "On target"
+msgstr "On target"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Off target"
+msgstr "Off target"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "{usedPercentage}% used"
+msgstr "{usedPercentage}% used"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Resets {resetAtFormatted}"
+msgstr "Resets {resetAtFormatted}"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "At your current rate, you have enough credits to finish the cycle."
+msgstr "At your current rate, you have enough credits to finish the cycle."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgstr "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} other {{overageCreditsFormatted} overage credits}}"
+msgstr "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} other {{overageCreditsFormatted} overage credits}}"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Top-ups history"
+msgstr "Top-ups history"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Settings"
+msgstr "Settings"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Branding"
+msgstr "Branding"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Workspace branding"
+msgstr "Workspace branding"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Workspace branding is not available for this workspace. Whitelabel frames must be enabled to customize your workspace logo."
+msgstr "Workspace branding is not available for this workspace. Whitelabel frames must be enabled to customize your workspace logo."

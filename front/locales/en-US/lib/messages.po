@@ -1,0 +1,594 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 10:20+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/api_error_messages.ts
+msgid "An unexpected error occurred."
+msgstr "An unexpected error occurred."
+
+#: front/lib/api_error_messages.ts
+msgid "You are not signed in."
+msgstr "You are not signed in."
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace requires you to sign in with SSO."
+msgstr "This workspace requires you to sign in with SSO."
+
+#: front/lib/api_error_messages.ts
+msgid "The request is missing its authorization header."
+msgstr "The request is missing its authorization header."
+
+#: front/lib/api_error_messages.ts
+msgid "The request authorization header is malformed."
+msgstr "The request authorization header is malformed."
+
+#: front/lib/api_error_messages.ts
+msgid "The request basic authorization is invalid."
+msgstr "The request basic authorization is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Your session token is invalid."
+msgstr "Your session token is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Your session has expired. Sign in again."
+msgstr "Your session has expired. Sign in again."
+
+#: front/lib/api_error_messages.ts
+msgid "The API key is invalid."
+msgstr "The API key is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "The sandbox token is invalid."
+msgstr "The sandbox token is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Something went wrong on our side."
+msgstr "Something went wrong on our side."
+
+#: front/lib/api_error_messages.ts
+msgid "The request is invalid."
+msgstr "The request is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "The table rows are invalid."
+msgstr "The table rows are invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "User not found."
+msgstr "User not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The content is too large."
+msgstr "The content is too large."
+
+#: front/lib/api_error_messages.ts
+msgid "The data source returned an error."
+msgstr "The data source returned an error."
+
+#: front/lib/api_error_messages.ts
+msgid "Data source not found."
+msgstr "Data source not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Data source view not found."
+msgstr "Data source view not found."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this data source."
+msgstr "You don't have access to this data source."
+
+#: front/lib/api_error_messages.ts
+msgid "The data source has reached its quota."
+msgstr "The data source has reached its quota."
+
+#: front/lib/api_error_messages.ts
+msgid "The workspace has reached its quota."
+msgstr "The workspace has reached its quota."
+
+#: front/lib/api_error_messages.ts
+msgid "Document not found."
+msgstr "Document not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This data source isn't managed by a connection."
+msgstr "This data source isn't managed by a connection."
+
+#: front/lib/api_error_messages.ts
+msgid "The run failed."
+msgstr "The run failed."
+
+#: front/lib/api_error_messages.ts
+msgid "App not found."
+msgstr "App not found."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this app."
+msgstr "You don't have access to this app."
+
+#: front/lib/api_error_messages.ts
+msgid "The model provider rejected the credentials."
+msgstr "The model provider rejected the credentials."
+
+#: front/lib/api_error_messages.ts
+msgid "Model provider not found."
+msgstr "Model provider not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset not found."
+msgstr "Dataset not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Workspace not found."
+msgstr "Workspace not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace is hosted in another region."
+msgstr "This workspace is hosted in another region."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this workspace."
+msgstr "You don't have access to this workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace can't use this product with its current plan."
+msgstr "Your workspace can't use this product with its current plan."
+
+#: front/lib/api_error_messages.ts
+msgid "User not found in this workspace."
+msgstr "User not found in this workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "This operation isn't supported."
+msgstr "This operation isn't supported."
+
+#: front/lib/api_error_messages.ts
+msgid "Personal workspace not found."
+msgstr "Personal workspace not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The action failed with an unknown error."
+msgstr "The action failed with an unknown error."
+
+#: front/lib/api_error_messages.ts
+msgid "The action failed."
+msgstr "The action failed."
+
+#: front/lib/api_error_messages.ts
+msgid "Membership not found."
+msgstr "Membership not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Your membership to this workspace was revoked."
+msgstr "Your membership to this workspace was revoked."
+
+#: front/lib/api_error_messages.ts
+msgid "Invitation not found."
+msgstr "Invitation not found."
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached a limit of your plan."
+msgstr "You've reached a limit of your plan."
+
+#: front/lib/api_error_messages.ts
+msgid "Template not found."
+msgstr "Template not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Message not found."
+msgstr "Message not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Connection not found."
+msgstr "Connection not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be updated."
+msgstr "The connection couldn't be updated."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to update this connection."
+msgstr "You aren't allowed to update this connection."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection's authorization wasn't found."
+msgstr "The connection's authorization wasn't found."
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account doesn't match this connection."
+msgstr "The authorized account doesn't match this connection."
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account is missing required permissions."
+msgstr "The authorized account is missing required permissions."
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account must be an admin."
+msgstr "The authorized account must be an admin."
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type isn't supported."
+msgstr "This connection type isn't supported."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection credentials are invalid."
+msgstr "The connection credentials are invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection credentials weren't found."
+msgstr "The connection credentials weren't found."
+
+#: front/lib/api_error_messages.ts
+msgid "Another operation is in progress on this connection."
+msgstr "Another operation is in progress on this connection."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent not found."
+msgstr "Agent not found."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this agent."
+msgstr "You don't have access to this agent."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to edit this agent."
+msgstr "You don't have permission to edit this agent."
+
+#: front/lib/api_error_messages.ts
+msgid "The agent message failed."
+msgstr "The agent message failed."
+
+#: front/lib/api_error_messages.ts
+msgid "The request couldn't be processed."
+msgstr "The request couldn't be processed."
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached the message limit of your plan."
+msgstr "You've reached the message limit of your plan."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace has run out of credits."
+msgstr "Your workspace has run out of credits."
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached your usage limit."
+msgstr "You've reached your usage limit."
+
+#: front/lib/api_error_messages.ts
+msgid "Your group has reached its usage limit."
+msgstr "Your group has reached its usage limit."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have a seat in this workspace."
+msgstr "You don't have a seat in this workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "This model is disabled."
+msgstr "This model is disabled."
+
+#: front/lib/api_error_messages.ts
+msgid "This Dust agent couldn't be updated."
+msgstr "This Dust agent couldn't be updated."
+
+#: front/lib/api_error_messages.ts
+msgid "The billing product is invalid."
+msgstr "The billing product is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Too many requests. Try again in a moment."
+msgstr "Too many requests. Try again in a moment."
+
+#: front/lib/api_error_messages.ts
+msgid "The subscription payment failed."
+msgstr "The subscription payment failed."
+
+#: front/lib/api_error_messages.ts
+msgid "Subscription not found."
+msgstr "Subscription not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The subscription is in an invalid state."
+msgstr "The subscription is in an invalid state."
+
+#: front/lib/api_error_messages.ts
+msgid "This isn't available during the trial."
+msgstr "This isn't available during the trial."
+
+#: front/lib/api_error_messages.ts
+msgid "The service is temporarily unavailable."
+msgstr "The service is temporarily unavailable."
+
+#: front/lib/api_error_messages.ts
+msgid "The agent couldn't be saved."
+msgstr "The agent couldn't be saved."
+
+#: front/lib/api_error_messages.ts
+msgid "The server returned an unexpected error."
+msgstr "The server returned an unexpected error."
+
+#: front/lib/api_error_messages.ts
+msgid "The server returned an unexpected response."
+msgstr "The server returned an unexpected response."
+
+#: front/lib/api_error_messages.ts
+msgid "A network error occurred."
+msgstr "A network error occurred."
+
+#: front/lib/api_error_messages.ts
+msgid "The action returned an unexpected response."
+msgstr "The action returned an unexpected response."
+
+#: front/lib/api_error_messages.ts
+msgid "Feature flag not found."
+msgstr "Feature flag not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This feature flag already exists."
+msgstr "This feature flag already exists."
+
+#: front/lib/api_error_messages.ts
+msgid "The pagination parameters are invalid."
+msgstr "The pagination parameters are invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Table not found."
+msgstr "Table not found."
+
+#: front/lib/api_error_messages.ts
+msgid "An invitation was already sent recently."
+msgstr "An invitation was already sent recently."
+
+#: front/lib/api_error_messages.ts
+msgid "Secret not found."
+msgstr "Secret not found."
+
+#: front/lib/api_error_messages.ts
+msgid "API key not found."
+msgstr "API key not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The API key doesn't have the required scope."
+msgstr "The API key doesn't have the required scope."
+
+#: front/lib/api_error_messages.ts
+msgid "Transcripts configuration not found."
+msgstr "Transcripts configuration not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This transcripts configuration can't be the default."
+msgstr "This transcripts configuration can't be the default."
+
+#: front/lib/api_error_messages.ts
+msgid "A transcripts configuration already exists."
+msgstr "A transcripts configuration already exists."
+
+#: front/lib/api_error_messages.ts
+msgid "File not found."
+msgstr "File not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The file is too large."
+msgstr "The file is too large."
+
+#: front/lib/api_error_messages.ts
+msgid "This file type isn't supported."
+msgstr "This file type isn't supported."
+
+#: front/lib/api_error_messages.ts
+msgid "The file is empty."
+msgstr "The file is empty."
+
+#: front/lib/api_error_messages.ts
+msgid "Run not found."
+msgstr "Run not found."
+
+#: front/lib/api_error_messages.ts
+msgid "A space with this name already exists."
+msgstr "A space with this name already exists."
+
+#: front/lib/api_error_messages.ts
+msgid "Space not found."
+msgstr "Space not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Task not found."
+msgstr "Task not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Group not found."
+msgstr "Group not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Coupon not found."
+msgstr "Coupon not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This coupon can't be redeemed."
+msgstr "This coupon can't be redeemed."
+
+#: front/lib/api_error_messages.ts
+msgid "This coupon was already redeemed."
+msgstr "This coupon was already redeemed."
+
+#: front/lib/api_error_messages.ts
+msgid "Plugin not found."
+msgstr "Plugin not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The plugin failed."
+msgstr "The plugin failed."
+
+#: front/lib/api_error_messages.ts
+msgid "Recommendation not found."
+msgstr "Recommendation not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Work area not found."
+msgstr "Work area not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Trigger not found."
+msgstr "Trigger not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Webhook source not found."
+msgstr "Webhook source not found."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this webhook source."
+msgstr "You don't have access to this webhook source."
+
+#: front/lib/api_error_messages.ts
+msgid "This webhook source is used by an agent trigger."
+msgstr "This webhook source is used by an agent trigger."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook source is misconfigured."
+msgstr "The webhook source is misconfigured."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook couldn't be processed."
+msgstr "The webhook couldn't be processed."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook couldn't be stored."
+msgstr "The webhook couldn't be stored."
+
+#: front/lib/api_error_messages.ts
+msgid "Tool connection not found."
+msgstr "Tool connection not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Tool not found."
+msgstr "Tool not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Action not found."
+msgstr "Action not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This action isn't waiting for approval."
+msgstr "This action isn't waiting for approval."
+
+#: front/lib/api_error_messages.ts
+msgid "Conversation not found."
+msgstr "Conversation not found."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this conversation."
+msgstr "You don't have access to this conversation."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent is still running in this conversation."
+msgstr "An agent is still running in this conversation."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation uses an agent that is no longer available."
+msgstr "This conversation uses an agent that is no longer available."
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a participant in this conversation."
+msgstr "You're already a participant in this conversation."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to delete this message."
+msgstr "You aren't allowed to delete this message."
+
+#: front/lib/api_error_messages.ts
+msgid "Conversation context usage not found."
+msgstr "Conversation context usage not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool rejected the credentials."
+msgstr "The tool rejected the credentials."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool identifier is invalid."
+msgstr "The tool identifier is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Organization not found."
+msgstr "Organization not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The authentication provider returned an error."
+msgstr "The authentication provider returned an error."
+
+#: front/lib/api_error_messages.ts
+msgid "Multiple SSO connections aren't supported."
+msgstr "Multiple SSO connections aren't supported."
+
+#: front/lib/api_error_messages.ts
+msgid "Multiple directories aren't supported."
+msgstr "Multiple directories aren't supported."
+
+#: front/lib/api_error_messages.ts
+msgid "You need to sign in to continue."
+msgstr "You need to sign in to continue."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent memory not found."
+msgstr "Agent memory not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Search failed."
+msgstr "Search failed."
+
+#: front/lib/api_error_messages.ts
+msgid "Skill not found."
+msgstr "Skill not found."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub repository not found."
+msgstr "GitHub repository not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Sandbox function not found."
+msgstr "Sandbox function not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Sandbox function call not found."
+msgstr "Sandbox function call not found."
+
+#: front/lib/api_error_messages.ts
+msgid "The frame runtime is unavailable."
+msgstr "The frame runtime is unavailable."
+
+#: front/lib/api_error_messages.ts
+msgid "A fast function can't call tools."
+msgstr "A fast function can't call tools."
+
+#: front/lib/api_error_messages.ts
+msgid "Project details not found."
+msgstr "Project details not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestion not found."
+msgstr "Suggestion not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestions not found."
+msgstr "Suggestions not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Wake-up not found."
+msgstr "Wake-up not found."
+
+#: front/lib/api_error_messages.ts
+msgid "Code: {code}"
+msgstr "Code: {code}"
+
+#: front/lib/api_error_messages.ts
+msgid "Message: {rawMessage}"
+msgstr "Message: {rawMessage}"

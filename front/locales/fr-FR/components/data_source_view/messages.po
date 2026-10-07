@@ -1,0 +1,95 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Search results are partial due to the large amount of data."
+msgstr "Les résultats de recherche sont partiels en raison du volume important de données."
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "0 results found"
+msgstr "0 résultat trouvé"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Showing {loadedCount} of {displayTotal, plural, one {# result} other {# results}} · scroll for more"
+msgstr "{displayTotal, plural, one {Affichage de {loadedCount} sur # résultat} other {Affichage de {loadedCount} sur # résultats}} · faites défiler pour en voir plus"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Showing {loadedCount} of {displayTotal, plural, one {# result} other {# results}}"
+msgstr "{displayTotal, plural, one {Affichage de {loadedCount} sur # résultat} other {Affichage de {loadedCount} sur # résultats}}"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "No matching results found."
+msgstr "Aucun résultat correspondant."
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Try different search terms."
+msgstr "Essayez d’autres termes de recherche."
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Location"
+msgstr "Emplacement"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Search in {spaceName}"
+msgstr "Rechercher dans {spaceName}"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Connected data"
+msgstr "Données connectées"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Folders"
+msgstr "Dossiers"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Websites"
+msgstr "Sites web"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Unselect all"
+msgstr "Tout désélectionner"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "No tables"
+msgstr "Aucune table"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "No documents"
+msgstr "Aucun document"
+
+#: front/components/data_source_view/DataSourceViewsSpaceSelector.tsx
+msgid "No data source in this space."
+msgstr "Aucune source de données dans cet espace."
+
+#: front/components/data_source_view/DataSourceViewsSpaceSelector.tsx
+msgid "No space selected."
+msgstr "Aucun espace sélectionné."
+
+#: front/components/data_source_view/TagSearchInput.tsx
+msgid "No results found"
+msgstr "Aucun résultat trouvé"

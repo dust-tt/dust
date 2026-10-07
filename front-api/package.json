@@ -62,7 +62,6 @@
     "@lingui/babel-plugin-lingui-macro": "6.4.0",
     "@lingui/cli": "6.4.0",
     "@lingui/conf": "6.4.0",
-    "@lingui/vite-plugin": "6.4.0",
     "@types/jsonwebtoken": "^9.0.2",
     "@types/swagger-jsdoc": "^6.0.4",
     "@vitejs/plugin-react": "^4.7.0",

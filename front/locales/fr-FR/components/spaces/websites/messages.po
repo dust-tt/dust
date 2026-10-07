@@ -1,0 +1,207 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Advanced settings"
+msgstr "Paramètres avancés"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Custom headers"
+msgstr "En-têtes personnalisés"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Add custom request headers for the web crawler."
+msgstr "Ajoutez des en-têtes de requête personnalisés pour le robot d’indexation."
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Header name"
+msgstr "Nom de l’en-tête"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Header value"
+msgstr "Valeur de l’en-tête"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Add header"
+msgstr "Ajouter un en-tête"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgctxt "website refresh schedule"
+msgid "Never"
+msgstr "Jamais"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every day"
+msgstr "Tous les jours"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every week"
+msgstr "Toutes les semaines"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every month"
+msgstr "Tous les mois"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "{depth, plural, one {# level} other {# levels}}"
+msgstr "{depth, plural, one {# niveau} other {# niveaux}}"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Website entry point"
+msgstr "Point d’entrée du site web"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Enter the address of the website you'd like to index."
+msgstr "Saisissez l’adresse du site web à indexer."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Ensure the website is public"
+msgstr "Vérifiez que le site web est public"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Only public websites accessible without authentication will work."
+msgstr "Seuls les sites web publics accessibles sans authentification fonctionneront."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Indexing settings"
+msgstr "Paramètres d’indexation"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Adjust the settings to only index the data you are interested in."
+msgstr "Ajustez les paramètres pour n’indexer que les données qui vous intéressent."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Crawling strategy"
+msgstr "Stratégie d’exploration"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Do you want to limit to child pages or not?"
+msgstr "Voulez-vous vous limiter aux pages enfants ?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Only child pages of the provided URL"
+msgstr "Uniquement les pages enfants de l’URL fournie"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Follow all the links within the domain"
+msgstr "Suivre tous les liens du domaine"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Refresh schedule"
+msgstr "Fréquence d’actualisation"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "How often would you like to check for updates?"
+msgstr "À quelle fréquence souhaitez-vous rechercher des mises à jour ?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Depth of search"
+msgstr "Profondeur d’exploration"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "How far from the initial page would you like to go?"
+msgstr "Jusqu’où souhaitez-vous aller depuis la page initiale ?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Page limit"
+msgstr "Limite de pages"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "What is the maximum number of pages you'd like to index?"
+msgstr "Combien de pages souhaitez-vous indexer au maximum ?"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Maximum pages must be between 1 and {WEBCRAWLER_MAX_PAGES}"
+msgstr "Le nombre maximal de pages doit être compris entre 1 et {WEBCRAWLER_MAX_PAGES}"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Website name cannot be changed."
+msgstr "Le nom du site web ne peut pas être modifié."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Give a name to this data source."
+msgstr "Donnez un nom à cette source de données."
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Articles"
+msgstr "Articles"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Please provide a name."
+msgstr "Veuillez indiquer un nom."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The name cannot be blank or start with \"managed-\"."
+msgstr "Le nom ne peut pas être vide ni commencer par « managed- »."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "A website with this name already exists"
+msgstr "Un site web portant ce nom existe déjà"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)."
+msgstr "Veuillez indiquer une URL valide (par ex. https://example.com ou https://example.com/a/b/c)."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Website updated"
+msgstr "Site web mis à jour"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Website created"
+msgstr "Site web créé"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The website has been successfully updated."
+msgstr "Le site web a bien été mis à jour."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The website has been successfully created."
+msgstr "Le site web a bien été créé."
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error updating website"
+msgstr "Erreur lors de la mise à jour du site web"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error creating website"
+msgstr "Erreur lors de la création du site web"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error deleting website"
+msgstr "Erreur lors de la suppression du site web"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Edit {dataSourceName}"
+msgstr "Modifier {dataSourceName}"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Create a website"
+msgstr "Créer un site web"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Delete this website"
+msgstr "Supprimer ce site web"

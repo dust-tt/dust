@@ -1,0 +1,190 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Agents"
+msgstr "Agents"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Skills"
+msgstr "Compétences"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Failed to load"
+msgstr "Échec du chargement"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Governance settings could not be loaded."
+msgstr "Impossible de charger les paramètres de gouvernance."
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Groups assigned here are managed in <0>Members → Groups</0>"
+msgstr "Les groupes attribués ici se gèrent dans <0>Membres → Groupes</0>"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Features"
+msgstr "Fonctionnalités"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Frames"
+msgstr "Frames"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Automations"
+msgstr "Automatisations"
+
+#: front/components/pages/workspace/governance/GovernancePageLayout.tsx
+msgid "Governance"
+msgstr "Gouvernance"
+
+#: front/components/pages/workspace/governance/GovernancePageLayout.tsx
+msgid "Manage what members can do in your workspace"
+msgstr "Gérez ce que les membres peuvent faire dans votre workspace"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Create agents"
+msgstr "Créer des agents"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can create agents in the Agent Builder"
+msgstr "Qui peut créer des agents dans l’Agent Builder"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Publish agents"
+msgstr "Publier des agents"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can publish agents to the whole workspace"
+msgstr "Qui peut publier des agents dans tout le workspace"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Create skills"
+msgstr "Créer des compétences"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can create custom skills"
+msgstr "Qui peut créer des compétences personnalisées"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Manage skill availability"
+msgstr "Gérer la disponibilité des compétences"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can make skills available across the workspace"
+msgstr "Qui peut rendre des compétences disponibles dans tout le workspace"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Make skills discoverable to agents"
+msgstr "Rendre les compétences détectables par les agents"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can make skills discoverable to @Dust and agents with Discover Skills"
+msgstr "Qui peut rendre les compétences détectables par @Dust et les agents dotés de Discover Skills"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Invite people by email"
+msgstr "Inviter des personnes par e-mail"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can share frames by email with people outside your organization"
+msgstr "Qui peut partager des Frames par e-mail avec des personnes extérieures à votre organisation"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Share by public link"
+msgstr "Partager par lien public"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can create public links to frames"
+msgstr "Qui peut créer des liens publics vers des Frames"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Access billing features"
+msgstr "Accéder aux fonctionnalités de facturation"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can manage billing settings, invoices, and payment methods"
+msgstr "Qui peut gérer les paramètres de facturation, les factures et les moyens de paiement"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Access security features"
+msgstr "Accéder aux fonctionnalités de sécurité"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can manage user access, identities, and provisioning"
+msgstr "Qui peut gérer l’accès des utilisateurs, les identités et le provisionnement"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Charge automations to the workspace"
+msgstr "Facturer les automatisations au workspace"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Who can run a trigger on the workspace credit pool instead of their own"
+msgstr "Qui peut exécuter un déclencheur sur la réserve de crédits du workspace plutôt que sur la sienne"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Everyone"
+msgstr "Tout le monde"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Groups"
+msgstr "Groupes"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Admins only"
+msgstr "Administrateurs uniquement"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Invalid configuration"
+msgstr "Configuration non valide"
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "This setting references groups that have not been found. Please reload the page."
+msgstr "Ce paramètre fait référence à des groupes introuvables. Veuillez recharger la page."
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "Add a group"
+msgstr "Ajouter un groupe"
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "Search groups"
+msgstr "Rechercher des groupes"
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "No groups found"
+msgstr "Aucun groupe trouvé"
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "All groups added"
+msgstr "Tous les groupes ont été ajoutés"
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "Create a group"
+msgstr "Créer un groupe"
+
+#: front/components/pages/workspace/governance/RoleProvisioningSection.tsx
+msgid "Roles"
+msgstr "Rôles"
+
+#: front/components/pages/workspace/governance/SkillDiscoverabilityWarning.tsx
+msgid "Everyone can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them \"Manage skill availability\" to make this permission usable."
+msgstr "Tout le monde peut rendre les compétences détectables, mais seules les personnes qui peuvent gérer la disponibilité des compétences peuvent en tirer parti. Envisagez de leur accorder « Gérer la disponibilité des compétences » pour rendre cette autorisation utile."
+
+#: front/components/pages/workspace/governance/SkillDiscoverabilityWarning.tsx
+msgid "{groupCount, plural, one {The group {groupNames} can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them \"Manage skill availability\" to make this permission usable.} other {The groups {groupNames} can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them \"Manage skill availability\" to make this permission usable.}}"
+msgstr "{groupCount, plural, one {Le groupe {groupNames} peut rendre les compétences détectables, mais seules les personnes qui peuvent gérer la disponibilité des compétences peuvent en tirer parti. Envisagez de lui accorder « Gérer la disponibilité des compétences » pour rendre cette autorisation utile.} other {Les groupes {groupNames} peuvent rendre les compétences détectables, mais seules les personnes qui peuvent gérer la disponibilité des compétences peuvent en tirer parti. Envisagez de leur accorder « Gérer la disponibilité des compétences » pour rendre cette autorisation utile.}}"

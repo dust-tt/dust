@@ -1,0 +1,129 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/model_providers/AllProvidersToggle.tsx
+msgid "Make all providers available"
+msgstr "Make all providers available"
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+msgid "Disable {providerName}?"
+msgstr "Disable {providerName}?"
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+msgid "Agents using {providerName} models will stop responding until they are reconfigured to use another provider."
+msgstr "Agents using {providerName} models will stop responding until they are reconfigured to use another provider."
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+msgid "Disable provider"
+msgstr "Disable provider"
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Embedding provider:"
+msgstr "Embedding provider:"
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Please contact us if you want to change this setting."
+msgstr "Please contact us if you want to change this setting."
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Embedding models are used to create numerical representations of your data powering the semantic search capabilities of your agents."
+msgstr "Embedding models are used to create numerical representations of your data powering the semantic search capabilities of your agents."
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Provider"
+msgstr "Provider"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Documentation"
+msgstr "Documentation"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Configure {providerName} API key"
+msgstr "Configure {providerName} API key"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "API key"
+msgstr "API key"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Type an API key"
+msgstr "Type an API key"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/pages/workspace/model_providers/ModelProvidersPageContent.tsx
+msgid "Model access tiers"
+msgstr "Model access tiers"
+
+#: front/components/pages/workspace/model_providers/ModelProvidersPageContent.tsx
+msgid "Model access tiers let members use models up to their highest allowed tier — set per workspace, group, or member."
+msgstr "Model access tiers let members use models up to their highest allowed tier — set per workspace, group, or member."
+
+#: front/components/pages/workspace/model_providers/ModelProvidersPageContent.tsx
+msgid "Manage in Credits"
+msgstr "Manage in Credits"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "Edit"
+msgstr "Edit"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "Configure"
+msgstr "Configure"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgctxt "remove the API key"
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "Invalid API key"
+msgstr "Invalid API key"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "This key is no longer valid. Update it to restore affected agents."
+msgstr "This key is no longer valid. Update it to restore affected agents."
+
+#: front/components/pages/workspace/model_providers/RegionalModelsOnlyToggle.tsx
+msgid "EU-hosted models only"
+msgstr "EU-hosted models only"
+
+#: front/components/pages/workspace/model_providers/RegionalModelsOnlyToggle.tsx
+msgid "Limit available models to EU-based ones. Useful for data residency requirements."
+msgstr "Limit available models to EU-based ones. Useful for data residency requirements."
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "OpenAI powers your embedding model. Removing this key will not only disable all agents powered by OpenAI, but also search and data syncing across the entire workspace."
+msgstr "OpenAI powers your embedding model. Removing this key will not only disable all agents powered by OpenAI, but also search and data syncing across the entire workspace."
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Agents relying on this provider will stop responding immediately."
+msgstr "Agents relying on this provider will stop responding immediately."
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Remove this model provider API key?"
+msgstr "Remove this model provider API key?"
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Remove key"
+msgstr "Remove key"
