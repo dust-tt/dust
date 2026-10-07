@@ -46,6 +46,8 @@ msgstr ""
 #: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
 #: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+#: front/components/shared/SpaceSelectionSheet.tsx
+#: front/components/shared/filter_panel/FilterFooter.tsx
 #: front/components/skill_builder/SkillBuilder.tsx
 #: front/components/skills/ArchiveSkillDialog.tsx
 #: front/components/skills/ArchiveSkillsDialog.tsx
@@ -97,6 +99,7 @@ msgid "Cancel"
 msgstr "Cancel"
 
 #: front/components/Confirm.tsx
+#: front/components/shared/RemoveSpaceDialog.tsx
 msgid "OK"
 msgstr "OK"
 
@@ -176,6 +179,7 @@ msgstr "Unselect all"
 #: front/components/ContentNodeTree.tsx
 #: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
 #: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/shared/filter_panel/FilterPanel.tsx
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 #: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
@@ -216,6 +220,7 @@ msgstr "Content of the document:"
 
 #: front/components/DataSourceViewPermissionTree.tsx
 #: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/tables/TablePicker.tsx
 msgid "No tables"
 msgstr "No tables"
 
@@ -402,6 +407,7 @@ msgstr "Personal Settings"
 #: front/components/UserMenu.tsx
 #: front/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage.tsx
 #: front/components/me/UserToolsDialog.tsx
+#: front/components/shared/tools_picker/CapabilityFilterButtons.tsx
 #: front/components/skills/SkillInfoTab.tsx
 #: front/components/spaces/SpaceBreadcrumb.tsx
 #: front/components/spaces/SpaceCategoriesList.tsx
@@ -503,6 +509,7 @@ msgstr "How you appear to other members of the workspace"
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/shared/SpaceSelectionSheet.tsx
 #: front/components/skill_builder/SkillBuilder.tsx
 #: front/components/skills/SkillEditorsTab.tsx
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
@@ -778,6 +785,10 @@ msgstr "Workspace:"
 msgid "Select workspace"
 msgstr "Select workspace"
 
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Select all {toolCount, plural, one {# tool} other {# tools}}"
+msgstr "Select all {toolCount, plural, one {# tool} other {# tools}}"
+
 #: front/components/agent_builder/AgentBuilder.tsx
 msgid "Unable to load models"
 msgstr "Unable to load models"
@@ -785,6 +796,7 @@ msgstr "Unable to load models"
 #: front/components/agent_builder/AgentBuilder.tsx
 #: front/components/pages/builder/agents/ManageAgentsPage.tsx
 #: front/components/pages/builder/skills/ManageSkillsPage.tsx
+#: front/components/shared/BuilderEditorGateMessage.tsx
 #: front/components/skills/SkillDetailsBody.tsx
 msgid "Retry"
 msgstr "Retry"
@@ -997,6 +1009,7 @@ msgid "Similar agents found"
 msgstr "Similar agents found"
 
 #: front/components/agent_builder/AgentBuilderSpacesBlock.tsx
+#: front/components/shared/SpaceSelectionSheet.tsx
 #: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
 msgid "Data and access"
 msgstr "Data and access"
@@ -1156,6 +1169,7 @@ msgstr "Add tools or create skills to enhance your agents."
 #: front/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage.tsx
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/pages/workspace/governance/GovernancePage.tsx
+#: front/components/shared/tools_picker/CapabilityFilterButtons.tsx
 #: front/components/skills/SkillInfoTab.tsx
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
@@ -1183,6 +1197,7 @@ msgid "Info"
 msgstr "Info"
 
 #: front/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage.tsx
+#: front/components/shared/SuggestedEditors.tsx
 #: front/components/skill_builder/SkillBuilderEditorsSection.tsx
 #: front/components/skills/SkillDetailsBody.tsx
 #: front/components/skills/SkillEditorsTab.tsx
@@ -1216,6 +1231,7 @@ msgstr "Back"
 #: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
 #: front/components/assistant/details/MemberDetails.tsx
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/shared/RemoveSpaceDialog.tsx
 #: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -1641,6 +1657,7 @@ msgid "Edit agent"
 msgstr "Edit agent"
 
 #: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+#: front/components/shared/filter_panel/FilterPanel.tsx
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 #: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
@@ -1946,6 +1963,7 @@ msgid "Will constrain the model to a specific JSON schema"
 msgstr "Will constrain the model to a specific JSON schema"
 
 #: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+#: front/components/shared/SuggestionNewInstructionsBlock.tsx
 #: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
 #: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Instructions"
@@ -2073,6 +2091,10 @@ msgid "Negative"
 msgstr "Negative"
 
 #: front/components/agent_builder/observability/charts/FeedbackDistributionChart.tsx
+msgid "Version"
+msgstr "Version"
+
+#: front/components/agent_builder/observability/charts/FeedbackDistributionChart.tsx
 msgid "Feedback Trends"
 msgstr "Feedback Trends"
 
@@ -2089,6 +2111,7 @@ msgid "No feedback data available."
 msgstr "No feedback data available."
 
 #: front/components/agent_builder/settings/AccessSection.tsx
+#: front/components/shared/filter_panel/searchFilter.ts
 msgid "Published"
 msgstr "Published"
 
@@ -2419,6 +2442,7 @@ msgstr "You will not be able to add this skill back because it is only accessibl
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 #: front/components/file_explorer/FileExplorer.tsx
+#: front/components/shared/RemoveSpaceDialog.tsx
 #: front/components/triggers/WebhookSourceSheet.tsx
 #: front/components/workspace/settings/BrandingSection.tsx
 msgid "Remove"
@@ -2914,6 +2938,10 @@ msgstr "You must select at least one data source"
 msgid "You must use time frame between that and that when you have required enums in mcpServerViews."
 msgstr "You must use time frame between that and that when you have required enums in mcpServerViews."
 
+#: front/components/assistant/AgentEditBar.tsx
+msgid "Select all {totalCount, plural, one {# agent} other {# agents}}"
+msgstr "Select all {totalCount, plural, one {# agent} other {# agents}}"
+
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "A message asking Dust to improve an agent, next to the modified agent"
 msgstr "A message asking Dust to improve an agent, next to the modified agent"
@@ -2932,6 +2960,7 @@ msgid "New conversation"
 msgstr "New conversation"
 
 #: front/components/assistant/details/MemberDetails.tsx
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
 msgid "Not available"
 msgstr "Not available"
 
@@ -2963,6 +2992,10 @@ msgstr "Username"
 #: front/components/assistant/details/MemberDetails.tsx
 msgid "Full name"
 msgstr "Full name"
+
+#: front/components/charts/ChartContainer.tsx
+msgid "View fullscreen"
+msgstr "View fullscreen"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "New conversation in pod"
@@ -3075,6 +3108,7 @@ msgstr "Conversations"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/pages/workspace/governance/GovernancePage.tsx
+#: front/components/shared/SpaceSelectionSheet.tsx
 msgid "Pods"
 msgstr "Pods"
 
@@ -5793,6 +5827,14 @@ msgstr "Roles are managed through group-to-role mappings configured in Settings 
 msgid "Search members (email)"
 msgstr "Search members (email)"
 
+#: front/components/mentions/MentionDropdown.tsx
+msgid "New conversation with @{agentName}"
+msgstr "New conversation with @{agentName}"
+
+#: front/components/mentions/MentionDropdown.tsx
+msgid "About @{agentName}"
+msgstr "About @{agentName}"
+
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Check our <0>status page</0> for updates."
 msgstr "Check our <0>status page</0> for updates."
@@ -5938,6 +5980,7 @@ msgid "Work"
 msgstr "Work"
 
 #: front/components/navigation/config.ts
+#: front/components/shared/SpaceSelectionSheet.tsx
 #: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
@@ -6016,6 +6059,46 @@ msgstr "Datasets"
 #: front/components/navigation/config.ts
 msgid "Logs"
 msgstr "Logs"
+
+#: front/components/observability/AgentFeedback.tsx
+msgid "Overview"
+msgstr "Overview"
+
+#: front/components/observability/AgentFeedback.tsx
+msgid "Reactions"
+msgstr "Reactions"
+
+#: front/components/observability/AgentFeedback.tsx
+msgid "Charts"
+msgstr "Charts"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "v{version}: {formattedTimeDisplay}"
+msgstr "v{version}: {formattedTimeDisplay}"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "By time range"
+msgstr "By time range"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "By version"
+msgstr "By version"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Last 30 days"
+msgstr "Last 30 days"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Last {period, plural, one {# day} other {# days}}"
+msgstr "Last {period, plural, one {# day} other {# days}}"
+
+#: front/components/observability/SharedObservabilityFilterSelector.tsx
+msgid "Last {p, plural, one {# day} other {# days}}"
+msgstr "Last {p, plural, one {# day} other {# days}}"
 
 #: front/components/pages/builder/agents/CreateAgentPage.tsx
 msgid "Create an agent"
@@ -7338,6 +7421,385 @@ msgstr "based on active users"
 msgid "Contact sales"
 msgstr "Contact sales"
 
+#: front/components/shared/BecomeEditorButton.tsx
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "Becoming an editor..."
+msgstr "Becoming an editor..."
+
+#: front/components/shared/BecomeEditorButton.tsx
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "Become an editor"
+msgstr "Become an editor"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You are not an editor of this agent"
+msgstr "You are not an editor of this agent"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You can view this agent as a workspace admin. Become an editor to save changes."
+msgstr "You can view this agent as a workspace admin. Become an editor to save changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You are not an editor of this skill"
+msgstr "You are not an editor of this skill"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You can view this skill as a workspace admin. Become an editor to save changes."
+msgstr "You can view this skill as a workspace admin. Become an editor to save changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "We could not load the agent editors. Retry before making changes."
+msgstr "We could not load the agent editors. Retry before making changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "We could not load the skill editors. Retry before making changes."
+msgstr "We could not load the skill editors. Retry before making changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Unable to verify editor access"
+msgstr "Unable to verify editor access"
+
+#: front/components/shared/BulkSelectionBar.tsx
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount, plural, one {# selected} other {# selected}}"
+
+#: front/components/shared/BulkSelectionBar.tsx
+#: front/components/shared/filter_panel/FilterSummaryChips.tsx
+msgid "Clear all"
+msgstr "Clear all"
+
+#: front/components/shared/RegionalFlag.tsx
+msgctxt "European Union"
+msgid "EU"
+msgstr "EU"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "This will remove the following elements from the agent:"
+msgstr "This will remove the following elements from the agent:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "This will remove the following elements from the skill:"
+msgstr "This will remove the following elements from the skill:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this Pod are used in the agent:"
+msgstr "The following elements from this Pod are used in the agent:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this Pod are used in the skill:"
+msgstr "The following elements from this Pod are used in the skill:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this space are used in the agent:"
+msgstr "The following elements from this space are used in the agent:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this space are used in the skill:"
+msgstr "The following elements from this space are used in the skill:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Remove {spaceName} Pod"
+msgstr "Remove {spaceName} Pod"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Remove {spaceName} space"
+msgstr "Remove {spaceName} space"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "To remove this Pod, first update your instructions to remove the knowledge references."
+msgstr "To remove this Pod, first update your instructions to remove the knowledge references."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "To remove this space, first update your instructions to remove the knowledge references."
+msgstr "To remove this space, first update your instructions to remove the knowledge references."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "{spaceName} can't be removed"
+msgstr "{spaceName} can't be removed"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "This space can't be removed from the skill because the skill uses knowledge or capabilities that belong to it."
+msgstr "This space can't be removed from the skill because the skill uses knowledge or capabilities that belong to it."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Update the skill to stop relying on these items, then remove the space."
+msgstr "Update the skill to stop relying on these items, then remove the space."
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the agent."
+msgstr "Adding spaces or pods will make the data from each of them available to the agent."
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the skill."
+msgstr "Adding spaces or pods will make the data from each of them available to the skill."
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Search spaces and Pods"
+msgstr "Search spaces and Pods"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Used by other resources"
+msgstr "Used by other resources"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "No results found for your search"
+msgstr "No results found for your search"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "No spaces and Pods available"
+msgstr "No spaces and Pods available"
+
+#: front/components/shared/SpacesContext.tsx
+msgid "Failed to load spaces"
+msgstr "Failed to load spaces"
+
+#: front/components/shared/SpacesContext.tsx
+msgid "Unable to fetch workspace spaces. Please try again."
+msgstr "Unable to fetch workspace spaces. Please try again."
+
+#: front/components/shared/SuggestedChangeRow.tsx
+msgctxt "suggested change"
+msgid "Add"
+msgstr "Add"
+
+#: front/components/shared/SuggestedChangeRow.tsx
+msgctxt "suggested change"
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/shared/SuggestedEditors.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
+#: front/components/shared/filter_panel/FilterAvailabilityStatus.tsx
+msgid "No activity<0> for the selected period and filters</0>"
+msgstr "No activity<0> for the selected period and filters</0>"
+
+#: front/components/shared/filter_panel/FilterCategoryNav.tsx
+msgctxt "noun, filter panel heading"
+msgid "Filter"
+msgstr "Filter"
+
+#: front/components/shared/filter_panel/FilterFooter.tsx
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Clear filters"
+msgstr "Clear filters"
+
+#: front/components/shared/filter_panel/FilterFooter.tsx
+msgid "Apply"
+msgstr "Apply"
+
+#: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
+msgid "All {categoryLabel}"
+msgstr "All {categoryLabel}"
+
+#: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
+msgid "Updating…"
+msgstr "Updating…"
+
+#: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
+msgid "No results"
+msgstr "No results"
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgctxt "clear a filter"
+msgid "Clear"
+msgstr "Clear"
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+msgid "Search {activeCategoryLabel}"
+msgstr "Search {activeCategoryLabel}"
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Failed to load filters."
+msgstr "Failed to load filters."
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "{selectionCount, plural, one {# filter selected} other {# filters selected}}"
+msgstr "{selectionCount, plural, one {# filter selected} other {# filters selected}}"
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "Collapse"
+msgstr "Collapse"
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "Expand"
+msgstr "Expand"
+
+#: front/components/shared/filter_panel/FilterSummaryChips.tsx
+msgid "{previousNames} or {optionName}"
+msgstr "{previousNames} or {optionName}"
+
+#: front/components/shared/filter_panel/FilterSummaryChips.tsx
+msgid "<0>{categoryLabel}</0> is {optionNames}"
+msgstr "<0>{categoryLabel}</0> is {optionNames}"
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "Not enough usage data to filter on."
+msgstr "Not enough usage data to filter on."
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "{high, plural, one {{usageRange} active user} other {{usageRange} active users}}"
+msgstr "{high, plural, one {{usageRange} active user} other {{usageRange} active users}}"
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "Minimum active users"
+msgstr "Minimum active users"
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "Maximum active users"
+msgstr "Maximum active users"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Access"
+msgstr "Access"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Availability"
+msgstr "Availability"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Editors"
+msgstr "Editors"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Models"
+msgstr "Models"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Skills"
+msgstr "Skills"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Spaces"
+msgstr "Spaces"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tags"
+msgstr "Tags"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Usage"
+msgstr "Usage"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Editor"
+msgstr "Editor"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Model"
+msgstr "Model"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Skill"
+msgstr "Skill"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Space"
+msgstr "Space"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tag"
+msgstr "Tag"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tool"
+msgstr "Tool"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Not published"
+msgstr "Not published"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "{fullName} (You)"
+msgstr "{fullName} (You)"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "{max, plural, one {{usageRange} active user} other {{usageRange} active users}}"
+msgstr "{max, plural, one {{usageRange} active user} other {{usageRange} active users}}"
+
+#: front/components/shared/getSuggestionStateChip.ts
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Accepted"
+msgstr "Accepted"
+
+#: front/components/shared/getSuggestionStateChip.ts
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Declined"
+msgstr "Declined"
+
+#: front/components/shared/getSuggestionStateChip.ts
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Outdated"
+msgstr "Outdated"
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Allowed labels"
+msgstr "Allowed labels"
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Only labeled content matching one of these labels will be synced. Unlabeled content is always included."
+msgstr "Only labeled content matching one of these labels will be synced. Unlabeled content is always included."
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Type a label"
+msgstr "Type a label"
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "Labels could not be retrieved. You must reconnect your Microsoft connection to grant the necessary permissions."
+msgstr "Labels could not be retrieved. You must reconnect your Microsoft connection to grant the necessary permissions."
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "No labels found. Configure them in your Microsoft Purview console first."
+msgstr "No labels found. Configure them in your Microsoft Purview console first."
+
+#: front/components/shared/labels/MicrosoftLabelsSelector.tsx
+msgid "No matching labels."
+msgstr "No matching labels."
+
+#: front/components/shared/labels/useSensitivityLabelsController.ts
+msgid "Failed to update labels setting"
+msgstr "Failed to update labels setting"
+
+#: front/components/shared/labels/useSensitivityLabelsController.ts
+msgid "Failed to update sensitivity labels setting"
+msgstr "Failed to update sensitivity labels setting"
+
+#: front/components/shared/labels/useSensitivityLabelsController.ts
+msgid "An unknown error occurred."
+msgstr "An unknown error occurred."
+
+#: front/components/shared/tools_picker/CapabilityFilterButtons.tsx
+msgctxt "capability filter"
+msgid "All"
+msgstr "All"
+
 #: front/components/skill_builder/SimilarSkillsDisplay.tsx
 msgid "Checking for similar skills..."
 msgstr "Checking for similar skills..."
@@ -7377,10 +7839,6 @@ msgstr "Your skill has been successfully created."
 #: front/components/skill_builder/SkillBuilder.tsx
 msgid "Your skill has been successfully updated."
 msgstr "Your skill has been successfully updated."
-
-#: front/components/skill_builder/SkillBuilder.tsx
-msgid "Unable to verify editor access"
-msgstr "Unable to verify editor access"
 
 #: front/components/skill_builder/SkillBuilder.tsx
 msgid "Verifying editor access"
@@ -7676,11 +8134,6 @@ msgid "Remove editor"
 msgstr "Remove editor"
 
 #: front/components/skill_builder/SkillSuggestionCard.tsx
-msgctxt "suggestion state"
-msgid "Accepted"
-msgstr "Accepted"
-
-#: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Accepted by you {relativeTime}"
 msgstr "Accepted by you {relativeTime}"
 
@@ -7693,11 +8146,6 @@ msgid "Accepted {relativeTime}"
 msgstr "Accepted {relativeTime}"
 
 #: front/components/skill_builder/SkillSuggestionCard.tsx
-msgctxt "suggestion state"
-msgid "Declined"
-msgstr "Declined"
-
-#: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Declined by you {relativeTime}"
 msgstr "Declined by you {relativeTime}"
 
@@ -7708,11 +8156,6 @@ msgstr "Declined by {reviewerName} {relativeTime}"
 #: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Declined {relativeTime}"
 msgstr "Declined {relativeTime}"
-
-#: front/components/skill_builder/SkillSuggestionCard.tsx
-msgctxt "suggestion state"
-msgid "Outdated"
-msgstr "Outdated"
 
 #: front/components/skill_builder/SkillSuggestionCard.tsx
 msgid "Superseded by a later suggestion"
@@ -8033,6 +8476,10 @@ msgstr "This affects your entire workspace"
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
 msgstr "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgid "Select all {totalCount, plural, one {# skill} other {# skills}}"
+msgstr "Select all {totalCount, plural, one {# skill} other {# skills}}"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "Set availability"
@@ -9231,6 +9678,26 @@ msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
 
+#: front/components/tables/TablePicker.tsx
+msgid "No table"
+msgstr "No table"
+
+#: front/components/tables/TablePicker.tsx
+msgid "Select table"
+msgstr "Select table"
+
+#: front/components/tables/TablePicker.tsx
+msgid "Search for tables"
+msgstr "Search for tables"
+
+#: front/components/tables/TablePicker.tsx
+msgid "No tables found"
+msgstr "No tables found"
+
+#: front/components/tables/TablePicker.tsx
+msgid "Loading more data..."
+msgstr "Loading more data..."
+
 #: front/components/triggers/AddTriggerDialog.tsx
 msgid "Add source"
 msgstr "Add source"
@@ -10392,6 +10859,10 @@ msgid "This member is not part of any group."
 msgstr "This member is not part of any group."
 
 #: front/components/workspace/MembersSelectionBanner.tsx
+msgid "Select all {totalCount, plural, one {# member} other {# members}}"
+msgstr "Select all {totalCount, plural, one {# member} other {# members}}"
+
+#: front/components/workspace/MembersSelectionBanner.tsx
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Edit spend limit"
 msgstr "Edit spend limit"
@@ -10761,10 +11232,6 @@ msgstr "Failed to load programmatic cost data."
 msgid "No cost data for this month."
 msgstr "No cost data for this month."
 
-#: front/components/workspace/ProgrammaticCostChart.tsx
-msgid "Clear filters"
-msgstr "Clear filters"
-
 #: front/components/workspace/SeatCard.tsx
 msgid "{amount}/wk"
 msgstr "{amount}/wk"
@@ -11130,11 +11597,6 @@ msgstr "Search API keys"
 msgid "Clear"
 msgstr "Clear"
 
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
-#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
-msgid "Failed to load filters."
-msgstr "Failed to load filters."
-
 #: front/components/workspace/analytics/UsageFilterSummary.tsx
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 #: front/components/workspace/analytics/automationsFilter.ts
@@ -11336,6 +11798,10 @@ msgstr "\"{triggerName}\" will stop running for {ownerName}. A manager or admin 
 #: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 msgid "Disable"
 msgstr "Disable"
+
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgid "Select all {totalCount, plural, one {# automation} other {# automations}}"
+msgstr "Select all {totalCount, plural, one {# automation} other {# automations}}"
 
 #: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 msgid "Set pool"
