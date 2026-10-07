@@ -1,11 +1,12 @@
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   GetSuggestionsResponseBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
 import { PatchSuggestionRequestBodySchema } from "@app/types/api/assistant/agent_suggestion";
-import { isString } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -81,7 +82,26 @@ app.get(
         limit: parsedLimit,
       });
 
-    return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
+    const skills = await SkillResource.fetchByIds(
+      auth,
+      removeNulls(
+        suggestions.map((suggestion) => suggestion.referencedSkillId)
+      ),
+      {
+        onlyActive: true,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      }
+    );
+    const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+
+    return ctx.json({
+      suggestions: suggestions.map((suggestion) => ({
+        ...suggestion.toJSON(),
+        skill: skillsById.get(suggestion.referencedSkillId ?? "")?.toJSON(auth),
+      })),
+    });
   }
 );
 
