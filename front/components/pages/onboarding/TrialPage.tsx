@@ -1,11 +1,13 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { Button, Check, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function TrialPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
+  const { t } = useLingui();
 
   const isMetronome = !hasFeature("legacy_billing");
 
@@ -18,21 +20,21 @@ export function TrialPage() {
   };
 
   const legacyFeatures = [
-    "Free 14-day trial",
-    "Advanced models (GPT-5, Claude..)",
-    "Custom agents which can execute actions",
-    "Connections (GitHub, Google Drive, Notion, Slack...)",
-    "Native integrations (Zendesk, Slack, Chrome Extension)",
-    "100 free messages",
+    t`Free 14-day trial`,
+    t`Advanced models (GPT-5, Claude..)`,
+    t`Custom agents which can execute actions`,
+    t`Connections (GitHub, Google Drive, Notion, Slack...)`,
+    t`Native integrations (Zendesk, Slack, Chrome Extension)`,
+    t`100 free messages`,
   ];
 
   // TODO: improve copy and design in a follow-up
   const freePlanFeatures = [
-    "Up to 5 users",
-    "300 AI credits per user (lifetime)",
-    "Advanced models (GPT-5, Claude..)",
-    "Custom agents which can execute actions",
-    "No credit card required · No time limit",
+    t`Up to 5 users`,
+    t`300 AI credits per user (lifetime)`,
+    t`Advanced models (GPT-5, Claude..)`,
+    t`Custom agents which can execute actions`,
+    t`No credit card required · No time limit`,
   ];
 
   if (isMetronome) {
@@ -43,9 +45,9 @@ export function TrialPage() {
           <Page.Horizontal>
             <Page.Vertical sizing="grow" gap="lg">
               <DustLogoSquare className="-ml-11 h-10 w-32" />
-              <Page.Header title="Get started for free" />
+              <Page.Header title={t`Get started for free`} />
               <p className="-mt-4 text-muted-foreground">
-                No credit card required · No time limit
+                <Trans>No credit card required · No time limit</Trans>
               </p>
 
               <ul className="flex flex-col gap-4">
@@ -65,12 +67,12 @@ export function TrialPage() {
                 <Button
                   onClick={startFreePlan}
                   variant="primary"
-                  label="Start for free"
+                  label={t`Start for free`}
                 />
                 <Button
                   onClick={skip}
                   variant="outline"
-                  label="Subscribe now"
+                  label={t`Subscribe now`}
                 />
               </div>
             </Page.Vertical>
@@ -86,9 +88,9 @@ export function TrialPage() {
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <DustLogoSquare className="-ml-11 h-10 w-32" />
-            <Page.Header title="Start your free trial" />
+            <Page.Header title={t`Start your free trial`} />
             <p className="-mt-4 text-muted-foreground">
-              No credit card required
+              <Trans>No credit card required</Trans>
             </p>
             <ul className="flex flex-col gap-4">
               {legacyFeatures.map((feature, index) => (
@@ -102,9 +104,13 @@ export function TrialPage() {
               <Button
                 onClick={startFreePlan}
                 variant="primary"
-                label="Start free trial"
+                label={t`Start free trial`}
               />
-              <Button onClick={skip} variant="outline" label="Subscribe now" />
+              <Button
+                onClick={skip}
+                variant="outline"
+                label={t`Subscribe now`}
+              />
             </div>
           </Page.Vertical>
         </Page.Horizontal>

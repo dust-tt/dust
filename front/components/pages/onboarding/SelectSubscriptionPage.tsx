@@ -12,9 +12,11 @@ import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import type { BillingPeriod } from "@app/types/plan";
 import { BarHeader } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React from "react";
 
 export function SelectSubscriptionPage() {
+  const { t } = useLingui();
   const { workspace, user: authUser } = useAuth();
   const router = useAppRouter();
   const { user } = useUser();
@@ -49,7 +51,7 @@ export function SelectSubscriptionPage() {
   return (
     <>
       <BarHeader
-        title="Choose your plan"
+        title={t`Choose your plan`}
         className="ml-10 lg:ml-0"
         rightActions={
           user && <UserMenu user={user} owner={workspace} subscription={null} />
@@ -58,10 +60,10 @@ export function SelectSubscriptionPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16">
         <div className="flex flex-col items-center gap-2 text-center">
           <h1 className="text-4xl font-bold text-foreground">
-            Choose how you want to start
+            <Trans>Choose how you want to start</Trans>
           </h1>
           <p className="text-lg text-muted-foreground">
-            Free to begin. Upgrade anytime.
+            <Trans>Free to begin. Upgrade anytime.</Trans>
           </p>
         </div>
 

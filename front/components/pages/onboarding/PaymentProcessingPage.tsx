@@ -4,12 +4,14 @@ import { useAuthContext, useCheckoutStatus } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { BarHeader, Button, Page, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 const MAX_CHECKOUT_POLL_ATTEMPTS = 15;
 const CHECKOUT_POLL_INTERVAL_MS = 2000;
 
 export function PaymentProcessingPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const router = useAppRouter();
   const type = useSearchParam("type");
@@ -51,35 +53,40 @@ export function PaymentProcessingPage() {
         pollCountRef.current += 1;
         if (pollCountRef.current >= MAX_CHECKOUT_POLL_ATTEMPTS) {
           setShouldPoll(false);
-          setError("Payment processing timed out.");
+          setError(t`Payment processing timed out.`);
         }
         break;
       default:
         assertNeverAndIgnore(checkoutStatus);
     }
-  }, [checkoutStatus, mutateAuthContext, owner.sId, router]);
+  }, [checkoutStatus, mutateAuthContext, owner.sId, router, t]);
 
   return (
     <>
       <div className="mb-10">
-        <BarHeader title={"Payment Processing"} className="ml-10 lg:ml-0" />
+        <BarHeader title={t`Payment processing`} className="ml-10 lg:ml-0" />
       </div>
       <Page>
         <div className="flex h-full w-full flex-col items-center justify-center gap-4">
           {error ? (
             <>
               <Page.P>
-                Something went wrong while setting up your subscription: {error}
+                <Trans>
+                  Something went wrong while setting up your subscription:{" "}
+                  {error}
+                </Trans>
               </Page.P>
               <Button
-                label="Back to subscribe"
+                label={t`Back to subscribe`}
                 onClick={() => void router.replace(`/w/${owner.sId}/subscribe`)}
               />
             </>
           ) : (
             <>
               <Spinner size="lg" />
-              <Page.P>Processing</Page.P>
+              <Page.P>
+                <Trans>Processing</Trans>
+              </Page.P>
             </>
           )}
         </div>

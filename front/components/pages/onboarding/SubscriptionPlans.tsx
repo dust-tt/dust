@@ -32,6 +32,7 @@ import {
   LayersThree01,
   LayersTwo01,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 
 // Shared building blocks for the plan-selection pages (SelectSubscriptionPage
@@ -136,6 +137,7 @@ export function BillingPeriodSwitch({
   onValueChange,
   size,
 }: BillingPeriodSwitchProps) {
+  const { t } = useLingui();
   const chipSize =
     size && size in CHIP_SIZE_FOR_SWITCH
       ? CHIP_SIZE_FOR_SWITCH[size as keyof typeof CHIP_SIZE_FOR_SWITCH]
@@ -149,12 +151,12 @@ export function BillingPeriodSwitch({
         onValueChange(value === "yearly" ? "yearly" : "monthly")
       }
     >
-      <ButtonsSwitch value="monthly" label="Monthly" />
+      <ButtonsSwitch value="monthly" label={t`Monthly`} />
       <ButtonsSwitch
         value="yearly"
-        label="Yearly"
+        label={t`Yearly`}
         className="flex-row-reverse"
-        icon={<Chip size={chipSize} color="highlight" label="Save 20%" />}
+        icon={<Chip size={chipSize} color="highlight" label={t`Save 20%`} />}
       />
     </ButtonsSwitchList>
   );
@@ -165,21 +167,23 @@ interface FreePlanCardProps {
 }
 
 export function FreePlanCard({ onStartFree }: FreePlanCardProps) {
+  const { t } = useLingui();
+
   return (
     <PlanCard
       icon={LayerSingle}
       seatType="free"
       name="Free"
       credits={formatNumber(FREE_SEAT_LIFETIME_AWU_CREDITS)}
-      creditsLabel="credits"
-      priceLabel="One-time · never expires"
-      features={["Credits never reset", "Full access to every Dust feature"]}
-      footnote="One-time phone verification required"
+      creditsLabel={t`credits`}
+      priceLabel={t`One-time · never expires`}
+      features={[t`Credits never reset`, t`Full access to every Dust feature`]}
+      footnote={t`One-time phone verification required`}
       action={
         <Button
           className="w-full"
           variant="outline"
-          label="Start Free"
+          label={t`Start Free`}
           onClick={withTracking(TRACKING_AREAS.AUTH, "cp_free_start", () => {
             onStartFree();
           })}
@@ -198,8 +202,8 @@ export function PaidPlanCards({
   billingPeriod,
   onSubscribe,
 }: PaidPlanCardsProps) {
+  const { t } = useLingui();
   const isYearly = billingPeriod === "yearly";
-  const period = isYearly ? "yearly" : "monthly";
   const proSeatCost = isYearly
     ? CP_PRO_SEAT_COST_YEARLY
     : CP_PRO_SEAT_COST_MONTHLY;
@@ -207,6 +211,19 @@ export function PaidPlanCards({
     ? CP_MAX_SEAT_COST_YEARLY
     : CP_MAX_SEAT_COST_MONTHLY;
   const currency = useUserBillingCurrency();
+  const getSeatPriceLabel = (seatCost: number) => {
+    const seatPrice = getPriceAsString({
+      currency,
+      priceInCents: seatCost * 100,
+    });
+    return isYearly
+      ? t`${seatPrice}/seat/mo · billed yearly`
+      : t`${seatPrice}/seat/mo · billed monthly`;
+  };
+  const paidFeatures = [
+    t`Refills every month`,
+    t`Full access to every Dust feature`,
+  ];
 
   // The cards are returned without a layout/grouping container so each page
   // can decide its own wrapper (e.g. the subtle grouped wrapper only used
@@ -218,14 +235,14 @@ export function PaidPlanCards({
         seatType="pro"
         name={seatTypeDisplayName("pro")}
         credits={formatNumber(PRO_SEAT_MONTHLY_AWU_CREDITS)}
-        creditsLabel="credits/mo"
-        priceLabel={`${getPriceAsString({ currency, priceInCents: proSeatCost * 100 })}/seat/mo · billed ${period}`}
-        features={["Refills every month", "Full access to every Dust feature"]}
+        creditsLabel={t`credits/mo`}
+        priceLabel={getSeatPriceLabel(proSeatCost)}
+        features={paidFeatures}
         action={
           <Button
             className="w-full"
             variant="highlight"
-            label="Subscribe to Pro"
+            label={t`Subscribe to Pro`}
             onClick={withTracking(
               TRACKING_AREAS.AUTH,
               "cp_subscription_start",
@@ -242,14 +259,14 @@ export function PaidPlanCards({
         seatType="max"
         name={seatTypeDisplayName("max")}
         credits={formatNumber(MAX_SEAT_MONTHLY_AWU_CREDITS)}
-        creditsLabel="credits/mo"
-        priceLabel={`${getPriceAsString({ currency, priceInCents: maxSeatCost * 100 })}/seat/mo · billed ${period}`}
-        features={["Refills every month", "Full access to every Dust feature"]}
+        creditsLabel={t`credits/mo`}
+        priceLabel={getSeatPriceLabel(maxSeatCost)}
+        features={paidFeatures}
         action={
           <Button
             className="w-full"
             variant="outline"
-            label="Subscribe to Max"
+            label={t`Subscribe to Max`}
             onClick={withTracking(
               TRACKING_AREAS.AUTH,
               "cp_subscription_start",
