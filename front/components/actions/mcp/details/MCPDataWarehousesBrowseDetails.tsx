@@ -9,11 +9,13 @@ import {
   Icon,
   Table,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function MCPDataWarehousesBrowseDetails({
   toolOutput,
   displayContext,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const browseResult = toolOutput
     ?.filter(isWarehousesBrowseType)
     .map((o) => o.resource)?.[0];
@@ -29,15 +31,18 @@ export function MCPDataWarehousesBrowseDetails({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? "Browsing Data Warehouses"
-          : "Browse Data Warehouses"
+          ? t`Browsing data warehouses`
+          : t`Browse data warehouses`
       }
       visual={Table}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {nodeId && (
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Browsing:</span> {nodeId}
+            <span className="font-medium">
+              <Trans>Browsing:</Trans>
+            </span>{" "}
+            {nodeId}
           </div>
         )}
 

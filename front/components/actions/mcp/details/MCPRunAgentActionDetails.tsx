@@ -53,6 +53,7 @@ import {
   Markdown,
   Robot,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -272,6 +273,7 @@ function MCPRunAgentActionDetailsDisplay({
   isStreamDone,
   isStreamError,
 }: MCPRunAgentActionDetailsDisplayProps) {
+  const { t } = useLingui();
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MCPReferenceCitation }[]
   >([]);
@@ -315,8 +317,8 @@ function MCPRunAgentActionDetailsDisplay({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? `Running @${agentName}`
-          : `Run @${agentName}`
+          ? t`Running @${agentName}`
+          : t`Run @${agentName}`
       }
       visual={
         childAgent?.pictureUrl
@@ -337,7 +339,7 @@ function MCPRunAgentActionDetailsDisplay({
           <div className="flex flex-col gap-4">
             {query && childAgent && (
               <div className="text-sm font-normal text-muted-foreground">
-                <ContentMessage title="Query" variant="primary" size="lg">
+                <ContentMessage title={t`Query`} variant="primary" size="lg">
                   <Markdown
                     content={query}
                     isStreaming={false}
@@ -354,7 +356,11 @@ function MCPRunAgentActionDetailsDisplay({
 
             {addedMCPServerViewIds.length > 0 && (
               <div className="text-sm font-normal text-muted-foreground">
-                <ContentMessage title="Added Tools" variant="primary" size="lg">
+                <ContentMessage
+                  title={t`Added tools`}
+                  variant="primary"
+                  size="lg"
+                >
                   {addedMCPServerViewIds.map((id) => {
                     const mcpServerView = mcpServerViews.find(
                       (v) => v.sId === id
@@ -376,7 +382,7 @@ function MCPRunAgentActionDetailsDisplay({
             )}
             {handoverResource && (
               <div className="text-sm font-normal text-muted-foreground">
-                <ContentMessage title="Handoff" variant="primary" size="lg">
+                <ContentMessage title={t`Handoff`} variant="primary" size="lg">
                   <Markdown
                     content={handoverResource.resource.text}
                     additionalMarkdownPlugins={additionalMarkdownPlugins}
@@ -394,12 +400,12 @@ function MCPRunAgentActionDetailsDisplay({
                 <>
                   <div className="flex items-center justify-between py-2">
                     <span className="font-medium text-foreground">
-                      {childAgent.name}'s Answer
+                      <Trans>{agentName}'s answer</Trans>
                     </span>
                     {conversationUrl && (
                       <Button
                         icon={LinkExternal01}
-                        label="View full conversation"
+                        label={t`View full conversation`}
                         variant="outline"
                         onClick={() => window.open(conversationUrl, "_blank")}
                         size="xs"

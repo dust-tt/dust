@@ -113,6 +113,9 @@ import {
   Markdown,
   SearchMd,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface MCPActionDetailsProps {
@@ -126,9 +129,11 @@ interface MCPActionDetailsProps {
 function getActionLabel({
   action,
   displayContext,
+  t,
 }: {
   action: AgentMCPActionWithOutputType;
   displayContext: ActionDetailsDisplayContext;
+  t: (descriptor: MessageDescriptor) => string;
 }): string {
   if (action.displayLabels) {
     return displayContext === "conversation"
@@ -136,12 +141,16 @@ function getActionLabel({
       : action.displayLabels.done;
   }
 
-  return (
-    (displayContext === "conversation" ? "Running a tool" : "Run a tool") +
-    (action.functionCallName
-      ? `: ${asDisplayName(action.functionCallName)}`
-      : "")
-  );
+  if (!action.functionCallName) {
+    return displayContext === "conversation"
+      ? t(msg`Running a tool`)
+      : t(msg`Run a tool`);
+  }
+
+  const toolName = asDisplayName(action.functionCallName);
+  return displayContext === "conversation"
+    ? t(msg`Running a tool: ${toolName}`)
+    : t(msg`Run a tool: ${toolName}`);
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
@@ -163,6 +172,7 @@ function MCPActionDetailsInner({
   lastNotification,
   messageStatus,
 }: MCPActionDetailsProps) {
+  const { t } = useLingui();
   const {
     params: originalParams,
     status,
@@ -181,7 +191,7 @@ function MCPActionDetailsInner({
     if (status === "denied") {
       const deniedMessage = {
         type: "text" as const,
-        text: "Tool execution rejected or skipped by the user.",
+        text: t`Tool execution rejected or skipped by the user.`,
       };
 
       if (baseOutput === null) {
@@ -192,7 +202,7 @@ function MCPActionDetailsInner({
     } else {
       setOutput(baseOutput);
     }
-  }, [status, baseOutput]);
+  }, [status, baseOutput, t]);
 
   const toolOutputDetailsProps: ToolExecutionDetailsProps = {
     lastNotification,
@@ -216,14 +226,14 @@ function MCPActionDetailsInner({
             displayContext={displayContext}
             actionName={
               displayContext === "conversation"
-                ? "Searching data"
-                : "Search data"
+                ? t`Searching data`
+                : t`Search data`
             }
             actionOutput={output}
             visual={SearchMd}
             query={
               isSearchInputTypeWithTags(params)
-                ? makeQueryTextForDataSourceSearch(params)
+                ? makeQueryTextForDataSourceSearch(t, params)
                 : null
             }
           />
@@ -235,15 +245,15 @@ function MCPActionDetailsInner({
             displayContext={displayContext}
             actionName={
               displayContext === "conversation"
-                ? "Browsing data sources"
-                : "Browse data sources"
+                ? t`Browsing data sources`
+                : t`Browse data sources`
             }
             actionOutput={output}
             query={
               isDataSourceFilesystemFindInputType(params)
-                ? makeQueryTextForFind(params)
+                ? makeQueryTextForFind(t, params)
                 : isDataSourceFilesystemListInputType(params)
-                  ? makeQueryTextForList(params)
+                  ? makeQueryTextForList(t, params)
                   : null
             }
             visual={File06}
@@ -266,12 +276,14 @@ function MCPActionDetailsInner({
       <SearchResultDetails
         displayContext={displayContext}
         actionName={
-          displayContext === "conversation" ? "Including data" : "Include data"
+          displayContext === "conversation"
+            ? t`Including data`
+            : t`Include data`
         }
         actionOutput={output}
         visual={Clock}
         query={
-          isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+          isIncludeInputType(params) ? makeQueryTextForInclude(t, params) : null
         }
       />
     );
@@ -290,8 +302,8 @@ function MCPActionDetailsInner({
             query={isWebsearchInputType(params) ? params.query : null}
             actionName={
               displayContext === "conversation"
-                ? "Searching the web"
-                : "Web search"
+                ? t`Searching the web`
+                : t`Web search`
             }
             actionOutput={output}
             visual={Globe01}
@@ -433,6 +445,7 @@ export function GenericActionDetails({
   action,
   displayContext,
 }: MCPActionDetailsProps) {
+  const { t } = useLingui();
   const inputs =
     Object.keys(action.params).length > 0
       ? JSON.stringify(action.params, undefined, 2)
@@ -447,18 +460,22 @@ export function GenericActionDetails({
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
-      actionName={getActionLabel({ action, displayContext })}
+      actionName={getActionLabel({ action, displayContext, t })}
       visual={actionIcon ?? MCP_SPECIFICATION.cardIcon}
     >
       {displayContext !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           <div>
-            <span className="font-medium text-foreground">Inputs</span>
+            <span className="font-medium text-foreground">
+              <Trans>Inputs</Trans>
+            </span>
             <RenderToolItemMarkdown text={inputs} type="input" />
           </div>
           {action.output && (
             <div>
-              <span className="font-medium text-foreground">Output</span>
+              <span className="font-medium text-foreground">
+                <Trans>Output</Trans>
+              </span>
               <div className="my-2 flex flex-col gap-2">
                 {action.output
                   .filter(
@@ -477,7 +494,9 @@ export function GenericActionDetails({
 
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
             <>
-              <span className="heading-base">Generated Files</span>
+              <span className="heading-base">
+                <Trans>Generated files</Trans>
+              </span>
               <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((f) => !f.hidden)
@@ -501,6 +520,7 @@ export function GenericActionDetails({
 // the inputs instead of the raw id, reusing the generic renderer otherwise.
 function MCPSkillAuthoringUpdateActionDetails(props: MCPActionDetailsProps) {
   const { action, owner } = props;
+  const { t } = useLingui();
 
   const skillId = isString(action.params.sId) ? action.params.sId : null;
   const { skill, isSkillLoading } = useSkill({
@@ -510,8 +530,8 @@ function MCPSkillAuthoringUpdateActionDetails(props: MCPActionDetailsProps) {
   });
 
   const skillName = isSkillLoading
-    ? "Loading…"
-    : (skill?.name ?? "Unknown skill");
+    ? t`Loading…`
+    : (skill?.name ?? t`Unknown skill`);
 
   const { sId: _sId, ...restParams } = action.params;
   const displayAction = {
@@ -529,12 +549,13 @@ const RenderToolItemMarkdown = ({
   text: string | null;
   type: "input" | "output";
 }) => {
+  const { t } = useLingui();
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!text) {
     text =
       type === "input"
-        ? "*The tool was called with no specified inputs.*"
-        : "*The tool completed with no output.*";
+        ? `*${t`The tool was called with no specified inputs.`}*`
+        : `*${t`The tool completed with no output.`}*`;
   }
 
   if (isValidJSON(text)) {

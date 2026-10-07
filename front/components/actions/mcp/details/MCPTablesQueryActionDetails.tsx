@@ -16,6 +16,7 @@ import {
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { CodeBlock, Table } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function MCPTablesQueryActionDetails({
   toolOutput,
@@ -23,6 +24,7 @@ export function MCPTablesQueryActionDetails({
   displayContext,
   owner,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const thinkingBlocks =
     toolOutput?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
   const sqlQueryBlocks =
@@ -42,7 +44,7 @@ export function MCPTablesQueryActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={
-        displayContext === "conversation" ? "Querying tables" : "Query tables"
+        displayContext === "conversation" ? t`Querying tables` : t`Query tables`
       }
       visual={Table}
     >
@@ -59,7 +61,7 @@ export function MCPTablesQueryActionDetails({
           {thinkingBlocks.length > 0 && (
             <div className="flex flex-col gap-1">
               <span className="text-sm font-semibold text-foreground">
-                Reasoning
+                <Trans>Reasoning</Trans>
               </span>
               {thinkingBlocks.map((block) => (
                 <ThinkingBlock key={block.text} resource={block} />
@@ -70,7 +72,7 @@ export function MCPTablesQueryActionDetails({
           {hasQueryToDisplay && (
             <div className="flex flex-col gap-1">
               <span className="text-sm font-semibold text-foreground">
-                Query
+                <Trans>Query</Trans>
               </span>
               {sqlQueryBlocks.length > 0
                 ? sqlQueryBlocks.map((block) => (
@@ -91,7 +93,7 @@ export function MCPTablesQueryActionDetails({
           {generatedFiles.length > 0 && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-foreground">
-                Results
+                <Trans>Results</Trans>
               </span>
               {generatedFiles.map((file) => (
                 <ToolGeneratedFileDetails key={file.fileId} resource={file} />
@@ -102,7 +104,7 @@ export function MCPTablesQueryActionDetails({
           {errorBlocks.length > 0 && (
             <div className="flex flex-col gap-1">
               <span className="text-sm font-semibold text-foreground">
-                Error
+                <Trans>Error</Trans>
               </span>
               {errorBlocks.map((block, index) => (
                 <CodeBlock

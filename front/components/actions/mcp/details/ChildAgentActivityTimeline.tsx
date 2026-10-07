@@ -4,6 +4,7 @@ import { getPendingToolCallKey } from "@app/components/assistant/conversation/ty
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { AnimatedText, Check, XCircle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ChildAgentActivityTimelineProps {
   inlineActivitySteps: InlineActivityStep[];
@@ -20,6 +21,7 @@ export function ChildAgentActivityTimeline({
   isDone,
   isError,
 }: ChildAgentActivityTimelineProps) {
+  const { t } = useLingui();
   const hasContent =
     inlineActivitySteps.length > 0 ||
     pendingToolCalls.length > 0 ||
@@ -49,12 +51,14 @@ export function ChildAgentActivityTimeline({
       headerLabel={
         isDone ? (
           isError ? (
-            "Error"
+            t`Error`
           ) : (
-            "Done"
+            t`Done`
           )
         ) : (
-          <AnimatedText>Thinking…</AnimatedText>
+          <AnimatedText>
+            <Trans>Thinking…</Trans>
+          </AnimatedText>
         )
       }
       showTrailingSpinner={
@@ -67,7 +71,7 @@ export function ChildAgentActivityTimeline({
         isDone && inlineActivitySteps.length > 0
           ? {
               icon: isError ? XCircle : Check,
-              label: isError ? "Error" : "Done",
+              label: isError ? t`Error` : t`Done`,
             }
           : undefined
       }
