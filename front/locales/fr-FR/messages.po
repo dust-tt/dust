@@ -13,6 +13,304 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/components/Confirm.tsx
+#: front/components/agent_builder/AgentBuilderLeftPanel.tsx
+#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
+#: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+#: front/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker.tsx
+#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
+#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
+#: front/components/data_source/ConnectorPermissionsModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
+#: front/components/data_source/DocumentLimitPopup.tsx
+#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
+#: front/components/data_source/DocumentUploadOrEditModal.tsx
+#: front/components/data_source/MultipleFilesUpload.tsx
+#: front/components/data_source/RequestDataSourceModal.tsx
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+#: front/components/data_source/TableUploadOrEditModal.tsx
+#: front/components/data_source/ZendeskTagFilters.tsx
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/me/UserAutomationsTable.tsx
+#: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+#: front/components/skill_builder/SkillBuilder.tsx
+#: front/components/skills/ArchiveSkillDialog.tsx
+#: front/components/skills/ArchiveSkillsDialog.tsx
+#: front/components/skills/RestoreSkillDialog.tsx
+#: front/components/skills/SkillEditorsTab.tsx
+#: front/components/skills/SkillsBatchEdit.tsx
+#: front/components/skills/import/ImportSkillsDialog.tsx
+#: front/components/spaces/AddConnectionMenu.tsx
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+#: front/components/spaces/SpaceCreateAppModal.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
+#: front/components/spaces/mcp/RequestActionsModal.tsx
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+#: front/components/triggers/WebhookSourceSheet.tsx
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+#: front/components/workspace/DirectorySync.tsx
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+#: front/components/workspace/GroupSeatPickerDropdown.tsx
+#: front/components/workspace/UpgradePlanDialog.tsx
+#: front/components/workspace/UpgradeRequests.tsx
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
+#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+#: front/components/workspace/sso/Toggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/Confirm.tsx
+msgid "OK"
+msgstr "OK"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Deselecting partial selection unavailable."
+msgstr "Impossible de désélectionner une sélection partielle."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet"
+msgstr "Désélectionnez manuellement chaque élément à retirer. Certains éléments ne sont pas encore entièrement synchronisés"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Connected service's API limit reached. Please retry shortly."
+msgstr "Limite d’API du service connecté atteinte. Réessayez dans un instant."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection."
+msgstr "Impossible de récupérer les permissions, car l’autorisation a été révoquée. Autorisez à nouveau la connexion."
+
+#: front/components/ContentNodeTree.tsx
+msgid "The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account."
+msgstr "Le compte connecté n’a pas les permissions suffisantes. Autorisez à nouveau la connexion avec un compte administrateur."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed."
+msgstr "Impossible de récupérer les permissions en raison d’une erreur inattendue. La ressource a peut-être été supprimée, déplacée, ou ses permissions de partage ont changé."
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/DataSourceViewPermissionTree.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "No documents"
+msgstr "Aucun document"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Failed to select all"
+msgstr "Impossible de tout sélectionner"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Could not load folders to select. Please try again."
+msgstr "Impossible de charger les dossiers à sélectionner. Réessayez."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Some locations could not be selected"
+msgstr "Certains emplacements n’ont pas pu être sélectionnés"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Selected accessible folders, but skipped {skippedCount, plural, one {# inaccessible location} other {# inaccessible locations}}."
+msgstr "Les dossiers accessibles ont été sélectionnés, mais {skippedCount, plural, one {# emplacement inaccessible a été ignoré} other {# emplacements inaccessibles ont été ignorés}}."
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/ViewFolderAPIModal.tsx
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+#: front/components/data_source/DataSourcePicker.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search"
+msgstr "Rechercher"
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Unselect all"
+msgstr "Tout désélectionner"
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "PDF preview is not available for this document."
+msgstr "L’aperçu PDF n’est pas disponible pour ce document."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "This document has no raw content available"
+msgstr "Ce document n’a aucun contenu brut disponible"
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "If the document is a spreadsheet, this is expected."
+msgstr "C’est normal si le document est un tableur."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Spreadsheets do not expose raw contents."
+msgstr "Les tableurs n’exposent pas de contenu brut."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "They are made available in Dust via the `Table Query` action in assistants."
+msgstr "Ils sont accessibles dans Dust via l’action `Table Query` des assistants."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Otherwise, this is unexpected."
+msgstr "Sinon, ce n’est pas normal."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Please contact support@dust.tt for assistance on synchronizing the document."
+msgstr "Contactez support@dust.tt pour obtenir de l’aide sur la synchronisation du document."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Content of the document:"
+msgstr "Contenu du document :"
+
+#: front/components/DataSourceViewPermissionTree.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+msgid "No tables"
+msgstr "Aucune table"
+
+#: front/components/DataSourceViewPermissionTree.tsx
+msgid "No data"
+msgstr "Aucune donnée"
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits per day**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par jour**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits per week**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par semaine**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits per month**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par mois**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{messages, plural, one {# message per day} other {# messages per day}}**."
+msgstr "Avec votre forfait actuel, cela représente **{messages, plural, one {# message par jour} other {# messages par jour}}**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{messages, plural, one {# message} other {# messages}}**."
+msgstr "Avec votre forfait actuel, cela représente **{messages, plural, one {# message} other {# messages}}**."
+
+#: front/components/FairUsageModal.tsx
+msgid "The exact limit depends on your plan."
+msgstr "La limite exacte dépend de votre forfait."
+
+#: front/components/FairUsageModal.tsx
+msgid "Fair use principles for user seats"
+msgstr "Principes d’utilisation équitable des sièges utilisateur"
+
+#: front/components/FairUsageModal.tsx
+msgid "Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately)."
+msgstr "Chaque siège utilisateur Dust est lié à une personne précise et doit être utilisé par elle seule, pour saisir et envoyer des messages manuellement (par opposition aux envois automatisés, comme les scripts ou les appels d’API, qui sont traités séparément)."
+
+#: front/components/FairUsageModal.tsx
+msgid "To prevent abuse, a \"fair use\" limit applies to each user seat."
+msgstr "Pour éviter les abus, une limite d’« utilisation équitable » s’applique à chaque siège utilisateur."
+
+#: front/components/FairUsageModal.tsx
+msgid "This limit should be understood as a way to prevent abuse, not as an allowed quota."
+msgstr "Cette limite sert à prévenir les abus et ne doit pas être considérée comme un quota autorisé."
+
+#: front/components/FairUsageModal.tsx
+msgid "In particular, it is considered unfair to share a single seat between multiple people."
+msgstr "En particulier, partager un même siège entre plusieurs personnes est considéré comme une utilisation non équitable."
+
+#: front/components/FairUsageModal.tsx
+msgid "Can messages be sent programmatically with Dust?"
+msgstr "Peut-on envoyer des messages via l’API avec Dust ?"
+
+#: front/components/FairUsageModal.tsx
+msgid "Yes, and this usage is encouraged."
+msgstr "Oui, et cet usage est encouragé."
+
+#: front/components/FairUsageModal.tsx
+msgid "However, such messages are not covered by individual user seats and fair use limits, and are billed separately."
+msgstr "Cependant, ces messages ne relèvent pas des sièges utilisateur individuels ni des limites d’utilisation équitable, et sont facturés séparément."
+
+#: front/components/FairUsageModal.tsx
+msgid "Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust]({PROGRAMMATIC_USAGE_URL})."
+msgstr "Les forfaits Dust incluent déjà des crédits mensuels pour l’utilisation via l’API, et vous pouvez en acheter davantage si besoin. Voir [Utilisation via l’API chez Dust]({PROGRAMMATIC_USAGE_URL})."
+
+#: front/components/FairUsageModal.tsx
+msgid "Dust's fair use policy"
+msgstr "Politique d’utilisation équitable de Dust"
+
+#: front/components/NodePathTooltip.tsx
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Folders"
+msgstr "Dossiers"
+
+#: front/components/UserAnalyticsPopover.tsx
+#: front/components/UserMenu.tsx
+#: front/components/navigation/config.ts
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Analytics"
+msgstr "Statistiques"
+
+#: front/components/UserAnalyticsPopover.tsx
+msgid "Close analytics"
+msgstr "Fermer les statistiques"
+
+#: front/components/UserAnalyticsPopover.tsx
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Explore"
+msgstr "Explorer"
+
 #: front/components/UserMenu.tsx
 msgid "Success !"
 msgstr "Succès !"
@@ -120,12 +418,6 @@ msgid "Automations"
 msgstr "Automatisations"
 
 #: front/components/UserMenu.tsx
-#: front/components/navigation/config.ts
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-msgid "Analytics"
-msgstr "Statistiques"
-
-#: front/components/UserMenu.tsx
 msgid "Sign out"
 msgstr "Se déconnecter"
 
@@ -203,6 +495,7 @@ msgstr "Comment les autres membres du workspace vous voient"
 #: front/components/data_source/TableUploadOrEditModal.tsx
 #: front/components/data_source/ZendeskConfigView.tsx
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
+#: front/components/data_source/gong/GongOptionComponent.tsx
 #: front/components/groups/GroupDialog.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
@@ -410,6 +703,77 @@ msgstr "Le contenu de votre mémoire enregistrée peut apparaître dans les rép
 msgid "About you"
 msgstr "À propos de vous"
 
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Data source API"
+msgstr "API des sources de données"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Space ID:"
+msgstr "ID de l’espace :"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Data source ID:"
+msgstr "ID de la source de données :"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Upsert document"
+msgstr "Ajouter ou mettre à jour un document"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Use the following cURL command to upsert a document to folder <0>{dataSourceName}</0>:"
+msgstr "Utilisez la commande cURL suivante pour ajouter ou mettre à jour un document dans le dossier <0>{dataSourceName}</0> :"
+
+#: front/components/ViewFolderAPIModal.tsx
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+#: front/components/skills/SkillDetailsButtonBar.tsx
+msgid "Copied!"
+msgstr "Copié !"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Copy"
+msgstr "Copier"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Use the following cURL command to search in folder <0>{dataSourceName}</0>:"
+msgstr "Utilisez la commande cURL suivante pour rechercher dans le dossier <0>{dataSourceName}</0> :"
+
+#: front/components/ViewFolderAPIModal.tsx
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "API keys"
+msgstr "Clés API"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Manage workspace API keys"
+msgstr "Gérer les clés API du workspace"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "API keys are managed by workspace admins."
+msgstr "Les clés API sont gérées par les administrateurs du workspace."
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Handle API keys with care as they provide access to your company data."
+msgstr "Manipulez les clés API avec précaution, car elles donnent accès aux données de votre entreprise."
+
+#: front/components/ViewFolderAPIModal.tsx
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Documentation"
+msgstr "Documentation"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "For a detailed documentation of the Data source API, please refer to the <0>API reference</0>"
+msgstr "Pour une documentation détaillée de l’API des sources de données, consultez la <0>référence de l’API</0>"
+
+#: front/components/WorkspacePicker.tsx
+msgid "Workspace:"
+msgstr "Workspace :"
+
+#: front/components/WorkspacePicker.tsx
+msgid "Select workspace"
+msgstr "Sélectionner un workspace"
+
 #: front/components/agent_builder/AgentBuilder.tsx
 msgid "Unable to load models"
 msgstr "Impossible de charger les modèles"
@@ -499,6 +863,7 @@ msgstr "Échec de la création de l’agent."
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 #: front/components/data_source/TableUploadOrEditModal.tsx
+#: front/components/data_source/gong/GongOptionComponent.tsx
 #: front/components/skill_builder/SkillBuilder.tsx
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
@@ -545,86 +910,6 @@ msgstr "Enregistrer quand même"
 #: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
 msgid "Go back"
 msgstr "Retour"
-
-#: front/components/agent_builder/AgentBuilderLeftPanel.tsx
-#: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
-#: front/components/agent_builder/capabilities/capabilities_sheet/utils.tsx
-#: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
-#: front/components/agent_builder/instructions/AdvancedSettings.tsx
-#: front/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker.tsx
-#: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
-#: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
-#: front/components/data_source/ConnectorPermissionsModal.tsx
-#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-#: front/components/data_source/DeleteStaticDataSourceDialog.tsx
-#: front/components/data_source/DocumentLimitPopup.tsx
-#: front/components/data_source/DocumentOrTableDeleteDialog.tsx
-#: front/components/data_source/DocumentUploadOrEditModal.tsx
-#: front/components/data_source/MultipleFilesUpload.tsx
-#: front/components/data_source/RequestDataSourceModal.tsx
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-#: front/components/data_source/TableUploadOrEditModal.tsx
-#: front/components/data_source/ZendeskTagFilters.tsx
-#: front/components/groups/GroupDialog.tsx
-#: front/components/groups/ProvisionedGroupDialog.tsx
-#: front/components/me/UserAutomationsTable.tsx
-#: front/components/members/InviteEmailButtonWithModal.tsx
-#: front/components/pages/spaces/apps/AppViewPage.tsx
-#: front/components/pages/workspace/UsagePage.tsx
-#: front/components/pages/workspace/developers/SecretsPage.tsx
-#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
-#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
-#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
-#: front/components/skill_builder/SkillBuilder.tsx
-#: front/components/skills/ArchiveSkillDialog.tsx
-#: front/components/skills/ArchiveSkillsDialog.tsx
-#: front/components/skills/RestoreSkillDialog.tsx
-#: front/components/skills/SkillEditorsTab.tsx
-#: front/components/skills/SkillsBatchEdit.tsx
-#: front/components/skills/import/ImportSkillsDialog.tsx
-#: front/components/spaces/AddConnectionMenu.tsx
-#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
-#: front/components/spaces/CreateOrEditSpaceModal.tsx
-#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
-#: front/components/spaces/GlobalSpaceSettingsModal.tsx
-#: front/components/spaces/SpaceCreateAppModal.tsx
-#: front/components/spaces/SpaceFolderModal.tsx
-#: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
-#: front/components/spaces/mcp/RequestActionsModal.tsx
-#: front/components/spaces/websites/SpaceWebsiteModal.tsx
-#: front/components/triggers/WebhookSourceSheet.tsx
-#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-#: front/components/workspace/BulkChangeSeatModal.tsx
-#: front/components/workspace/BulkEditSpendLimitModal.tsx
-#: front/components/workspace/BuyAwuCreditsDialog.tsx
-#: front/components/workspace/BuyCreditDialog.tsx
-#: front/components/workspace/ChangeMemberModal.tsx
-#: front/components/workspace/ChangeSeatModal.tsx
-#: front/components/workspace/DirectorySync.tsx
-#: front/components/workspace/DustMcpServerSettingsSheet.tsx
-#: front/components/workspace/EditMemberSpendLimitModal.tsx
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-#: front/components/workspace/UpgradePlanDialog.tsx
-#: front/components/workspace/UpgradeRequests.tsx
-#: front/components/workspace/WorkspaceAccessPanel.tsx
-#: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
-#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
-#: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
-#: front/components/workspace/analytics/automations/SlackWorkflowsTab.tsx
-#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
-#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-#: front/components/workspace/billing/SubscriptionActionButtons.tsx
-#: front/components/workspace/settings/EmailAgentsToggle.tsx
-#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
-#: front/components/workspace/settings/WorkspaceNameEditor.tsx
-#: front/components/workspace/sso/AutoJoinToggle.tsx
-#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
-#: front/components/workspace/sso/Toggle.tsx
-#: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Cancel"
-msgstr "Annuler"
 
 #: front/components/agent_builder/AgentBuilderPreview.tsx
 msgid "Preview your agent here"
@@ -961,19 +1246,13 @@ msgstr "Voulez-vous désélectionner tout le contenu de « {itemTitle} » ?"
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
 #: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
-#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
-#: front/components/triggers/CreateWebhookSourceForm.tsx
-msgid "Unselect all"
-msgstr "Tout désélectionner"
-
-#: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
-#: front/components/agent_builder/capabilities/knowledge/DataSourceList.tsx
 #: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
 #: front/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage.tsx
 #: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
 #: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
 #: front/components/groups/GroupSelectionTable.tsx
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/groups/WorkspaceGroupsList.tsx
@@ -1015,6 +1294,7 @@ msgid "This website doesn't have any pages to browse yet."
 msgstr "Ce site web n’a pas encore de pages à parcourir."
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector.tsx
+#: front/components/data_source_view/browser/knowledgeBrowserItems.ts
 msgctxt "breadcrumb root"
 msgid "All"
 msgstr "Tout"
@@ -1060,6 +1340,7 @@ msgid "Unselect"
 msgstr "Désélectionner"
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
 msgid "0 results found"
 msgstr "0 résultat trouvé"
 
@@ -1072,6 +1353,7 @@ msgid "Error searching results."
 msgstr "Erreur lors de la recherche."
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceSearchResults.tsx
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
 #: front/components/spaces/search/columns.tsx
 msgid "Location"
 msgstr "Emplacement"
@@ -1323,15 +1605,6 @@ msgid "Configure additional parameters required by this action."
 msgstr "Configurez les paramètres supplémentaires requis par cette action."
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
-#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
-#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
-#: front/components/data_source/DataSourcePicker.tsx
-#: front/components/members/WorkspaceMembersSection.tsx
-#: front/components/navigation/AdminSettingsSearchNav.tsx
-msgid "Search"
-msgstr "Rechercher"
-
-#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "Error loading agents"
 msgstr "Erreur lors du chargement des agents"
 
@@ -1481,11 +1754,6 @@ msgstr "Méthode de recherche dans les connaissances"
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
 msgid "Sets the approach for finding and retrieving information from your data sources. Need help? Check our <0>guide.</0>"
 msgstr "Définit la manière de trouver et de récupérer les informations dans vos sources de données. Besoin d’aide ? Consultez notre <0>guide.</0>"
-
-#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
-#: front/components/agent_builder/triggers/TriggerPodSelector.tsx
-msgid "Loading..."
-msgstr "Chargement…"
 
 #: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
 msgid "Select a Pod"
@@ -3723,6 +3991,7 @@ msgid "Tenant ID"
 msgstr "ID du tenant"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
 msgid "Client ID"
 msgstr "ID client"
 
@@ -3883,11 +4152,6 @@ msgid "Use this URL to set up Notion webhooks."
 msgstr "Utilisez cette URL pour configurer les webhooks Notion."
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-#: front/components/skills/SkillDetailsButtonBar.tsx
-msgid "Copied!"
-msgstr "Copié !"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
 msgid "Copy to clipboard"
 msgstr "Copier dans le presse-papiers"
@@ -4034,10 +4298,12 @@ msgstr "Impossible de modifier la configuration Zendesk"
 #: front/components/data_source/ZendeskConfigView.tsx
 #: front/components/data_source/ZendeskCustomTagFilters.tsx
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
+#: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "An unknown error occurred"
 msgstr "Une erreur inconnue s’est produite"
 
 #: front/components/data_source/ZendeskConfigView.tsx
+#: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Invalid retention period"
 msgstr "Durée de conservation invalide"
 
@@ -4241,6 +4507,236 @@ msgstr "Filtres de tags de tickets"
 #: front/components/data_source/ZendeskTicketTagFilters.tsx
 msgid "Include or exclude tickets from the sync based on their tags. These filters only apply to future syncing and will not retroactively remove already-synced tickets."
 msgstr "Incluez ou excluez des tickets de la synchronisation selon leurs tags. Ces filtres ne s’appliquent qu’aux synchronisations futures et ne retirent pas les tickets déjà synchronisés."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Gong configuration updated"
+msgstr "Configuration Gong mise à jour"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Participant filter successfully updated."
+msgstr "Le filtre de participants a bien été mis à jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Failed to update Gong configuration"
+msgstr "Impossible de mettre à jour la configuration Gong"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Participant filter"
+msgstr "Filtre de participants"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "All participants"
+msgstr "Tous les participants"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Filter calls by Gong permission profile."
+msgstr "Filtrez les appels par profil de permissions Gong."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Only calls involving users listed in the selected profile's \"Specific Teams\" section will be synced."
+msgstr "Seuls les appels impliquant des utilisateurs listés dans la section « Specific Teams » du profil sélectionné seront synchronisés."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Changing the filter only affects future syncs."
+msgstr "Modifier le filtre n’affecte que les synchronisations futures."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Retention period must be a positive integer or empty for no limit."
+msgstr "La durée de conservation doit être un entier positif, ou vide pour ne fixer aucune limite."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Retention period successfully updated."
+msgstr "La durée de conservation a bien été mise à jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Trackers synchronization successfully updated."
+msgstr "La synchronisation des trackers a bien été mise à jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Accounts synchronization successfully updated."
+msgstr "La synchronisation des comptes a bien été mise à jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Exclude keywords successfully updated."
+msgstr "Les mots-clés exclus ont bien été mis à jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Configuration successfully updated."
+msgstr "La configuration a bien été mise à jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "All Gong data will sync automatically"
+msgstr "Toutes les données Gong seront synchronisées automatiquement"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "All your Gong resources will sync automatically."
+msgstr "Toutes vos ressources Gong seront synchronisées automatiquement."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Selecting items individually is not available."
+msgstr "La sélection individuelle des éléments n’est pas disponible."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Exclude calls by title keywords"
+msgstr "Exclure des appels selon les mots-clés du titre"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "e.g. internal, test, demo"
+msgstr "par ex. interne, test, démo"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Exclude calls whose title contains these keywords (case-insensitive, comma-separated)."
+msgstr "Excluez les appels dont le titre contient ces mots-clés (insensible à la casse, séparés par des virgules)."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Max {MAX_EXCLUDE_KEYWORDS} keywords of {MAX_EXCLUDE_KEYWORD_LENGTH} characters each."
+msgstr "{MAX_EXCLUDE_KEYWORDS} mots-clés maximum, de {MAX_EXCLUDE_KEYWORD_LENGTH} caractères chacun."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Adding keywords removes existing matching transcripts."
+msgstr "Ajouter des mots-clés supprime les transcriptions existantes correspondantes."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Removing keywords only affects future syncs."
+msgstr "Retirer des mots-clés n’affecte que les synchronisations futures."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Retention period"
+msgstr "Durée de conservation"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgctxt "retention period input placeholder"
+msgid "unlimited"
+msgstr "illimitée"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Set the number of days to retain Gong transcripts."
+msgstr "Définissez le nombre de jours de conservation des transcriptions Gong."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Leave empty to disable retention (no limit)."
+msgstr "Laissez vide pour désactiver la conservation (aucune limite)."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Outdated transcripts will be deleted on a daily basis."
+msgstr "Les transcriptions expirées seront supprimées chaque jour."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Enable trackers (keyword and smart)"
+msgstr "Activer les trackers (mots-clés et intelligents)"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "If activated, Dust will sync the list of keyword and smart trackers associated to each call transcript."
+msgstr "Si cette option est activée, Dust synchronisera la liste des trackers par mots-clés et intelligents associés à chaque transcription d’appel."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Only new transcripts will be affected, please contact us at support@dust.tt if you need to update the existing transcripts."
+msgstr "Seules les nouvelles transcriptions seront concernées. Contactez-nous à support@dust.tt si vous devez mettre à jour les transcriptions existantes."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Sync account metadata"
+msgstr "Synchroniser les métadonnées des comptes"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "If activated, Dust will sync the account names from CRM context associated to each call transcript."
+msgstr "Si cette option est activée, Dust synchronisera les noms des comptes du contexte CRM associés à chaque transcription d’appel."
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Salesforce instance URL"
+msgstr "URL de l’instance Salesforce"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Must be a valid Salesforce domain in https and ending with .salesforce.com"
+msgstr "Doit être un domaine Salesforce valide en https et se terminer par .salesforce.com"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "The client ID from your Salesforce connected app."
+msgstr "L’ID client de votre app connectée Salesforce."
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "Client secret"
+msgstr "Secret client"
+
+#: front/components/data_source/salesforce/SalesforceOAuthExtractConfig.tsx
+msgid "The client secret from your Salesforce connected app."
+msgstr "Le secret client de votre app connectée Salesforce."
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Search results are partial due to the large amount of data."
+msgstr "Les résultats de recherche sont partiels en raison du volume important de données."
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Showing {loadedCount} of {displayTotal, plural, one {# result} other {# results}} · scroll for more"
+msgstr "{displayTotal, plural, one {Affichage de {loadedCount} sur # résultat} other {Affichage de {loadedCount} sur # résultats}} · faites défiler pour en voir plus"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Showing {loadedCount} of {displayTotal, plural, one {# result} other {# results}}"
+msgstr "{displayTotal, plural, one {Affichage de {loadedCount} sur # résultat} other {Affichage de {loadedCount} sur # résultats}}"
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "No matching results found."
+msgstr "Aucun résultat correspondant."
+
+#: front/components/data_source_view/DataSourceSelectionSearchResults.tsx
+msgid "Try different search terms."
+msgstr "Essayez d’autres termes de recherche."
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in {spaceName}"
+msgstr "Rechercher dans {spaceName}"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/spaces/SpaceCategoriesList.tsx
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Connected data"
+msgstr "Données connectées"
+
+#: front/components/data_source_view/DataSourceViewSelector.tsx
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Websites"
+msgstr "Sites web"
+
+#: front/components/data_source_view/DataSourceViewsSpaceSelector.tsx
+msgid "No data source in this space."
+msgstr "Aucune source de données dans cet espace."
+
+#: front/components/data_source_view/DataSourceViewsSpaceSelector.tsx
+msgid "No space selected."
+msgstr "Aucun espace sélectionné."
+
+#: front/components/data_source_view/TagSearchInput.tsx
+msgid "No results found"
+msgstr "Aucun résultat trouvé"
+
+#: front/components/data_source_view/browser/knowledgeBrowserItems.ts
+msgid "From spaces"
+msgstr "Depuis les espaces"
+
+#: front/components/data_source_view/browser/knowledgeBrowserItems.ts
+msgid "From Pods"
+msgstr "Depuis les Pods"
+
+#: front/components/data_source_view/browser/knowledgeBrowserItems.ts
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Pod files"
+msgstr "Fichiers des Pods"
+
+#: front/components/data_source_view/browser/knowledgeBrowserItems.ts
+msgid "{childrenCount, plural, one {# item} other {# items}}"
+msgstr "{childrenCount, plural, one {# élément} other {# éléments}}"
+
+#: front/components/data_source_view/browser/knowledgeBrowserItems.ts
+msgid "Updated {timeAgo}"
+msgstr "Mis à jour {timeAgo}"
+
+#: front/components/data_source_view/browser/knowledgeBrowserSearch.ts
+msgid "All knowledge"
+msgstr "Toutes les connaissances"
+
+#: front/components/data_source_view/browser/knowledgeBrowserSearch.ts
+msgid "In \"{scopeLabel}\""
+msgstr "Dans « {scopeLabel} »"
 
 #: front/components/groups/GroupDialog.tsx
 msgid "Edit group"
@@ -5385,11 +5881,6 @@ msgid "Secrets"
 msgstr "Secrets"
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
-#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
-msgid "Documentation"
-msgstr "Documentation"
-
-#: front/components/pages/spaces/apps/AppViewPage.tsx
 msgid "Welcome to your new Dust app."
 msgstr "Bienvenue dans votre nouvelle app Dust."
 
@@ -5523,10 +6014,6 @@ msgstr "Export"
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Ask @analyst"
 msgstr "Demander à @analyst"
-
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-msgid "Explore"
-msgstr "Explorer"
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 msgid "Manage credit limits for members and groups in your scope."
@@ -5885,12 +6372,6 @@ msgstr "Crédits actuels"
 #: front/components/pages/workspace/developers/CreditsUsagePage.tsx
 msgid "Active credits for programmatic usage. Credits invoices are sent by email at time of purchase."
 msgstr "Crédits actifs pour l’utilisation via l’API. Les factures de crédits sont envoyées par e-mail au moment de l’achat."
-
-#: front/components/pages/workspace/developers/DevelopersPage.tsx
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
-#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
-msgid "API keys"
-msgstr "Clés API"
 
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
 msgid "Computer environment"
@@ -7867,11 +8348,6 @@ msgid "Used by"
 msgstr "Utilisé par"
 
 #: front/components/spaces/SpaceCategoriesList.tsx
-#: front/components/spaces/spaceCategoryLabels.ts
-msgid "Connected data"
-msgstr "Données connectées"
-
-#: front/components/spaces/SpaceCategoriesList.tsx
 msgid "Upload data"
 msgstr "Importer des données"
 
@@ -8116,10 +8592,6 @@ msgid "Search in {dataSourceName}"
 msgstr "Rechercher dans {dataSourceName}"
 
 #: front/components/spaces/SpaceSearchLayout.tsx
-msgid "Search in {spaceName}"
-msgstr "Rechercher dans {spaceName}"
-
-#: front/components/spaces/SpaceSearchLayout.tsx
 msgid "{searchHitCount, plural, one {Showing {resultsCount} of # result} other {Showing {resultsCount} of # results}}"
 msgstr "{searchHitCount, plural, one {Affichage de {resultsCount} sur # résultat} other {Affichage de {resultsCount} sur # résultats}}"
 
@@ -8236,14 +8708,6 @@ msgstr "Bonjour"
 #: front/components/spaces/search/SearchingInSpace.tsx
 msgid "Searching in <0>\"{searchingIn}\"</0>"
 msgstr "Recherche dans <0>« {searchingIn} »</0>"
-
-#: front/components/spaces/spaceCategoryLabels.ts
-msgid "Folders"
-msgstr "Dossiers"
-
-#: front/components/spaces/spaceCategoryLabels.ts
-msgid "Websites"
-msgstr "Sites web"
 
 #: front/components/spaces/spaceCategoryLabels.ts
 msgid "Apps"
@@ -8520,12 +8984,6 @@ msgstr "Événements à surveiller"
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Choose which events will activate this trigger"
 msgstr "Choisissez les événements qui activeront ce déclencheur"
-
-#: front/components/triggers/CreateWebhookSourceForm.tsx
-#: front/components/workspace/analytics/UsageFilterPanel.tsx
-#: front/components/workspace/analytics/automations/AutomationsFilterPanel.tsx
-msgid "Select all"
-msgstr "Tout sélectionner"
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 #: front/components/triggers/WebhookSourceDetailsInfo.tsx
@@ -11697,10 +12155,6 @@ msgstr "Mises à jour manuelles désactivées"
 #: front/components/workspace/settings/PodKnowledgePolicy.tsx
 msgid "Members cannot manually add files to Pods"
 msgstr "Les membres ne peuvent pas ajouter manuellement de fichiers aux Pods"
-
-#: front/components/workspace/settings/PodKnowledgePolicy.tsx
-msgid "Pod files"
-msgstr "Fichiers des Pods"
 
 #: front/components/workspace/settings/PodKnowledgePolicy.tsx
 msgid "Whether members can manually add files to Pods"
