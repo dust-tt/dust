@@ -91,6 +91,7 @@ const ws = crossws({
 const server = serve({ fetch: app.fetch, port, hostname }, () => {
   logger.info({ port, hostname }, "Collab server listening");
 });
+// The ingress and dust-hive's proxy send `/api/collab` here; upgrades on any path are accepted.
 server.on("upgrade", (request, socket, head) => {
   ws.handleUpgrade(request, socket, head);
 });

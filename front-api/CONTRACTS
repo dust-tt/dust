@@ -87,6 +87,10 @@ mounted before `/w/:wId` so it does not inherit `workspaceAuth`, and the
 `/:preStopSecret` sub-app is mounted last so its dynamic first segment does
 not shadow the literal-prefixed routes above it.
 
+@cc [owner:PopDaph,label:api] collab-path-reserved
+Routes MUST NOT be mounted under `/api/collab`: the ingress and dust-hive's proxy send that prefix
+to the collab server (`collab_server.ts`), so such a route would never reach front-api.
+
 @cc [label:api] auth-at-sub-app-boundaries
 Auth middleware must be applied once at the sub-app boundary, not per-route. For `workspaceAuth`
 and `publicApiAuth`, this is the workspace sub-app's `[wId]/index.ts` mount file:

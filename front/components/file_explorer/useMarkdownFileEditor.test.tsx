@@ -210,7 +210,7 @@ describe("useMarkdownFileEditor", () => {
 
   it("keeps a live editor open when the file is fetched again, even cut", () => {
     flags.add("co_edition");
-    liveSessionUrl = "ws://localhost/collab";
+    liveSessionUrl = "ws://localhost/api/collab";
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
       { initialProps: params }
