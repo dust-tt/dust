@@ -15,6 +15,7 @@ import {
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import { i18n } from "@app/lib/i18n/i18n";
+import type { UserType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
 
@@ -155,7 +156,19 @@ describe("usage filter", () => {
 });
 
 describe("getSearchFilterPresets", () => {
-  const currentUser = { sId: "me", fullName: "Alice", image: null };
+  const currentUser: UserType = {
+    sId: "me",
+    id: 1,
+    createdAt: 0,
+    provider: "google",
+    username: "alice",
+    email: "alice@example.com",
+    firstName: "Alice",
+    lastName: null,
+    fullName: "Alice",
+    image: null,
+    lastLoginAt: null,
+  };
 
   it("offers Editor is Me while the editor category is empty", () => {
     expect(
@@ -163,6 +176,7 @@ describe("getSearchFilterPresets", () => {
         filter: {},
         categories: CATEGORIES,
         currentUser,
+        t: translate,
       })
     ).toEqual([
       {
@@ -197,6 +211,7 @@ describe("getSearchFilterPresets", () => {
         },
         categories: CATEGORIES,
         currentUser,
+        t: translate,
       })
     ).toEqual([]);
     expect(
@@ -204,6 +219,7 @@ describe("getSearchFilterPresets", () => {
         filter: {},
         categories: ["model"],
         currentUser,
+        t: translate,
       })
     ).toEqual([]);
   });

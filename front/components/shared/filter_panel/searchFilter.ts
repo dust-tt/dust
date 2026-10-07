@@ -275,7 +275,7 @@ export function getSearchFilterPresets<Category extends SearchFilterCategory>({
 }: {
   filter: SearchFilter<Category>;
   categories: readonly Category[];
-  currentUser: Pick<UserType, "sId" | "fullName" | "image">;
+  currentUser: UserType;
   t: Translate;
 }): SearchFilterPreset<Category>[] {
   return removeNulls(
