@@ -6,7 +6,7 @@ import { promoteAnalyticsPanelConversation } from "@app/lib/api/assistant/conver
 import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import { getPaginationParams } from "@app/lib/api/pagination";
+import { DEFAULT_MAX_LIMIT, parseIntParam } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -30,6 +30,13 @@ import message from "./[mId]";
 
 const ParamsSchema = z.object({
   cId: z.string(),
+});
+
+const GetMessagesQuerySchema = z.object({
+  limit: z
+    .preprocess(parseIntParam, z.number().int().min(0).max(DEFAULT_MAX_LIMIT))
+    .default(10),
+  lastValue: z.preprocess(parseIntParam, z.number().int().safe()).optional(),
 });
 
 // TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
@@ -191,6 +198,7 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
+  validate("query", GetMessagesQuerySchema),
   async (
     ctx
   ): HandlerResult<
@@ -198,31 +206,9 @@ app.get(
   > => {
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
+    const { limit, lastValue } = ctx.req.valid("query");
 
     const messageStartTime = performance.now();
-
-    // getPaginationParams expects a Next-style query object; flatten Hono's
-    // query map (single-valued strings are fine here).
-    const queryObj = ctx.req.query();
-    const paginationRes = getPaginationParams(queryObj, {
-      defaultLimit: 10,
-      defaultOrderColumn: "rank",
-      defaultOrderDirection: "desc",
-      supportedOrderColumn: ["rank"],
-    });
-    if (paginationRes.isErr()) {
-      return apiError(
-        ctx,
-        {
-          status_code: 400,
-          api_error: {
-            type: "invalid_pagination_parameters",
-            message: "Invalid pagination parameters",
-          },
-        },
-        paginationRes.error
-      );
-    }
 
     const useNewResponseFormat = ctx.req.query("newResponseFormat") === "1";
 
@@ -230,8 +216,8 @@ app.get(
     // we enforce sorting by rank in descending order.
     const messagesRes = await fetchConversationMessages(auth, {
       conversationId,
-      limit: paginationRes.value.limit,
-      lastRank: paginationRes.value.lastValue,
+      limit,
+      lastRank: lastValue ?? null,
       viewType: useNewResponseFormat ? "light" : "legacy-light",
     });
 
