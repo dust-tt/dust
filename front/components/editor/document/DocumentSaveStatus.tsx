@@ -1,3 +1,4 @@
+import type { LiveStatus } from "@app/components/editor/document/types";
 import { AlertCircle, Check, cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -104,6 +105,37 @@ export const DocumentSaveStatus = ({
         </button>
       )}
     </>
+  );
+};
+
+const LIVE_STATUS_LABELS: Record<LiveStatus, MessageDescriptor> = {
+  connecting: msg`Connecting…`,
+  live: msg`Live`,
+  offline: msg`Reconnecting…`,
+  refused: msg`Live editing unavailable`,
+};
+
+/** Where the live session stands, in place of the save status. */
+export const DocumentLiveStatus = ({ status }: { status: LiveStatus }) => {
+  const { t } = useLingui();
+  return (
+    <span
+      role="status"
+      data-state={status}
+      className="inline-flex items-center gap-1.5 data-[state=refused]:text-foreground"
+    >
+      {status === "live" ? (
+        <span
+          aria-hidden="true"
+          className="mx-1 size-1.5 rounded-full bg-success-500"
+        />
+      ) : status === "refused" ? (
+        <Icon visual={AlertCircle} size="xs" className="text-warning-500" />
+      ) : (
+        <Spinner size="xs" />
+      )}
+      {t(LIVE_STATUS_LABELS[status])}
+    </span>
   );
 };
 
