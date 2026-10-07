@@ -169,11 +169,11 @@ export async function searchAgents(
   );
   const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
-  const preferFavorites =
-    selectionMode === "favorites_or_all" && !options.searchTerm.trim();
   const rankFavoritesFirst = selectionMode === "all" && favoritesFirst;
   const favoriteAgentIds =
-    selectionMode === "favorites_only" || preferFavorites || rankFavoritesFirst
+    selectionMode === "favorites_only" ||
+    (selectionMode === "favorites_or_all" && !options.searchTerm.trim()) ||
+    rankFavoritesFirst
       ? await AgentResource.listFavoriteIdsForCurrentUser(auth)
       : [];
 
@@ -196,7 +196,9 @@ export async function searchAgents(
         sort: buildAgentDefaultSort({
           sortBy:
             sortBy ??
-            (preferFavorites && restrictToFavorites ? "name" : "relevance"),
+            (selectionMode === "favorites_or_all" && restrictToFavorites
+              ? "name"
+              : "relevance"),
           sortOrder,
           favoriteAgentIds: rankFavoritesFirst ? favoriteAgentIds : [],
         }),
@@ -212,7 +214,7 @@ export async function searchAgents(
 
   let restrictToFavorites =
     selectionMode === "favorites_only" ||
-    (preferFavorites && favoriteAgentIds.length > 0);
+    (selectionMode === "favorites_or_all" && favoriteAgentIds.length > 0);
   let result = await fetchResults(restrictToFavorites);
   if (result.isErr()) {
     return result;
@@ -220,7 +222,7 @@ export async function searchAgents(
 
   const matchingFavorites = result.value.hits.total;
   if (
-    preferFavorites &&
+    selectionMode === "favorites_or_all" &&
     restrictToFavorites &&
     (isNumber(matchingFavorites)
       ? matchingFavorites
