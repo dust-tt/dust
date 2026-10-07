@@ -166,6 +166,14 @@ msgstr "Aperçu indisponible en raison de la politique de conservation des donn�
 msgid "Preview not available due to data retention policy on agents in this conversation."
 msgstr "Aperçu indisponible en raison de la politique de conservation des données appliquée aux agents de cette conversation."
 
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Summary not generated due to data retention policy on conversations in this workspace."
+msgstr "Résumé non généré en raison de la politique de conservation des données appliquée aux conversations de ce workspace."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Summary not generated due to data retention policy on agents in this conversation."
+msgstr "Résumé non généré en raison de la politique de conservation des données appliquée aux agents de cette conversation."
+
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A Pod"
 msgstr "Un Pod"

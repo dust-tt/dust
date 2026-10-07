@@ -5,12 +5,15 @@ import {
   getUserNotificationDelay,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
-import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
+import type {
+  ConversationDetailsPayload,
+  ConversationDetailsType,
+} from "@app/lib/notifications/helpers";
 import {
   ConversationDetailsPayloadSchema,
   ConversationDetailsSchema,
+  generateUnreadMessagesSummary,
   getConversationDetails,
-  getEmailSummary,
 } from "@app/lib/notifications/helpers";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
@@ -27,6 +30,7 @@ import {
   NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
 import { isDevelopment } from "@app/types/shared/env";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { I18n } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
@@ -173,6 +177,52 @@ export const getMessagePreviewSlack = (
     .split("\n")
     .map((line) => `> ${line}`)
     .join("\n");
+};
+
+export const getEmailSummary = async ({
+  i18n,
+  details,
+  subscriberId,
+  payload,
+}: {
+  i18n: I18n;
+  details: ConversationDetailsType;
+  subscriberId: string;
+  payload: ConversationDetailsPayload;
+}): Promise<string | null> => {
+  if (details.hasConversationRetentionPolicy) {
+    return i18n._(
+      msg`Summary not generated due to data retention policy on conversations in this workspace.`
+    );
+  }
+
+  if (details.hasAgentRetentionPolicies) {
+    return i18n._(
+      msg`Summary not generated due to data retention policy on agents in this conversation.`
+    );
+  }
+
+  // Generate summary of unread messages
+  const summaryResult = await generateUnreadMessagesSummary({
+    subscriberId,
+    payload,
+  });
+
+  if (summaryResult.isErr()) {
+    switch (summaryResult.error.code) {
+      case "generation_failed":
+      case "conversation_not_found":
+      case "no_unread_messages_found":
+      case "internal_error":
+      case "no_whitelisted_model_found":
+      case "user_not_found":
+        break;
+      default:
+        assertNever(summaryResult.error.code);
+    }
+    return null;
+  }
+  return summaryResult.value;
 };
 
 export const conversationUnreadWorkflow = workflow(
