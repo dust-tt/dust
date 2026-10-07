@@ -256,7 +256,7 @@ msgstr "fournisseur :"
 
 #: front/components/app/blocks/Search.tsx
 msgid "Setup provider"
-msgstr "Configurer le fournisseur"
+msgstr "Configurer un fournisseur"
 
 #: front/components/app/blocks/Search.tsx
 msgid "Provider not available"
