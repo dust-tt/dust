@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
+import { Button, Chip, cn, LoadingBlock, Plus } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   AnimatePresence,
@@ -34,34 +34,70 @@ function SummaryLabel({
   );
 }
 
+// Shared by a preset and the active chip selecting exactly its options, so React keeps one element
+// when the preset is applied or removed.
+function getPresetChipKey({ category, options }: FilterSummary<string>) {
+  return `preset:${category}:${options
+    .map(({ id }) => id)
+    .toSorted()
+    .join(",")}`;
+}
+
+function isPresetApplied<Category extends string>(
+  preset: FilterSummary<Category>,
+  summaries: FilterSummary<Category>[]
+) {
+  const selectedIds = new Set(
+    summaries
+      .find(({ category }) => category === preset.category)
+      ?.options.map(({ id }) => id)
+  );
+  return preset.options.every(({ id }) => selectedIds.has(id));
+}
+
 interface FilterExtraChip {
   key: string;
   label: ReactNode;
   onRemove: () => void;
 }
 
-interface FilterSummaryChipsProps<Category extends string> {
+interface FilterSummaryChipsProps<
+  Category extends string,
+  Preset extends FilterSummary<Category>,
+> {
   summaries: FilterSummary<Category>[];
   // Chips for settings outside the filter categories, shown after the category chips.
   extraChips?: FilterExtraChip[];
+  // Faded filters, labelled as the chip they become, applied on click. Shown before the active
+  // chips, unless all their options are already selected.
+  presets?: Preset[];
+  onApplyPreset?: (preset: Preset) => void;
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
   isLoading?: boolean;
   className?: string;
 }
 
-export function FilterSummaryChips<Category extends string>({
+export function FilterSummaryChips<
+  Category extends string,
+  Preset extends FilterSummary<Category>,
+>({
   summaries,
   extraChips = [],
+  presets = [],
+  onApplyPreset,
   onClearCategory,
   onClearAll,
   isLoading = false,
   className,
-}: FilterSummaryChipsProps<Category>) {
+}: FilterSummaryChipsProps<Category, Preset>) {
   const { t } = useLingui();
+  const presetKeys = new Set(presets.map(getPresetChipKey));
   const chips: FilterExtraChip[] = [
     ...summaries.map((summary) => ({
-      key: `category:${summary.category}`,
+      key: presetKeys.has(getPresetChipKey(summary))
+        ? getPresetChipKey(summary)
+        : `category:${summary.category}`,
       label: (
         <SummaryLabel
           categoryLabel={summary.categoryLabel}
@@ -72,6 +108,22 @@ export function FilterSummaryChips<Category extends string>({
     })),
     ...extraChips.map((chip) => ({ ...chip, key: `extra:${chip.key}` })),
   ];
+  const chipsAndPresets = [
+    ...presets
+      .filter((preset) => !isPresetApplied(preset, summaries))
+      .map((preset) => ({
+        key: getPresetChipKey(preset),
+        label: (
+          <SummaryLabel
+            categoryLabel={preset.categoryLabel}
+            options={preset.options}
+          />
+        ),
+        onRemove: undefined,
+        onApply: () => onApplyPreset?.(preset),
+      })),
+    ...chips.map((chip) => ({ ...chip, onApply: undefined })),
+  ];
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion
     ? { duration: 0 }
@@ -80,7 +132,7 @@ export function FilterSummaryChips<Category extends string>({
   return (
     <LazyMotion features={domMax}>
       <AnimatePresence initial={false}>
-        {chips.length > 0 && (
+        {chipsAndPresets.length > 0 && (
           <m.div
             key="filter-summary-chips"
             initial={shouldReduceMotion ? false : { opacity: 0 }}
@@ -94,7 +146,7 @@ export function FilterSummaryChips<Category extends string>({
               className="flex flex-wrap items-center gap-2"
             >
               <AnimatePresence initial={false}>
-                {chips.map((chip) => (
+                {chipsAndPresets.map((chip) => (
                   <m.div
                     key={chip.key}
                     layout={!shouldReduceMotion}
@@ -108,8 +160,16 @@ export function FilterSummaryChips<Category extends string>({
                   >
                     <Chip
                       size="xs"
-                      color="highlight"
-                      className="max-w-full"
+                      color={chip.onApply ? "primary" : "highlight"}
+                      className={cn(
+                        "max-w-full border border-dashed",
+                        "transition duration-200 motion-reduce:transition-none",
+                        chip.onApply
+                          ? "border-primary-300 opacity-70 hover:opacity-100"
+                          : "border-transparent"
+                      )}
+                      icon={chip.onApply ? Plus : undefined}
+                      onClick={chip.onApply}
                       onRemove={chip.onRemove}
                     >
                       {chip.label}
@@ -123,14 +183,16 @@ export function FilterSummaryChips<Category extends string>({
                   <LoadingBlock className="h-6 w-32 rounded-[9px]" />
                 </>
               )}
-              <m.div layout={!shouldReduceMotion} transition={transition}>
-                <Button
-                  label={t`Clear all`}
-                  size="xs"
-                  variant="ghost-secondary"
-                  onClick={onClearAll}
-                />
-              </m.div>
+              {chips.length > 0 && (
+                <m.div layout={!shouldReduceMotion} transition={transition}>
+                  <Button
+                    label={t`Clear all`}
+                    size="xs"
+                    variant="ghost-secondary"
+                    onClick={onClearAll}
+                  />
+                </m.div>
+              )}
             </div>
           </m.div>
         )}

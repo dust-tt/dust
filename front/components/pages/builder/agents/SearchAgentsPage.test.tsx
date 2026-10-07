@@ -491,6 +491,44 @@ describe("search-backed Manage Agents", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("applies the Editor is Me preset and offers it again once removed", async () => {
+    const { editor, fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(
+      screen.queryByRole("button", { name: "Clear all" })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: `Editor is ${editor.fullName} (You)` })
+    );
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        editorIds: [editor.sId],
+      })
+    );
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", {
+          name: `Editor is ${editor.fullName} (You)`,
+        })
+      ).not.toBeInTheDocument()
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(
+      await screen.findByRole("button", {
+        name: `Editor is ${editor.fullName} (You)`,
+      })
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Remove" })
+      ).not.toBeInTheDocument()
+    );
+  });
+
   it("never requests unrestricted search for non-admins", async () => {
     const { fetcherWithBody, mount } = await setup({ role: "user" });
     mount();

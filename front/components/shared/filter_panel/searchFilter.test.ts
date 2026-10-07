@@ -5,6 +5,7 @@ import {
 } from "@app/components/assistant/manager/agentFilter";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
 import {
+  getSearchFilterPresets,
   resolveSearchFilterSelection,
   toSearchFilterSelection,
   toUsageFilterOption,
@@ -14,6 +15,7 @@ import {
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import { i18n } from "@app/lib/i18n/i18n";
+import type { UserType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
 
@@ -150,5 +152,55 @@ describe("usage filter", () => {
     expect(toSkillSearchFilters(filter)).toEqual({
       activeUsersCount: { min: 5, max: 40 },
     });
+  });
+});
+
+describe("getSearchFilterPresets", () => {
+  const currentUser: UserType = {
+    sId: "me",
+    id: 1,
+    createdAt: 0,
+    provider: "google",
+    username: "alice",
+    email: "alice@example.com",
+    firstName: "Alice",
+    lastName: null,
+    fullName: "Alice",
+    image: null,
+    lastLoginAt: null,
+  };
+
+  it("offers Editor is Me when the editor category is listed", () => {
+    expect(
+      getSearchFilterPresets({
+        categories: CATEGORIES,
+        currentUser,
+        t: translate,
+      })
+    ).toEqual([
+      {
+        category: "editor",
+        categoryLabel: "Editor",
+        options: [
+          {
+            category: "editor",
+            id: "me",
+            name: "Alice (You)",
+            image: null,
+            disabled: false,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("offers no preset when the category is not listed", () => {
+    expect(
+      getSearchFilterPresets({
+        categories: ["model"],
+        currentUser,
+        t: translate,
+      })
+    ).toEqual([]);
   });
 });
