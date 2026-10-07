@@ -11,6 +11,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import { Op } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const RETENTION_MS = 7 * ONE_DAY_MS;
@@ -211,6 +212,42 @@ describe("purgeStaleFramePublications", () => {
 
     expect(result.deletedPublicationCount).toBe(0);
     expect(await functionRowCount(auth, frame, active)).toBe(1);
+  });
+
+  it("keeps every publication of a Frame with no active publication", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const frame = await createTestFrameFile(auth, { space });
+    const lastServed = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    // A later publish that failed mid-upload: newest row, but nothing to serve.
+    fileStorageMock.setFileSaveFails(() => true);
+    await expect(
+      storeTestFramePublication(auth, frame, { publishedDaysAgo: 20 })
+    ).rejects.toThrow("Simulated GCS write failure");
+    fileStorageMock.setFileSaveFails(() => false);
+    await FramePublicationModel.update(
+      { createdAt: new Date(Date.now() - 20 * ONE_DAY_MS) },
+      {
+        where: {
+          workspaceId: frame.workspaceId,
+          fileId: frame.id,
+          publicationId: { [Op.ne]: lastServed },
+        },
+      }
+    );
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result.deletedPublicationCount).toBe(0);
+    expect(hasUiBundle(workspace.sId, frame, lastServed)).toBe(true);
+    expect(await publicationRowIds(frame)).toHaveLength(2);
   });
 
   it("purges a stale publish that failed before writing any object", async () => {

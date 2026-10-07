@@ -824,6 +824,12 @@ function mapDustFsError(
         api_error: { type: "invalid_request_error", message: err.message },
       };
 
+    case "frame_manifest_move":
+      return {
+        status_code: 400,
+        api_error: { type: "frame_manifest_not_movable", message: err.message },
+      };
+
     case "too_many_mounts":
     case "internal":
       return {
