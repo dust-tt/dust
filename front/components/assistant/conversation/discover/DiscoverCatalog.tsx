@@ -23,7 +23,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
 import {
@@ -146,13 +146,8 @@ function FavoritesCatalog({
   onClearFilters,
   ...actions
 }: CatalogSourceProps) {
-  const { agentConfigurations, isAgentConfigurationsLoading: isAgentsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "favorites",
-      includes: ["authors", "usage"],
-      revalidate: true,
-    });
+  const { agentConfigurations, isLoading: isAgentsLoading } =
+    useUnifiedAgentConfigurations({ workspaceId: owner.sId });
   const {
     skills,
     resolvedSearchTerm,
@@ -194,6 +189,7 @@ function FavoritesCatalog({
       ? activeAgents
           .filter(
             (agent) =>
+              agent.userFavorite &&
               (itemsQuery.tagId === null ||
                 agent.tags.some((tag) => tag.sId === itemsQuery.tagId)) &&
               (!itemsQuery.searchTerm ||
