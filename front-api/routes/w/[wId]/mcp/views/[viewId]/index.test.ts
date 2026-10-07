@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -10,7 +11,30 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+});
+
+function auditedEvents() {
+  return vi.mocked(workosAudit.emitAuditLogEvent).mock.calls.map(([event]) => ({
+    action: event.action,
+    targets: event.targets,
+    context: event.context,
+    metadata: event.metadata,
+  }));
+}
 
 async function setup(role: MembershipRoleType = "admin") {
   const { workspace, auth, globalSpace, systemSpace } =
@@ -454,5 +478,146 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.success).toBe(true);
     expect(data.serverView.name).toBeNull();
     expect(data.serverView.description).toBeNull();
+  });
+
+  it("audits an OAuth use case change once and ignores an identical repeat", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Acme CRM",
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+    expect(systemView).toBeDefined();
+
+    const body = { oAuthUseCase: "personal_actions" as const };
+    expect((await patchView(workspace.sId, systemView!.sId, body)).status).toBe(
+      200
+    );
+    expect((await patchView(workspace.sId, systemView!.sId, body)).status).toBe(
+      200
+    );
+
+    expect(auditedEvents()).toEqual([
+      {
+        action: "mcp_server.oauth_settings_updated",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "mcp_server", id: server.sId, name: "Acme CRM" },
+        ],
+        context: { location: "internal" },
+        metadata: {
+          server_type: "remote",
+          previous_oauth_use_case: "none",
+          new_oauth_use_case: "personal_actions",
+          oauth_scope_changed: "false",
+        },
+      },
+    ]);
+  });
+
+  it("does not audit a rename or a skills-only update", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Acme CRM",
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+    expect(systemView).toBeDefined();
+
+    const renameResponse = await patchView(workspace.sId, systemView!.sId, {
+      name: "Renamed",
+      description: null,
+    });
+    expect(renameResponse.status).toBe(200);
+    expect((await renameResponse.json()).serverView.name).toBe("Renamed");
+
+    const skillsResponse = await patchView(workspace.sId, systemView!.sId, {
+      isRestrictedToSkills: true,
+    });
+    expect(skillsResponse.status).toBe(200);
+
+    expect(auditedEvents()).toEqual([]);
+
+    const useCaseResponse = await patchView(workspace.sId, systemView!.sId, {
+      oAuthUseCase: "platform_actions",
+    });
+    expect(useCaseResponse.status).toBe(200);
+    expect(auditedEvents()).toEqual([
+      {
+        action: "mcp_server.oauth_settings_updated",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "mcp_server", id: server.sId, name: "Acme CRM" },
+        ],
+        context: { location: "internal" },
+        metadata: {
+          server_type: "remote",
+          previous_oauth_use_case: "none",
+          new_oauth_use_case: "platform_actions",
+          oauth_scope_changed: "false",
+        },
+      },
+    ]);
+  });
+
+  it("audits a scope-only change without the scope string", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Acme CRM",
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+    expect(systemView).toBeDefined();
+
+    expect(
+      (
+        await patchView(workspace.sId, systemView!.sId, {
+          oAuthUseCase: "personal_actions",
+          oauthScope: "SCOPE-CANARY-OLD",
+        })
+      ).status
+    ).toBe(200);
+    vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+
+    const response = await patchView(workspace.sId, systemView!.sId, {
+      oAuthUseCase: "personal_actions",
+      oauthScope: "SCOPE-CANARY-NEW",
+    });
+    expect(response.status).toBe(200);
+
+    expect(auditedEvents()).toEqual([
+      {
+        action: "mcp_server.oauth_settings_updated",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "mcp_server", id: server.sId, name: "Acme CRM" },
+        ],
+        context: { location: "internal" },
+        metadata: {
+          server_type: "remote",
+          previous_oauth_use_case: "personal_actions",
+          new_oauth_use_case: "personal_actions",
+          oauth_scope_changed: "true",
+        },
+      },
+    ]);
+    expect(
+      JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
+    ).not.toContain("SCOPE-CANARY");
+
+    const views = await MCPServerViewResource.listByMCPServer(auth, server.sId);
+    expect(views.length).toBeGreaterThan(0);
+    for (const view of views) {
+      expect(view.oauthScope).toBe("SCOPE-CANARY-NEW");
+    }
   });
 });

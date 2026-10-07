@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -6,7 +7,30 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import type { MembershipRoleType } from "@app/types/memberships";
 import { REDACTED_HEADER_VALUES_ERROR_MESSAGE } from "@app/types/shared/utils/http_headers";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+});
+
+function auditedEvents() {
+  return vi.mocked(workosAudit.emitAuditLogEvent).mock.calls.map(([event]) => ({
+    action: event.action,
+    targets: event.targets,
+    context: event.context,
+    metadata: event.metadata,
+  }));
+}
 
 async function setup(role: MembershipRoleType = "admin") {
   const { workspace, auth, systemSpace } = await createPrivateApiMockRequest({
@@ -166,6 +190,168 @@ describe("PATCH /api/w/:wId/mcp/:serverId", () => {
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.message).toContain("Validation error:");
+  });
+
+  it("audits a credential update and leaves the secret and header out of the event", async () => {
+    const { workspace } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Acme CRM",
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sharedSecret: "sk-AUDIT-CANARY",
+          customHeaders: [{ key: "X-Canary", value: "HEADER-AUDIT-CANARY" }],
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(auditedEvents()).toEqual([
+      {
+        action: "mcp_server.credentials_updated",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "mcp_server", id: server.sId, name: "Acme CRM" },
+        ],
+        context: { location: "internal" },
+        metadata: {
+          server_type: "remote",
+          shared_secret_updated: "true",
+          custom_headers_updated: "true",
+        },
+      },
+    ]);
+    expect(
+      JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
+    ).not.toContain("AUDIT-CANARY");
+  });
+
+  it("audits an internal header update without the header value", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "slab",
+      useCase: null,
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.id),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customHeaders: [{ key: "X-Canary", value: "HEADER-AUDIT-CANARY" }],
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(auditedEvents()).toEqual([
+      {
+        action: "mcp_server.credentials_updated",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "mcp_server", id: server.id, name: "slab" },
+        ],
+        context: { location: "internal" },
+        metadata: {
+          server_type: "internal",
+          shared_secret_updated: "false",
+          custom_headers_updated: "true",
+        },
+      },
+    ]);
+    expect(
+      JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
+    ).not.toContain("HEADER-AUDIT-CANARY");
+  });
+
+  it("does not audit icon or meta updates", async () => {
+    const { workspace } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Acme CRM",
+    });
+
+    const iconResponse = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ icon: "ActionArmchairIcon" }),
+      }
+    );
+    expect(iconResponse.status).toBe(200);
+    expect((await iconResponse.json()).server.icon).toBe("ActionArmchairIcon");
+
+    const metaResponse = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meta: { tenant: "acme" } }),
+      }
+    );
+    expect(metaResponse.status).toBe(200);
+    expect((await metaResponse.json()).server.meta).toEqual({
+      tenant: "acme",
+    });
+
+    expect(auditedEvents()).toEqual([]);
+
+    const credentialResponse = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sharedSecret: "sk-AUDIT-CANARY" }),
+      }
+    );
+    expect(credentialResponse.status).toBe(200);
+    expect(auditedEvents()).toEqual([
+      {
+        action: "mcp_server.credentials_updated",
+        targets: [
+          { type: "workspace", id: workspace.sId, name: workspace.name },
+          { type: "mcp_server", id: server.sId, name: "Acme CRM" },
+        ],
+        context: { location: "internal" },
+        metadata: {
+          server_type: "remote",
+          shared_secret_updated: "true",
+          custom_headers_updated: "false",
+        },
+      },
+    ]);
+  });
+
+  it("does not audit a credential update from a user who cannot administer the server", async () => {
+    const { workspace, auth } = await setup("user");
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Acme CRM",
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sharedSecret: "sk-AUDIT-CANARY" }),
+      }
+    );
+
+    expect(response.status).toBe(401);
+    expect(auditedEvents()).toEqual([]);
+    const stored = await RemoteMCPServerResource.findByPk(auth, server.id, {
+      includeHeavyAttributes: ["sharedSecret"],
+    });
+    expect(stored?.getSharedSecret() ?? null).toBeNull();
+    expect(
+      JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
+    ).not.toContain("AUDIT-CANARY");
   });
 });
 
