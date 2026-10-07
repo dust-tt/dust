@@ -501,9 +501,11 @@ msgid "Delete"
 msgstr "Supprimer"
 
 #: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+#: front/components/markdown/suggestion/useSuggestionTarget.tsx
 msgid "Agent"
 msgstr "Agent"
 
 #: front/components/markdown/suggestion/SuggestionTargetSection.tsx
+#: front/components/markdown/suggestion/useSuggestionTarget.tsx
 msgid "Skill"
 msgstr "Compétence"

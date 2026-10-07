@@ -87,6 +87,7 @@ export const useSkillSelection = ({
           description: skill.userFacingDescription,
           icon: skill.icon,
           availability: skill.availability,
+          requestedSpaceIds: skill.requestedSpaceIds,
           canWrite: skill.canWrite,
         },
       ]);

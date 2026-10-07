@@ -266,8 +266,8 @@ msgid "You've reached your usage limit."
 msgstr "You've reached your usage limit."
 
 #: front/lib/api_error_messages.ts
-msgid "Your group has reached its usage limit."
-msgstr "Your group has reached its usage limit."
+msgid "Your group has reached its shared usage limit."
+msgstr "Your group has reached its shared usage limit."
 
 #: front/lib/api_error_messages.ts
 msgid "You don't have a seat in this workspace."
@@ -564,6 +564,10 @@ msgstr "Sandbox function call not found."
 #: front/lib/api_error_messages.ts
 msgid "The frame runtime is unavailable."
 msgstr "The frame runtime is unavailable."
+
+#: front/lib/api_error_messages.ts
+msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
+msgstr "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
 
 #: front/lib/api_error_messages.ts
 msgid "A fast function can't call tools."

@@ -1,4 +1,4 @@
-import { isGroupLimitReached } from "@app/lib/api/groups/group_limit";
+import { isGroupSharedUsageLimitReached } from "@app/lib/api/groups/group_shared_usage_limit";
 import * as userSpendLimit from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -21,16 +21,19 @@ vi.mock("@app/lib/api/users/spend_limit", async () => {
   };
 });
 
-vi.mock(import("@app/lib/api/groups/group_limit"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  isGroupLimitReached: vi.fn(),
-}));
+vi.mock(
+  import("@app/lib/api/groups/group_shared_usage_limit"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    isGroupSharedUsageLimitReached: vi.fn(),
+  })
+);
 
 beforeEach(() => {
   vi.mocked(userSpendLimit.isUserSpendLimitRateCapReached).mockResolvedValue(
     false
   );
-  vi.mocked(isGroupLimitReached).mockResolvedValue(false);
+  vi.mocked(isGroupSharedUsageLimitReached).mockResolvedValue(false);
 });
 
 // Mark the current member as over their per-user spend cap (the rate limiter's
@@ -88,20 +91,20 @@ describe("/api/w/[wId]/usage-status", () => {
     expect(body.hasPendingUpgradeRequest).toBe(false);
   });
 
-  it("reports a group limit block without offering a seat upgrade", async () => {
+  it("reports a shared usage limit block without offering a seat upgrade", async () => {
     const workspace = await creditPricedWorkspace();
     await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
       workspace,
     });
-    vi.mocked(isGroupLimitReached).mockResolvedValue(true);
+    vi.mocked(isGroupSharedUsageLimitReached).mockResolvedValue(true);
 
     const response = await honoApp.request(usageStatusUrl(workspace.sId));
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.userBlockedReason).toBe("group_limit_reached");
+    expect(body.userBlockedReason).toBe("group_shared_usage_limit_reached");
     expect(body.canRequestUpgrade).toBe(false);
   });
 

@@ -35,12 +35,12 @@ describe("creditStopMessage", () => {
     );
   });
 
-  it("points members to their group managers when their group limit is reached", async () => {
+  it("points members to their group managers when their shared usage limit is reached", async () => {
     const { authenticator: member } = await createResourceTest({
       role: "user",
     });
-    expect(creditStopMessage(member, "group_limit_reached")).toBe(
-      "Your group has reached its usage limit. Please contact your group managers or administrator to increase it."
+    expect(creditStopMessage(member, "group_shared_usage_limit_reached")).toBe(
+      "Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it."
     );
   });
 

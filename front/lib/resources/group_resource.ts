@@ -12,6 +12,8 @@ import {
   deleteGrantsForResources,
   listRegularAutoGroupIdsForResources,
 } from "@app/lib/resources/group_permission_cleanup";
+import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
+import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -34,8 +36,9 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
-import type { GroupLimitUsage } from "@app/types/api/groups/group_limit";
+import type { SharedUsageLimitWithUsage } from "@app/types/api/groups/shared_usage_limit";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
   GroupGrantableSeatType,
@@ -72,6 +75,7 @@ import {
 } from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
+import groupBy from "lodash/groupBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -92,8 +96,8 @@ type CachedGroup = {
   workspaceId: ModelId;
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
-  groupLimitAwuCredits: number | null;
-  groupLimitPriority: number | null;
+  sharedUsageLimitAwuCredits: number | null;
+  sharedUsageLimitPriority: number | null;
   grantedRole: GroupGrantableRole | null;
   grantedSeatType: GroupGrantableSeatType | null;
   createdAt: number;
@@ -107,11 +111,11 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
  * @cc [owner:philipperolet,label:security;product] group-verbs
  * The verbs a caller holds on a group mean:
  * - `read`: seeing the group and its membership.
- * - `write`: adding or removing members of a `regular_manual` group, subject to the
- *   admin-granting membership guard.
+ * - `write`: adding or removing members of a `regular_manual` group.
  * - `admin`: renaming or deleting a `regular_manual` group.
  * - `read_usage`: viewing usage of active members of this group.
  * - `set_usage_limits`: editing this group's allowance or an active member's personal limit.
+ * On a privileged group, only workspace admins hold `write` and `admin`.
  * `provisioned` groups can grant usage verbs but never `write` or `admin`.
  * `global` groups grant only `read`. `regular_auto` and `system` groups hold no verbs and MUST
  * only be used by paths with a separate authorization context.
@@ -122,6 +126,10 @@ export class GroupResource extends BaseResource<GroupModel> {
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);
   }
+
+  // The grants this group holds, as opposed to the grants on it (e.g. `group_manager`). Loaded by
+  // `baseFetch` for manual groups, the only ones non-admins can edit; `null` otherwise.
+  private heldGrants: GroupGrant[] | null = null;
 
   // Default group kinds for auth (excludes system groups).
   private static readonly defaultAuthGroupKinds: Exclude<
@@ -155,8 +163,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
-      groupLimitAwuCredits: g.groupLimitAwuCredits,
-      groupLimitPriority: g.groupLimitPriority,
+      sharedUsageLimitAwuCredits: g.sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority: g.sharedUsageLimitPriority,
       grantedRole: g.grantedRole,
       grantedSeatType: g.grantedSeatType,
       createdAt: g.createdAt.getTime(),
@@ -199,8 +207,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
-      groupLimitAwuCredits: data.groupLimitAwuCredits,
-      groupLimitPriority: data.groupLimitPriority,
+      sharedUsageLimitAwuCredits: data.sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority: data.sharedUsageLimitPriority,
       grantedRole: data.grantedRole,
       grantedSeatType: data.grantedSeatType,
       createdAt: new Date(data.createdAt),
@@ -416,7 +424,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
-    return new this(GroupModel, group.get());
+    const resource = new this(GroupModel, group.get());
+    // A new group holds no grant yet.
+    resource.heldGrants = [];
+    return resource;
   }
 
   /**
@@ -697,7 +708,45 @@ export class GroupResource extends BaseResource<GroupModel> {
       order,
       transaction,
     });
-    return groupModels.map((b) => new this(this.model, b.get()));
+    const groups = groupModels.map((b) => new this(this.model, b.get()));
+    await this.loadHeldGrants(
+      auth,
+      groups.filter((group) => group.isRegularManual()),
+      transaction
+    );
+    return groups;
+  }
+
+  // One query for all groups, on the (workspaceId, groupId) index. Not through
+  // `GroupPermissionResource.listForGroups`: that module imports this one (import cycle).
+  private static async loadHeldGrants(
+    auth: Authenticator,
+    groups: GroupResource[],
+    transaction?: Transaction
+  ): Promise<void> {
+    if (groups.length === 0) {
+      return;
+    }
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["groupId", "grantType", "resourceType", "resourceId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        groupId: groups.map((group) => group.id),
+      },
+      transaction,
+    });
+    const grantsByGroupId = groupBy(
+      grants.map(({ groupId, grantType, resourceType, resourceId }) => ({
+        groupId,
+        grantType,
+        resourceType,
+        resourceId,
+      })),
+      "groupId"
+    );
+    for (const group of groups) {
+      group.heldGrants = grantsByGroupId[group.id] ?? [];
+    }
   }
 
   static async dangerouslyFetchByModelIds(
@@ -1253,17 +1302,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
-  static async listLimitedGroups(
+  static async listGroupsWithSharedUsageLimit(
     auth: Authenticator
   ): Promise<GroupResource[]> {
     const groups = await GroupModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         kind: [...CAP_ELIGIBLE_GROUP_KINDS],
-        groupLimitAwuCredits: { [Op.ne]: null },
+        sharedUsageLimitAwuCredits: { [Op.ne]: null },
       },
       order: [
-        ["groupLimitPriority", "ASC"],
+        ["sharedUsageLimitPriority", "ASC"],
         ["id", "ASC"],
       ],
     });
@@ -1273,12 +1322,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:rfrenoy,label:security;product;backend] limit-group-drop-not-reassign
-   * Each member's limit group is resolved from memberships and priorities alone, and the `read`
-   * filter applies to that resolved group: a member whose limit group the caller cannot read MUST
+   * @cc [owner:rfrenoy,label:security;product;backend] shared-usage-limit-group-drop-not-reassign
+   * Each member's shared usage limit group is resolved from memberships and priorities alone, and the `read`
+   * filter applies to that resolved group: a member whose shared usage limit group the caller cannot read MUST
    * be absent from the result, never attributed to the next readable group.
    */
-  static async listLimitGroupByUserModelIdInWorkspace(
+  static async listSharedUsageLimitGroupsByUserModelId(
     auth: Authenticator,
     { userModelIds }: { userModelIds: ModelId[] }
   ): Promise<Map<ModelId, GroupResource>> {
@@ -1291,11 +1340,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         workspaceId: workspace.id,
         kind: [...CAP_ELIGIBLE_GROUP_KINDS],
-        groupLimitAwuCredits: { [Op.ne]: null },
-        groupLimitPriority: { [Op.ne]: null },
+        sharedUsageLimitAwuCredits: { [Op.ne]: null },
+        sharedUsageLimitPriority: { [Op.ne]: null },
       },
       order: [
-        ["groupLimitPriority", "ASC"],
+        ["sharedUsageLimitPriority", "ASC"],
         ["id", "ASC"],
       ],
     });
@@ -2195,26 +2244,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Editing a regular_manual group (name/members) requires `write` on it
-    // (workspace admins and managers).
+    // (workspace admins and managers; only workspace admins for a privileged group).
     if (!auth.can("write", this)) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
-        )
-      );
-    }
-
-    // Changing the members of an admin-granting group escalates/de-escalates
-    // admins, so it is restricted to workspace admins.
-    if (
-      memberIds !== undefined &&
-      !this.canManageMembersGivenGrantedRole(auth)
-    ) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can manage members of a group that grants the admin role."
+          this.isPrivileged()
+            ? "Only workspace admins can update a group that gives admin-level permissions."
+            : `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
     }
@@ -2304,23 +2341,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Editing a regular_manual group (name/members) requires `write` on it
-    // (workspace admins and managers).
+    // (workspace admins and managers; only workspace admins for a privileged group).
     if (!auth.can("write", this)) {
       return new Err(
         new DustError(
           "unauthorized",
-          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
-        )
-      );
-    }
-
-    // Changing the members of an admin-granting group escalates/de-escalates
-    // admins, so it is restricted to workspace admins.
-    if (!this.canManageMembersGivenGrantedRole(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can manage members of a group that grants the admin role."
+          this.isPrivileged()
+            ? "Only workspace admins can update a group that gives admin-level permissions."
+            : `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
       );
     }
@@ -2478,37 +2506,39 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:rfrenoy,label:product;backend] group-limit-columns-paired
-   * `groupLimitAwuCredits` and `groupLimitPriority` MUST be both null or both non-null, and MUST
-   * only be written by this method. A group is "limited" iff `groupLimitAwuCredits IS NOT NULL`
+   * @cc [owner:rfrenoy,label:product;backend] group-shared-usage-limit-columns-paired
+   * `sharedUsageLimitAwuCredits` and `sharedUsageLimitPriority` MUST be both null or both non-null, and MUST
+   * only be written by this method. A group is "limited" iff `sharedUsageLimitAwuCredits IS NOT NULL`
    */
-  async updateGroupLimit(groupLimitAwuCredits: number | null): Promise<void> {
-    if (groupLimitAwuCredits === null) {
+  async updateSharedUsageLimit(
+    sharedUsageLimitAwuCredits: number | null
+  ): Promise<void> {
+    if (sharedUsageLimitAwuCredits === null) {
       await this.update({
-        groupLimitAwuCredits: null,
-        groupLimitPriority: null,
+        sharedUsageLimitAwuCredits: null,
+        sharedUsageLimitPriority: null,
       });
       return;
     }
 
-    if (this.groupLimitPriority !== null) {
-      await this.update({ groupLimitAwuCredits });
+    if (this.sharedUsageLimitPriority !== null) {
+      await this.update({ sharedUsageLimitAwuCredits });
       return;
     }
 
     const maxPriority = await GroupModel.max<number | null, GroupModel>(
-      "groupLimitPriority",
+      "sharedUsageLimitPriority",
       {
         where: {
           workspaceId: this.workspaceId,
-          groupLimitPriority: { [Op.ne]: null },
+          sharedUsageLimitPriority: { [Op.ne]: null },
         },
       }
     );
 
     await this.update({
-      groupLimitAwuCredits,
-      groupLimitPriority: (maxPriority ?? 0) + 1,
+      sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority: (maxPriority ?? 0) + 1,
     });
   }
 
@@ -2653,12 +2683,19 @@ export class GroupResource extends BaseResource<GroupModel> {
    *   they are linked to, so the permission is checked on that resource and never on the
    *   group itself.
    * - system: nothing, it is internal to the workspace.
+   * On a privileged group (see `isPrivileged`), only workspace admins hold write and admin.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
    * @returns The verbs the caller holds on this group from workspace role and governance grants.
+   */
+  /**
+   * @cc [owner:tdraier;philipperolet,label:security] privileged-group-admin-only
+   * On a privileged group, `write` and `admin` MUST only be returned for workspace admins,
+   * whatever the caller's workspace role (e.g. manager) or governance grants. In particular,
+   * only workspace admins can add or remove its members.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     let roleGrants: RoleGrant[];
@@ -2746,6 +2783,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
       }
     }
+    if (!auth.isAdmin() && this.isPrivileged()) {
+      verbs.delete("write");
+      verbs.delete("admin");
+    }
     return verbs;
   }
 
@@ -2770,18 +2811,29 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:tdraier,label:security] admin-group-membership-admin-only
-   * Membership of a group that grants the admin role (`grantedRole === "admin"`)
-   * MUST only be mutated by workspace admins. Adding a member to such a group
-   * escalates them to admin, so managers (who otherwise have `write` on manual
-   * groups) MUST NOT be able to add or remove its members — mirroring the
-   * members UI, where managers cannot assign the admin role.
-   *
-   * Returns true when `auth` is allowed to change this group's membership given
-   * the role it grants. Callers must still enforce `auth.can("write", group)`.
+   * A privileged group gives its members admin-level powers, so only workspace admins can change
+   * it (see `getAllowedVerbs`).
    */
-  canManageMembersGivenGrantedRole(auth: Authenticator): boolean {
-    return this.grantedRole !== "admin" || auth.isAdmin();
+  /**
+   * @cc [owner:philipperolet,label:security] privileged-group-definition
+   * A group MUST be privileged when it grants the admin role (`grantedRole === "admin"`), or when
+   * the grants it holds give `admin` on billing or security, or `write` on every group. A group
+   * whose held grants were not loaded MUST be treated as privileged.
+   */
+  isPrivileged(): boolean {
+    if (this.grantedRole === "admin" || this.heldGrants === null) {
+      return true;
+    }
+    const permissions = GroupPermissions.fromGrants(this.heldGrants);
+    const givesAdminOn = (resourceType: "billing" | "security") =>
+      permissions
+        .resolvedVerbsForResource(resourceType, WHOLE_TYPE_RESOURCE_ID, "type")
+        .includes("admin");
+    const managesEveryGroup =
+      permissions.resourceIdsWithVerb("group", "write").kind === "all";
+    return (
+      givesAdminOn("billing") || givesAdminOn("security") || managesEveryGroup
+    );
   }
 
   /**
@@ -3561,14 +3613,14 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // JSON Serialization
 
-  toGroupLimitUsageJSON({
+  toSharedUsageLimitJSON({
     usedAwuCredits,
   }: {
     usedAwuCredits: number;
-  }): GroupLimitUsage {
+  }): SharedUsageLimitWithUsage {
     return {
       groupId: this.sId,
-      limitAwuCredits: this.groupLimitAwuCredits ?? 0,
+      limitAwuCredits: this.sharedUsageLimitAwuCredits ?? 0,
       usedAwuCredits,
     };
   }

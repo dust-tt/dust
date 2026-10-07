@@ -24,7 +24,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     owner: "tdraier",
   },
   group_limits: {
-    description: "Enable shared group limits on the Usage page",
+    description: "Enable group shared usage limits on the Usage page",
     stage: "ask_owner",
     owner: "rfrenoy",
   },

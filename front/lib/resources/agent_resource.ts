@@ -1327,12 +1327,21 @@ export class AgentResource
 
   // Agents the current user has favorited. Favorites are keyed by agent `sId` (stable across
   // versions) and may include global agents, which `fetchByIds` resolves through its global path.
+  /**
+   * @cc [owner:adrsimon,label:product] favorites-exclude-non-default-global-agents
+   * Favorited global agents MUST be returned only when among `listDefaultGlobalAgentIds`, so
+   * retired and model-only global agents are never listed even if favorited.
+   */
   static async listFavoritesForCurrentUser(
     auth: Authenticator
   ): Promise<AgentResource[]> {
+    const defaultGlobalAgentIds = new Set<string>(listDefaultGlobalAgentIds());
     return this.fetchByIds(
       auth,
-      await this.listFavoriteIdsForCurrentUser(auth)
+      (await this.listFavoriteIdsForCurrentUser(auth)).filter(
+        (agentId) =>
+          !isGlobalAgentId(agentId) || defaultGlobalAgentIds.has(agentId)
+      )
     );
   }
 

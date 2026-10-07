@@ -71,7 +71,7 @@ const API_ERROR_TYPES = [
   "plan_message_limit_exceeded",
   "credits_exhausted",
   "user_cap_reached",
-  "group_limit_reached",
+  "group_shared_usage_limit_reached",
   "no_seat",
   "model_disabled",
   "global_agent_error",
@@ -170,6 +170,7 @@ const API_ERROR_TYPES = [
   "sandbox_function_not_found",
   "sandbox_function_invocation_not_found",
   "frame_runtime_unavailable",
+  "frame_manifest_not_movable",
   "fast_function_called_tools",
   // Projects
   "project_metadata_not_found",

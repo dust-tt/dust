@@ -1,6 +1,5 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
@@ -31,10 +30,9 @@ export function useAgentRequestedSpaces({
   initialRequestedSpaceIds,
 }: UseAgentRequestedSpacesProps): UseAgentRequestedSpacesResult {
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { skills: allSkills } = useSkillsContext();
   const { spaces, owner, isSpacesLoading } = useSpacesContext();
 
-  const selectedSkills = useWatch<AgentBuilderFormData, "skills">({
+  const skills = useWatch<AgentBuilderFormData, "skills">({
     name: "skills",
   });
   const actions = useWatch<AgentBuilderFormData, "actions">({
@@ -71,11 +69,8 @@ export function useAgentRequestedSpaces({
 
   // Merge requested spaces from skills, actions, and additional spaces (from global skills)
   const actionsAndSkillsRequestedSpaceIds = useMemo(() => {
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
     const skillRequestedSpaceIds = new Set(
-      allSkills
-        .filter((skill) => selectedSkillIds.has(skill.sId))
-        .flatMap((skill) => skill.requestedSpaceIds)
+      skills.flatMap((skill) => skill.requestedSpaceIds)
     );
 
     const actionRequestedSpaceIds = new Set<string>();
@@ -86,7 +81,7 @@ export function useAgentRequestedSpaces({
     }
 
     return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
-  }, [selectedSkills, allSkills, spaceIdToActions]);
+  }, [skills, spaceIdToActions]);
 
   const nonGlobalSpacesUsedByAgent = useMemo(() => {
     const nonGlobalSpaces = allSpaces.filter((s) => s.kind !== "global");

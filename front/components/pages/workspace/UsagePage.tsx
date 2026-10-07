@@ -1278,7 +1278,7 @@ export function UsagePage() {
                   owner={owner}
                   showSpendLimitColumn={isCreditPriced}
                   showModelTiersColumn={isWorkspaceAdmin}
-                  showGroupLimitColumn={
+                  showSharedUsageLimitColumn={
                     isCreditPriced &&
                     isWorkspaceAdmin &&
                     hasFeature("group_limits")

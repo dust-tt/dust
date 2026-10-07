@@ -24,7 +24,7 @@ const CREDITS_EXHAUSTED_ERROR_TITLE = "Workspace out of credits";
 const LIMIT_ERROR_TITLES: Partial<Record<APIErrorType, string>> = {
   credits_exhausted: CREDITS_EXHAUSTED_ERROR_TITLE,
   user_cap_reached: "Personal usage cap reached",
-  group_limit_reached: "Group usage limit reached",
+  group_shared_usage_limit_reached: "Shared usage limit reached",
   plan_message_limit_exceeded: "Plan message limit exceeded",
   rate_limit_error: "Rate limit exceeded",
   no_seat: "No seat available",

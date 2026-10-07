@@ -65,12 +65,12 @@ export async function updateGroupMembers(
     );
   }
 
-  // Being a manager is not enough for a group that grants the admin role: changing its members
-  // promotes or demotes admins. The resource re-checks this; refusing here gives a clear reason.
-  if (!group.canManageMembersGivenGrantedRole(auth)) {
+  // Being a manager is not enough for a privileged group: changing its members gives or removes
+  // admin-level powers. The resource re-checks this; refusing here gives a clear reason.
+  if (!auth.can("write", group) && group.isPrivileged()) {
     return new Err(
       new MCPError(
-        `Group ${group.name} [${group.sId}] grants the admin role; only workspace admins can manage its members.`,
+        `Group ${group.name} [${group.sId}] gives admin-level permissions; only workspace admins can manage its members.`,
         { tracked: false }
       )
     );

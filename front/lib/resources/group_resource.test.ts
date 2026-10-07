@@ -1699,6 +1699,45 @@ describe("GroupResource", () => {
         expect(await roleOf(member)).toBe("user");
       });
 
+      it("blocks a manager from adding a member to a group holding billing admin", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const created = await makeRoleGroup(
+          "g-billing",
+          null,
+          "regular_manual"
+        );
+        await GroupPermissionResource.grantTypeWide(authenticator, {
+          group: created,
+          grantType: "admin",
+          resourceType: "billing",
+        });
+        // Held grants are loaded when the group is fetched.
+        const groupRes = await GroupResource.fetchById(
+          managerAuth,
+          created.sId
+        );
+        assert(groupRes.isOk());
+
+        const res = await groupRes.value.updateRegularManualGroupMembers(
+          managerAuth,
+          { addUserIds: [member.sId], removeUserIds: [] }
+        );
+        expect(res.isErr()).toBe(true);
+        if (res.isErr()) {
+          expect(res.error.code).toBe("unauthorized");
+        }
+      });
+
       it("lets a manager add a member to a manager-granting group", async () => {
         const manager = await UserFactory.basic();
         await MembershipFactory.associate(workspace, manager, {

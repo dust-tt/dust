@@ -174,8 +174,8 @@ export function useSubmitMessage({
                 ? "credits_exhausted_error"
                 : data.error.type === "user_cap_reached"
                   ? "user_cap_reached_error"
-                  : data.error.type === "group_limit_reached"
-                    ? "group_limit_reached_error"
+                  : data.error.type === "group_shared_usage_limit_reached"
+                    ? "group_shared_usage_limit_reached_error"
                     : data.error.type === "no_seat"
                       ? "no_seat_error"
                       : "message_send_error",

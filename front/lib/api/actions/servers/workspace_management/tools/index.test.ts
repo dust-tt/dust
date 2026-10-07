@@ -1034,7 +1034,7 @@ describe("workspace_management tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("grants the admin role");
+        expect(result.error.message).toContain("gives admin-level permissions");
       }
       const members = await callTool(
         "get_group_members",

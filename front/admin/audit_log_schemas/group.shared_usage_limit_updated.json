@@ -1,5 +1,5 @@
 {
-  "action": "group.group_limit_updated",
+  "action": "group.shared_usage_limit_updated",
   "targets": [
     {
       "type": "workspace"
