@@ -6,7 +6,10 @@ import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import type { WorkspaceAccessError } from "@app/lib/api/workspace_validation";
+import { validateWorkspaceAccess } from "@app/lib/api/workspace_validation";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { isMarkdownContentType, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -86,6 +89,52 @@ export async function openLiveFile(
     dustFs: dustFs.value,
     canWrite: dustFs.value.checkWriteAccess(canonicalPath).isOk(),
   });
+}
+
+/** Why a user may not open or keep a file in a live session. */
+export type LiveAccessError =
+  | { code: "not_member"; message: string }
+  | { code: "not_available"; message: string }
+  | {
+      code: "workspace_unavailable";
+      message: string;
+      workspaceError: WorkspaceAccessError;
+    }
+  | LiveFileError;
+
+/**
+ * @cc [owner:PopDaph,label:security] live-access
+ * A live session MUST be opened only for a member of the workspace, in a workspace with
+ * `co_edition` that `validateWorkspaceAccess` lets through, for a file `openLiveFile` opens for
+ * them. `auth` MUST be built for this check: an Authenticator keeps the membership, plan and
+ * workspace it was built with. Minting a ticket and connecting MUST both go through it.
+ */
+export async function checkLiveAccess(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<LiveFile, LiveAccessError>> {
+  if (!auth.user() || !auth.isUser()) {
+    return new Err({
+      code: "not_member",
+      message: "Not a member of this workspace.",
+    });
+  }
+  const hasCoEdition = await hasFeatureFlag(auth, "co_edition");
+  if (!hasCoEdition) {
+    return new Err({
+      code: "not_available",
+      message: "Live editing is not available here.",
+    });
+  }
+  const workspaceError = validateWorkspaceAccess(auth);
+  if (workspaceError) {
+    return new Err({
+      code: "workspace_unavailable",
+      message: `This workspace is not available (${workspaceError.type}).`,
+      workspaceError,
+    });
+  }
+  return openLiveFile(auth, canonicalPath);
 }
 
 /** The file as the live document last read or wrote it. */

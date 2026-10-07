@@ -8,7 +8,9 @@ import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
@@ -341,6 +343,42 @@ describe("authenticateConnection", () => {
 
     expect(result.isErr() && result.error).toBe(
       "Not a member of this workspace."
+    );
+  });
+
+  it("refuses a ticket once co_edition is turned off", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const ticket = await ticketFor(auth, path);
+    await FeatureFlagResource.disable(workspace, "co_edition");
+
+    const result = await authenticateConnection(
+      { workspaceId: workspace.sId, canonicalPath: path },
+      ticket
+    );
+
+    expect(result.isErr() && result.error).toBe(
+      "Live editing is not available here."
+    );
+  });
+
+  it("refuses a ticket once the workspace is in maintenance", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const ticket = await ticketFor(auth, path);
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      maintenance: "relocation",
+    });
+
+    const result = await authenticateConnection(
+      { workspaceId: workspace.sId, canonicalPath: path },
+      ticket
+    );
+
+    expect(result.isErr() && result.error).toBe(
+      "This workspace is not available (maintenance)."
     );
   });
 

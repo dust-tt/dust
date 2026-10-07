@@ -1,6 +1,7 @@
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -44,6 +45,20 @@ describe("POST /api/w/:wId/files/collab-tickets", () => {
     const response = await post(workspace.sId, filePath);
 
     expect(response.status).toBe(403);
+  });
+
+  it("refuses a workspace in maintenance", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest();
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const filePath = await writeUserFile(auth, "notes.md", "# Notes\n");
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      maintenance: "relocation",
+    });
+
+    const response = await post(workspace.sId, filePath);
+
+    expect(response.status).toBe(503);
+    expect((await response.json()).error.type).toBe("service_unavailable");
   });
 
   it("refuses a file that is not Markdown", async () => {

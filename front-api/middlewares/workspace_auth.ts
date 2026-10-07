@@ -13,7 +13,7 @@ import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
-function workspaceAccessErrorToApiError(
+export function workspaceAccessErrorToApiError(
   err: WorkspaceAccessError
 ): APIErrorWithContentfulStatusCode {
   switch (err.type) {

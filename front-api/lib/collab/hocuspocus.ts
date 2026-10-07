@@ -1,8 +1,8 @@
 import type { LiveCheckpoint, LiveFile } from "@app/lib/api/collab/live_file";
 import {
+  checkLiveAccess,
   checkpointLiveDocument,
   loadLiveDocument,
-  openLiveFile,
 } from "@app/lib/api/collab/live_file";
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { Authenticator } from "@app/lib/auth";
@@ -50,8 +50,7 @@ function logUnexpected(
 /**
  * @cc [owner:PopDaph,label:security] live-connection-auth
  * A connection MUST open only with a ticket redeemed for the workspace and the file its document
- * name carries, for a user still a member of that workspace, and for a file `openLiveFile` still
- * opens for them.
+ * name carries, and only if `checkLiveAccess` still lets the ticket's user open that file.
  */
 export async function authenticateConnection(
   parsed: { workspaceId: string; canonicalPath: string },
@@ -69,10 +68,7 @@ export async function authenticateConnection(
     ticket.userId,
     parsed.workspaceId
   );
-  if (!auth.isUser()) {
-    return new Err("Not a member of this workspace.");
-  }
-  const file = await openLiveFile(auth, parsed.canonicalPath);
+  const file = await checkLiveAccess(auth, parsed.canonicalPath);
   if (file.isErr()) {
     return new Err(file.error.message);
   }

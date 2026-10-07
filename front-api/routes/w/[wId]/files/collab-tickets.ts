@@ -5,6 +5,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { workspaceAccessErrorToApiError } from "@front-api/middlewares/workspace_auth";
 import { z } from "zod";
 
 // Mounted at /api/w/:wId/files/collab-tickets.
@@ -25,6 +26,19 @@ app.post(
     );
     if (ticket.isErr()) {
       switch (ticket.error.code) {
+        case "not_member":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: ticket.error.message,
+            },
+          });
+        case "workspace_unavailable":
+          return apiError(
+            ctx,
+            workspaceAccessErrorToApiError(ticket.error.workspaceError)
+          );
         case "not_available":
           return apiError(ctx, {
             status_code: 403,

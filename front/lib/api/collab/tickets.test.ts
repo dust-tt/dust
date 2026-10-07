@@ -3,6 +3,8 @@ import {
   mintLiveTicket,
   redeemLiveTicket,
 } from "@app/lib/api/collab/tickets";
+import { Authenticator } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
@@ -58,6 +60,23 @@ describe("live tickets", () => {
     const ticket = await mintLiveTicket(auth, path);
 
     expect(ticket.isErr() && ticket.error.code).toBe("not_available");
+  });
+
+  it("are not minted in a workspace in maintenance", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      maintenance: "relocation",
+    });
+    const inMaintenance = await Authenticator.fromUserIdAndWorkspaceId(
+      auth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const ticket = await mintLiveTicket(inMaintenance, path);
+
+    expect(ticket.isErr() && ticket.error.code).toBe("workspace_unavailable");
   });
 
   it("are not minted for a file the live session cannot open", async () => {
