@@ -2,6 +2,7 @@ import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet"
 import { AgentSearchActionsMenu } from "@app/components/assistant/manager/AgentSearchActionsMenu";
 import { DefaultAgentToggle } from "@app/components/assistant/manager/DefaultAgentToggle";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
+import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import {
@@ -42,7 +43,6 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -85,6 +85,7 @@ interface AgentSearchModelCellProps {
  * tooltip retains the model display name and any non-none reasoning effort.
  */
 function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
+  const { t } = useLingui();
   const modelConfig = model ? getSupportedModelConfig(model) : null;
   if (!model || !modelConfig) {
     return <DataTable.BasicCellContent label={model?.modelId ?? "-"} />;
@@ -96,10 +97,7 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
     modelConfig,
     model.reasoningEffort
   );
-  const tooltipLabel =
-    reasoningEffort && reasoningEffort !== "none"
-      ? `${modelName} ${capitalize(reasoningEffort)}`
-      : modelName;
+  const tooltipLabel = formatModelEffortLabel(t, modelName, reasoningEffort);
 
   return (
     <Tooltip

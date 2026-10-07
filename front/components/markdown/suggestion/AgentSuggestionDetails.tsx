@@ -49,6 +49,7 @@ function SuggestedModelRow({
   modelId,
   reasoningEffort,
 }: SuggestedModelRowProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
   const modelName = model?.displayName ?? modelId;
@@ -66,7 +67,7 @@ function SuggestedModelRow({
       }
       title={
         reasoningEffort
-          ? formatModelEffortLabel(modelName, reasoningEffort)
+          ? formatModelEffortLabel(t, modelName, reasoningEffort)
           : modelName
       }
       description={model?.description}

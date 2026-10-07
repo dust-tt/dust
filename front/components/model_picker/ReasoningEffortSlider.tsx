@@ -1,9 +1,12 @@
 import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
-import { getEffortStopTooltip } from "@app/components/model_picker/modelPickerUtils";
+import {
+  getEffortStopTooltip,
+  LOWERCASE_REASONING_EFFORT_LABELS,
+} from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
-import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 // The picker is too narrow to label more stops than this: beyond it, only the
 // ends and the selected stop are labelled, and every other stop names itself in
@@ -25,6 +28,7 @@ export function ReasoningEffortSlider({
   value,
   onChange,
 }: ReasoningEffortSliderProps) {
+  const { t } = useLingui();
   const valueIndex = Math.max(
     stops.findIndex((stop) => stop.effort === value),
     0
@@ -64,10 +68,10 @@ export function ReasoningEffortSlider({
         disabled={isDisabled}
         stepTooltips={stops.map(
           (stop) =>
-            getEffortStopTooltip(stop) ??
+            getEffortStopTooltip(t, stop) ??
             (labelsEveryStop
               ? null
-              : REASONING_EFFORT_LABELS[stop.effort].toLowerCase())
+              : t(LOWERCASE_REASONING_EFFORT_LABELS[stop.effort]))
         )}
         onChange={(index) => {
           const next = stops[index];
@@ -75,7 +79,7 @@ export function ReasoningEffortSlider({
             selectStop(next);
           }
         }}
-        ariaLabel="Reasoning effort"
+        ariaLabel={t`Reasoning effort`}
       />
 
       <div className="relative h-4 text-xs">
@@ -118,7 +122,7 @@ export function ReasoningEffortSlider({
                     : "translateX(-50%)",
               }}
             >
-              {REASONING_EFFORT_LABELS[stop.effort].toLowerCase()}
+              {t(LOWERCASE_REASONING_EFFORT_LABELS[stop.effort])}
             </button>
           );
         })}

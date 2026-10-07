@@ -1,0 +1,161 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 14:15+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/model_picker/ModelPicker.tsx
+msgid "Model picker: {label}"
+msgstr "Sélecteur de modèle : {label}"
+
+#: front/components/model_picker/ModelPickerContent.tsx
+msgid "Model tier"
+msgstr "Niveau de modèle"
+
+#: front/components/model_picker/ModelPickerContent.tsx
+msgid "About model tiers"
+msgstr "À propos des niveaux de modèles"
+
+#: front/components/model_picker/ModelPickerContent.tsx
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#: front/components/model_picker/ModelPickerContent.tsx
+msgid "More models"
+msgstr "Plus de modèles"
+
+#: front/components/model_picker/ModelPickerModelRow.tsx
+msgid "{displayName} (Default)"
+msgstr "{displayName} (par défaut)"
+
+#: front/components/model_picker/ModelPickerSelectionIndicator.tsx
+msgid "Revert to default"
+msgstr "Rétablir la valeur par défaut"
+
+#: front/components/model_picker/ReasoningEffortSlider.tsx
+msgid "Reasoning effort"
+msgstr "Effort de raisonnement"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "This option isn't available on your workspace's current plan. Contact your administrator to upgrade."
+msgstr "Cette option n’est pas disponible avec le forfait actuel de votre workspace. Contactez votre administrateur pour changer de forfait."
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "Your current model access doesn't include this option. Contact your administrator to get access."
+msgstr "Votre accès actuel aux modèles n’inclut pas cette option. Contactez votre administrateur pour y accéder."
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "Dust selects a model and automatically switches to another if the selected model is unstable."
+msgstr "Dust sélectionne un modèle et passe automatiquement à un autre si le modèle sélectionné est instable."
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "None"
+msgstr "Aucun"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "Min"
+msgstr "Min"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "Low"
+msgstr "Faible"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "Medium"
+msgstr "Moyen"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "High"
+msgstr "Élevé"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "xHigh"
+msgstr "Très élevé"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort"
+msgid "Max"
+msgstr "Max"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "none"
+msgstr "aucun"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "min"
+msgstr "min"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "low"
+msgstr "faible"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "medium"
+msgstr "moyen"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "high"
+msgstr "élevé"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "xhigh"
+msgstr "très élevé"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "reasoning effort, lowercase"
+msgid "max"
+msgstr "max"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "model tier"
+msgid "Basic"
+msgstr "Basic"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "model tier"
+msgid "Standard"
+msgstr "Standard"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "model tier"
+msgid "Premium"
+msgstr "Premium"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "model tier"
+msgid "Ultra"
+msgstr "Ultra"
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "{displayName} is unstable right now. You may want to select another model."
+msgstr "{displayName} est instable en ce moment. Vous pouvez sélectionner un autre modèle."
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "Preferred model for {tierName} is unstable. Using {replacementModelName} temporarily."
+msgstr "Le modèle préféré pour {tierName} est instable. {replacementModelName} est utilisé temporairement."
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgctxt "model name followed by its reasoning effort"
+msgid "{displayName} {effortLabel}"
+msgstr "{displayName} {effortLabel}"

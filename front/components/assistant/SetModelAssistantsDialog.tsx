@@ -68,7 +68,7 @@ export function SetModelAssistantsDialog({
 
   const agentCount = agentConfigurations.length;
   const modelLabel = confirming
-    ? getModelWithReasoningEffortLabel(confirming)
+    ? getModelWithReasoningEffortLabel(t, confirming)
     : "";
 
   const updateModel = async () => {
