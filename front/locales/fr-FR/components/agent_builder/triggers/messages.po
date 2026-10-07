@@ -67,10 +67,6 @@ msgid "No payload available."
 msgstr "Aucun payload disponible."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Runs {schedule}."
-msgstr "Exécution : {schedule}."
-
-#: front/components/agent_builder/triggers/TriggerCard.tsx
 msgid "Triggered by {event} events on {sourceName}'s source."
 msgstr "Déclenché par les événements {event} de la source {sourceName}."
 
