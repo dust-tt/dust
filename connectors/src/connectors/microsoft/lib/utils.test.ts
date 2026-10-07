@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 
 const SITE_ID =
   "contoso.sharepoint.com,2c5a3b1e-1111-2222-3333-444455556666,7d8e9f00-aaaa-bbbb-cccc-ddddeeeeffff";
+const PERSONAL_SITE_ID =
+  "contoso-my.sharepoint.com,2c5a3b1e-1111-2222-3333-444455556666,7d8e9f00-aaaa-bbbb-cccc-ddddeeeeffff";
 const DRIVE_ID = "b!AbC_dEf-123";
 const ITEM_ID = "01ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -53,6 +55,10 @@ describe("getSelectableContainer", () => {
     ["folder", `/drives/${DRIVE_ID}/root:/path`],
     ["file", `/drives/${DRIVE_ID}/items/${ITEM_ID}`],
     ["worksheet", `/drives/${DRIVE_ID}/items/${ITEM_ID}/workbook/worksheets/1`],
+    ["site", "/sites/contoso.sharepoint.com"],
+    ["site", "/sites/2c5a3b1e-1111-2222-3333-444455556666"],
+    ["site", `/sites/${PERSONAL_SITE_ID}`],
+    ["list", `/sites/${PERSONAL_SITE_ID}/lists/abc-123`],
   ] as const)("rejects %s %s", (nodeType, itemAPIPath) => {
     expect(getSelectableContainer(encode(nodeType, itemAPIPath))).toBeNull();
   });

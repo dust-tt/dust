@@ -426,12 +426,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
+      const selectedSites = indexSelectedSites(config.selectedSites);
       if (
         requestedParentInternalId &&
         !(await isSelectableInternalId({
           logger,
           client,
-          selectedSites: config.selectedSites,
+          selectedSites,
           internalId: requestedParentInternalId,
         }))
       ) {
@@ -608,6 +609,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
     const logger = getActivityLogger(connector);
     const client = await getMicrosoftClient(connector.connectionId);
+    const selectedSites = indexSelectedSites(config.selectedSites);
     const unselectableInternalIds = removeNulls(
       await concurrentExecutor(
         newReadInternalIds,
@@ -615,7 +617,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           (await isSelectableInternalId({
             logger,
             client,
-            selectedSites: config.selectedSites,
+            selectedSites,
             internalId,
           }))
             ? null
@@ -1043,42 +1045,69 @@ const GraphSiteLocationSchema = z.object({
 });
 
 const GraphDriveLocationSchema = z.object({
+  driveType: z.string(),
   webUrl: z.string(),
-  sharePointIds: z.object({ siteId: z.string() }),
+  sharePointIds: z.object({ siteId: z.string() }).nullish(),
 });
+
+type SelectedSitesIndex = {
+  siteIds: Set<string>;
+  webUrlsBySiteCollectionId: Map<string, string[]>;
+};
 
 function getSiteCollectionId(siteId: string): string | null {
   return siteId.split(",")[1]?.toLowerCase() ?? null;
 }
 
+function indexSelectedSites(
+  selectedSites: SelectedSiteMetadata[] | null
+): SelectedSitesIndex | null {
+  if (!selectedSites) {
+    return null;
+  }
+  const index: SelectedSitesIndex = {
+    siteIds: new Set(selectedSites.map((s) => s.siteId)),
+    webUrlsBySiteCollectionId: new Map(),
+  };
+  for (const { siteId, webUrl } of selectedSites) {
+    const siteCollectionId = getSiteCollectionId(siteId);
+    if (!siteCollectionId || !webUrl) {
+      continue;
+    }
+    const webUrls = index.webUrlsBySiteCollectionId.get(siteCollectionId) ?? [];
+    webUrls.push(webUrl.toLowerCase().replace(/\/+$/, ""));
+    index.webUrlsBySiteCollectionId.set(siteCollectionId, webUrls);
+  }
+  return index;
+}
+
 function isLocatedUnderSelectedSite(
-  selectedSites: SelectedSiteMetadata[],
+  selectedSites: SelectedSitesIndex,
   location: { siteCollectionId: string | null; webUrl: string }
 ): boolean {
+  if (!location.siteCollectionId) {
+    return false;
+  }
   const webUrl = location.webUrl.toLowerCase();
-  return selectedSites.some((selectedSite) => {
-    if (
-      !selectedSite.webUrl ||
-      !location.siteCollectionId ||
-      getSiteCollectionId(selectedSite.siteId) !== location.siteCollectionId
-    ) {
-      return false;
-    }
-    const selectedWebUrl = selectedSite.webUrl
-      .toLowerCase()
-      .replace(/\/+$/, "");
-    return webUrl === selectedWebUrl || webUrl.startsWith(`${selectedWebUrl}/`);
-  });
+  // Only scans the selected sites of one site collection, usually a single one.
+  return (
+    selectedSites.webUrlsBySiteCollectionId.get(location.siteCollectionId) ??
+    []
+  ).some(
+    (selectedWebUrl) =>
+      webUrl === selectedWebUrl || webUrl.startsWith(`${selectedWebUrl}/`)
+  );
 }
 
 /**
  * @cc [owner:tdraier,label:security] selectable-internal-id
- * Returns `false` when `getSelectableContainer` rejects `internalId`. When `selectedSites` is
+ * Returns `false` when `getSelectableContainer` rejects `internalId`, or when the node is in a drive
+ * whose Graph `driveType` is not `documentLibrary` (OneDrive drives). When `selectedSites` is
  * non-null, also returns `false` unless the node's container belongs to a selected site:
  * `sites-root` is rejected, and a site or drive is accepted only if it is a selected site, or if it
  * is in the same site collection as a selected site and its Graph `webUrl` is that site's `webUrl`
  * or a path below it. A Graph response that cannot be parsed MUST be rejected; Graph errors MUST
- * propagate. When `selectedSites` is null, no Graph call is made.
+ * propagate.
  */
 async function isSelectableInternalId({
   logger,
@@ -1088,22 +1117,19 @@ async function isSelectableInternalId({
 }: {
   logger: LoggerInterface;
   client: Client;
-  selectedSites: SelectedSiteMetadata[] | null;
+  selectedSites: SelectedSitesIndex | null;
   internalId: string;
 }): Promise<boolean> {
   const container = getSelectableContainer(internalId);
   if (!container) {
     return false;
   }
-  if (!selectedSites) {
-    return true;
-  }
 
   switch (container.type) {
     case "sites-root":
-      return false;
+      return !selectedSites;
     case "site": {
-      if (selectedSites.some((s) => s.siteId === container.siteId)) {
+      if (!selectedSites || selectedSites.siteIds.has(container.siteId)) {
         return true;
       }
       const site = GraphSiteLocationSchema.safeParse(
@@ -1126,16 +1152,20 @@ async function isSelectableInternalId({
         await clientApiGet(
           logger,
           client,
-          `/drives/${container.driveId}?$select=webUrl,sharePointIds`
+          `/drives/${container.driveId}?$select=driveType,webUrl,sharePointIds`
         )
       );
-      return (
-        drive.success &&
-        isLocatedUnderSelectedSite(selectedSites, {
-          siteCollectionId: drive.data.sharePointIds.siteId.toLowerCase(),
-          webUrl: drive.data.webUrl,
-        })
-      );
+      if (!drive.success || drive.data.driveType !== "documentLibrary") {
+        return false;
+      }
+      if (!selectedSites) {
+        return true;
+      }
+      const siteCollectionId = drive.data.sharePointIds?.siteId.toLowerCase();
+      return isLocatedUnderSelectedSite(selectedSites, {
+        siteCollectionId: siteCollectionId ?? null,
+        webUrl: drive.data.webUrl,
+      });
     }
     default:
       assertNever(container);

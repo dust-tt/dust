@@ -69,30 +69,32 @@ export type SelectableContainer =
   | { type: "site"; siteId: string }
   | { type: "drive"; driveId: string };
 
-const GRAPH_ID_SEGMENT = "([A-Za-z0-9!_,.-]+)";
+const SITE_ID_SEGMENT = "([A-Za-z0-9.-]+,[A-Za-z0-9-]+,[A-Za-z0-9-]+)";
+const DRIVE_ITEM_ID_SEGMENT = "([A-Za-z0-9!_-]+)";
+const PERSONAL_SITE_HOSTNAME_PATTERN = /-my\.sharepoint\.[a-z.]+$/i;
 
 const SELECTABLE_PATH_PATTERNS = [
   {
     nodeType: "site",
-    pattern: new RegExp(`^/sites/${GRAPH_ID_SEGMENT}$`),
+    pattern: new RegExp(`^/sites/${SITE_ID_SEGMENT}$`),
     container: "site",
   },
   {
     nodeType: "list",
     pattern: new RegExp(
-      `^/sites/${GRAPH_ID_SEGMENT}/lists/${GRAPH_ID_SEGMENT}$`
+      `^/sites/${SITE_ID_SEGMENT}/lists/${DRIVE_ITEM_ID_SEGMENT}$`
     ),
     container: "site",
   },
   {
     nodeType: "drive",
-    pattern: new RegExp(`^/drives/${GRAPH_ID_SEGMENT}$`),
+    pattern: new RegExp(`^/drives/${DRIVE_ITEM_ID_SEGMENT}$`),
     container: "drive",
   },
   {
     nodeType: "folder",
     pattern: new RegExp(
-      `^/drives/${GRAPH_ID_SEGMENT}/items/${GRAPH_ID_SEGMENT}$`
+      `^/drives/${DRIVE_ITEM_ID_SEGMENT}/items/${DRIVE_ITEM_ID_SEGMENT}$`
     ),
     container: "drive",
   },
@@ -101,10 +103,11 @@ const SELECTABLE_PATH_PATTERNS = [
 /**
  * @cc [owner:tdraier,label:security] selectable-internal-id-shape
  * Returns `null` unless `internalId` is the canonical encoding of `sites-root` or of a site
- * (`/sites/{id}`), list (`/sites/{id}/lists/{id}`), drive (`/drives/{id}`) or folder
- * (`/drives/{id}/items/{id}`) path, where each `{id}` is a single path segment other than `.` or
- * `..`. Any other node type or Graph path, such as `/me/drive` or `/users/{id}/drive`, MUST be
- * rejected. Otherwise returns the SharePoint site or drive that contains the node.
+ * (`/sites/{siteId}`), list (`/sites/{siteId}/lists/{id}`), drive (`/drives/{id}`) or folder
+ * (`/drives/{id}/items/{id}`) path, where `{siteId}` is a Graph `{hostname},{guid},{guid}` site id
+ * and each `{id}` is a single path segment of letters, digits, `!`, `_` or `-`. Sites on a personal
+ * OneDrive host (`*-my.sharepoint.*`) and any other node type or Graph path, such as `/me/drive` or
+ * `/users/{id}/drive`, MUST be rejected. Otherwise returns the site or drive containing the node.
  */
 export function getSelectableContainer(
   internalId: string
@@ -120,22 +123,18 @@ export function getSelectableContainer(
   const entry = SELECTABLE_PATH_PATTERNS.find(
     (e) => e.nodeType === parsed.nodeType
   );
-  const match = entry?.pattern.exec(parsed.itemAPIPath);
-  if (!entry || !match) {
-    return null;
-  }
-  const segments = match.slice(1);
-  const [containerId] = segments;
-  if (
-    !containerId ||
-    segments.some((segment) => segment === "." || segment === "..")
-  ) {
+  const containerId = entry?.pattern.exec(parsed.itemAPIPath)?.[1];
+  if (!entry || !containerId) {
     return null;
   }
 
-  return entry.container === "site"
-    ? { type: "site", siteId: containerId }
-    : { type: "drive", driveId: containerId };
+  if (entry.container === "drive") {
+    return { type: "drive", driveId: containerId };
+  }
+  const [hostname = ""] = containerId.split(",");
+  return PERSONAL_SITE_HOSTNAME_PATTERN.test(hostname)
+    ? null
+    : { type: "site", siteId: containerId };
 }
 
 export function getDriveInternalIdFromItemId(itemId: string) {
