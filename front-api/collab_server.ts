@@ -103,24 +103,21 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
-// The pod is stopped with SIGTERM: take no more connections, then checkpoint every loaded document
-// so the edits still waiting for their debounced store reach the file.
+// Checkpoint every document before exiting: edits waiting for a debounced store reach the file.
 async function shutdown(signal: NodeJS.Signals) {
   logger.info(
     { signal, documents: hocuspocus.getDocumentsCount() },
     "Collab server shutting down"
   );
   server.close();
-  // Terminating the sockets, not only closing Hocuspocus's connections, so no edit still on the
-  // wire arrives during the checkpoints. No close frame is sent: browsers see a dropped connection
-  // and reconnect to the next server.
+  // Terminated, not closed: no edit still on the wire may arrive during the checkpoints.
   ws.closeAll(undefined, undefined, true);
   await checkpointAllDocuments(hocuspocus);
   logger.info("Collab server stopped");
   process.exit(0);
 }
 
-// A second signal while checkpointing must not end the process: it joins the first shutdown.
+// A second signal joins the shutdown instead of ending the process.
 let stopping: Promise<void> | undefined;
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
