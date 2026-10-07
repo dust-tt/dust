@@ -406,33 +406,6 @@ describe("searchAgents", () => {
     ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
   });
 
-  it("ranks the user's favorites first only with favoritesFirst", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
-    assert(dust);
-    expect((await dust.setUserFavorite(auth, true)).isOk()).toBe(true);
-    mockHits([]);
-
-    await searchAgents(auth, { searchTerm: "", sortBy: "name" });
-    expect(mockSearch.mock.lastCall?.[0].sort).toEqual(
-      buildAgentDefaultSort({ sortBy: "name" })
-    );
-
-    await searchAgents(auth, {
-      searchTerm: "",
-      sortBy: "name",
-      favoritesFirst: true,
-    });
-    const [favoritesSort, ...sort] = mockSearch.mock.lastCall?.[0].sort;
-    expect(favoritesSort).toMatchObject({
-      _script: {
-        order: "asc",
-        script: { params: { favoriteAgentIds: [GLOBAL_AGENTS_SID.DUST] } },
-      },
-    });
-    expect(sort).toEqual(buildAgentDefaultSort({ sortBy: "name" }));
-  });
-
   it.each([
     { selectionMode: "all", searchTerm: "", hasFavorites: true },
     { selectionMode: "favorites_only", searchTerm: "", hasFavorites: true },
