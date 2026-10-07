@@ -1,0 +1,18 @@
+[package]
+name = "dfs-fdb"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+dfs-store = { path = "../store" }
+foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
+futures.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+dfs-store = { path = "../store" }

@@ -1,0 +1,48 @@
+name: dfs-henry
+services:
+  fdb:
+    image: foundationdb/foundationdb:7.3.69
+    # Same image, entrypoint and latency knobs as Spolu's v2 stack, so FDB is matched.
+    entrypoint: ["/usr/bin/tini", "-g", "--", "/bin/bash", "/etc/dfs/fdb.bash"]
+    environment:
+      FDB_NETWORKING_MODE: container
+      DFS_FDB_COMMIT_BATCH_MIN_SECONDS: ${DFS_FDB_COMMIT_BATCH_MIN_SECONDS:-0.001}
+      DFS_FDB_COMMIT_BATCH_IDLE_SECONDS: ${DFS_FDB_COMMIT_BATCH_IDLE_SECONDS:-0.0005}
+      DFS_FDB_SERVER_BUSY_WAIT_SECONDS: ${DFS_FDB_SERVER_BUSY_WAIT_SECONDS:-0}
+    volumes:
+      - fdb-data:/var/fdb
+      - ./fdb.bash:/etc/dfs/fdb.bash:ro
+    mem_limit: ${DFS_FDB_MEMORY:-3g}
+    healthcheck:
+      test: ["CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'"]
+      interval: 2s
+      timeout: 6s
+      retries: 60
+  dev:
+    build:
+      context: .
+    environment:
+      FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
+      CARGO_TARGET_DIR: /target
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      RUSTC_WRAPPER: ""
+    volumes:
+      - ..:/dfs
+      - ../../../jd/filesystem-benchmark:/benchmark:ro
+      - fdb-data:/var/fdb:ro
+      - target:/target
+      - cargo:/usr/local/cargo/registry
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add: [SYS_ADMIN, SYS_PTRACE]
+    security_opt: [apparmor:unconfined]
+    command: ["sleep", "infinity"]
+    init: true
+    depends_on:
+      fdb:
+        condition: service_healthy
+volumes:
+  fdb-data:
+    name: dfs-henry-foundationdb
+  target:
+  cargo:

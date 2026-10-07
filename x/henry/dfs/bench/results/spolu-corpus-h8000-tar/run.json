@@ -1,0 +1,93 @@
+{
+  "label": "dfs henry [FoundationDB]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "profile": "release",
+  "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
+  "cpu_count": 12,
+  "server_binary_sha256": "3676dbff4c04deb240eb0de179e78dabef4cf39590b6dce988f600f22465b29d",
+  "mount_binary_sha256": "9df7d217510412b61f5db62cf1dc9046d7369c5f79e51ce79333ba3a77f4e97d",
+  "fdb_client_knobs": {},
+  "max_delay_ms": 8000,
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
+  "kernel_caching": "none (TTL 0, direct I/O)",
+  "fuse_threads": 1,
+  "max_background": 32,
+  "archive": "/tmp/sp.tar",
+  "archive_bytes": 701696000,
+  "native_seconds": 1.9635464210005011,
+  "native_sync_seconds": 1.1249467669986188,
+  "files": 10000,
+  "untar_seconds": 5.87770670500322,
+  "remaining_client_writeback_seconds": 0.029012024999246933,
+  "mount": {
+    "budget": {
+      "ttl_ms": 7000.0,
+      "window_ms": 1000.0
+    },
+    "commit": {
+      "apply_ms": 5879.094704,
+      "batches": 351,
+      "dropped_ops": 0,
+      "max_apply_ms": 64.426095,
+      "max_lag_ms": 91.717692,
+      "missed_windows": 0,
+      "ops": 20421
+    },
+    "local": {
+      "admission_waits": 348,
+      "deferred": 360,
+      "op.create": 10000,
+      "op.flush": 10000,
+      "op.fsyncdir": 1,
+      "op.lookup": 40899,
+      "op.mkdir": 105,
+      "op.opendir": 2,
+      "op.release": 10000,
+      "op.setattr": 10000,
+      "op.write": 77517
+    },
+    "message": "mount totals",
+    "rpcs": {
+      "alloc_ids": {
+        "calls": 10,
+        "total_ms": 49.14
+      },
+      "apply": {
+        "calls": 351,
+        "total_ms": 5878.687
+      },
+      "readdir": {
+        "calls": 1,
+        "total_ms": 1.584
+      }
+    }
+  },
+  "server": {
+    "calls": {
+      "alloc_ids": {
+        "calls": 10,
+        "total_ms": 48.206
+      },
+      "apply": {
+        "calls": 351,
+        "total_ms": 4961.656
+      },
+      "close": {
+        "calls": 1,
+        "total_ms": 0.0
+      },
+      "readdir": {
+        "calls": 1,
+        "total_ms": 1.513
+      }
+    },
+    "commits": 362,
+    "failed_ops": 0,
+    "fresh_versions": 18,
+    "message": "server totals",
+    "ops": 20421,
+    "retries": 0
+  },
+  "validated": true
+}

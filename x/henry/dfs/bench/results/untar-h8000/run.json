@@ -1,0 +1,97 @@
+{
+  "label": "dfs henry [FoundationDB]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "profile": "release",
+  "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
+  "cpu_count": 12,
+  "server_binary_sha256": "3676dbff4c04deb240eb0de179e78dabef4cf39590b6dce988f600f22465b29d",
+  "mount_binary_sha256": "9df7d217510412b61f5db62cf1dc9046d7369c5f79e51ce79333ba3a77f4e97d",
+  "fdb_client_knobs": {},
+  "max_delay_ms": 8000,
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
+  "kernel_caching": "none (TTL 0, direct I/O)",
+  "fuse_threads": 1,
+  "max_background": 32,
+  "files": 1000,
+  "outer_depth": 6,
+  "depth_below_grant": 6,
+  "corpus_selection": "first manifest paths",
+  "untar_seconds": 0.17334269500133814,
+  "remaining_client_writeback_seconds": 0.03683302699937485,
+  "mount": {
+    "budget": {
+      "ttl_ms": 7000.0,
+      "window_ms": 1000.0
+    },
+    "commit": {
+      "apply_ms": 200.882757,
+      "batches": 11,
+      "dropped_ops": 0,
+      "max_apply_ms": 24.933899,
+      "max_lag_ms": 48.474074,
+      "missed_windows": 0,
+      "ops": 2022
+    },
+    "local": {
+      "admission_waits": 8,
+      "deferred": 17,
+      "op.create": 1000,
+      "op.flush": 1000,
+      "op.fsyncdir": 1,
+      "op.lookup": 7776,
+      "op.mkdir": 12,
+      "op.opendir": 2,
+      "op.release": 1000,
+      "op.setattr": 1024,
+      "op.write": 2705
+    },
+    "message": "mount totals",
+    "rpcs": {
+      "alloc_ids": {
+        "calls": 1,
+        "total_ms": 5.749
+      },
+      "apply": {
+        "calls": 11,
+        "total_ms": 200.866
+      },
+      "readdir": {
+        "calls": 7,
+        "total_ms": 16.364
+      }
+    }
+  },
+  "server": {
+    "calls": {
+      "alloc_ids": {
+        "calls": 2,
+        "total_ms": 11.285
+      },
+      "apply": {
+        "calls": 13,
+        "total_ms": 193.203
+      },
+      "close": {
+        "calls": 3,
+        "total_ms": 0.002
+      },
+      "grant": {
+        "calls": 1,
+        "total_ms": 4.443
+      },
+      "readdir": {
+        "calls": 8,
+        "total_ms": 16.442
+      }
+    },
+    "commits": 19,
+    "failed_ops": 0,
+    "fresh_versions": 19,
+    "message": "server totals",
+    "ops": 2035,
+    "retries": 0
+  },
+  "validated_after_server_restart": true,
+  "validated_files": 1000
+}

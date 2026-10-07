@@ -1,0 +1,41 @@
+Tool versions
++-----------+-----------------------------------------------------+------------------+
+| Tool      | Version                                             | Executable       |
++-----------+-----------------------------------------------------+------------------+
+| Python    | CPython 3.13.5                                      | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.1                                      | /usr/bin/rg      |
+| OS kernel | Linux 7.0.11-orbstack-00360-gc9bc4d96ac70 (aarch64) | -                |
++-----------+-----------------------------------------------------+------------------+
+
+Benchmark results
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 167.53    | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 149.63    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 5.23      | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 5.09      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 53.69     | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 50.03     | OK     |
+| metadata     | stat missing (256 paths)                       | first | 4.33      | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 2.10      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 44.81     | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 34.97     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 17.00     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 14.15     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 8.41      | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 7.81      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 5.51      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 3.87      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 169.34    | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 164.82    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 1.89      | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 1.42      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 1.78      | OK     |
+| file sync    | fsync (32 files)                               | once  | 53.56     | OK     |
+| write        | close (32 files)                               | once  | 0.06      | OK     |
+| write        | unlink (32 files)                              | once  | 0.32      | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
