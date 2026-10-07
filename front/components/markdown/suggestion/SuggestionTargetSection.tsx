@@ -1,34 +1,20 @@
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
-import {
-  DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
-  isAgentActionCardSuggestion,
-} from "@app/components/markdown/suggestion/suggestion_directives";
+import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
 import {
   sortAgentSuggestionsByBuilderOrder,
   sortSkillSuggestionsByBuilderOrder,
 } from "@app/components/markdown/suggestion/suggestion_order";
-import { trackSuggestionTargetPreviewOpen } from "@app/components/markdown/suggestion/suggestionTracking";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { PendingSkillSuggestionDetails } from "@app/components/skill_builder/SkillSuggestionCard";
-import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useSkill } from "@app/lib/swr/skill_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  AGENT_SIDE_PANEL_TYPE,
-  SKILL_SIDE_PANEL_TYPE,
-} from "@app/types/conversation_side_panel";
+  useAgentSuggestionTarget,
+  useSkillSuggestionTarget,
+} from "@app/components/markdown/suggestion/useSuggestionTarget";
+import { PendingSkillSuggestionDetails } from "@app/components/skill_builder/SkillSuggestionCard";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import {
-  isCreateSkillSuggestion,
-  isDeleteSkillSuggestion,
-} from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Avatar,
   Button,
   ChevronDown,
   ChevronUp,
@@ -46,7 +32,7 @@ import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import groupBy from "lodash/groupBy";
 import type { ReactElement, ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 interface SuggestionTargetSectionProps {
   targetLabel: string;
@@ -185,59 +171,25 @@ export function AgentSuggestionsDiff({
   pendingSkillNameById,
 }: AgentSuggestionsDiffProps) {
   const { t } = useLingui();
-  const { openPanel } = useConversationSidePanelContext();
   const displayable = sortAgentSuggestionsByBuilderOrder(
     suggestions.filter(isAgentActionCardSuggestion)
   );
   // Each skill, tool and sub-agent is its own suggestion: they are listed together, under a
   // single heading per kind. Grouping keeps the sorted order of the kinds.
   const suggestionsByKind = groupBy(displayable, (s) => s.kind);
-  const { agentConfiguration, isAgentConfigurationLoading } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: agentId,
-      disabled: displayable.some((s) =>
-        DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(s.kind)
-      ),
-    });
+  const { agentConfiguration, isLoading, target } = useAgentSuggestionTarget({
+    owner,
+    batchId,
+    agentId,
+    suggestions,
+  });
 
-  if (isAgentConfigurationLoading) {
+  if (isLoading) {
     return <LoadingBlock className="h-12 w-full" />;
   }
 
-  // A created agent is a pending placeholder: its name is the suggested one.
-  const creation = displayable.find((s) => s.kind === "create");
-  const isDeletion = displayable.some((s) => s.kind === "delete");
-  const name =
-    creation?.kind === "create"
-      ? creation.suggestion.name
-      : (agentConfiguration?.name ?? t`Agent`);
-
   return (
-    <SuggestionTargetSection
-      targetLabel={t`Agent`}
-      name={name}
-      visual={
-        agentConfiguration && !creation ? (
-          <Avatar visual={agentConfiguration.pictureUrl} size="3xs" />
-        ) : (
-          <Avatar icon={getIcon("ActionRobotIcon")} size="3xs" />
-        )
-      }
-      onOpen={() => {
-        trackSuggestionTargetPreviewOpen({
-          batchId,
-          targetKind: "agent",
-          targetId: agentId,
-        });
-        openPanel({
-          type: AGENT_SIDE_PANEL_TYPE,
-          agentId,
-          previewBatchId: batchId,
-        });
-      }}
-      isDeletion={isDeletion}
-    >
+    <SuggestionTargetSection targetLabel={t`Agent`} {...target}>
       {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
         const groupLabel = GROUPED_AGENT_SUGGESTION_LABELS[kind];
         return groupLabel ? (
@@ -279,14 +231,11 @@ export function SkillSuggestionsDiff({
   suggestions,
 }: SkillSuggestionsDiffProps) {
   const { t } = useLingui();
-  const { openPanel } = useConversationSidePanelContext();
-  // A created skill is a pending placeholder: its name is the suggested one.
-  const creation = suggestions.find(isCreateSkillSuggestion);
-  const isDeletion = suggestions.some(isDeleteSkillSuggestion);
-  const { skill, isSkillLoading } = useSkill({
-    workspaceId: owner.sId,
+  const { skill, isLoading, target } = useSkillSuggestionTarget({
+    owner,
+    batchId,
     skillId,
-    disabled: !!creation,
+    suggestions,
   });
 
   const getSkillInstructionsHtml = useCallback(
@@ -297,31 +246,13 @@ export function SkillSuggestionsDiff({
     () => skill?.agentFacingDescription ?? "",
     [skill]
   );
-  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
 
-  if (isSkillLoading) {
+  if (isLoading) {
     return <LoadingBlock className="h-12 w-full" />;
   }
 
   return (
-    <SuggestionTargetSection
-      targetLabel={t`Skill`}
-      name={creation ? creation.suggestion.name : (skill?.name ?? t`Skill`)}
-      visual={<SkillAvatar size="3xs" />}
-      onOpen={() => {
-        trackSuggestionTargetPreviewOpen({
-          batchId,
-          targetKind: "skill",
-          targetId: skillId,
-        });
-        openPanel({
-          type: SKILL_SIDE_PANEL_TYPE,
-          skillId,
-          previewBatchId: batchId,
-        });
-      }}
-      isDeletion={isDeletion}
-    >
+    <SuggestionTargetSection targetLabel={t`Skill`} {...target}>
       {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
         <PendingSkillSuggestionDetails
           key={suggestion.sId}
