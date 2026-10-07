@@ -50,6 +50,8 @@ interface Opened {
   content: string;
   /** The file was over the preview limit at that moment; the plain editor keeps it. */
   truncated: boolean;
+  /** Live mode as it was at that moment: a draft never switches to live under the user. */
+  live: boolean;
 }
 
 interface Written {
@@ -79,6 +81,11 @@ function isOwnWrite(
  * Which content the rich editor is open on, and what happens when the file changes under it.
  * The decision to open depends only on the flag and the file as it was when it opened, never
  * on later content, so a change written by someone else cannot swap editors under a draft.
+ */
+/**
+ * @cc [owner:PopDaph,label:product] live-mode-latched
+ * An open editor MUST keep the live mode it opened with until the file is reopened: `live`
+ * turning on MUST NOT move an open local editor, or its draft, to the live session.
  */
 export function useRichMarkdownEditor({
   enabled,
@@ -110,6 +117,7 @@ export function useRichMarkdownEditor({
   const opens = enabled && !(opened?.truncated ?? isTruncated);
   const source = rawContent ?? undefined;
   const base = opened?.content ?? null;
+  const isLive = opened?.live ?? live;
 
   // The file changed under the editor, by another writer or an agent. A clean editor reopens on
   // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
@@ -120,20 +128,20 @@ export function useRichMarkdownEditor({
       return;
     }
     if (base === null) {
-      setOpened({ content: source, truncated: isTruncated });
-    } else if (live) {
+      setOpened({ content: source, truncated: isTruncated, live });
+    } else if (isLive) {
       // The live session holds the document; a newer fetch of the file must not reopen it.
       return;
     } else if (isOwnWrite(writtenRef.current, entryPath, source)) {
       // Our own write came back from the cache; the version it raced is overwritten anyway.
-      setOpened({ content: source, truncated: false });
+      setOpened({ content: source, truncated: false, live: false });
     } else if (draft.dirty || draft.saving) {
       return;
     } else if (isTruncated) {
       // Reopening on cut text would save a cut file; the plain editor takes over.
-      setOpened({ content: base, truncated: true });
+      setOpened({ content: base, truncated: true, live: false });
     } else {
-      setOpened({ content: source, truncated: false });
+      setOpened({ content: source, truncated: false, live: false });
       setVersion((current) => current + 1);
     }
   }, [
@@ -144,6 +152,7 @@ export function useRichMarkdownEditor({
     draft.saving,
     isTruncated,
     entryPath,
+    isLive,
     live,
   ]);
 
@@ -173,7 +182,7 @@ export function useRichMarkdownEditor({
       ? {
           mountKey: `${entryPath}:${version}`,
           path: entryPath,
-          live,
+          live: isLive,
           initialContent: base ?? source,
           onSave: save,
           onStateChange: setDraft,

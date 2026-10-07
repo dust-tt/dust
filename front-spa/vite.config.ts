@@ -249,16 +249,6 @@ export default defineConfig(({ mode }) => {
 
   const appDefinition = apps[appName];
 
-  // The co-edition live session server is reached through the API host's /api/collab route. Only
-  // dev builds get it: no server runs elsewhere yet.
-  if (
-    mode === "development" &&
-    env.VITE_DUST_COLLAB_URL === undefined &&
-    env.VITE_DUST_API_URL
-  ) {
-    env.VITE_DUST_COLLAB_URL = `${env.VITE_DUST_API_URL.replace(/^http/, "ws")}/api/collab`;
-  }
-
   // Map NEXT_PUBLIC_* env vars to process.env.NEXT_PUBLIC_* for compatibility
   const envVarDefines: Record<string, string> = {};
   for (const key of Object.keys(env)) {

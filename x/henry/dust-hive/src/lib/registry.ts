@@ -65,8 +65,10 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     // this the forwarded port (3000) cannot reach front-api.
     // Inline PORT= shadows the env.sh `PORT=ports.front` export so front-api
     // binds its own dedicated port instead of stealing the proxy port.
+    // COLLAB_PUBLIC_URL turns live editing on: the browser reaches the collab
+    // server through the proxy's /api/collab route.
     buildCommand: (env) =>
-      `HOSTNAME=127.0.0.1 PORT=${env.ports.frontApi} NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev`,
+      `HOSTNAME=127.0.0.1 PORT=${env.ports.frontApi} COLLAB_PUBLIC_URL=ws://localhost:${env.ports.front}/api/collab NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.frontApi}/api/healthz`,

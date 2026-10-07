@@ -487,6 +487,10 @@ const config = {
   getVizPublicUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_PUBLIC_URL");
   },
+  // The co-edition live session server's WebSocket URL, set only where it is deployed.
+  getCollabPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("COLLAB_PUBLIC_URL");
+  },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_PROVIDERS_PAGE_ID");
