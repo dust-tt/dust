@@ -164,12 +164,14 @@ async function setup({
       agents: [agent],
       total: 1,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
   const facetsResponse: SearchAgentsResponseBody = {
     agents: [],
     total: 1,
     hasMore: false,
+    isFavoritesOnly: false,
     facets: {
       editors: [
         { sId: "other-editor", fullName: "Alice Other", image: null, count: 1 },
@@ -200,6 +202,7 @@ async function setup({
           agents: [{ ...agent, ...globalAgent, model: agent.model }],
           total: 1,
           hasMore: false,
+          isFavoritesOnly: false,
           facets: {},
         };
       }
@@ -679,6 +682,7 @@ describe("search-backed Manage Agents", () => {
       agents: [agent],
       total: 30,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();
@@ -697,6 +701,7 @@ describe("search-backed Manage Agents", () => {
       agents: [{ ...agent, sId: "second", name: "Second page" }],
       total: 30,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     await userEvent.click(screen.getByRole("button", { name: "2" }));
@@ -729,6 +734,7 @@ describe("search-backed Manage Agents", () => {
       ],
       total: 3,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
     mount();

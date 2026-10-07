@@ -2,6 +2,7 @@ import { MAX_AGENT_SEARCH_RESULTS } from "@app/lib/agent_search/constants";
 import {
   AGENT_SEARCH_FACETS,
   AGENT_SEARCH_PERMISSION_FILTERINGS,
+  AGENT_SEARCH_SELECTION_MODES,
   AGENT_SEARCH_SORT_ORDERS,
   AGENT_SEARCH_SORTS,
 } from "@app/types/agent_search/agent_search";
@@ -97,5 +98,12 @@ export const SearchAgentsQuerySchema = BaseSearchAgentsSchema.extend({
     .optional(),
   sortBy: z.enum(AGENT_SEARCH_SORTS).optional(),
   sortOrder: z.enum(AGENT_SEARCH_SORT_ORDERS).optional(),
+  // TODO: Remove favoritesFirst and its ranking path once older frontends stop sending it.
   favoritesFirst: z.boolean().optional(),
+  selectionMode: z
+    .enum(AGENT_SEARCH_SELECTION_MODES)
+    .optional()
+    .describe(
+      "all searches normally; favorites_only searches only favorites; favorites_or_all prefers favorites for empty queries and searches normally if none match. Defaults to all."
+    ),
 });
