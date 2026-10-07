@@ -1,7 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { clientFetch } from "@app/lib/egress/client";
-import type { FileUploadRequestResponseBody } from "@app/types/api/files/upload_metadata";
+import logger from "@app/logger/logger";
+import {
+  type FileUploadRequestResponseBody,
+  FileUploadedResponseBodySchema,
+} from "@app/types/api/files/upload_metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
@@ -17,15 +21,17 @@ const MAX_EXTRACTED_TEXT_CHARS = 100_000;
 
 /**
  * Uploads a PDF to the Dust file API and fetches the server-extracted text.
- * Returns the file ID, name, and extracted text, or null on failure.
+ * Returns the file ID, path, name, and extracted text, or null on failure.
  */
 async function uploadPdf(
   workspaceId: string,
+  conversationId: string,
   base64: string,
   mimeType: string,
   pageUrl: string
 ): Promise<{
   fileId: string;
+  path: string | null;
   fileName: string;
   extractedText: string | null;
 } | null> {
@@ -50,13 +56,14 @@ async function uploadPdf(
         fileName,
         fileSize: blob.size,
         useCase: "conversation",
+        useCaseMetadata: { conversationId },
       }),
     });
 
     if (!createRes.ok) {
-      console.error(
-        "[getPageViewTool] Failed to create file record:",
-        await createRes.text()
+      logger.error(
+        { responseText: await createRes.text() },
+        "Failed to create the PDF file record."
       );
       return null;
     }
@@ -74,10 +81,18 @@ async function uploadPdf(
     });
 
     if (!uploadRes.ok) {
-      console.error(
-        "[getPageViewTool] Failed to upload file content:",
-        await uploadRes.text()
+      logger.error(
+        { responseText: await uploadRes.text() },
+        "Failed to upload the PDF content."
       );
+      return null;
+    }
+
+    const uploaded = FileUploadedResponseBodySchema.safeParse(
+      await uploadRes.json()
+    );
+    if (!uploaded.success) {
+      logger.error({ err: uploaded.error }, "Unexpected file upload response.");
       return null;
     }
 
@@ -93,12 +108,17 @@ async function uploadPdf(
         extractedText = text.slice(0, MAX_EXTRACTED_TEXT_CHARS) || null;
       }
     } catch (err) {
-      console.warn("[getPageViewTool] Could not fetch extracted text:", err);
+      logger.warn({ err }, "Could not fetch the PDF extracted text.");
     }
 
-    return { fileId: file.sId, fileName, extractedText };
+    return {
+      fileId: file.sId,
+      path: uploaded.data.file.path,
+      fileName,
+      extractedText,
+    };
   } catch (error) {
-    console.error("[getPageViewTool] Error uploading PDF:", error);
+    logger.error({ err: error }, "Error uploading the PDF.");
     return null;
   }
 }
@@ -112,11 +132,13 @@ export async function takeScreenshotOrAttachFileTool({
   domainToFetch,
   captureService,
   workspaceId,
+  conversationId,
 }: {
   tabIds: number[];
   domainToFetch: string;
   captureService: CaptureService | null;
   workspaceId: string;
+  conversationId: string;
 }): Promise<ToolHandlerResult> {
   if (!captureService) {
     return new Err(new MCPError("Capture service not available."));
@@ -157,12 +179,32 @@ export async function takeScreenshotOrAttachFileTool({
         const { base64, mimeType, url } = fileData;
 
         if (mimeType === "application/pdf") {
-          const data = await uploadPdf(workspaceId, base64, mimeType, url);
-          if (data) {
+          const data = await uploadPdf(
+            workspaceId,
+            conversationId,
+            base64,
+            mimeType,
+            url
+          );
+          if (data?.path) {
             // The MCP SDK strips non-standard fields from resource objects during
-            // parsing. We store Dust-specific fields (fileId, title, etc.) in _meta
+            // parsing. We store Dust-specific fields (path, fileId, title, etc.) in _meta
             // so they survive the MCP protocol round-trip. The server will move
             // them back to the root level in mcp_actions.ts (tryCallMCPTool).
+            const resource = {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+              uri: data.path,
+              text: data.extractedText ?? `PDF from ${url}`,
+              _meta: {
+                path: data.path,
+                title: data.fileName,
+                contentType: mimeType,
+              },
+            };
+            results.push({ type: "resource" as const, resource });
+            continue;
+          }
+          if (data) {
             const resource = {
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
               uri: `/api/w/${workspaceId}/files/${data.fileId}`,
