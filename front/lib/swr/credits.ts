@@ -108,7 +108,8 @@ export function useCredits({
 type PurchaseResult =
   | { status: "success" }
   | { status: "redirect"; paymentUrl: string }
-  | { status: "error"; message: string };
+  // Formatted by the caller with `formatError`.
+  | { status: "error"; error: unknown };
 
 export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
   const isLoading = useSyncExternalStore(
@@ -125,7 +126,10 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
   const purchaseCredits = useCallback(
     async (amountDollars: number): Promise<PurchaseResult> => {
       if (getPurchaseLoading(workspaceId)) {
-        return { status: "error", message: "Purchase already in progress" };
+        return {
+          status: "error",
+          error: new Error("Purchase already in progress"),
+        };
       }
 
       setPurchaseLoading(workspaceId, true);
@@ -143,12 +147,8 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
         );
 
         if (!response.ok) {
-          const errorData = await response.json();
-          const errorMessage =
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            errorData.error?.message || "Failed to purchase credits";
-
-          return { status: "error", message: errorMessage };
+          const errorData: unknown = await response.json();
+          return { status: "error", error: errorData };
         }
 
         const responseData = await response.json();
@@ -162,10 +162,7 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
 
         return { status: "success" };
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to purchase credits";
-
-        return { status: "error", message: errorMessage };
+        return { status: "error", error: err };
       } finally {
         setPurchaseLoading(workspaceId, false);
       }
@@ -395,7 +392,8 @@ export function useAwuPurchaseInfo({
 
 type RedeemPoolTopupCouponOutcome =
   | { status: "success" }
-  | { status: "error"; message: string };
+  // Formatted by the caller with `formatError`.
+  | { status: "error"; error: unknown };
 
 // Redeems a "credits" coupon (the "Use coupon" Top-Up tab). Grants free AWU
 // credits synchronously — no payment involved. Refreshes the pool summary on
@@ -423,19 +421,15 @@ export function useRedeemPoolTopupCoupon({
         );
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          const message =
-            errorData?.error?.message ?? "Failed to redeem coupon.";
-          return { status: "error", message };
+          const errorData: unknown = await response.json().catch(() => null);
+          return { status: "error", error: errorData };
         }
 
         void mutateAwuPoolSummary();
 
         return { status: "success" };
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to redeem coupon.";
-        return { status: "error", message };
+        return { status: "error", error: err };
       }
     },
     [workspaceId, mutateAwuPoolSummary]

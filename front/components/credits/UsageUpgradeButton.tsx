@@ -1,4 +1,5 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import { MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -57,6 +58,7 @@ export function UsageUpgradeButton({
   onManagerNavigate,
 }: UsageUpgradeButtonProps) {
   const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
+  const formatErrorDescription = useFormatErrorDescription();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
@@ -81,7 +83,7 @@ export function UsageUpgradeButton({
     if (result.error.errorType === "invalid_request_error") {
       form.setError("reason", {
         type: "manual",
-        message: result.error.message,
+        message: formatErrorDescription(result.error.error),
       });
     }
   };

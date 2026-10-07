@@ -101,6 +101,7 @@ vi.mock("@app/hooks/useHashParams", () => ({
 }));
 vi.mock("@app/hooks/useNotification", () => ({
   useSendNotification: () => vi.fn(),
+  useSendApiErrorNotification: () => vi.fn(),
 }));
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ vizUrl: "https://viz.dust.tt" }),

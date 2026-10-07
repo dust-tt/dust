@@ -6,6 +6,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
+import type { APIError } from "@app/types/error";
 import { useCallback, useEffect } from "react";
 import type { Fetcher } from "swr";
 import { isCellRedirectError } from "./workspaces";
@@ -52,10 +53,8 @@ export function useShareFrameMetadata({
   };
 }
 
-interface OtpResult {
-  error?: string;
-  success: boolean;
-}
+// `error` is formatted by the caller with `formatError`.
+type OtpResult = { success: true } | { success: false; error: unknown };
 
 export function useSendOtpVerification({ shareToken }: { shareToken: string }) {
   const doSendOtp = useCallback(
@@ -76,12 +75,15 @@ export function useSendOtpVerification({ shareToken }: { shareToken: string }) {
       if (res.status === 429) {
         return {
           success: false,
-          error: "Too many requests. Please try again later.",
+          error: {
+            type: "rate_limit_error",
+            message: "Too many requests. Please try again later.",
+          } satisfies APIError,
         };
       }
 
       const errorData = await getErrorFromResponse(res);
-      return { success: false, error: errorData.message };
+      return { success: false, error: errorData };
     },
     [shareToken]
   );
@@ -106,7 +108,7 @@ export function useVerifyOtpCode({ shareToken }: { shareToken: string }) {
       }
 
       const errorData = await getErrorFromResponse(res);
-      return { success: false, error: errorData.message };
+      return { success: false, error: errorData };
     },
     [shareToken]
   );

@@ -994,16 +994,15 @@ export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
       context: "subscription" | "credits"
     ): Promise<
       | { ok: true; coupon: GetCouponValidateResponseBody["coupon"] }
-      | { ok: false; message: string }
+      | { ok: false; error: unknown }
     > => {
       const res = await clientFetch(
         `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}&context=${encodeURIComponent(context)}`
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const message =
-          body?.error?.message ?? "Invalid or expired coupon code.";
-        return { ok: false, message };
+        // The caller formats the error body with `formatError`.
+        const error: unknown = await res.json().catch(() => null);
+        return { ok: false, error };
       }
       const body = (await res.json()) as GetCouponValidateResponseBody;
       return { ok: true, coupon: body.coupon };

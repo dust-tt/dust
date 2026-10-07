@@ -27,7 +27,8 @@ function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
 
-export type RequestUpgradeError = { errorType: string; message: string };
+// `error` is formatted by the caller with `formatError`.
+export type RequestUpgradeError = { errorType: string; error: unknown };
 export type RequestUpgradeResult = Result<void, RequestUpgradeError>;
 
 // Member-initiated: request a spend-limit upgrade for the current user. On
@@ -58,7 +59,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
             error: errorData,
           });
         }
-        return new Err({ errorType, message: errorData.message });
+        return new Err({ errorType, error: errorData });
       }
 
       await mutate();
