@@ -1,7 +1,6 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { SpaceSelectionSheet } from "@app/components/shared/SpaceSelectionSheet";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -23,7 +22,6 @@ export function AgentBuilderSpacesBlock({
   const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { skills: allSkills } = useSkillsContext();
 
   const {
     actionsAndSkillsRequestedSpaceIds,
@@ -56,9 +54,7 @@ export function AgentBuilderSpacesBlock({
     const actionsToRemove = spaceIdToActions[space.sId] || [];
 
     const skillsToRemove = selectedSkills.filter((skill) =>
-      allSkills
-        .find((s) => s.sId === skill.sId)
-        ?.requestedSpaceIds.includes(space.sId)
+      skill.requestedSpaceIds.includes(space.sId)
     );
 
     // Only show the confirmation dialog if there are resources to remove.
@@ -66,9 +62,7 @@ export function AgentBuilderSpacesBlock({
       const confirmed = await confirmRemoveSpace({
         space,
         actions: actionsToRemove,
-        skills: allSkills.filter((skill) =>
-          skillsToRemove.some((s) => s.sId === skill.sId)
-        ),
+        skills: skillsToRemove,
       });
 
       if (!confirmed) {
@@ -83,10 +77,7 @@ export function AgentBuilderSpacesBlock({
 
     // Remove skills that have this space in their requestedSpaceIds
     const newSkills = selectedSkills.filter(
-      (skill) =>
-        !allSkills
-          .find((s) => s.sId === skill.sId)
-          ?.requestedSpaceIds.includes(space.sId)
+      (skill) => !skill.requestedSpaceIds.includes(space.sId)
     );
     setValue("skills", newSkills, { shouldDirty: true });
 
