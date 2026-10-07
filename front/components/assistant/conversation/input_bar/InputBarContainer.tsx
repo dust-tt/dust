@@ -68,6 +68,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
@@ -1569,7 +1570,7 @@ const InputBarContainer = ({
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
   const canShowVoicePicker =
-    !subscription.plan.isByok &&
+    !usesCustomerCredentials(subscription.plan) &&
     isVoiceTranscriptionAllowed(owner) &&
     actions.includes("voice") &&
     !isCompact;
@@ -1672,7 +1673,7 @@ const InputBarContainer = ({
               {compactPreviewText || compactDisplayPlaceholder}
             </div>
           )}
-          {!subscription.plan.isByok &&
+          {!usesCustomerCredentials(subscription.plan) &&
             isVoiceTranscriptionAllowed(owner) &&
             actions.includes("voice") && (
               <div

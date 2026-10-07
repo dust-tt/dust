@@ -292,6 +292,22 @@ describe("isEligibleForNudge", () => {
     ).toBe(false);
   });
 
+  it("is not eligible on an Edgee workspace, even if never nudged", async () => {
+    const { authenticator, user, globalSpace } = await createResourceTest({
+      role: "admin",
+      plan: "edgee",
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+      })
+    ).toBe(false);
+  });
+
   it("is eligible on a BYOK workspace when overrideChecks is set", async () => {
     const { authenticator, user, globalSpace } = await createResourceTest({
       role: "admin",

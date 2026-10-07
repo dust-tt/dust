@@ -1,6 +1,7 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import type { WorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
@@ -17,7 +18,7 @@ export function VoiceTranscriptionToggle({
     useVoiceTranscriptionToggle({ owner });
   const { subscription } = useAuth();
 
-  if (subscription.plan.isByok) {
+  if (usesCustomerCredentials(subscription.plan)) {
     return null;
   }
 

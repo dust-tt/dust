@@ -1,4 +1,5 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import { isCreditPricedPlan } from "@app/types/plan";
 
 /**
@@ -6,15 +7,15 @@ import { isCreditPricedPlan } from "@app/types/plan";
  * The client-side answer to "does this workspace run models on Dust-managed
  * regional hosting?". It mirrors `EU_AGENT_PLATFORM_ENDPOINT_FILTER`, which
  * every `*_eu_agent_platform` endpoint declares — change both together, and see
- * that constant for why provider-hosted EU endpoints are out of scope. A BYOK
- * plan is excluded whatever the flag says: its models run on the customer's own
- * provider keys, not on our regional hosting.
+ * that constant for why provider-hosted EU endpoints are out of scope. BYOK and
+ * gateway plans are excluded whatever the flag says: their models run on the
+ * customer's own keys, not on our regional hosting.
  */
 export function useRunsOnRegionalHosting(): boolean {
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
 
-  if (subscription.plan.isByok) {
+  if (usesCustomerCredentials(subscription.plan)) {
     return false;
   }
 
