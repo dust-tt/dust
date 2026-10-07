@@ -1,5 +1,5 @@
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
+  Avatar,
   AvatarCellSkeleton,
   DataTable,
   TextCellSkeleton,
@@ -40,8 +40,15 @@ export function buildMemberNameColumn<TRow extends MemberNameRow>(): ColumnDef<
     accessorFn: (row) => row.name,
     cell: (info: CellContext<TRow, string>) => (
       <DataTable.CellContent
-        avatarUrl={info.row.original.image ?? ANONYMOUS_USER_IMAGE_URL}
-        roundedAvatar
+        icon={() => (
+          <Avatar
+            name={info.row.original.name}
+            visual={info.row.original.image ?? undefined}
+            className="mr-2"
+            size="xs"
+            isRounded
+          />
+        )}
       >
         <div>
           <div>{info.row.original.name}</div>

@@ -40,7 +40,6 @@ import type { PlanType } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
@@ -121,12 +120,6 @@ function getTableColumns(
   const managedByColumn: ColumnDef<RowData, string | undefined> = {
     id: "managedBy",
     header: t(msg`Managed by`),
-    accessorFn: (row) =>
-      isGlobalOrSystemSpace
-        ? (row.dataSourceView.dataSource.editedByUser?.imageUrl ??
-          ANONYMOUS_USER_IMAGE_URL)
-        : (row.dataSourceView.editedByUser?.imageUrl ??
-          ANONYMOUS_USER_IMAGE_URL),
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
@@ -134,8 +127,8 @@ function getTableColumns(
         : dataSourceView.editedByUser;
       return (
         <DataTable.CellContent
-          avatarUrl={ctx.getValue()}
-          avatarTooltipLabel={editedByUser?.fullName ?? undefined}
+          avatarName={editedByUser?.fullName ?? undefined}
+          avatarUrl={editedByUser?.imageUrl ?? undefined}
           roundedAvatar
         />
       );

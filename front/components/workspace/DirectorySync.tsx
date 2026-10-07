@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   LoadingBlock,
-  Page,
+  SettingsList,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -35,7 +35,7 @@ import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
 
 import { GroupsList } from "../groups/GroupsList";
-import { WorkspaceSection } from "./WorkspaceSection";
+import { AdminSectionAnchor } from "../layouts/AdminSectionAnchor";
 
 function useDirectorySyncStatus({
   owner,
@@ -103,35 +103,37 @@ function DirectorySyncStatus({
       const connectionType = dsyncStatus.connection?.type;
       return (
         <>
-          <div className="mb-4 flex flex-row items-center gap-2">
-            <div className="flex-1">
-              <div className="flex flex-row items-center gap-2">
-                <Page.H variant="h5">
+          <SettingsList>
+            <SettingsList.Row
+              title={
+                <>
                   <Trans>Directory sync</Trans>
-                </Page.H>
-                <Chip color="success" label={t`Enabled`} size="xs" />
-              </div>
-              <Page.P variant="secondary">
+                  <Chip color="success" label={t`Enabled`} size="xs" />
+                </>
+              }
+              description={
                 <Trans>
                   Automatically syncing users and groups from {connectionType}
                 </Trans>
-              </Page.P>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                label={t`Configure Directory sync`}
-                size="sm"
-                variant="outline"
-                onClick={onSetupClick}
-              />
-              <Button
-                label={t`Deactivate Directory sync`}
-                size="sm"
-                variant="outline"
-                onClick={onDisableClick}
-              />
-            </div>
-          </div>
+              }
+              action={
+                <>
+                  <Button
+                    label={t`Configure Directory sync`}
+                    size="sm"
+                    variant="outline"
+                    onClick={onSetupClick}
+                  />
+                  <Button
+                    label={t`Deactivate Directory sync`}
+                    size="sm"
+                    variant="outline"
+                    onClick={onDisableClick}
+                  />
+                </>
+              }
+            />
+          </SettingsList>
           <WorkspaceGroupButtonWithModal owner={owner} />
         </>
       );
@@ -140,27 +142,25 @@ function DirectorySyncStatus({
     case "not_configured":
       return (
         <>
-          <div className="mb-3 flex flex-row items-center gap-2">
-            <div className="flex-1">
-              <Page.H variant="h5">
-                <Trans>Directory sync</Trans>
-              </Page.H>
-              <Page.P variant="secondary">
+          <SettingsList>
+            <SettingsList.Row
+              title={<Trans>Directory sync</Trans>}
+              description={
                 <Trans>
                   Sync your organization's users and groups from your identity
                   provider
                 </Trans>
-              </Page.P>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                label={t`Set up Directory sync`}
-                size="sm"
-                variant="primary"
-                onClick={onSetupClick}
-              />
-            </div>
-          </div>
+              }
+              action={
+                <Button
+                  label={t`Set up Directory sync`}
+                  size="sm"
+                  variant="primary"
+                  onClick={onSetupClick}
+                />
+              }
+            />
+          </SettingsList>
         </>
       );
 
@@ -168,27 +168,22 @@ function DirectorySyncStatus({
       const connectionType = dsyncStatus.connection?.type;
       return (
         <>
-          <div className="flex flex-row items-center gap-2">
-            <div className="flex-1">
-              <div className="flex flex-row items-center gap-2">
-                <Page.H variant="h5">
-                  <Trans>User provisioning</Trans>
-                </Page.H>
-                <Chip color="info" label={t`Setting up`} size="xs" />
-              </div>
-              <Page.P variant="secondary">
+          <SettingsList>
+            <SettingsList.Row
+              title={<Trans>User provisioning</Trans>}
+              description={
                 <Trans>Configuring {connectionType} directory sync</Trans>
-              </Page.P>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                label={t`Continue setting up Directory Sync`}
-                size="sm"
-                variant="primary"
-                onClick={onSetupClick}
-              />
-            </div>
-          </div>
+              }
+              action={
+                <Button
+                  label={t`Continue setting up Directory Sync`}
+                  size="sm"
+                  variant="primary"
+                  onClick={onSetupClick}
+                />
+              }
+            />
+          </SettingsList>
         </>
       );
     }
@@ -285,22 +280,20 @@ export default function UserProvisioning({
   } = useDirectorySyncStatus({ owner, plan });
 
   return (
-    <WorkspaceSection
-      title={t`User provisioning`}
-      icon={Users01}
-      sectionId={ADMIN_SECTION_IDS.identity.provisioning}
-    >
-      <div className="flex w-full flex-row items-center gap-2">
-        <div className="flex-1">
-          <DirectorySyncStatus
-            owner={owner}
-            dsyncStatus={dsyncStatus}
-            isLoadingDSync={isLoadingDSync}
-            onSetupClick={handleSetupClick}
-            onDisableClick={handleDisableClick}
-          />
-        </div>
-      </div>
+    <>
+      <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.provisioning}>
+        <span className="heading-base text-foreground">
+          <Trans>User provisioning</Trans>
+        </span>
+
+        <DirectorySyncStatus
+          owner={owner}
+          dsyncStatus={dsyncStatus}
+          isLoadingDSync={isLoadingDSync}
+          onSetupClick={handleSetupClick}
+          onDisableClick={handleDisableClick}
+        />
+      </AdminSectionAnchor>
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -314,7 +307,7 @@ export default function UserProvisioning({
         owner={owner}
         dsyncStatus={dsyncStatus}
       />
-    </WorkspaceSection>
+    </>
   );
 }
 

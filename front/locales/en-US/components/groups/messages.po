@@ -152,10 +152,6 @@ msgid "Are you sure you want to delete {groupName}? This action cannot be undone
 msgstr "Are you sure you want to delete {groupName}? This action cannot be undone."
 
 #: front/components/groups/WorkspaceGroupsList.tsx
-msgid "User provisioning is configured in <0>IT & Security → User provisioning</0>"
-msgstr "User provisioning is configured in <0>IT & Security → User provisioning</0>"
-
-#: front/components/groups/WorkspaceGroupsList.tsx
 msgid "Search groups"
 msgstr "Search groups"
 

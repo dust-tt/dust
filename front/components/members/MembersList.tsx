@@ -161,7 +161,8 @@ export function MembersList({
         header: t`Name`,
         cell: (info: Info) => (
           <DataTable.CellContent
-            avatarUrl={info.row.original.icon}
+            avatarName={info.row.original.name}
+            avatarUrl={info.row.original.icon ?? undefined}
             roundedAvatar
           >
             {info.row.original.name}

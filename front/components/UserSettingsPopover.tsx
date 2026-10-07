@@ -44,10 +44,7 @@ import type { SupportedLocale } from "@app/types/locale";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  ANONYMOUS_USER_IMAGE_URL,
-  areConversationExternalNotificationsEnabled,
-} from "@app/types/user";
+import { areConversationExternalNotificationsEnabled } from "@app/types/user";
 import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -95,6 +92,8 @@ import type React from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
+
+const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 type SettingsSection =
   | "personal"
