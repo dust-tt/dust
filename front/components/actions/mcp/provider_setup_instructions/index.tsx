@@ -1,5 +1,6 @@
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import { Icon, InfoCircle } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 import { NetSuiteSetupInstructions } from "./NetSuiteSetupInstructions";
 import { PowerBiSetupInstructions } from "./PowerBiSetupInstructions";
@@ -60,9 +61,11 @@ export function ProviderAuthNote({ provider }: ProviderAuthNoteProps) {
             className="mt-0.5 shrink-0 text-muted-foreground"
           />
           <span className="text-sm text-muted-foreground">
-            Clicking "Setup connection" will start a Snowflake OAuth flow using
-            the role above. Your Snowflake user must have access to this role to
-            complete authentication.
+            <Trans>
+              Clicking "Setup connection" will start a Snowflake OAuth flow
+              using the role above. Your Snowflake user must have access to this
+              role to complete authentication.
+            </Trans>
           </span>
         </div>
       );
