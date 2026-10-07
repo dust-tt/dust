@@ -48,7 +48,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
@@ -486,7 +486,11 @@ function formatNodeScopeTitles(
   const visible = nodes.slice(0, MAX_VISIBLE_NODES);
   const rest = nodes.length - MAX_VISIBLE_NODES;
   const titles = visible.map((n) => n.title).join(", ");
-  return rest > 0 ? t(msg`${titles} (+${rest} more)`) : titles;
+  return rest > 0
+    ? t(
+        msg`${titles} ${plural(rest, { one: "(+# more)", other: "(+# more)" })}`
+      )
+    : titles;
 }
 
 function buildNewKnowledgeAction(

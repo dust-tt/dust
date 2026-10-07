@@ -1,4 +1,5 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
 import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
@@ -727,7 +728,7 @@ function CheckoutSuccessPage({
 }: CheckoutSuccessPageProps) {
   const { t } = useLingui();
   const router = useAppRouter();
-  const planName = seatType === "max" ? "Max" : "Pro";
+  const planName = seatTypeDisplayName(seatType === "max" ? "max" : "pro", t);
   const monthlyCredits = formatNumber(seatType === "max" ? 40_000 : 8_000);
 
   return (

@@ -202,3 +202,11 @@ msgstr "Vous avez utilisé 80 % de votre limite d’utilisation. Vous passerez 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
 msgid "You've used 80% of your usage limit"
 msgstr "Vous avez utilisé 80 % de votre limite d’utilisation"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted ({count})"
+msgstr "Texte collé ({count})"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted"
+msgstr "Texte collé"

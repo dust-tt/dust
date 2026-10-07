@@ -15,7 +15,7 @@ import {
   Minimize01,
   Pin02,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -97,7 +97,9 @@ function PodPinnedBannerCollapsedAffordance({
   return (
     <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
       <Pin02 className="h-3.5 w-3.5 shrink-0" />
-      <span className="shrink-0">Frame</span>
+      <span className="shrink-0">
+        <Trans>Frame</Trans>
+      </span>
       <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
       </span>
@@ -120,6 +122,7 @@ function PodPinnedBannerCollapsedAffordance({
 }
 
 export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
+  const { t } = useLingui();
   const { vizUrl } = useAuth();
   const pinnedFramePath = podInfo.pinnedFramePath;
 
@@ -248,7 +251,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     return (
       <>
         <PodPinnedBannerCollapsedAffordance
-          fileName={unpinLabel ?? "Frame"}
+          fileName={unpinLabel ?? t`Frame`}
           onShow={showBanner}
           onOpenFullscreen={() => setIsFullscreen(true)}
         />

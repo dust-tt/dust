@@ -424,8 +424,8 @@ msgid "{modelName} model with {formattedReasoning} reasoning suggestion rejected
 msgstr "Suggestion du modèle {modelName} avec le raisonnement {formattedReasoning} refusée"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
-msgid "{titles} (+{rest} more)"
-msgstr "{titles} (+{rest} de plus)"
+msgid "{titles} {rest, plural, one {(+# more)} other {(+# more)}}"
+msgstr "{titles} {rest, plural, one {(+# de plus)} other {(+# de plus)}}"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
 msgid "Selections:"

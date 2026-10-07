@@ -11,7 +11,7 @@ import type { PendingInputText } from "@app/components/assistant/conversation/in
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
-  getDisplayNameFromPastedFileId,
+  getPastedAttachmentChipTitle,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
@@ -841,7 +841,7 @@ const InputBarContainer = ({
         const newCount = pastedCount + 1;
         setPastedCount(newCount);
         filename = getPastedFileName(newCount);
-        const displayName = getDisplayNameFromPastedFileId(filename);
+        const displayName = getPastedAttachmentChipTitle(filename);
 
         inserted = insertPastedAttachmentChip({
           fileId: filename,
