@@ -1,5 +1,7 @@
 import { isString } from "@app/types/shared/utils/general";
 import { Node } from "@tiptap/core";
+import type { DOMOutputSpec, Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { DOMSerializer } from "@tiptap/pm/model";
 
 export const DOCUMENT_IMAGE_NODE_NAME = "image";
 
@@ -19,12 +21,52 @@ const imageMarkdown = (src: string, alt: string, title: string | null) =>
     title ? ` "${title.replace(/["\\]/g, "\\$&")}"` : ""
   })`;
 
+const LOADING_CLASSES = [
+  "min-h-8",
+  "min-w-8",
+  "animate-pulse",
+  "bg-muted-background",
+];
+
+const imageSpec = (
+  node: ProseMirrorNode,
+  resolveSource: DocumentImageOptions["resolveSource"]
+): DOMOutputSpec => {
+  const { src, alt, title } = node.attrs;
+  const attributes = {
+    [IMAGE_SOURCE_ATTRIBUTE]: src,
+    "data-alt": alt,
+    ...(title ? { title } : {}),
+  };
+  const url = isString(src) ? resolveSource(src) : null;
+  return url
+    ? [
+        "img",
+        {
+          ...attributes,
+          src: url,
+          alt,
+          class: "inline-block max-w-full rounded-lg align-bottom",
+        },
+      ]
+    : [
+        "span",
+        {
+          ...attributes,
+          class:
+            "rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground",
+        },
+        alt || src || "",
+      ];
+};
+
 /**
  * @cc [owner:tdraier,label:product;security] document-image-source
  * An image MUST keep its alt text, destination and title through load and save, and MUST be
  * displayed only from the URL `resolveSource` returns for its destination; without one it MUST
  * show as text, its alt text or its destination when the alt text is empty, so the editor never
- * loads a source the host did not resolve. Copied and pasted, it MUST keep its destination.
+ * loads a source the host did not resolve. Copied and pasted, it MUST keep its destination. In
+ * the editor, a resolved image MUST show as busy until it loads or fails.
  */
 export const DocumentImage = Node.create<DocumentImageOptions>({
   name: DOCUMENT_IMAGE_NODE_NAME,
@@ -54,32 +96,26 @@ export const DocumentImage = Node.create<DocumentImageOptions>({
   }),
   parseHTML: () => [{ tag: `[${IMAGE_SOURCE_ATTRIBUTE}]` }],
   renderHTML({ node }) {
-    const { src, alt, title } = node.attrs;
-    const attributes = {
-      [IMAGE_SOURCE_ATTRIBUTE]: src,
-      "data-alt": alt,
-      ...(title ? { title } : {}),
+    return imageSpec(node, this.options.resolveSource);
+  },
+  addNodeView() {
+    return ({ node }) => {
+      const { dom } = DOMSerializer.renderSpec(
+        document,
+        imageSpec(node, this.options.resolveSource)
+      );
+      if (dom instanceof HTMLImageElement && !dom.complete) {
+        dom.classList.add(...LOADING_CLASSES);
+        dom.setAttribute("aria-busy", "true");
+        const loaded = () => {
+          dom.classList.remove(...LOADING_CLASSES);
+          dom.removeAttribute("aria-busy");
+        };
+        dom.addEventListener("load", loaded, { once: true });
+        dom.addEventListener("error", loaded, { once: true });
+      }
+      return { dom };
     };
-    const url = isString(src) ? this.options.resolveSource(src) : null;
-    return url
-      ? [
-          "img",
-          {
-            ...attributes,
-            src: url,
-            alt,
-            class: "inline-block max-w-full rounded-lg align-bottom",
-          },
-        ]
-      : [
-          "span",
-          {
-            ...attributes,
-            class:
-              "rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground",
-          },
-          alt || src || "",
-        ];
   },
   parseMarkdown: (token) => ({
     type: DOCUMENT_IMAGE_NODE_NAME,

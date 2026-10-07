@@ -641,6 +641,17 @@ describe("Document images", () => {
     expect(within(dom).getByText("Logo")).toBeDefined();
   });
 
+  it("shows a resolved image as busy until it loads", async () => {
+    const dom = await renderImages((src) =>
+      src.startsWith("pod-") ? `https://files.test/${src}` : null
+    );
+    const image = within(dom).getByRole("img", { name: "Chart" });
+
+    expect(image.getAttribute("aria-busy")).toBe("true");
+    fireEvent.load(image);
+    expect(image.getAttribute("aria-busy")).toBeNull();
+  });
+
   it("keeps an image's destination when its HTML is pasted back", async () => {
     const dom = await renderImages((src) =>
       src.startsWith("pod-") ? `https://files.test/${src}` : null
