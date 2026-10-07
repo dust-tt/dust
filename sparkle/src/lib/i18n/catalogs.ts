@@ -51,9 +51,13 @@ export async function loadSparkleI18n(
     return loadedI18n;
   }
 
-  const messages = await importCatalog(locale);
-  // A concurrent load of the same locale may have finished first: keep its instance.
-  const i18n = loadedI18nByLocale.get(locale) ?? createI18n(locale, messages);
+  const i18n = createI18n(locale, await importCatalog(locale));
   loadedI18nByLocale.set(locale, i18n);
   return i18n;
+}
+
+export async function preloadSparkleLocale(
+  locale: SparkleCatalogLocale
+): Promise<void> {
+  await loadSparkleI18n(locale);
 }
