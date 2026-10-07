@@ -112,7 +112,8 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
  * - `admin`: renaming or deleting a `regular_manual` group.
  * - `read_usage`: viewing usage of active members of this group.
  * - `set_usage_limits`: editing this group's allowance or an active member's personal limit.
- * `provisioned` groups can grant usage verbs but never `write` or `admin`.
+ * - `read_analytics`: exporting the consumption analytics of this group's members.
+ * `provisioned` groups can grant usage and analytics verbs but never `write` or `admin`.
  * `global` groups grant only `read`. `regular_auto` and `system` groups hold no verbs and MUST
  * only be used by paths with a separate authorization context.
  */
