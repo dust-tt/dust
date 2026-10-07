@@ -18,7 +18,15 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+      - name: Check translations
+        run: npm -w sparkle run i18n:check
+      # The steps below pass --ignore-scripts to skip their pre* i18n:compile hooks,
+      # so the catalogs are compiled here.
+      - name: Compile translations
+        run: npm -w sparkle run i18n:compile
       - name: Build
-        run: npm -w sparkle run build
+        run: npm -w sparkle run build --ignore-scripts
       - name: Build Storybook
-        run: npm -w sparkle run build-storybook
+        run: npm -w sparkle run build-storybook --ignore-scripts
+      - name: Unit tests
+        run: npm -w sparkle run test:unit --ignore-scripts
