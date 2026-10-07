@@ -60,7 +60,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 export const Document = (props: DocumentProps) =>
   props.live ? (
     <Suspense
-      fallback={<DocumentView {...props} readOnly liveStatus="connecting" />}
+      fallback={
+        <DocumentView
+          {...props}
+          liveView={{ status: "connecting", binding: null }}
+        />
+      }
     >
       <LiveDocument {...props} live={props.live} />
     </Suspense>

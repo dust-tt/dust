@@ -33,10 +33,12 @@ export default function LiveDocument(
     <DocumentView
       key={connection.id}
       {...props}
-      liveBinding={{ extensions, connected: status === "live" }}
-      liveStatus={status}
+      liveView={{
+        status,
+        binding: { extensions, connected: status === "live" },
+      }}
     />
   ) : (
-    <DocumentView {...props} readOnly liveStatus={status} />
+    <DocumentView {...props} liveView={{ status, binding: null }} />
   );
 }
