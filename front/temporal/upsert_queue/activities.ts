@@ -117,13 +117,10 @@ export async function upsertDocumentActivity(
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: upsertQueueItem.documentId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tags: ((upsertQueueItem.tags as string[] | null) || []).map((tag) =>
       safeSubstring(tag, 0)
     ),
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parentId: upsertQueueItem.parentId || null,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parents: upsertQueueItem.parents || [upsertQueueItem.documentId],
     sourceUrl: upsertQueueItem.sourceUrl,
     timestamp: cleanTimestamp(upsertQueueItem.timestamp),

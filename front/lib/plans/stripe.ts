@@ -145,7 +145,6 @@ async function getDefautPriceFromMetadata(
   return null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
 export const ENTERPRISE_N30_PAYMENTS_DAYS = 30;

@@ -1,5 +1,3 @@
-/* eslint-disable dust/enforce-client-types-in-public-api */
-
 import type { ConnectorProvider } from "@app/types/data_source";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { DustMimeType } from "@dust-tt/client";

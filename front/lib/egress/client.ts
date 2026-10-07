@@ -84,7 +84,6 @@ export async function clientFetch(
 ): Promise<Response> {
   const resolved = await resolveRequest(input, init);
 
-  // eslint-disable-next-line no-restricted-globals
   return fetch(resolved.url, resolved.init);
 }
 

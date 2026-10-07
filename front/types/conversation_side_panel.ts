@@ -11,7 +11,6 @@ export const PLAN_SIDE_PANEL_TYPE = "plan";
 export const SKILL_SIDE_PANEL_TYPE = "skill";
 export const TOOL_SIDE_PANEL_TYPE = "tool";
 export const AGENT_SIDE_PANEL_TYPE = "agent";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SIDE_PANEL_TYPES = [
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,

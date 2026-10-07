@@ -235,7 +235,6 @@ async function fetchHubSpotFormDefinition(
     );
   }
 
-  // eslint-disable-next-line no-restricted-globals -- Build-time script, not app code
   const response = await fetch(
     `https://api.hubapi.com/marketing/v3/forms/${formId}`,
     {
