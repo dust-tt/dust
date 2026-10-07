@@ -129,7 +129,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     completedAt: Date | null;
     costCredits: number | null;
     agentMessageModelId: ModelId;
-    sharedLimitGroupModelId: ModelId | null;
+    sharedUsageLimitGroupModelId: ModelId | null;
     modelResolutionMethod: ModelResolutionMethodType | null;
     resolvedModelId: string | null;
     resolvedProviderId: string | null;
@@ -974,7 +974,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         completedAt: agentMessage.completedAt,
         costCredits: agentMessage.costCredits,
         agentMessageModelId: agentMessage.id,
-        sharedLimitGroupModelId: agentMessage.sharedLimitGroupModelId,
+        sharedUsageLimitGroupModelId: agentMessage.sharedUsageLimitGroupModelId,
         modelResolutionMethod: agentMessage.modelResolutionMethod,
         resolvedModelId: agentMessage.resolvedModelId,
         resolvedProviderId: agentMessage.resolvedProviderId,
@@ -1018,12 +1018,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  static async fetchAgentMessageSharedLimitGroup(
+  static async fetchAgentMessageSharedUsageLimitGroup(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
   ): Promise<{
     agentMessageModelId: ModelId;
-    sharedLimitGroupModelId: ModelId | null;
+    sharedUsageLimitGroupModelId: ModelId | null;
   } | null> {
     const messageRow = await MessageModel.findOne({
       where: {
@@ -1040,19 +1040,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
     return {
       agentMessageModelId: agentMessage.id,
-      sharedLimitGroupModelId: agentMessage.sharedLimitGroupModelId,
+      sharedUsageLimitGroupModelId: agentMessage.sharedUsageLimitGroupModelId,
     };
   }
 
-  static async setAgentMessageSharedLimitGroup(
+  static async setAgentMessageSharedUsageLimitGroup(
     auth: Authenticator,
     {
       agentMessageModelId,
-      sharedLimitGroupModelId,
-    }: { agentMessageModelId: ModelId; sharedLimitGroupModelId: ModelId }
+      sharedUsageLimitGroupModelId,
+    }: { agentMessageModelId: ModelId; sharedUsageLimitGroupModelId: ModelId }
   ): Promise<void> {
     await AgentMessageModel.update(
-      { sharedLimitGroupModelId },
+      { sharedUsageLimitGroupModelId },
       {
         where: {
           id: agentMessageModelId,

@@ -74,10 +74,10 @@ beforeEach(() => {
   mockActiveContract(POOL_ONLY_SEATS);
   vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
   vi.mocked(resolveMetronomeCycle).mockResolvedValue(CYCLE);
-  mockConsumedBySharedLimitGroup([]);
+  mockConsumedBySharedUsageLimitGroup([]);
 });
 
-function mockConsumedBySharedLimitGroup(
+function mockConsumedBySharedUsageLimitGroup(
   consumed: { group: GroupResource; microCredits: number }[]
 ) {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
@@ -87,7 +87,7 @@ function mockConsumedBySharedLimitGroup(
       _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
       hits: { total: { value: 0, relation: "eq" }, hits: [] },
       aggregations: {
-        by_shared_limit_group: {
+        by_shared_usage_limit_group: {
           buckets: consumed.map(({ group, microCredits }) => ({
             key: group.sId,
             credits: { value: microCredits },
@@ -183,7 +183,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
     });
     await GroupFactory.regularManual(workspace, "Marketing");
     await setCounter(workspace, engineering, 2_500_000_000);
-    mockConsumedBySharedLimitGroup([
+    mockConsumedBySharedUsageLimitGroup([
       { group: sales, microCredits: 500_000_000 },
     ]);
     await createPrivateApiMockRequest({
@@ -218,7 +218,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
       awuCredits: 6_000,
       priority: 2,
     });
-    mockConsumedBySharedLimitGroup([
+    mockConsumedBySharedUsageLimitGroup([
       { group: engineering, microCredits: 2_000_000_000 },
       { group: sales, microCredits: 500_000_000 },
     ]);

@@ -1273,12 +1273,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:rfrenoy,label:security;product;backend] shared-limit-group-drop-not-reassign
-   * Each member's shared limit group is resolved from memberships and priorities alone, and the `read`
-   * filter applies to that resolved group: a member whose shared limit group the caller cannot read MUST
+   * @cc [owner:rfrenoy,label:security;product;backend] shared-usage-limit-group-drop-not-reassign
+   * Each member's shared usage limit group is resolved from memberships and priorities alone, and the `read`
+   * filter applies to that resolved group: a member whose shared usage limit group the caller cannot read MUST
    * be absent from the result, never attributed to the next readable group.
    */
-  static async listSharedLimitGroupByUserModelIdInWorkspace(
+  static async listSharedUsageLimitGroupsByUserModelId(
     auth: Authenticator,
     { userModelIds }: { userModelIds: ModelId[] }
   ): Promise<Map<ModelId, GroupResource>> {

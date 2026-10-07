@@ -507,7 +507,7 @@ async function finalizeMessageOfMember(seatType: MembershipSeatType) {
 }
 
 describe("computeAndStoreAgentMessageCredits shared usage limit recording", () => {
-  it("records a paid seat's usage to its shared limit group", async () => {
+  it("records a paid seat's usage to its shared usage limit group", async () => {
     const { member, agentMessageId, costCredits } =
       await finalizeMessageOfMember("workspace");
 

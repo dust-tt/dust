@@ -189,15 +189,15 @@ export async function setGroupSharedUsageLimit(
 }
 
 /**
- * @cc [owner:rfrenoy,label:product;backend] shared-limit-group-resolution
- * A member's shared limit group is, among their active memberships in cap-eligible groups that have a shared
+ * @cc [owner:rfrenoy,label:product;backend] shared-usage-limit-group-resolution
+ * A member's shared usage limit group is, among their active memberships in cap-eligible groups that have a shared
  * usage limit, the one with the lowest `sharedUsageLimitPriority`. Enforcement, UI data and the first recording of
  * a message MUST resolve it through this function. Returns nothing when shared usage limits are not enabled.
  *
- * Returns each resolved member's shared limit group keyed by the member's sId; members without one, or whose
- * shared limit group the caller cannot `read`, are absent.
+ * Returns each resolved member's shared usage limit group keyed by the member's sId; members without one, or whose
+ * shared usage limit group the caller cannot `read`, are absent.
  */
-export async function resolveSharedLimitGroupsForUsers(
+export async function resolveSharedUsageLimitGroupsForUsers(
   auth: Authenticator,
   { users }: { users: UserResource[] }
 ): Promise<Map<string, GroupResource>> {
@@ -205,43 +205,51 @@ export async function resolveSharedLimitGroupsForUsers(
     return new Map();
   }
 
-  const sharedLimitGroupByUserModelId =
-    await GroupResource.listSharedLimitGroupByUserModelIdInWorkspace(auth, {
+  const sharedUsageLimitGroupByUserModelId =
+    await GroupResource.listSharedUsageLimitGroupsByUserModelId(auth, {
       userModelIds: users.map((user) => user.id),
     });
 
-  const sharedLimitGroupByUserId = new Map<string, GroupResource>();
+  const sharedUsageLimitGroupByUserId = new Map<string, GroupResource>();
   for (const user of users) {
-    const sharedLimitGroup = sharedLimitGroupByUserModelId.get(user.id);
-    if (sharedLimitGroup) {
-      sharedLimitGroupByUserId.set(user.sId, sharedLimitGroup);
+    const sharedUsageLimitGroup = sharedUsageLimitGroupByUserModelId.get(
+      user.id
+    );
+    if (sharedUsageLimitGroup) {
+      sharedUsageLimitGroupByUserId.set(user.sId, sharedUsageLimitGroup);
     }
   }
-  return sharedLimitGroupByUserId;
+  return sharedUsageLimitGroupByUserId;
 }
 
-export async function resolveSharedLimitGroupForUser(
+export async function resolveSharedUsageLimitGroupForUser(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<GroupResource | null> {
-  const sharedLimitGroups = await resolveSharedLimitGroupsForUsers(auth, {
-    users: [user],
-  });
-  return sharedLimitGroups.get(user.sId) ?? null;
+  const sharedUsageLimitGroups = await resolveSharedUsageLimitGroupsForUsers(
+    auth,
+    {
+      users: [user],
+    }
+  );
+  return sharedUsageLimitGroups.get(user.sId) ?? null;
 }
 
 /**
- * Whether the member's shared limit group has used its whole limit for the current cycle. Fails open (not
+ * Whether the member's shared usage limit group has used its whole limit for the current cycle. Fails open (not
  * blocked) when the cycle or the counter cannot be read.
  */
 export async function isGroupSharedUsageLimitReached(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<boolean> {
-  const sharedLimitGroup = await resolveSharedLimitGroupForUser(auth, { user });
+  const sharedUsageLimitGroup = await resolveSharedUsageLimitGroupForUser(
+    auth,
+    { user }
+  );
   if (
-    !sharedLimitGroup ||
-    sharedLimitGroup.sharedUsageLimitAwuCredits === null
+    !sharedUsageLimitGroup ||
+    sharedUsageLimitGroup.sharedUsageLimitAwuCredits === null
   ) {
     return false;
   }
@@ -253,12 +261,12 @@ export async function isGroupSharedUsageLimitReached(
   }
 
   const count = await readGroupSharedUsageCount(auth, {
-    group: sharedLimitGroup,
+    group: sharedUsageLimitGroup,
     bounds,
   });
   if (count === null) {
     logger.warn(
-      { workspaceId: workspace.sId, groupId: sharedLimitGroup.sId },
+      { workspaceId: workspace.sId, groupId: sharedUsageLimitGroup.sId },
       "[SharedUsageLimit] Failed to read shared usage limit count; allowing message"
     );
     return false;
@@ -266,7 +274,7 @@ export async function isGroupSharedUsageLimitReached(
 
   return (
     count >=
-    roundCreditsToMicroCredits(sharedLimitGroup.sharedUsageLimitAwuCredits)
+    roundCreditsToMicroCredits(sharedUsageLimitGroup.sharedUsageLimitAwuCredits)
   );
 }
 
@@ -286,29 +294,31 @@ export async function recordSharedUsageLimitWithUsage(
   }
 
   const agentMessage =
-    await ConversationResource.fetchAgentMessageSharedLimitGroup(auth, {
+    await ConversationResource.fetchAgentMessageSharedUsageLimitGroup(auth, {
       agentMessageId,
     });
   if (!agentMessage) {
     return;
   }
 
-  let sharedLimitGroup: GroupResource | null;
-  if (agentMessage.sharedLimitGroupModelId !== null) {
+  let sharedUsageLimitGroup: GroupResource | null;
+  if (agentMessage.sharedUsageLimitGroupModelId !== null) {
     const [storedGroup] = await GroupResource.dangerouslyFetchByModelIds(auth, [
-      agentMessage.sharedLimitGroupModelId,
+      agentMessage.sharedUsageLimitGroupModelId,
     ]);
-    sharedLimitGroup = storedGroup ?? null;
+    sharedUsageLimitGroup = storedGroup ?? null;
   } else {
-    sharedLimitGroup = await resolveSharedLimitGroupForUser(auth, { user });
-    if (sharedLimitGroup) {
-      await ConversationResource.setAgentMessageSharedLimitGroup(auth, {
+    sharedUsageLimitGroup = await resolveSharedUsageLimitGroupForUser(auth, {
+      user,
+    });
+    if (sharedUsageLimitGroup) {
+      await ConversationResource.setAgentMessageSharedUsageLimitGroup(auth, {
         agentMessageModelId: agentMessage.agentMessageModelId,
-        sharedLimitGroupModelId: sharedLimitGroup.id,
+        sharedUsageLimitGroupModelId: sharedUsageLimitGroup.id,
       });
     }
   }
-  if (!sharedLimitGroup) {
+  if (!sharedUsageLimitGroup) {
     return;
   }
 
@@ -318,12 +328,15 @@ export async function recordSharedUsageLimitWithUsage(
     return;
   }
 
-  await readGroupSharedUsageCount(auth, { group: sharedLimitGroup, bounds });
+  await readGroupSharedUsageCount(auth, {
+    group: sharedUsageLimitGroup,
+    bounds,
+  });
 
   await addFixedWindowCount({
     key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(
       workspace,
-      sharedLimitGroup
+      sharedUsageLimitGroup
     ),
     bounds,
     incrementBy: roundCreditsToMicroCredits(incrementBy),
@@ -331,21 +344,21 @@ export async function recordSharedUsageLimitWithUsage(
   });
 }
 
-type SharedLimitGroupConsumedBucket = {
+type SharedUsageLimitGroupConsumedBucket = {
   key: string;
   credits?: estypes.AggregationsSumAggregate;
 };
 
-type SharedLimitGroupConsumedAggs = {
-  by_shared_limit_group?: estypes.AggregationsMultiBucketAggregateBase<SharedLimitGroupConsumedBucket>;
+type SharedUsageLimitGroupConsumedAggs = {
+  by_shared_usage_limit_group?: estypes.AggregationsMultiBucketAggregateBase<SharedUsageLimitGroupConsumedBucket>;
 };
 
 /**
- * Microcredits consumed this billing cycle by the messages recorded to each shared limit group, keyed by
+ * Microcredits consumed this billing cycle by the messages recorded to each shared usage limit group, keyed by
  * group sId (groups without consumption are absent). Returns null when the cycle or the analytics
  * index cannot be read, so callers never mistake a failed read for zero usage.
  */
-async function fetchConsumedMicroCreditsBySharedLimitGroupId({
+async function fetchConsumedMicroCreditsBySharedUsageLimitGroupId({
   workspace,
   groupIds,
   cycle,
@@ -366,13 +379,13 @@ async function fetchConsumedMicroCreditsBySharedLimitGroupId({
 
   const result = await searchConsumptionAnalytics<
     never,
-    SharedLimitGroupConsumedAggs
+    SharedUsageLimitGroupConsumedAggs
   >(
     {
       bool: {
         filter: [
           { term: { workspace_id: workspace.sId } },
-          { terms: { "user.shared_limit_group_id": groupIds } },
+          { terms: { "user.shared_usage_limit_group_id": groupIds } },
           {
             range: {
               completed_at: {
@@ -386,9 +399,9 @@ async function fetchConsumedMicroCreditsBySharedLimitGroupId({
     },
     {
       aggregations: {
-        by_shared_limit_group: {
+        by_shared_usage_limit_group: {
           terms: {
-            field: "user.shared_limit_group_id",
+            field: "user.shared_usage_limit_group_id",
             size: Math.max(1, groupIds.length),
           },
           aggs: { credits: { sum: { field: "credit_micro" } } },
@@ -406,8 +419,8 @@ async function fetchConsumedMicroCreditsBySharedLimitGroupId({
   }
 
   const consumedByGroupId = new Map<string, number>();
-  for (const bucket of bucketsToArray<SharedLimitGroupConsumedBucket>(
-    result.value.aggregations?.by_shared_limit_group?.buckets
+  for (const bucket of bucketsToArray<SharedUsageLimitGroupConsumedBucket>(
+    result.value.aggregations?.by_shared_usage_limit_group?.buckets
   )) {
     consumedByGroupId.set(
       String(bucket.key),
@@ -432,7 +445,7 @@ export async function readGroupSharedUsageCount(
     logger,
     fetchSeedValue: async () => {
       const consumedByGroupId =
-        await fetchConsumedMicroCreditsBySharedLimitGroupId({
+        await fetchConsumedMicroCreditsBySharedUsageLimitGroupId({
           workspace,
           groupIds: [group.sId],
         });
@@ -487,7 +500,7 @@ export async function getGroupSharedUsageLimits(
       .map((group) => group.sId)
       .filter((groupId) => !countByGroupId.has(groupId));
     const consumedByGroupId =
-      await fetchConsumedMicroCreditsBySharedLimitGroupId({
+      await fetchConsumedMicroCreditsBySharedUsageLimitGroupId({
         workspace,
         groupIds: uncountedGroupIds,
       });
@@ -526,13 +539,12 @@ export async function resyncGroupSharedUsageCountersFromEsUsage(
     );
   }
 
-  const consumedByGroupId = await fetchConsumedMicroCreditsBySharedLimitGroupId(
-    {
+  const consumedByGroupId =
+    await fetchConsumedMicroCreditsBySharedUsageLimitGroupId({
       workspace,
       groupIds: groups.map((group) => group.sId),
       cycle,
-    }
-  );
+    });
   if (consumedByGroupId === null) {
     return new Err(
       new Error(

@@ -151,12 +151,12 @@ async function loadAgentTagIds(
 async function loadAnalyticsUser({
   auth,
   completedAt,
-  sharedLimitGroupModelId,
+  sharedUsageLimitGroupModelId,
   userId,
 }: {
   auth: Authenticator;
   completedAt: Date;
-  sharedLimitGroupModelId: ModelId | null;
+  sharedUsageLimitGroupModelId: ModelId | null;
   userId: string | null;
 }): Promise<AgentMessageConsumptionAnalyticsUser | null> {
   if (userId === null) {
@@ -189,11 +189,11 @@ async function loadAnalyticsUser({
     id: user.sId,
     group_ids: groups.map((group) => group.sId).sort(),
     seat_type: seatType,
-    shared_limit_group_id:
-      sharedLimitGroupModelId === null
+    shared_usage_limit_group_id:
+      sharedUsageLimitGroupModelId === null
         ? null
         : GroupResource.modelIdToSId({
-            id: sharedLimitGroupModelId,
+            id: sharedUsageLimitGroupModelId,
             workspaceId: workspace.id,
           }),
   };
@@ -321,7 +321,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const user = await loadAnalyticsUser({
     auth,
     completedAt,
-    sharedLimitGroupModelId: agentMessage.sharedLimitGroupModelId,
+    sharedUsageLimitGroupModelId: agentMessage.sharedUsageLimitGroupModelId,
     userId: triggeringUserMessage.userId,
   });
 

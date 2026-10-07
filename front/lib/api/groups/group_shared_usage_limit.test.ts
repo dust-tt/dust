@@ -14,8 +14,8 @@ import {
   isGroupSharedUsageLimitReached,
   MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
   recordSharedUsageLimitWithUsage,
-  resolveSharedLimitGroupForUser,
-  resolveSharedLimitGroupsForUsers,
+  resolveSharedUsageLimitGroupForUser,
+  resolveSharedUsageLimitGroupsForUsers,
   resyncGroupSharedUsageCountersFromEsUsage,
   setGroupSharedUsageLimit,
 } from "@app/lib/api/groups/group_shared_usage_limit";
@@ -106,10 +106,10 @@ beforeEach(() => {
   vi.mocked(emitAuditLogEvent).mockResolvedValue(undefined);
   vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
   vi.mocked(resolveMetronomeCycle).mockResolvedValue(CYCLE);
-  mockConsumedBySharedLimitGroup([]);
+  mockConsumedBySharedUsageLimitGroup([]);
 });
 
-function mockConsumedBySharedLimitGroup(
+function mockConsumedBySharedUsageLimitGroup(
   consumed: { group: GroupResource; microCredits: number }[]
 ) {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
@@ -119,7 +119,7 @@ function mockConsumedBySharedLimitGroup(
       _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
       hits: { total: { value: 0, relation: "eq" }, hits: [] },
       aggregations: {
-        by_shared_limit_group: {
+        by_shared_usage_limit_group: {
           buckets: consumed.map(({ group, microCredits }) => ({
             key: group.sId,
             credits: { value: microCredits },
@@ -280,17 +280,15 @@ async function groupUsage(
   return microCreditsToCredits(count.value);
 }
 
-async function storedSharedLimitGroupModelId(
+async function storedSharedUsageLimitGroupModelId(
   auth: Authenticator,
   agentMessageId: string
 ) {
-  const stored = await ConversationResource.fetchAgentMessageSharedLimitGroup(
-    auth,
-    {
+  const stored =
+    await ConversationResource.fetchAgentMessageSharedUsageLimitGroup(auth, {
       agentMessageId,
-    }
-  );
-  return stored?.sharedLimitGroupModelId ?? null;
+    });
+  return stored?.sharedUsageLimitGroupModelId ?? null;
 }
 
 function isGroupResource(target: WithAccessControl): target is GroupResource {
@@ -583,14 +581,14 @@ describe("setGroupSharedUsageLimit", () => {
   });
 });
 
-describe("resolveSharedLimitGroupForUser", () => {
+describe("resolveSharedUsageLimitGroupForUser", () => {
   it("returns nothing when none of the member's groups has a limit", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
     await makeGroup(auth, workspace, "Engineering", [remy]);
 
     expect(
-      await resolveSharedLimitGroupForUser(auth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(auth, { user: remy })
     ).toBeNull();
   });
 
@@ -601,12 +599,15 @@ describe("resolveSharedLimitGroupForUser", () => {
     await makeGroup(auth, workspace, "Sales", [remy]);
     await limit(auth, engineering, 10_000);
 
-    const sharedLimitGroup = await resolveSharedLimitGroupForUser(auth, {
-      user: remy,
-    });
+    const sharedUsageLimitGroup = await resolveSharedUsageLimitGroupForUser(
+      auth,
+      {
+        user: remy,
+      }
+    );
 
-    expect(sharedLimitGroup?.sId).toBe(engineering.sId);
-    expect(sharedLimitGroup?.sharedUsageLimitAwuCredits).toBe(10_000);
+    expect(sharedUsageLimitGroup?.sId).toBe(engineering.sId);
+    expect(sharedUsageLimitGroup?.sharedUsageLimitAwuCredits).toBe(10_000);
   });
 
   it("returns the group whose limit was set first", async () => {
@@ -618,7 +619,7 @@ describe("resolveSharedLimitGroupForUser", () => {
     await limit(auth, sales, 6_000);
 
     expect(
-      (await resolveSharedLimitGroupForUser(auth, { user: remy }))?.sId
+      (await resolveSharedUsageLimitGroupForUser(auth, { user: remy }))?.sId
     ).toBe(engineering.sId);
   });
 
@@ -632,12 +633,12 @@ describe("resolveSharedLimitGroupForUser", () => {
 
     await limit(auth, engineering, null);
     expect(
-      (await resolveSharedLimitGroupForUser(auth, { user: remy }))?.sId
+      (await resolveSharedUsageLimitGroupForUser(auth, { user: remy }))?.sId
     ).toBe(sales.sId);
 
     await limit(auth, engineering, 10_000);
     expect(
-      (await resolveSharedLimitGroupForUser(auth, { user: remy }))?.sId
+      (await resolveSharedUsageLimitGroupForUser(auth, { user: remy }))?.sId
     ).toBe(sales.sId);
   });
 
@@ -650,7 +651,7 @@ describe("resolveSharedLimitGroupForUser", () => {
     await limit(auth, sales, 6_000);
 
     expect(
-      await resolveSharedLimitGroupForUser(auth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(auth, { user: remy })
     ).toBeNull();
   });
 
@@ -671,7 +672,7 @@ describe("resolveSharedLimitGroupForUser", () => {
     }
 
     expect(
-      await resolveSharedLimitGroupForUser(auth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(auth, { user: remy })
     ).toBeNull();
   });
 
@@ -689,7 +690,7 @@ describe("resolveSharedLimitGroupForUser", () => {
     });
 
     expect(
-      await resolveSharedLimitGroupForUser(auth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(auth, { user: remy })
     ).toBeNull();
   });
 
@@ -703,13 +704,13 @@ describe("resolveSharedLimitGroupForUser", () => {
     });
 
     expect(
-      await resolveSharedLimitGroupForUser(auth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(auth, { user: remy })
     ).toBeNull();
   });
 });
 
-describe("resolveSharedLimitGroupsForUsers", () => {
-  it("resolves each member's shared limit group in one call", async () => {
+describe("resolveSharedUsageLimitGroupsForUsers", () => {
+  it("resolves each member's shared usage limit group in one call", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
     const alice = await makeMember(workspace);
@@ -724,19 +725,22 @@ describe("resolveSharedLimitGroupsForUsers", () => {
     await limit(auth, engineering, 10_000);
     const carol = await makeMember(workspace);
 
-    const sharedLimitGroups = await resolveSharedLimitGroupsForUsers(auth, {
-      users: [remy, alice, bruno, carol],
-    });
+    const sharedUsageLimitGroups = await resolveSharedUsageLimitGroupsForUsers(
+      auth,
+      {
+        users: [remy, alice, bruno, carol],
+      }
+    );
 
-    expect(sharedLimitGroups.get(remy.sId)?.sId).toBe(sales.sId);
-    expect(sharedLimitGroups.get(alice.sId)?.sId).toBe(engineering.sId);
-    expect(sharedLimitGroups.get(bruno.sId)?.sId).toBe(sales.sId);
-    expect(sharedLimitGroups.has(carol.sId)).toBe(false);
+    expect(sharedUsageLimitGroups.get(remy.sId)?.sId).toBe(sales.sId);
+    expect(sharedUsageLimitGroups.get(alice.sId)?.sId).toBe(engineering.sId);
+    expect(sharedUsageLimitGroups.get(bruno.sId)?.sId).toBe(sales.sId);
+    expect(sharedUsageLimitGroups.has(carol.sId)).toBe(false);
   });
 });
 
 describe("read filter", () => {
-  it("resolves the member's own shared limit group with the member's auth", async () => {
+  it("resolves the member's own shared usage limit group with the member's auth", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
     const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
@@ -747,7 +751,7 @@ describe("read filter", () => {
     );
 
     expect(
-      (await resolveSharedLimitGroupForUser(remyAuth, { user: remy }))?.sId
+      (await resolveSharedUsageLimitGroupForUser(remyAuth, { user: remy }))?.sId
     ).toBe(engineering.sId);
   });
 
@@ -763,11 +767,11 @@ describe("read filter", () => {
     );
 
     expect(
-      await resolveSharedLimitGroupForUser(outsiderAuth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(outsiderAuth, { user: remy })
     ).toBeNull();
   });
 
-  it("drops a member whose shared limit group is unreadable instead of reassigning them", async () => {
+  it("drops a member whose shared usage limit group is unreadable instead of reassigning them", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
     const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
@@ -780,13 +784,13 @@ describe("read filter", () => {
     );
 
     expect(
-      await resolveSharedLimitGroupForUser(auth, { user: remy })
+      await resolveSharedUsageLimitGroupForUser(auth, { user: remy })
     ).toBeNull();
   });
 });
 
 describe("recordSharedUsageLimitWithUsage", () => {
-  it("records the credits to the member's shared limit group and stores it on the message", async () => {
+  it("records the credits to the member's shared usage limit group and stores it on the message", async () => {
     const { auth, workspace, user, agentMessageId } =
       await setupWithAgentMessage();
     const engineering = await makeLimitedGroup(
@@ -804,7 +808,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     });
 
     expect(await groupUsage(workspace, engineering)).toBe(3);
-    expect(await storedSharedLimitGroupModelId(auth, agentMessageId)).toBe(
+    expect(await storedSharedUsageLimitGroupModelId(auth, agentMessageId)).toBe(
       engineering.id
     );
   });
@@ -872,7 +876,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     expect(await groupUsage(workspace, engineering)).toBe(3);
   });
 
-  it("records nothing while the member has no shared limit group, then counts later recordings", async () => {
+  it("records nothing while the member has no shared usage limit group, then counts later recordings", async () => {
     const { auth, workspace, user, agentMessageId } =
       await setupWithAgentMessage();
 
@@ -882,7 +886,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       incrementBy: 3,
     });
     expect(
-      await storedSharedLimitGroupModelId(auth, agentMessageId)
+      await storedSharedUsageLimitGroupModelId(auth, agentMessageId)
     ).toBeNull();
 
     const engineering = await makeLimitedGroup(
@@ -899,7 +903,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     });
 
     expect(await groupUsage(workspace, engineering)).toBe(2);
-    expect(await storedSharedLimitGroupModelId(auth, agentMessageId)).toBe(
+    expect(await storedSharedUsageLimitGroupModelId(auth, agentMessageId)).toBe(
       engineering.id
     );
   });
@@ -921,7 +925,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
 
     expect(await groupUsage(workspace, engineering)).toBe(0);
     expect(
-      await storedSharedLimitGroupModelId(auth, agentMessageId)
+      await storedSharedUsageLimitGroupModelId(auth, agentMessageId)
     ).toBeNull();
   });
 
@@ -944,7 +948,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     });
 
     expect(await groupUsage(workspace, engineering)).toBe(0);
-    expect(await storedSharedLimitGroupModelId(auth, agentMessageId)).toBe(
+    expect(await storedSharedUsageLimitGroupModelId(auth, agentMessageId)).toBe(
       engineering.id
     );
   });
@@ -970,7 +974,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
 
     expect(await groupUsage(workspace, engineering)).toBe(0);
     expect(
-      await storedSharedLimitGroupModelId(auth, agentMessageId)
+      await storedSharedUsageLimitGroupModelId(auth, agentMessageId)
     ).toBeNull();
   });
 });
@@ -986,7 +990,7 @@ describe("shared usage limit counter rebuild", () => {
       [user],
       10_000
     );
-    mockConsumedBySharedLimitGroup([
+    mockConsumedBySharedUsageLimitGroup([
       { group: engineering, microCredits: 7_000_000 },
     ]);
 
@@ -1014,7 +1018,7 @@ describe("shared usage limit counter rebuild", () => {
       agentMessageId,
       incrementBy: 3,
     });
-    mockConsumedBySharedLimitGroup([
+    mockConsumedBySharedUsageLimitGroup([
       { group: engineering, microCredits: 100_000_000 },
     ]);
 
@@ -1060,7 +1064,7 @@ describe("resyncGroupSharedUsageCountersFromEsUsage", () => {
     for (const group of [engineering, sales, marketing]) {
       await setCounter(workspace, group, 4_000_000);
     }
-    mockConsumedBySharedLimitGroup([
+    mockConsumedBySharedUsageLimitGroup([
       { group: engineering, microCredits: 9_000_000 },
     ]);
 
@@ -1074,7 +1078,10 @@ describe("resyncGroupSharedUsageCountersFromEsUsage", () => {
             { term: { workspace_id: workspace.sId } },
             {
               terms: {
-                "user.shared_limit_group_id": [engineering.sId, sales.sId],
+                "user.shared_usage_limit_group_id": [
+                  engineering.sId,
+                  sales.sId,
+                ],
               },
             },
             {
@@ -1126,7 +1133,7 @@ describe("resyncGroupSharedUsageCountersFromEsUsage", () => {
 });
 
 describe("isGroupSharedUsageLimitReached", () => {
-  it("does not block a member whose shared limit group is below its limit", async () => {
+  it("does not block a member whose shared usage limit group is below its limit", async () => {
     const { auth, workspace, user } = await setup();
     const engineering = await makeLimitedGroup(
       auth,
@@ -1140,7 +1147,7 @@ describe("isGroupSharedUsageLimitReached", () => {
     expect(await isGroupSharedUsageLimitReached(auth, { user })).toBe(false);
   });
 
-  it("blocks a member once their shared limit group reaches its limit", async () => {
+  it("blocks a member once their shared usage limit group reaches its limit", async () => {
     const { auth, workspace, user } = await setup();
     const engineering = await makeLimitedGroup(
       auth,
@@ -1154,7 +1161,7 @@ describe("isGroupSharedUsageLimitReached", () => {
     expect(await isGroupSharedUsageLimitReached(auth, { user })).toBe(true);
   });
 
-  it("only looks at the member's shared limit group, not their other limited groups", async () => {
+  it("only looks at the member's shared usage limit group, not their other limited groups", async () => {
     const { auth, workspace, user } = await setup();
     await makeLimitedGroup(auth, workspace, "Engineering", [user], 10_000);
     const sales = await makeLimitedGroup(
@@ -1169,7 +1176,7 @@ describe("isGroupSharedUsageLimitReached", () => {
     expect(await isGroupSharedUsageLimitReached(auth, { user })).toBe(false);
   });
 
-  it("does not block a member without a shared limit group", async () => {
+  it("does not block a member without a shared usage limit group", async () => {
     const { auth, user } = await setup();
 
     expect(await isGroupSharedUsageLimitReached(auth, { user })).toBe(false);
@@ -1204,7 +1211,7 @@ describe("isGroupSharedUsageLimitReached", () => {
 });
 
 describe("isUserBlocked with a shared usage limit", () => {
-  it("blocks a member whose shared limit group reached its limit, even with personal headroom left", async () => {
+  it("blocks a member whose shared usage limit group reached its limit, even with personal headroom left", async () => {
     const { auth, workspace, user } = await setup();
     const engineering = await makeLimitedGroup(
       auth,
@@ -1228,7 +1235,7 @@ describe("isUserBlocked with a shared usage limit", () => {
     );
   });
 
-  it("does not block a free seat in a shared limit group that reached its limit", async () => {
+  it("does not block a free seat in a shared usage limit group that reached its limit", async () => {
     const { auth, workspace } = await setup();
     const freeMember = await UserFactory.basic();
     await MembershipFactory.associate(workspace, freeMember, {

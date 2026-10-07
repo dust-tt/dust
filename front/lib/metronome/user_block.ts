@@ -390,7 +390,7 @@ function deriveBlockedReason({
 export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
   user: UserResource,
-  // Whether the user has hit their per-user spend cap, and whether their shared
+  // Whether the user has hit their per-user spend cap, and whether their shared usage
   // limit group has used its limit, resolved from the Redis counters by the wrapper in
   // `lib/api/credits/access_control.ts`. The pool/seat logic (no_seat, pool
   // depletion, personal-seat and free-seat carve-outs) stays defined here so it
