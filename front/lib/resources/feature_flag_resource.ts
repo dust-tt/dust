@@ -174,6 +174,26 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     await FeatureFlagResource.store.invalidateMany(workspaceModelIds);
   }
 
+  // Disables one flag on many workspaces with a single delete and invalidates their per-workspace
+  // caches. Returns the number of rows deleted.
+  static async dangerouslyDisableForWorkspaceModelIds(
+    name: WhitelistableFeature,
+    workspaceModelIds: ModelId[]
+  ): Promise<number> {
+    if (workspaceModelIds.length === 0) {
+      return 0;
+    }
+    const deleted = await FeatureFlagModel.destroy({
+      where: { workspaceId: workspaceModelIds, name },
+      // WORKSPACE_ISOLATION_BYPASS: this maintenance operation intentionally disables one flag on an explicit list of workspaces.
+      // @ts-expect-error -- Cross-workspace mutation by design.
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    await FeatureFlagResource.store.invalidateMany(workspaceModelIds);
+    return deleted;
+  }
+
   static async disableMany(
     workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
     names: WhitelistableFeature[]
