@@ -148,6 +148,7 @@ export function useModelPickerModels({
       ignoreTierRestrictions: isFilterMode,
       tiers,
       degradedModelIds,
+      fallbackStreamIds,
       hostingRegion,
       makerGroups,
       allModels,
