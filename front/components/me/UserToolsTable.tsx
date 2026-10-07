@@ -1,3 +1,7 @@
+import {
+  areCredentialOverridesValid,
+  PersonalAuthCredentialOverrides,
+} from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerViewDescription,
@@ -17,12 +21,20 @@ import {
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteToolApproval, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
+import type { OAuthCredentialInputs } from "@app/types/oauth/lib";
+import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
   CloudArrowLeftRight,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -194,8 +206,21 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     null
   );
 
+  // Providers with user-overridable credentials (e.g. a Snowflake role) collect them in a dialog
+  // before starting the OAuth flow.
+  const [overridesDialog, setOverridesDialog] = useState<{
+    serverView: MCPServerViewType;
+    inputs: OAuthCredentialInputs;
+  } | null>(null);
+  const [overriddenCredentials, setOverriddenCredentials] = useState<
+    Record<string, string>
+  >({});
+
   const handleConnect = useCallback(
-    async (serverView: MCPServerViewType) => {
+    async (
+      serverView: MCPServerViewType,
+      overriddenCredentials?: Record<string, string>
+    ) => {
       const { authorization } = serverView.server;
       if (!authorization) {
         return;
@@ -209,6 +234,11 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           provider: authorization.provider,
           useCase: "personal_actions",
           scope: authorization.scope,
+          overriddenCredentials:
+            overriddenCredentials &&
+            Object.keys(overriddenCredentials).length > 0
+              ? overriddenCredentials
+              : undefined,
         });
         if (!result.success && result.error) {
           sendNotification({
@@ -222,6 +252,22 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       }
     },
     [createPersonalConnection, sendNotification, t]
+  );
+
+  const handleConnectClick = useCallback(
+    (serverView: MCPServerViewType) => {
+      const provider = serverView.server.authorization?.provider;
+      const inputs = provider
+        ? getOverridablePersonalAuthInputs({ provider })
+        : null;
+      if (!inputs) {
+        void handleConnect(serverView);
+        return;
+      }
+      setOverriddenCredentials({});
+      setOverridesDialog({ serverView, inputs });
+    },
+    [handleConnect]
   );
 
   // Prepare data for the actions table
@@ -310,7 +356,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                   }
                   onClick={(e) => {
                     e.stopPropagation();
-                    void handleConnect(row.original.serverView);
+                    handleConnectClick(row.original.serverView);
                   }}
                 />
               )}
@@ -372,11 +418,15 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     [
       deleteMCPServerConnection,
       handleDeleteToolMetadata,
-      handleConnect,
+      handleConnectClick,
       connectingServerId,
       t,
     ]
   );
+
+  const overridesDialogServerName = overridesDialog
+    ? getMcpServerViewDisplayName(overridesDialog.serverView)
+    : null;
 
   return (
     <>
@@ -407,6 +457,63 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
             : t`No tools available yet.`}
         </p>
       )}
+
+      <Dialog
+        open={overridesDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOverridesDialog(null);
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>
+              {overridesDialogServerName &&
+                t`Connect ${overridesDialogServerName}`}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            {overridesDialog && (
+              <PersonalAuthCredentialOverrides
+                inputs={overridesDialog.inputs}
+                values={overriddenCredentials}
+                idPrefix={overridesDialog.serverView.server.sId}
+                onChange={(key, value) =>
+                  setOverriddenCredentials((prev) => ({
+                    ...prev,
+                    [key]: value,
+                  }))
+                }
+              />
+            )}
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: t`Cancel`,
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: t`Connect`,
+              variant: "primary",
+              disabled: !areCredentialOverridesValid(
+                overridesDialog?.inputs,
+                overriddenCredentials
+              ),
+              onClick: () => {
+                if (!overridesDialog) {
+                  return;
+                }
+                setOverridesDialog(null);
+                void handleConnect(
+                  overridesDialog.serverView,
+                  overriddenCredentials
+                );
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
