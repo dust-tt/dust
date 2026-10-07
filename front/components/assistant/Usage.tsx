@@ -1,15 +1,14 @@
 import type { AgentUsageType } from "@app/types/assistant/agent";
-import { pluralize } from "@app/types/shared/utils/string_utils";
+import { Plural, Trans } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
-export function assistantUsageMessage<T extends boolean>({
+export function assistantUsageMessage({
   assistantName,
   usage,
   isLoading,
   isError,
   shortVersion,
   boldVersion,
-  asString,
 }: {
   assistantName: string | null;
   usage: AgentUsageType | null;
@@ -17,56 +16,53 @@ export function assistantUsageMessage<T extends boolean>({
   isError: boolean;
   shortVersion?: boolean;
   boldVersion?: boolean;
-  asString?: T;
-}): T extends true ? string : ReactNode {
+}): ReactNode {
   if (isError) {
-    return "Error loading usage data." as T extends true ? string : ReactNode;
+    return <Trans>Error loading usage data.</Trans>;
   }
 
   if (isLoading) {
-    return "Loading usage data..." as T extends true ? string : ReactNode;
-  }
-
-  function boldIfRequested(text: string) {
-    return boldVersion && !asString ? (
-      <span className="font-bold">{text}</span>
-    ) : (
-      text
-    );
+    return <Trans>Loading usage data...</Trans>;
   }
 
   if (usage) {
     const days = usage.timePeriodSec / (60 * 60 * 24);
     const nb = usage.messageCount || 0;
+    const countClassName = boldVersion ? "font-bold" : undefined;
 
     if (shortVersion) {
-      const messageCount = boldIfRequested(`${nb} message${pluralize(nb)}`);
-
       return (
-        asString ? (
-          `${nb} message${pluralize(nb)} over the last ${days} days`
-        ) : (
-          <>
-            {messageCount} over the last {days} days
-          </>
-        )
-      ) as T extends true ? string : ReactNode;
+        <Trans>
+          <span className={countClassName}>
+            <Plural value={nb} one="# message" other="# messages" />
+          </span>{" "}
+          over the last {days} days
+        </Trans>
+      );
     }
 
-    const messageCount = boldIfRequested(`${nb} time${pluralize(nb)}`);
-    const agentDisplayName = assistantName || "This agent";
+    if (!assistantName) {
+      return (
+        <Trans>
+          This agent has been used{" "}
+          <span className={countClassName}>
+            <Plural value={nb} one="# time" other="# times" />
+          </span>{" "}
+          in the last {days} days.
+        </Trans>
+      );
+    }
 
     return (
-      asString ? (
-        `${agentDisplayName} has been used ${nb} time${pluralize(nb)} in the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`
-      ) : (
-        <>
-          {agentDisplayName} has been used {messageCount} in the last&nbsp;
-          {usage.timePeriodSec / (60 * 60 * 24)} days.
-        </>
-      )
-    ) as T extends true ? string : ReactNode;
+      <Trans>
+        {assistantName} has been used{" "}
+        <span className={countClassName}>
+          <Plural value={nb} one="# time" other="# times" />
+        </span>{" "}
+        in the last {days} days.
+      </Trans>
+    );
   }
 
-  return "" as T extends true ? string : ReactNode;
+  return "";
 }

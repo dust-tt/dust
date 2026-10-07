@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface DeleteAssistantDialogProps {
@@ -29,6 +30,7 @@ export function DeleteAgentDialog({
   onClose,
   owner,
 }: DeleteAssistantDialogProps) {
+  const { t } = useLingui();
   const agentUsage = useAgentUsage({
     agentConfigurationId: agentConfiguration?.sId ?? null,
     disabled: !isOpen,
@@ -49,7 +51,9 @@ export function DeleteAgentDialog({
     >
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
-          <DialogTitle>Archiving the agent</DialogTitle>
+          <DialogTitle>
+            <Trans>Archiving the agent</Trans>
+          </DialogTitle>
           <DialogDescription>
             <div>
               <span className="font-bold">
@@ -61,21 +65,23 @@ export function DeleteAgentDialog({
                     assistantName: agentConfiguration?.name ?? "",
                   })}
               </span>{" "}
-              This will archive the agent for everyone.
+              <Trans>This will archive the agent for everyone.</Trans>
             </div>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="font-bold">
+            <Trans>Are you sure you want to proceed?</Trans>
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             disabled: isDeleting,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Archive for everyone",
+            label: t`Archive for everyone`,
             disabled: isDeleting,
             variant: "warning",
             onClick: async (e: React.MouseEvent) => {

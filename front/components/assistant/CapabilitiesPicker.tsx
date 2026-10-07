@@ -57,6 +57,7 @@ import {
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 type CapabilityPickerSkill = Pick<
@@ -144,6 +145,8 @@ export function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
+  const { t } = useLingui();
+
   if (items.length === 0) {
     return (
       <div className="px-2 py-4 text-center text-sm text-muted-foreground">
@@ -157,7 +160,7 @@ export function CapabilitiesPickerItemsList({
       {items.map((item) => {
         const endComponent =
           item.kind === "uninstalled_tool" ? (
-            <Chip size="xs" color="info" label="Configure" />
+            <Chip size="xs" color="info" label={t`Configure`} />
           ) : onSkillDetails && onToolDetails ? (
             <Button
               icon={DotsHorizontal}
@@ -228,6 +231,7 @@ export function CapabilitiesPicker({
   onExternalOpenChange,
   anchorRef,
 }: CapabilitiesPickerProps) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [internalOpen, setInternalOpen] = useState(false);
@@ -485,13 +489,13 @@ export function CapabilitiesPicker({
               icon={ShapesPlus}
               variant="ghost-secondary"
               size={buttonSize}
-              tooltip="Capabilities"
+              tooltip={t`Capabilities`}
               disabled={disabled || isLoading}
             />
           </DropdownMenuTrigger>
         ) : (
           <DropdownMenuSubTrigger
-            label="Capabilities"
+            label={t`Capabilities`}
             icon={
               <Icon
                 size="xs"
@@ -523,7 +527,7 @@ export function CapabilitiesPicker({
               <DropdownMenuSearchbar
                 autoFocus={!isMobile}
                 name="search-capabilities"
-                placeholder="Search capabilities"
+                placeholder={t`Search capabilities`}
                 value={searchText}
                 onChange={setSearchText}
               />
@@ -540,7 +544,7 @@ export function CapabilitiesPicker({
               role="alert"
               className="px-2 py-4 text-sm text-muted-foreground"
             >
-              Could not load skills. Try again.
+              <Trans>Could not load skills. Try again.</Trans>
             </div>
           )}
 
@@ -548,8 +552,8 @@ export function CapabilitiesPicker({
             <CapabilitiesPickerItemsList
               emptyMessage={
                 normalizedSearchText.length > 0
-                  ? "No capabilities found"
-                  : "No more capabilities to select"
+                  ? t`No capabilities found`
+                  : t`No more capabilities to select`
               }
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}

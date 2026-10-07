@@ -18,6 +18,8 @@ import {
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useRef, useState } from "react";
 
 // We want exactly 12 connections in the tour guide to have a clean grid layout.
@@ -40,27 +42,27 @@ const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
 // So they are hardcoded.  :/
 const ACTIONS_IN_TOUR_GUIDE = [
   {
-    label: "Search data",
+    label: msg`Search data`,
     icon: SearchMd,
   },
   {
-    label: "Table query",
+    label: msg`Table query`,
     icon: Table,
   },
   {
-    label: "Extract data",
+    label: msg`Extract data`,
     icon: Scan,
   },
   {
-    label: "Image generation",
+    label: msg`Image generation`,
     icon: Image01,
   },
   {
-    label: "Web search and browsing",
+    label: msg`Web search and browsing`,
     icon: Globe01,
   },
   {
-    label: "Reasoning",
+    label: msg`Reasoning`,
     icon: Brain,
   },
 ] as const;
@@ -138,6 +140,16 @@ type Step = {
   body: React.ReactNode;
 };
 
+interface WelcomeTourGuideProps {
+  owner: WorkspaceType;
+  user: UserType;
+  isAdmin: boolean;
+  startConversationRef: React.RefObject<HTMLDivElement>;
+  spaceMenuButtonRef: React.RefObject<HTMLDivElement>;
+  createAgentButtonRef: React.RefObject<HTMLDivElement>;
+  onTourGuideEnd: () => void;
+}
+
 export function WelcomeTourGuide({
   owner,
   user,
@@ -146,21 +158,17 @@ export function WelcomeTourGuide({
   spaceMenuButtonRef,
   createAgentButtonRef,
   onTourGuideEnd,
-}: {
-  owner: WorkspaceType;
-  user: UserType;
-  isAdmin: boolean;
-  startConversationRef: React.RefObject<HTMLDivElement>;
-  spaceMenuButtonRef: React.RefObject<HTMLDivElement>;
-  createAgentButtonRef: React.RefObject<HTMLDivElement>;
-  onTourGuideEnd: () => void;
-}) {
+}: WelcomeTourGuideProps) {
+  const { t } = useLingui();
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
   const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
+  const firstName = user.firstName;
+  const workspaceName = owner.name;
+  const stepCount = canCreateAgent ? 3 : 2;
 
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)
@@ -188,18 +196,24 @@ export function WelcomeTourGuide({
           >
             <ConfettiBackground variant="confetti" referentSize={centeredRef} />
             <span className="heading-3xl">
-              <TypingAnimation text={`Rise and shine, ${user.firstName}! 🌅`} />
+              <TypingAnimation text={t`Rise and shine, ${firstName}! 🌅`} />
             </span>
           </div>
           <div className="heading-lg px-3 pt-4">
-            Welcome to the{" "}
-            <span className="font-semibold text-brand-hunter-green">
-              {owner.name}
-            </span>{" "}
-            workspace.
+            <Trans>
+              Welcome to the{" "}
+              <span className="font-semibold text-brand-hunter-green">
+                {workspaceName}
+              </span>{" "}
+              workspace.
+            </Trans>
           </div>
           <div className="copy-base px-3 text-muted-foreground">
-            Discover the basics of Dust in {canCreateAgent ? "3" : "2"} steps.
+            <Plural
+              value={stepCount}
+              one="Discover the basics of Dust in # step."
+              other="Discover the basics of Dust in # steps."
+            />
           </div>
         </>
       ),
@@ -238,8 +252,11 @@ export function WelcomeTourGuide({
             </div>
           </div>
           <div className="heading-lg px-3 pt-4">
-            Use <span className="font-semibold text-highlight">@mentions</span>{" "}
-            to call agents and&nbsp;start a conversation.
+            <Trans>
+              Use{" "}
+              <span className="font-semibold text-highlight">@mentions</span> to
+              call agents and&nbsp;start a conversation.
+            </Trans>
           </div>
         </>
       ),
@@ -271,8 +288,8 @@ export function WelcomeTourGuide({
               ))}
               {ACTIONS_IN_TOUR_GUIDE.map((action) => (
                 <Tooltip
-                  key={action.label}
-                  label={action.label}
+                  key={action.label.id}
+                  label={t(action.label)}
                   trigger={
                     <Avatar
                       size="md"
@@ -288,22 +305,32 @@ export function WelcomeTourGuide({
           {isAdmin ? (
             <>
               <div className="heading-lg px-3 pt-4">
-                Make your agents smarter by adding&nbsp;
-                <span className="text-brand-red-rose">knowledge and tools</span>
-                .
+                <Trans>
+                  Make your agents smarter by adding&nbsp;
+                  <span className="text-brand-red-rose">
+                    knowledge and tools
+                  </span>
+                  .
+                </Trans>
               </div>
               <div className="copy-base px-3 text-muted-foreground">
-                Set up your connections and your tools in&nbsp;the{" "}
-                <span className="font-semibold text-foreground">spaces</span>{" "}
-                tab.
+                <Trans>
+                  Set up your connections and your tools in&nbsp;the{" "}
+                  <span className="font-semibold text-foreground">spaces</span>{" "}
+                  tab.
+                </Trans>
               </div>
             </>
           ) : (
             <>
               <div className="heading-lg px-3 pt-4">
-                Explore your workspace{" "}
-                <span className="text-brand-red-rose">knowledge and tools</span>{" "}
-                in <span className="text-brand-red-rose">spaces</span>.
+                <Trans>
+                  Explore your workspace{" "}
+                  <span className="text-brand-red-rose">
+                    knowledge and tools
+                  </span>{" "}
+                  in <span className="text-brand-red-rose">spaces</span>.
+                </Trans>
               </div>
             </>
           )}
@@ -334,11 +361,13 @@ export function WelcomeTourGuide({
                   </div>
                 </div>
                 <div className="heading-lg px-3 pt-4">
-                  Create new custom agents{" "}
-                  <span className="text-brand-orange-golden">
-                    designed for your needs
-                  </span>
-                  .
+                  <Trans>
+                    Create new custom agents{" "}
+                    <span className="text-brand-orange-golden">
+                      designed for your needs
+                    </span>
+                    .
+                  </Trans>
                 </div>
               </>
             ),
@@ -373,7 +402,7 @@ export function WelcomeTourGuide({
         {!isLastStep && (
           <Button
             variant="outline"
-            label="Dismiss"
+            label={t`Dismiss`}
             onClick={() => {
               setCurrentStep(steps.length);
               onTourGuideEnd();
@@ -382,7 +411,7 @@ export function WelcomeTourGuide({
         )}
         <Button
           variant="highlight"
-          label={isFirstStep ? "Start Tour" : isLastStep ? "Done" : "Next"}
+          label={isFirstStep ? t`Start tour` : isLastStep ? t`Done` : t`Next`}
           onClick={() => {
             if (isLastStep) {
               onTourGuideEnd();

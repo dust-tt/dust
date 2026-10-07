@@ -18,6 +18,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps } from "react";
 
 interface CreateAgentDropdownContentProps extends ComponentProps<
@@ -37,17 +38,18 @@ export function CreateAgentDropdownContent({
   onNavigate,
   ...contentProps
 }: CreateAgentDropdownContentProps) {
+  const { t } = useLingui();
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
 
   return (
     <DropdownMenuContent align="start" {...contentProps}>
-      <DropdownMenuLabel label="New agent" />
+      <DropdownMenuLabel label={t`New agent`} />
       <DropdownMenuItem
         href={getCreateFromConversationRoute(owner.sId, "agent")}
         icon={MessageChatCircle}
-        label="From conversation"
+        label={t`From conversation`}
         data-gtm-label="assistantCreationButton"
         data-gtm-location={dataGtmLocation}
         onClick={withTracking(
@@ -59,7 +61,7 @@ export function CreateAgentDropdownContent({
       <DropdownMenuItem
         href={getAgentBuilderRoute(owner.sId, "new")}
         icon={File02}
-        label="From scratch"
+        label={t`From scratch`}
         data-gtm-label="assistantCreationButton"
         data-gtm-location={dataGtmLocation}
         onClick={withTracking(
@@ -71,7 +73,7 @@ export function CreateAgentDropdownContent({
       <DropdownMenuItem
         href={getAgentBuilderRoute(owner.sId, "create")}
         icon={MagicWand02}
-        label="From template"
+        label={t`From template`}
         data-gtm-label="assistantCreationButton"
         data-gtm-location={dataGtmLocation}
         onClick={withTracking(
@@ -82,7 +84,7 @@ export function CreateAgentDropdownContent({
       />
       <DropdownMenuItem
         icon={isUploadingYAML ? <Spinner size="xs" /> : Brackets}
-        label={isUploadingYAML ? "Uploading..." : "From YAML"}
+        label={isUploadingYAML ? t`Uploading...` : t`From YAML`}
         disabled={isUploadingYAML}
         onClick={triggerYAMLUpload}
         data-gtm-label="yamlUploadButton"
@@ -103,8 +105,9 @@ export const CreateAgentDropdown = ({
   owner,
   dataGtmLocation,
   isCompact = false,
-  label = "Create agent",
+  label,
 }: CreateAgentDropdownProps) => {
+  const { t } = useLingui();
   const { hasPermission } = useWorkspacePermissions();
 
   if (!hasPermission("create", "agent")) {
@@ -117,8 +120,8 @@ export const CreateAgentDropdown = ({
         <Button
           variant="primary"
           icon={Plus}
-          label={isCompact ? undefined : label}
-          tooltip={isCompact ? "Create agent" : undefined}
+          label={isCompact ? undefined : (label ?? t`Create agent`)}
+          tooltip={isCompact ? t`Create agent` : undefined}
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
           onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}

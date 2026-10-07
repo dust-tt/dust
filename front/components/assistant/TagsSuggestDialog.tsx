@@ -16,17 +16,21 @@ import {
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
+
+interface TagsSuggestDialogProps {
+  owner: WorkspaceType;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}
 
 export const TagsSuggestDialog = ({
   owner,
   isOpen,
   setIsOpen,
-}: {
-  owner: WorkspaceType;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-}) => {
+}: TagsSuggestDialogProps) => {
+  const { t } = useLingui();
   const { createTag } = useCreateTag({ owner });
   const sendNotification = useSendNotification();
   const [appliedSuggestion, setAppliedSuggestion] = useState<
@@ -61,8 +65,8 @@ export const TagsSuggestDialog = ({
 
     sendNotification({
       type: "success",
-      title: "Tag suggestions applied",
-      description: "All tags have been successfully created for your agents.",
+      title: t`Tag suggestions applied`,
+      description: t`All tags have been successfully created for your agents.`,
     });
   };
 
@@ -70,14 +74,13 @@ export const TagsSuggestDialog = ({
     if (isSuggestionsError) {
       sendNotification({
         type: "error",
-        title: "Error getting suggestions",
-        description:
-          "Please try again. If the problem persists, please contact support.",
+        title: t`Error getting suggestions`,
+        description: t`Please try again. If the problem persists, please contact support.`,
       });
 
       setIsOpen(false);
     }
-  }, [isSuggestionsError, sendNotification, setIsOpen]);
+  }, [isSuggestionsError, sendNotification, setIsOpen, t]);
 
   useEffect(() => {
     setAppliedSuggestion(
@@ -95,12 +98,14 @@ export const TagsSuggestDialog = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Agent tag suggestions</DialogTitle>
+          <DialogTitle>
+            <Trans>Agent tag suggestions</Trans>
+          </DialogTitle>
           <DialogDescription>
             {isSuggestionsLoading ? (
-              <>Analyzing your agents to create tags...</>
+              <Trans>Analyzing your agents to create tags...</Trans>
             ) : (
-              <>Tag suggestions from your workspace agents:</>
+              <Trans>Tag suggestions from your workspace agents:</Trans>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -151,11 +156,11 @@ export const TagsSuggestDialog = ({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "ghost",
           }}
           rightButtonProps={{
-            label: "Apply tag suggestions",
+            label: t`Apply tag suggestions`,
             variant: "primary",
             onClick: handleCreateTag,
             disabled: !Object.values(appliedSuggestion).some((value) => value),

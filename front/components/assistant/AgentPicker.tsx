@@ -21,6 +21,7 @@ import {
   Robot,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface AgentPickerProps {
@@ -67,6 +68,7 @@ export function AgentPicker({
   onDeselect,
   favoritesFirst = false,
 }: AgentPickerProps) {
+  const { t } = useLingui();
   const clientType = useClientType();
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -118,7 +120,7 @@ export function AgentPicker({
               variant="ghost-secondary"
               isSelect={showDropdownArrow}
               size={size}
-              tooltip="Pick an agent"
+              tooltip={t`Pick an agent`}
               disabled={disabled || isLoading}
             />
           )}
@@ -133,7 +135,7 @@ export function AgentPicker({
             <DropdownMenuSearchbar
               autoFocus={!isMobile}
               name="search-agents"
-              placeholder="Search for agents"
+              placeholder={t`Search for agents`}
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
@@ -153,7 +155,10 @@ export function AgentPicker({
                   <CreateAgentDropdown
                     owner={owner}
                     dataGtmLocation="homepage"
-                    label="Create"
+                    label={t({
+                      message: "Create",
+                      context: "verb, button label",
+                    })}
                   />
                 )
               }
@@ -163,7 +168,7 @@ export function AgentPicker({
         }
       >
         {isAgentsLoading ? (
-          <div role="status" aria-label="Loading agents">
+          <div role="status" aria-label={t`Loading agents`}>
             <div aria-hidden="true">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div
@@ -180,7 +185,7 @@ export function AgentPicker({
           </div>
         ) : isAgentsError ? (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-            Unable to load agents
+            <Trans>Unable to load agents</Trans>
           </div>
         ) : searchedAgents.length > 0 ? (
           searchedAgents.map((c) => {
@@ -245,7 +250,7 @@ export function AgentPicker({
           })
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-            No results found
+            <Trans>No results found</Trans>
           </div>
         )}
       </DropdownMenuContent>
