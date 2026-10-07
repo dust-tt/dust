@@ -24,7 +24,7 @@ export type ManualGroupLifecycle =
   | {
       kind: "name_updated";
       group: GroupResource;
-      previousName: string | null;
+      previousName: string;
     };
 
 export function emitManualGroupLifecycleAuditLog(
@@ -64,9 +64,6 @@ export function emitManualGroupLifecycleAuditLog(
       });
       return;
     case "name_updated":
-      if (lifecycle.previousName === null) {
-        return;
-      }
       void emitAuditLogEvent({
         auth,
         action: "group.name_updated",

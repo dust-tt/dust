@@ -317,11 +317,13 @@ app.patch(
       }
     }
 
-    emitManualGroupLifecycleAuditLog(auth, {
-      kind: "name_updated",
-      group,
-      previousName: updateRes.value.previousName,
-    });
+    if (updateRes.value.previousName !== null) {
+      emitManualGroupLifecycleAuditLog(auth, {
+        kind: "name_updated",
+        group,
+        previousName: updateRes.value.previousName,
+      });
+    }
     emitGroupMemberAuditLogs(auth, group, updateRes.value);
 
     const members = await group.getActiveMembers(auth);

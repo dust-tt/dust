@@ -2229,9 +2229,9 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   /**
    * @cc [owner:fabiencelier,label:security] manual-group-name-updated-audit
-   * After Ok, production callers MUST emit through `emitManualGroupLifecycleAuditLog` with
-   * `kind: "name_updated"` and this result's `previousName`. A null `previousName` means the
-   * name was not requested or did not change.
+   * After Ok, production callers MUST call `emitManualGroupLifecycleAuditLog` with
+   * `kind: "name_updated"` when `previousName` is non-null. A null `previousName` means the
+   * name was not requested or did not change and MUST NOT be emitted.
    */
   async updateRegularManualGroup(
     auth: Authenticator,
@@ -2280,8 +2280,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // `previousName` is null when the name is omitted or already equal to `name`. The route
-    // emits the rename only on Ok, so the name write stays after member validation.
+    // Capture before any write. Name is written after member updates so a rejected member
+    // change cannot leave a renamed group behind.
     let previousName: string | null = null;
     if (name !== undefined) {
       if (name !== this.name) {
@@ -2295,7 +2295,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
         previousName = this.name;
       }
-      if (!auth.hasPermission("admin", this)) {
+      if (!auth.can("admin", this)) {
         return new Err(
           new DustError("unauthorized", "Only admins can update group names.")
         );
