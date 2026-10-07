@@ -2,15 +2,16 @@ import type { CreditUsageCardVariant } from "@app/components/app/CreditUsageCard
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import {
   formatCredits,
-  formatLimitTimeframe,
   formatRelativeResetDay,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Button } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 interface CreditUsageStateBase {
   usedPercentage: number;
@@ -40,20 +41,7 @@ export type CreditUsageState =
   | BillingPeriodCreditUsageState
   | RollingWindowCreditUsageState;
 
-export const CREDIT_USAGE_LEARN_MORE_LABEL = "See your usage";
-
-const RESET_LABEL_PREFIX: Record<CreditUsageCardVariant, string> = {
-  profile_menu: "Reset",
-  companion: "Credit reset",
-};
-
-const COMPANION_STATUS_LABELS: Record<
-  Exclude<CreditUsageTarget, "on_target">,
-  string
-> = {
-  elevated: "Usage is above target",
-  critical: "Usage is well above target",
-};
+type Translate = (descriptor: MessageDescriptor) => string;
 
 interface CreditUsageProps {
   state: CreditUsageState;
@@ -66,9 +54,11 @@ export function CreditUsageLearnMoreButton({
 }: {
   onClick: () => void;
 }) {
+  const { t } = useLingui();
+
   return (
     <Button
-      label={CREDIT_USAGE_LEARN_MORE_LABEL}
+      label={t`See your usage`}
       variant="outline"
       size="sm"
       className="w-full"
@@ -79,50 +69,83 @@ export function CreditUsageLearnMoreButton({
 
 function getBillingPeriodUsageDescription(
   state: BillingPeriodCreditUsageState,
-  variant: CreditUsageCardVariant
+  variant: CreditUsageCardVariant,
+  t: Translate
 ): string {
-  const resetUnit = `day${pluralize(state.resetInDays)}`;
-  const companionStatusLabel =
-    variant === "companion" && state.target !== "on_target"
-      ? COMPANION_STATUS_LABELS[state.target]
-      : null;
-  const statusLabel = companionStatusLabel ? `${companionStatusLabel} · ` : "";
+  const { resetInDays } = state;
 
-  return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
+  if (variant === "profile_menu") {
+    return t(
+      msg`Reset in ${plural(resetInDays, { one: "# day", other: "# days" })}`
+    );
+  }
+
+  switch (state.target) {
+    case "elevated":
+      return t(
+        msg`Usage is above target · Credit reset in ${plural(resetInDays, {
+          one: "# day",
+          other: "# days",
+        })}`
+      );
+    case "critical":
+      return t(
+        msg`Usage is well above target · Credit reset in ${plural(resetInDays, {
+          one: "# day",
+          other: "# days",
+        })}`
+      );
+    case "on_target":
+      return t(
+        msg`Credit reset in ${plural(resetInDays, {
+          one: "# day",
+          other: "# days",
+        })}`
+      );
+    default:
+      assertNeverAndIgnore(state.target);
+      return "";
+  }
 }
 
 // The free-seat lifetime cap shares the rolling_window kind's state shape
 // (used/limit credits) but never refills, so it gets its own description
 // rather than a rolling-window day count.
 function getLifetimeUsageDescription(
-  state: RollingWindowCreditUsageState
+  state: RollingWindowCreditUsageState,
+  t: Translate
 ): string {
-  return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} used ${formatLimitTimeframe(state.timeframe, "compact")}`;
+  const usedCredits = formatCredits(state.usedCredits);
+  const limitCredits = formatCredits(state.limitCredits);
+  return t(msg`${usedCredits} of ${limitCredits} used on your current plan`);
 }
 
 function getRollingWindowUsageDescription(
-  state: RollingWindowCreditUsageState
+  state: RollingWindowCreditUsageState,
+  t: Translate
 ): string {
   if (state.timeframe === "lifetime") {
-    return getLifetimeUsageDescription(state);
+    return getLifetimeUsageDescription(state, t);
   }
   if (state.isFixedWindow && state.nextResetAt) {
-    return `Resets ${formatRelativeResetDay(state.nextResetAt)}`;
+    const resetDay = formatRelativeResetDay(state.nextResetAt);
+    return t(msg`Resets ${resetDay}`);
   }
   const windowDays =
     getTimeframeSecondsFromLiteral(state.timeframe) / (24 * 60 * 60);
-  return `Resets on a rolling ${windowDays}-day basis`;
+  return t(msg`Resets on a rolling ${windowDays}-day basis`);
 }
 
 function getUsageDescription(
   state: CreditUsageState,
-  variant: CreditUsageCardVariant
+  variant: CreditUsageCardVariant,
+  t: Translate
 ): string {
   switch (state.kind) {
     case "billing_period":
-      return getBillingPeriodUsageDescription(state, variant);
+      return getBillingPeriodUsageDescription(state, variant, t);
     case "rolling_window":
-      return getRollingWindowUsageDescription(state);
+      return getRollingWindowUsageDescription(state, t);
     default:
       assertNeverAndIgnore(state);
       return "";
@@ -130,14 +153,15 @@ function getUsageDescription(
 }
 
 export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
-  const usageDescription = getUsageDescription(state, variant);
+  const { t } = useLingui();
+  const usageDescription = getUsageDescription(state, variant, t);
   const tone = state.kind === "billing_period" ? state.target : "on_target";
   const refillSchedule =
     state.kind === "rolling_window" ? state.refillSchedule : undefined;
 
   return (
     <CreditUsageCard
-      label="Credits"
+      label={t`Credits`}
       usedPercentage={state.usedPercentage}
       tone={tone}
       variant={variant}

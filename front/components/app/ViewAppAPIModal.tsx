@@ -21,6 +21,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const cleanUpConfig = (config: RunConfig) => {
@@ -54,6 +55,7 @@ export function ViewAppAPIModal({
   inputs = DEFAULT_INPUTS,
   disabled,
 }: ViewAppAPIModalProps) {
+  const { t } = useLingui();
   const cURLRequest = (type: "run") => {
     switch (type) {
       case "run":
@@ -71,7 +73,7 @@ export function ViewAppAPIModal({
     }
   };
 
-  const [copyRunButtonText, setCopyRunButtonText] = useState("Copy");
+  const [isRunCopied, setIsRunCopied] = useState(false);
 
   // Copy the cURL request to the clipboard
   const handleCopyClick = async (type: "run") => {
@@ -79,9 +81,9 @@ export function ViewAppAPIModal({
 
     switch (type) {
       case "run":
-        setCopyRunButtonText("Copied!");
+        setIsRunCopied(true);
         setTimeout(() => {
-          setCopyRunButtonText("Copy");
+          setIsRunCopied(false);
         }, 1500);
         break;
       default:
@@ -90,6 +92,7 @@ export function ViewAppAPIModal({
   };
 
   const { isDark } = useTheme();
+  const appName = app.name;
 
   return (
     <Sheet>
@@ -98,17 +101,19 @@ export function ViewAppAPIModal({
           icon={Cube01}
           tooltip={
             disabled
-              ? "You need to run this app at least once successfully to view the endpoint"
-              : "View how to run this app programmatically"
+              ? t`You need to run this app at least once successfully to view the endpoint`
+              : t`View how to run this app programmatically`
           }
-          label="Use with API"
+          label={t`Use with API`}
           variant="primary"
           disabled={disabled}
         />
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Apps API</SheetTitle>
+          <SheetTitle>
+            <Trans>Apps API</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="w-full">
@@ -127,10 +132,12 @@ export function ViewAppAPIModal({
 
               <Page.Separator />
 
-              <Page.SectionHeader title="Run app" />
+              <Page.SectionHeader title={t`Run app`} />
               <Page.P>
-                Use the following cURL command to run the app{" "}
-                <span className="italic">{app.name}</span>:
+                <Trans>
+                  Use the following cURL command to run the app{" "}
+                  <span className="italic">{appName}</span>:
+                </Trans>
               </Page.P>
               <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
@@ -154,7 +161,7 @@ export function ViewAppAPIModal({
                   <Button
                     variant="outline"
                     onClick={() => handleCopyClick("run")}
-                    label={copyRunButtonText}
+                    label={isRunCopied ? t`Copied!` : t`Copy`}
                     icon={Clipboard}
                   />
                 </div>
@@ -162,7 +169,7 @@ export function ViewAppAPIModal({
 
               <Page.Separator />
 
-              <Page.SectionHeader title="API Keys" />
+              <Page.SectionHeader title={t`API keys`} />
               <Page.P>
                 <div className="pb-2">
                   {isAdmin(owner) ? (
@@ -170,32 +177,38 @@ export function ViewAppAPIModal({
                       href={`/w/${owner.sId}/developers/api-keys`}
                       variant="highlight"
                     >
-                      Manage workspace API keys
+                      <Trans>Manage workspace API keys</Trans>
                     </Hoverable>
                   ) : (
-                    <span>API keys are managed by workspace admins.</span>
+                    <span>
+                      <Trans>API keys are managed by workspace admins.</Trans>
+                    </span>
                   )}
                 </div>
                 <span>
-                  Handle API keys with care as they provide access to your
-                  company data.
+                  <Trans>
+                    Handle API keys with care as they provide access to your
+                    company data.
+                  </Trans>
                 </span>
               </Page.P>
 
               <Page.Separator />
 
-              <Page.SectionHeader title="Documentation" />
+              <Page.SectionHeader title={t`Documentation`} />
               <Page.P>
-                For a detailed documentation of the Data source API, please
-                refer to the{" "}
-                <Hoverable
-                  href={
-                    "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
-                  }
-                  variant="highlight"
-                >
-                  API Reference
-                </Hoverable>
+                <Trans>
+                  For a detailed documentation of the Data source API, please
+                  refer to the{" "}
+                  <Hoverable
+                    href={
+                      "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
+                    }
+                    variant="highlight"
+                  >
+                    API reference
+                  </Hoverable>
+                </Trans>
               </Page.P>
             </Page.Vertical>
           </div>

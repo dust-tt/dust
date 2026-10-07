@@ -1,6 +1,7 @@
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
 import { Button, cn, LinkWrapper, ProgressBar } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
@@ -15,6 +16,7 @@ export function TrialMessageUsage({
   isAdmin,
   workspaceId,
 }: TrialMessageUsageProps) {
+  const { t } = useLingui();
   const { messageUsage, mutateMessageUsage } = useTrialMessageUsage({
     workspaceId,
   });
@@ -59,7 +61,7 @@ export function TrialMessageUsage({
     >
       <div className="mb-2 flex items-center justify-between text-sm">
         <span className="font-semibold text-foreground">
-          Trial messages used
+          <Trans>Trial messages used</Trans>
         </span>
         <span className="font-medium text-foreground">
           <span className={cn(isCritical && "text-warning-600")}>{count}</span>{" "}
@@ -85,7 +87,7 @@ export function TrialMessageUsage({
             href={`/w/${workspaceId}/subscription`}
             className="no-underline"
           >
-            <Button label="Subscribe to Dust" variant="primary" />
+            <Button label={t`Subscribe to Dust`} variant="primary" />
           </LinkWrapper>
         </div>
       )}

@@ -2,6 +2,7 @@ import { formatCredits } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate } from "@app/lib/i18n/format";
 import { CoinsStacked01, cn, ProgressBar, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 export type CreditUsageTone = "on_target" | "elevated" | "critical";
@@ -42,11 +43,12 @@ export function CreditUsageCard({
   children,
   refillSchedule,
 }: CreditUsageCardProps) {
+  const { t } = useLingui();
   const usedPercentage = Math.min(Math.max(rawUsedPercentage, 0), 100);
 
   const progressBar = (
     <ProgressBar
-      aria-label={`${label} used`}
+      aria-label={t`${label} used`}
       className="h-1 w-full bg-border"
       values={[
         { value: usedPercentage, className: TONE_BAR_CLASSES[tone] },
@@ -75,21 +77,28 @@ export function CreditUsageCard({
             }
             label={
               <div className="flex flex-col gap-0.5">
-                <span className="font-medium">Reset schedule:</span>
-                {refillSchedule.map(({ date, credits }) => (
-                  <span key={date}>
-                    {formatDate(
-                      new Date(date),
-                      {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      },
-                      getActiveLocale()
-                    )}
-                    : +{formatCredits(credits)}
-                  </span>
-                ))}
+                <span className="font-medium">
+                  <Trans>Reset schedule:</Trans>
+                </span>
+                {refillSchedule.map(({ date, credits }) => {
+                  const refillDate = formatDate(
+                    new Date(date),
+                    {
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    },
+                    getActiveLocale()
+                  );
+                  const refillCredits = formatCredits(credits);
+                  return (
+                    <span key={date}>
+                      <Trans>
+                        {refillDate}: +{refillCredits}
+                      </Trans>
+                    </span>
+                  );
+                })}
               </div>
             }
           />
