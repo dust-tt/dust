@@ -1,12 +1,17 @@
+import { createServer } from "node:http";
+import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
 import type { LiveFile } from "@app/lib/api/collab/live_file";
 import {
   checkpointLiveDocument,
   loadLiveDocument,
+  openLiveFile,
 } from "@app/lib/api/collab/live_file";
 import { mintLiveTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import { createLiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -22,13 +27,27 @@ import {
   createCollabHocuspocus,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import type { WebSocketLike } from "@hocuspocus/server";
+import type { Peer } from "crossws";
+import crossws from "crossws/adapters/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-vi.mock("@app/lib/api/collab/live_file", async (importActual) => ({
-  ...(await importActual<typeof import("@app/lib/api/collab/live_file")>()),
-  loadLiveDocument: vi.fn(),
-  checkpointLiveDocument: vi.fn(),
+vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/collab/live_file")>();
+  return {
+    ...actual,
+    loadLiveDocument: vi.fn(),
+    checkpointLiveDocument: vi.fn(),
+    // Real until a test stubs it: tickets open the file they are minted for.
+    openLiveFile: vi.fn(actual.openLiveFile),
+  };
+});
+
+vi.mock("@app/lib/api/collab/live_comments", () => ({
+  applyLiveCommentCommand: vi.fn(),
 }));
 
 const DOCUMENT_NAME = "w1:user-u1/notes.md";
@@ -266,15 +285,15 @@ describe("createCollabHocuspocus", () => {
   });
 });
 
-describe("authenticateConnection", () => {
-  async function ticketFor(auth: Authenticator, path: string) {
-    const ticket = await mintLiveTicket(auth, path);
-    if (ticket.isErr()) {
-      throw new Error(ticket.error.message);
-    }
-    return ticket.value;
+async function ticketFor(auth: Authenticator, path: string) {
+  const ticket = await mintLiveTicket(auth, path);
+  if (ticket.isErr()) {
+    throw new Error(ticket.error.message);
   }
+  return ticket.value;
+}
 
+describe("authenticateConnection", () => {
   it("opens the ticket's file for its user, once", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "co_edition");
@@ -398,4 +417,152 @@ describe("authenticateConnection", () => {
 
     expect(result.isErr() && result.error).toBe("Invalid or expired ticket.");
   });
+});
+
+function isWebSocketLike(socket: unknown): socket is WebSocketLike {
+  return typeof socket === "object" && socket !== null && "send" in socket;
+}
+
+/** Serves the Hocuspocus instance over WebSockets, as the collab server does. */
+async function serve(hocuspocus: ReturnType<typeof createCollabHocuspocus>) {
+  const connections = new WeakMap<
+    Peer,
+    ReturnType<typeof hocuspocus.handleConnection>
+  >();
+  const ws = crossws({
+    hooks: {
+      open(peer) {
+        if (isWebSocketLike(peer.websocket)) {
+          connections.set(
+            peer,
+            hocuspocus.handleConnection(peer.websocket, peer.request)
+          );
+        }
+      },
+      message(peer, message) {
+        connections.get(peer)?.handleMessage(message.uint8Array());
+      },
+      close(peer, event) {
+        connections.get(peer)?.handleClose({
+          code: event.code ?? 1005,
+          reason: event.reason ?? "",
+        });
+      },
+    },
+  });
+  const server = createServer();
+  server.on("upgrade", (request, socket, head) =>
+    ws.handleUpgrade(request, socket, head)
+  );
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const address = server.address();
+  if (address === null || typeof address === "string") {
+    throw new Error("The test server has no port.");
+  }
+  return {
+    url: `ws://127.0.0.1:${address.port}`,
+    close: () => server.close(),
+  };
+}
+
+describe("comment threads in a live session", () => {
+  const THREAD: DfmComment = {
+    id: "c1",
+    status: "open",
+    messages: [
+      {
+        author: { kind: "user", id: "usr_tom", name: "Tom" },
+        createdAt: "2026-10-05T12:00:00.000Z",
+        body: "Why Friday?",
+      },
+    ],
+  };
+  const providers: HocuspocusProvider[] = [];
+  const channels: LiveCommentChannel[] = [];
+  let close: () => void = () => undefined;
+
+  afterEach(() => {
+    channels.forEach((channel) => channel.close());
+    providers.forEach((provider) => provider.destroy());
+    close();
+  });
+
+  async function join(url: string, writer: LiveFile) {
+    const provider = new HocuspocusProvider({
+      url,
+      name: `${writer.workspaceId}:${writer.canonicalPath}`,
+      token: await ticketFor(writer.auth, writer.canonicalPath),
+      document: new Y.Doc(),
+    });
+    providers.push(provider);
+    await new Promise<void>((resolve) => provider.on("synced", resolve));
+    const channel = createLiveCommentChannel(provider);
+    channels.push(channel);
+    await vi.waitFor(() => expect(channel.getThreads()).not.toBeNull());
+    return channel;
+  }
+
+  // The socket handlers run outside the test's database transaction: authentication and the
+  // commands, tested on their own, are stubbed.
+  it("serves the threads, applies a command for every connection and checkpoints it", async () => {
+    const writer = await liveFile(true);
+    await FeatureFlagFactory.basic(writer.auth, "co_edition");
+    const created: DfmComment = { ...THREAD, id: "c2" };
+    vi.spyOn(Authenticator, "fromUserIdAndWorkspaceId").mockResolvedValue(
+      writer.auth
+    );
+    vi.mocked(openLiveFile).mockResolvedValue(new Ok(writer));
+    vi.mocked(loadLiveDocument).mockImplementation(async () => {
+      const live = dfmToYDoc(SOURCE);
+      if (live.isErr()) {
+        throw new Error(live.error);
+      }
+      return new Ok({
+        live: { doc: live.value.doc, comments: [THREAD] },
+        checkpoint: { revision: "1", content: "" },
+      });
+    });
+    vi.mocked(applyLiveCommentCommand).mockImplementation(
+      async (_file, comments, command) =>
+        command.type === "add"
+          ? new Ok({ comments: [...comments, created], created })
+          : new Err("thread_changed")
+    );
+    const server = await serve(createCollabHocuspocus());
+    close = server.close;
+
+    const mine = await join(server.url, writer);
+    const theirs = await join(server.url, writer);
+    expect(mine.getThreads()).toEqual([THREAD]);
+
+    const added = await mine.send({
+      type: "add",
+      commentId: "c2",
+      body: "Ship it.",
+    });
+    expect(added.isOk() && added.value).toEqual(created);
+    const [file] = vi.mocked(applyLiveCommentCommand).mock.calls[0];
+    expect(file.auth).toBe(writer.auth);
+    expect(file.canonicalPath).toBe(writer.canonicalPath);
+
+    await vi.waitFor(() =>
+      expect(theirs.getThreads()).toEqual([THREAD, created])
+    );
+    await vi.waitFor(
+      () =>
+        expect(
+          vi.mocked(checkpointLiveDocument).mock.calls.at(-1)?.[1].comments
+        ).toEqual([THREAD, created]),
+      { timeout: 5_000 }
+    );
+
+    const refused = await theirs.send({
+      type: "reply",
+      commentId: "c1",
+      position: 2,
+      body: "Late.",
+    });
+    expect(refused.isErr() && refused.error).toBe("thread_changed");
+    expect(theirs.getThreads()).toEqual([THREAD, created]);
+  }, 15_000);
 });
