@@ -18,6 +18,7 @@ import type {
   DocumentProps,
   LiveStatus,
 } from "@app/components/editor/document/types";
+import type { DocumentCommentsController } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
@@ -161,7 +162,7 @@ const liveEditorMode = (liveView: DocumentViewProps["liveView"]) => ({
 interface DocumentEditingControlsProps {
   editor: Editor | null;
   mountPortalContainer: DocumentProps["mountPortalContainer"];
-  comments: ReturnType<typeof useDocumentComments>;
+  comments: DocumentCommentsController;
   blockMenu: ReturnType<typeof useDocumentBlockMenu>;
 }
 
@@ -220,11 +221,11 @@ export const DocumentView = ({
     live: live.binding,
   });
   // Live documents are edited through the session: no file saves, and no threads yet.
-  const editsFile = editable && liveView === undefined;
+  const canEditFile = editable && liveView === undefined;
   const blockMenu = useDocumentBlockMenu(editor, editable);
   const comments = useDocumentComments({
     editor,
-    canComment: editsFile,
+    canComment: canEditFile,
     author: commentAuthor,
     isSavable,
     sign: signCommentMessage,
@@ -273,7 +274,7 @@ export const DocumentView = ({
           )}
         >
           <DocumentStatus
-            editable={editsFile}
+            editable={canEditFile}
             dirty={dirty}
             saving={saving}
             error={error}
