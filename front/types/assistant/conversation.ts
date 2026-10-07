@@ -105,6 +105,7 @@ export type UserMessageOrigin =
   | "api"
   | "cli"
   | "cli_programmatic"
+  | "document_comment"
   | "email"
   | "excel"
   | "gsheet"

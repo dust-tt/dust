@@ -198,11 +198,11 @@ export class DocumentConversationBusyError extends Error {
 
 /**
  * @cc [owner:tdraier,label:product] document-comment-mention-post
- * A dispatched message MUST be posted as the saving user, as a user message in the document's
- * conversation carrying each mention once, so the mentioned agent runs and mentioned users are
- * notified as in a conversation. As in a conversation, a message runs at most one agent: only
- * the first agent mentioned is kept, and the others are logged. It MUST be posted with
- * `onlyWhenIdle`, and while an agent or a compaction runs in that conversation, or the document's
+ * A dispatched message MUST be posted as the saving user, as a user message with the
+ * `document_comment` origin in the document's conversation carrying each mention once, so the
+ * mentioned agent runs and mentioned users are notified as in a conversation. As in a
+ * conversation, a message runs at most one agent: only the first agent mentioned is kept, and the
+ * others are logged. It MUST be posted with `onlyWhenIdle`, and while an agent or a compaction runs in that conversation, or the document's
  * lock cannot be taken, it MUST return a `DocumentConversationBusyError` having posted nothing, so
  * each comment gets its own turn instead of steering a running agent. A pod document's
  * conversation MUST notify the pod when its first message is posted, never before. Any other
@@ -257,7 +257,7 @@ export async function postCommentMention(
           fullName: user.fullName(),
           email: user.email,
           profilePictureUrl: user.imageUrl,
-          origin: "web",
+          origin: "document_comment",
         },
         skipToolsValidation: false,
         onlyWhenIdle: true,

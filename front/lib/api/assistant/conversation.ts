@@ -504,6 +504,7 @@ export function isUserMessageContextValid(
       return authMethod === "oauth" && !!extensionVersion;
     case "raycast":
       return authMethod === "oauth" && userAgent === "undici";
+    case "document_comment":
     case "email":
     case "slack":
     case "slack_workflow":
