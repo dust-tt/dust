@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -125,6 +128,7 @@ export function useUpdateDataSourceViewTable(
     disabled: true, // Needed just to mutate
   });
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdate = async (body: PatchDataSourceTableRequestBody) => {
@@ -138,10 +142,9 @@ export function useUpdateDataSourceViewTable(
     });
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Error creating table",
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
       console.error("Error updating table", errorData);
       return null;

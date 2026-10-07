@@ -1,5 +1,8 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
@@ -523,6 +526,7 @@ export function useDeleteAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration?: LightAgentConfigurationType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -560,10 +564,9 @@ export function useDeleteAgentConfiguration({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error archiving ${agentConfiguration.name}`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
     }
     return res.ok;
@@ -579,6 +582,7 @@ export function useBatchDeleteAgentConfigurations({
   owner: LightWorkspaceType;
   agentConfigurationIds: string[];
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -615,10 +619,9 @@ export function useBatchDeleteAgentConfigurations({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error archiving agents`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
     }
     return res.ok;
@@ -634,6 +637,7 @@ export function useUpdateUserFavorite({
   owner: LightWorkspaceType;
   agentConfigurationId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
     useAgentConfiguration({
@@ -680,10 +684,9 @@ export function useUpdateUserFavorite({
           return true;
         } else {
           const data = await res.json();
-          sendNotification({
+          sendApiErrorNotification({
             title: `Error ${userFavorite ? "adding" : "removing"} Agent`,
-            description: data.error.message,
-            type: "error",
+            error: data,
           });
           return false;
         }
@@ -704,6 +707,7 @@ export function useUpdateUserFavorite({
       mutateAgentConfigurations,
       mutateCurrentAgentConfiguration,
       owner.sId,
+      sendApiErrorNotification,
       sendNotification,
     ]
   );
@@ -717,6 +721,7 @@ export function useRestoreAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration?: LightAgentConfigurationType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -754,10 +759,9 @@ export function useRestoreAgentConfiguration({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Error restoring ${agentConfiguration.name}`,
-        description: `Error: ${errorData.message}`,
+        error: errorData,
       });
     }
     return res.ok;
@@ -801,6 +805,7 @@ export function useBatchUpdateAgentModel({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const batchUpdateAgentModel = useCallback(
@@ -829,10 +834,9 @@ export function useBatchUpdateAgentModel({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Error updating model",
-          description: `Error: ${errorData.message}`,
+          error: errorData,
         });
         return false;
       }
@@ -862,7 +866,7 @@ export function useBatchUpdateAgentModel({
       });
       return true;
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification]
   );
 
   return batchUpdateAgentModel;
@@ -900,6 +904,7 @@ export function useUpdateInactiveAgentArchival({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   // Null turns it off: the policy is opt-in and has no default threshold.
@@ -918,10 +923,9 @@ export function useUpdateInactiveAgentArchival({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Error updating automatic archival",
-          description: `Error: ${errorData.message}`,
+          error: errorData,
         });
         return false;
       }
@@ -937,7 +941,7 @@ export function useUpdateInactiveAgentArchival({
       });
       return true;
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification]
   );
 
   return updateInactiveAgentArchival;
@@ -948,6 +952,7 @@ export function usePreviewInactiveAgents({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const previewInactiveAgents = useCallback(
@@ -966,10 +971,9 @@ export function usePreviewInactiveAgents({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Error previewing inactive agents",
-          description: `Error: ${errorData.message}`,
+          error: errorData,
         });
         return null;
       }
@@ -988,7 +992,7 @@ export function usePreviewInactiveAgents({
 
       return parsed.data.preview;
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification]
   );
 
   return previewInactiveAgents;
@@ -999,6 +1003,7 @@ export function useArchiveInactiveAgents({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const archiveInactiveAgents = useCallback(
@@ -1017,10 +1022,9 @@ export function useArchiveInactiveAgents({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Error archiving inactive agents",
-          description: `Error: ${errorData.message}`,
+          error: errorData,
         });
         return null;
       }
@@ -1046,7 +1050,7 @@ export function useArchiveInactiveAgents({
 
       return { archivedCount };
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification]
   );
 
   return archiveInactiveAgents;

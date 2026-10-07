@@ -53,6 +53,7 @@ const { push, patch, notify } = vi.hoisted(() => ({
 vi.mock("@app/lib/egress/client", () => ({ clientFetch: patch }));
 vi.mock("@app/hooks/useNotification", () => ({
   useSendNotification: () => notify,
+  useSendApiErrorNotification: () => vi.fn(),
 }));
 
 vi.mock("@app/lib/platform", () => ({

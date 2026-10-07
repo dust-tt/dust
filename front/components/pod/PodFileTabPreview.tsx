@@ -8,7 +8,10 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { formatFileSize } from "@app/lib/i18n/format";
 import {
   getFilePathContentApiPath,
@@ -42,6 +45,7 @@ export function PodFileTabPreview({
   canEdit,
 }: PodFileTabPreviewProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
 
@@ -188,10 +192,9 @@ export function PodFileTabPreview({
         contentType: "text/markdown",
       });
       if (result.isErr()) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to save file",
-          description: result.error.message,
+          error: result.error,
         });
         return;
       }

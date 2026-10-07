@@ -1,4 +1,4 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -84,7 +84,7 @@ export function useAddConversationSelectedSpaces({
   conversationId: string | null;
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   return useCallback(
     async (
@@ -107,10 +107,9 @@ export function useAddConversationSelectedSpaces({
 
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Could not select Spaces",
-          description: errorData.message,
+          error: errorData,
         });
         return null;
       }
@@ -119,6 +118,6 @@ export function useAddConversationSelectedSpaces({
         await response.json()
       );
     },
-    [conversationId, owner.sId, sendNotification]
+    [conversationId, owner.sId, sendApiErrorNotification]
   );
 }

@@ -3,7 +3,10 @@ import {
   useConversations,
   usePodConversationsSummary,
 } from "@app/hooks/conversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
@@ -13,6 +16,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
 
 export function useMoveConversationToPod(owner: LightWorkspaceType) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -61,10 +65,9 @@ export function useMoveConversationToPod(owner: LightWorkspaceType) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
+        sendApiErrorNotification({
           title: "Error moving conversation.",
-          description: errorData.message,
-          type: "error",
+          error: errorData,
         });
         return false;
       }
@@ -86,6 +89,7 @@ export function useMoveConversationToPod(owner: LightWorkspaceType) {
       owner.sId,
       mutateConversations,
       mutatePodConversationsSummary,
+      sendApiErrorNotification,
       sendNotification,
       confirm,
     ]
