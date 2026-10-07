@@ -7,11 +7,15 @@ import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import { useWorkspacePodTask } from "@app/lib/swr/pods";
 import type { PodTaskStatus } from "@app/types/project_task";
-import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Avatar, Checkbox, Chip, Spinner } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 interface PodTasksUpdateValidationDetailsProps {
   input: PodTasksUpdateTasksInput;
@@ -45,16 +49,17 @@ interface FormatAssigneeLabelParams {
   currentUserId: string;
   memberDisplayById: Record<string, { fullName: string }>;
   isMembersLoading: boolean;
+  t: Translate;
 }
 
-function formatTaskStatusLabel(status: PodTaskStatus): string {
+function formatTaskStatusLabel(status: PodTaskStatus, t: Translate): string {
   switch (status) {
     case "todo":
-      return "Open";
+      return t(msg({ message: "Open", context: "task status" }));
     case "in_progress":
-      return "In progress";
+      return t(msg`In progress`);
     case "done":
-      return "Done";
+      return t(msg({ message: "Done", context: "task status" }));
     default:
       assertNeverAndIgnore(status);
       return status;
@@ -80,19 +85,20 @@ function formatAssigneeLabel({
   currentUserId,
   memberDisplayById,
   isMembersLoading,
+  t,
 }: FormatAssigneeLabelParams): string {
   if (userId === null || userId === undefined) {
-    return POD_TASK_NO_ASSIGNEE_LABEL;
+    return t(msg`No assignee`);
   }
   if (userId === currentUserId) {
-    return "You";
+    return t(msg`You`);
   }
   const member = memberDisplayById[userId];
   if (member) {
     return member.fullName;
   }
   if (isMembersLoading) {
-    return "Loading…";
+    return t(msg`Loading…`);
   }
   return userId;
 }
@@ -117,17 +123,20 @@ function AssigneeChangeRow({
   memberDisplayById,
   isMembersLoading,
 }: AssigneeChangeRowProps) {
+  const { t } = useLingui();
   const beforeLabel = formatAssigneeLabel({
     userId: currentAssigneeId,
     currentUserId,
     memberDisplayById,
     isMembersLoading,
+    t,
   });
   const afterLabel = formatAssigneeLabel({
     userId: nextAssigneeId,
     currentUserId,
     memberDisplayById,
     isMembersLoading,
+    t,
   });
   const currentMember = currentAssigneeId
     ? memberDisplayById[currentAssigneeId]
@@ -138,7 +147,7 @@ function AssigneeChangeRow({
     return (
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted-foreground">
-          Assignee
+          <Trans>Assignee</Trans>
         </span>
         <div className="flex items-center gap-3">
           <Avatar
@@ -150,16 +159,19 @@ function AssigneeChangeRow({
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
             {beforeLabel}
           </span>
-          <Chip size="xs" color="warning" label="Unassign" />
+          <Chip size="xs" color="warning" label={t`Unassign`} />
         </div>
       </div>
     );
   }
 
-  return <ChangeRow label="Assignee" before={beforeLabel} after={afterLabel} />;
+  return (
+    <ChangeRow label={t`Assignee`} before={beforeLabel} after={afterLabel} />
+  );
 }
 
 function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
+  const { t } = useLingui();
   const {
     task: currentTask,
     isWorkspacePodTaskLoading: isWorkspaceProjectTaskLoading,
@@ -209,6 +221,10 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
     currentStatus !== undefined && effectiveStatus !== currentStatus;
   const displayText = taskInput.text ?? currentTask?.text ?? taskInput.taskId;
   const isDone = effectiveStatus === "done";
+  const markedDoneByLabel =
+    taskInput.markAsDoneByType === "user"
+      ? t({ message: "you", context: "marked done by" })
+      : t({ message: "agent", context: "marked done by" });
 
   if (isWorkspaceProjectTaskLoading) {
     return (
@@ -228,14 +244,20 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
           <p className="min-w-0 flex-1 break-words text-sm leading-5 text-foreground">
             {displayText}
           </p>
-          {isDone && <Chip size="xs" color="success" label="Done" />}
+          {isDone && (
+            <Chip
+              size="xs"
+              color="success"
+              label={t({ message: "Done", context: "task status" })}
+            />
+          )}
         </div>
 
         {currentTask ? (
           <div className="mt-2 flex flex-col gap-2">
             {textChange && (
               <ChangeRow
-                label="Description"
+                label={t`Description`}
                 before={currentTask.text}
                 after={taskInput.text ?? currentTask.text}
               />
@@ -251,25 +273,25 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
             )}
             {statusChange && (
               <ChangeRow
-                label="Status"
-                before={formatTaskStatusLabel(currentTask.status)}
-                after={formatTaskStatusLabel(effectiveStatus)}
+                label={t`Status`}
+                before={formatTaskStatusLabel(currentTask.status, t)}
+                after={formatTaskStatusLabel(effectiveStatus, t)}
               />
             )}
             {statusChange && effectiveStatus === "done" && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Marked done by
+                  <Trans>Marked done by</Trans>
                 </span>
                 <span className="text-sm font-medium text-foreground">
-                  {taskInput.markAsDoneByType === "user" ? "you" : "agent"}
+                  {markedDoneByLabel}
                 </span>
               </div>
             )}
             {taskInput.doneRationale && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Done rationale
+                  <Trans>Done rationale</Trans>
                 </span>
                 <p className="text-sm italic text-foreground">
                   {taskInput.doneRationale}
@@ -281,18 +303,18 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
               !statusChange &&
               !taskInput.doneRationale && (
                 <p className="text-xs text-muted-foreground">
-                  No visible changes detected.
+                  <Trans>No visible changes detected.</Trans>
                 </p>
               )}
           </div>
         ) : (
           <div className="mt-2 flex flex-col gap-2">
             <p className="text-xs text-muted-foreground">
-              Could not load the current task details.
+              <Trans>Could not load the current task details.</Trans>
             </p>
             {taskInput.text && (
               <ChangeRow
-                label="Description"
+                label={t`Description`}
                 before="—"
                 after={taskInput.text}
               />
@@ -300,45 +322,46 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
             {taskInput.assigneeUserId !== undefined &&
               normalizeAssigneeUserId(taskInput.assigneeUserId) !== null && (
                 <ChangeRow
-                  label="Assignee"
+                  label={t`Assignee`}
                   before="—"
                   after={formatAssigneeLabel({
                     userId: normalizeAssigneeUserId(taskInput.assigneeUserId),
                     currentUserId: user.sId,
                     memberDisplayById: membersById,
                     isMembersLoading,
+                    t,
                   })}
                 />
               )}
             {taskInput.assigneeUserId !== undefined &&
               normalizeAssigneeUserId(taskInput.assigneeUserId) === null && (
                 <ChangeRow
-                  label="Assignee"
+                  label={t`Assignee`}
                   before="—"
-                  after={POD_TASK_NO_ASSIGNEE_LABEL}
+                  after={t`No assignee`}
                 />
               )}
             {taskInput.status && (
               <ChangeRow
-                label="Status"
+                label={t`Status`}
                 before="—"
-                after={formatTaskStatusLabel(taskInput.status)}
+                after={formatTaskStatusLabel(taskInput.status, t)}
               />
             )}
             {(taskInput.status === "done" || taskInput.doneRationale) && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Marked done by
+                  <Trans>Marked done by</Trans>
                 </span>
                 <span className="text-sm font-medium text-foreground">
-                  {taskInput.markAsDoneByType === "user" ? "you" : "agent"}
+                  {markedDoneByLabel}
                 </span>
               </div>
             )}
             {taskInput.doneRationale && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Done rationale
+                  <Trans>Done rationale</Trans>
                 </span>
                 <p className="text-sm italic text-foreground">
                   {taskInput.doneRationale}
@@ -358,6 +381,7 @@ export function PodTasksUpdateValidationDetails({
   user,
   conversationId,
 }: PodTasksUpdateValidationDetailsProps) {
+  const { t } = useLingui();
   const { podLabel, isPodLabelLoading } = usePodLabel({
     owner,
     dustPodUri: input.dustPod?.uri,
@@ -366,17 +390,27 @@ export function PodTasksUpdateValidationDetails({
 
   const taskCount = input.tasks.length;
   const doneCount = input.tasks.filter((task) => task.doneRationale).length;
+  const podName = isPodLabelLoading ? t`Loading…` : podLabel;
 
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        The agent wants to update{" "}
-        <span className="font-medium text-foreground">{taskCount}</span> task
-        {taskCount === 1 ? "" : "s"} in{" "}
-        <span className="font-medium text-foreground">
-          {isPodLabelLoading ? "Loading…" : podLabel}
-        </span>
-        .{doneCount > 0 && <> {doneCount} will be marked as done.</>}
+        <Trans>
+          The agent wants to update{" "}
+          <span className="font-medium text-foreground">{taskCount}</span>{" "}
+          <Plural value={taskCount} one="task" other="tasks" /> in{" "}
+          <span className="font-medium text-foreground">{podName}</span>.
+        </Trans>
+        {doneCount > 0 && (
+          <>
+            {" "}
+            <Plural
+              value={doneCount}
+              one="# will be marked as done."
+              other="# will be marked as done."
+            />
+          </>
+        )}
       </p>
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
