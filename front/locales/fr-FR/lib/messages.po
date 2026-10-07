@@ -566,6 +566,10 @@ msgid "The frame runtime is unavailable."
 msgstr "L’environnement d’exécution des Frames est indisponible."
 
 #: front/lib/api_error_messages.ts
+msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
+msgstr "Le manifeste d’un Frame ne peut pas être déplacé ni renommé seul. Déplacez ou renommez plutôt le dossier du Frame."
+
+#: front/lib/api_error_messages.ts
 msgid "A fast function can't call tools."
 msgstr "Une fonction rapide ne peut pas appeler d’outils."
 

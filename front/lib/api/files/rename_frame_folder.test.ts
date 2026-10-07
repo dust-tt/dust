@@ -262,7 +262,7 @@ describe("a Frames v2 manifest on its own", () => {
     );
 
     assert(moved.isErr());
-    expect(moved.error.code).toBe("invalid_path");
+    expect(moved.error.code).toBe("frame_manifest_move");
     await expectFrameUntouched(c);
   });
 
@@ -277,7 +277,7 @@ describe("a Frames v2 manifest on its own", () => {
     );
 
     assert(renamed.isErr());
-    expect(renamed.error.code).toBe("invalid_path");
+    expect(renamed.error.code).toBe("frame_manifest_move");
     await expectFrameUntouched(c);
   });
 });

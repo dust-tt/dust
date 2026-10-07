@@ -15,28 +15,16 @@ export type StaleFramePublicationPurgeResult = {
   deletedPublicationCount: number;
 };
 
-function newestPublicationId(
-  publications: FramePublicationResource[]
-): string | undefined {
-  return publications.reduce<FramePublicationResource | undefined>(
-    (newest, publication) =>
-      !newest || publication.createdAt > newest.createdAt
-        ? publication
-        : newest,
-    undefined
-  )?.publicationId;
-}
-
 /**
  * @cc [owner:davidebbo,label:product] retention-keeps-the-active-publication
  * The publication named by the Frame's `activePublicationId` MUST never be purged, whatever its
  * age: it is the only one the Frame serves.
  */
 /**
- * @cc [owner:davidebbo,label:product] retention-keeps-the-newest-publication-of-an-inactive-frame
- * When the Frame has no `activePublicationId` but has publications, its most recently created
- * publication MUST never be purged, whatever its age. A Frame that lost its pointer has to remain
- * restorable to the publication its share link last served.
+ * @cc [owner:davidebbo,label:product] retention-keeps-every-publication-of-an-inactive-frame
+ * When the Frame has no `activePublicationId`, none of its publications MUST be purged, whatever
+ * their age. A Frame that lost its pointer has to remain restorable to the publication its share
+ * link last served, and the newest row alone cannot identify it: it may be a failed publish.
  */
 /**
  * @cc [owner:davidebbo,label:product] retention-keeps-publications-with-invocations
@@ -76,18 +64,20 @@ export async function purgeStaleFramePublications(
     "Publication retention requires a Frames v2 file of the auth's workspace."
   );
 
+  const activePublicationId = frame.useCaseMetadata?.activePublicationId;
+  if (!activePublicationId) {
+    return { deletedFunctionCount: 0, deletedPublicationCount: 0 };
+  }
+
   const [publications, publicationIdsWithInvocations] = await Promise.all([
     FramePublicationResource.listForFrame(auth, frame),
     SandboxFunctionResource.listFramePublicationIdsWithInvocations(auth, frame),
   ]);
 
-  const activePublicationId = frame.useCaseMetadata?.activePublicationId;
-  const keptPublicationId =
-    activePublicationId ?? newestPublicationId(publications);
   const cutoffDate = new Date(Date.now() - retentionMs);
   const stalePublications = publications.filter(
     ({ createdAt, publicationId }) =>
-      publicationId !== keptPublicationId &&
+      publicationId !== activePublicationId &&
       createdAt < cutoffDate &&
       !publicationIdsWithInvocations.has(publicationId)
   );

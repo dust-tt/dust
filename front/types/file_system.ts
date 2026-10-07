@@ -80,6 +80,7 @@ export type DustFileSystemErrorCode =
   | "legacy_path"
   | "too_many_mounts"
   | "already_exists"
+  | "frame_manifest_move"
   | "internal";
 
 export class DustFileSystemError extends Error {

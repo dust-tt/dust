@@ -336,7 +336,7 @@ function registeredDestinationError(): DustFileSystemError {
  */
 function frameManifestMoveError(scopedPath: string): DustFileSystemError {
   return new DustFileSystemError(
-    "invalid_path",
+    "frame_manifest_move",
     `\`${scopedPath}\` is the manifest of a Frame and cannot be moved or renamed on its own. ` +
       "Move or rename the Frame's folder instead."
   );

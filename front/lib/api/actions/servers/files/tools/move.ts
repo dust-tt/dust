@@ -85,16 +85,14 @@ export async function moveHandler(
   if (moveResult.isErr()) {
     const err = moveResult.error;
     switch (err.code) {
+      case "frame_manifest_move":
       case "legacy_path":
       case "unauthorized":
         return new Err(new MCPError(err.message, { tracked: false }));
 
       case "invalid_path":
         return new Err(
-          new MCPError(
-            `Cannot move \`${source}\` to \`${dest}\`: ${err.message}`,
-            { tracked: false }
-          )
+          new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
         );
 
       default:
