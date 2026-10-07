@@ -20,6 +20,7 @@ interface LiveSession {
   comments: DfmComment[];
   checkpoint: LiveCheckpoint;
   checkpointFailed: boolean;
+  lastChangedBy: LiveFile | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
 }
 
@@ -30,9 +31,15 @@ function refuse(documentName: string, reason: string): never {
 }
 
 /** Logs an unexpected failure, which Hocuspocus would swallow, then rethrows it. */
-function logUnexpected(documentName: string, message: string) {
+function logUnexpected(
+  { documentName, workspaceId }: { documentName: string; workspaceId: string },
+  message: string
+) {
   return (err: unknown): never => {
-    logger.error({ err: normalizeError(err), documentName }, message);
+    logger.error(
+      { err: normalizeError(err), documentName, workspaceId },
+      message
+    );
     throw err;
   };
 }
@@ -69,13 +76,21 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         token,
         parsed.workspaceId
-      ).catch(logUnexpected(documentName, "Collab authentication failed"));
+      ).catch(
+        logUnexpected(
+          { documentName, workspaceId: parsed.workspaceId },
+          "Collab authentication failed"
+        )
+      );
       if (!auth.isUser()) {
         refuse(documentName, "Not a member of this workspace.");
       }
 
       const file = await openLiveFile(auth, parsed.canonicalPath).catch(
-        logUnexpected(documentName, "Collab authentication failed")
+        logUnexpected(
+          { documentName, workspaceId: parsed.workspaceId },
+          "Collab authentication failed"
+        )
       );
       if (file.isErr()) {
         refuse(documentName, file.error);
@@ -90,7 +105,10 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         loaded = await loadLiveDocument(context);
       } catch (err) {
         document.destroy();
-        return logUnexpected(documentName, "Collab document load failed")(err);
+        return logUnexpected(
+          { documentName, workspaceId: context.workspaceId },
+          "Collab document load failed"
+        )(err);
       }
       if (loaded.isErr()) {
         document.destroy();
@@ -101,20 +119,35 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         comments: live.comments,
         checkpoint,
         checkpointFailed: false,
+        lastChangedBy: undefined,
         graceTimer: undefined,
       });
       return live.doc;
     },
 
-    async onStoreDocument({ document, documentName, lastContext }) {
+    async onChange({ document, context }) {
       const session = sessions.get(document);
-      if (!session) {
+      if (session) {
+        session.lastChangedBy = context;
+      }
+    },
+
+    // TODO(co-edition): this writes the `.md` on every debounced store, about every 2 to 10 seconds
+    // while people type. LIVE_SESSION.md keeps the Yjs state in a durable store between
+    // checkpoints instead, since each write is a new file revision that agents' conditional
+    // writes conflict with.
+    async onStoreDocument({ document, documentName }) {
+      const session = sessions.get(document);
+      // Not `lastContext`: a direct connection's disconnect stores the document with its own
+      // context, even when it changed nothing.
+      const writer = session?.lastChangedBy;
+      if (!session || !writer) {
         return;
       }
-      if (lastContext.canWrite !== true) {
+      if (writer.canWrite !== true) {
         session.checkpointFailed = true;
         logger.error(
-          { documentName, workspaceId: lastContext.workspaceId },
+          { documentName, workspaceId: writer.workspaceId },
           "Collab document changed without a writer"
         );
         throw new Error("The document was changed without a writer.");
@@ -123,13 +156,16 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       let checkpoint: Result<LiveCheckpoint, string>;
       try {
         checkpoint = await checkpointLiveDocument(
-          lastContext,
+          writer,
           { doc: document, comments: session.comments },
           session.checkpoint
         );
       } catch (err) {
         session.checkpointFailed = true;
-        return logUnexpected(documentName, "Collab checkpoint failed")(err);
+        return logUnexpected(
+          { documentName, workspaceId: writer.workspaceId },
+          "Collab checkpoint failed"
+        )(err);
       }
       if (checkpoint.isErr()) {
         // TODO(co-edition): a revision conflict never recovers. `session.checkpoint` only moves on
@@ -139,7 +175,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         logger.error(
           {
             documentName,
-            workspaceId: lastContext.workspaceId,
+            workspaceId: writer.workspaceId,
             reason: checkpoint.error,
           },
           "Collab checkpoint failed"
@@ -156,6 +192,10 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         return;
       }
       // Holding the document as a direct connection keeps Hocuspocus from unloading it.
+      // TODO(co-edition): the hold inflates the connection counts Hocuspocus reports, and a store
+      // that finishes between the last connection's removal and this hook unloads the document
+      // with no grace period. Vetoing the unload from `beforeUnloadDocument` until the period ends
+      // would cover every unload path.
       if (session.graceTimer === undefined) {
         document.addDirectConnection();
       }

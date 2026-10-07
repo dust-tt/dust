@@ -134,6 +134,9 @@ export async function checkpointLiveDocument(
     return new Ok(last);
   }
 
+  // TODO(co-edition): without `last.revision` the write is unconditional, so threads or content
+  // written to the file since the load are erased. It also decodes the content back from the
+  // buffer and stats the file again, on every checkpoint.
   const written = await writeCanonicalFileContent(
     auth,
     dustFs,

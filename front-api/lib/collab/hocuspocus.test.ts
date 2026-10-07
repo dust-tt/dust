@@ -26,6 +26,8 @@ const DOCUMENT_NAME = "w1:user-u1/notes.md";
 const SOURCE = "# Notes\n\nHello.\n";
 const COMMENTS: DfmComment[] = [];
 
+// TODO(co-edition): open a written file through `openLiveFile` instead, and share `typeInto` with
+// live_file.test.ts.
 async function liveFile(canWrite: boolean): Promise<LiveFile> {
   const { authenticator: auth, workspace } = await createResourceTest({});
   const dustFs = await DustFileSystem.forUser(auth);
@@ -164,6 +166,30 @@ describe("createCollabHocuspocus", () => {
 
     await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
     expect(hocuspocus.getDocumentsCount()).toBe(1);
+  });
+
+  it("checkpoints through the last writer when a reader disconnects", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    const reader = await liveFile(false);
+    vi.useFakeTimers();
+
+    const writing = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    await writing.transact((doc) => typeInto(doc, "Edit."));
+    const reading = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      reader
+    );
+    await reading.disconnect();
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(checkpointLiveDocument).mock.calls[0][0]).toBe(writer);
+
+    await writing.disconnect();
+    await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
+    expect(hocuspocus.getDocumentsCount()).toBe(0);
   });
 
   it("refuses to checkpoint an edit made without write access", async () => {
