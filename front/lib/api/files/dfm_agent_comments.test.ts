@@ -330,6 +330,28 @@ describe("replyToAgentComment", () => {
     ).toBe(true);
   });
 
+  it("reopens a resolved thread, keeping its anchors", async () => {
+    const resolved = SOURCE.replace("status=open", "status=resolved");
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(
+      stored(resolved, "7")
+    );
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    expect((await reply()).isOk()).toBe(true);
+
+    const before = parseDfm(resolved);
+    const after = parseDfm(written(0).content);
+    if (before.isErr() || after.isErr()) {
+      throw new Error("Unparsable document.");
+    }
+    expect(before.value.comments[0].status).toBe("resolved");
+    expect(after.value.body).toBe(before.value.body);
+    expect(after.value.comments[0]).toMatchObject({ id: "c1", status: "open" });
+    expect(after.value.comments[0].messages).toHaveLength(2);
+  });
+
   it("signs again after the last message of a thread that changed on retry", async () => {
     const replied = SOURCE.replace(
       "Why Friday?\n:::\n",

@@ -69,7 +69,8 @@ export const DOCUMENTS_TOOLS_METADATA = [
     description:
       "Reply in an existing comment thread of a Markdown document, such as one that mentions " +
       "you. The reply is attributed to you, signed by Dust so readers see it as verified, and " +
-      "shows under the thread's last message in the document editor. " +
+      "shows under the thread's last message in the document editor, and reopens the thread " +
+      "if it was resolved. " +
       "Never write comment directives by hand with a file edit: they would read as unverified.",
     schema: {
       path: z

@@ -264,9 +264,10 @@ export async function addAgentComment(
  * @cc [owner:tdraier,label:product;concurrency] dfm-agent-comment-reply
  * Replying MUST append to the thread `commentId` exactly one message, the one
  * `signDfmAgentCommentMessage` writes for `agent` after the thread's last message as read, and
- * MUST NOT change the thread's status, its other messages, the front matter, the body or the
- * other threads, beyond the codec normalising line endings and dropping a leading byte order
- * mark. A missing thread MUST fail with `comment_not_found`. It MUST be written through
+ * MUST leave the thread open, reopening a resolved one so the reply is not buried in the
+ * collapsed resolved threads. It MUST NOT change the thread's other messages, the front matter,
+ * the body or the other threads, beyond the codec normalising line endings and dropping a
+ * leading byte order mark. A missing thread MUST fail with `comment_not_found`. It MUST be written through
  * `writeDocumentChange`, signing again when a retry finds the thread changed.
  */
 export async function replyToAgentComment(
@@ -315,7 +316,11 @@ export async function replyToAgentComment(
           ...document,
           comments: document.comments.map((comment) =>
             comment.id === commentId
-              ? { ...comment, messages: [...comment.messages, signed.value] }
+              ? {
+                  ...comment,
+                  status: "open",
+                  messages: [...comment.messages, signed.value],
+                }
               : comment
           ),
         },
