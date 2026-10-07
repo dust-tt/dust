@@ -1,0 +1,227 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:53+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "NetSuite OAuth setup guide"
+msgstr "Guide de configuration OAuth NetSuite"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Before connecting, you need <0>NetSuite administrator access</0> to enable the required features and create an integration record. Replace <1>{ACCOUNT_ID_PLACEHOLDER}</1> throughout with your NetSuite account ID (e.g. <2>td3485262</2>)."
+msgstr "Avant de vous connecter, vous devez disposer d’un <0>accès administrateur NetSuite</0> pour activer les fonctionnalités requises et créer un enregistrement d’intégration. Remplacez partout <1>{ACCOUNT_ID_PLACEHOLDER}</1> par l’ID de votre compte NetSuite (par ex. <2>td3485262</2>)."
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "1. Enable required NetSuite features"
+msgstr "1. Activer les fonctionnalités NetSuite requises"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "In NetSuite, go to <0>Setup → Company → Enable Features → SuiteCloud</0> and enable:"
+msgstr "Dans NetSuite, accédez à <0>Setup → Company → Enable Features → SuiteCloud</0> et activez :"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "2. Install the MCP Standard Tools SuiteApp"
+msgstr "2. Installer la SuiteApp MCP Standard Tools"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Install the <0>MCP Standard Tools SuiteApp</0> from the SuiteApp marketplace. This provides the tools Dust will use to interact with your NetSuite account."
+msgstr "Installez la <0>MCP Standard Tools SuiteApp</0> depuis la marketplace SuiteApp. Elle fournit les outils que Dust utilisera pour interagir avec votre compte NetSuite."
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "3. Create a custom role"
+msgstr "3. Créer un rôle personnalisé"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Go to <0>Setup → Users/Roles → Manage Roles → New</0>. The <1>Administrator</1> role cannot be used. Your custom role must include the following permissions: <2>MCP Server Connection</2>, <3>OAuth 2.0 Access Tokens</3>, and <4>Login using OAuth 2.0 Access Tokens</4>. Assign this role to the user who will authenticate with Dust."
+msgstr "Accédez à <0>Setup → Users/Roles → Manage Roles → New</0>. Le rôle <1>Administrator</1> ne peut pas être utilisé. Votre rôle personnalisé doit inclure les permissions suivantes : <2>MCP Server Connection</2>, <3>OAuth 2.0 Access Tokens</3> et <4>Login using OAuth 2.0 Access Tokens</4>. Attribuez ce rôle à l’utilisateur qui s’authentifiera auprès de Dust."
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "4. Create an integration record"
+msgstr "4. Créer un enregistrement d’intégration"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Go to <0>Setup → Integration → Manage Integrations → New</0>. Name it \"Dust NetSuite MCP\", enable <1>OAuth 2.0</1> as the authentication method, and add these three redirect URIs:"
+msgstr "Accédez à <0>Setup → Integration → Manage Integrations → New</0>. Nommez-le « Dust NetSuite MCP », activez <1>OAuth 2.0</1> comme méthode d’authentification et ajoutez ces trois URI de redirection :"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Save the record and copy the <0>Consumer Key (Client ID)</0> and <1>Consumer Secret (Client Secret)</1> — they won't be visible again."
+msgstr "Enregistrez-le et copiez la <0>Consumer Key (Client ID)</0> et le <1>Consumer Secret (Client Secret)</1> : ils ne seront plus visibles ensuite."
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "5. Enter credentials below"
+msgstr "5. Saisir les identifiants ci-dessous"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Fill in the OAuth fields using the values below. Replace <0>{ACCOUNT_ID_PLACEHOLDER}</0> with your NetSuite account ID."
+msgstr "Remplissez les champs OAuth avec les valeurs ci-dessous. Remplacez <0>{ACCOUNT_ID_PLACEHOLDER}</0> par l’ID de votre compte NetSuite."
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgctxt "table column header"
+msgid "Field"
+msgstr "Champ"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgctxt "table column header"
+msgid "Value"
+msgstr "Valeur"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Server URL"
+msgstr "URL du serveur"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Client ID"
+msgstr "Client ID"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Consumer Key from the integration record (step 4)"
+msgstr "Consumer Key de l’enregistrement d’intégration (étape 4)"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+msgid "Consumer Secret from the integration record (step 4)"
+msgstr "Consumer Secret de l’enregistrement d’intégration (étape 4)"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Authorization URL"
+msgstr "URL d’autorisation"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Token URL"
+msgstr "URL du jeton"
+
+#: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Scope"
+msgstr "Scope"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Power BI OAuth setup guide"
+msgstr "Guide de configuration OAuth Power BI"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Before connecting, register an application in <0>Microsoft Entra ID</0> to obtain OAuth credentials. You need <1>Microsoft Entra admin access</1> and the <2>MCP feature enabled</2> in your Power BI admin portal."
+msgstr "Avant de vous connecter, enregistrez une application dans <0>Microsoft Entra ID</0> pour obtenir des identifiants OAuth. Vous devez disposer d’un <1>accès administrateur Microsoft Entra</1> et de la <2>fonctionnalité MCP activée</2> dans votre portail d’administration Power BI."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "1. Register an app in Microsoft Entra"
+msgstr "1. Enregistrer une application dans Microsoft Entra"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Go to <0>entra.microsoft.com → App registrations → New registration</0>. Name it \"Dust Power BI MCP\", select <1>organizational directory only</1>, and leave the redirect URI blank for now. Note the <2>Application (client) ID</2> and <3>Directory (tenant) ID</3>."
+msgstr "Accédez à <0>entra.microsoft.com → App registrations → New registration</0>. Nommez-la « Dust Power BI MCP », sélectionnez <1>organizational directory only</1> et laissez l’URI de redirection vide pour l’instant. Notez l’<2>Application (client) ID</2> et le <3>Directory (tenant) ID</3>."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "2. Configure authentication"
+msgstr "2. Configurer l’authentification"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "In the <0>Authentication</0> section, add these three redirect URIs:"
+msgstr "Dans la section <0>Authentication</0>, ajoutez ces trois URI de redirection :"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Also enable <0>Allow public client flows</0>."
+msgstr "Activez aussi <0>Allow public client flows</0>."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "3. Create a client secret"
+msgstr "3. Créer un secret client"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Under <0>Certificates & secrets → New client secret</0>, generate a secret and copy its <1>Value</1> immediately — it won't be visible again."
+msgstr "Dans <0>Certificates & secrets → New client secret</0>, générez un secret et copiez immédiatement sa <1>Value</1> : elle ne sera plus visible ensuite."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "4. Add API permissions"
+msgstr "4. Ajouter les permissions d’API"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Under <0>API permissions</0>, search for <1>Power BI Service</1> and add these delegated permissions, then grant admin consent:"
+msgstr "Dans <0>API permissions</0>, recherchez <1>Power BI Service</1> et ajoutez ces permissions déléguées, puis accordez le consentement administrateur :"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "5. Enable MCP in Power BI admin portal"
+msgstr "5. Activer MCP dans le portail d’administration Power BI"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "In <0>app.fabric.microsoft.com</0>, go to the admin portal and enable: <1>\"Users can use the Power BI Model Context Protocol server endpoint (preview)\"</1>."
+msgstr "Sur <0>app.fabric.microsoft.com</0>, accédez au portail d’administration et activez : <1>\"Users can use the Power BI Model Context Protocol server endpoint (preview)\"</1>."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "6. Enter credentials below"
+msgstr "6. Saisir les identifiants ci-dessous"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Fill in the OAuth fields using the values below. Replace <0>{TENANT_ID_PLACEHOLDER}</0> with your <1>Directory (tenant) ID</1>."
+msgstr "Remplissez les champs OAuth avec les valeurs ci-dessous. Remplacez <0>{TENANT_ID_PLACEHOLDER}</0> par votre <1>Directory (tenant) ID</1>."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "Your Application (client) ID from step 1"
+msgstr "Votre Application (client) ID de l’étape 1"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "The secret Value from step 3"
+msgstr "La Value du secret de l’étape 3"
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "<0>Important:</0> the scope must use <1>analysis.windows.net</1>, not <2>api.fabric.microsoft.com</2>."
+msgstr "<0>Important :</0> le scope doit utiliser <1>analysis.windows.net</1>, et non <2>api.fabric.microsoft.com</2>."
+
+#: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
+msgid "The <0>offline_access</0> scope allows Dust to automatically refresh the authentication token in the background, so users don't have to re-authenticate every time the token expires (typically after one hour)."
+msgstr "Le scope <0>offline_access</0> permet à Dust d’actualiser automatiquement le jeton d’authentification en arrière-plan, pour que les utilisateurs n’aient pas à se réauthentifier à chaque expiration du jeton (généralement au bout d’une heure)."
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "Snowflake custom OAuth setup guide"
+msgstr "Guide de configuration OAuth personnalisé Snowflake"
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "Before connecting, you need to create a Custom OAuth Security Integration in your Snowflake account. Run the following SQL commands as an <0>ACCOUNTADMIN</0>:"
+msgstr "Avant de vous connecter, vous devez créer une Security Integration Custom OAuth dans votre compte Snowflake. Exécutez les commandes SQL suivantes en tant qu’<0>ACCOUNTADMIN</0> :"
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "1. Create the OAuth Security Integration:"
+msgstr "1. Créer la Security Integration OAuth :"
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "2. Get the Client ID and Client Secret:"
+msgstr "2. Récupérer le Client ID et le Client Secret :"
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "This returns a JSON object with <0>OAUTH_CLIENT_ID</0> and <1>OAUTH_CLIENT_SECRET</1>. Copy these values into the form below."
+msgstr "Cette commande renvoie un objet JSON contenant <0>OAUTH_CLIENT_ID</0> et <1>OAUTH_CLIENT_SECRET</1>. Copiez ces valeurs dans le formulaire ci-dessous."
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "3. (Optional) Grant the integration to specific roles:"
+msgstr "3. (Facultatif) Accorder l’intégration à des rôles spécifiques :"
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "<0>Note:</0> The warehouse you specify below will be used for all users. The role will also be shared across all users."
+msgstr "<0>Remarque :</0> l’entrepôt (warehouse) que vous indiquez ci-dessous sera utilisé pour tous les utilisateurs. Le rôle sera également partagé entre tous les utilisateurs."
+
+#: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
+msgid "<0>Note:</0> The warehouse you specify below will be used for all users. The default role can be overridden by individual users during their personal authentication."
+msgstr "<0>Remarque :</0> l’entrepôt (warehouse) que vous indiquez ci-dessous sera utilisé pour tous les utilisateurs. Chaque utilisateur peut remplacer le rôle par défaut lors de son authentification personnelle."
+
+#: front/components/actions/mcp/provider_setup_instructions/index.tsx
+msgid "Clicking \"Setup connection\" will start a Snowflake OAuth flow using the role above. Your Snowflake user must have access to this role to complete authentication."
+msgstr "Cliquer sur « Configurer la connexion » lancera un flux OAuth Snowflake avec le rôle ci-dessus. Votre utilisateur Snowflake doit avoir accès à ce rôle pour terminer l’authentification."

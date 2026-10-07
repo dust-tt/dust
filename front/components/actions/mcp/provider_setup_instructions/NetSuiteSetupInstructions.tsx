@@ -3,6 +3,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -11,6 +12,8 @@ const REDIRECT_URIS = [
   "https://eu.dust.tt/oauth/mcp_static/finalize",
   "https://dust.tt/oauth/mcp_static/finalize",
 ];
+
+const ACCOUNT_ID_PLACEHOLDER = "<accountId>";
 
 export function NetSuiteSetupInstructions() {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,32 +28,40 @@ export function NetSuiteSetupInstructions() {
             ) : (
               <ChevronRightIcon className="h-4 w-4 shrink-0" />
             )}
-            <span>NetSuite OAuth Setup Guide</span>
+            <span>
+              <Trans>NetSuite OAuth setup guide</Trans>
+            </span>
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-3 space-y-4 rounded-lg border border-border bg-background p-4 text-sm">
             <p className="text-muted-foreground">
-              Before connecting, you need{" "}
-              <strong>NetSuite administrator access</strong> to enable the
-              required features and create an integration record. Replace{" "}
-              <code className="rounded bg-muted px-1">{"<accountId>"}</code>{" "}
-              throughout with your NetSuite account ID (e.g.{" "}
-              <code className="rounded bg-muted px-1">td3485262</code>
-              ).
+              <Trans>
+                Before connecting, you need{" "}
+                <strong>NetSuite administrator access</strong> to enable the
+                required features and create an integration record. Replace{" "}
+                <code className="rounded bg-muted px-1">
+                  {ACCOUNT_ID_PLACEHOLDER}
+                </code>{" "}
+                throughout with your NetSuite account ID (e.g.{" "}
+                <code className="rounded bg-muted px-1">td3485262</code>
+                ).
+              </Trans>
             </p>
 
             <div className="space-y-4">
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  1. Enable required NetSuite features
+                  <Trans>1. Enable required NetSuite features</Trans>
                 </p>
                 <p className="mb-2 text-muted-foreground">
-                  In NetSuite, go to{" "}
-                  <strong>
-                    Setup → Company → Enable Features → SuiteCloud
-                  </strong>{" "}
-                  and enable:
+                  <Trans>
+                    In NetSuite, go to{" "}
+                    <strong>
+                      Setup → Company → Enable Features → SuiteCloud
+                    </strong>{" "}
+                    and enable:
+                  </Trans>
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {
@@ -61,79 +72,91 @@ export function NetSuiteSetupInstructions() {
 
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  2. Install the MCP Standard Tools SuiteApp
+                  <Trans>2. Install the MCP Standard Tools SuiteApp</Trans>
                 </p>
                 <p className="text-muted-foreground">
-                  Install the <strong>MCP Standard Tools SuiteApp</strong> from
-                  the SuiteApp marketplace. This provides the tools Dust will
-                  use to interact with your NetSuite account.
+                  <Trans>
+                    Install the <strong>MCP Standard Tools SuiteApp</strong>{" "}
+                    from the SuiteApp marketplace. This provides the tools Dust
+                    will use to interact with your NetSuite account.
+                  </Trans>
                 </p>
               </div>
 
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  3. Create a custom role
+                  <Trans>3. Create a custom role</Trans>
                 </p>
                 <p className="text-muted-foreground">
-                  Go to{" "}
-                  <strong>Setup → Users/Roles → Manage Roles → New</strong>. The{" "}
-                  <strong>Administrator</strong> role cannot be used. Your
-                  custom role must include the following permissions:{" "}
-                  <strong>MCP Server Connection</strong>,{" "}
-                  <strong>OAuth 2.0 Access Tokens</strong>, and{" "}
-                  <strong>Login using OAuth 2.0 Access Tokens</strong>. Assign
-                  this role to the user who will authenticate with Dust.
+                  <Trans>
+                    Go to{" "}
+                    <strong>Setup → Users/Roles → Manage Roles → New</strong>.
+                    The <strong>Administrator</strong> role cannot be used. Your
+                    custom role must include the following permissions:{" "}
+                    <strong>MCP Server Connection</strong>,{" "}
+                    <strong>OAuth 2.0 Access Tokens</strong>, and{" "}
+                    <strong>Login using OAuth 2.0 Access Tokens</strong>. Assign
+                    this role to the user who will authenticate with Dust.
+                  </Trans>
                 </p>
               </div>
 
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  4. Create an integration record
+                  <Trans>4. Create an integration record</Trans>
                 </p>
                 <p className="mb-2 text-muted-foreground">
-                  Go to{" "}
-                  <strong>
-                    Setup → Integration → Manage Integrations → New
-                  </strong>
-                  . Name it "Dust NetSuite MCP", enable{" "}
-                  <strong>OAuth 2.0</strong> as the authentication method, and
-                  add these three redirect URIs:
+                  <Trans>
+                    Go to{" "}
+                    <strong>
+                      Setup → Integration → Manage Integrations → New
+                    </strong>
+                    . Name it "Dust NetSuite MCP", enable{" "}
+                    <strong>OAuth 2.0</strong> as the authentication method, and
+                    add these three redirect URIs:
+                  </Trans>
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {REDIRECT_URIS.join("\n")}
                 </pre>
                 <p className="mt-2 text-muted-foreground">
-                  Save the record and copy the{" "}
-                  <strong>Consumer Key (Client ID)</strong> and{" "}
-                  <strong>Consumer Secret (Client Secret)</strong> — they won't
-                  be visible again.
+                  <Trans>
+                    Save the record and copy the{" "}
+                    <strong>Consumer Key (Client ID)</strong> and{" "}
+                    <strong>Consumer Secret (Client Secret)</strong> — they
+                    won't be visible again.
+                  </Trans>
                 </p>
               </div>
 
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  5. Enter credentials below
+                  <Trans>5. Enter credentials below</Trans>
                 </p>
                 <p className="mb-3 text-muted-foreground">
-                  Fill in the OAuth fields using the values below. Replace{" "}
-                  <code className="rounded bg-muted px-1">{"<accountId>"}</code>{" "}
-                  with your NetSuite account ID.
+                  <Trans>
+                    Fill in the OAuth fields using the values below. Replace{" "}
+                    <code className="rounded bg-muted px-1">
+                      {ACCOUNT_ID_PLACEHOLDER}
+                    </code>{" "}
+                    with your NetSuite account ID.
+                  </Trans>
                 </p>
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="pb-2 pr-4 text-left font-medium text-foreground">
-                        Field
+                        <Trans context="table column header">Field</Trans>
                       </th>
                       <th className="pb-2 text-left font-medium text-foreground">
-                        Value
+                        <Trans context="table column header">Value</Trans>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="text-muted-foreground">
                     <tr className="border-b border-border/50">
                       <td className="py-2 pr-4 font-medium text-foreground">
-                        Server URL
+                        <Trans>Server URL</Trans>
                       </td>
                       <td className="py-2 font-mono">
                         https://{"<accountId>"}
@@ -142,23 +165,27 @@ export function NetSuiteSetupInstructions() {
                     </tr>
                     <tr className="border-b border-border/50">
                       <td className="py-2 pr-4 font-medium text-foreground">
-                        Client ID
+                        <Trans>Client ID</Trans>
                       </td>
                       <td className="py-2">
-                        Consumer Key from the integration record (step 4)
+                        <Trans>
+                          Consumer Key from the integration record (step 4)
+                        </Trans>
                       </td>
                     </tr>
                     <tr className="border-b border-border/50">
                       <td className="py-2 pr-4 font-medium text-foreground">
-                        Client Secret
+                        <Trans>Client Secret</Trans>
                       </td>
                       <td className="py-2">
-                        Consumer Secret from the integration record (step 4)
+                        <Trans>
+                          Consumer Secret from the integration record (step 4)
+                        </Trans>
                       </td>
                     </tr>
                     <tr className="border-b border-border/50">
                       <td className="py-2 pr-4 font-medium text-foreground">
-                        Authorization URL
+                        <Trans>Authorization URL</Trans>
                       </td>
                       <td className="py-2 font-mono">
                         https://{"<accountId>"}
@@ -167,7 +194,7 @@ export function NetSuiteSetupInstructions() {
                     </tr>
                     <tr className="border-b border-border/50">
                       <td className="py-2 pr-4 font-medium text-foreground">
-                        Token URL
+                        <Trans>Token URL</Trans>
                       </td>
                       <td className="py-2 font-mono">
                         https://{"<accountId>"}
@@ -176,7 +203,7 @@ export function NetSuiteSetupInstructions() {
                     </tr>
                     <tr>
                       <td className="pt-2 pr-4 font-medium text-foreground">
-                        Scope
+                        <Trans>Scope</Trans>
                       </td>
                       <td className="pt-2 font-mono">mcp</td>
                     </tr>
