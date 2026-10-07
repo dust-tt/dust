@@ -1,6 +1,7 @@
 import { useEditors } from "@app/lib/swr/agent_editors";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, Page } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface FeedbackSelectorPopoverContentProps {
   owner: LightWorkspaceType;
@@ -35,7 +36,9 @@ export function FeedbackSelectorPopoverContent({
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <Page.P variant="secondary">Editors who will see this:</Page.P>
+        <Page.P variant="secondary">
+          <Trans>Editors who will see this:</Trans>
+        </Page.P>
         <Avatar.Stack avatars={avatarProps} size="xs" nbVisibleItems={4} />
       </div>
     </div>

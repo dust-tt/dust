@@ -14,6 +14,7 @@ import {
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface CreditSpendCheckpointPausedCardProps {
@@ -33,6 +34,7 @@ export function CreditSpendCheckpointPausedCard({
   triggeringUser,
   creditsUsed,
 }: CreditSpendCheckpointPausedCardProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -51,6 +53,9 @@ export function CreditSpendCheckpointPausedCard({
     disabled: !hasFeature("conversation_consumption_details"),
   });
   const displayedCredits = consumption?.totalBilledCredits ?? creditsUsed;
+  const formattedCredits =
+    displayedCredits !== null ? formatCreditValue(displayedCredits) : null;
+  const triggeringUserName = triggeringUser?.fullName;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
     parentUserId: triggeringUser?.sId,
@@ -73,7 +78,19 @@ export function CreditSpendCheckpointPausedCard({
   };
 
   if (status === "stopped") {
-    const stoppedBy = triggeringUser?.fullName ?? "the user";
+    let stoppedMessage: string;
+    if (triggeringUserName) {
+      stoppedMessage =
+        formattedCredits !== null
+          ? t`${triggeringUserName} stopped this task after it used ${formattedCredits}.`
+          : t`${triggeringUserName} stopped this task because it was using a lot of credits.`;
+    } else {
+      stoppedMessage =
+        formattedCredits !== null
+          ? t`The user stopped this task after it used ${formattedCredits}.`
+          : t`The user stopped this task because it was using a lot of credits.`;
+    }
+
     return (
       <Card
         variant="secondary"
@@ -83,14 +100,10 @@ export function CreditSpendCheckpointPausedCard({
         <div className="flex items-center gap-2">
           <Avatar icon={PieChart01} size="sm" />
           <div className="heading-base">
-            Stopped to avoid excessive credit use
+            <Trans>Stopped to avoid excessive credit use</Trans>
           </div>
         </div>
-        <div className="text-base text-muted-foreground">
-          {displayedCredits !== null
-            ? `${stoppedBy} stopped this task after it used ${formatCreditValue(displayedCredits)}.`
-            : `${stoppedBy} stopped this task because it was using a lot of credits.`}
-        </div>
+        <div className="text-base text-muted-foreground">{stoppedMessage}</div>
       </Card>
     );
   }
@@ -103,13 +116,15 @@ export function CreditSpendCheckpointPausedCard({
     >
       <div className="flex items-center gap-2">
         <Avatar icon={PieChart01} size="sm" />
-        <div className="heading-base">Paused to avoid excessive credit use</div>
+        <div className="heading-base">
+          <Trans>Paused to avoid excessive credit use</Trans>
+        </div>
       </div>
 
       <div className="text-base text-muted-foreground">
-        {displayedCredits !== null
-          ? `This task has used ${formatCreditValue(displayedCredits)} so far. Continue running it?`
-          : "This task has used a lot of credits. Continue running it?"}
+        {formattedCredits !== null
+          ? t`This task has used ${formattedCredits} so far. Continue running it?`
+          : t`This task has used a lot of credits. Continue running it?`}
       </div>
 
       {canCurrentUserRespond ? (
@@ -121,7 +136,7 @@ export function CreditSpendCheckpointPausedCard({
           )}
           <div className="flex flex-wrap justify-end gap-3">
             <Button
-              label="No, stop"
+              label={t`No, stop`}
               variant="outline"
               icon={XClose}
               disabled={submittingDecision !== null}
@@ -129,7 +144,7 @@ export function CreditSpendCheckpointPausedCard({
               onClick={() => void handleDecision("decline")}
             />
             <Button
-              label="Yes, continue"
+              label={t`Yes, continue`}
               variant="highlight"
               icon={Check}
               disabled={submittingDecision !== null}
@@ -140,11 +155,13 @@ export function CreditSpendCheckpointPausedCard({
         </>
       ) : (
         <div className="text-sm text-muted-foreground">
-          Waiting for{" "}
-          <span className="font-semibold text-foreground">
-            {triggeringUser?.fullName}
-          </span>{" "}
-          to decide whether to continue.
+          <Trans>
+            Waiting for{" "}
+            <span className="font-semibold text-foreground">
+              {triggeringUserName}
+            </span>{" "}
+            to decide whether to continue.
+          </Trans>
         </div>
       )}
     </Card>

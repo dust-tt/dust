@@ -21,6 +21,7 @@ import {
   LinkExternal01,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
@@ -40,6 +41,7 @@ export function GoogleDriveFileAuthorizationRequired({
   mcpServerId,
   retryHandler,
 }: GoogleDriveFileAuthorizationRequiredProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const clientType = useClientType();
   const { cellInfo } = useCellContext();
@@ -92,7 +94,7 @@ export function GoogleDriveFileAuthorizationRequired({
         const data: PickerTokenResponseType = await response.json();
         setPickerCredentials(data);
       } catch {
-        setCredentialsError("Failed to load picker credentials");
+        setCredentialsError(t`Failed to load picker credentials`);
       }
     };
 
@@ -103,6 +105,7 @@ export function GoogleDriveFileAuthorizationRequired({
     owner.sId,
     mcpServerId,
     pickerCredentials,
+    t,
   ]);
 
   const handleFilesSelected = useCallback(
@@ -187,12 +190,13 @@ export function GoogleDriveFileAuthorizationRequired({
     window.open(webAppConversationUrl, "_blank");
   };
 
+  const triggeringUserName = triggeringUser?.fullName;
   const isReady = pickerCredentials && isPickerLoaded;
   const isButtonLoading = isOpeningPicker || (!isReady && !credentialsError);
 
   return (
     <ContentMessage
-      title={isAuthorized ? "File authorized" : "Authorization required"}
+      title={isAuthorized ? t`File authorized` : t`Authorization required`}
       variant={isAuthorized ? "success" : "primary"}
       icon={isAuthorized ? CheckCircle : File04}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
@@ -201,14 +205,14 @@ export function GoogleDriveFileAuthorizationRequired({
         <>
           <div className="font-sm whitespace-normal break-words text-foreground">
             {isAuthorized ? (
-              ` your file is now accessible. Continuing...`
+              <Trans>Your file is now accessible. Continuing...</Trans>
             ) : isExtension ? (
-              <>
+              <Trans>
                 File authorization is not available in the extension. Please
                 open this conversation in the web app to authorize the file.
-              </>
+              </Trans>
             ) : (
-              <>To access your file, please authorize it once.</>
+              <Trans>To access your file, please authorize it once.</Trans>
             )}
           </div>
           {!isAuthorized && (
@@ -216,14 +220,14 @@ export function GoogleDriveFileAuthorizationRequired({
               <Button
                 variant="outline"
                 size="xs"
-                label="Skip"
+                label={t`Skip`}
                 icon={XClose}
                 disabled={isResolving || isOpeningPicker}
                 onClick={() => void handleSkip()}
               />
               {isExtension ? (
                 <Button
-                  label="Open in Web App"
+                  label={t`Open in web app`}
                   variant="highlight"
                   size="xs"
                   icon={LinkExternal01}
@@ -231,7 +235,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 />
               ) : (
                 <Button
-                  label={isButtonLoading ? "Loading..." : "Open File Picker"}
+                  label={isButtonLoading ? t`Loading...` : t`Open file picker`}
                   variant="highlight"
                   size="xs"
                   icon={File04}
@@ -249,15 +253,17 @@ export function GoogleDriveFileAuthorizationRequired({
           {!isExtension && (error ?? credentialsError) && (
             <div className="text-sm text-warning-500">
               {credentialsError ??
-                "Failed to load file picker. Please try again."}
+                t`Failed to load file picker. Please try again.`}
             </div>
           )}
         </>
       ) : (
         <div className="font-sm whitespace-normal break-words text-foreground">
-          {triggeringUser?.fullName} needs to authorize a file.
+          <Trans>{triggeringUserName} needs to authorize a file.</Trans>
           <br />
-          <span className="font-semibold">Waiting for them to continue...</span>
+          <span className="font-semibold">
+            <Trans>Waiting for them to continue...</Trans>
+          </span>
         </div>
       )}
     </ContentMessage>

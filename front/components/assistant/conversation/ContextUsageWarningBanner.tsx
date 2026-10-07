@@ -2,6 +2,7 @@ import { useCompactConversation } from "@app/hooks/conversations";
 import type { GetConversationContextUsageResponse } from "@app/lib/api/assistant/conversation/context_usage";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContentMessageInline, Hoverable, InfoCircle } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface ContextUsageWarningBannerProps {
   owner: LightWorkspaceType;
@@ -27,11 +28,11 @@ export const ContextUsageWarningBanner = ({
     >
       <div className="flex w-full items-center justify-between gap-2">
         <span className="min-w-0 truncate">
-          Conversation context is almost full
+          <Trans>Conversation context is almost full</Trans>
         </span>
         {isCompacting ? (
           <span className="copy-sm shrink-0 text-muted-foreground">
-            Compacting
+            <Trans>Compacting</Trans>
           </span>
         ) : (
           <Hoverable
@@ -43,7 +44,7 @@ export const ContextUsageWarningBanner = ({
               }
             }}
           >
-            Compact now
+            <Trans>Compact now</Trans>
           </Hoverable>
         )}
       </div>

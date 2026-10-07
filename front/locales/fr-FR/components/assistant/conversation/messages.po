@@ -13,6 +13,793 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/components/assistant/conversation/AgentBrowserContainer.tsx
+msgid "Chat with..."
+msgstr "Discuter avec…"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Wait for compaction to finish."
+msgstr "Attendez la fin du compactage."
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Context is full, compact to continue."
+msgstr "Le contexte est plein, compactez-le pour continuer."
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Wait for the branch to finish preparing."
+msgstr "Attendez la fin de la préparation de la branche."
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "You cannot send a message to an agent awaiting a wake-up set by another user"
+msgstr "Vous ne pouvez pas envoyer de message à un agent en attente d’un réveil planifié par un autre utilisateur"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Skipping…"
+msgstr "Passage…"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Stopping…"
+msgstr "Arrêt…"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Skip"
+msgstr "Passer"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Stop all"
+msgstr "Tout arrêter"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Stop"
+msgstr "Arrêter"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "This conversation belongs to an archived Pod. No new messages can be sent."
+msgstr "Cette conversation appartient à un Pod archivé. Vous ne pouvez plus envoyer de messages."
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "{blockedActionCount, plural, one {<0>{blockedActionCount} manual action</0> required} other {<1>{blockedActionCount} manual actions</1> required}}"
+msgstr "{blockedActionCount, plural, one {<0>{blockedActionCount} action manuelle</0> requise} other {<1>{blockedActionCount} actions manuelles</1> requises}}"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Review"
+msgstr "Vérifier"
+
+#: front/components/assistant/conversation/AgentInputBar.tsx
+msgid "Preparing branch… You can draft a message while its files are copied."
+msgstr "Préparation de la branche… Vous pouvez rédiger un message pendant la copie de ses fichiers."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "{label}. Open details."
+msgstr "{label}. Ouvrir les détails."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Auto-switched to Standard"
+msgstr "Basculé automatiquement sur Standard"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "You have reached your Premium model limit for the current 7-day window, so Dust ran this message on a Standard model instead."
+msgstr "Vous avez atteint votre limite de modèles Premium pour la période de 7 jours en cours. Dust a donc utilisé un modèle Standard pour ce message."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "<0>View your Premium model usage in Analytics</0>."
+msgstr "<0>Voir votre utilisation des modèles Premium dans Analytics</0>."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Context limit reached"
+msgstr "Limite de contexte atteinte"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "This conversation reached its size limit"
+msgstr "Cette conversation a atteint sa taille maximale"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Dust had to trim part of the tool output used to generate this message to fit the model's context window. This usually happens when a search or other tool returns more data than the model can process at once."
+msgstr "Dust a dû tronquer une partie du résultat d’outil utilisé pour générer ce message afin de respecter la fenêtre de contexte du modèle. Cela arrive généralement quand une recherche ou un autre outil renvoie plus de données que le modèle ne peut en traiter en une fois."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "For best accuracy, first use <0>/compact</0> to summarize this conversation and free up context. If needed, start a fresh conversation or narrow your request."
+msgstr "Pour une meilleure précision, utilisez d’abord <0>/compact</0> pour résumer cette conversation et libérer du contexte. Si besoin, démarrez une nouvelle conversation ou précisez votre demande."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Message link copied to clipboard"
+msgstr "Lien du message copié dans le presse-papiers"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Stop agent"
+msgstr "Arrêter l’agent"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Delete message"
+msgstr "Supprimer le message"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Are you sure you want to delete this message? This action cannot be undone."
+msgstr "Voulez-vous vraiment supprimer ce message ? Cette action est irréversible."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Delete"
+msgstr "Supprimer"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Copy message link"
+msgstr "Copier le lien du message"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Branch from here"
+msgstr "Créer une branche ici"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "Retry"
+msgstr "Réessayer"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Copied!"
+msgstr "Copié !"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Copy to clipboard"
+msgstr "Copier dans le presse-papiers"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "{formattedCreditValue} used for this message. View consumption breakdown"
+msgstr "Ce message a consommé {formattedCreditValue}. Voir le détail de la consommation"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "{formattedCreditValue} used for this message"
+msgstr "Ce message a consommé {formattedCreditValue}"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "More message actions"
+msgstr "Plus d’actions sur le message"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Message not sent"
+msgstr "Le message n’a pas été envoyé."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "{agentName} (archived)"
+msgstr "{agentName} (archivé)"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Model was overridden for this message using the model picker."
+msgstr "Le modèle a été remplacé pour ce message via le sélecteur de modèle."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "with {perMessageModelLabel}"
+msgstr "avec {perMessageModelLabel}"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Handoff from {parentAgentName}"
+msgstr "Transmis par {parentAgentName}"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Connection lost while generating message. Reconnect to check its progress."
+msgstr "Connexion perdue pendant la génération du message. Reconnectez-vous pour suivre sa progression."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Connection lost"
+msgstr "Connexion perdue"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Reconnect"
+msgstr "Reconnecter"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Generating image {imageNumber}"
+msgstr "Génération de l’image {imageNumber}"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Generation stopped."
+msgstr "Génération arrêtée."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Skipped. Running your next message."
+msgstr "Ignoré. Exécution de votre message suivant."
+
+#: front/components/assistant/conversation/AgentMessage.tsx
+msgid "Unexpected error"
+msgstr "Erreur inattendue"
+
+#: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
+msgid "Presentation"
+msgstr "Présentation"
+
+#: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
+msgid "Frames"
+msgstr "Frames"
+
+#: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
+msgid "Updated {updatedDate}"
+msgstr "Mis à jour le {updatedDate}"
+
+#: front/components/assistant/conversation/CompactionMessage.tsx
+msgid "Context compaction failed"
+msgstr "Le compactage du contexte a échoué."
+
+#: front/components/assistant/conversation/CompactionMessage.tsx
+msgid "You may experience reduced performance on very long conversations."
+msgstr "Les performances peuvent être réduites sur les très longues conversations."
+
+#: front/components/assistant/conversation/ContextUsageWarningBanner.tsx
+msgid "Conversation context is almost full"
+msgstr "Le contexte de la conversation est presque plein"
+
+#: front/components/assistant/conversation/ContextUsageWarningBanner.tsx
+msgid "Compacting"
+msgstr "Compactage"
+
+#: front/components/assistant/conversation/ContextUsageWarningBanner.tsx
+msgid "Compact now"
+msgstr "Compacter maintenant"
+
+#: front/components/assistant/conversation/ConversationContainer.tsx
+#: front/components/assistant/conversation/MentionInvalid.tsx
+msgid "Dismiss"
+msgstr "Ignorer"
+
+#: front/components/assistant/conversation/ConversationContainer.tsx
+msgid "Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+msgstr "Glissez-déposez ici vos fichiers texte (txt, doc, pdf) et images (jpg, png)."
+
+#: front/components/assistant/conversation/ConversationContainer.tsx
+msgid "Attach files to the conversation"
+msgstr "Joindre des fichiers à la conversation"
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "You don't have access to this page"
+msgstr "Vous n’avez pas accès à cette page"
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "This conversation may include restricted data."
+msgstr "Cette conversation peut contenir des données restreintes."
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "Conversation not found"
+msgstr "Conversation introuvable"
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "This conversation may have been deleted or moved."
+msgstr "Cette conversation a peut-être été supprimée ou déplacée."
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "Error loading conversation"
+msgstr "Erreur lors du chargement de la conversation"
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "Something went wrong while loading the conversation."
+msgstr "Une erreur s’est produite lors du chargement de la conversation."
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "Please try again later."
+msgstr "Veuillez réessayer plus tard."
+
+#: front/components/assistant/conversation/ConversationError.tsx
+msgid "Back to homepage"
+msgstr "Retour à l’accueil"
+
+#: front/components/assistant/conversation/ConversationForkNotice.tsx
+msgid "{userName} branched this conversation: <0>{childConversationTitle}</0>"
+msgstr "{userName} a créé une branche de cette conversation : <0>{childConversationTitle}</0>"
+
+#: front/components/assistant/conversation/ConversationLayout.tsx
+msgid "Dust - {conversationTitle}"
+msgstr "Dust - {conversationTitle}"
+
+#: front/components/assistant/conversation/ConversationLayout.tsx
+msgid "Dust - New conversation"
+msgstr "Dust - Nouvelle conversation"
+
+#: front/components/assistant/conversation/ConversationLayout.tsx
+msgid "Something unexpected happened"
+msgstr "Un problème inattendu est survenu"
+
+#: front/components/assistant/conversation/ConversationLayout.tsx
+msgid "Try refreshing the page to continue your conversation."
+msgstr "Actualisez la page pour poursuivre votre conversation."
+
+#: front/components/assistant/conversation/ConversationLayout.tsx
+msgid "Still having trouble? Reach out at support@dust.tt"
+msgstr "Le problème persiste ? Contactez-nous à support@dust.tt"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Link copied!"
+msgstr "Lien copié !"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Rename conversation"
+msgstr "Renommer la conversation"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Branch conversation"
+msgstr "Créer une branche de la conversation"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Mark as unread"
+msgstr "Marquer comme non lu"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Move to..."
+msgstr "Déplacer vers…"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Move to Pod"
+msgstr "Déplacer vers un Pod"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Search Pods"
+msgstr "Rechercher des Pods"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "New Pod"
+msgstr "Nouveau Pod"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Personal conversations"
+msgstr "Conversations personnelles"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "No matches"
+msgstr "Aucun résultat"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "No Pods"
+msgstr "Aucun Pod"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Participants"
+msgstr "Participants"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgctxt "verb, menu item"
+msgid "Join"
+msgstr "Rejoindre"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Open in a browser tab"
+msgstr "Ouvrir dans un onglet du navigateur"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Copy link"
+msgstr "Copier le lien"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Restrict URL access"
+msgstr "Restreindre l’accès par URL"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Make URL accessible"
+msgstr "Rendre l’URL accessible"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Convert to agent"
+msgstr "Convertir en agent"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Shrink-wrap"
+msgstr "Convertir en agent"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "This will open the agent builder and launch Sidekick on this conversation so you can turn it into an agent."
+msgstr "L’éditeur d’agent va s’ouvrir et lancer Sidekick sur cette conversation pour que vous puissiez la transformer en agent."
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgid "Continue"
+msgstr "Continuer"
+
+#: front/components/assistant/conversation/ConversationMenu.tsx
+msgctxt "verb, menu item"
+msgid "Leave"
+msgstr "Quitter"
+
+#: front/components/assistant/conversation/ConversationTitle.tsx
+msgid "New conversation"
+msgstr "Nouvelle conversation"
+
+#: front/components/assistant/conversation/ConversationTitle.tsx
+msgid "Branched from “{chipLabel}”"
+msgstr "Branche de « {chipLabel} »"
+
+#: front/components/assistant/conversation/ConversationTitle.tsx
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Credit usage"
+msgstr "Consommation de crédits"
+
+#: front/components/assistant/conversation/ConversationTitle.tsx
+msgid "Files"
+msgstr "Fichiers"
+
+#: front/components/assistant/conversation/ConversationTitle.tsx
+msgid "Conversation menu"
+msgstr "Menu de la conversation"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Open Pods are disabled by your workspace admin."
+msgstr "Les Pods ouverts sont désactivés par l’administrateur de votre workspace."
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Pod created"
+msgstr "Pod créé"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Pod \"{trimmedName}\" has been created."
+msgstr "Le Pod « {trimmedName} » a été créé."
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Create a new Pod"
+msgstr "Créer un nouveau Pod"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Pod name"
+msgstr "Nom du Pod"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Enter Pod name"
+msgstr "Saisir le nom du Pod"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "A Pod or space with this name already exists."
+msgstr "Un Pod ou un espace portant ce nom existe déjà."
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Access"
+msgstr "Accès"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Anyone in the workspace can find and join the Pod."
+msgstr "Tout membre du workspace peut trouver et rejoindre le Pod."
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Only invited members can access the Pod."
+msgstr "Seuls les membres invités peuvent accéder au Pod."
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+#: front/components/assistant/conversation/EditConversationTitleDialog.tsx
+#: front/components/assistant/conversation/LeaveConversationDialog.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Creating..."
+msgstr "Création…"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgid "Create"
+msgstr "Créer"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgctxt "Pod access level"
+msgid "Open"
+msgstr "Ouvert"
+
+#: front/components/assistant/conversation/CreatePodModal.tsx
+msgctxt "Pod access level"
+msgid "Restricted"
+msgstr "Restreint"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Still running"
+msgstr "En cours d’exécution"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "View consumption breakdown"
+msgstr "Voir le détail de la consommation"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Message consumption"
+msgstr "Consommation du message"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Charge summary"
+msgstr "Récapitulatif de la facturation"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Charged"
+msgstr "Facturé"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Consumption breakdown"
+msgstr "Détail de la consommation"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Loading details"
+msgstr "Chargement des détails"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Context and reasoning"
+msgstr "Contexte et raisonnement"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "{remainingToolCount, plural, one {# other tool} other {# other tools}}"
+msgstr "{remainingToolCount, plural, one {# autre outil} other {# autres outils}}"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "Detailed explanation unavailable"
+msgstr "Explication détaillée indisponible"
+
+#: front/components/assistant/conversation/CreditCostPopover.tsx
+msgid "The exact charge above is authoritative."
+msgstr "Le montant exact ci-dessus fait foi."
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "{triggeringUserName} stopped this task after it used {formattedCredits}."
+msgstr "{triggeringUserName} a arrêté cette tâche après qu’elle a consommé {formattedCredits}."
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "{triggeringUserName} stopped this task because it was using a lot of credits."
+msgstr "{triggeringUserName} a arrêté cette tâche car elle consommait beaucoup de crédits."
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "The user stopped this task after it used {formattedCredits}."
+msgstr "L’utilisateur a arrêté cette tâche après qu’elle a consommé {formattedCredits}."
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "The user stopped this task because it was using a lot of credits."
+msgstr "L’utilisateur a arrêté cette tâche car elle consommait beaucoup de crédits."
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "Stopped to avoid excessive credit use"
+msgstr "Arrêtée pour éviter une consommation excessive de crédits"
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "Paused to avoid excessive credit use"
+msgstr "Mise en pause pour éviter une consommation excessive de crédits"
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "This task has used {formattedCredits} so far. Continue running it?"
+msgstr "Cette tâche a consommé {formattedCredits} jusqu’ici. Poursuivre son exécution ?"
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "This task has used a lot of credits. Continue running it?"
+msgstr "Cette tâche a consommé beaucoup de crédits. Poursuivre son exécution ?"
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "No, stop"
+msgstr "Non, arrêter"
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "Yes, continue"
+msgstr "Oui, continuer"
+
+#: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
+msgid "Waiting for <0>{triggeringUserName}</0> to decide whether to continue."
+msgstr "En attente de la décision de <0>{triggeringUserName}</0> pour continuer."
+
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+msgid "Clear conversation history"
+msgstr "Effacer l’historique des conversations"
+
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+msgid "{count, plural, one {Delete conversation} other {Delete conversations}}"
+msgstr "{count, plural, one {Supprimer la conversation} other {Supprimer les conversations}}"
+
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+msgid "Are you sure you want to delete ALL conversations?"
+msgstr "Voulez-vous vraiment supprimer TOUTES les conversations ?"
+
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+msgid "{count, plural, one {Are you sure you want to delete # conversation?} other {Are you sure you want to delete # conversations?}}"
+msgstr "{count, plural, one {Voulez-vous vraiment supprimer # conversation ?} other {Voulez-vous vraiment supprimer # conversations ?}}"
+
+#: front/components/assistant/conversation/DeleteConversationsDialog.tsx
+msgid "This action cannot be undone."
+msgstr "Cette action est irréversible."
+
+#: front/components/assistant/conversation/DeletedMessage.tsx
+msgid "Message was deleted"
+msgstr "Le message a été supprimé"
+
+#: front/components/assistant/conversation/EditConversationTitleDialog.tsx
+msgid "Edit conversation title"
+msgstr "Modifier le titre de la conversation"
+
+#: front/components/assistant/conversation/EditConversationTitleDialog.tsx
+msgid "Enter new title..."
+msgstr "Saisissez un nouveau titre…"
+
+#: front/components/assistant/conversation/EditConversationTitleDialog.tsx
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "{failedProviderName} did not respond in time"
+msgstr "{failedProviderName} n’a pas répondu à temps"
+
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "Something went wrong"
+msgstr "Une erreur s’est produite"
+
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "This model did not respond in time. Retry will use the {retryTierName} model tier."
+msgstr "Ce modèle n’a pas répondu à temps. La nouvelle tentative utilisera le niveau de modèle {retryTierName}."
+
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "Retry with {retryTierName} model tier"
+msgstr "Réessayer avec le niveau de modèle {retryTierName}"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgctxt "feedback reason"
+msgid "Other"
+msgstr "Autre"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Factually incorrect"
+msgstr "Factuellement incorrect"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Didn’t follow instructions"
+msgstr "N’a pas suivi les instructions"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Don’t like the tone"
+msgstr "Le ton ne me plaît pas"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Wrong data sources"
+msgstr "Mauvaises sources de données"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Took too long"
+msgstr "Trop long"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Please select a reason or describe the issue."
+msgstr "Veuillez sélectionner une raison ou décrire le problème."
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Please describe the issue."
+msgstr "Veuillez décrire le problème."
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "I found this helpful"
+msgstr "Cette réponse m’a été utile"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Report an issue with this answer"
+msgstr "Signaler un problème avec cette réponse"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Provide feedback on {agentName}"
+msgstr "Donner votre avis sur {agentName}"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Was this answer helpful?"
+msgstr "Cette réponse vous a-t-elle été utile ?"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Yes, helpful"
+msgstr "Oui, utile"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Needs work"
+msgstr "À améliorer"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "What was the issue?"
+msgstr "Quel était le problème ?"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Glad you liked it! Tell us more?"
+msgstr "Ravis que cela vous plaise ! Vous nous en dites plus ?"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Describe what went wrong"
+msgstr "Décrivez ce qui n’a pas fonctionné"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Share details"
+msgstr "Donnez plus de détails"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Share conversation with the Dust team"
+msgstr "Partager la conversation avec l’équipe Dust"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Share conversation with the agent’s editors"
+msgstr "Partager la conversation avec les éditeurs de l’agent"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Helps the Dust team improve {agentName}"
+msgstr "Aide l’équipe Dust à améliorer {agentName}"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Helps editors improve the agent"
+msgstr "Aide les éditeurs à améliorer l’agent"
+
+#: front/components/assistant/conversation/FeedbackSelector.tsx
+msgid "Submit"
+msgstr "Envoyer"
+
+#: front/components/assistant/conversation/FeedbackSelectorPopoverContent.tsx
+msgid "Editors who will see this:"
+msgstr "Éditeurs qui verront ceci :"
+
+#: front/components/assistant/conversation/FilePreviewContext.tsx
+msgid "Failed to open Frame"
+msgstr "Impossible d’ouvrir le Frame"
+
+#: front/components/assistant/conversation/FilePreviewContext.tsx
+msgid "No linked file was found for this Frame."
+msgstr "Aucun fichier lié n’a été trouvé pour ce Frame."
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Failed to load picker credentials"
+msgstr "Impossible de charger les identifiants du sélecteur"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "File authorized"
+msgstr "Fichier autorisé"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Authorization required"
+msgstr "Autorisation requise"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Your file is now accessible. Continuing..."
+msgstr "Votre fichier est maintenant accessible. Reprise en cours…"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "File authorization is not available in the extension. Please open this conversation in the web app to authorize the file."
+msgstr "L’autorisation de fichiers n’est pas disponible dans l’extension. Veuillez ouvrir cette conversation dans l’application web pour autoriser le fichier."
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "To access your file, please authorize it once."
+msgstr "Pour accéder à votre fichier, veuillez l’autoriser une fois."
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Open in web app"
+msgstr "Ouvrir dans l’application web"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Open file picker"
+msgstr "Ouvrir le sélecteur de fichiers"
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Failed to load file picker. Please try again."
+msgstr "Impossible de charger le sélecteur de fichiers. Veuillez réessayer."
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "{triggeringUserName} needs to authorize a file."
+msgstr "{triggeringUserName} doit autoriser un fichier."
+
+#: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
+msgid "Waiting for them to continue..."
+msgstr "En attente de cette personne pour continuer…"
+
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "A message asking Dust to improve an agent, next to the modified agent"
 msgstr "Un message demandant à Dust d’améliorer un agent, à côté de l’agent modifié"
@@ -24,3 +811,386 @@ msgstr "Vous pouvez désormais créer et modifier des compétences et des agents
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "Try it"
 msgstr "Essayer"
+
+#: front/components/assistant/conversation/LeaveConversationDialog.tsx
+msgid "Leave conversation"
+msgstr "Quitter la conversation"
+
+#: front/components/assistant/conversation/LeaveConversationDialog.tsx
+msgid "Are you sure you want to leave this conversation?"
+msgstr "Voulez-vous vraiment quitter cette conversation ?"
+
+#: front/components/assistant/conversation/LeaveConversationDialog.tsx
+msgid "You will no longer have access to this conversation."
+msgstr "Vous n’aurez plus accès à cette conversation."
+
+#: front/components/assistant/conversation/LeaveConversationDialog.tsx
+msgid "Leave"
+msgstr "Quitter"
+
+#: front/components/assistant/conversation/MCPToolValidationRequired.tsx
+msgid "Failed to assess action approval"
+msgstr "Impossible d’évaluer l’approbation de l’action"
+
+#: front/components/assistant/conversation/MentionInvalid.tsx
+msgid "<0>{mentionLabel}</0> is not a member of this Pod and only Pod editors can add new members."
+msgstr "<0>{mentionLabel}</0> n’est pas membre de ce Pod et seuls les éditeurs du Pod peuvent ajouter de nouveaux membres."
+
+#: front/components/assistant/conversation/MentionInvalid.tsx
+msgid "<0>{mentionLabel}</0> doesn't have access to this conversation's spaces and won't be able to view it nor be invited."
+msgstr "<0>{mentionLabel}</0> n’a pas accès aux espaces de cette conversation et ne pourra ni la consulter ni y être invité."
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "Run {mentionLabel} in this Pod conversation?"
+msgstr "Exécuter {mentionLabel} dans cette conversation du Pod ?"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "Add {mentionLabel} to this Pod?"
+msgstr "Ajouter {mentionLabel} à ce Pod ?"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "Invite {mentionLabel} to this conversation?"
+msgstr "Inviter {mentionLabel} à cette conversation ?"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "<0>{mentionLabel}</0> uses at least one private space. If you run it here, its outputs will be visible to Pod members who may not have access to those spaces."
+msgstr "<0>{mentionLabel}</0> utilise au moins un espace privé. Si vous l’exécutez ici, ses résultats seront visibles par les membres du Pod qui n’ont peut-être pas accès à ces espaces."
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "<0>{agentName}</0> mentioned <1>{mentionLabel}</1>. Do you want to add them to this Pod?"
+msgstr "<0>{agentName}</0> a mentionné <1>{mentionLabel}</1>. Voulez-vous l’ajouter à ce Pod ?"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "They'll have access to all Pod conversations."
+msgstr "Cette personne aura accès à toutes les conversations du Pod."
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "<0>{agentName}</0> mentioned <1>{mentionLabel}</1>. Do you want to invite them? They'll see the full history and be able to reply."
+msgstr "<0>{agentName}</0> a mentionné <1>{mentionLabel}</1>. Voulez-vous l’inviter ? Cette personne verra tout l’historique et pourra répondre."
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "They'll see the full history and be able to reply."
+msgstr "Cette personne verra tout l’historique et pourra répondre."
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "Run agent"
+msgstr "Exécuter l’agent"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "Add to Pod"
+msgstr "Ajouter au Pod"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgctxt "button label"
+msgid "Invite"
+msgstr "Inviter"
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "The content of your personal memory may be disclosed to invited users."
+msgstr "Le contenu de votre mémoire personnelle peut être divulgué aux utilisateurs invités."
+
+#: front/components/assistant/conversation/MentionValidationRequired.tsx
+msgid "Decline"
+msgstr "Refuser"
+
+#: front/components/assistant/conversation/MessageEmojiPicker.tsx
+msgid "Add reaction"
+msgstr "Ajouter une réaction"
+
+#: front/components/assistant/conversation/MessageReactions.tsx
+msgid "More reactions"
+msgstr "Plus de réactions"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Today"
+msgstr "Aujourd’hui"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Yesterday"
+msgstr "Hier"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Last week"
+msgstr "La semaine dernière"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Last month"
+msgstr "Le mois dernier"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Last 12 months"
+msgstr "Les 12 derniers mois"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Older"
+msgstr "Plus anciennes"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Archived"
+msgstr "Archivées"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgctxt "button label"
+msgid "New"
+msgstr "Nouveau"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "No results found"
+msgstr "Aucun résultat trouvé"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Show more"
+msgstr "Afficher plus"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations"
+msgstr "Conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations options"
+msgstr "Options des conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Show triggered"
+msgstr "Afficher les conversations auto"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Hide triggered"
+msgstr "Masquer les conversations auto"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations successfully deleted"
+msgstr "Conversations supprimées"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "{total, plural, one {# conversation has been deleted.} other {# conversations have been deleted.}}"
+msgstr "{total, plural, one {# conversation a été supprimée.} other {# conversations ont été supprimées.}}"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Failed to delete conversations"
+msgstr "Impossible de supprimer les conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "{total, plural, one {Could not delete the selected conversation.} other {Could not delete the selected conversations.}}"
+msgstr "{total, plural, one {Impossible de supprimer la conversation sélectionnée.} other {Impossible de supprimer les conversations sélectionnées.}}"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Some conversations couldn’t be deleted"
+msgstr "Certaines conversations n’ont pas pu être supprimées"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Deleted {successCount} of {total} conversations."
+msgstr "{successCount} conversations sur {total} supprimées."
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Could not delete conversation history."
+msgstr "Impossible de supprimer l’historique des conversations."
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Starred"
+msgstr "Favoris"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Create a Pod"
+msgstr "Créer un Pod"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Agents"
+msgstr "Agents"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Skills"
+msgstr "Compétences"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "New skill"
+msgstr "Nouvelle compétence"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "From conversation"
+msgstr "À partir d’une conversation"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "From scratch"
+msgstr "À partir de zéro"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "From existing"
+msgstr "À partir de l’existant"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Create a new conversation"
+msgstr "Créer une nouvelle conversation"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Error loading conversations"
+msgstr "Erreur lors du chargement des conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Mark all as read"
+msgstr "Tout marquer comme lu"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Mark as read"
+msgstr "Marquer comme lu"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgctxt "sidebar section of triggered conversations"
+msgid "Auto"
+msgstr "Auto"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Skill suggestions"
+msgstr "Suggestions de compétences"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Inbox"
+msgstr "Boîte de réception"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Edit history"
+msgstr "Modifier l’historique"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Clear history"
+msgstr "Effacer l’historique"
+
+#: front/components/assistant/conversation/ToolValidationDetails.tsx
+msgid "Yes"
+msgstr "Oui"
+
+#: front/components/assistant/conversation/ToolValidationDetails.tsx
+msgid "No"
+msgstr "Non"
+
+#: front/components/assistant/conversation/ToolValidationDetails.tsx
+msgid "Loading…"
+msgstr "Chargement…"
+
+#: front/components/assistant/conversation/ToolValidationDetails.tsx
+msgid "Unknown skill"
+msgstr "Compétence inconnue"
+
+#: front/components/assistant/conversation/ToolValidationDetails.tsx
+msgid "Skill"
+msgstr "Compétence"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Waiting for <0>{triggeringUserName}</0>  to answer."
+msgstr "En attente de la réponse de <0>{triggeringUserName}</0>."
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Waiting for <0>another user</0>  to answer."
+msgstr "En attente de la réponse d’<0>un autre utilisateur</0>."
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Tell the agent what to do differently"
+msgstr "Dites à l’agent ce qu’il doit faire autrement"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Skipping question"
+msgstr "Passage de la question"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Submitting answer"
+msgstr "Envoi de la réponse"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Send answer"
+msgstr "Envoyer la réponse"
+
+#: front/components/assistant/conversation/UserHandle.tsx
+msgid "Unknown user"
+msgstr "Utilisateur inconnu"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Are you sure you want to delete this message? The agent's reply will also be removed. This action cannot be undone."
+msgstr "Voulez-vous vraiment supprimer ce message ? La réponse de l’agent sera également supprimée. Cette action est irréversible."
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Are you sure you want to delete this user's message? The agent's reply will also be removed. This will be reflected for all participants."
+msgstr "Voulez-vous vraiment supprimer le message de cet utilisateur ? La réponse de l’agent sera également supprimée. Ce changement sera visible par tous les participants."
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Are you sure you want to delete this user's message? This will be reflected for all participants."
+msgstr "Voulez-vous vraiment supprimer le message de cet utilisateur ? Ce changement sera visible par tous les participants."
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Delete your message"
+msgstr "Supprimer votre message"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Delete user message"
+msgstr "Supprimer le message de l’utilisateur"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "(edited)"
+msgstr "(modifié)"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "(no message)"
+msgstr "(aucun message)"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "{pendingMessageCount, plural, one {Message queued} other {Messages queued}}"
+msgstr "{pendingMessageCount, plural, one {Message en file d’attente} other {Messages en file d’attente}}"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Scheduled and sent automatically"
+msgstr "Planifié et envoyé automatiquement"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "<0>Current execution</0>: {currentExecutionDate}"
+msgstr "<0>Exécution en cours</0> : {currentExecutionDate}"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "<0>Previous run</0>: {previousRunDate}"
+msgstr "<0>Exécution précédente</0> : {previousRunDate}"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Triggered and sent automatically"
+msgstr "Déclenché et envoyé automatiquement"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Edit message"
+msgstr "Modifier le message"
+
+#: front/components/assistant/conversation/UserMessage.tsx
+msgid "Message actions"
+msgstr "Actions du message"
+
+#: front/components/assistant/conversation/WakeUpBanner.tsx
+msgid "Cancel wake-up"
+msgstr "Annuler le réveil"
+
+#: front/components/assistant/conversation/WakeUpMessage.tsx
+msgid "Wake-up pending"
+msgstr "Réveil en attente"
+
+#: front/components/assistant/conversation/WakeUpMessage.tsx
+msgid "Wake-up executed"
+msgstr "Réveil exécuté"
+
+#: front/components/assistant/conversation/utils.ts
+msgid "Unnamed parent conversation"
+msgstr "Conversation parente sans nom"
+
+#: front/components/assistant/conversation/utils.ts
+msgid "Compacting context, this may take a moment…"
+msgstr "Compactage du contexte, cela peut prendre un moment…"
+
+#: front/components/assistant/conversation/utils.ts
+msgid "Summarizing “{truncatedParentConversationTitle}”, this may take a moment…"
+msgstr "Synthèse de « {truncatedParentConversationTitle} » en cours, cela peut prendre un moment…"
+
+#: front/components/assistant/conversation/utils.ts
+msgid "Context compacted"
+msgstr "Contexte compacté"
+
+#: front/components/assistant/conversation/utils.ts
+msgid "Summarized “{truncatedParentConversationTitle}” here"
+msgstr "Synthèse de « {truncatedParentConversationTitle} » ajoutée ici"
+
+#: front/components/assistant/conversation/utils.ts
+msgid "Summarized another conversation here"
+msgstr "Synthèse d’une autre conversation ajoutée ici"

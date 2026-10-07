@@ -8,6 +8,8 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 type DeleteConversationsDialogProps = {
   isOpen: boolean;
@@ -26,15 +28,24 @@ export const DeleteConversationsDialog = ({
   type,
   selectedCount,
 }: DeleteConversationsDialogProps) => {
+  const { t } = useLingui();
+  const count = selectedCount ?? 1;
+
   const title =
     type === "all"
-      ? "Clear conversation history"
-      : `Delete conversation${selectedCount && selectedCount > 1 ? "s" : ""}`;
+      ? t`Clear conversation history`
+      : t`${plural(count, {
+          one: "Delete conversation",
+          other: "Delete conversations",
+        })}`;
 
   const description =
     type === "all"
-      ? "Are you sure you want to delete ALL conversations?"
-      : `Are you sure you want to delete ${selectedCount} conversation${selectedCount && selectedCount > 1 ? "s" : ""}?`;
+      ? t`Are you sure you want to delete ALL conversations?`
+      : t`${plural(count, {
+          one: "Are you sure you want to delete # conversation?",
+          other: "Are you sure you want to delete # conversations?",
+        })}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -50,15 +61,17 @@ export const DeleteConversationsDialog = ({
         ) : (
           <>
             <DialogContainer>
-              <b>This action cannot be undone.</b>
+              <b>
+                <Trans>This action cannot be undone.</Trans>
+              </b>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: t`Delete`,
                 variant: "warning",
                 onClick: async () => {
                   await onDelete();

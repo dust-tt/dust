@@ -14,6 +14,7 @@ import {
   ContentMessage,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface CompactionMessageProps {
   message: CompactionMessageType;
@@ -24,17 +25,21 @@ export function CompactionMessage({
   message,
   conversation,
 }: CompactionMessageProps) {
+  const { t } = useLingui();
+
   switch (message.status) {
     case "failed":
       return (
         <ContentMessage
-          title="Context compaction failed"
+          title={t`Context compaction failed`}
           variant="warning"
           className="flex flex-col gap-3"
           icon={AlertCircle}
         >
           <div className="whitespace-normal break-words">
-            You may experience reduced performance on very long conversations.
+            <Trans>
+              You may experience reduced performance on very long conversations.
+            </Trans>
           </div>
         </ContentMessage>
       );
@@ -42,13 +47,13 @@ export function CompactionMessage({
       return (
         <div className="flex items-center justify-center gap-1.5">
           <span className="text-sm text-muted-foreground">
-            {getCompactionSuccessLabel(message, conversation)} ·{" "}
+            {getCompactionSuccessLabel(message, conversation, t)} ·{" "}
             {formatTimestring(message.created)}
           </span>
         </div>
       );
     case "created": {
-      const label = getCompactionInProgressLabel(message, conversation);
+      const label = getCompactionInProgressLabel(message, conversation, t);
 
       return (
         <div className="flex items-center justify-center gap-1.5">
