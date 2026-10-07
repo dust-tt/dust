@@ -20,6 +20,7 @@ import {
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, DropdownMenuSearchbar, Plus } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
 import type React from "react";
 import type { RefObject } from "react";
@@ -46,6 +47,7 @@ export function InputBarPlusMenu({
   owner,
   slashMenu,
 }: InputBarPlusMenuProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +65,7 @@ export function InputBarPlusMenu({
           size={buttonSize}
           disabled={disabled}
           isRounded
-          tooltip="More"
+          tooltip={t`More`}
           className={cn(
             INPUT_BAR_PILL_SURFACE_CLASSNAME,
             INPUT_BAR_PILL_HOVER_CLASSNAME
@@ -96,6 +98,7 @@ function InputBarPlusMenuContent({
   owner,
   slashMenu,
 }: InputBarPlusMenuContentProps) {
+  const { t } = useLingui();
   const {
     conversationIdRef,
     editorRef,
@@ -209,10 +212,10 @@ function InputBarPlusMenuContent({
     isAttachOnly || activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID;
   const isPickModel = activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID;
   const searchPlaceholder = isAttachContext
-    ? "Search knowledge"
+    ? t`Search knowledge`
     : isPickModel
-      ? "Search models"
-      : "Search commands, skills, or tools";
+      ? t`Search models`
+      : t`Search commands, skills, or tools`;
 
   // Each level is its own dropdown, so the searchbar remounts with it and takes focus back.
   const searchbar = (

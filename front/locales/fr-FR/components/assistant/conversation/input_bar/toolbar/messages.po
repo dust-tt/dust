@@ -1,0 +1,54 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:12+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "{label} ({shortcutLabel})"
+msgstr "{label} ({shortcutLabel})"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Heading"
+msgstr "Titre"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Bold"
+msgstr "Gras"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Italic"
+msgstr "Italique"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Link"
+msgstr "Lien"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Bulleted list"
+msgstr "Liste à puces"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Ordered list"
+msgstr "Liste numérotée"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Blockquote"
+msgstr "Citation"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Inline code"
+msgstr "Code en ligne"
+
+#: front/components/assistant/conversation/input_bar/toolbar/ToolbarContent.tsx
+msgid "Code block"
+msgstr "Bloc de code"

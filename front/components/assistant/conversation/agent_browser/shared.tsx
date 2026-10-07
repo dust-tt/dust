@@ -22,13 +22,16 @@ import {
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 export const AGENTS_TABS = [
-  { label: "Favorites", id: "favorites" },
-  { label: "All agents", id: "all" },
-  { label: "Editable by me", id: "editable_by_me" },
+  { label: msg`Favorites`, id: "favorites" },
+  { label: msg`All agents`, id: "all" },
+  { label: msg`Editable by me`, id: "editable_by_me" },
 ] as const;
 
 export type TabId = (typeof AGENTS_TABS)[number]["id"];
@@ -42,23 +45,36 @@ export type AgentsByTab = {
   most_popular: LightAgentConfigurationType[];
 };
 
-export const MOST_POPULAR_TAG: TagType = {
+interface PseudoTag {
+  sId: string;
+  name: MessageDescriptor;
+  kind: "protected";
+}
+
+export const MOST_POPULAR_TAG: PseudoTag = {
   sId: "--most_popular--",
-  name: "Most popular",
+  name: msg`Most popular`,
   kind: "protected",
 };
 
-export const ALL_TAG: TagType = {
+export const ALL_TAG: PseudoTag = {
   sId: "--all--",
-  name: "All",
+  name: msg({ message: "All", context: "agent tag filter" }),
   kind: "protected",
 };
 
-export const OTHERS_TAG: TagType = {
+export const OTHERS_TAG: PseudoTag = {
   sId: "--others--",
-  name: "Others",
+  name: msg({ message: "Others", context: "agent tag filter" }),
   kind: "protected",
 };
+
+export function toTranslatedTag(
+  tag: PseudoTag,
+  t: (descriptor: MessageDescriptor) => string
+): TagType {
+  return { ...tag, name: t(tag.name) };
+}
 
 export function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -276,20 +292,23 @@ function SearchDropdownContent({
   onAgentMoreClick,
   trackAgentBrowserEvents,
 }: SearchDropdownContentProps) {
+  const { t } = useLingui();
   if (filteredTags.length === 0 && filteredAgents.length === 0) {
     return isLoading ? (
       <div className="flex justify-center py-8">
         <Spinner size="md" />
       </div>
     ) : (
-      <div className="p-2 text-sm text-muted-foreground">No results found</div>
+      <div className="p-2 text-sm text-muted-foreground">
+        <Trans>No results found</Trans>
+      </div>
     );
   }
   return (
     <>
       {filteredTags.length > 0 && (
         <>
-          <DropdownMenuLabel label="Tags" />
+          <DropdownMenuLabel label={t`Tags`} />
           <div className="flex flex-wrap gap-1 px-2 py-1">
             {filteredTags.map((tag) => (
               <Chip
@@ -303,7 +322,7 @@ function SearchDropdownContent({
           </div>
         </>
       )}
-      {filteredAgents.length > 0 && <DropdownMenuLabel label="Agents" />}
+      {filteredAgents.length > 0 && <DropdownMenuLabel label={t`Agents`} />}
       {filteredAgents.map((agent) => (
         <DropdownMenuItem
           className="notranslate"

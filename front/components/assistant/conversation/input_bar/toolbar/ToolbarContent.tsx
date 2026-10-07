@@ -14,6 +14,7 @@ import {
   ToolbarIcon,
   ToolbarLink,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 
@@ -27,6 +28,7 @@ interface LinkPosition {
 }
 
 export function ToolBarContent({ editor }: ToolBarContentProps) {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const buttonSize = isMobile ? "xs" : "sm";
   const headingShortcutLabel = useKeyboardShortcutLabel("Mod+Alt+1");
@@ -53,7 +55,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       return "";
     }
     if (shortcutLabel) {
-      return `${label} (${shortcutLabel})`;
+      return t`${label} (${shortcutLabel})`;
     }
     return label;
   }
@@ -138,7 +140,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
           active={editor.isActive("heading")}
-          tooltip={getTooltipText("Heading", headingShortcutLabel)}
+          tooltip={getTooltipText(t`Heading`, headingShortcutLabel)}
           size={buttonSize}
         />,
         <ToolbarIcon
@@ -146,7 +148,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
           icon={Bold01}
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive("bold")}
-          tooltip={getTooltipText("Bold", boldShortcutLabel)}
+          tooltip={getTooltipText(t`Bold`, boldShortcutLabel)}
           size={buttonSize}
         />,
         <ToolbarIcon
@@ -154,7 +156,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
           icon={Italic01}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           active={editor.isActive("italic")}
-          tooltip={getTooltipText("Italic", italicShortcutLabel)}
+          tooltip={getTooltipText(t`Italic`, italicShortcutLabel)}
           size={buttonSize}
         />,
       ],
@@ -173,7 +175,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
           onLinkTextChange={setLinkText}
           onLinkUrlChange={setLinkUrl}
           active={editor.isActive("link")}
-          tooltip={getTooltipText("Link", linkShortcutLabel)}
+          tooltip={getTooltipText(t`Link`, linkShortcutLabel)}
           size={buttonSize}
         />,
       ],
@@ -186,7 +188,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
           icon={CheckDone01}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
-          tooltip={getTooltipText("Bulleted list", bulletListShortcutLabel)}
+          tooltip={getTooltipText(t`Bulleted list`, bulletListShortcutLabel)}
           size={buttonSize}
         />,
         <ToolbarIcon
@@ -194,7 +196,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
           icon={List}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive("orderedList")}
-          tooltip={getTooltipText("Ordered list", orderedListShortcutLabel)}
+          tooltip={getTooltipText(t`Ordered list`, orderedListShortcutLabel)}
           size={buttonSize}
         />,
         <ToolbarIcon
@@ -208,7 +210,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
             }
           }}
           active={editor.isActive("blockquote")}
-          tooltip={getTooltipText("Blockquote", blockquoteShortcutLabel)}
+          tooltip={getTooltipText(t`Blockquote`, blockquoteShortcutLabel)}
           size={buttonSize}
         />,
       ],
@@ -221,7 +223,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
           icon={Code01}
           onClick={() => editor.chain().focus().toggleCode().run()}
           active={editor.isActive("code")}
-          tooltip={getTooltipText("Inline code", inlineCodeShortcutLabel)}
+          tooltip={getTooltipText(t`Inline code`, inlineCodeShortcutLabel)}
           size={buttonSize}
         />,
         <ToolbarIcon
@@ -235,7 +237,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
             }
           }}
           active={editor.isActive("codeBlock")}
-          tooltip={getTooltipText("Code block", codeBlockShortcutLabel)}
+          tooltip={getTooltipText(t`Code block`, codeBlockShortcutLabel)}
           size={buttonSize}
         />,
       ],

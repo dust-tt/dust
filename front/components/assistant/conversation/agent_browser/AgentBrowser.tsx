@@ -9,6 +9,7 @@ import {
   isValidTab,
   MOST_POPULAR_TAG,
   OTHERS_TAG,
+  toTranslatedTag,
 } from "@app/components/assistant/conversation/agent_browser/shared";
 import { WebAgentBrowser } from "@app/components/assistant/conversation/agent_browser/WebAgentBrowser";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
@@ -27,6 +28,7 @@ import {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface AssistantBrowserProps {
@@ -44,6 +46,7 @@ export function AgentBrowser({
   handleAgentClick,
   user,
 }: AssistantBrowserProps) {
+  const { t } = useLingui();
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [selectedTab, setSelectedTab] = useHashParam(
     "selectedTab",
@@ -108,8 +111,13 @@ export function AgentBrowser({
 
       // Without tags, "Most popular" and "Others" would only duplicate "All".
       const uniqueTags = noTagsDefined
-        ? [ALL_TAG]
-        : [MOST_POPULAR_TAG, ALL_TAG, ...workspaceTags, OTHERS_TAG];
+        ? [toTranslatedTag(ALL_TAG, t)]
+        : [
+            toTranslatedTag(MOST_POPULAR_TAG, t),
+            toTranslatedTag(ALL_TAG, t),
+            ...workspaceTags,
+            toTranslatedTag(OTHERS_TAG, t),
+          ];
 
       if (assistantSearch.trim() === "") {
         return {
@@ -143,7 +151,9 @@ export function AgentBrowser({
       const filteredTags =
         selectedTag === ALL_TAG.sId
           ? uniqueTags
-          : uniqueTags.filter((t) => subFilter(search, t.name.toLowerCase()));
+          : uniqueTags.filter((tag) =>
+              subFilter(search, tag.name.toLowerCase())
+            );
 
       return {
         filteredAgents,
@@ -151,7 +161,7 @@ export function AgentBrowser({
         uniqueTags,
         noTagsDefined,
       };
-    }, [agentConfigurations, assistantSearch, selectedTag]);
+    }, [agentConfigurations, assistantSearch, selectedTag, t]);
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents

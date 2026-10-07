@@ -118,6 +118,7 @@ import {
   TooltipTrigger,
   VoicePicker,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/react";
 import type { BezierDefinition } from "framer-motion";
 import { animate, useReducedMotion } from "framer-motion";
@@ -311,6 +312,7 @@ const InputBarContainer = ({
   onOverlayOpenChange,
   onVoiceActiveChange,
 }: InputBarContainerProps) => {
+  const { t } = useLingui();
   const { setOverlayOpen } = useInputBarOverlayTracker(onOverlayOpenChange);
   const onSuggestionActiveChangeRef = useRef<(active: boolean) => void>(
     () => {}
@@ -623,12 +625,12 @@ const InputBarContainer = ({
       } catch (e) {
         sendNotification({
           type: "error",
-          title: "Failed to inline text",
+          title: t`Failed to inline text`,
           description: normalizeError(e).message,
         });
       }
     },
-    [editorRef, fileUploaderService, sendNotification]
+    [editorRef, fileUploaderService, sendNotification, t]
   );
 
   // Wrap onEnterKeyDown so that a blocked Enter attempt triggers the shake animation.
@@ -731,9 +733,8 @@ const InputBarContainer = ({
           } else {
             sendNotification({
               type: "error",
-              title: "Cannot compact conversation",
-              description:
-                "Compaction requires a completed agent message in the conversation.",
+              title: t`Cannot compact conversation`,
+              description: t`Compaction requires a completed agent message in the conversation.`,
             });
           }
         })();
@@ -863,8 +864,8 @@ const InputBarContainer = ({
           }
           sendNotification({
             type: "error",
-            title: "Failed to attach pasted text",
-            description: "Upload was rejected or failed.",
+            title: t`Failed to attach pasted text`,
+            description: t`Upload was rejected or failed.`,
           });
         }
       } catch (e) {
@@ -873,7 +874,7 @@ const InputBarContainer = ({
         }
         sendNotification({
           type: "error",
-          title: "Failed to attach pasted text",
+          title: t`Failed to attach pasted text`,
           description: normalizeError(e).message,
         });
       }
@@ -925,12 +926,12 @@ const InputBarContainer = ({
       void handleSelectedSpaceIdsChange(spaceIds).catch((error) => {
         sendNotification({
           type: "error",
-          title: "Failed to update Spaces",
+          title: t`Failed to update Spaces`,
           description: normalizeError(error).message,
         });
       });
     },
-    [handleSelectedSpaceIdsChange, sendNotification]
+    [handleSelectedSpaceIdsChange, sendNotification, t]
   );
 
   useEffect(() => {
@@ -1039,7 +1040,7 @@ const InputBarContainer = ({
     onError: (error) => {
       sendNotification({
         type: "error",
-        title: "Failed to transcribe voice",
+        title: t`Failed to transcribe voice`,
         description: normalizeError(error).message,
       });
     },
@@ -1859,7 +1860,7 @@ const InputBarContainer = ({
                             {actions.includes("attachment") && (
                               <DropdownMenuItem
                                 icon={BookOpen01}
-                                label="Attach"
+                                label={t`Attach`}
                                 onClick={() => {
                                   setIsCaptureDropdownOpen(false);
                                   setShowKnowledgePicker(true);
@@ -1870,7 +1871,7 @@ const InputBarContainer = ({
                               <>
                                 <DropdownMenuItem
                                   icon={Globe01}
-                                  label="Attach page content"
+                                  label={t`Attach page content`}
                                   disabled={
                                     disableInput ||
                                     captureActions.isCapturing ||
@@ -1888,7 +1889,7 @@ const InputBarContainer = ({
                                 />
                                 <DropdownMenuItem
                                   icon={Camera01}
-                                  label="Take screenshot"
+                                  label={t`Take screenshot`}
                                   disabled={
                                     disableInput ||
                                     captureActions.isCapturing ||
@@ -1907,7 +1908,7 @@ const InputBarContainer = ({
                                 {captureActions.onSavePageToPod && (
                                   <DropdownMenuItem
                                     icon={FilePlus03}
-                                    label="Save page to Pod"
+                                    label={t`Save page to Pod`}
                                     disabled={
                                       disableInput ||
                                       captureActions.isCapturing ||
@@ -2014,7 +2015,7 @@ const InputBarContainer = ({
                         >
                           <Button
                             size={buttonSize}
-                            aria-label="Send message"
+                            aria-label={t`Send message`}
                             isLoading={
                               isSubmitting &&
                               activeVoiceService.status !== "transcribing"

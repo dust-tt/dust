@@ -59,7 +59,7 @@ import {
   UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
@@ -236,8 +236,8 @@ const ProjectFileItem = ({
     t
   );
   const description = projectName
-    ? `${fileKind} in "${projectName}" knowledge`
-    : `${fileKind} in Pod knowledge`;
+    ? t`${fileKind} in "${projectName}" knowledge`
+    : t`${fileKind} in Pod knowledge`;
   return (
     <DropdownMenuCheckboxItem
       label={item.title}
@@ -270,6 +270,7 @@ export const InputBarAttachmentsPicker = ({
   anchorRef,
   prefetch = false,
 }: InputBarAttachmentsPickerProps) => {
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -492,7 +493,7 @@ export const InputBarAttachmentsPicker = ({
         value: key,
         label:
           key === PROJECT_FILTER_KEY
-            ? "Pods"
+            ? t`Pods`
             : getDisplayNameForDataSource(r.dataSource, true),
       });
     }
@@ -508,7 +509,7 @@ export const InputBarAttachmentsPicker = ({
     if (projectFilesWithResults.length > 0) {
       options.set(PROJECT_FILTER_KEY, {
         value: PROJECT_FILTER_KEY,
-        label: "Pods",
+        label: t`Pods`,
       });
     }
 
@@ -517,6 +518,7 @@ export const InputBarAttachmentsPicker = ({
     dataSourcesWithResults,
     serversWithResults,
     projectFilesWithResults.length,
+    t,
   ]);
 
   // Chips only exist once at least one source has hits; paired with showLoader = still fetching.
@@ -564,7 +566,7 @@ export const InputBarAttachmentsPicker = ({
         <DropdownAnchorTrigger anchorRef={anchorRef} />
       ) : (
         <DropdownMenuSubTrigger
-          label="Attach"
+          label={t`Attach`}
           icon={
             <Icon
               size="xs"
@@ -613,7 +615,7 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSearchbar
               autoFocus={!isMobile}
               name="search-files"
-              placeholder="Search"
+              placeholder={t`Search`}
               value={search}
               onChange={setSearch}
               disabled={false}
@@ -631,7 +633,7 @@ export const InputBarAttachmentsPicker = ({
               button={
                 <Button
                   icon={UploadCloud02}
-                  label="Upload File"
+                  label={t`Upload file`}
                   onClick={() => fileInputRef.current?.click()}
                   className="ml-4"
                 />
@@ -763,7 +765,7 @@ export const InputBarAttachmentsPicker = ({
             )}
             {availableSources.length === 0 && !showLoader && (
               <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                No results found
+                <Trans>No results found</Trans>
               </div>
             )}
 
@@ -778,7 +780,7 @@ export const InputBarAttachmentsPicker = ({
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
               <Icon visual={SearchMd} size="sm" />
-              Search
+              <Trans>Search</Trans>
             </div>
           </div>
         )}
