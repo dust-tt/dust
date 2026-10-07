@@ -9,6 +9,7 @@ import {
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Archive, Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext } from "react";
 
 interface ConversationPlanModePanelProps {
@@ -20,6 +21,7 @@ export function ConversationPlanModePanel({
   conversation,
   owner,
 }: ConversationPlanModePanelProps) {
+  const { t } = useLingui();
   const { closePanel } = useConversationSidePanelContext();
   const { content, isPlanLoading } = usePlanFile({
     conversationId: conversation.sId,
@@ -34,10 +36,9 @@ export function ConversationPlanModePanel({
   // Sits next to the panel close button, so ask before archiving.
   const archivePlan = async () => {
     const confirmed = await confirm({
-      title: "Archive this plan?",
-      message:
-        "This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one.",
-      validateLabel: "Archive plan",
+      title: t`Archive this plan?`,
+      message: t`This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one.`,
+      validateLabel: t`Archive plan`,
       validateVariant: "primary",
     });
     if (confirmed) {
@@ -45,7 +46,7 @@ export function ConversationPlanModePanel({
     }
   };
 
-  const title = extractPlanTitle(content);
+  const title = extractPlanTitle(content) ?? t`Untitled plan`;
 
   return (
     <div className="flex h-panel flex-col">
@@ -53,7 +54,7 @@ export function ConversationPlanModePanel({
         <div className="flex h-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-semibold text-foreground">
-              Plan: {title}
+              <Trans>Plan: {title}</Trans>
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -62,7 +63,7 @@ export function ConversationPlanModePanel({
                 variant="ghost"
                 size="sm"
                 icon={Archive}
-                tooltip="Archive plan"
+                tooltip={t`Archive plan`}
                 isLoading={isClosing}
                 onClick={() => void archivePlan()}
               />
@@ -83,7 +84,7 @@ export function ConversationPlanModePanel({
           </div>
         ) : !content ? (
           <div className="text-sm text-muted-foreground">
-            No active plan for this conversation.
+            <Trans>No active plan for this conversation.</Trans>
           </div>
         ) : (
           // Plain (non-memoized) blocks so each edit re-renders items in place and the step

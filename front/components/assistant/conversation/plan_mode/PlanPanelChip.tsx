@@ -9,6 +9,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { PLAN_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { FilterChip, ListSelect } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef } from "react";
 
 interface PlanPanelChipProps {
@@ -22,6 +23,7 @@ export function PlanPanelChip({
   conversationId,
   workspaceId,
 }: PlanPanelChipProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const isPlanModeEnabled = hasFeature("plan_mode");
   const { content, isPlanLoading } = usePlanFile({
@@ -83,8 +85,11 @@ export function PlanPanelChip({
     return null;
   }
 
+  const { done, total } = progress;
   const label =
-    progress.total > 0 ? `Plan ${progress.done}/${progress.total}` : "Plan";
+    total > 0
+      ? t`Plan ${done}/${total}`
+      : t({ message: "Plan", context: "noun, plan mode chip label" });
 
   return (
     <FilterChip
