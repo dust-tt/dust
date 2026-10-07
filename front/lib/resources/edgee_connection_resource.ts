@@ -7,10 +7,12 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { EdgeeAdminCredentials } from "@app/types/gateways/edgee";
+import type {
+  EdgeeAdminCredentials,
+  EdgeeConnectionType,
+} from "@app/types/gateways/edgee";
 import { EdgeeAdminCredentialsSchema } from "@app/types/gateways/edgee";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -21,12 +23,6 @@ const EDGEE_PROVIDER_ID = "edgee";
 export type EdgeeConnectionParams = {
   adminToken: string;
   organizationId: string;
-};
-
-export type EdgeeConnectionType = {
-  organizationId: string;
-  editedByUserId: ModelId | null;
-  updatedAt: number;
 };
 
 export interface EdgeeConnectionResource extends ReadonlyAttributesType<ProviderCredentialModel> {}
