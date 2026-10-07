@@ -5,6 +5,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -83,5 +84,38 @@ describe("GET /api/v1/w/:wId/assistant/agent_configurations/search", () => {
       sId: agent.sId,
       skills: [{ sId: skill.sId, name: "Linked Skill" }],
     });
+  });
+  it("returns the active global agents whose name contains the query", async () => {
+    const { workspace, key } = await setup();
+
+    const response = await search(workspace, key, "HeLp");
+
+    expect(response.status).toBe(200);
+    const { agentConfigurations } = await response.json();
+    expect(agentConfigurations.map((a: { sId: string }) => a.sId)).toContain(
+      GLOBAL_AGENTS_SID.HELPER
+    );
+  });
+
+  it("hides agents requesting a space the caller cannot read", async () => {
+    const { workspace, key, auth } = await setup();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Restricted Sales",
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Open Sales",
+      scope: "visible",
+    });
+
+    const response = await search(workspace, key, "sales");
+
+    expect(response.status).toBe(200);
+    const { agentConfigurations } = await response.json();
+    expect(agentConfigurations.map((a: { name: string }) => a.name)).toEqual([
+      "Open Sales",
+    ]);
   });
 });

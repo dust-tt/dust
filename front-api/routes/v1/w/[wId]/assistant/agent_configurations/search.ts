@@ -1,8 +1,8 @@
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import {
   addBackwardCompatibleAgentConfigurationFields,
   addLegacyLightAgentConfigurationFields,
 } from "@app/lib/api/v1/backward_compatibility";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toAgentConfigurationsWithSkills } from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -20,6 +20,8 @@ const SearchQuerySchema = z.object({
  *   get:
  *     summary: Search agents by name
  *     description: Search for agent configurations by name in the workspace identified by {wId}.
+ *       Returns the global agents and the published agents the caller can access whose name
+ *       contains the query, case-insensitively.
  *     tags:
  *       - Agents
  *     parameters:
@@ -60,6 +62,11 @@ const SearchQuerySchema = z.object({
  */
 
 // Mounted at /api/v1/w/:wId/assistant/agent_configurations/search.
+/**
+ * @cc [owner:avervaet,label:security;product] search-matches-all-view
+ * The search MUST return exactly the agents of the `all` view whose name contains `q`,
+ * case-insensitively: global agents included, and no agent the caller cannot `read`.
+ */
 const app = publicApiApp();
 
 app.get(
@@ -69,14 +76,11 @@ app.get(
     const auth = ctx.get("auth");
     const { q } = ctx.req.valid("query");
 
-    // Published agents whose name contains `q`, as the former name search matched them.
-    const serialized = await toAgentConfigurationsWithSkills(
-      auth,
-      await AgentResource.listByWorkspace(auth, {
-        scope: "visible",
-        nameContains: q,
-      })
+    const lowerCaseQuery = q.toLowerCase();
+    const agents = (await listAgentsForView(auth, "all")).filter((agent) =>
+      agent.name.toLowerCase().includes(lowerCaseQuery)
     );
+    const serialized = await toAgentConfigurationsWithSkills(auth, agents);
 
     return ctx.json({
       agentConfigurations: serialized.map((agentConfiguration) =>
