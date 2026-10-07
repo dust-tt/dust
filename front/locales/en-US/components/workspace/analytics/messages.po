@@ -200,6 +200,7 @@ msgid "Source"
 msgstr "Source"
 
 #: front/components/workspace/analytics/UsageFilterSummary.tsx
+#: front/components/workspace/analytics/sourceOriginLabels.ts
 msgid "Trigger"
 msgstr "Trigger"
 
@@ -230,3 +231,39 @@ msgstr "{formattedCredits} credits"
 #: front/components/workspace/analytics/creditsTableCells.tsx
 msgid "{averageCredits} credits / message"
 msgstr "{averageCredits} credits / message"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Conversation"
+msgstr "Conversation"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Chrome extension"
+msgstr "Chrome extension"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Email"
+msgstr "Email"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Self-improving skills"
+msgstr "Self-improving skills"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Transcript"
+msgstr "Transcript"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Wake-up"
+msgstr "Wake-up"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Onboarding"
+msgstr "Onboarding"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Analytics panel"
+msgstr "Analytics panel"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Pod Kickoff"
+msgstr "Pod Kickoff"

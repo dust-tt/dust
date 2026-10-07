@@ -430,7 +430,7 @@ export function ChangeSeatModal({
     scheduledSeatType === "none"
       ? t`No seat`
       : scheduledSeatType
-        ? seatTypeDisplayName(scheduledSeatType)
+        ? seatTypeDisplayName(scheduledSeatType, t)
         : null;
 
   const displayedFirstName =

@@ -351,3 +351,11 @@ msgstr "Member"
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 msgid "Pool"
 msgstr "Pool"
+
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+msgid "Your plan doesn't support charging automations to personal credits."
+msgstr "Your plan doesn't support charging automations to personal credits."
+
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+msgid "You don't have permission to charge automations to the workspace credit pool."
+msgstr "You don't have permission to charge automations to the workspace credit pool."

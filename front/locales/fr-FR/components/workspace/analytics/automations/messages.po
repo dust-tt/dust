@@ -351,3 +351,11 @@ msgstr "Membre"
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
 msgid "Pool"
 msgstr "Réserve"
+
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+msgid "Your plan doesn't support charging automations to personal credits."
+msgstr "Votre forfait ne permet pas de facturer les automatisations sur les crédits personnels."
+
+#: front/components/workspace/analytics/automations/trigger_pool_options.ts
+msgid "You don't have permission to charge automations to the workspace credit pool."
+msgstr "Vous n’êtes pas autorisé à facturer les automatisations sur la réserve de crédits du workspace."
