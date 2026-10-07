@@ -585,18 +585,12 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
             value={blockedActionCount}
             one={
               <Trans>
-                <span className="font-bold">
-                  {blockedActionCount} manual action
-                </span>{" "}
-                required
+                <span className="font-bold"># manual action</span> required
               </Trans>
             }
             other={
               <Trans>
-                <span className="font-bold">
-                  {blockedActionCount} manual actions
-                </span>{" "}
-                required
+                <span className="font-bold"># manual actions</span> required
               </Trans>
             }
           />

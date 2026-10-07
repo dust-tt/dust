@@ -261,6 +261,8 @@ export function ConversationCreditUsageBreakdown({
 }: ConversationCreditUsageBreakdownProps) {
   const { t } = useLingui();
   const { isDark } = useTheme();
+  const displayedBilledCredits = Math.round(billedCredits * 10) / 10;
+  const formattedBilledCredits = formatCredits(billedCredits);
 
   return (
     <div className="p-4">
@@ -270,12 +272,29 @@ export function ConversationCreditUsageBreakdown({
             <Trans>Total credits consumed</Trans>
           </h2>
           <div className="flex items-end gap-1">
-            <span className="text-2xl font-semibold leading-8 text-foreground">
-              {formatCredits(billedCredits)}
-            </span>
-            <span className="pb-1 text-sm text-muted-foreground">
-              <Plural value={billedCredits} one="credit" other="credits" />
-            </span>
+            <Plural
+              value={displayedBilledCredits}
+              one={
+                <Trans>
+                  <span className="text-2xl font-semibold leading-8 text-foreground">
+                    {formattedBilledCredits}
+                  </span>{" "}
+                  <span className="pb-1 text-sm text-muted-foreground">
+                    credit
+                  </span>
+                </Trans>
+              }
+              other={
+                <Trans>
+                  <span className="text-2xl font-semibold leading-8 text-foreground">
+                    {formattedBilledCredits}
+                  </span>{" "}
+                  <span className="pb-1 text-sm text-muted-foreground">
+                    credits
+                  </span>
+                </Trans>
+              }
+            />
           </div>
         </div>
         <Tabs defaultValue="tools">

@@ -36,7 +36,7 @@ export function assistantUsageMessage({
           <span className={countClassName}>
             <Plural value={nb} one="# message" other="# messages" />
           </span>{" "}
-          over the last {days} days
+          over the last <Plural value={days} one="# day" other="# days" />
         </Trans>
       );
     }
@@ -48,7 +48,7 @@ export function assistantUsageMessage({
           <span className={countClassName}>
             <Plural value={nb} one="# time" other="# times" />
           </span>{" "}
-          in the last {days} days.
+          in the last <Plural value={days} one="# day" other="# days" />.
         </Trans>
       );
     }
@@ -59,7 +59,7 @@ export function assistantUsageMessage({
         <span className={countClassName}>
           <Plural value={nb} one="# time" other="# times" />
         </span>{" "}
-        in the last {days} days.
+        in the last <Plural value={days} one="# day" other="# days" />.
       </Trans>
     );
   }

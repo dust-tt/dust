@@ -1,4 +1,6 @@
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import { useDataSourceUsage } from "@app/lib/swr/data_sources";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -57,7 +59,11 @@ export function DeleteStaticDataSourceDialog({
     }
     if (usage.count > 0) {
       const agentCount = usage.count;
-      const agentNames = usage.agents.map((a) => a.name).join(", ");
+      const agentNames = formatList(
+        usage.agents.map((a) => a.name),
+        { type: "conjunction" },
+        getActiveLocale()
+      );
       return t`${plural(agentCount, {
         one: `# agent currently uses "${name}": ${agentNames}.`,
         other: `# agents currently use "${name}": ${agentNames}.`,

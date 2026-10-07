@@ -209,12 +209,12 @@ msgid "API key"
 msgstr "Clé API"
 
 #: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
-msgid "{period} {period, plural, one {day} other {days}}"
-msgstr "{period} {period, plural, one {jour} other {jours}}"
+msgid "{period, plural, one {# day} other {# days}}"
+msgstr "{period, plural, one {# jour} many {# jours} other {# jours}}"
 
 #: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
-msgid "{days} {days, plural, one {day} other {days}}"
-msgstr "{days} {days, plural, one {jour} other {jours}}"
+msgid "{days, plural, one {# day} other {# days}}"
+msgstr "{days, plural, one {# jour} many {# jours} other {# jours}}"
 
 #: front/components/workspace/analytics/automationsFilter.ts
 msgid "Type"

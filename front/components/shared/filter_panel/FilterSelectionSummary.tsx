@@ -81,11 +81,13 @@ export function FilterSelectionSummary<
         {categoriesWithSelection.length > 0 &&
           categoriesWithSelection.map((category) => {
             const isCategoryOpen = !collapsedCategories.has(category);
+            const categoryLabel = categoryLabels[category];
+            const selectedCount = filter[category]?.length ?? 0;
             return (
               <div key={category}>
                 <NavigationListLabel
                   className="bg-transparent font-medium"
-                  label={`${categoryLabels[category]} (${filter[category]?.length ?? 0})`}
+                  label={t`${categoryLabel} (${selectedCount})`}
                   action={
                     <div className="flex items-center gap-1">
                       <Button

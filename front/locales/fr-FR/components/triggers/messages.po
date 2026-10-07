@@ -331,18 +331,6 @@ msgid "Failed to save changes"
 msgstr "Impossible d’enregistrer les modifications"
 
 #: front/components/triggers/WebhookSourceSheet.tsx
-msgid "invalid"
-msgstr "non valide"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "{fieldName}: {errorMessage}"
-msgstr "{fieldName} : {errorMessage}"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Invalid: {errorDetails}"
-msgstr "Invalide : {errorDetails}"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Invalid form data"
 msgstr "Données du formulaire non valides"
 

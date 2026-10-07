@@ -187,7 +187,7 @@ function SectionBlock({ type, content, defaultOpen }: SectionBlockProps) {
   }
 
   const labelClass = cn(
-    "font-mono text-xs uppercase tracking-wide",
+    "font-mono text-xs",
     isStderr ? "text-warning" : "text-muted-foreground"
   );
 

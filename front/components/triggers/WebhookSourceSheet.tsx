@@ -22,6 +22,8 @@ import {
   useSendNotification,
 } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import {
@@ -35,6 +37,7 @@ import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type {
   WebhookProvider,
@@ -415,15 +418,11 @@ function WebhookSourceSheetContent({
       },
       async (errors) => {
         const errorEntries = Object.entries(errors);
-        const errorDetails = errorEntries
-          .map(([fieldName, error]) => {
-            const errorMessage = error?.message ?? t`invalid`;
-            return t`${fieldName}: ${errorMessage}`;
-          })
-          .join(", ");
-
+        const errorMessages = errorEntries
+          .map(([, error]) => error?.message)
+          .filter(isString);
         const details =
-          errorEntries.length > 0 ? t`Invalid: ${errorDetails}` : undefined;
+          errorMessages.length > 0 ? errorMessages.join(" ") : undefined;
         datadogLogger.error(
           {
             fields: errorEntries.map(([key]) => key),
@@ -478,7 +477,11 @@ function WebhookSourceSheetContent({
 
     const webhookSourceName = webhookSource.name;
     const agentName = agents[0];
-    const agentNames = agents.join(", ");
+    const agentNames = formatList(
+      agents,
+      { type: "conjunction" },
+      getActiveLocale()
+    );
     const confirmed = await confirm({
       title: t`Are you sure you want to remove ${webhookSourceName}?`,
       message: (

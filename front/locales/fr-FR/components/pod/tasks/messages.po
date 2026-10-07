@@ -180,36 +180,16 @@ msgid "Delete task"
 msgstr "Supprimer la tâche"
 
 #: front/components/pod/tasks/TaskSubComponents.tsx
-msgctxt "task actor"
-msgid "someone"
-msgstr "quelqu’un"
+msgid "{creatorKind, select, someone {Created by someone · {createdAt}} agent {Created by an agent · {createdAt}} you {Created by you · {createdAt}} user {Created by a user · {createdAt}} other {Created by {creatorName} · {createdAt}}}"
+msgstr "{creatorKind, select, someone {Créée par quelqu’un · {createdAt}} agent {Créée par un agent · {createdAt}} you {Créée par vous · {createdAt}} user {Créée par un utilisateur · {createdAt}} other {Créée par {creatorName} · {createdAt}}}"
 
 #: front/components/pod/tasks/TaskSubComponents.tsx
-msgctxt "task actor"
-msgid "an agent"
-msgstr "un agent"
-
-#: front/components/pod/tasks/TaskSubComponents.tsx
-msgctxt "task actor"
-msgid "you"
-msgstr "vous"
-
-#: front/components/pod/tasks/TaskSubComponents.tsx
-msgctxt "task actor"
-msgid "a user"
-msgstr "un utilisateur"
+msgid "{doneByKind, select, someone {Done by someone · {doneAt}} agent {Done by an agent · {doneAt}} you {Done by you · {doneAt}} user {Done by a user · {doneAt}} other {Done by {doneByName} · {doneAt}}}"
+msgstr "{doneByKind, select, someone {Terminée par quelqu’un · {doneAt}} agent {Terminée par un agent · {doneAt}} you {Terminée par vous · {doneAt}} user {Terminée par un utilisateur · {doneAt}} other {Terminée par {doneByName} · {doneAt}}}"
 
 #: front/components/pod/tasks/TaskSubComponents.tsx
 msgid "An agent is working on this task."
 msgstr "Un agent travaille sur cette tâche."
-
-#: front/components/pod/tasks/TaskSubComponents.tsx
-msgid "Created by {creatorLabel} · {createdAt}"
-msgstr "Créée par {creatorLabel} · {createdAt}"
-
-#: front/components/pod/tasks/TaskSubComponents.tsx
-msgid "Done by {doneLabel} · {doneAt}"
-msgstr "Terminée par {doneLabel} · {doneAt}"
 
 #: front/components/pod/tasks/TaskSubComponents.tsx
 msgid "ID: {taskId}"

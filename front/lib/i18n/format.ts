@@ -69,6 +69,12 @@ export function formatRelativeTime(
   return new Intl.RelativeTimeFormat(locale, options).format(value, unit);
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] list-words-in-ui-locale
+ * Callers inserting a `conjunction` or `disjunction` list into a translated message MUST pass the
+ * UI locale (`getActiveLocale`) explicitly: the default format locale is the browser's when the
+ * `localisation` flag is off, and an English message MUST NOT read "a et b".
+ */
 export function formatList(
   values: string[],
   options?: Intl.ListFormatOptions,

@@ -223,10 +223,6 @@ msgid "Always allow agents to {toolName} only for {value}"
 msgstr "Toujours autoriser les agents à utiliser {toolName}, uniquement pour {value}"
 
 #: front/components/actions/blocked/toolValidationLabels.ts
-msgid "{previous} and {label}"
-msgstr "{previous} et {label}"
-
-#: front/components/actions/blocked/toolValidationLabels.ts
 msgid "Always allow agents to {toolName} only when {conditions}"
 msgstr "Toujours autoriser les agents à utiliser {toolName}, uniquement quand {conditions}"
 

@@ -40,12 +40,11 @@ export function PersonalAuthCredentialOverrides({
           inputData.validator &&
           !inputData.validator(trimmedValue);
 
-        const lowerCaseLabel = label.toLowerCase();
         let message = helpText;
         if (hasValidationError) {
           message = helpText
-            ? t`Invalid ${lowerCaseLabel}. ${helpText}`
-            : t`Invalid ${lowerCaseLabel}. Please check the format.`;
+            ? t`Invalid ${label}. ${helpText}`
+            : t`Invalid ${label}. Please check the format.`;
         }
 
         return (

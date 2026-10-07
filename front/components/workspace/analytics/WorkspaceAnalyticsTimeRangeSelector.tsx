@@ -24,7 +24,7 @@ export function WorkspaceAnalyticsTimeRangeSelector({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          label={t`${period} ${plural(period, { one: "day", other: "days" })}`}
+          label={t`${plural(period, { one: "# day", other: "# days" })}`}
           size="xs"
           variant="outline"
           isSelect
@@ -34,7 +34,7 @@ export function WorkspaceAnalyticsTimeRangeSelector({
         {OBSERVABILITY_TIME_RANGE.map((days) => (
           <DropdownMenuItem
             key={days}
-            label={t`${days} ${plural(days, { one: "day", other: "days" })}`}
+            label={t`${plural(days, { one: "# day", other: "# days" })}`}
             onClick={() => onPeriodChange(days)}
           />
         ))}

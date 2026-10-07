@@ -14,12 +14,12 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/oauth/PersonalAuthCredentialOverrides.tsx
-msgid "Invalid {lowerCaseLabel}. {helpText}"
-msgstr "Invalid {lowerCaseLabel}. {helpText}"
+msgid "Invalid {label}. {helpText}"
+msgstr "Invalid {label}. {helpText}"
 
 #: front/components/oauth/PersonalAuthCredentialOverrides.tsx
-msgid "Invalid {lowerCaseLabel}. Please check the format."
-msgstr "Invalid {lowerCaseLabel}. Please check the format."
+msgid "Invalid {label}. Please check the format."
+msgstr "Invalid {label}. Please check the format."
 
 #: front/components/oauth/PersonalAuthCredentialOverrides.tsx
 msgid "{label} <0>(optional)</0>"

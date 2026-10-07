@@ -42,6 +42,21 @@ const SEARCH_FILTER_CATEGORY_LABEL = {
 
 export type SearchFilterCategory = keyof typeof SEARCH_FILTER_CATEGORY_LABEL;
 
+const SEARCH_FILTER_SEARCH_PLACEHOLDER: Record<
+  SearchFilterCategory,
+  MessageDescriptor
+> = {
+  access: msg`Search access`,
+  availability: msg`Search availability`,
+  editor: msg`Search editors`,
+  model: msg`Search models`,
+  skill: msg`Search skills`,
+  space: msg`Search spaces`,
+  tag: msg`Search tags`,
+  tool: msg`Search tools`,
+  usage: msg`Search usage`,
+};
+
 const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   SearchFilterCategory,
   MessageDescriptor
@@ -61,6 +76,14 @@ export function getSearchFilterCategoryLabels(
   t: Translate
 ): Record<SearchFilterCategory, string> {
   return mapValues(SEARCH_FILTER_CATEGORY_LABEL, (label) => t(label));
+}
+
+export function getSearchFilterSearchPlaceholders(
+  t: Translate
+): Record<SearchFilterCategory, string> {
+  return mapValues(SEARCH_FILTER_SEARCH_PLACEHOLDER, (placeholder) =>
+    t(placeholder)
+  );
 }
 
 export function getSearchFilterCategorySingularLabels(
