@@ -645,10 +645,11 @@ export function useUpdateUserFavorite({
       agentConfigurationId,
       disabled: true,
     });
-  const { mutate: mutateAgentConfigurations } = useUnifiedAgentConfigurations({
-    workspaceId: owner.sId,
-    disabled: true,
-  });
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useUnifiedAgentConfigurations({
+      workspaceId: owner.sId,
+      disabled: true,
+    });
 
   const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
 

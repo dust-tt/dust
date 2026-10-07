@@ -30,6 +30,7 @@ import type {
   SkillSearchFacet,
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
+  SkillSearchSelectionMode,
   SkillSearchSort,
   SkillSearchSortOrder,
 } from "@app/types/api/skills";
@@ -215,7 +216,7 @@ export function useSearchSkills({
   limit,
   sortBy,
   sortOrder,
-  defaultToFavorites,
+  selectionMode,
   excludeSkillId,
   permissionFiltering,
   filters,
@@ -232,7 +233,7 @@ export function useSearchSkills({
   limit?: number;
   sortBy?: SkillSearchSort;
   sortOrder?: SkillSearchSortOrder;
-  defaultToFavorites?: boolean;
+  selectionMode?: SkillSearchSelectionMode;
   excludeSkillId?: string | null;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
@@ -271,7 +272,7 @@ export function useSearchSkills({
     limit,
     sortBy,
     sortOrder,
-    defaultToFavorites,
+    selectionMode,
     excludeSkillId: excludeSkillId ?? undefined,
     permissionFiltering,
     facets,
@@ -308,6 +309,7 @@ export function useSearchSkills({
     resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
     total: data?.total ?? 0,
     hasMore: data?.hasMore ?? false,
+    isFavoritesOnly: data?.isFavoritesOnly ?? false,
     facets: data?.facets,
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
@@ -325,11 +327,13 @@ export function useSearchSkillsInfinite({
   owner,
   searchTerm,
   limit,
+  selectionMode,
   disabled,
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
   limit: number;
+  selectionMode?: SkillSearchSelectionMode;
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
@@ -351,7 +355,12 @@ export function useSearchSkillsInfinite({
 
         return [
           `/api/w/${owner.sId}/skills/search`,
-          { query: debouncedSearchTerm, offset: pageIndex * limit, limit },
+          {
+            query: debouncedSearchTerm,
+            offset: pageIndex * limit,
+            limit,
+            selectionMode,
+          },
         ] as const;
       },
       async ([url, body]) => {
@@ -394,6 +403,8 @@ export function useSearchSkillsInfinite({
       (disabled ? undefined : data?.flatMap((page) => page.skills)) ??
       emptyArray<SkillListItemType>(),
     resolvedSearchTerm: disabled ? null : (data?.[0]?.searchTerm ?? null),
+    isFavoritesOnly: data?.[0]?.isFavoritesOnly ?? false,
+    isSkillsError: !!error,
     isSkillsLoading,
     hasMore,
     loadMore,

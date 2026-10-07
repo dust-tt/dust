@@ -108,7 +108,7 @@ describe.each([
     );
     expect(fetcherWithBody).toHaveBeenCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ query: "", defaultToFavorites: true }),
+      expect.objectContaining({ query: "", selectionMode: "favorites_or_all" }),
       "POST",
     ]);
   });
@@ -137,7 +137,10 @@ describe.each([
     );
     expect(fetcherWithBody).toHaveBeenCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ query: "al", defaultToFavorites: true }),
+      expect.objectContaining({
+        query: "al",
+        selectionMode: "favorites_or_all",
+      }),
       "POST",
     ]);
   });
