@@ -177,6 +177,8 @@ export const useDocumentEditor = ({
       setBaseline(content);
       setDraft(content);
     },
+    // TODO(co-edition): a live editor never saves, yet serializes the whole document here on each
+    // remote edit and thread change.
     onUpdate: ({ editor }) => {
       const document = editor.getJSON();
       const content = JSON.stringify(document);

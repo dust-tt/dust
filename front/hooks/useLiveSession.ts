@@ -44,7 +44,8 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
   const shownRef = useRef<LiveConnection | null>(null);
   // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
   const failuresRef = useRef(0);
-  // Kept from a lost connection, whose closed channel no longer reports them.
+  // TODO(co-edition): the threads also live in the channel and the editor; one store per session,
+  // outliving its connections, would replace this copy taken before each close.
   const lastThreadsRef = useRef<DfmComment[] | null>(null);
 
   const url = live?.url;

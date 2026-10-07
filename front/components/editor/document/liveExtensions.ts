@@ -1,3 +1,4 @@
+import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import type { Translate } from "@app/components/editor/document/extensions";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
@@ -7,6 +8,7 @@ import type { AnyExtension } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Collaboration } from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
+import isEqual from "lodash/isEqual";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 
@@ -17,32 +19,39 @@ export interface DocumentLiveUser {
 }
 
 const liveCommentThreads = (channel: LiveCommentChannel) =>
-  Extension.create<
-    Record<string, never>,
-    { unsubscribe: (() => void) | null }
-  >({
-    name: "liveCommentThreads",
-    addStorage: () => ({ unsubscribe: null }),
-    onBeforeCreate() {
-      const show = (comments: DfmComment[]) => {
-        if (!this.editor.isDestroyed) {
-          this.editor.commands.setCommentThreads(comments);
-        }
-      };
-      // Not on `create`, which TipTap emits a tick after mounting: the file's threads would show
-      // until then.
-      this.editor.on("mount", () => {
-        const current = channel.getThreads();
-        if (current) {
-          show(current);
-        }
-      });
-      this.storage.unsubscribe = channel.onThreads(show);
-    },
-    onDestroy() {
-      this.storage.unsubscribe?.();
-    },
-  });
+  Extension.create<Record<string, never>, { unsubscribe: (() => void) | null }>(
+    {
+      name: "liveCommentThreads",
+      addStorage: () => ({ unsubscribe: null }),
+      onBeforeCreate() {
+        // The session echoes every command, so most messages carry the threads already shown, and
+        // a command dispatches even when it changes nothing.
+        const show = (comments: DfmComment[]) => {
+          if (
+            !this.editor.isDestroyed &&
+            !isEqual(getDocumentComments(this.editor.state.doc), comments)
+          ) {
+            this.editor.commands.setCommentThreads(comments);
+          }
+        };
+        // Not on `create`, which TipTap emits a tick after mounting: the file's threads would show
+        // until then.
+        // TODO(co-edition): an editor remounted while its connection is lost finds the channel
+        // closed and keeps the file's threads; a per-session thread store in `useLiveSession` would
+        // cover it.
+        this.editor.on("mount", () => {
+          const current = channel.getThreads();
+          if (current) {
+            show(current);
+          }
+        });
+        this.storage.unsubscribe = channel.onThreads(show);
+      },
+      onDestroy() {
+        this.storage.unsubscribe?.();
+      },
+    }
+  );
 
 /**
  * @cc [owner:PopDaph,label:product] document-live-extensions
@@ -55,8 +64,8 @@ const liveCommentThreads = (channel: LiveCommentChannel) =>
 /**
  * @cc [owner:tdraier,label:product] document-live-threads
  * A live document's threads MUST be the ones the session last sent, from the moment the editor
- * mounts, replaced whole on each message, outside undo history, and MUST stay as loaded from the
- * file until the first one.
+ * mounts, replaced whole on each message, outside undo history. Until the first one, they MUST be
+ * the threads the channel was created with, or as loaded from the file when it has none.
  */
 export const buildLiveDocumentExtensions = ({
   t,

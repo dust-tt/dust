@@ -204,16 +204,14 @@ describe("useDocumentEditor in a live session", () => {
     if (!editor) {
       return;
     }
-    let changes = 0;
-    editor.on("transaction", ({ transaction }) => {
-      changes += transaction.docChanged ? 1 : 0;
-    });
+    const transactions = vi.fn();
+    editor.on("transaction", transactions);
 
     act(() => push(structuredClone(fileThreads)));
     act(() => push(SESSION_THREADS));
     act(() => push(structuredClone(SESSION_THREADS)));
 
-    expect(changes).toBe(1);
+    expect(transactions).toHaveBeenCalledTimes(1);
     expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
   });
 
