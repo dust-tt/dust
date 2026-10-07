@@ -54,6 +54,7 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 
@@ -122,6 +123,7 @@ async function cleanupAuthEphemeral(
 }
 
 interface StreamConversationToSlackParams {
+  i18n: I18n;
   assistantName: string;
   connector: ConnectorResource;
   conversation: ConversationPublicType;
@@ -167,6 +169,7 @@ export async function streamConversationToSlack(
   conversationData: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
   const {
+    i18n,
     assistantName,
     agentConfigurations,
     streamHandler,
@@ -196,6 +199,7 @@ export async function streamConversationToSlack(
   );
 
   const planHandler = new PlanMessageHandler({
+    i18n,
     dustAPI,
     slackClient,
     slackChannelId,
@@ -281,6 +285,7 @@ async function streamAgentAnswerToSlack(
   planHandler: PlanMessageHandler
 ) {
   const {
+    i18n,
     assistantName,
     conversation,
     userMessage,
@@ -545,6 +550,7 @@ async function streamAgentAnswerToSlack(
         const postResult = await postUserActionEphemeral({
           text: "Approve tool execution",
           blocks: makeToolValidationBlock({
+            i18n,
             toolName: event.metadata.toolName,
             id: JSON.stringify(blockId),
           }),
@@ -567,6 +573,7 @@ async function streamAgentAnswerToSlack(
           const postResult = await postUserActionEphemeral({
             text: "Personal authentication required",
             blocks: makeToolAuthenticationBlock({
+              i18n,
               serverName: event.metadata.mcpServerDisplayName,
               conversationUrl,
               value: JSON.stringify({
@@ -605,6 +612,7 @@ async function streamAgentAnswerToSlack(
           const postResult = await postUserActionEphemeral({
             text: "File authorization required",
             blocks: makeToolFileAuthorizationBlock({
+              i18n,
               fileName: event.fileAuthError.fileName,
               conversationUrl,
               value: JSON.stringify({
@@ -874,6 +882,7 @@ async function streamAgentAnswerToSlack(
               : undefined;
 
           const selectionBlocks = makeAssistantSelectionBlock(
+            i18n,
             agentConfigurations,
             JSON.stringify(blockId),
             feedbackParams
@@ -952,6 +961,7 @@ async function streamAgentAnswerToSlack(
         const postResult = await postUserActionEphemeral({
           text: event.question.question,
           blocks: makeUserQuestionBlock({
+            i18n,
             question: event.question,
             value: questionValue,
           }),
@@ -1010,6 +1020,7 @@ async function streamAgentAnswerToSlack(
 }
 
 async function deleteAndRepostMessageWithFiles({
+  i18n,
   messageUpdate,
   slack,
   connector,
@@ -1017,6 +1028,7 @@ async function deleteAndRepostMessageWithFiles({
   streamHandler,
   uploadedFiles,
 }: {
+  i18n: I18n;
   messageUpdate: SlackMessageUpdate;
   slack: {
     slackChannelId: string;
@@ -1042,6 +1054,7 @@ async function deleteAndRepostMessageWithFiles({
   try {
     const response = await slackClient.filesUploadV2({
       ...makeMessageUpdateBlocksAndText(
+        i18n,
         conversationUrl,
         connector.workspaceId,
         messageUpdate,
@@ -1124,6 +1137,7 @@ const USER_GROUP_MENTION_REGEX = /<!subteam\^([A-Z0-9]+)(?:\|([^>]+))?>/g;
  * (the mention label, or `@<group id>` when there is no label), rather than failing the answer.
  */
 async function postSlackMessageUpdate({
+  i18n,
   messageUpdate,
   slack,
   connector,
@@ -1132,6 +1146,7 @@ async function postSlackMessageUpdate({
   canBeIgnored,
   extraLogs,
 }: {
+  i18n: I18n;
   messageUpdate: SlackMessageUpdate;
   slack: {
     slackChannelId: string;
@@ -1160,6 +1175,7 @@ async function postSlackMessageUpdate({
   const updateMessage = (update: SlackMessageUpdate) =>
     slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(
+        i18n,
         conversationUrl,
         connector.workspaceId,
         update

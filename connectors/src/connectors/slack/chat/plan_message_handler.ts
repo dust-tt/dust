@@ -17,6 +17,7 @@ import type {
   DustAPI,
   NotificationRunAgentContent,
 } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 
 // Match the SDK defaults (sdks/js/src/index.ts DEFAULT_MAX_RECONNECT_ATTEMPTS / DEFAULT_RECONNECT_DELAY).
@@ -24,6 +25,7 @@ const CHILD_STREAM_MAX_RECONNECT_ATTEMPTS = 10;
 const CHILD_STREAM_RECONNECT_DELAY_MS = 5_000;
 
 interface PlanMessageHandlerParams {
+  i18n: I18n;
   dustAPI: DustAPI;
   slackClient: WebClient;
   slackChannelId: string;
@@ -34,6 +36,7 @@ interface PlanMessageHandlerParams {
 }
 
 export class PlanMessageHandler {
+  private readonly i18n: I18n;
   private readonly dustAPI: DustAPI;
   private readonly slackClient: WebClient;
   private readonly slackChannelId: string;
@@ -47,6 +50,7 @@ export class PlanMessageHandler {
   private readonly childStreamControllers = new Map<string, AbortController>();
 
   constructor({
+    i18n,
     dustAPI,
     slackClient,
     slackChannelId,
@@ -55,6 +59,7 @@ export class PlanMessageHandler {
     assistantName,
     workspaceId,
   }: PlanMessageHandlerParams) {
+    this.i18n = i18n;
     this.dustAPI = dustAPI;
     this.slackClient = slackClient;
     this.slackChannelId = slackChannelId;
@@ -66,6 +71,7 @@ export class PlanMessageHandler {
 
   async upsertPlanMessage(title: string): Promise<void> {
     const payload = makePlanMessage({
+      i18n: this.i18n,
       planTitle: title,
       tasks: [...this.taskCards.values()],
       conversationUrl: this.conversationUrl,

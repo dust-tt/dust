@@ -22,6 +22,7 @@ import {
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
+import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
@@ -58,6 +59,7 @@ import {
   getHeaderFromUserEmail,
   getHeadersFromRequestedGroupIds,
 } from "@connectors/types";
+import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import type {
   AgentMessageSuccessEvent,
   AnswerUserQuestionResponseType,
@@ -788,8 +790,10 @@ async function processErrorResult(
     );
 
     const slackClient = await getSlackClient(connector.id);
+    const i18n = await getSlackI18n(DEFAULT_LOCALE);
 
     const errorPost = makeErrorBlock(
+      i18n,
       conversationUrl,
       connector.workspaceId,
       errorMessage
@@ -878,6 +882,7 @@ async function answerMessage(
 
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
+  const i18n = await getSlackI18n(DEFAULT_LOCALE);
 
   let slackUserInfo: SlackUserInfo | null = null;
 
@@ -1249,6 +1254,7 @@ async function answerMessage(
     if (isRestrictedRes.value) {
       const errorMsg = new RestrictedSpaceAgentError();
       const errorBlock = makeErrorBlock(
+        i18n,
         null, // No conversation URL for this error
         connector.workspaceId,
         errorMsg.message
@@ -1454,6 +1460,7 @@ async function answerMessage(
   }
 
   const streamRes = await streamConversationToSlack(dustAPI, {
+    i18n,
     assistantName: mention.agentName,
     connector,
     conversation,

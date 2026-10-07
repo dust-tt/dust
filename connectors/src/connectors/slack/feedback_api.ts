@@ -1,5 +1,6 @@
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
+import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import {
   getSlackClient,
   getSlackUserInfoMemoized,
@@ -9,6 +10,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
+import { DEFAULT_LOCALE } from "@connectors/types/locale";
 
 export async function submitFeedbackToAPI({
   conversationId,
@@ -127,6 +129,7 @@ export async function submitFeedbackToAPI({
     // Update the Slack message to show feedback has been submitted
     // Using response_url works for both regular and ephemeral messages
     try {
+      const i18n = await getSlackI18n(DEFAULT_LOCALE);
       await fetch(responseUrl, {
         method: "POST",
         headers: {
@@ -134,7 +137,7 @@ export async function submitFeedbackToAPI({
         },
         body: JSON.stringify({
           replace_original: true,
-          blocks: makeFeedbackSubmittedBlock(),
+          blocks: makeFeedbackSubmittedBlock(i18n),
         }),
       });
     } catch (error) {

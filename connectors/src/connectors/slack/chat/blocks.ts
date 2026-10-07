@@ -20,6 +20,7 @@ import type {
   LightAgentConfigurationType,
   UserQuestionItemType,
 } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { KnownBlock } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -84,12 +85,14 @@ function makeFootnotesBlock(footnotes: MessageFootnotes) {
 }
 
 function makeContextSectionBlocks({
+  i18n,
   state,
   assistantName,
   conversationUrl,
   footnotes,
   workspaceId,
 }: {
+  i18n: I18n;
   state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
@@ -107,6 +110,7 @@ function makeContextSectionBlocks({
 
   blocks.push(
     makeFooterBlock({
+      i18n,
       state,
       assistantName,
       conversationUrl,
@@ -116,14 +120,14 @@ function makeContextSectionBlocks({
   return blocks.length ? [makeDividerBlock(), ...blocks] : [];
 }
 
-export function makeFeedbackSubmittedBlock() {
+export function makeFeedbackSubmittedBlock(i18n: I18n) {
   return [
     {
       type: "context",
       elements: [
         {
           type: "mrkdwn",
-          text: "✅ Feedback submitted",
+          text: i18n._("✅ Feedback submitted"),
         },
       ],
     },
@@ -152,6 +156,7 @@ function makeThinkingBlock({
 }
 
 export function makeAssistantSelectionBlock(
+  i18n: I18n,
   agentConfigurations: LightAgentConfigurationType[],
   id: string,
   feedbackParams?: {
@@ -200,7 +205,7 @@ export function makeAssistantSelectionBlock(
       type: "static_select",
       placeholder: {
         type: "plain_text",
-        text: "Ask another agent",
+        text: i18n._("Ask another agent"),
         emoji: true,
       },
       options: agentConfigurations.map((ac) => {
@@ -237,10 +242,12 @@ export type SlackMessageUpdate = {
 };
 
 export function makeFooterBlock({
+  i18n,
   state,
   assistantName,
   conversationUrl,
 }: {
+  i18n: I18n;
   state: "thinking" | "error" | "answered";
   assistantName?: string;
   conversationUrl: string | null;
@@ -248,25 +255,31 @@ export function makeFooterBlock({
   let attribution = "";
   if (assistantName) {
     if (state === "thinking") {
-      attribution = `*${assistantName}* is thinking...`;
+      attribution = i18n._("*{assistantName}* is thinking...", {
+        assistantName,
+      });
     } else if (state === "error") {
-      attribution = `*${assistantName}* encountered an error`;
+      attribution = i18n._("*{assistantName}* encountered an error", {
+        assistantName,
+      });
     } else if (state === "answered") {
-      attribution = `Answered by *${assistantName}*`;
+      attribution = i18n._("Answered by *{assistantName}*", {
+        assistantName,
+      });
     }
   } else {
     if (state === "thinking") {
-      attribution = "Thinking...";
+      attribution = i18n._("Thinking...");
     } else if (state === "error") {
-      attribution = "Error";
+      attribution = i18n._("Error");
     } else if (state === "answered") {
-      attribution = "Answered";
+      attribution = i18n._("Answered");
     }
   }
 
   const links = [];
   if (conversationUrl) {
-    links.push(`<${conversationUrl}|View full conversation>`);
+    links.push(`<${conversationUrl}|${i18n._("View full conversation")}>`);
   }
 
   const fullText =
@@ -286,6 +299,7 @@ export function makeFooterBlock({
 }
 
 export function makeMessageUpdateBlocksAndText(
+  i18n: I18n,
   conversationUrl: string | null,
   workspaceId: string,
   messageUpdate: SlackMessageUpdate,
@@ -293,9 +307,9 @@ export function makeMessageUpdateBlocksAndText(
 ) {
   const { isThinking, thinkingAction, assistantName, text, footnotes } =
     messageUpdate;
-  const thinkingText = "Agent is thinking...";
+  const thinkingText = i18n._("Agent is thinking...");
   const thinkingTextWithAction = thinkingAction
-    ? `${thinkingText}... (${thinkingAction})`
+    ? i18n._("Agent is thinking... ({thinkingAction})", { thinkingAction })
     : thinkingText;
 
   return {
@@ -306,6 +320,7 @@ export function makeMessageUpdateBlocksAndText(
       }),
       ...makeMarkdownBlock(text, isUpload),
       ...makeContextSectionBlocks({
+        i18n,
         state: isThinking ? "thinking" : "answered",
         assistantName,
         conversationUrl,
@@ -324,6 +339,7 @@ export function makeMessageUpdateBlocksAndText(
 }
 
 export function makeErrorBlock(
+  i18n: I18n,
   conversationUrl: string | null,
   workspaceId: string,
   errorMessage: string
@@ -339,6 +355,7 @@ export function makeErrorBlock(
       },
       makeDividerBlock(),
       makeFooterBlock({
+        i18n,
         state: "error",
         conversationUrl,
       }),
@@ -397,12 +414,14 @@ function makeTaskCardBlock(t: TaskCardState) {
 }
 
 export function makePlanMessage({
+  i18n,
   planTitle,
   tasks,
   conversationUrl,
   assistantName,
   workspaceId,
 }: {
+  i18n: I18n;
   planTitle: string;
   tasks: TaskCardState[];
   conversationUrl: string | null;
@@ -419,6 +438,7 @@ export function makePlanMessage({
       },
       makeDividerBlock(),
       makeFooterBlock({
+        i18n,
         state: "thinking",
         assistantName,
         conversationUrl,
@@ -435,9 +455,11 @@ export function makePlanMessage({
  * This is used when an agent sends a tool_approve_execution event to Slack.
  */
 export function makeToolValidationBlock({
+  i18n,
   toolName,
   id,
 }: {
+  i18n: I18n;
   toolName: string;
   id: string;
 }) {
@@ -446,7 +468,10 @@ export function makeToolValidationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `The agent is requesting permission to use tool \`${toolName}\``,
+        text: i18n._(
+          "The agent is requesting permission to use tool `{toolName}`",
+          { toolName }
+        ),
       },
     },
     {
@@ -457,7 +482,7 @@ export function makeToolValidationBlock({
           type: "button",
           text: {
             type: "plain_text",
-            text: "Approve",
+            text: i18n._("Approve"),
             emoji: true,
           },
           style: "primary",
@@ -471,7 +496,7 @@ export function makeToolValidationBlock({
           type: "button",
           text: {
             type: "plain_text",
-            text: "Reject",
+            text: i18n._("Reject"),
             emoji: true,
           },
           style: "danger",
@@ -487,10 +512,12 @@ export function makeToolValidationBlock({
 }
 
 export function makeToolAuthenticationBlock({
+  i18n,
   serverName,
   conversationUrl,
   value,
 }: {
+  i18n: I18n;
   serverName: string;
   conversationUrl: string;
   value: string;
@@ -500,7 +527,10 @@ export function makeToolAuthenticationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `The agent requires personal authentication for \`${serverName}\``,
+        text: i18n._(
+          "The agent requires personal authentication for `{serverName}`",
+          { serverName }
+        ),
       },
     },
     {
@@ -510,7 +540,7 @@ export function makeToolAuthenticationBlock({
           type: "button",
           text: {
             type: "plain_text",
-            text: "Authenticate",
+            text: i18n._("Authenticate"),
             emoji: true,
           },
           url: conversationUrl,
@@ -529,9 +559,11 @@ export function makeToolAuthenticationBlock({
  * Multi-select: checkboxes + Submit button reads state.values.
  */
 export function makeUserQuestionBlock({
+  i18n,
   question,
   value,
 }: {
+  i18n: I18n;
   question: UserQuestionItemType;
   value: string;
 }) {
@@ -569,7 +601,10 @@ export function makeUserQuestionBlock({
     element: {
       type: "plain_text_input",
       action_id: USER_QUESTION_TEXT_ACTION_ID,
-      placeholder: { type: "plain_text", text: "Type something else…" },
+      placeholder: {
+        type: "plain_text",
+        text: i18n._("Type something else…"),
+      },
     },
   });
 
@@ -578,13 +613,13 @@ export function makeUserQuestionBlock({
     elements: [
       {
         type: "button",
-        text: { type: "plain_text", text: "Skip" },
+        text: { type: "plain_text", text: i18n._("Skip") },
         action_id: ANSWER_USER_QUESTION_SKIP,
         value,
       },
       {
         type: "button",
-        text: { type: "plain_text", text: "Submit" },
+        text: { type: "plain_text", text: i18n._("Submit") },
         action_id: ANSWER_USER_QUESTION_SUBMIT,
         value,
         style: "primary",
@@ -595,10 +630,12 @@ export function makeUserQuestionBlock({
   return blocks;
 }
 export function makeToolFileAuthorizationBlock({
+  i18n,
   fileName,
   conversationUrl,
   value,
 }: {
+  i18n: I18n;
   fileName: string;
   conversationUrl: string;
   value: string;
@@ -608,7 +645,9 @@ export function makeToolFileAuthorizationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `The agent requires file authorization for \`${fileName}\``,
+        text: i18n._("The agent requires file authorization for `{fileName}`", {
+          fileName,
+        }),
       },
     },
     {
@@ -618,7 +657,7 @@ export function makeToolFileAuthorizationBlock({
           type: "button",
           text: {
             type: "plain_text",
-            text: "Authorize file",
+            text: i18n._("Authorize file"),
             emoji: true,
           },
           url: conversationUrl,
