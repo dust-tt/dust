@@ -40,7 +40,7 @@ const NO_EXTENSIONS: Extensions = [];
 const hasContent = (editor: Editor | null) => {
   let found = false;
   editor?.state.doc.descendants((node) => {
-    found = node.isText
+    found ||= node.isText
       ? !!node.text?.trim()
       : (node.isAtom && node.type.name !== "hardBreak") ||
         node.type.name === "codeBlock";
@@ -161,6 +161,7 @@ export const DocumentCommentInput = ({
     refocusRef.current = editor.isFocused;
     pendingRef.current = true;
     setPending(true);
+    setError(null);
     let submitted: Result<void, string>;
     try {
       submitted = await onSubmit(body);

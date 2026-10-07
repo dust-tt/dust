@@ -344,6 +344,24 @@ describe("Document comments", () => {
     expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
   });
 
+  it("submits text followed by a line break", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
+    act(() => {
+      field.editor.commands.setHardBreak();
+    });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("article", { name: "Comment by Tom" }).textContent
+      ).toContain("Too bold?")
+    );
+  });
+
   it("keeps the draft on Escape while an input method is composing", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
