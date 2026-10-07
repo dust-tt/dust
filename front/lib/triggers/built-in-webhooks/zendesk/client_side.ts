@@ -3,9 +3,11 @@ import { CreateWebhookZendeskConnection } from "@app/lib/triggers/built-in-webho
 import { WebhookSourceZendeskDetails } from "@app/lib/triggers/built-in-webhooks/zendesk/components/WebhookSourceZendeskDetails";
 import { ZENDESK_WEBHOOK_METADATA } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
 import type { ClientSideWebhookPreset } from "@app/lib/triggers/webhooks_client_side";
+import { msg } from "@lingui/core/macro";
 
 export const ZENDESK_CLIENT_SIDE_WEBHOOK_PRESET: ClientSideWebhookPreset = {
   ...ZENDESK_WEBHOOK_METADATA,
+  description: msg`Receive events from Zendesk such as ticket creation or modification`,
   icon: "ZendeskLogo",
   components: {
     detailsComponent: WebhookSourceZendeskDetails,

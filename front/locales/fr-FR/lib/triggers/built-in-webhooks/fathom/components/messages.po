@@ -1,0 +1,99 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 14:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include transcript"
+msgstr "Inclure la transcription"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include meeting transcript with speaker attribution"
+msgstr "Inclure la transcription de la réunion avec l’identification des intervenants"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include summary"
+msgstr "Inclure le résumé"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include AI-generated meeting summary"
+msgstr "Inclure le résumé de la réunion généré par l’IA"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include action items"
+msgstr "Inclure les actions à mener"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include extracted action items"
+msgstr "Inclure les actions à mener extraites"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include CRM matches"
+msgstr "Inclure les correspondances CRM"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include linked CRM contacts and companies"
+msgstr "Inclure les contacts et entreprises CRM associés"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Configure Fathom webhook"
+msgstr "Configurer le webhook Fathom"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select which recordings should trigger webhooks and what content to include."
+msgstr "Choisissez les enregistrements qui déclenchent les webhooks et le contenu à inclure."
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Recording types"
+msgstr "Types d’enregistrements"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select at least one type of recording to receive"
+msgstr "Sélectionnez au moins un type d’enregistrement à recevoir"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Content options"
+msgstr "Options de contenu"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select at least one type of content to include"
+msgstr "Sélectionnez au moins un type de contenu à inclure"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Webhook configuration"
+msgstr "Configuration du webhook"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "None configured"
+msgstr "Aucun type configuré"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Included content"
+msgstr "Contenu inclus"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Transcript"
+msgstr "Transcription"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Summary"
+msgstr "Résumé"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Action items"
+msgstr "Actions à mener"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "CRM matches"
+msgstr "Correspondances CRM"
