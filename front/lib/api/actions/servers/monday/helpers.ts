@@ -649,8 +649,9 @@ export const createUpdate = async (
 
 /**
  * @cc [owner:thomasc2a,label:mcp] item-not-found-vs-no-updates
- * MUST return `null` when the item does not exist or is not accessible with `accessToken`, and an
- * empty array when the item exists but has no updates on the requested page.
+ * MUST return `null` when the Monday API response contains no item for `itemId`, and an empty
+ * array when the item is returned without updates on the requested page. Request failures (HTTP
+ * errors such as 401/403, or GraphQL errors) MUST be thrown, never turned into `null` or `[]`.
  */
 export const getItemUpdates = async (
   accessToken: string,
