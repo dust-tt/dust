@@ -18,7 +18,6 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import { getAgentScopeLabel } from "@app/lib/agent_builder/helpers";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
@@ -34,6 +33,7 @@ import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, DiffBlock, Eye, EyeOff, Tag01 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { diffLines } from "diff";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -80,11 +80,13 @@ interface SuggestedScopeRowProps {
 }
 
 function SuggestedScopeRow({ action, scope }: SuggestedScopeRowProps) {
+  const { t } = useLingui();
+
   return (
     <SuggestedChangeRow
       action={action}
       visual={<Avatar size="xs" icon={scope === "visible" ? Eye : EyeOff} />}
-      title={getAgentScopeLabel(scope)}
+      title={scope === "visible" ? t`Published` : t`Unpublished`}
     />
   );
 }
@@ -102,6 +104,7 @@ function SuggestedSkillRow({
   skillId,
   pendingSkillName,
 }: SuggestedSkillRowProps) {
+  const { t } = useLingui();
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
@@ -110,7 +113,7 @@ function SuggestedSkillRow({
   const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill ?? null), [skill]);
 
   const displayName =
-    pendingSkillName ?? skill?.name ?? (isSkillLoading ? "Loading…" : skillId);
+    pendingSkillName ?? skill?.name ?? (isSkillLoading ? t`Loading…` : skillId);
 
   return (
     <SuggestedChangeRow
@@ -129,6 +132,7 @@ interface SuggestedToolRowProps {
 }
 
 function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
+  const { t } = useLingui();
   const { serverView, isMCPServerViewLoading } = useMCPServerView({
     owner,
     viewId: toolId,
@@ -137,7 +141,7 @@ function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
   const displayName = serverView
     ? getMcpServerViewDisplayName(serverView)
     : isMCPServerViewLoading
-      ? "Loading…"
+      ? t`Loading…`
       : toolId;
 
   return (
@@ -168,6 +172,7 @@ function SuggestedSubAgentRow({
   action,
   childAgentId,
 }: SuggestedSubAgentRowProps) {
+  const { t } = useLingui();
   const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -177,7 +182,7 @@ function SuggestedSubAgentRow({
   const displayName = subAgent
     ? `@${subAgent.name}`
     : isAgentConfigurationLoading
-      ? "Loading…"
+      ? t`Loading…`
       : childAgentId;
 
   return (
@@ -197,6 +202,7 @@ interface SuggestedTagsProps {
 }
 
 function SuggestedTags({ owner, addTags, removeTags }: SuggestedTagsProps) {
+  const { t } = useLingui();
   const { tags, isTagsLoading } = useTags({ owner });
   const existingTagNames = useMemo(
     () => new Set(tags.map((tag) => tag.name.toLowerCase())),
@@ -204,7 +210,7 @@ function SuggestedTags({ owner, addTags, removeTags }: SuggestedTagsProps) {
   );
 
   return (
-    <SuggestedChangesSection label="Tags">
+    <SuggestedChangesSection label={t`Tags`}>
       {addTags.map((name) => (
         <SuggestedChangeRow
           key={`add-${name}`}
@@ -213,7 +219,7 @@ function SuggestedTags({ owner, addTags, removeTags }: SuggestedTagsProps) {
           title={name}
           description={
             !isTagsLoading && !existingTagNames.has(name.toLowerCase())
-              ? "New tag"
+              ? t`New tag`
               : undefined
           }
         />
@@ -254,7 +260,7 @@ function SuggestedStructuredOutput({
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">
-        Structured output (JSON schema)
+        <Trans>Structured output (JSON schema)</Trans>
       </span>
       <DiffBlock variant="plain">
         <pre className="whitespace-pre-wrap text-foreground">
@@ -308,6 +314,8 @@ export function AgentSuggestionDetails({
   agentConfiguration,
   pendingSkillNameById,
 }: AgentSuggestionDetailsProps) {
+  const { t } = useLingui();
+
   switch (suggestion.kind) {
     case "create": {
       const {
@@ -322,13 +330,13 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
             layout="inline"
-            label="Name"
+            label={t`Name`}
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
             layout="inline"
-            label="Description"
+            label={t`Description`}
             currentValue=""
             newValue={description}
           />
@@ -338,7 +346,7 @@ export function AgentSuggestionDetails({
             extensions={buildAgentInstructionsReadOnlyExtensions()}
           />
           {skillIds.length > 0 && (
-            <SuggestedChangesSection label="Skills">
+            <SuggestedChangesSection label={t`Skills`}>
               {skillIds.map((skillId) => (
                 <SuggestedSkillRow
                   key={skillId}
@@ -351,7 +359,7 @@ export function AgentSuggestionDetails({
             </SuggestedChangesSection>
           )}
           {toolIds.length > 0 && (
-            <SuggestedChangesSection label="Tools">
+            <SuggestedChangesSection label={t`Tools`}>
               {toolIds.map((toolId) => (
                 <SuggestedToolRow
                   key={toolId}
@@ -363,7 +371,7 @@ export function AgentSuggestionDetails({
             </SuggestedChangesSection>
           )}
           {subAgentIds.length > 0 && (
-            <SuggestedChangesSection label="Sub-agents">
+            <SuggestedChangesSection label={t`Sub-agents`}>
               {subAgentIds.map((subAgentId) => (
                 <SuggestedSubAgentRow
                   key={subAgentId}
@@ -386,7 +394,7 @@ export function AgentSuggestionDetails({
       return (
         <SuggestionFieldEditSection
           layout="inline"
-          label="Description"
+          label={t`Description`}
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
         />
@@ -412,7 +420,9 @@ export function AgentSuggestionDetails({
     case "instructions":
       return (
         <div className="flex flex-col gap-2">
-          <span className="text-sm text-muted-foreground">Instructions</span>
+          <span className="text-sm text-muted-foreground">
+            <Trans>Instructions</Trans>
+          </span>
           <SuggestionInstructionsDiffBlock
             layout="inline"
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
@@ -432,7 +442,7 @@ export function AgentSuggestionDetails({
     case "model": {
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
-        <SuggestedChangesSection label="Model">
+        <SuggestedChangesSection label={t`Model`}>
           {agentConfiguration && (
             <SuggestedModelRow
               action="remove"
@@ -461,7 +471,7 @@ export function AgentSuggestionDetails({
       return (
         <SuggestionFieldEditSection
           layout="inline"
-          label="Name"
+          label={t`Name`}
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
         />
@@ -469,7 +479,7 @@ export function AgentSuggestionDetails({
 
     case "scope":
       return (
-        <SuggestedChangesSection label="Visibility">
+        <SuggestedChangesSection label={t`Visibility`}>
           {agentConfiguration && (
             <SuggestedScopeRow
               action="remove"

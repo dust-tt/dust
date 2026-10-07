@@ -41,12 +41,15 @@ import {
   LinkExternal01,
   LoadingBlock,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import groupBy from "lodash/groupBy";
 import type { ReactElement, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
 interface SuggestionTargetSectionProps {
-  targetLabel: "Agent" | "Skill";
+  targetLabel: string;
   name: string;
   visual: ReactElement;
   onOpen: () => void;
@@ -64,6 +67,7 @@ function SuggestionTargetSection({
   isDeletion = false,
   children,
 }: SuggestionTargetSectionProps) {
+  const { t } = useLingui();
   const header = (
     <div className="heading-sm flex min-w-0 items-center gap-1">
       <span className="shrink-0 text-foreground">{targetLabel}</span>
@@ -84,7 +88,7 @@ function SuggestionTargetSection({
     return (
       <div className="flex h-12 items-center justify-between gap-2 rounded-xl bg-background p-3">
         {header}
-        <Chip size="xs" color="warning" label="Delete" />
+        <Chip size="xs" color="warning" label={t`Delete`} />
       </div>
     );
   }
@@ -156,10 +160,13 @@ function AgentSuggestionGroup({
   );
 }
 
-const GROUPED_AGENT_SUGGESTION_LABELS: Record<string, string | undefined> = {
-  skills: "Skills",
-  tools: "Tools",
-  sub_agent: "Sub-agents",
+const GROUPED_AGENT_SUGGESTION_LABELS: Record<
+  string,
+  MessageDescriptor | undefined
+> = {
+  skills: msg`Skills`,
+  tools: msg`Tools`,
+  sub_agent: msg`Sub-agents`,
 };
 
 interface AgentSuggestionsDiffProps {
@@ -177,6 +184,7 @@ export function AgentSuggestionsDiff({
   suggestions,
   pendingSkillNameById,
 }: AgentSuggestionsDiffProps) {
+  const { t } = useLingui();
   const { openPanel } = useConversationSidePanelContext();
   const displayable = sortAgentSuggestionsByBuilderOrder(
     suggestions.filter(isAgentActionCardSuggestion)
@@ -203,11 +211,11 @@ export function AgentSuggestionsDiff({
   const name =
     creation?.kind === "create"
       ? creation.suggestion.name
-      : (agentConfiguration?.name ?? "Agent");
+      : (agentConfiguration?.name ?? t`Agent`);
 
   return (
     <SuggestionTargetSection
-      targetLabel="Agent"
+      targetLabel={t`Agent`}
       name={name}
       visual={
         agentConfiguration && !creation ? (
@@ -236,7 +244,7 @@ export function AgentSuggestionsDiff({
           <AgentSuggestionGroup
             key={kind}
             owner={owner}
-            label={groupLabel}
+            label={t(groupLabel)}
             suggestions={kindSuggestions}
             agentConfiguration={agentConfiguration}
             pendingSkillNameById={pendingSkillNameById}
@@ -270,6 +278,7 @@ export function SkillSuggestionsDiff({
   skillId,
   suggestions,
 }: SkillSuggestionsDiffProps) {
+  const { t } = useLingui();
   const { openPanel } = useConversationSidePanelContext();
   // A created skill is a pending placeholder: its name is the suggested one.
   const creation = suggestions.find(isCreateSkillSuggestion);
@@ -296,8 +305,8 @@ export function SkillSuggestionsDiff({
 
   return (
     <SuggestionTargetSection
-      targetLabel="Skill"
-      name={creation ? creation.suggestion.name : (skill?.name ?? "Skill")}
+      targetLabel={t`Skill`}
+      name={creation ? creation.suggestion.name : (skill?.name ?? t`Skill`)}
       visual={<SkillAvatar size="3xs" />}
       onOpen={() => {
         trackSuggestionTargetPreviewOpen({

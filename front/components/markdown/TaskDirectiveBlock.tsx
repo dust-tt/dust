@@ -33,20 +33,25 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
 
-function formatTaskStatusLabel(status: PodTaskStatus): string {
+function formatTaskStatusLabel(
+  status: PodTaskStatus
+): MessageDescriptor | null {
   switch (status) {
     case "todo":
-      return "Open";
+      return msg({ message: "Open", context: "task status" });
     case "in_progress":
-      return "In progress";
+      return msg`In progress`;
     case "done":
-      return "Done";
+      return msg({ message: "Done", context: "task status" });
     default:
       assertNeverAndIgnore(status);
-      return status;
+      return null;
   }
 }
 
@@ -57,17 +62,17 @@ function formatRelativeAgo(value: Date | string): string {
 function conversationActivityCaption(
   status: ConversationDotStatus,
   hasConversation: boolean
-): string | null {
+): MessageDescriptor | null {
   if (!hasConversation) {
     return null;
   }
   switch (status) {
     case "unread":
-      return "Unread activity";
+      return msg`Unread activity`;
     case "blocked":
-      return "Needs attention";
+      return msg`Needs attention`;
     case "idle":
-      return "Up to date";
+      return msg`Up to date`;
     default:
       assertNeverAndIgnore(status);
       return null;
@@ -94,6 +99,7 @@ function TaskMarkdownPopoverStartChrome({
   onStarted?: () => void;
   triggerSize?: "xs" | "icon-xs";
 }) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const doStart = useStartPodTaskConversation({ owner, podId: podId });
   const [isStarting, setIsStarting] = useState(false);
@@ -123,7 +129,7 @@ function TaskMarkdownPopoverStartChrome({
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
       disabled={isDoneWithoutConversation}
-      disabledReason="Reopen this task before starting work."
+      disabledReason={t`Reopen this task before starting work.`}
       isStarting={isStarting}
       isFirstOnboardingTask={false}
       context="conversation"
@@ -178,6 +184,7 @@ function TaskDirectivePopoverBodyLoaded({
     options?: { revalidate?: boolean }
   ) => Promise<GetWorkspacePodTaskResponseBody | undefined>;
 }) {
+  const { t } = useLingui();
   const { task, space: pod } = data;
   const doUpdate = useUpdatePodTask({ owner, podId: pod.sId });
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -187,10 +194,22 @@ function TaskDirectivePopoverBodyLoaded({
   const dotStatus: ConversationDotStatus =
     task.conversationSidebarStatus ?? "idle";
   const hasConversation = !!task.conversationId;
-  const activityCaption = conversationActivityCaption(
+  const activityCaptionDescriptor = conversationActivityCaption(
     dotStatus,
     hasConversation
   );
+  const activityCaption = activityCaptionDescriptor
+    ? t(activityCaptionDescriptor)
+    : null;
+  const statusLabelDescriptor = formatTaskStatusLabel(task.status);
+  const statusLabel = statusLabelDescriptor
+    ? t(statusLabelDescriptor)
+    : task.status;
+  const createdAgo = formatRelativeAgo(task.createdAt);
+  const doneAgo =
+    task.status === "done" && task.doneAt
+      ? formatRelativeAgo(task.doneAt)
+      : null;
   const isDone = task.status === "done";
   const canEdit = pod.isMember && !pod.archivedAt;
 
@@ -263,12 +282,16 @@ function TaskDirectivePopoverBodyLoaded({
       <Separator className="-mx-3 my-3 shrink-0 bg-border/60" />
 
       <dl className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-x-3 gap-y-2 pb-2 text-xs [grid-auto-rows:minmax(2rem,max-content)]">
-        <dt className="flex items-center text-muted-foreground">ID</dt>
+        <dt className="flex items-center text-muted-foreground">
+          <Trans>ID</Trans>
+        </dt>
         <dd className="flex min-h-8 min-w-0 items-center justify-end font-mono text-[11px] font-medium tabular-nums text-foreground">
           <span className="break-all select-text">{task.sId}</span>
         </dd>
 
-        <dt className="flex items-center text-muted-foreground">Assignee</dt>
+        <dt className="flex items-center text-muted-foreground">
+          <Trans>Assignee</Trans>
+        </dt>
         <dd className="flex min-h-8 min-w-0 items-center justify-end">
           {assignee ? (
             <Tooltip
@@ -289,22 +312,28 @@ function TaskDirectivePopoverBodyLoaded({
               }
             />
           ) : (
-            <span className="text-muted-foreground">Unassigned</span>
+            <span className="text-muted-foreground">
+              <Trans>Unassigned</Trans>
+            </span>
           )}
         </dd>
 
-        <dt className="flex items-center text-muted-foreground">Created</dt>
+        <dt className="flex items-center text-muted-foreground">
+          <Trans>Created</Trans>
+        </dt>
         <dd className="flex min-h-8 min-w-0 items-center justify-end text-right font-medium text-foreground">
-          {formatRelativeAgo(task.createdAt)}
+          {createdAgo}
         </dd>
 
-        <dt className="flex items-center text-muted-foreground">Status</dt>
+        <dt className="flex items-center text-muted-foreground">
+          <Trans>Status</Trans>
+        </dt>
         <dd className="flex min-h-8 min-w-0 flex-wrap items-center justify-end gap-2 font-medium text-foreground">
           <span className="text-right leading-tight">
-            {formatTaskStatusLabel(task.status)}
-            {task.status === "done" && task.doneAt ? (
+            {statusLabel}
+            {doneAgo ? (
               <span className="mt-1 block text-[11px] font-normal leading-tight text-muted-foreground">
-                Completed {formatRelativeAgo(task.doneAt)}
+                <Trans>Completed {doneAgo}</Trans>
               </span>
             ) : null}
           </span>
@@ -325,7 +354,7 @@ function TaskDirectivePopoverBodyLoaded({
         {hasConversation && task.conversationId && activityCaption ? (
           <>
             <dt className="flex items-center text-muted-foreground">
-              Conversation
+              <Trans>Conversation</Trans>
             </dt>
             <dd className="flex min-h-8 min-w-0 items-center justify-end gap-2 text-right">
               <ConversationSidebarStatusDot
@@ -408,7 +437,7 @@ function TaskDirectivePopoverContent({
   if (isWorkspacePodTaskError || !task || !pod) {
     return (
       <div className="p-3 text-center text-sm text-muted-foreground">
-        Could not load this task.
+        <Trans>Could not load this task.</Trans>
       </div>
     );
   }
@@ -434,6 +463,7 @@ function TaskDirectiveChipInner({
   label: string;
   sId: string;
 }) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const displayLabel = label.replaceAll("\n", " ").replaceAll("\r", " ");
 
@@ -447,7 +477,7 @@ function TaskDirectiveChipInner({
           <button
             type="button"
             className="group flex w-full min-w-0 max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
-            aria-label={`Task: ${displayLabel}. Open details.`}
+            aria-label={t`Task: ${displayLabel}. Open details.`}
           >
             <AttachmentChip
               label={displayLabel}

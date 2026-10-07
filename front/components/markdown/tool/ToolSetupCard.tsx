@@ -25,6 +25,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Button, ContentMessage } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface ToolSetupCardProps {
@@ -40,6 +41,7 @@ export function ToolSetupCard({
   owner,
   onSetupComplete,
 }: ToolSetupCardProps) {
+  const { t } = useLingui();
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
   const isWorkspaceAdmin = isAdmin(owner);
@@ -118,18 +120,18 @@ export function ToolSetupCard({
 
   const getButtonLabel = () => {
     if (!isWorkspaceAdmin) {
-      return "Only admins can configure tools";
+      return t`Only admins can configure tools`;
     }
     if (isActivating) {
-      return "Configuring...";
+      return t`Configuring...`;
     }
     if (isToolActivatedInGlobalSpace) {
-      return "Configured";
+      return t`Configured`;
     }
     if (isToolActivatedInSystemSpace) {
-      return `Add to ${GLOBAL_SPACE_NAME}`;
+      return t`Add to ${GLOBAL_SPACE_NAME}`;
     }
-    return "Configure";
+    return t`Configure`;
   };
 
   const getButtonClickHandler = () => {
@@ -170,10 +172,12 @@ export function ToolSetupCard({
     onSetupComplete?.(toolId);
   };
 
+  const toolDisplayName = asDisplayToolName(toolId) || toolName;
+
   return (
     <div className="mb-2 mr-2 inline-block w-72 align-top">
       <ContentMessage
-        title={`${asDisplayToolName(toolId) || toolName} Tool`}
+        title={t`${toolDisplayName} tool`}
         icon={getIcon(matchingMCPServer.icon)}
         variant="primary"
         size="sm"
@@ -188,7 +192,7 @@ export function ToolSetupCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  label="About"
+                  label={t`About`}
                   href={matchingMCPServer.documentationUrl}
                   target="_blank"
                 />

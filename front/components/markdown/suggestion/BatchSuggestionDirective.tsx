@@ -35,6 +35,9 @@ import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestio
 import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import groupBy from "lodash/groupBy";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -52,8 +55,11 @@ export const batchSuggestionDirective = makeDirective(
   toBatchProperties
 );
 
-export function getBatchSuggestionTitle(batch: BatchSuggestionType): string {
-  return batch.title ?? "Suggested changes";
+export function getBatchSuggestionTitle(
+  batch: BatchSuggestionType,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  return batch.title ?? t(msg`Suggested changes`);
 }
 
 interface PendingBatchSuggestionCardProps {
@@ -79,6 +85,7 @@ export function PendingBatchSuggestionCard({
   titleAside,
   secondaryAction,
 }: PendingBatchSuggestionCardProps) {
+  const { t } = useLingui();
   const agentSuggestionsByAgentId = groupBy(
     batch.agentSuggestions,
     (s) => s.agentId
@@ -96,7 +103,7 @@ export function PendingBatchSuggestionCard({
 
   return (
     <ConversationalSuggestionCard
-      title={getBatchSuggestionTitle(batch)}
+      title={getBatchSuggestionTitle(batch, t)}
       titleAside={titleAside}
       analysis={batch.analysis}
       collapsibleContent={
@@ -145,6 +152,7 @@ interface BatchSuggestionProps {
 }
 
 function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
+  const { t } = useLingui();
   const { batch, isBatchLoading } = useSuggestionBatch({
     batchId,
     workspaceId: owner.sId,
@@ -188,7 +196,7 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
     return (
       <ReviewedSuggestionCard
         state={batch.state}
-        title={getBatchSuggestionTitle(batch)}
+        title={getBatchSuggestionTitle(batch, t)}
         updatedAt={batch.updatedAt}
       />
     );
