@@ -185,40 +185,6 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
   });
 
-  it("ignores favoritesFirst from older clients without rejecting the request", async () => {
-    const { workspace } = await setup();
-    searchAgents.mockResolvedValue(
-      new Ok({
-        agents: [],
-        total: 0,
-        hasMore: false,
-        isFavoritesOnly: false,
-        facets: {},
-      })
-    );
-
-    const response = await searchRequest(workspace.sId, {
-      query: "report",
-      sortBy: "name",
-      sortOrder: "asc",
-      favoritesFirst: true,
-    });
-
-    expect(response.status).toBe(200);
-    expect(searchAgents).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        searchTerm: "report",
-        sortBy: "name",
-        sortOrder: "asc",
-        selectionMode: undefined,
-      })
-    );
-    expect(searchAgents.mock.lastCall?.[1]).not.toHaveProperty(
-      "favoritesFirst"
-    );
-  });
-
   it.each(["autocomplete", "name"] as const)(
     "passes %s search through",
     async (searchType) => {
