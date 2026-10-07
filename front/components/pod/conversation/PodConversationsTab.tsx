@@ -190,10 +190,12 @@ export function PodConversationsTab({
     [owner.sId, router, setSearchText]
   );
 
-  const [greeting, setGreeting] = useState<string>("");
+  const [greetingMessage, setGreetingMessage] =
+    useState<MessageDescriptor | null>(null);
   useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
+    setGreetingMessage(getRandomGreetingForName(user.firstName));
   }, [user.firstName, podInfo.name]);
+  const greeting = greetingMessage ? t(greetingMessage) : "";
 
   const isFilteredEmpty = !isConversationsLoading && !isPodEmpty && !hasHistory;
   const isSingleMemberPod = podInfo.members.length === 1;
