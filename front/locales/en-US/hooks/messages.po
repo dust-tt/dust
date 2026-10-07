@@ -13,6 +13,22 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "Failed to update the shared limit"
+msgstr "Failed to update the shared limit"
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "Shared limit updated"
+msgstr "Shared limit updated"
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "{groupName}'s shared limit is now {amount} credits per billing cycle."
+msgstr "{groupName}'s shared limit is now {amount} credits per billing cycle."
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "{groupName}'s shared limit has been removed."
+msgstr "{groupName}'s shared limit has been removed."
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Could not save the language"

@@ -1,3 +1,5 @@
+import type { EditSharedUsageLimitGroup } from "@app/components/workspace/EditSharedUsageLimitDialog";
+import { EditSharedUsageLimitDialog } from "@app/components/workspace/EditSharedUsageLimitDialog";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSeatPickerDropdown } from "@app/components/workspace/GroupSeatPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
@@ -12,6 +14,7 @@ import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
+  Button,
   DataTable,
   DataTableSkeleton,
   LoadingBlock,
@@ -19,7 +22,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
@@ -94,6 +97,8 @@ export function GroupsUsageTable({
       owner,
       disabled: !showSharedUsageLimitColumn,
     });
+  const [editedSharedUsageLimitGroup, setEditedSharedUsageLimitGroup] =
+    useState<EditSharedUsageLimitGroup | null>(null);
   const isSharedUsageLimitShown =
     showSharedUsageLimitColumn && !isGroupsUsageError;
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
@@ -198,14 +203,38 @@ export function GroupsUsageTable({
               id: "sharedUsageLimit",
               header: t`Shared limit`,
               meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
-              cell: (info: GroupInfo) =>
-                isGroupsUsageLoading ? (
-                  <LoadingBlock className="h-3 w-40" />
+              cell: (info: GroupInfo) => {
+                if (isGroupsUsageLoading) {
+                  return <LoadingBlock className="h-3 w-40" />;
+                }
+                const { groupId, name, sharedUsageLimitUsage } =
+                  info.row.original;
+                const editGroup = () =>
+                  setEditedSharedUsageLimitGroup({
+                    groupId,
+                    name,
+                    limitAwuCredits:
+                      sharedUsageLimitUsage?.limitAwuCredits ?? null,
+                  });
+                return sharedUsageLimitUsage ? (
+                  <div className="flex w-full items-center gap-2">
+                    <SharedUsageLimitCell usage={sharedUsageLimitUsage} />
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      label={t`Edit`}
+                      onClick={editGroup}
+                    />
+                  </div>
                 ) : (
-                  <SharedUsageLimitCell
-                    usage={info.row.original.sharedUsageLimitUsage}
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    label={t`Set limit`}
+                    onClick={editGroup}
                   />
-                ),
+                );
+              },
               enableSorting: false,
             } satisfies ColumnDef<GroupRowData, string>,
           ]
@@ -273,6 +302,14 @@ export function GroupsUsageTable({
         />
       ) : (
         <DataTable filterColumn="name" data={rows} columns={columns} />
+      )}
+      {isSharedUsageLimitShown && (
+        <EditSharedUsageLimitDialog
+          isOpen={editedSharedUsageLimitGroup !== null}
+          onClose={() => setEditedSharedUsageLimitGroup(null)}
+          owner={owner}
+          group={editedSharedUsageLimitGroup}
+        />
       )}
     </div>
   );

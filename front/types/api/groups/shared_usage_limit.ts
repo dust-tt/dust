@@ -1,3 +1,6 @@
+import type { GroupType } from "@app/types/groups";
+import type { UserType } from "@app/types/user";
+
 export type SharedUsageLimit =
   | { kind: "unlimited" }
   | { kind: "limited"; awuCredits: number };
@@ -16,4 +19,11 @@ export type SharedUsageLimitWithUsage = {
 
 export type GetGroupsUsageResponseBody = {
   groups: SharedUsageLimitWithUsage[];
+};
+
+export type GetSharedUsageLimitPreviewResponseBody = {
+  usedAwuCredits: number;
+  blocksDrawingMembers: boolean;
+  membersDrawingElsewhere: { user: UserType; group: GroupType }[];
+  membersDrawingElsewhereCount: number;
 };

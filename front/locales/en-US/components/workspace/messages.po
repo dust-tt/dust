@@ -75,6 +75,7 @@ msgstr "Archiving will cancel their pending runs and suspend their editors' acce
 #: front/components/workspace/DirectorySync.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
 #: front/components/workspace/GroupSeatPickerDropdown.tsx
 #: front/components/workspace/UpgradePlanDialog.tsx
 #: front/components/workspace/UpgradeRequests.tsx
@@ -870,6 +871,7 @@ msgid "Saving..."
 msgstr "Saving..."
 
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
 msgid "Save"
 msgstr "Save"
 
@@ -892,6 +894,63 @@ msgstr "A personal limit applies to this member across the workspace."
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Group limits"
 msgstr "Group limits"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "Shared limit for {groupName}"
+msgstr "Shared limit for {groupName}"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "One amount per billing cycle, shared by the members who draw from this group."
+msgstr "One amount per billing cycle, shared by the members who draw from this group."
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Shared limit"
+msgstr "Shared limit"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "Confirm removal"
+msgstr "Confirm removal"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "Remove limit"
+msgstr "Remove limit"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "Usage counts from now."
+msgstr "Usage counts from now."
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "This group already used {usedCredits} credits this cycle."
+msgstr "This group already used {usedCredits} credits this cycle."
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "Members of this group will no longer draw from this shared limit. Members of another group with a shared limit will draw from that one instead."
+msgstr "Members of this group will no longer draw from this shared limit. Members of another group with a shared limit will draw from that one instead."
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "If you set a limit again later, members in several groups may draw from another group first."
+msgstr "If you set a limit again later, members in several groups may draw from another group first."
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "Members drawing from this group will be blocked right away."
+msgstr "Members drawing from this group will be blocked right away."
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "{count, plural, one {# member already draws from another group's shared limit and won't use this one:} other {# members already draw from another group's shared limit and won't use this one:}}"
+msgstr "{count, plural, one {# member already draws from another group's shared limit and won't use this one:} other {# members already draw from another group's shared limit and won't use this one:}}"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "{userName} ({otherGroupName})"
+msgstr "{userName} ({otherGroupName})"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "and {moreCount} more"
+msgstr "and {moreCount} more"
+
+#: front/components/workspace/EditSharedUsageLimitDialog.tsx
+msgid "To have them draw from this group, remove them from the other group."
+msgstr "To have them draw from this group, remove them from the other group."
 
 #: front/components/workspace/ExtensionMcpToolsSection.tsx
 msgid "Browser Extension Tools"
@@ -946,8 +1005,12 @@ msgid "Spend limit"
 msgstr "Spend limit"
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "Shared limit"
-msgstr "Shared limit"
+msgid "Edit"
+msgstr "Edit"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Set limit"
+msgstr "Set limit"
 
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx

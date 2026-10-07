@@ -41,6 +41,7 @@ import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 
@@ -92,23 +93,10 @@ export async function areGroupSharedUsageLimitsEnabled(
   return !(await contractHasPersonalCreditSeats(contract));
 }
 
-/**
- * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-admin-only-edit
- * Only workspace admins MAY set or remove a shared usage limit. Group managers' `set_usage_limits`
- * MUST NOT grant it (it only covers the per-member limit).
- */
-export async function setGroupSharedUsageLimit(
+async function fetchGroupForSharedUsageLimitChange(
   auth: Authenticator,
-  {
-    groupId,
-    limit,
-    auditContext,
-  }: {
-    groupId: string;
-    limit: SharedUsageLimit;
-    auditContext: AuditLogContext;
-  }
-): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
+  { groupId, limit }: { groupId: string; limit: SharedUsageLimit }
+): Promise<Result<GroupResource, SharedUsageLimitError>> {
   if (!auth.isAdmin()) {
     return new Err(
       new SharedUsageLimitError(
@@ -160,6 +148,35 @@ export async function setGroupSharedUsageLimit(
       )
     );
   }
+
+  return new Ok(group);
+}
+
+/**
+ * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-admin-only-edit
+ * Only workspace admins MAY set or remove a shared usage limit. Group managers' `set_usage_limits`
+ * MUST NOT grant it (it only covers the per-member limit).
+ */
+export async function setGroupSharedUsageLimit(
+  auth: Authenticator,
+  {
+    groupId,
+    limit,
+    auditContext,
+  }: {
+    groupId: string;
+    limit: SharedUsageLimit;
+    auditContext: AuditLogContext;
+  }
+): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
+  const groupRes = await fetchGroupForSharedUsageLimitChange(auth, {
+    groupId,
+    limit,
+  });
+  if (groupRes.isErr()) {
+    return groupRes;
+  }
+  const group = groupRes.value;
 
   const previousAwuCredits = group.sharedUsageLimitAwuCredits;
 
@@ -473,6 +490,31 @@ export async function getGroupSharedUsageLimits(
     resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
   ]);
 
+  const usedMicroCreditsByGroupId = await readSharedUsageMicroCreditsByGroupId(
+    auth,
+    { groups, bounds }
+  );
+
+  return groups.map((group) => ({
+    group,
+    usedAwuCredits: microCreditsToCredits(
+      usedMicroCreditsByGroupId.get(group.sId) ?? 0
+    ),
+  }));
+}
+
+/**
+ * Each group's shared usage this cycle in microcredits, keyed by group sId. Reads the counters
+ * without seeding them and fills the ones reading 0 from a single analytics-index query. Usage that
+ * cannot be read (or an unknown cycle) is absent.
+ */
+async function readSharedUsageMicroCreditsByGroupId(
+  auth: Authenticator,
+  {
+    groups,
+    bounds,
+  }: { groups: GroupResource[]; bounds: FixedWindowBounds | null }
+): Promise<Map<string, number>> {
   const workspace = auth.getNonNullableWorkspace();
   const countByGroupId = new Map<string, number>();
   if (bounds) {
@@ -508,11 +550,83 @@ export async function getGroupSharedUsageLimits(
       countByGroupId.set(groupId, consumed);
     }
   }
+  return countByGroupId;
+}
 
-  return groups.map((group) => ({
-    group,
-    usedAwuCredits: microCreditsToCredits(countByGroupId.get(group.sId) ?? 0),
-  }));
+const MAX_PREVIEWED_MEMBERS_DRAWING_ELSEWHERE = 20;
+
+export type SharedUsageLimitPreview = {
+  usedAwuCredits: number;
+  blocksDrawingMembers: boolean;
+  membersDrawingElsewhere: { user: UserResource; group: GroupResource }[];
+  membersDrawingElsewhereCount: number;
+};
+
+/**
+ * What setting or removing a group's shared usage limit would change, under the same checks as
+ * `setGroupSharedUsageLimit`: the group's usage this cycle, whether a new amount would block the
+ * members drawing from it right away, and (when setting) the members of the group who draw from
+ * another group's shared usage limit and so would not use this one (capped list, full count).
+ */
+export async function previewGroupSharedUsageLimit(
+  auth: Authenticator,
+  { groupId, limit }: { groupId: string; limit: SharedUsageLimit }
+): Promise<Result<SharedUsageLimitPreview, SharedUsageLimitError>> {
+  const groupRes = await fetchGroupForSharedUsageLimitChange(auth, {
+    groupId,
+    limit,
+  });
+  if (groupRes.isErr()) {
+    return groupRes;
+  }
+  const group = groupRes.value;
+
+  const bounds = await resolveSpendLimitCycleBounds(
+    auth.getNonNullableWorkspace()
+  );
+  const usedMicroCredits =
+    (
+      await readSharedUsageMicroCreditsByGroupId(auth, {
+        groups: [group],
+        bounds,
+      })
+    ).get(group.sId) ?? 0;
+
+  if (limit.kind === "unlimited") {
+    return new Ok({
+      usedAwuCredits: microCreditsToCredits(usedMicroCredits),
+      blocksDrawingMembers: false,
+      membersDrawingElsewhere: [],
+      membersDrawingElsewhereCount: 0,
+    });
+  }
+
+  const members = await group.getActiveMembers(auth);
+  const sharedUsageLimitGroupByUserId =
+    await resolveSharedUsageLimitGroupsForUsers(auth, { users: members });
+  const membersDrawingElsewhere = removeNulls(
+    members.map((user) => {
+      const drawingGroup = sharedUsageLimitGroupByUserId.get(user.sId);
+      return drawingGroup && drawingGroup.sId !== group.sId
+        ? { user, group: drawingGroup }
+        : null;
+    })
+  ).sort(
+    (a, b) =>
+      a.group.name.localeCompare(b.group.name) ||
+      a.user.fullName().localeCompare(b.user.fullName())
+  );
+
+  return new Ok({
+    usedAwuCredits: microCreditsToCredits(usedMicroCredits),
+    blocksDrawingMembers:
+      usedMicroCredits >= roundCreditsToMicroCredits(limit.awuCredits),
+    membersDrawingElsewhere: membersDrawingElsewhere.slice(
+      0,
+      MAX_PREVIEWED_MEMBERS_DRAWING_ELSEWHERE
+    ),
+    membersDrawingElsewhereCount: membersDrawingElsewhere.length,
+  });
 }
 
 /**
