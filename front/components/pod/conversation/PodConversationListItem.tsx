@@ -5,6 +5,7 @@ import type { PodConversationListItemType } from "@app/types/api/assistant/conve
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface PodConversationListItemProps {
   conversation: PodConversationListItemType;
@@ -20,6 +21,7 @@ export function PodConversationListItem({
   conversation,
   owner,
 }: PodConversationListItemProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const time = formatRelativeTime(conversation.updated);
   return (
@@ -47,7 +49,7 @@ export function PodConversationListItem({
               replyCount={conversation.replyCount}
               unreadCount={conversation.unreadMessageCount}
               avatars={conversation.avatars}
-              lastMessageBy={conversation.avatars[0]?.name ?? "Unknown"}
+              lastMessageBy={conversation.avatars[0]?.name ?? t`Unknown`}
             />
           ) : null
         }

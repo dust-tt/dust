@@ -23,6 +23,9 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -35,29 +38,29 @@ type ProjectTaskStartWorkingOptions = {
 type ProjectTaskStartWorkingContext = "tasks_page" | "conversation";
 
 function startRedirectMenuLabels(context: ProjectTaskStartWorkingContext): {
-  goToConversation: string;
-  stay: string;
-  ariaLabel: string;
+  goToConversation: MessageDescriptor;
+  stay: MessageDescriptor;
+  ariaLabel: MessageDescriptor;
 } {
   switch (context) {
     case "conversation":
       return {
-        goToConversation: "Open task conversation",
-        stay: "Stay in this conversation",
-        ariaLabel: "After start: open task conversation or stay here",
+        goToConversation: msg`Open task conversation`,
+        stay: msg`Stay in this conversation`,
+        ariaLabel: msg`After start: open task conversation or stay here`,
       };
     case "tasks_page":
       return {
-        goToConversation: "Redirect to conversation",
-        stay: "Stay on tasks",
-        ariaLabel: "After start: open conversation or stay on tasks",
+        goToConversation: msg`Redirect to conversation`,
+        stay: msg`Stay on tasks`,
+        ariaLabel: msg`After start: open conversation or stay on tasks`,
       };
     default:
       assertNeverAndIgnore(context);
       return {
-        goToConversation: "Redirect to conversation",
-        stay: "Stay on tasks",
-        ariaLabel: "After start: open conversation or stay on tasks",
+        goToConversation: msg`Redirect to conversation`,
+        stay: msg`Stay on tasks`,
+        ariaLabel: msg`After start: open conversation or stay on tasks`,
       };
   }
 }
@@ -96,6 +99,7 @@ export function PodTaskStartWorkingDropdown({
   triggerClassName?: string;
   triggerSize?: "xs" | "icon-xs";
 }) {
+  const { t } = useLingui();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [startCustomMessage, setStartCustomMessage] = useState("");
   const [goToConversationAfterStart, setGoToConversationAfterStart] = useState(
@@ -148,6 +152,8 @@ export function PodTaskStartWorkingDropdown({
     !activeAgents.some((a) => a.sId === defaultAgentId);
 
   const redirectMenuLabels = startRedirectMenuLabels(context);
+  const goToConversationLabel = t(redirectMenuLabels.goToConversation);
+  const stayLabel = t(redirectMenuLabels.stay);
 
   const startRedirectMenuItems = useMemo((): DropdownMenuItemProps[] => {
     const check = (
@@ -155,7 +161,7 @@ export function PodTaskStartWorkingDropdown({
     );
     return [
       {
-        label: redirectMenuLabels.goToConversation,
+        label: goToConversationLabel,
         onSelect: (e: Event) => {
           e.preventDefault();
           setGoToConversationAfterStart(true);
@@ -163,7 +169,7 @@ export function PodTaskStartWorkingDropdown({
         endComponent: goToConversationAfterStart ? check : undefined,
       },
       {
-        label: redirectMenuLabels.stay,
+        label: stayLabel,
         onSelect: (e: Event) => {
           e.preventDefault();
           setGoToConversationAfterStart(false);
@@ -171,11 +177,9 @@ export function PodTaskStartWorkingDropdown({
         endComponent: !goToConversationAfterStart ? check : undefined,
       },
     ];
-  }, [
-    goToConversationAfterStart,
-    redirectMenuLabels.goToConversation,
-    redirectMenuLabels.stay,
-  ]);
+  }, [goToConversationAfterStart, goToConversationLabel, stayLabel]);
+
+  const selectedAgentName = selectedStartAgent?.name ?? t`Agent`;
 
   if (isFirstOnboardingTask && !disabled) {
     return (
@@ -187,7 +191,7 @@ export function PodTaskStartWorkingDropdown({
         isLoading={isStarting}
         disabled={isStarting}
         isPulsing={!isStarting}
-        tooltip="Start working on task"
+        tooltip={t`Start working on task`}
         onClick={() => void handleDirectStart()}
       />
     );
@@ -196,7 +200,7 @@ export function PodTaskStartWorkingDropdown({
   const triggerButton = disabled ? (
     <Tooltip
       label={
-        disabledReason ?? "Can't start work on this task in this state yet."
+        disabledReason ?? t`Can't start work on this task in this state yet.`
       }
       trigger={
         <Button icon={Play} size={triggerSize} variant="outline" disabled />
@@ -217,15 +221,15 @@ export function PodTaskStartWorkingDropdown({
           isLoading={isStarting}
           disabled={isStarting}
           isPulsing={isFirstOnboardingTask && !startMenuOpen}
-          tooltip="Start working on task"
+          tooltip={t`Start working on task`}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-96">
         <div className="flex flex-col gap-3 p-3">
           <TextArea
             id={`task-start-msg-${taskId}`}
-            aria-label="Additional instructions for the agent"
-            placeholder="(optional) Add a custom message for the agent..."
+            aria-label={t`Additional instructions for the agent`}
+            placeholder={t`(optional) Add a custom message for the agent...`}
             value={startCustomMessage}
             rows={4}
             onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -248,7 +252,7 @@ export function PodTaskStartWorkingDropdown({
                 pickerButton={
                   <button
                     type="button"
-                    aria-label={`Selected agent: ${selectedStartAgent?.name ?? "Agent"}`}
+                    aria-label={t`Selected agent: ${selectedAgentName}`}
                     className={cn(
                       "inline-flex box-border max-w-full min-w-0 items-center rounded-lg h-7 heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
                       agentsLoading
@@ -265,7 +269,7 @@ export function PodTaskStartWorkingDropdown({
                       <Icon visual={Robot} size="xs" />
                     )}
                     <span className="grow truncate notranslate">
-                      {selectedStartAgent?.name ?? "Agent"}
+                      {selectedAgentName}
                     </span>
                     {isDefaultAgentUnavailable && (
                       <Tooltip
@@ -285,7 +289,7 @@ export function PodTaskStartWorkingDropdown({
                             <Icon visual={InfoCircle} size="xs" />
                           </span>
                         }
-                        label="This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+                        label={t`This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error.`}
                       />
                     )}
                     <Icon
@@ -299,7 +303,7 @@ export function PodTaskStartWorkingDropdown({
             </div>
             <ButtonGroup className="shrink-0">
               <Button
-                label="Start working"
+                label={t`Start working`}
                 variant="outline"
                 size="sm"
                 className={isFirstOnboardingTask ? "z-10" : ""}
@@ -317,7 +321,7 @@ export function PodTaskStartWorkingDropdown({
                     size="sm"
                     icon={ChevronDown}
                     disabled={isStarting || !selectedStartAgent}
-                    aria-label={redirectMenuLabels.ariaLabel}
+                    aria-label={t(redirectMenuLabels.ariaLabel)}
                   />
                 }
               />
