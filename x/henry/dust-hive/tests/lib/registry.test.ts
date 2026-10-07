@@ -87,12 +87,13 @@ describe("registry", () => {
   });
 
   describe("WARM_SERVICES", () => {
-    it("excludes sparkle, sdk, viz, storybook and sqlite-worker from warm services", () => {
+    it("excludes sparkle, sdk, viz, storybook, sqlite-worker and collab from warm services", () => {
       expect(WARM_SERVICES).not.toContain("sparkle");
       expect(WARM_SERVICES).not.toContain("sdk");
       expect(WARM_SERVICES).not.toContain("viz");
       expect(WARM_SERVICES).not.toContain("storybook");
       expect(WARM_SERVICES).not.toContain("sqlite-worker");
+      expect(WARM_SERVICES).not.toContain("collab");
     });
 
     it("includes all other services", () => {
@@ -107,7 +108,7 @@ describe("registry", () => {
       expect(WARM_SERVICES).toContain("front-spa-app");
     });
 
-    it("has 9 services (all except sparkle, sdk, viz, storybook, sqlite-worker)", () => {
+    it("has 9 services (all except sparkle, sdk, viz, storybook, sqlite-worker, collab)", () => {
       expect(WARM_SERVICES).toHaveLength(9);
     });
   });
@@ -204,9 +205,9 @@ describe("registry", () => {
       expect(command).toBe("npm run dev -- -p 10004");
     });
 
-    it("proxy receives all three ports as argv", () => {
+    it("proxy receives its port and the upstream ports as argv", () => {
       const command = SERVICE_REGISTRY.proxy.buildCommand(mockEnv);
-      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004");
+      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004 10012");
     });
 
     it("core returns cargo run --bin core-api", () => {

@@ -239,6 +239,7 @@ const TAB_NAMES: Record<ServiceName, string> = {
   viz: "viz",
   storybook: "storybook",
   "sqlite-worker": "sqlite-worker",
+  collab: "collab",
 };
 
 export function getTabName(service: ServiceName): string {

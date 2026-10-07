@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 // HTTP proxy daemon - the public entry point for a hive env.
 //
-// Usage: bun run proxy-daemon.ts <listen-port> <front-api-port> <marketing-port>
+// Usage: bun run proxy-daemon.ts <listen-port> <front-api-port> <marketing-port> [collab-port]
 //
 // Routing:
 //   /__hive/healthz → 200 ok (proxy's own health)
+//   /collab/*       → collab (co-edition live session server, WebSocket)
 //   /m/api/*        → marketing (Next.js dev server, internally rewrites to /api/*)
 //   /api/*          → front-api (Hono+Next hybrid)
 //   *               → marketing
@@ -23,7 +24,10 @@ import { logger } from "./lib/logger";
 
 const PROXY_IDLE_TIMEOUT_SECONDS = 60;
 
-type Target = "front-api" | "marketing";
+type Target = "front-api" | "marketing" | "collab";
+
+// The collab port is optional: a CLI older than the proxy passes only the first three.
+type ProxyPorts = { "front-api": number; marketing: number; collab?: number };
 
 // Declarative routing table: first matching pattern wins. Patterns are anchored
 // regexes so they describe the full pathname — `^/api(/.*)?$` matches `/api`,
@@ -33,6 +37,7 @@ const ROUTES: ReadonlyArray<{ pattern: RegExp; target: Target }> = [
   { pattern: /^\/m\/api(\/.*)?$/, target: "marketing" }, // /m/api/*
   { pattern: /^\/api(\/.*)?$/, target: "front-api" }, //   /api/*
   { pattern: /^\/oauth(\/.*)?$/, target: "front-api" }, // /oauth/*
+  { pattern: /^\/collab(\/.*)?$/, target: "collab" }, // /collab/*
 ];
 
 const DEFAULT_TARGET: Target = "marketing";
@@ -48,7 +53,9 @@ export function routeFor(pathname: string): Target {
 
 function parsePort(value: string | undefined, label: string): number {
   if (value === undefined) {
-    logger.error("Usage: proxy-daemon.ts <listen-port> <front-api-port> <marketing-port>");
+    logger.error(
+      "Usage: proxy-daemon.ts <listen-port> <front-api-port> <marketing-port> [collab-port]"
+    );
     process.exit(1);
   }
   const n = Number.parseInt(value, 10);
@@ -119,7 +126,7 @@ function safeClose(
  * @cc [owner:id13,label:performance] proxy-long-poll-deadline
  * The proxy MUST allow the API's 25-second long polls to finish without an idle timeout.
  */
-export function startProxy(listenPort: number, ports: Record<Target, number>) {
+export function startProxy(listenPort: number, ports: ProxyPorts) {
   return Bun.serve<WsClientData>({
     port: listenPort,
     hostname: "localhost",
@@ -133,6 +140,9 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
 
       const target = routeFor(url.pathname);
       const upstreamPort = ports[target];
+      if (upstreamPort === undefined) {
+        return new Response(`${target} is not configured`, { status: 503 });
+      }
 
       if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
         const upstreamUrl = `ws://localhost:${upstreamPort}${url.pathname}${url.search}`;
@@ -223,7 +233,9 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
         ws.data.closed = true;
         const upstream = ws.data.upstream;
         if (upstream && upstream.readyState <= 1) {
-          safeClose(upstream, code, reason);
+          // 1005 and 1006 only report a missing or abnormal close; they are invalid on the wire.
+          const sendable = code === 1000 || (code >= 3000 && code <= 4999);
+          safeClose(upstream, sendable ? code : 1000, sendable ? reason : undefined);
         }
       },
     },
@@ -231,18 +243,19 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
 }
 
 if (import.meta.main) {
-  const [listenPortArg, frontApiPortArg, marketingPortArg] = process.argv.slice(2);
+  const [listenPortArg, frontApiPortArg, marketingPortArg, collabPortArg] = process.argv.slice(2);
   const listenPort = parsePort(listenPortArg, "listen port");
-  const ports: Record<Target, number> = {
+  const ports: ProxyPorts = {
     "front-api": parsePort(frontApiPortArg, "front-api port"),
     marketing: parsePort(marketingPortArg, "marketing port"),
+    ...(collabPortArg === undefined ? {} : { collab: parsePort(collabPortArg, "collab port") }),
   };
 
   const server = startProxy(listenPort, ports);
 
   logger.info(
     `proxy daemon listening on http://${server.hostname}:${server.port} ` +
-      `(front-api: ${ports["front-api"]}, marketing: ${ports.marketing})`
+      `(front-api: ${ports["front-api"]}, marketing: ${ports.marketing}, collab: ${ports.collab ?? "none"})`
   );
 
   const shutdown = () => {

@@ -12,7 +12,11 @@ describe("proxy routing", () => {
         return Response.json({ events: [] });
       },
     });
-    const proxy = startProxy(0, { "front-api": upstream.port ?? 0, marketing: upstream.port ?? 0 });
+    const proxy = startProxy(0, {
+      "front-api": upstream.port ?? 0,
+      marketing: upstream.port ?? 0,
+      collab: upstream.port ?? 0,
+    });
     try {
       const response = await fetch(`http://localhost:${proxy.port}/api/events/poll`);
       expect(response.status).toBe(200);
@@ -22,6 +26,28 @@ describe("proxy routing", () => {
       upstream.stop(true);
     }
   }, 30_000);
+
+  it("answers 503 on /collab when started without a collab port", async () => {
+    const upstream = Bun.serve({
+      port: 0,
+      hostname: "localhost",
+      fetch: () => new Response("ok"),
+    });
+    // What an older CLI does: it passes no collab port.
+    const proxy = startProxy(0, {
+      "front-api": upstream.port ?? 0,
+      marketing: upstream.port ?? 0,
+    });
+    try {
+      const collab = await fetch(`http://localhost:${proxy.port}/collab`);
+      expect(collab.status).toBe(503);
+      const api = await fetch(`http://localhost:${proxy.port}/api/healthz`);
+      expect(api.status).toBe(200);
+    } finally {
+      proxy.stop(true);
+      upstream.stop(true);
+    }
+  });
 
   describe("routeFor", () => {
     it("routes /api/* to front-api", () => {
@@ -49,6 +75,12 @@ describe("proxy routing", () => {
       // Only exact `/api` or `/api/...` should route to front-api.
       expect(routeFor("/apidocs")).toBe("marketing");
       expect(routeFor("/api-test")).toBe("marketing");
+    });
+
+    it("routes /collab/* to the collab server", () => {
+      expect(routeFor("/collab")).toBe("collab");
+      expect(routeFor("/collab/")).toBe("collab");
+      expect(routeFor("/collaborate")).toBe("marketing");
     });
 
     it("does not match /api/m/* as marketing — only /m/api/* does", () => {
