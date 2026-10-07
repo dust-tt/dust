@@ -133,9 +133,10 @@ interface SuggestionCardProps {
 /**
  * @cc [owner:tdraier,label:react] document-comment-suggestion-card
  * A message with a suggestion MUST show the current commented text it would replace and the
- * suggested text, or that it deletes the text. Apply MUST render only when the thread can take
- * a suggestion and the suggestion reads as one paragraph of inline Markdown, and a refused Apply
- * MUST show the reason.
+ * suggested text, or that it deletes the text when the suggestion is blank. Apply MUST render
+ * only when the user can write, the thread is open, its commented text lies in one textblock and
+ * the suggestion reads as one paragraph of inline Markdown. A refused Apply, such as one another
+ * comment blocks, MUST show the reason.
  */
 const SuggestionCard = ({
   quote,
@@ -171,7 +172,7 @@ const SuggestionCard = ({
       </div>
       <div className="bg-success-100/60 px-2 py-1 dark:bg-success-500/20">
         <span className="sr-only">With: </span>
-        {suggestion ? (
+        {suggestion.trim() ? (
           renderBody(suggestion)
         ) : (
           <span className="text-xs text-muted-foreground">

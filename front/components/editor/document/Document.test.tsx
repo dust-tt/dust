@@ -381,6 +381,16 @@ describe("Document comments", () => {
     expect(within(thread).queryByRole("button", { name: "Apply" })).toBeNull();
   });
 
+  it("shows a blank suggestion as deleting the text", async () => {
+    const { dom } = await renderDocument(
+      SOURCE.replace("Note.", "Note.\n\n```suggestion\n   \n```")
+    );
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = screen.getByRole("article", { name: "Comment by Daph" });
+    expect(thread.textContent).toContain("Deletes the text.");
+  });
+
   it("inserts the selected text as a suggestion in a new comment", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
