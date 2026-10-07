@@ -364,5 +364,49 @@ msgid "Could not save. Your changes are still here. Try again."
 msgstr "Impossible d’enregistrer. Vos modifications sont toujours là. Réessayez."
 
 #: front/components/editor/document/useDocumentEditor.ts
+msgid "The Markdown uses formatting the editor cannot keep."
+msgstr "Le Markdown utilise une mise en forme que l’éditeur ne peut pas conserver."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "The Markdown could not be parsed."
+msgstr "Le Markdown n’a pas pu être analysé."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "The Markdown would not read back the same after editing."
+msgstr "Le Markdown ne serait plus identique une fois modifié."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Comment \"{commentId}\" starts or ends on text the editor cannot highlight."
+msgstr "Le commentaire « {commentId} » commence ou se termine sur un texte que l’éditeur ne peut pas surligner."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Comment anchor \"{commentId}\" is not paired where the editor reads it."
+msgstr "L’ancre de commentaire « {commentId} » n’est pas appariée là où l’éditeur la lit."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Comment anchor \"{commentId}\" is never closed where the editor reads it."
+msgstr "L’ancre de commentaire « {commentId} » n’est jamais fermée là où l’éditeur la lit."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Comment \"{commentId}\" covers no text the editor can highlight."
+msgstr "Le commentaire « {commentId} » ne couvre aucun texte que l’éditeur peut surligner."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "A comment is anchored where the editor cannot show it."
+msgstr "Un commentaire est ancré là où l’éditeur ne peut pas l’afficher."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
+msgstr "Cette mise en forme ne peut pas encore être enregistrée en Markdown. Vos modifications sont toujours là. Annulez la dernière modification pour réessayer."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again."
+msgstr "Ce document ne peut pas être enregistré en l’état. Vos modifications sont toujours là. Annulez la dernière modification pour réessayer."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "{message} (line {line})"
+msgstr "{message} (ligne {line})"
+
+#: front/components/editor/document/useDocumentEditor.ts
 msgid "Document content"
 msgstr "Contenu du document"

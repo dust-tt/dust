@@ -8,6 +8,7 @@ import {
   getDocumentJSONComments,
   withDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
+import { describeDocumentError } from "@app/components/editor/document/errors";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
@@ -33,7 +34,7 @@ const COMMENT: DfmComment = {
 function load(source: string) {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
-    throw new Error(loaded.error);
+    throw new Error(describeDocumentError(loaded.error));
   }
   return loaded.value;
 }
@@ -42,7 +43,7 @@ function roundTrip(source: string): string {
   const { envelope, content } = load(source);
   const saved = saveDfm(envelope, content);
   if (saved.isErr()) {
-    throw new Error(saved.error);
+    throw new Error(describeDocumentError(saved.error));
   }
   return saved.value;
 }
@@ -172,9 +173,10 @@ describe("loadDfm", () => {
   ])("refuses %s, which a save would drop from the comment", (_, source) => {
     const loaded = loadDfm(source);
 
-    expect(loaded.isErr() && loaded.error).toContain(
-      "starts or ends on text the editor cannot highlight"
-    );
+    expect(loaded.isErr() && loaded.error).toEqual({
+      type: "comment_edge_not_highlightable",
+      commentId: "c1",
+    });
   });
 
   it("opens a comment with inline code inside it", () => {
@@ -209,7 +211,7 @@ describe("loadDfm", () => {
 
     expect(loaded.isErr()).toBe(true);
     if (loaded.isErr()) {
-      expect(loaded.error).toContain(reason);
+      expect(describeDocumentError(loaded.error)).toContain(reason);
     }
   });
 });
@@ -413,7 +415,7 @@ describe("saveDfm", () => {
 
     expect(saved.isErr()).toBe(true);
     if (saved.isErr()) {
-      expect(saved.error).toContain("cannot be saved as Markdown");
+      expect(saved.error).toEqual({ type: "formatting_not_savable" });
     }
   });
 

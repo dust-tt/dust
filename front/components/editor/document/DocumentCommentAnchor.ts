@@ -1,4 +1,5 @@
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
+import type { DocumentError } from "@app/components/editor/document/errors";
 import {
   anchorDirective,
   findAnchorDirective,
@@ -115,7 +116,7 @@ export interface MarkedDocument {
 export const anchorsToMarks = (
   document: JSONContent,
   schema: Schema
-): Result<MarkedDocument, string> => {
+): Result<MarkedDocument, DocumentError> => {
   const markType = schema.marks[COMMENT_MARK_NAME];
   const open = new Set<string>();
   const started = new Set<string>();
@@ -124,7 +125,7 @@ export const anchorsToMarks = (
   const unmarkedLead = new Set<string>();
   const unmarkedTail = new Set<string>();
   const anchorOrder: string[] = [];
-  let error: string | null = null;
+  let error: DocumentError | null = null;
 
   const canCarryMark = (text: JSONContent, parent: JSONContent) =>
     !!parent.type &&
@@ -133,8 +134,10 @@ export const anchorsToMarks = (
       schema.marks[mark.type]?.excludes(markType)
     );
 
-  const shrinks = (id: string) =>
-    `Comment "${id}" starts or ends on text the editor cannot highlight.`;
+  const shrinks = (commentId: string): DocumentError => ({
+    type: "comment_edge_not_highlightable",
+    commentId,
+  });
 
   const rebuild = (node: JSONContent): JSONContent => {
     if (!node.content) {
@@ -155,7 +158,7 @@ export const anchorsToMarks = (
             error ??= shrinks(id);
           }
         } else {
-          error ??= `Comment anchor "${id}" is not paired where the editor reads it.`;
+          error ??= { type: "comment_anchor_unpaired", commentId: id };
         }
         continue;
       }
@@ -192,11 +195,11 @@ export const anchorsToMarks = (
   const converted = rebuild(document);
   const [unclosed] = open;
   if (error === null && unclosed !== undefined) {
-    error = `Comment anchor "${unclosed}" is never closed where the editor reads it.`;
+    error = { type: "comment_anchor_unclosed", commentId: unclosed };
   }
   const unmarked = [...started].find((id) => !marked.has(id));
   if (error === null && unmarked !== undefined) {
-    error = `Comment "${unmarked}" covers no text the editor can highlight.`;
+    error = { type: "comment_without_text", commentId: unmarked };
   }
   return error === null
     ? new Ok({ document: converted, anchorOrder })

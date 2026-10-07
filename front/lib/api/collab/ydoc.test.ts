@@ -3,6 +3,7 @@ import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
+import { describeDocumentError } from "@app/components/editor/document/errors";
 import {
   dfmToYDoc,
   ENVELOPE_MAP_NAME,
@@ -10,15 +11,17 @@ import {
 } from "@app/lib/api/collab/ydoc";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import { Err } from "@app/types/shared/result";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
 const savedByEditor = (source: string) => {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
-    throw new Error(loaded.error);
+    throw new Error(describeDocumentError(loaded.error));
   }
-  return saveDfm(loaded.value.envelope, loaded.value.content);
+  const saved = saveDfm(loaded.value.envelope, loaded.value.content);
+  return saved.isErr() ? new Err(describeDocumentError(saved.error)) : saved;
 };
 
 describe("dfmToYDoc and yDocToDfm", () => {
@@ -136,7 +139,7 @@ describe("dfmToYDoc and yDocToDfm", () => {
     expect(editor.isErr()).toBe(true);
     expect(live.isErr()).toBe(true);
     if (live.isErr() && editor.isErr()) {
-      expect(live.error).toBe(editor.error);
+      expect(live.error).toBe(describeDocumentError(editor.error));
     }
   });
 

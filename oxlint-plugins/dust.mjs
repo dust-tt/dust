@@ -172,7 +172,7 @@ const CLIENT_ONLY_SOURCES = [
 // The document model's entry points run in Node, pinned by the document-model-runs-without-dom
 // contract in front/components/editor/document/CONTRACTS.
 const SERVER_SAFE_CLIENT_SOURCES =
-  /@app\/components\/editor\/(extensions\/|document\/(content|dfm_persistence|DocumentComments)$)/;
+  /@app\/components\/editor\/(extensions\/|document\/(content|dfm_persistence|DocumentComments|errors)$)/;
 
 const ROLE_CHECKS = new Set([
   "isAdmin",

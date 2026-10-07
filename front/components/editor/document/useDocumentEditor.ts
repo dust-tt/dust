@@ -6,13 +6,16 @@ import {
   getDocumentJSONComments,
   withDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
+import type { DocumentError } from "@app/components/editor/document/errors";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
 import { Err } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { cn } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { AnyExtension, JSONContent } from "@tiptap/core";
@@ -27,6 +30,65 @@ import {
 } from "react";
 
 const SAVE_ERROR_MESSAGE = msg`Could not save. Your changes are still here. Try again.`;
+
+/**
+ * @cc [owner:sfriquet,label:product] document-error-translation
+ * MUST return the translation of `describeDocumentError(error)`. A codec error's message comes
+ * from `lib/markdown/dfm` and MUST be kept in English, only its ` (line N)` suffix translated.
+ */
+const formatDocumentError = (
+  error: DocumentError,
+  t: (descriptor: MessageDescriptor) => string
+): string => {
+  switch (error.type) {
+    case "unsupported_markdown":
+      return t(msg`The Markdown uses formatting the editor cannot keep.`);
+    case "unparsable_markdown":
+      return t(msg`The Markdown could not be parsed.`);
+    case "markdown_not_reproducible":
+      return t(msg`The Markdown would not read back the same after editing.`);
+    case "comment_edge_not_highlightable": {
+      const { commentId } = error;
+      return t(
+        msg`Comment "${commentId}" starts or ends on text the editor cannot highlight.`
+      );
+    }
+    case "comment_anchor_unpaired": {
+      const { commentId } = error;
+      return t(
+        msg`Comment anchor "${commentId}" is not paired where the editor reads it.`
+      );
+    }
+    case "comment_anchor_unclosed": {
+      const { commentId } = error;
+      return t(
+        msg`Comment anchor "${commentId}" is never closed where the editor reads it.`
+      );
+    }
+    case "comment_without_text": {
+      const { commentId } = error;
+      return t(
+        msg`Comment "${commentId}" covers no text the editor can highlight.`
+      );
+    }
+    case "comment_anchor_hidden":
+      return t(msg`A comment is anchored where the editor cannot show it.`);
+    case "formatting_not_savable":
+      return t(
+        msg`This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again.`
+      );
+    case "codec_save_refused":
+      return t(
+        msg`This document cannot be saved as written. Your changes are still here. Undo the last edit to try again.`
+      );
+    case "codec": {
+      const { message, line } = error.dfmError;
+      return line === undefined ? message : t(msg`${message} (line ${line})`);
+    }
+    default:
+      return assertNever(error);
+  }
+};
 
 /**
  * @cc [owner:PopDaph,label:error-handling] document-save-callback-errors
@@ -96,8 +158,16 @@ export const useDocumentEditor = ({
   const saveErrorMessage = t(SAVE_ERROR_MESSAGE);
   const [initial] = useState(() => loadDfm(initialContent));
   // Captured with the parse: a later source must not show under the reason this one was refused.
-  const [unsupported] = useState(() =>
-    initial.isErr() ? { reason: initial.error, source: initialContent } : null
+  const [refused] = useState(() =>
+    initial.isErr() ? { error: initial.error, source: initialContent } : null
+  );
+  const unsupported = useMemo(
+    () =>
+      refused && {
+        reason: formatDocumentError(refused.error, t),
+        source: refused.source,
+      },
+    [refused, t]
   );
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
@@ -262,7 +332,7 @@ export const useDocumentEditor = ({
 
     const serialized = saveDfm(initial.value.envelope, document);
     if (serialized.isErr()) {
-      setError(serialized.error);
+      setError(formatDocumentError(serialized.error, t));
       return;
     }
 
@@ -293,7 +363,7 @@ export const useDocumentEditor = ({
     if (JSON.stringify(editor.getJSON()) !== savedContent) {
       setError(result.error || failureMessage);
     }
-  }, [editor, initial]);
+  }, [editor, initial, t]);
 
   const isSavable = useCallback(
     (document: JSONContent) =>

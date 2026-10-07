@@ -8,7 +8,8 @@ import {
   withDocumentJSONComments,
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
-import type { DfmComment, DfmError } from "@app/lib/markdown/dfm";
+import type { DocumentError } from "@app/components/editor/document/errors";
+import type { DfmComment } from "@app/lib/markdown/dfm";
 import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -22,16 +23,6 @@ export interface DfmEnvelope {
   frontMatter: string | null;
   /** The file's anchor directives in their order, so saves keep it where nothing changed. */
   anchorOrder: string[];
-}
-
-const CODEC_SAVE_ERROR_MESSAGE =
-  "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again.";
-
-/** A codec error as shown in the read-only view, with its line when it has one. */
-function describe(error: DfmError): string {
-  return error.line === undefined
-    ? error.message
-    : `${error.message} (line ${error.line})`;
 }
 
 export interface LoadedDfm {
@@ -50,16 +41,16 @@ const sameIds = (a: Set<string>, b: Set<string>) =>
  * no other. The threads MUST open as they are in the file. Any other file MUST be refused with
  * a reason, so the editor shows it read-only with that reason instead of risking the content.
  */
-export function loadDfm(source: string): Result<LoadedDfm, string> {
+export function loadDfm(source: string): Result<LoadedDfm, DocumentError> {
   const parsed = parseDfm(source);
   if (parsed.isErr()) {
-    return new Err(describe(parsed.error));
+    return new Err({ type: "codec", dfmError: parsed.error });
   }
   const { frontMatter, body, comments } = parsed.value;
 
   const anchors = extractAnchors(body);
   if (anchors.isErr()) {
-    return new Err(describe(anchors.error));
+    return new Err({ type: "codec", dfmError: anchors.error });
   }
 
   const content = parseDocumentContent(body);
@@ -76,7 +67,7 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
       getMarkedCommentIds(document)
     )
   ) {
-    return new Err("A comment is anchored where the editor cannot show it.");
+    return new Err({ type: "comment_anchor_hidden" });
   }
 
   return new Ok({
@@ -96,15 +87,13 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
 export function saveDfm(
   envelope: DfmEnvelope,
   content: JSONContent
-): Result<string, string> {
+): Result<string, DocumentError> {
   const markdown = serializeDocumentMarkdown(
     withoutDocumentJSONComments(content),
     envelope.anchorOrder
   );
   if (markdown.isErr()) {
-    return new Err(
-      "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
-    );
+    return new Err({ type: "formatting_not_savable" });
   }
 
   const serialized = serializeDfm({
@@ -114,7 +103,7 @@ export function saveDfm(
   });
   if (serialized.isErr()) {
     // The codec's reason names file syntax; the user sees the draft is safe and how to recover.
-    return new Err(CODEC_SAVE_ERROR_MESSAGE);
+    return new Err({ type: "codec_save_refused" });
   }
 
   return new Ok(serialized.value);

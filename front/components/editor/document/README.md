@@ -110,6 +110,7 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `useDocumentEditor.ts` | The TipTap editor, dirty tracking, autosave and the save lifecycle. |
 | `dfm_persistence.ts` | `loadDfm` and `saveDfm`, between DFM source and the editor's document. |
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
+| `errors.ts` | Why a file cannot open or save, and its English description for the server. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
 | `DocumentSelectionToolbar.tsx` | Formatting controls on a text selection. |

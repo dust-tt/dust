@@ -8,6 +8,7 @@ import {
   substituteAnchorDirectives,
 } from "@app/components/editor/document/DocumentCommentAnchor";
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
+import type { DocumentError } from "@app/components/editor/document/errors";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -160,16 +161,16 @@ export const normalizeTextNodes = (node: Node): Node => {
  */
 export const parseDocumentContent = (
   content: string
-): Result<MarkedDocument, string> => {
+): Result<MarkedDocument, DocumentError> => {
   if (!hasSupportedMarkdown(content)) {
-    return new Err("The Markdown uses formatting the editor cannot keep.");
+    return new Err({ type: "unsupported_markdown" });
   }
 
   let parsed: JSONContent;
   try {
     parsed = documentMarkdown.parse(content);
   } catch {
-    return new Err("The Markdown could not be parsed.");
+    return new Err({ type: "unparsable_markdown" });
   }
 
   const marked = anchorsToMarks(parsed, documentSchema);
@@ -184,7 +185,7 @@ export const parseDocumentContent = (
       marked.value.anchorOrder
     ).isErr()
   ) {
-    return new Err("The Markdown would not read back the same after editing.");
+    return new Err({ type: "markdown_not_reproducible" });
   }
 
   return marked;
