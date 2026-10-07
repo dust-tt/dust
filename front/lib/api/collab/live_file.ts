@@ -175,6 +175,8 @@ export async function recheckLiveAccess(
   if (rights.isErr()) {
     return rights;
   }
+  // TODO(co-edition step 8): a file deleted or moved during a session keeps it open, failing to
+  // save; the per-file lock and the stable file id end those sessions.
   const dustFs = await DustFileSystem.fromScopedPath(auth, canonicalPath);
   if (dustFs.isErr()) {
     return new Err({ code: "unavailable", message: dustFs.error.message });

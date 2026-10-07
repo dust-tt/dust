@@ -587,9 +587,10 @@ export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * @cc [owner:PopDaph,label:security;performance] collab-access-recheck
- * The collab server MUST call this every `ACCESS_RECHECK_INTERVAL_MS`. Every open WebSocket
- * connection of this process MUST be checked again with `recheckLiveAccess`, with an
- * Authenticator freshly built for its user in this sweep, and MUST be closed when the check fails.
+ * The collab server MUST start a sweep every `ACCESS_RECHECK_INTERVAL_MS`, unless the previous one
+ * is still running. Every WebSocket document connection of this process open when the sweep starts
+ * MUST be checked again with `recheckLiveAccess`, with an Authenticator freshly built for its user
+ * in this sweep, and MUST be closed when the check fails.
  * A failure checking one user and document MUST NOT stop the others: it is logged and their
  * connections stay open until the next sweep, an exception to `no-catching-own-errors` limited to
  * it. The returned promise MUST resolve once every connection has been checked.
