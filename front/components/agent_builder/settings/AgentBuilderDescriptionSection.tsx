@@ -3,7 +3,10 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBu
 import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/constants";
 import { getDescriptionSuggestion } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +26,7 @@ export function AgentBuilderDescriptionSection({
   const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<AgentBuilderFormData>();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -54,10 +58,9 @@ export function AgentBuilderDescriptionSection({
     });
 
     if (result.isErr()) {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to generate description`,
-        description: result.error.message,
+        error: result.error,
       });
       setIsGenerating(false);
       return;
@@ -80,7 +83,16 @@ export function AgentBuilderDescriptionSection({
       });
     }
     setIsGenerating(false);
-  }, [instructions, isGenerating, name, owner, sendNotification, setValue, t]);
+  }, [
+    instructions,
+    isGenerating,
+    name,
+    owner,
+    sendApiErrorNotification,
+    sendNotification,
+    setValue,
+    t,
+  ]);
 
   useEffect(() => {
     const onInstructionsBlur = () => {

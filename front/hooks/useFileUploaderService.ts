@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch, clientUpload } from "@app/lib/egress/client";
 import { formatFileSize } from "@app/lib/i18n/format";
@@ -10,6 +13,7 @@ import {
 } from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import type { FileUploadRequestResponseBody } from "@app/types/api/files/upload_metadata";
+import type { APIError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileUseCase,
@@ -60,12 +64,15 @@ export type FileBlob = FileBlobUploadState & {
 };
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
+// `msg` is a client-side message (unsupported file, network failure); `apiError` is the error
+// returned by the API, displayed through `formatError`.
 class FileBlobUploadError extends Error {
   constructor(
     readonly file: File,
-    msg?: string
+    msg?: string,
+    readonly apiError?: APIError
   ) {
-    super(msg);
+    super(msg ?? apiError?.message);
   }
 }
 
@@ -111,6 +118,7 @@ export function useFileUploaderService({
   const isProcessingFiles = numFilesProcessing > 0;
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const { subscription } = useAuth();
   const isAudioSupported = isAudioTranscriptionAvailable({
@@ -279,7 +287,8 @@ export function useFileUploaderService({
               return new Err(
                 new FileBlobUploadError(
                   fileBlob.file,
-                  isAPIErrorResponse(res) ? res.error.message : undefined
+                  undefined,
+                  isAPIErrorResponse(res) ? res.error : undefined
                 )
               );
             } catch {
@@ -331,12 +340,14 @@ export function useFileUploaderService({
           }
 
           if (!uploadResult.ok) {
-            const { error } = await uploadResult.json();
+            const body = await uploadResult.json();
             return new Err(
-              new FileBlobUploadError(
-                fileBlob.file,
-                error?.message ?? "An unknown error happened."
-              )
+              isAPIErrorResponse(body)
+                ? new FileBlobUploadError(fileBlob.file, undefined, body.error)
+                : new FileBlobUploadError(
+                    fileBlob.file,
+                    "An unknown error happened."
+                  )
             );
           }
 
@@ -369,16 +380,22 @@ export function useFileUploaderService({
 
       results.forEach((result) => {
         if (result.isErr()) {
-          erroredBlobs.push(result.error);
+          const uploadError = result.error;
+          erroredBlobs.push(uploadError);
+          const title = `Failed to upload file${previewMode ? " preview" : ""}`;
+          if (uploadError.apiError) {
+            sendApiErrorNotification({ title, error: uploadError.apiError });
+            return;
+          }
           const maybeTruncatedFilename =
-            result.error.file.name.length > 50
-              ? result.error.file.name.slice(0, 47) + "..."
-              : result.error.file.name;
+            uploadError.file.name.length > 50
+              ? uploadError.file.name.slice(0, 47) + "..."
+              : uploadError.file.name;
           sendNotification({
             type: "error",
-            title: `Failed to upload file${previewMode ? " preview" : ""}`,
-            description: result.error.message
-              ? `${result.error.message} (${maybeTruncatedFilename})`
+            title,
+            description: uploadError.message
+              ? `${uploadError.message} (${maybeTruncatedFilename})`
               : `Error uploading ${maybeTruncatedFilename}`,
           });
         } else {
@@ -406,7 +423,7 @@ export function useFileUploaderService({
 
       return successfulBlobs;
     },
-    [sendNotification]
+    [sendApiErrorNotification, sendNotification]
   );
 
   const handleFilesUpload = useCallback(

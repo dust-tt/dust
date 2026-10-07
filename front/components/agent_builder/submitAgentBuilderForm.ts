@@ -35,6 +35,8 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { DataSourceViewSelectionConfigurations } from "@app/types/data_source_view";
+import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -369,7 +371,7 @@ export async function submitAgentBuilderForm({
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
   fetcherWithBody: FetcherWithBodyFn;
-}): Promise<Result<SubmittedAgentConfiguration, Error>> {
+}): Promise<Result<SubmittedAgentConfiguration, Error | APIError>> {
   const pictureUrlToUse =
     formData.agentSettings.pictureUrl ?? pickRandomDroidAvatarUrl();
 
@@ -500,8 +502,9 @@ export async function submitAgentBuilderForm({
           "[Agent builder] - Form submission failed"
         );
         return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(error.error?.message || "Failed to save agent")
+          isAPIErrorResponse(error)
+            ? error.error
+            : new Error("Failed to save agent")
         );
       } catch {
         datadogLogger.error(

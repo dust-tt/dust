@@ -1,11 +1,12 @@
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { formatError } from "@app/lib/api_error_messages";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useTriggerEstimation,
   useWebhookFilterGenerator,
 } from "@app/lib/swr/agent_triggers";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
   WebhookEventMetadata,
@@ -47,6 +48,8 @@ export function WebhookEditionFilters({
 }: WebhookEditionFiltersProps) {
   const { t } = useLingui();
   const { setError, control } = useFormContext<TriggerViewsSheetFormValues>();
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
 
   const selectedEvent = useWatch({ control, name: "webhook.event" });
 
@@ -115,7 +118,9 @@ export function WebhookEditionFilters({
         // If the request was not aborted, we can update the error state
         if (!signal.aborted) {
           setFilterGenerationStatus("error");
-          const errorMessage = normalizeError(error).message;
+          const errorMessage = formatError(error, {
+            hasLocalisation,
+          }).description;
           setFilterErrorMessage(t`Error generating filter: ${errorMessage}`);
         }
       }

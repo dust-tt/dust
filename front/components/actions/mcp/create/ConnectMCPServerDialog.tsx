@@ -14,7 +14,10 @@ import type {
 } from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
@@ -71,6 +74,7 @@ export function ConnectMCPServerDialog({
   lockUseCase = false,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const cellContext = useCellContext();
 
   const defaultValues = useMemo(
@@ -176,10 +180,9 @@ export function ConnectMCPServerDialog({
               setAuthorization(mcpServerView.server.authorization);
               setRemoteMCPServerOAuthDiscoveryDone(true);
             } else {
-              sendNotification({
-                type: "error",
+              sendApiErrorNotification({
                 title: "Failed to discover OAuth metadata for MCP server",
-                description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
+                error: discoverOAuthMetadataRes.error,
               });
             }
           }
@@ -198,7 +201,7 @@ export function ConnectMCPServerDialog({
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadataForServer,
     form,
-    sendNotification,
+    sendApiErrorNotification,
   ]);
 
   const resetState = () => {

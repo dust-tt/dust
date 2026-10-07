@@ -4140,7 +4140,6 @@ msgid "Failed to fetch webhook configuration"
 msgstr "Impossible de récupérer la configuration du webhook"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-#: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "An error occurred"
 msgstr "Une erreur s’est produite"
 
@@ -9891,18 +9890,6 @@ msgid "{providerName} source"
 msgstr "Source {providerName}"
 
 #: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Failed to add to space"
-msgstr "Impossible d’ajouter à l’espace"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Failed to remove from space"
-msgstr "Impossible de retirer de l’espace"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Failed to update webhook source view"
-msgstr "Impossible de mettre à jour la vue de la source de webhook"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "{webhookSourceName} updated"
 msgstr "{webhookSourceName} mis à jour"
 
@@ -9913,10 +9900,6 @@ msgstr "Vos modifications ont été enregistrées."
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Failed to save changes"
 msgstr "Impossible d’enregistrer les modifications"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "An error occurred while saving changes."
-msgstr "Une erreur s’est produite lors de l’enregistrement des modifications."
 
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "invalid"
@@ -12732,10 +12715,6 @@ msgstr "Détermine si les événements d’audit sont envoyés à WorkOS et si l
 #: front/components/workspace/settings/BotToggle.tsx
 msgid "Failed to enable {name}."
 msgstr "Impossible d’activer {name}."
-
-#: front/components/workspace/settings/BotToggle.tsx
-msgid "Could not create a new {name} data source."
-msgstr "Impossible de créer une nouvelle source de données {name}."
 
 #: front/components/workspace/settings/BotToggle.tsx
 msgid "Failed to reconnect {name}."

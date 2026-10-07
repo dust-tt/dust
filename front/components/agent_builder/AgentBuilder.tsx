@@ -29,7 +29,10 @@ import { ConversationFontProvider } from "@app/components/sparkle/ConversationFo
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useBuilderTracking } from "@app/hooks/useBuilderTracking";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
@@ -145,6 +148,7 @@ function AgentBuilderForm({
   const { fetcherWithBody } = useFetcher();
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
@@ -408,12 +412,11 @@ function AgentBuilderForm({
       });
 
       if (!result.isOk()) {
-        sendNotification({
+        sendApiErrorNotification({
           title: agentConfiguration
             ? t`Error updating agent`
             : t`Error creating agent`,
-          description: result.error.message,
-          type: "error",
+          error: result.error,
         });
         return;
       }
