@@ -91,6 +91,10 @@ describe("ConversationCreditUsageBreakdown", () => {
       "aria-selected",
       "false"
     );
+    expect(screen.getByRole("tab", { name: "By agents" })).toHaveAttribute(
+      "aria-selected",
+      "false"
+    );
     expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -108,9 +112,6 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.getByText("2 uses")).toBeInTheDocument();
     expect(screen.queryByText("GPT-5 Mini")).not.toBeInTheDocument();
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "Per Agents" })
-    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "By models" }));
 
@@ -121,9 +122,20 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.queryByText("Calendar tool")).not.toBeInTheDocument();
     expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
+    expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "By agents" }));
+
+    expect(screen.getByRole("tab", { name: "By agents" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.queryByText("GPT-5 Mini")).not.toBeInTheDocument();
+    expect(screen.getByText("Research agent")).toBeInTheDocument();
+    expect(screen.getByText("20 credits")).toBeInTheDocument();
   });
 
-  it("collapses agent breakdowns by default and expands them from the row", () => {
+  it("collapses agent breakdowns by default and expands them from the row", async () => {
     const agent = {
       pictureUrl: null,
       billedCredits: 10,
@@ -155,11 +167,13 @@ describe("ConversationCreditUsageBreakdown", () => {
       <ConversationCreditUsageBreakdown billedCredits={20} details={details} />
     );
 
+    expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
+    expect(screen.queryByText("Writing agent")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "By agents" }));
+
     expect(screen.getByText("Research agent")).toBeInTheDocument();
     expect(screen.getByText("Writing agent")).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Per Agents" })
-    ).toBeInTheDocument();
     expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();
 
