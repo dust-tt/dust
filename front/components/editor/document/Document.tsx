@@ -22,7 +22,7 @@ import { useDocumentComments } from "@app/components/editor/document/useDocument
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
 import { cn } from "@dust-tt/sparkle";
-import type { AnyExtension } from "@tiptap/core";
+import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
 import { lazy, Suspense, useId, useRef } from "react";
 
@@ -81,6 +81,108 @@ interface DocumentViewProps extends DocumentProps {
   };
 }
 
+interface DocumentShortcutTargets {
+  editor: Editor | null;
+  save: () => Promise<void>;
+  /** Returns whether a comment draft started. */
+  startDraft: () => boolean;
+  onBlockMenuKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
+}
+
+/** Cmd/Ctrl+S saves and Cmd/Ctrl+Alt+M starts a comment; other keys go to the block menu. */
+const handleDocumentShortcut = (
+  event: React.KeyboardEvent<HTMLElement>,
+  { editor, save, startDraft, onBlockMenuKeyDown }: DocumentShortcutTargets
+) => {
+  if (
+    event.nativeEvent.isComposing ||
+    !(event.target instanceof Node) ||
+    !editor?.view.dom.contains(event.target)
+  ) {
+    return;
+  }
+
+  if (
+    (event.metaKey || event.ctrlKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    event.key.toLowerCase() === "s"
+  ) {
+    event.preventDefault();
+    void save();
+    return;
+  }
+
+  if (
+    (event.metaKey || event.ctrlKey) &&
+    event.altKey &&
+    !event.shiftKey &&
+    event.code === "KeyM"
+  ) {
+    if (startDraft()) {
+      event.preventDefault();
+    }
+    return;
+  }
+
+  onBlockMenuKeyDown(event);
+};
+
+interface UnsupportedDocumentProps {
+  className?: string;
+  badge: DocumentProps["badge"];
+  source: string;
+  reason: string;
+}
+
+/** A file the editor cannot open: its source, read-only, under the reason. */
+const UnsupportedDocument = ({
+  className,
+  badge,
+  source,
+  reason,
+}: UnsupportedDocumentProps) => (
+  <div className={className}>
+    {badge && (
+      <div className="mx-auto max-w-[50rem] px-5 pt-8">
+        <StatusRow badge={badge} />
+      </div>
+    )}
+    <DocumentSourcePreview source={source} reason={reason} />
+  </div>
+);
+
+/** The editor's binding to the shared document, and whether it still waits for one. */
+const liveEditorMode = (liveView: DocumentViewProps["liveView"]) => ({
+  binding: liveView?.binding ?? undefined,
+  waiting: liveView?.binding === null,
+});
+
+interface DocumentEditingControlsProps {
+  editor: Editor | null;
+  mountPortalContainer: DocumentProps["mountPortalContainer"];
+  comments: ReturnType<typeof useDocumentComments>;
+  blockMenu: ReturnType<typeof useDocumentBlockMenu>;
+}
+
+/** The formatting toolbar over a selection and the `/` block menu, while editable. */
+const DocumentEditingControls = ({
+  editor,
+  mountPortalContainer,
+  comments,
+  blockMenu,
+}: DocumentEditingControlsProps) =>
+  editor && (
+    <>
+      <DocumentSelectionToolbar
+        editor={editor}
+        mountPortalContainer={mountPortalContainer}
+        onComment={comments.canWrite ? comments.startDraft : undefined}
+      />
+      <DocumentBlockMenu editor={editor} menu={blockMenu} />
+    </>
+  );
+
 /** The editor itself; `Document` picks the live or the file-saving mode around it. */
 export const DocumentView = ({
   initialContent,
@@ -99,6 +201,7 @@ export const DocumentView = ({
   renderCommentBody,
   commentInputExtensions,
 }: DocumentViewProps) => {
+  const live = liveEditorMode(liveView);
   const {
     editor,
     editable,
@@ -110,18 +213,18 @@ export const DocumentView = ({
     isSavable,
   } = useDocumentEditor({
     initialContent,
-    readOnly: readOnly || liveView?.binding === null,
+    readOnly: readOnly || live.waiting,
     autosaveDebounceMs,
     onSave,
     onStateChange,
-    live: liveView?.binding ?? undefined,
+    live: live.binding,
   });
-  const isLive = liveView !== undefined;
+  // Live documents are edited through the session: no file saves, and no threads yet.
+  const editsFile = editable && liveView === undefined;
   const blockMenu = useDocumentBlockMenu(editor, editable);
   const comments = useDocumentComments({
     editor,
-    // Threads are not served by the live session yet.
-    canComment: editable && !isLive,
+    canComment: editsFile,
     author: commentAuthor,
     isSavable,
     sign: signCommentMessage,
@@ -131,54 +234,22 @@ export const DocumentView = ({
   const panelId = useId();
   const showCommentsToggle = comments.comments.length > 0 || comments.canWrite;
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    if (
-      event.nativeEvent.isComposing ||
-      !(event.target instanceof Node) ||
-      !editor?.view.dom.contains(event.target)
-    ) {
-      return;
-    }
-
-    if (
-      (event.metaKey || event.ctrlKey) &&
-      !event.shiftKey &&
-      !event.altKey &&
-      event.key.toLowerCase() === "s"
-    ) {
-      event.preventDefault();
-      void save();
-      return;
-    }
-
-    if (
-      (event.metaKey || event.ctrlKey) &&
-      event.altKey &&
-      !event.shiftKey &&
-      event.code === "KeyM"
-    ) {
-      if (comments.startDraft()) {
-        event.preventDefault();
-      }
-      return;
-    }
-
-    blockMenu.onKeyDown(event);
-  };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) =>
+    handleDocumentShortcut(event, {
+      editor,
+      save,
+      startDraft: comments.startDraft,
+      onBlockMenuKeyDown: blockMenu.onKeyDown,
+    });
 
   if (unsupported !== null) {
     return (
-      <div className={className}>
-        {badge && (
-          <div className="mx-auto max-w-[50rem] px-5 pt-8">
-            <StatusRow badge={badge} />
-          </div>
-        )}
-        <DocumentSourcePreview
-          source={unsupported.source}
-          reason={unsupported.reason}
-        />
-      </div>
+      <UnsupportedDocument
+        className={className}
+        badge={badge}
+        source={unsupported.source}
+        reason={unsupported.reason}
+      />
     );
   }
 
@@ -202,7 +273,7 @@ export const DocumentView = ({
           )}
         >
           <DocumentStatus
-            editable={editable && !isLive}
+            editable={editsFile}
             dirty={dirty}
             saving={saving}
             error={error}
@@ -215,15 +286,13 @@ export const DocumentView = ({
               <DocumentCommentsToggle panelId={panelId} comments={comments} />
             )}
           </DocumentStatus>
-          {editor && editable && (
-            <>
-              <DocumentSelectionToolbar
-                editor={editor}
-                mountPortalContainer={mountPortalContainer}
-                onComment={comments.canWrite ? comments.startDraft : undefined}
-              />
-              <DocumentBlockMenu editor={editor} menu={blockMenu} />
-            </>
+          {editable && (
+            <DocumentEditingControls
+              editor={editor}
+              mountPortalContainer={mountPortalContainer}
+              comments={comments}
+              blockMenu={blockMenu}
+            />
           )}
           {/* Only catches clicks bubbling from highlights; keyboard users reach comments through
               the markers and the panel. */}
