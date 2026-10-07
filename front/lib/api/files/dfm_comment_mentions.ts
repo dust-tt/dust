@@ -13,6 +13,8 @@ import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { documentCommentsSkill } from "@app/lib/resources/skill/code_defined/system/document_comments";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -33,9 +35,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * @cc [owner:tdraier,label:product] document-conversation
  * A file in a conversation's files MUST use that conversation. A file in a pod MUST use the
  * pod's conversation linked to its normalized path, created in the pod on first use without
- * notifying the pod, and `isPodDocument` MUST tell this second case; callers MUST hold the
- * document's lock, so concurrent posts share one conversation. Any other file has no
- * conversation.
+ * notifying the pod, and `isPodDocument` MUST tell this second case, `location` where the file
+ * lives; callers MUST hold the document's lock, so concurrent posts share one conversation. Any
+ * other file has no conversation.
  */
 async function getDocumentConversation(
   auth: Authenticator,
@@ -43,6 +45,7 @@ async function getDocumentConversation(
 ): Promise<{
   conversation: ConversationResource;
   isPodDocument: boolean;
+  location: string;
 } | null> {
   const scope = parseScopedPrefix(documentPath);
   if (!scope) {
@@ -52,7 +55,13 @@ async function getDocumentConversation(
   switch (scope.kind) {
     case "conversation": {
       const conversation = await ConversationResource.fetchById(auth, scope.id);
-      return conversation ? { conversation, isPodDocument: false } : null;
+      return conversation
+        ? {
+            conversation,
+            isPodDocument: false,
+            location: "this conversation's files",
+          }
+        : null;
     }
     case "pod": {
       const pod = await SpaceResource.fetchById(auth, scope.id);
@@ -63,8 +72,9 @@ async function getDocumentConversation(
         space: pod,
         documentPath,
       });
+      const location = `the pod "${pod.name}"`;
       if (existing) {
-        return { conversation: existing, isPodDocument: true };
+        return { conversation: existing, isPodDocument: true, location };
       }
       const conversation = await createConversation(auth, {
         title: `Comments · ${getFileNameFromScopedPath(documentPath)}`,
@@ -73,7 +83,7 @@ async function getDocumentConversation(
         metadata: { dfmDocumentPath: documentPath },
         notifyPodMembers: false,
       });
-      return { conversation, isPodDocument: true };
+      return { conversation, isPodDocument: true, location };
     }
     case "user":
       return null;
@@ -110,14 +120,27 @@ function commentMentions(body: string): {
   };
 }
 
-/** The user message for a comment: where it was left, on what, then its text with mentions. */
+const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-message
+ * The user message for a comment MUST open with the line the `document_comments` skill tells
+ * agents to answer, naming the thread's id, the document's path and where it lives, then give
+ * the quoted passage when there is one and the new message as written. It MUST NOT repeat the
+ * thread's earlier messages, which agents read in the document.
+ */
 function commentMessageContent(
-  documentPath: string,
-  { quote, message }: NewCommentMessage
+  { documentPath, location }: { documentPath: string; location: string },
+  { commentId, quote, message }: NewCommentMessage
 ): string {
-  const quoted =
-    quote === null ? "" : `\n\n> ${quote.replace(/\s+/g, " ").trim()}`;
-  return `Comment on \`${documentPath}\`:${quoted}\n\n${message.body}`;
+  const parts = [
+    `Comment in thread \`${commentId}\` of the document \`${documentPath}\`, in ${location}:`,
+  ];
+  if (quote !== null) {
+    parts.push(`> ${oneLine(quote)}`);
+  }
+  parts.push(message.body);
+  return parts.join("\n\n");
 }
 
 /**
@@ -165,6 +188,41 @@ export async function dispatchCommentMentions(
     },
     { concurrency: 4 }
   );
+}
+
+/**
+ * @cc [owner:tdraier,label:product] document-comments-skill-enable
+ * The `document_comments` skill MUST be enabled in the document's conversation, when the
+ * workspace can use it, before a comment runs an agent there, so the agent learns how to answer
+ * without the posted message saying so. A failure MUST be logged and MUST NOT stop the post.
+ */
+async function enableDocumentCommentsSkill(
+  auth: Authenticator,
+  conversation: ConversationResource
+): Promise<void> {
+  const skill = await SkillResource.fetchById(auth, documentCommentsSkill.sId, {
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
+  });
+  if (!skill) {
+    return;
+  }
+  const enabled = await SkillResource.upsertConversationSkills(auth, {
+    conversation: conversation.toJSON(),
+    skills: [skill],
+    enabled: true,
+  });
+  if (enabled.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        conversationId: conversation.sId,
+        err: enabled.error,
+      },
+      "Failed to enable the document comments skill."
+    );
+  }
 }
 
 export class DocumentConversationBusyError extends Error {
@@ -223,11 +281,14 @@ export async function postCommentMention(
         );
         return new Ok(undefined);
       }
-      const { conversation, isPodDocument } = found;
+      const { conversation, isPodDocument, location } = found;
+      if (mentions.some(isAgentMention)) {
+        await enableDocumentCommentsSkill(auth, conversation);
+      }
 
       const posted = await postUserMessage(auth, {
         conversationResource: conversation,
-        content: commentMessageContent(documentPath, newMessage),
+        content: commentMessageContent({ documentPath, location }, newMessage),
         mentions,
         context: {
           timezone: "UTC",
