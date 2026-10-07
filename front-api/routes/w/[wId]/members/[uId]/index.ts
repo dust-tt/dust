@@ -10,12 +10,14 @@ import {
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type {
   GetMemberResponseBody,
   PostMemberResponseBody,
 } from "@app/types/api/user";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AssignableRoleSchema } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -76,7 +78,14 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const { pronouns, jobTitle } = await user.getProfile();
+  const [{ pronouns, jobTitle }, groupNamesByUserId] = await Promise.all([
+    user.getProfile(),
+    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+      auth,
+      userModelIds: [user.id],
+      groupKinds: [...MANAGEABLE_GROUP_KINDS],
+    }),
+  ]);
 
   const response: GetMemberResponseBody = {
     member: {
@@ -89,6 +98,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       image: user.imageUrl,
       pronouns,
       jobTitle,
+      groups: groupNamesByUserId.get(user.id) ?? [],
       revoked: membership.isRevoked(),
       role: membership.isRevoked() ? "none" : membership.role,
       startAt: membership.startAt?.toISOString() ?? null,
