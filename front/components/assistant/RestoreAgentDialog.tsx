@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface RestoreAssistantDialogProps {
   agentConfiguration?: LightAgentConfigurationType;
@@ -25,6 +26,7 @@ export function RestoreAgentDialog({
   onClose,
   owner,
 }: RestoreAssistantDialogProps) {
+  const { t } = useLingui();
   const doRestore = useRestoreAgentConfiguration({ owner, agentConfiguration });
 
   return (
@@ -38,21 +40,25 @@ export function RestoreAgentDialog({
     >
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
-          <DialogTitle>Restoring the agent</DialogTitle>
+          <DialogTitle>
+            <Trans>Restoring the agent</Trans>
+          </DialogTitle>
           <DialogDescription>
-            This will restore the agent for everyone.
+            <Trans>This will restore the agent for everyone.</Trans>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="font-bold">
+            <Trans>Are you sure you want to proceed?</Trans>
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Restore the agent",
+            label: t`Restore the agent`,
             variant: "warning",
             onClick: async () => {
               await doRestore();

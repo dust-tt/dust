@@ -21,41 +21,49 @@ import {
   Stars02,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { DeleteTagDialog } from "./DeleteTagDialog";
 
-const columns = [
-  {
-    accessorKey: "name",
-    header: "Tag label",
-    cell: (info: CellContext<any, string>) => (
-      <Chip label={info.row.original.name} color="info" />
-    ),
-  },
-  {
-    accessorKey: "usage",
-    header: "Tag usage",
-  },
-  {
-    accessorKey: "action",
-    header: "",
-    enableSorting: false,
-    cell: (info: CellContext<any, number>) => (
-      <DataTable.MoreButton menuItems={info.row.original.menuItems} />
-    ),
-    meta: { className: "w-14" },
-  },
-];
+function getColumns(tagLabelHeader: string, tagUsageHeader: string) {
+  return [
+    {
+      accessorKey: "name",
+      header: tagLabelHeader,
+      cell: (info: CellContext<any, string>) => (
+        <Chip label={info.row.original.name} color="info" />
+      ),
+    },
+    {
+      accessorKey: "usage",
+      header: tagUsageHeader,
+    },
+    {
+      accessorKey: "action",
+      header: "",
+      enableSorting: false,
+      cell: (info: CellContext<any, number>) => (
+        <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+      ),
+      meta: { className: "w-14" },
+    },
+  ];
+}
 
-const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
+interface SuggestTagsButtonProps {
+  owner: WorkspaceType;
+}
+
+const SuggestTagsButton = ({ owner }: SuggestTagsButtonProps) => {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button
-        label="Suggest tags"
+        label={t`Suggest tags`}
         icon={Stars02}
         onClick={() => setOpen(true)}
         variant="primary"
@@ -64,20 +72,20 @@ const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
     </>
   );
 };
-const NewTagButton = ({
-  owner,
-  empty = false,
-}: {
+interface NewTagButtonProps {
   owner: WorkspaceType;
   empty?: boolean;
-}) => {
+}
+
+const NewTagButton = ({ owner, empty = false }: NewTagButtonProps) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button
-        label={empty ? "Add tag manually" : "New tag"}
+        label={empty ? t`Add tag manually` : t`New tag`}
         icon={Plus}
         onClick={() => setOpen(true)}
         variant={empty ? "outline" : "primary"}
@@ -88,7 +96,7 @@ const NewTagButton = ({
         onTagCreated={() => {
           sendNotification({
             type: "success",
-            title: "Tag created",
+            title: t`Tag created`,
           });
         }}
         setIsOpen={setOpen}
@@ -104,18 +112,21 @@ type TagsManagerProps = {
 };
 
 export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
+  const { t } = useLingui();
   const { isTagsLoading, tags } = useTagsUsage({ owner, disabled: !open });
   const [tagActionModal, setTagActionModal] = useState<{
     type: "delete" | "edit";
     tag: TagTypeWithUsage;
   } | null>(null);
 
+  const columns = useMemo(() => getColumns(t`Tag label`, t`Tag usage`), [t]);
+
   const rows = tags.map((tag) => ({
     ...tag,
     menuItems: [
       {
         icon: Edit04,
-        label: "Edit tag",
+        label: t`Edit tag`,
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setTagActionModal({ type: "edit", tag });
@@ -124,7 +135,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
       },
       {
         icon: XClose,
-        label: "Delete tag",
+        label: t`Delete tag`,
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setTagActionModal({ type: "delete", tag });
@@ -140,7 +151,9 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent size="lg">
           <SheetHeader>
-            <SheetTitle>Managing tags</SheetTitle>
+            <SheetTitle>
+              <Trans>Managing tags</Trans>
+            </SheetTitle>
           </SheetHeader>
 
           <SheetContainer>
@@ -166,7 +179,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
                     <NewTagButton owner={owner} empty />
                   </div>
                 }
-                message="No tags have been created yet. Let AI suggest tags for your agents, or add manually."
+                message={t`No tags have been created yet. Let AI suggest tags for your agents, or add manually.`}
               />
             )}
           </SheetContainer>

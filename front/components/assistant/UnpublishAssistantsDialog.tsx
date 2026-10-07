@@ -3,7 +3,6 @@ import {
   useBatchUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -16,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UnpublishAssistantsDialogProps {
@@ -31,6 +31,7 @@ export function UnpublishAssistantsDialog({
   owner,
   onSave,
 }: UnpublishAssistantsDialogProps) {
+  const { t } = useLingui();
   const [isUnpublishing, setIsUnpublishing] = useState(false);
 
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -46,6 +47,7 @@ export function UnpublishAssistantsDialog({
     (acc, a) => acc + (a.usage?.messageCount ?? 0),
     0
   );
+  const agentCount = agentConfigurations.length;
 
   return (
     <Dialog>
@@ -53,38 +55,51 @@ export function UnpublishAssistantsDialog({
         <Button
           size="sm"
           variant="primary"
-          label="Unpublish"
+          label={t`Unpublish`}
           disabled={disabled}
         />
       </DialogTrigger>
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
           <DialogTitle>
-            Unpublishing {agentConfigurations.length} agent
-            {pluralize(agentConfigurations.length)}
+            <Plural
+              value={agentCount}
+              one="Unpublishing # agent"
+              other="Unpublishing # agents"
+            />
           </DialogTitle>
           <DialogDescription>
             <div>
               <span className="font-bold">
-                {total > 0 &&
-                  `These agents have been used ${total} time${pluralize(total)} in the last 30 days. `}
-              </span>
-              Unpublished agents will no longer be accessible to everyone in the
-              workspace. Members will need to manually add them to use them.
+                {total > 0 && (
+                  <Plural
+                    value={total}
+                    one="These agents have been used # time in the last 30 days."
+                    other="These agents have been used # times in the last 30 days."
+                  />
+                )}
+              </span>{" "}
+              <Trans>
+                Unpublished agents will no longer be accessible to everyone in
+                the workspace.
+              </Trans>{" "}
+              <Trans>Members will need to manually add them to use them.</Trans>
             </div>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="font-bold">
+            <Trans>Are you sure you want to proceed?</Trans>
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             disabled: isUnpublishing,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Unpublish",
+            label: t`Unpublish`,
             variant: "warning",
             disabled: isUnpublishing,
             onClick: async (e: React.MouseEvent) => {
