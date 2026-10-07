@@ -20,6 +20,7 @@ export interface PokeFeatureFlagUsage {
   stage: FeatureFlagStage | null;
   workspaceCount: number;
   globalRolloutPercentage: number | null;
+  globalCondition: string | null;
 }
 
 export interface PokeFeatureFlagWorkspace {
@@ -35,6 +36,7 @@ export interface GetPokeFeatureFlagsResponseBody {
 
 export interface GetPokeFeatureFlagWorkspacesResponseBody {
   globalRolloutPercentage: number | null;
+  globalCondition: string | null;
   workspaces: PokeFeatureFlagWorkspace[];
   totalCount: number;
 }
@@ -51,8 +53,8 @@ export async function listFeatureFlagUsage(): Promise<PokeFeatureFlagUsage[]> {
     GlobalFeatureFlagResource.listAll(),
   ]);
 
-  const rolloutByName = new Map(
-    globalFlags.map((flag) => [flag.name, flag.rolloutPercentage])
+  const globalFlagByName = new Map(
+    globalFlags.map((flag) => [flag.name, flag])
   );
 
   const configuredFlags: PokeFeatureFlagUsage[] = WHITELISTABLE_FEATURES.map(
@@ -61,7 +63,9 @@ export async function listFeatureFlagUsage(): Promise<PokeFeatureFlagUsage[]> {
       description: WHITELISTABLE_FEATURES_CONFIG[name].description,
       stage: WHITELISTABLE_FEATURES_CONFIG[name].stage,
       workspaceCount: countByName.get(name) ?? 0,
-      globalRolloutPercentage: rolloutByName.get(name) ?? null,
+      globalRolloutPercentage:
+        globalFlagByName.get(name)?.rolloutPercentage ?? null,
+      globalCondition: globalFlagByName.get(name)?.condition ?? null,
     })
   );
 
@@ -73,6 +77,7 @@ export async function listFeatureFlagUsage(): Promise<PokeFeatureFlagUsage[]> {
       stage: null,
       workspaceCount,
       globalRolloutPercentage: null,
+      globalCondition: null,
     }));
 
   return [...configuredFlags, ...legacyFlags];
@@ -92,11 +97,17 @@ export async function listWorkspacesForFeatureFlag(
     GlobalFeatureFlagResource.listAll(),
   ]);
 
-  const globalRolloutPercentage =
-    globalFlags.find((flag) => flag.name === name)?.rolloutPercentage ?? null;
+  const globalFlag = globalFlags.find((flag) => flag.name === name);
+  const globalRolloutPercentage = globalFlag?.rolloutPercentage ?? null;
+  const globalCondition = globalFlag?.condition ?? null;
 
   if (flags.length === 0) {
-    return { globalRolloutPercentage, workspaces: [], totalCount: 0 };
+    return {
+      globalRolloutPercentage,
+      globalCondition,
+      workspaces: [],
+      totalCount: 0,
+    };
   }
 
   // Only pay for the count query when the list is actually truncated.
@@ -117,6 +128,7 @@ export async function listWorkspacesForFeatureFlag(
 
   return {
     globalRolloutPercentage,
+    globalCondition,
     workspaces: flags.map((flag) => {
       const workspace = workspaceByModelId.get(flag.workspaceId);
       if (!workspace) {

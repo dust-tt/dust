@@ -1,4 +1,5 @@
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -65,6 +66,30 @@ describe("GET /api/v1/public/branding/:wId/:asset", () => {
     expect(res.headers.get("cache-control")).toBe(
       "public, max-age=86400, immutable"
     );
+  });
+
+  it("ignores a plan-conditioned global rollout", async () => {
+    const workspace = await WorkspaceFactory.enterprise();
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "whitelabel_frames",
+      100,
+      "enterprise"
+    );
+    mockGetFileContentType.mockResolvedValue(new Ok("image/png"));
+    mockFetchFileBuffer.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
+
+    try {
+      const res = await getBrandingAsset(workspace.sId, "logo");
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toContain("DustHorizontalIcon");
+    } finally {
+      await GlobalFeatureFlagResource.setRolloutPercentage(
+        "whitelabel_frames",
+        0,
+        null
+      );
+    }
   });
 
   it("returns 404 for an unknown asset name", async () => {

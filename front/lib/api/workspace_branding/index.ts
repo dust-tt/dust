@@ -10,7 +10,7 @@
  */
 
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import { getFeatureFlagsForContext } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -74,8 +74,9 @@ export async function getWorkspaceBrandingPublicUrls(
   logoUrl: string | null;
   ogImageUrl: string | null;
 }> {
-  const featureFlags = await getFeatureFlagsForWorkspace(
-    renderLightWorkspaceType({ workspace })
+  const featureFlags = await getFeatureFlagsForContext(
+    renderLightWorkspaceType({ workspace }),
+    { plan: null }
   );
   if (!featureFlags.includes("whitelabel_frames")) {
     return { faviconUrl: null, logoUrl: null, ogImageUrl: null };

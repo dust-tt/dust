@@ -3,6 +3,7 @@ import {
   isDustCompanyPlan,
   isFriendsAndFamilyPlan,
 } from "@app/lib/plans/plan_codes";
+import { formatGlobalRollout } from "@app/lib/poke/feature_flags";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -45,9 +46,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
     ]);
 
     const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
-    const globalFlagMap = new Map(
-      globalFlags.map((f) => [f.name, f.rolloutPercentage])
-    );
+    const globalFlagMap = new Map(globalFlags.map((f) => [f.name, f]));
 
     const sortedFeatures = [...WHITELISTABLE_FEATURES].sort((a, b) => {
       const configA = WHITELISTABLE_FEATURES_CONFIG[a];
@@ -61,9 +60,10 @@ export const toggleFeatureFlagPlugin = createPlugin({
     return new Ok({
       features: sortedFeatures.map((feature) => {
         const config = WHITELISTABLE_FEATURES_CONFIG[feature];
-        const globalPct = globalFlagMap.get(feature);
-        const globalLabel =
-          globalPct !== undefined ? ` [Global: ${globalPct}%]` : "";
+        const globalFlag = globalFlagMap.get(feature);
+        const globalLabel = globalFlag
+          ? ` [Global: ${formatGlobalRollout(globalFlag.rolloutPercentage, globalFlag.condition)}]`
+          : "";
         return {
           label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} (@${config.owner})${globalLabel}`,
           value: feature,

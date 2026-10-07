@@ -11,6 +11,7 @@ export class GlobalFeatureFlagModel extends BaseModel<GlobalFeatureFlagModel> {
 
   declare name: WhitelistableFeature;
   declare rolloutPercentage: number;
+  declare condition: string | null;
 }
 
 GlobalFeatureFlagModel.init(
@@ -33,6 +34,10 @@ GlobalFeatureFlagModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 100,
+    },
+    condition: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
