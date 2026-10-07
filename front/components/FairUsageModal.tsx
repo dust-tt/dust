@@ -1,4 +1,4 @@
-import { formatCredits, formatFairUseTimeframe } from "@app/lib/client/credits";
+import { formatCredits } from "@app/lib/client/credits";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -15,6 +15,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
+
+const PROGRAMMATIC_USAGE_URL =
+  "https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e";
 
 // The per-seat fair-use limit for a plan: if the plan sets maxAwuCredits it's a
 // credit limit, otherwise it's a max number of messages.
@@ -59,46 +67,99 @@ interface FairUsageModalProps {
   seatLimit?: FairUseSeatLimit;
 }
 
-function getFairUseContent(seatLimit?: FairUseSeatLimit): string {
+function getCreditsLimitLine(
+  credits: string,
+  timeframe: MaxAwuCreditsTimeframeType,
+  t: Translate
+): string {
+  switch (timeframe) {
+    case "day":
+      return t(
+        msg`On your current plan, that is **${credits} credits per day**.`
+      );
+    case "week":
+      return t(
+        msg`On your current plan, that is **${credits} credits per week**.`
+      );
+    case "month":
+      return t(
+        msg`On your current plan, that is **${credits} credits per month**.`
+      );
+    case "lifetime":
+      return t(msg`On your current plan, that is **${credits} credits**.`);
+    default:
+      assertNeverAndIgnore(timeframe);
+      return t(msg`On your current plan, that is **${credits} credits**.`);
+  }
+}
+
+function getMessagesLimitLine(
+  messages: number,
+  timeframe: MaxMessagesTimeframeType,
+  t: Translate
+): string {
+  switch (timeframe) {
+    case "day":
+      return t(
+        msg`On your current plan, that is **${plural(messages, {
+          one: "# message per day",
+          other: "# messages per day",
+        })}**.`
+      );
+    case "lifetime":
+      return t(
+        msg`On your current plan, that is **${plural(messages, {
+          one: "# message",
+          other: "# messages",
+        })}**.`
+      );
+    default:
+      assertNeverAndIgnore(timeframe);
+      return t(
+        msg`On your current plan, that is **${plural(messages, {
+          one: "# message",
+          other: "# messages",
+        })}**.`
+      );
+  }
+}
+
+function getFairUseContent(t: Translate, seatLimit?: FairUseSeatLimit): string {
   let limitLine: string;
   switch (seatLimit?.kind) {
-    case "credits": {
-      const timeframeLabel = formatFairUseTimeframe(seatLimit.timeframe);
-      limitLine = `On your current plan, that is **${formatCredits(seatLimit.limit)} credits${
-        timeframeLabel ? ` ${timeframeLabel}` : ""
-      }**.`;
+    case "credits":
+      limitLine = getCreditsLimitLine(
+        formatCredits(seatLimit.limit),
+        seatLimit.timeframe,
+        t
+      );
       break;
-    }
-    case "messages": {
-      const timeframeLabel = formatFairUseTimeframe(seatLimit.timeframe);
-      limitLine = `On your current plan, that is **${seatLimit.limit} messages${
-        timeframeLabel ? ` ${timeframeLabel}` : ""
-      }**.`;
+    case "messages":
+      limitLine = getMessagesLimitLine(seatLimit.limit, seatLimit.timeframe, t);
       break;
-    }
     case undefined:
-      limitLine = `The exact limit depends on your plan.`;
+      limitLine = t(msg`The exact limit depends on your plan.`);
       break;
     default:
       assertNeverAndIgnore(seatLimit);
-      limitLine = `The exact limit depends on your plan.`;
+      limitLine = t(msg`The exact limit depends on your plan.`);
   }
 
   return `
-# **Fair use principles for user seats**
+# **${t(msg`Fair use principles for user seats`)}**
 
-Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately).
+${t(msg`Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately).`)}
 
-To prevent abuse, a "fair use" limit applies to each user seat. ${limitLine}
+${t(msg`To prevent abuse, a "fair use" limit applies to each user seat.`)} ${limitLine}
 
-This limit should be understood as a way to prevent abuse, not as an allowed quota. In particular, it is considered unfair to share a single seat between multiple people.
+${t(msg`This limit should be understood as a way to prevent abuse, not as an allowed quota.`)} ${t(msg`In particular, it is considered unfair to share a single seat between multiple people.`)}
 
 ___
-# **Can messages be sent programmatically with Dust?**
+# **${t(msg`Can messages be sent programmatically with Dust?`)}**
 
-Yes, and this usage is encouraged. However, such messages are not covered by individual user seats and fair use limits, and are billed separately.
+${t(msg`Yes, and this usage is encouraged.`)} ${t(msg`However, such messages are not covered by individual user seats and fair use limits, and are billed separately.`)}
 
-Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust](https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e).
+${t(msg`Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust](${PROGRAMMATIC_USAGE_URL}).`)}
 
 `;
 }
@@ -108,6 +169,7 @@ export function FairUsageModal({
   onClose,
   seatLimit,
 }: FairUsageModalProps) {
+  const { t } = useLingui();
   return (
     <Sheet
       open={isOpened}
@@ -119,12 +181,14 @@ export function FairUsageModal({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Dust's Fair Use Policy</SheetTitle>
+          <SheetTitle>
+            <Trans>Dust's fair use policy</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <Icon visual={Attachment01} size="lg" className="text-success-500" />
           <Markdown
-            content={getFairUseContent(seatLimit)}
+            content={getFairUseContent(t, seatLimit)}
             forcedTextSize="text-sm"
           />
         </SheetContainer>

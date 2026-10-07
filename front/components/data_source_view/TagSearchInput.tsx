@@ -8,6 +8,7 @@ import {
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface TagSearchProps {
   searchInputValue: string;
@@ -76,7 +77,7 @@ export const TagSearchInput = ({
           </div>
         ) : (
           <div className="p-2 text-sm text-muted-foreground">
-            No results found
+            <Trans>No results found</Trans>
           </div>
         )}
       </SearchDropdownMenu>

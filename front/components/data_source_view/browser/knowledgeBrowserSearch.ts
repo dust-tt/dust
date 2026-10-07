@@ -7,11 +7,16 @@ import type {
 } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
-export const ALL_KNOWLEDGE_SECTION_LABEL = "All knowledge";
+export const ALL_KNOWLEDGE_SECTION_LABEL = msg`All knowledge`;
 
-export function getScopedSearchSectionLabel(scopeLabel: string): string {
-  return `In "${scopeLabel}"`;
+export function getScopedSearchSectionLabel(
+  scopeLabel: string,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  return t(msg`In "${scopeLabel}"`);
 }
 
 // Where a search typed inside the browser looks: a space, some of its data source views, or a

@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { createContext, useEffect, useRef, useState } from "react";
 
@@ -58,6 +59,7 @@ function ConfirmDialog({
   resolveConfirm,
   clearConfirmData,
 }: ConfirmDialogProps) {
+  const { t } = useLingui();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -91,12 +93,12 @@ function ConfirmDialog({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: confirmData?.cancelLabel ?? "Cancel",
+            label: confirmData?.cancelLabel ?? t`Cancel`,
             variant: "outline",
             onClick: () => resolveConfirm(false),
           }}
           rightButtonProps={{
-            label: confirmData?.validateLabel ?? "OK",
+            label: confirmData?.validateLabel ?? t`OK`,
             variant: confirmData?.validateVariant ?? "warning",
             disabled: confirmData?.validateDisabled ?? false,
             onClick: () => resolveConfirm(true),

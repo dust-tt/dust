@@ -1,5 +1,4 @@
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
-import { getKnowledgeBrowserEntryLabel } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import type { NavigationHistoryState } from "@app/components/data_source_view/context/useNavigationHistory";
 import { useNavigationHistory } from "@app/components/data_source_view/context/useNavigationHistory";
@@ -56,19 +55,19 @@ export function getVisibleNavigationEntries(
     .filter(({ index }) => !isSkippedPodCategory(navigationHistory, index));
 }
 
-// One crumb per entry, each navigating back to its level. `getLabel` lets a surface keep its own
+// One crumb per entry, each navigating back to its level. `getLabel` lets a surface pick its own
 // wording for an entry (the Agent Builder shows a data source view's stored name);
 // `includeSkippedLevels` keeps a pod's skipped category in the trail (the Agent Builder shows it).
 export function getKnowledgeBrowserBreadcrumbItems(
   navigationHistory: NavigationHistoryEntryType[],
   navigateTo: (index: number) => void,
   {
-    getLabel = getKnowledgeBrowserEntryLabel,
+    getLabel,
     includeSkippedLevels = false,
   }: {
-    getLabel?: (entry: NavigationHistoryEntryType) => string;
+    getLabel: (entry: NavigationHistoryEntryType) => string;
     includeSkippedLevels?: boolean;
-  } = {}
+  }
 ): BreadcrumbsItem[] {
   const entries = includeSkippedLevels
     ? navigationHistory.map((entry, index) => ({ entry, index }))

@@ -5,6 +5,7 @@ import {
   isValidSalesforceDomain,
 } from "@app/types/oauth/lib";
 import { Input } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 export function SalesforceOauthExtraConfig({
@@ -12,6 +13,8 @@ export function SalesforceOauthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
+  const { t } = useLingui();
+
   useEffect(() => {
     async function generatePKCE() {
       const { code_verifier, code_challenge } = await getPKCEConfig();
@@ -46,8 +49,8 @@ export function SalesforceOauthExtraConfig({
   return (
     <>
       <Input
-        label="Salesforce instance URL"
-        message="Must be a valid Salesforce domain in https and ending with .salesforce.com"
+        label={t`Salesforce instance URL`}
+        message={t`Must be a valid Salesforce domain in https and ending with .salesforce.com`}
         name="instance_url"
         value={extraConfig.instance_url ?? ""}
         placeholder="https://my-org.salesforce.com"
@@ -60,8 +63,8 @@ export function SalesforceOauthExtraConfig({
         messageStatus={isErrorUrl ? "error" : "default"}
       />
       <Input
-        label="Client ID"
-        message="The client ID from your Salesforce connected app."
+        label={t`Client ID`}
+        message={t`The client ID from your Salesforce connected app.`}
         name="client_id"
         value={extraConfig.client_id ?? ""}
         placeholder="3MVG9..."
@@ -73,8 +76,8 @@ export function SalesforceOauthExtraConfig({
         }}
       />
       <Input
-        label="Client Secret"
-        message="The client secret from your Salesforce connected app."
+        label={t`Client secret`}
+        message={t`The client secret from your Salesforce connected app.`}
         name="client_secret"
         value={extraConfig.client_secret ?? ""}
         placeholder="..."

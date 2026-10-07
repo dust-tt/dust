@@ -10,6 +10,7 @@ import type {
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
@@ -91,11 +92,11 @@ export const DataSourceViewsSpaceSelector = ({
           : dataSourceViews;
 
         if (dataSourceViewsForSpace.length === 0) {
-          return <>No data source in this space.</>;
+          return <Trans>No data source in this space.</Trans>;
         }
 
         if (!space) {
-          return <>No space selected.</>;
+          return <Trans>No space selected.</Trans>;
         }
 
         return (

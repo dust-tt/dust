@@ -1,5 +1,6 @@
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { navigationHistoryEntryTitle } from "@app/components/data_source_view/context/utils";
+import { CATEGORY_LABELS } from "@app/components/spaces/spaceCategoryLabels";
 import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -24,11 +25,14 @@ import type {
 } from "@app/types/data_source_view";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { EnrichedSpaceType } from "@app/types/space";
 import { SPACE_KINDS } from "@app/types/space";
 import { Folder } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
 import type { ComponentType } from "react";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 interface KnowledgeBrowserItemBase {
   id: string;
@@ -61,10 +65,10 @@ export type KnowledgeBrowserItem =
 
 export const KNOWLEDGE_BROWSER_GROUP_LABELS: Record<
   Extract<KnowledgeBrowserItem, { kind: "space" }>["group"],
-  string
+  MessageDescriptor
 > = {
-  spaces: "From spaces",
-  pods: "From Pods",
+  spaces: msg`From spaces`,
+  pods: msg`From Pods`,
 };
 
 /**
@@ -102,7 +106,8 @@ export function buildSpaceItems(
 // `DataSourceViewCategoryWithoutApps` are omitted; the rest keep `DATA_SOURCE_VIEW_CATEGORIES` order.
 export function buildCategoryItems(
   spaceCategories: RichSpaceType["categories"],
-  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
+  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean,
+  t: Translate
 ): Extract<KnowledgeBrowserItem, { kind: "category" }>[] {
   return removeNulls(
     DATA_SOURCE_VIEW_CATEGORIES.map((category) => {
@@ -118,7 +123,7 @@ export function buildCategoryItems(
       return {
         kind: "category" as const,
         id: category,
-        title: CATEGORY_DETAILS[category].label,
+        title: t(CATEGORY_LABELS[category]),
         icon: CATEGORY_DETAILS[category].icon,
         category,
       };
@@ -129,25 +134,29 @@ export function buildCategoryItems(
 // A pod's own data source is stored as "Project (<sId>): <pod>", which does not fit a menu row;
 // the slash menu uses the pod page's own word for it, since the pod is already named one level up.
 // Rows keep the stored name so other surfaces (the Agent Builder) read as they always did.
-export const POD_FILES_TITLE = "Pod files";
+const POD_FILES_TITLE = msg`Pod files`;
 
 export function getBrowsableDataSourceViewTitle(
-  dataSourceView: DataSourceViewType
+  dataSourceView: DataSourceViewType,
+  t: Translate
 ): string {
   return dataSourceView.dataSource.connectorProvider === "dust_project"
-    ? POD_FILES_TITLE
+    ? t(POD_FILES_TITLE)
     : getDataSourceNameFromView(dataSourceView);
 }
 
 // The label shown for a navigation entry in breadcrumbs and headings.
 export function getKnowledgeBrowserEntryLabel(
-  entry: NavigationHistoryEntryType
+  entry: NavigationHistoryEntryType,
+  t: Translate
 ): string {
   switch (entry.type) {
     case "root":
-      return "All";
+      return t(msg({ message: "All", context: "breadcrumb root" }));
     case "data_source":
-      return getBrowsableDataSourceViewTitle(entry.dataSourceView);
+      return getBrowsableDataSourceViewTitle(entry.dataSourceView, t);
+    case "category":
+      return t(CATEGORY_LABELS[entry.category]);
     default:
       return navigationHistoryEntryTitle(entry);
   }
@@ -197,18 +206,21 @@ export function buildDataSourceViewItems(
 // "5 items" for containers, "Space · Updated 6d ago" for leaves, trimmed to what is known.
 function getNodeDescription(
   node: DataSourceViewContentNode,
-  spaceName: string | undefined
+  spaceName: string | undefined,
+  t: Translate
 ): string | undefined {
   if (node.expandable) {
-    return node.childrenCount > 0
-      ? `${node.childrenCount} item${pluralize(node.childrenCount)}`
+    const { childrenCount } = node;
+    return childrenCount > 0
+      ? t(msg`${plural(childrenCount, { one: "# item", other: "# items" })}`)
       : undefined;
   }
+  const timeAgo = node.lastUpdatedAt
+    ? timeAgoFrom(node.lastUpdatedAt)
+    : undefined;
   const parts = [
     spaceName,
-    node.lastUpdatedAt
-      ? `Updated ${timeAgoFrom(node.lastUpdatedAt)}`
-      : undefined,
+    timeAgo ? t(msg`Updated ${timeAgo}`) : undefined,
   ].filter((part) => part !== undefined);
   return parts.length > 0 ? parts.join(" · ") : undefined;
 }
@@ -225,10 +237,12 @@ export function buildNodeItems(
     isTopLevelInView,
     excludeNonRemoteDatabaseTables = false,
     spaceName,
+    t,
   }: {
     isTopLevelInView: boolean;
     excludeNonRemoteDatabaseTables?: boolean;
     spaceName?: string;
+    t: Translate;
   }
 ): Extract<KnowledgeBrowserItem, { kind: "node" }>[] {
   return nodes
@@ -244,7 +258,7 @@ export function buildNodeItems(
       title: getDisplayTitleForDataSourceViewContentNode(node, {
         disambiguate: isTopLevelInView,
       }),
-      description: getNodeDescription(node, spaceName),
+      description: getNodeDescription(node, spaceName, t),
       icon: getVisualForDataSourceViewContentNode(node),
       node,
       expandable: node.expandable,
