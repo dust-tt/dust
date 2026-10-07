@@ -253,7 +253,10 @@ const MultiPageSheetContent = React.forwardRef<
           <div
             className={cn(
               "h-full",
-              currentPage.fixedContent ? "flex flex-col" : ""
+              // Bound the SheetContainer height so its ScrollArea viewport is the actual scroller.
+              currentPage.fixedContent || !currentPage.noScroll
+                ? "flex flex-col"
+                : ""
             )}
           >
             {currentPage.fixedContent && (
