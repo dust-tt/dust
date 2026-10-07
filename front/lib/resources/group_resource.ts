@@ -435,6 +435,13 @@ export class GroupResource extends BaseResource<GroupModel> {
    * manually by workspace admins and managers from the UI to grant
    * permissions to their members.
    */
+  /**
+   * @cc [owner:philipperolet,label:security] manual-group-created-audit
+   * After Ok, the groups POST handler, the workspace-management `create_group`
+   * tool, and the poke `create-group` plugin MUST emit `group.created` through
+   * `emitManualGroupLifecycleAuditLog`, after the creation transaction commits.
+   * `createGroup` runs inside that transaction and MUST leave the emit to its caller.
+   */
   static async makeNewRegularManual(
     auth: Authenticator,
     { name, memberIds }: { name: string; memberIds: string[] },
@@ -2220,12 +2227,22 @@ export class GroupResource extends BaseResource<GroupModel> {
    * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list
    * MUST fail with `last_group_member`.
    */
+  /**
+   * @cc [owner:fabiencelier,label:security] manual-group-name-updated-audit
+   * After Ok, production callers MUST emit through `emitManualGroupLifecycleAuditLog` with
+   * `kind: "name_updated"` and this result's `previousName`. A null `previousName` means the
+   * name was not requested or did not change.
+   */
   async updateRegularManualGroup(
     auth: Authenticator,
     { name, memberIds }: { name?: string; memberIds?: string[] }
   ): Promise<
     Result<
-      { addedUsers: UserType[]; removedUsers: UserType[] },
+      {
+        addedUsers: UserType[];
+        removedUsers: UserType[];
+        previousName: string | null;
+      },
       DustError<
         | "unauthorized"
         | "name_conflict"
@@ -2263,27 +2280,30 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    // `previousName` is null when the name is omitted or already equal to `name`. The route
+    // emits the rename only on Ok, so the name write stays after member validation.
+    let previousName: string | null = null;
     if (name !== undefined) {
-      // Only check for a collision when the name actually changes, so renaming
-      // to the same name never raises a conflict against self.
-      if (
-        name !== this.name &&
-        (await GroupResource.groupExistsByName(auth, name))
-      ) {
-        return new Err(
-          new DustError(
-            "name_conflict",
-            `A group named "${name}" already exists in this workspace.`
-          )
-        );
+      if (name !== this.name) {
+        if (await GroupResource.groupExistsByName(auth, name)) {
+          return new Err(
+            new DustError(
+              "name_conflict",
+              `A group named "${name}" already exists in this workspace.`
+            )
+          );
+        }
+        previousName = this.name;
       }
-
-      const updateRes = await this.updateName(auth, name);
-      if (updateRes.isErr()) {
-        return new Err(new DustError("unauthorized", updateRes.error.message));
+      if (!auth.hasPermission("admin", this)) {
+        return new Err(
+          new DustError("unauthorized", "Only admins can update group names.")
+        );
       }
     }
 
+    let addedUsers: UserType[] = [];
+    let removedUsers: UserType[] = [];
     if (memberIds !== undefined) {
       const uniqueMemberIds = [...new Set(memberIds)];
       const users = await UserResource.fetchByIds(uniqueMemberIds);
@@ -2299,11 +2319,18 @@ export class GroupResource extends BaseResource<GroupModel> {
       if (setResult.isErr()) {
         return new Err(setResult.error);
       }
-
-      return new Ok(setResult.value);
+      addedUsers = setResult.value.addedUsers;
+      removedUsers = setResult.value.removedUsers;
     }
 
-    return new Ok({ addedUsers: [], removedUsers: [] });
+    if (name !== undefined) {
+      const updateRes = await this.updateName(auth, name);
+      if (updateRes.isErr()) {
+        return new Err(new DustError("unauthorized", updateRes.error.message));
+      }
+    }
+
+    return new Ok({ addedUsers, removedUsers, previousName });
   }
 
   /**
@@ -2463,11 +2490,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok({ addedUsers, removedUsers });
   }
 
+  /**
+   * @cc [owner:philipperolet,label:security] manual-group-deleted-audit
+   * After Ok, production callers MUST emit `group.deleted` through
+   * `emitManualGroupLifecycleAuditLog`, using `memberCount` from this result.
+   */
   async deleteRegularManualGroup(
     auth: Authenticator
   ): Promise<
     Result<
-      undefined,
+      { memberCount: number },
       DustError<"unauthorized" | "group_not_found" | "internal_error">
     >
   > {
@@ -2486,12 +2518,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    const memberCount = (await this.getActiveMembers(auth)).length;
+
     const deleteRes = await this.delete(auth);
     if (deleteRes.isErr()) {
       return new Err(new DustError("internal_error", deleteRes.error.message));
     }
 
-    return new Ok(undefined);
+    return new Ok({ memberCount });
   }
 
   // Per-group usage spend limit (excluding seat allowance), applied per member.

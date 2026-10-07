@@ -971,10 +971,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * The global space cannot be renamed: it is always displayed as `GLOBAL_SPACE_NAME`, and its
    * name is what its member group is named after.
    */
+  /**
+   * @cc [owner:fabiencelier,label:security] space-name-updated-audit
+   * After Ok, production callers MUST call `emitSpaceNameUpdatedAuditLog` when `previousName`
+   * is non-null. A null `previousName` means the trimmed name matched the current name and
+   * MUST NOT be emitted.
+   */
   async updateName(
     auth: Authenticator,
     newName: string
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<{ previousName: string | null }, Error>> {
     if (!auth.can("admin", this)) {
       return new Err(new Error("Only admins can update space names."));
     }
@@ -984,6 +990,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     const trimmedName = newName.trim();
+    const previousName = trimmedName === this.name ? null : this.name;
     if (
       this.isProject() &&
       isDatabaseFileSystemPodName(this.name) !==
@@ -1025,7 +1032,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
     }
 
-    return new Ok(undefined);
+    return new Ok({ previousName });
   }
 
   // Permissions.
