@@ -1,3 +1,6 @@
+import type { KeyType } from "@app/types/key";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { RoleType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { z } from "zod";
@@ -7,6 +10,43 @@ export type KeyRole = (typeof KEY_ROLES)[number];
 
 export const isKeyRole = (value: string): value is KeyRole =>
   (KEY_ROLES as readonly string[]).includes(value);
+
+export type APIKeyStatus = "active" | "capped" | "revoked";
+
+export const API_KEY_STATUS_LABELS: Record<APIKeyStatus, MessageDescriptor> = {
+  active: msg({ message: "Active", context: "API key status" }),
+  capped: msg`Capped`,
+  revoked: msg({ message: "Revoked", context: "API key status" }),
+};
+
+export const API_KEY_STATUS_CHIP_COLORS = {
+  active: "success",
+  capped: "warning",
+  revoked: "primary",
+} as const satisfies Record<APIKeyStatus, string>;
+
+export function getKeyScopeLabel(role: RoleType): MessageDescriptor {
+  switch (role) {
+    case "user":
+      return msg`Read-only`;
+    case "manager":
+      return msg`Read & write`;
+    case "admin":
+      return msg`Admin`;
+    case "none":
+      return msg`No access`;
+    default:
+      assertNeverAndIgnore(role);
+      return msg`Unknown`;
+  }
+}
+
+export function getKeyStatus(key: KeyType): APIKeyStatus {
+  if (key.status !== "active") {
+    return "revoked";
+  }
+  return key.isSpendCapped ? "capped" : "active";
+}
 
 /**
  * Schema for monthly cap input in dollars (as string from input).
