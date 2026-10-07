@@ -2305,15 +2305,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           );
         }
 
-        const setResult = await this.dangerouslySetMembers(auth, {
+        return this.dangerouslySetMembers(auth, {
           users: users.map((u) => u.toJSON()),
           transaction,
         });
-        if (setResult.isErr()) {
-          return new Err(setResult.error);
-        }
-
-        return new Ok(setResult.value);
       });
     }
 

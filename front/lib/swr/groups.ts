@@ -524,7 +524,12 @@ export function useUpdateGroup({
         );
 
         await invalidateWorkspaceGroups(owner.sId);
-        if (memberIds !== undefined || managerIds !== undefined) {
+        if (
+          update.memberIds ||
+          update.managerIds ||
+          update.memberDiff ||
+          update.managerDiff
+        ) {
           await invalidatePeople(owner.sId);
         }
 

@@ -803,6 +803,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
    * either apply every addition/removal or apply none. Callers MUST validate that the supplied
    * users are active members of the workspace before invoking this method. With userIdsToRemove,
    * users MUST be added, listed users removed, and other active workspace members preserved.
+   * Removal MUST take precedence when a user appears in both lists.
    */
   static async replaceUsersForGrant(
     auth: Authenticator,

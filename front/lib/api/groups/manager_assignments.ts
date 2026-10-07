@@ -62,7 +62,8 @@ export async function getGroupManagersForGroups(
  * @cc [owner:philipperolet,label:security;backend] group-manager-assignment
  * Only a workspace admin or manager may update group managers. Every added manager MUST be
  * an active member of the same workspace. Validation MUST finish before any grant is changed.
- * With userIdsToRemove, managerIds MUST be added and only listed managers removed.
+ * With userIdsToRemove, unmentioned active workspace managers MUST be preserved and removal
+ * MUST take precedence if a manager appears in both lists.
  */
 export async function updateGroupManagers(
   auth: Authenticator,
