@@ -90,7 +90,7 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
     id: "user1",
     group_ids: ["group1"],
     seat_type: "pro",
-    limit_group_id: null,
+    shared_usage_limit_group_id: null,
   },
   consumption_type: "llm",
   gross_credit_micro: {

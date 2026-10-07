@@ -172,7 +172,7 @@ async function createConversationForAgentConfiguration({
       errorType === "plan_message_limit_exceeded" ||
       errorType === "credits_exhausted" ||
       errorType === "user_cap_reached" ||
-      errorType === "group_limit_reached" ||
+      errorType === "group_shared_usage_limit_reached" ||
       errorType === "rate_limit_error" ||
       errorType === "no_seat";
 
@@ -425,7 +425,7 @@ export async function runTriggeredAgentsActivity({
       errorType === "plan_message_limit_exceeded" ||
       errorType === "credits_exhausted" ||
       errorType === "user_cap_reached" ||
-      errorType === "group_limit_reached" ||
+      errorType === "group_shared_usage_limit_reached" ||
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
       errorType === "agent_inaccessible" ||

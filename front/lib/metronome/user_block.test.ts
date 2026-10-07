@@ -90,7 +90,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("no_seat");
@@ -103,7 +103,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: true,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("user_cap_reached");
@@ -115,37 +115,37 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: true,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("user_cap_reached");
   });
 
-  it("reports a group limit block when the personal cap is not reached, even with a depleted pool", async () => {
+  it("reports a shared usage limit block when the personal cap is not reached, even with a depleted pool", async () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: true,
+      groupSharedUsageLimitBlocked: true,
     });
 
-    expect(blocked).toBe("group_limit_reached");
+    expect(blocked).toBe("group_shared_usage_limit_reached");
   });
 
-  it("reports the personal cap over the group limit when both are reached", async () => {
+  it("reports the personal cap over the shared usage limit when both are reached", async () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: true,
-      groupLimitBlocked: true,
+      groupSharedUsageLimitBlocked: true,
     });
 
     expect(blocked).toBe("user_cap_reached");
   });
 
-  it("does not block a free seat on a group limit", async () => {
+  it("does not block a free seat on a shared usage limit", async () => {
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
       seatType: "free",
     });
@@ -154,7 +154,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: true,
+      groupSharedUsageLimitBlocked: true,
     });
 
     expect(blocked).toBeNull();
@@ -166,7 +166,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -178,7 +178,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -190,7 +190,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");
@@ -210,7 +210,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -228,7 +228,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");
@@ -246,7 +246,7 @@ describe("isUserBlockedByMetronome", () => {
 
       const blocked = await isUserBlockedByMetronome(workspace, user, {
         userCapBlocked: false,
-        groupLimitBlocked: false,
+        groupSharedUsageLimitBlocked: false,
       });
 
       expect(blocked).toBeNull();
@@ -272,7 +272,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     // DB resolved the state to `user_seat`, so pool depletion does not block.
@@ -297,7 +297,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -316,7 +316,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -336,7 +336,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBeNull();
@@ -355,7 +355,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");
@@ -378,7 +378,7 @@ describe("isUserBlockedByMetronome", () => {
 
     const blocked = await isUserBlockedByMetronome(workspace, user, {
       userCapBlocked: false,
-      groupLimitBlocked: false,
+      groupSharedUsageLimitBlocked: false,
     });
 
     expect(blocked).toBe("credits_exhausted");

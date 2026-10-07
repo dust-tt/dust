@@ -25,10 +25,10 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare poolCapAwuCredits: CreationOptional<number | null>;
 
   // Group budget (once reached, members are blocked regardless of their personal limit).
-  declare groupLimitAwuCredits: CreationOptional<number | null>;
-  // If users belong to multiple groups with group limits, they use the pool from the
-  // group with the lowest value for groupLimitPriority.
-  declare groupLimitPriority: CreationOptional<number | null>;
+  declare sharedUsageLimitAwuCredits: CreationOptional<number | null>;
+  // If users belong to multiple groups with shared usage limits, they use the pool from the
+  // group with the lowest value for sharedUsageLimitPriority.
+  declare sharedUsageLimitPriority: CreationOptional<number | null>;
 
   // Workspace role granted to this group's active members ("admin" or
   // "manager"), or null when the group grants no role.
@@ -68,11 +68,11 @@ GroupModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    groupLimitAwuCredits: {
+    sharedUsageLimitAwuCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    groupLimitPriority: {
+    sharedUsageLimitPriority: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -94,8 +94,8 @@ GroupModel.init(
       { fields: ["workspaceId", "kind"] },
       {
         unique: true,
-        fields: ["workspaceId", "groupLimitPriority"],
-        where: { groupLimitPriority: { [Op.ne]: null } },
+        fields: ["workspaceId", "sharedUsageLimitPriority"],
+        where: { sharedUsageLimitPriority: { [Op.ne]: null } },
       },
     ],
   }

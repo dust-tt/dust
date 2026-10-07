@@ -94,7 +94,7 @@ describe("checkPoolCreditGate", () => {
   it.each([
     "credits_exhausted",
     "user_cap_reached",
-    "group_limit_reached",
+    "group_shared_usage_limit_reached",
     "no_seat",
   ] as const)(
     "stops with reason %s when isUserBlocked returns it",

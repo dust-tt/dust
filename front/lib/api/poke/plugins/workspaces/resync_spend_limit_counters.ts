@@ -3,7 +3,7 @@ import {
   resyncProgrammaticSpendLimitCounterFromEsUsage,
   resyncSpendLimitCountersFromEsUsage,
 } from "@app/lib/api/credits/members_usage";
-import { resyncGroupLimitCountersFromEsUsage } from "@app/lib/api/groups/group_limit";
+import { resyncGroupSharedUsageCountersFromEsUsage } from "@app/lib/api/groups/group_shared_usage_limit";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -14,7 +14,7 @@ export const resyncSpendLimitCountersPlugin = createPlugin({
     description:
       "Overwrite the Redis fixed-window spend-cap counters (each member's " +
       "per-user counter, each capped API key's per-key counter, the " +
-      "workspace programmatic counter, and each group limit counter) for the " +
+      "workspace programmatic counter, and each shared usage limit counter) for the " +
       "current cycle with their " +
       "Elasticsearch-derived AWU consumption. Use to backfill the counters " +
       "after enabling the cap, or to repair drift (they otherwise only accrue " +
@@ -43,9 +43,10 @@ export const resyncSpendLimitCountersPlugin = createPlugin({
       return new Err(new Error(programmaticResult.error.message));
     }
 
-    const groupLimitResult = await resyncGroupLimitCountersFromEsUsage(auth);
-    if (groupLimitResult.isErr()) {
-      return new Err(new Error(groupLimitResult.error.message));
+    const sharedUsageLimitResult =
+      await resyncGroupSharedUsageCountersFromEsUsage(auth);
+    if (sharedUsageLimitResult.isErr()) {
+      return new Err(new Error(sharedUsageLimitResult.error.message));
     }
 
     return new Ok({
@@ -54,7 +55,7 @@ export const resyncSpendLimitCountersPlugin = createPlugin({
         `Resynced spend-limit counters from usage for ` +
         `${userResult.value.updatedUserCount} user(s), ` +
         `${apiKeyResult.value.updatedKeyCount} API key(s), ` +
-        `${groupLimitResult.value.updatedGroupCount} group limit(s), and the ` +
+        `${sharedUsageLimitResult.value.updatedGroupCount} shared usage limit(s), and the ` +
         `workspace programmatic counter ` +
         `(${programmaticResult.value.programmaticCounterSeeded ? "seeded" : "no positive cap"}).`,
     });

@@ -1,5 +1,5 @@
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetGroupsUsageResponseBody } from "@app/types/api/groups/group_limit";
+import type { GetGroupsUsageResponseBody } from "@app/types/api/groups/shared_usage_limit";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
