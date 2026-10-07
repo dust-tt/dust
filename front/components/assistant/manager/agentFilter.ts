@@ -9,6 +9,8 @@ import type {
   AgentSearchFilters,
 } from "@app/types/agent_search/agent_search";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export const AGENT_FILTER_CATEGORIES = [
   "access",
@@ -82,7 +84,7 @@ export function toAgentSearchFilters(
 export const AGENT_SEARCH_TABS = [
   {
     id: "all",
-    label: "Workspace",
+    label: msg`Workspace`,
     filters: { status: ["active"], scope: ["visible", "hidden"] },
   },
   {
@@ -90,7 +92,15 @@ export const AGENT_SEARCH_TABS = [
     label: "Dust",
     filters: { status: ["active"], scope: ["global"] },
   },
-  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
-] satisfies { id: string; label: string; filters: AgentSearchFilters }[];
+  {
+    id: "archived",
+    label: msg`Archived`,
+    filters: { status: ["archived"] },
+  },
+] satisfies {
+  id: string;
+  label: MessageDescriptor | string;
+  filters: AgentSearchFilters;
+}[];
 
 export const AGENT_SEARCH_TAB_IDS = AGENT_SEARCH_TABS.map(({ id }) => id);

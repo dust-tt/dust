@@ -45,6 +45,7 @@ import type {
   AgentSearchSortOrder,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
+import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   ButtonsSwitch,
@@ -463,7 +464,11 @@ export function ManageAgentsPage({
               }}
             >
               {AGENT_SEARCH_TABS.map((tab) => (
-                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+                <ButtonsSwitch
+                  key={tab.id}
+                  value={tab.id}
+                  label={isString(tab.label) ? tab.label : t(tab.label)}
+                />
               ))}
             </ButtonsSwitchList>
             <AgentFilterPanel

@@ -36,7 +36,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg, plural } from "@lingui/core/macro";
+import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
@@ -387,10 +387,7 @@ export function AgentSearchTable({
               <DataTable.BasicCellContent
                 className="font-mono"
                 label={`${total}`}
-                tooltip={t`${plural(total, {
-                  one: `${up} positive and ${down} negative feedback`,
-                  other: `${up} positive and ${down} negative feedbacks`,
-                })}`}
+                tooltip={t`${up} positive and ${down} negative feedback`}
               />
             );
           },
