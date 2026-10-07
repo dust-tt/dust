@@ -5,7 +5,6 @@ import "./lib/startup-log";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { serve } from "@hono/node-server";
@@ -121,12 +120,6 @@ async function shutdown(signal: NodeJS.Signals) {
 let stopping: Promise<void> | undefined;
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
-    stopping ??= shutdown(signal).catch((err: unknown) => {
-      logger.error(
-        { err: normalizeError(err) },
-        "Collab server shutdown failed"
-      );
-      process.exit(1);
-    });
+    stopping ??= shutdown(signal);
   });
 }
