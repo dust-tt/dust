@@ -76,6 +76,7 @@ app.post("/", async (ctx) => {
   }
 
   return ctx.json({
+    // TODO: Remove this IDs-only field once older frontends stop using it.
     similar_skills: result.value.similar_skills,
     skills: result.value.skills.map((skill) => skill.toJSON(auth)),
   });
