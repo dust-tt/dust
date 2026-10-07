@@ -40,7 +40,7 @@ export function isAllowlistShareScopeStale(
 }
 
 export function isAuthorizedFileRef(
-  authorizedFileAccess: AuthorizedFileAccessAllowlist,
+  authorizedFileAccess: Pick<AuthorizedFileAccessAllowlist, "refs">,
   requestedRef: string
 ): boolean {
   for (const r of authorizedFileAccess.refs) {

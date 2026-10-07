@@ -204,6 +204,7 @@ export function PodFrameSheet({
                     : null
                 }
                 frameId={functionReferenceKind === "v2" ? fileId : undefined}
+                frameFileId={fileId}
                 isInDrawer={true}
                 isPodEditor={isEditor}
                 isPodMember={isMember}

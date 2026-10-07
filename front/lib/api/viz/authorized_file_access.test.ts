@@ -1643,15 +1643,21 @@ describe("public share referenced files change notice", () => {
 
     const state = await fetchShareableFileAllowlistState(frameFile);
 
+    const refs = [
+      {
+        kind: "file_id",
+        ref: dataFile.sId,
+        fileName: "data.txt",
+      },
+    ];
     expect(state).toEqual({
       shareScope: "public",
-      refs: [
-        {
-          kind: "file_id",
-          ref: dataFile.sId,
-          fileName: "data.txt",
-        },
-      ],
+      allowlist: {
+        generatedByUserId: auth.user()!.id,
+        frameContentHash: "hash",
+        refs,
+      },
+      refs,
     });
   });
 });

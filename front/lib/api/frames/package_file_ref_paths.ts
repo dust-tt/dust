@@ -1,7 +1,6 @@
+import { isFileId } from "@app/lib/files";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import { isAgentScopedPath } from "@app/types/mount_path";
-
-const FILE_ID_REGEX = /^fil_[a-zA-Z0-9]{10,}$/;
 
 /**
  * Browser-safe posix helpers. This module is imported from client code
@@ -66,7 +65,7 @@ export function isFramePackageRelativePath(value: string): boolean {
 
   const trimmed = value.trim();
   // Reject both valid fil_* ids and incomplete fil_ prefixes.
-  if (trimmed.startsWith("fil_") || FILE_ID_REGEX.test(trimmed)) {
+  if (trimmed.startsWith("fil_") || isFileId(trimmed)) {
     return false;
   }
   // Reject scoped-looking prefixes even when the id is empty / invalid

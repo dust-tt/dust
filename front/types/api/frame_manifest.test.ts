@@ -211,6 +211,8 @@ describe("isSafeFrameRelativePath", () => {
     ["src/../index.tsx", false],
     ["/index.tsx", false],
     ["src\\index.tsx", false],
+    ["./.\x01./index.tsx", false],
+    ["src/index\x00.tsx", false],
   ])("validates %s", (relativePath, expected) => {
     expect(isSafeFrameRelativePath(relativePath)).toBe(expected);
   });

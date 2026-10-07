@@ -172,6 +172,7 @@ export function PublicFrameRenderer({
                 : null
             }
             frameId={frameId}
+            frameFileId={fileId}
             isInDrawer
           />
         </div>
