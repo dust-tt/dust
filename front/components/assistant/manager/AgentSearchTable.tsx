@@ -371,7 +371,7 @@ export function AgentSearchTable({
           meta: {
             type: "numeric",
             className:
-              "hidden w-24 max-md:table-cell max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden @sm:table-cell",
+              "hidden w-28 max-md:table-cell max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden @sm:table-cell",
           },
         },
         {

@@ -334,7 +334,7 @@ msgstr "Nombre d’utilisateurs actifs au cours des 30 derniers jours."
 
 #: front/components/skills/SkillSearchTable.tsx
 msgid "Last edited"
-msgstr "Dernière modification"
+msgstr "Modifié le"
 
 #: front/components/skills/SkillSearchTable.tsx
 msgid "Loading skills"

@@ -228,6 +228,7 @@ export function SkillSearchTable({
           enableMultiSort: false,
           cell: ({ row: { original: skill } }) => (
             <DataTable.BasicCellContent
+              className="font-mono"
               label={
                 skill.activeUsersCount === null
                   ? "-"
@@ -243,7 +244,7 @@ export function SkillSearchTable({
           meta: {
             type: "numeric",
             className:
-              "w-24 font-mono max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden",
+              "w-28 max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden",
           },
         },
         {

@@ -15,8 +15,8 @@ export function AgentBuilderSectionContainer({
 }: AgentBuilderSectionContainerProps) {
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
-        <div className="max-w-9/10">
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="max-w-9/10 sm:grow sm:basis-80">
           <div className="flex flex-row items-center gap-2">
             <h2 className="heading-lg text-foreground">{title}</h2>
           </div>

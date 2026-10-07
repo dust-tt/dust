@@ -804,10 +804,12 @@ function buildPoolCreditUsageColumn(
   return {
     id: "consumedFromPoolAwuCredits" as const,
     header: () => (
-      <div className="flex flex-col">
-        <span className="flex items-center gap-1">
+      <div className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 items-center gap-1">
           <Icon visual={CoinsStacked03} size="xs" />
-          {hasPool ? <Trans>Pool usage</Trans> : <Trans>Credit usage</Trans>}
+          <span className="truncate">
+            {hasPool ? <Trans>Pool usage</Trans> : <Trans>Credit usage</Trans>}
+          </span>
         </span>
       </div>
     ),
@@ -1247,7 +1249,7 @@ function buildCreditPlanColumns({
       ...(showPremiumMessageUsage
         ? buildPremiumMessageUsageColumn(premiumMessageWindowDays, t)
         : buildPoolCreditUsageColumn(hasPool)),
-      meta: { className: "w-56" },
+      meta: { className: "w-32 @xs:w-56" },
     },
     // Premium message plans also carry a fixed AWU credit allowance for
     // usage on non-premium models, alongside the rolling message limit.
