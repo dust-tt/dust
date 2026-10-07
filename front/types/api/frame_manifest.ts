@@ -6,6 +6,7 @@ import {
   SANDBOX_FUNCTION_SLUG_REGEX,
   SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
+import { hasControlCharacters } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -71,7 +72,13 @@ export function validateFrameV2Name(name: string): Result<string, string> {
 
 /** Manifest paths are always relative to the Frame source folder. */
 export function isSafeFrameRelativePath(path: string): boolean {
-  if (path.startsWith("/") || path.includes("\\")) {
+  // The file system strips control characters before resolving `.` and `..`, so a segment such
+  // as `.\x01.` must be refused here rather than treated as a plain name.
+  if (
+    path.startsWith("/") ||
+    path.includes("\\") ||
+    hasControlCharacters(path)
+  ) {
     return false;
   }
 

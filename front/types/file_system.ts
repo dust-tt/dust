@@ -20,6 +20,14 @@ export const SCOPED_PREFIX_USER = "user-" as const;
 export const LEGACY_PREFIX_CONVERSATION = "conversation" as const;
 export const LEGACY_PREFIX_PROJECT = "project" as const;
 
+/** C0 and C1 control characters, stripped from file names and scoped paths before normalization. */
+const CONTROL_CHAR_PATTERN = "[\\x00-\\x1F\\x7F-\\x9F]";
+export const CONTROL_CHAR_RE = new RegExp(CONTROL_CHAR_PATTERN, "g");
+
+export function hasControlCharacters(value: string): boolean {
+  return new RegExp(CONTROL_CHAR_PATTERN).test(value);
+}
+
 export type FileSystemMount = {
   kind: FileSystemMountKind;
 

@@ -112,6 +112,7 @@ function PodFileTabVisualization({
               ? fileId
               : undefined
           }
+          frameFileId={fileId}
           framePath={framePath}
         />
       </div>
