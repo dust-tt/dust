@@ -99,7 +99,8 @@ export function CapabilitiesSelectionPageContent({
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>
-      ) : !hasAnyResults && !(showSkillsSection && skillPagination.hasMore) ? (
+      ) : !hasAnyResults &&
+        !(filter === "skills" && skillPagination.hasMore) ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
@@ -174,7 +175,7 @@ export function CapabilitiesSelectionPageContent({
               </div>
             </>
           )}
-          {showSkillsSection && !(showToolsSection && hasTools) && (
+          {filter === "skills" && (
             // Recheck after every page, even when all its skills are already added.
             <InfiniteScroll
               key={`${resolvedSearchQuery}:${skillPagination.loadedCount}`}
