@@ -41,6 +41,7 @@ export class PlanFactory {
       maxDataSourcesDocumentsSizeMb: 100,
       canUseProduct: true,
       isByok: false,
+      gateway: null,
       hasAdvancedModelAccess: true,
       ...overrides,
     });

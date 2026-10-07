@@ -58,6 +58,7 @@ export const FREE_NO_PLAN_DATA: PlanAttributes = {
   maxDataSourcesDocumentsSizeMb: 0,
   canUseProduct: false,
   isByok: false,
+  gateway: null,
   hasAdvancedModelAccess: false,
 };
 
@@ -97,6 +98,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: false,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   },
   {
@@ -130,6 +132,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   },
   {
@@ -163,6 +166,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   },
 ];

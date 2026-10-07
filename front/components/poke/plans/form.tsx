@@ -3,8 +3,10 @@ import type { PlanType } from "@app/types/plan";
 import {
   isMaxAwuCreditsTimeframeType,
   isMaxMessagesTimeframeType,
+  isPlanGateway,
   MAX_AWU_CREDITS_TIMEFRAMES,
   MAX_MESSAGE_TIMEFRAMES,
+  PLAN_GATEWAYS,
 } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
@@ -40,6 +42,7 @@ export type EditingPlanType = {
   isSSOAllowed: boolean;
   isSCIMAllowed: boolean;
   isByok: boolean;
+  gateway: string;
   isAuditLogsAllowed: boolean;
   hasAdvancedModelAccess: boolean;
   maxImagesPerWeek: string | number;
@@ -72,6 +75,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSSOAllowed: plan.limits.users.isSSOAllowed,
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     isByok: plan.isByok,
+    gateway: plan.gateway ?? "",
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
     hasAdvancedModelAccess: plan.hasAdvancedModelAccess,
     maxMessages: plan.limits.assistant.maxMessages,
@@ -154,6 +158,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       canUseProduct: true,
     },
     isByok: editingPlan.isByok,
+    gateway: isPlanGateway(editingPlan.gateway) ? editingPlan.gateway : null,
     isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
     hasAdvancedModelAccess: editingPlan.hasAdvancedModelAccess,
   };
@@ -178,6 +183,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSSOAllowed: false,
   isSCIMAllowed: false,
   isByok: false,
+  gateway: "",
   isAuditLogsAllowed: false,
   hasAdvancedModelAccess: false,
   maxImagesPerWeek: "",
@@ -373,6 +379,15 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "BYOK",
+  },
+  gateway: {
+    type: "string",
+    width: "small",
+    title: "Gateway",
+    error: (plan: EditingPlanType) =>
+      plan.gateway === "" || isPlanGateway(plan.gateway)
+        ? null
+        : `Gateway must be empty or one of: ${PLAN_GATEWAYS.join(", ")}`,
   },
   isAuditLogsAllowed: {
     type: "boolean",
