@@ -1,4 +1,7 @@
 import { AlertCircle, Check, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 interface DocumentSaveStatusProps {
@@ -26,17 +29,20 @@ export const StatusRow = ({ badge, children }: StatusRowProps) => (
   </div>
 );
 
-const SAVE_STATES: Record<SaveState, { label: string; icon: ReactNode }> = {
+const SAVE_STATES: Record<
+  SaveState,
+  { label: MessageDescriptor; icon: ReactNode }
+> = {
   error: {
-    label: "Not saved",
+    label: msg`Not saved`,
     icon: <Icon visual={AlertCircle} size="xs" className="text-warning-500" />,
   },
-  saving: { label: "Saving…", icon: <Spinner size="xs" /> },
+  saving: { label: msg`Saving…`, icon: <Spinner size="xs" /> },
   pending: {
-    label: "Changes pending",
+    label: msg`Changes pending`,
     icon: <span className="mx-1 size-1 rounded-full bg-current" />,
   },
-  saved: { label: "Saved", icon: <Icon visual={Check} size="xs" /> },
+  saved: { label: msg`Saved`, icon: <Icon visual={Check} size="xs" /> },
 };
 
 function saveState({
@@ -63,8 +69,10 @@ export const DocumentSaveStatus = ({
   autosaveDebounceMs,
   onRetry,
 }: DocumentSaveStatusProps) => {
+  const { t } = useLingui();
   const state = saveState({ dirty, saving, error });
   const { icon, label } = SAVE_STATES[state];
+  const autosaveDebounceSeconds = autosaveDebounceMs / 1_000;
 
   return (
     <>
@@ -74,14 +82,14 @@ export const DocumentSaveStatus = ({
         className="inline-flex items-center gap-1.5 data-[state=error]:text-foreground"
         title={
           onRetry
-            ? `Changes save automatically after ${autosaveDebounceMs / 1_000}s of inactivity`
+            ? t`Changes save automatically after ${autosaveDebounceSeconds}s of inactivity`
             : undefined
         }
       >
         <span aria-hidden="true" className="inline-flex items-center">
           {icon}
         </span>
-        {label}
+        {t(label)}
       </span>
       {error && onRetry && (
         <button
@@ -92,7 +100,7 @@ export const DocumentSaveStatus = ({
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           )}
         >
-          Retry
+          <Trans>Retry</Trans>
         </button>
       )}
     </>
@@ -135,10 +143,11 @@ export const DocumentStatus = ({
   badge,
   children,
 }: DocumentStatusProps) => {
+  const { t } = useLingui();
   const showSaveStatus = editable || dirty || saving;
   const saveError =
     !editable && dirty && !saving
-      ? "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+      ? t`Saving is unavailable. Your unsaved changes are still here. Copy them before reopening.`
       : error;
 
   if (!showSaveStatus && !badge && !children) {

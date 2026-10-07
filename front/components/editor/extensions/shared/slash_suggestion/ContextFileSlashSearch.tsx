@@ -125,6 +125,8 @@ export function useContextFileSlashSearchItems({
         query: normalizedQuery,
       });
 
+    const conversationFileDescription = t`Conversation file`;
+
     const conversationFiles = attachments
       .filter(isFileAttachmentType)
       .filter((attachment) => !attachment.hidden)
@@ -134,10 +136,10 @@ export function useContextFileSlashSearchItems({
           attachment.path !== null
       )
       .filter((attachment) =>
-        matchesQuery(attachment.title, "Conversation file")
+        matchesQuery(attachment.title, conversationFileDescription)
       )
       .map((attachment) => ({
-        description: "Conversation file",
+        description: conversationFileDescription,
         file: attachment,
         fileId: attachment.fileId,
         id: `conversation-${attachment.fileId}`,
@@ -163,8 +165,8 @@ export function useContextFileSlashSearchItems({
           t
         );
         const description = projectName
-          ? `${fileKind} in "${projectName}" knowledge`
-          : `${fileKind} in Pod knowledge`;
+          ? t`${fileKind} in "${projectName}" knowledge`
+          : t`${fileKind} in Pod knowledge`;
 
         if (!matchesQuery(podFile.title, description)) {
           return null;

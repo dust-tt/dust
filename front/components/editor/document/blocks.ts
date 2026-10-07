@@ -7,6 +7,7 @@ import {
   Minus,
   Type01,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
 import type { ChainedCommands } from "@tiptap/core";
 import { isTextSelection } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
@@ -27,64 +28,64 @@ export const getBlockQuery = (state: EditorState) => {
 
 export const BLOCKS = [
   {
-    name: "Text",
-    description: "Start writing with plain text",
+    name: msg({ message: "Text", context: "document block type" }),
+    description: msg`Start writing with plain text`,
     icon: Type01,
     keywords: "paragraph",
     apply: (chain: ChainedCommands) => chain.setParagraph().run(),
   },
   {
-    name: "Heading 1",
-    description: "A big section heading",
+    name: msg`Heading 1`,
+    description: msg`A big section heading`,
     icon: Heading01,
     keywords: "h1 title",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 1 }).run(),
   },
   {
-    name: "Heading 2",
-    description: "A medium section heading",
+    name: msg`Heading 2`,
+    description: msg`A medium section heading`,
     icon: Heading01,
     keywords: "h2 subtitle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 2 }).run(),
   },
   {
-    name: "Heading 3",
-    description: "A small section heading",
+    name: msg`Heading 3`,
+    description: msg`A small section heading`,
     icon: Heading01,
     keywords: "h3 subtitle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 3 }).run(),
   },
   {
-    name: "Bulleted list",
-    description: "A simple list of ideas",
+    name: msg`Bulleted list`,
+    description: msg`A simple list of ideas`,
     icon: List,
     keywords: "bullet unordered",
     apply: (chain: ChainedCommands) => chain.toggleBulletList().run(),
   },
   {
-    name: "Numbered list",
-    description: "Keep things in order",
+    name: msg`Numbered list`,
+    description: msg`Keep things in order`,
     icon: Hash01,
     keywords: "ordered",
     apply: (chain: ChainedCommands) => chain.toggleOrderedList().run(),
   },
   {
-    name: "Quote",
-    description: "Make a passage stand out",
+    name: msg({ message: "Quote", context: "document block type" }),
+    description: msg`Make a passage stand out`,
     icon: DoubleQuotes,
     keywords: "blockquote",
     apply: (chain: ChainedCommands) => chain.toggleBlockquote().run(),
   },
   {
-    name: "Code",
-    description: "A block of code",
+    name: msg({ message: "Code", context: "document block type" }),
+    description: msg`A block of code`,
     icon: Code01,
     keywords: "codeblock",
     apply: (chain: ChainedCommands) => chain.toggleCodeBlock().run(),
   },
   {
-    name: "Divider",
-    description: "Separate sections",
+    name: msg`Divider`,
+    description: msg`Separate sections`,
     icon: Minus,
     keywords: "line horizontal rule",
     apply: (chain: ChainedCommands) => chain.setHorizontalRule().run(),

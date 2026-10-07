@@ -1,6 +1,7 @@
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmAuthor } from "@app/lib/markdown/dfm";
 import { ArrowUp, cn, Icon, Spinner, TextArea } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 interface DocumentCommentInputProps {
@@ -44,6 +45,7 @@ export const DocumentCommentInput = ({
   pending = false,
   className,
 }: DocumentCommentInputProps) => {
+  const { t } = useLingui();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const trimmed = value.trim();
 
@@ -106,7 +108,7 @@ export const DocumentCommentInput = ({
         </div>
         <button
           type="button"
-          aria-label={pending ? "Sending" : "Send"}
+          aria-label={pending ? t`Sending` : t`Send`}
           aria-disabled={pending}
           tabIndex={trimmed ? 0 : -1}
           onClick={submit}

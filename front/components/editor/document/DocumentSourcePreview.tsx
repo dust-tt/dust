@@ -1,4 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface DocumentSourcePreviewProps {
   source: string;
@@ -15,8 +16,10 @@ export const DocumentSourcePreview = ({
   <article className={className}>
     <div className="mx-auto max-w-[50rem] px-5 py-8 text-foreground">
       <p role="alert" className="mb-6 text-muted-foreground copy-sm">
-        {reason} The original Markdown is shown below and editing is disabled to
-        preserve it.
+        <Trans>
+          {reason} The original Markdown is shown below and editing is disabled
+          to preserve it.
+        </Trans>
       </p>
       <pre
         className={cn(

@@ -1,4 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { UIEventHandler } from "react";
 import { forwardRef } from "react";
 
@@ -18,10 +19,11 @@ export const RawMarkdownEditor = forwardRef<
   { value, onChange, onScroll, readOnly = false, placeholder, className },
   ref
 ) {
+  const { t } = useLingui();
   return (
     <textarea
       ref={ref}
-      aria-label={placeholder ?? "Markdown source"}
+      aria-label={placeholder ?? t`Markdown source`}
       className={cn(
         "block h-full min-h-0 w-full resize-none overflow-y-auto overflow-x-hidden",
         "border-0 bg-transparent p-0 shadow-none",

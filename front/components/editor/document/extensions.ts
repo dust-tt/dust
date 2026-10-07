@@ -5,9 +5,13 @@ import {
   DocumentComments,
 } from "@app/components/editor/document/DocumentComments";
 import { cn } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 export const documentExtensions = [
   DocumentAnchors,
@@ -65,16 +69,20 @@ export const documentExtensions = [
     },
   }),
   Markdown,
+];
+
+export const buildDocumentEditorExtensions = (t: Translate) => [
+  ...documentExtensions,
   Placeholder.configure({
     placeholder: ({ node, pos, editor }) =>
       node.type.name === "heading"
         ? pos === 0
-          ? "Untitled"
-          : "Heading"
+          ? t(msg`Untitled`)
+          : t(msg`Heading`)
         : node.type.name === "paragraph"
           ? editor.isEmpty
-            ? "Start writing, or type / for elements…"
-            : "Type / for elements…"
+            ? t(msg`Start writing, or type / for elements…`)
+            : t(msg`Type / for elements…`)
           : "",
   }),
 ];

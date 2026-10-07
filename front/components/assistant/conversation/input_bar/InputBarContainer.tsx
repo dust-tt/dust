@@ -1599,7 +1599,7 @@ const InputBarContainer = ({
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
     (disableInput ? submitBlockMessage : placeholder) ??
-    INPUT_BAR_DEFAULT_PLACEHOLDER;
+    t(INPUT_BAR_DEFAULT_PLACEHOLDER);
 
   useEffect(() => {
     onVoiceActiveChange?.(isVoiceActive);

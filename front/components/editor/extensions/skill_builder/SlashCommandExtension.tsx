@@ -28,7 +28,10 @@ import {
   isToolSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { i18n } from "@app/lib/i18n/i18n";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { useLingui } from "@lingui/react/macro";
 import type { ChainedCommands, Editor, Range } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
@@ -43,7 +46,7 @@ import {
 
 export const slashCommandPluginKey = new PluginKey("slashCommand");
 
-const SLASH_COMMANDS: SlashCommand[] = [createAttachKnowledgeSlashCommand()];
+type Translate = (descriptor: MessageDescriptor) => string;
 
 const SkillBuilderSlashCommandDropdownInner = forwardRef<
   SlashCommandDropdownRef,
@@ -77,6 +80,7 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const subMenuRef = useRef<SlashCommandDropdownRef>(null);
     const { activeFrame, pop, storage } = useSlashMenuStack(
@@ -110,8 +114,12 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
       });
 
     const commandItems = useMemo(
-      () => filterSlashCommandItems(SLASH_COMMANDS, resolvedQuery),
-      [resolvedQuery]
+      () =>
+        filterSlashCommandItems(
+          [createAttachKnowledgeSlashCommand(t)],
+          resolvedQuery
+        ),
+      [resolvedQuery, t]
     );
 
     const sections = useMemo(
@@ -119,8 +127,9 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
         buildSlashCommandSections({
           commandItems,
           capabilityItems,
+          t,
         }),
-      [capabilityItems, commandItems]
+      [capabilityItems, commandItems, t]
     );
 
     const flatItems = useMemo(
@@ -192,7 +201,7 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
         sections={sections}
         command={command}
         clientRect={clientRect}
-        emptyMessage="No commands found"
+        emptyMessage={t`No commands found`}
         isLoading={isLoading}
         onClose={onClose}
         onItemDetails={handleItemDetails}
@@ -245,6 +254,7 @@ interface SlashCommandExtensionOptions {
   onToolDetailsRef?: RefObject<((tool: MCPServerViewType) => void) | undefined>;
   owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
+  t: Translate;
 }
 
 interface SkillBuilderSlashSuggestionStorage {
@@ -286,8 +296,9 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       allowSpaces: true,
       startOfLine: false,
     },
+    t: (descriptor) => i18n._(descriptor),
   },
-  addCommands: ({ storage, editor }) => ({
+  addCommands: ({ storage, editor, options }) => ({
     openSlashCommand:
       () =>
       ({ chain }: { chain: () => ChainedCommands }) => {
@@ -313,7 +324,7 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
         if (
           pluginState?.active &&
           handleSlashSubMenuCommand({
-            command: createAttachKnowledgeSlashCommand(),
+            command: createAttachKnowledgeSlashCommand(options.t),
             editor,
             range,
             storage,
@@ -323,7 +334,7 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
         }
 
         enterSlashSubMenu({
-          command: createAttachKnowledgeSlashCommand(),
+          command: createAttachKnowledgeSlashCommand(options.t),
           editor,
           range,
           storage,
@@ -333,10 +344,14 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       },
   }),
   allow: ({ storage }) => storage.hasBeenFocused,
-  queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
+  queryPlaceholder: (options) => options.t(SLASH_MENU_QUERY_PLACEHOLDER),
   queryPlaceholderClassName: SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
   triggerClassName: SLASH_MENU_TRIGGER_CLASS_NAME,
-  items: ({ query }) => filterSlashCommandItems(SLASH_COMMANDS, query),
+  items: ({ query, options }) =>
+    filterSlashCommandItems(
+      [createAttachKnowledgeSlashCommand(options.t)],
+      query
+    ),
   command: ({ editor, range, props, options, storage }) => {
     if (
       handleSlashSubMenuCommand({

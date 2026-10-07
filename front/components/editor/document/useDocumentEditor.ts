@@ -2,25 +2,27 @@ import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
-import { documentExtensions } from "@app/components/editor/document/extensions";
+import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { JSONContent } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
-const SAVE_ERROR_MESSAGE =
-  "Could not save. Your changes are still here. Try again.";
+const SAVE_ERROR_MESSAGE = msg`Could not save. Your changes are still here. Try again.`;
 
 /**
  * @cc [owner:PopDaph,label:error-handling] document-save-callback-errors
@@ -29,12 +31,13 @@ const SAVE_ERROR_MESSAGE =
  */
 const persistDocument = async (
   persist: NonNullable<DocumentProps["onSave"]>,
-  content: string
+  content: string,
+  failureMessage: string
 ): Promise<DocumentSaveResult> => {
   try {
     return await persist(content);
   } catch {
-    return new Err(SAVE_ERROR_MESSAGE);
+    return new Err(failureMessage);
   }
 };
 
@@ -71,6 +74,8 @@ export const useDocumentEditor = ({
   onSave,
   onStateChange,
 }: UseDocumentEditorProps) => {
+  const { t } = useLingui();
+  const saveErrorMessage = t(SAVE_ERROR_MESSAGE);
   const [initial] = useState(() => loadDfm(initialContent));
   // Captured with the parse: a later source must not show under the reason this one was refused.
   const [unsupported] = useState(() =>
@@ -82,7 +87,12 @@ export const useDocumentEditor = ({
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
   const editable = !readOnly && onSave !== undefined && initial.isOk();
-  const persistenceRef = useRef({ onSave, onStateChange, editable });
+  const persistenceRef = useRef({
+    onSave,
+    onStateChange,
+    editable,
+    saveErrorMessage,
+  });
   const latestRef = useRef<{ document: JSONContent; content: string } | null>(
     null
   );
@@ -90,11 +100,18 @@ export const useDocumentEditor = ({
   const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
 
   useLayoutEffect(() => {
-    persistenceRef.current = { onSave, onStateChange, editable };
-  }, [onSave, onStateChange, editable]);
+    persistenceRef.current = {
+      onSave,
+      onStateChange,
+      editable,
+      saveErrorMessage,
+    };
+  }, [onSave, onStateChange, editable, saveErrorMessage]);
+
+  const extensions = useMemo(() => buildDocumentEditorExtensions(t), [t]);
 
   const editor = useEditor({
-    extensions: documentExtensions,
+    extensions,
     content: initial.isOk() ? initial.value.content : "",
     contentType: "json",
     immediatelyRender: false,
@@ -102,7 +119,7 @@ export const useDocumentEditor = ({
     editorProps: {
       attributes: {
         role: "textbox",
-        "aria-label": "Document content",
+        "aria-label": t`Document content`,
         "aria-multiline": "true",
         class: cn(
           "min-h-96 text-base leading-7 wrap-anywhere caret-foreground outline-none [&>:first-child]:mt-0",
@@ -156,7 +173,11 @@ export const useDocumentEditor = ({
   useEffect(
     () => () => {
       const latest = latestRef.current;
-      const { onSave: persist, editable: canSave } = persistenceRef.current;
+      const {
+        onSave: persist,
+        editable: canSave,
+        saveErrorMessage: failureMessage,
+      } = persistenceRef.current;
       if (!persist || !canSave || !initial.isOk() || latest === null) {
         return;
       }
@@ -168,7 +189,7 @@ export const useDocumentEditor = ({
         }
         const serialized = saveDfm(envelope, latest.document);
         if (serialized.isOk()) {
-          await persistDocument(persist, serialized.value);
+          await persistDocument(persist, serialized.value, failureMessage);
         }
       };
       void flush();
@@ -177,7 +198,11 @@ export const useDocumentEditor = ({
   );
 
   const save = useCallback(async () => {
-    const { onSave: persist, editable: canSave } = persistenceRef.current;
+    const {
+      onSave: persist,
+      editable: canSave,
+      saveErrorMessage: failureMessage,
+    } = persistenceRef.current;
     const savedContent = persistedRef.current;
 
     if (
@@ -210,7 +235,11 @@ export const useDocumentEditor = ({
 
     let result: DocumentSaveResult;
     try {
-      const inflight = persistDocument(persist, serialized.value);
+      const inflight = persistDocument(
+        persist,
+        serialized.value,
+        failureMessage
+      );
       inflightRef.current = inflight;
       result = await inflight;
     } finally {
@@ -225,7 +254,7 @@ export const useDocumentEditor = ({
     }
 
     if (JSON.stringify(editor.getJSON()) !== savedContent) {
-      setError(result.error || SAVE_ERROR_MESSAGE);
+      setError(result.error || failureMessage);
     }
   }, [editor, initial]);
 

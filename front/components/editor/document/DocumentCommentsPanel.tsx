@@ -23,6 +23,8 @@ import {
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -87,34 +89,37 @@ const MessageByline = ({
   renderAuthorAvatar,
   verified,
   mountPortalContainer,
-}: MessageBylineProps) => (
-  <div className="flex min-w-0 flex-1 items-center gap-2">
-    <span aria-hidden="true">{renderAuthorAvatar(message.author, size)}</span>
-    <span className="min-w-0 truncate text-sm font-medium">
-      {message.author.name}
-    </span>
-    {verified === false && (
-      <Tooltip
-        label="Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
-        tooltipTriggerAsChild
-        mountPortalContainer={mountPortalContainer}
-        trigger={
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-warning-500">
-            <Icon visual={AlertCircle} size="xs" />
-            Unverified
-          </span>
-        }
-      />
-    )}
-    <time
-      dateTime={message.createdAt}
-      title={formatDateTime(new Date(message.createdAt))}
-      className="shrink-0 text-xs text-muted-foreground"
-    >
-      {formatRelativeTime(new Date(message.createdAt))}
-    </time>
-  </div>
-);
+}: MessageBylineProps) => {
+  const { t } = useLingui();
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <span aria-hidden="true">{renderAuthorAvatar(message.author, size)}</span>
+      <span className="min-w-0 truncate text-sm font-medium">
+        {message.author.name}
+      </span>
+      {verified === false && (
+        <Tooltip
+          label={t`Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor.`}
+          tooltipTriggerAsChild
+          mountPortalContainer={mountPortalContainer}
+          trigger={
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs text-warning-500">
+              <Icon visual={AlertCircle} size="xs" />
+              <Trans>Unverified</Trans>
+            </span>
+          }
+        />
+      )}
+      <time
+        dateTime={message.createdAt}
+        title={formatDateTime(new Date(message.createdAt))}
+        className="shrink-0 text-xs text-muted-foreground"
+      >
+        {formatRelativeTime(new Date(message.createdAt))}
+      </time>
+    </div>
+  );
+};
 
 interface ReplyComposerProps {
   author: DfmAuthor | undefined;
@@ -130,14 +135,15 @@ const ReplyComposer = ({
   onReply,
   onCancel,
 }: ReplyComposerProps) => {
+  const { t } = useLingui();
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
   return (
     <DocumentCommentInput
-      label="Reply"
-      placeholder="Reply…"
+      label={t`Reply`}
+      placeholder={t`Reply…`}
       author={author}
       renderAuthorAvatar={renderAuthorAvatar}
       value={body}
@@ -187,6 +193,7 @@ const DraftCard = ({
   onSubmit,
   onCancel,
 }: DraftCardProps) => {
+  const { t } = useLingui();
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -201,16 +208,16 @@ const DraftCard = ({
   return (
     <article
       ref={ref}
-      aria-label="New comment"
+      aria-label={t`New comment`}
       className="flex flex-col gap-2.5 rounded-xl border border-golden-500/60 bg-background p-3 ring-1 ring-golden-500/40"
     >
       <p className="line-clamp-2 rounded-r-md border-l-2 border-golden-400 py-0.5 pl-2 text-xs text-muted-foreground">
-        <span className="sr-only">Commented text: </span>
+        <span className="sr-only">{t`Commented text:`} </span>
         {quote}
       </p>
       <DocumentCommentInput
-        label="Comment"
-        placeholder="Add a comment…"
+        label={t`Comment`}
+        placeholder={t`Add a comment…`}
         author={author}
         renderAuthorAvatar={renderAuthorAvatar}
         value={body}
@@ -268,9 +275,11 @@ const CommentThread = ({
   mountPortalContainer,
   renderAuthorAvatar,
 }: CommentThreadProps) => {
+  const { t } = useLingui();
   const ref = useRef<HTMLElement | null>(null);
   const [first, ...replies] = comment.messages;
   const resolved = comment.status === "resolved";
+  const authorName = first.author.name;
 
   useEffect(() => {
     if (active) {
@@ -285,7 +294,7 @@ const CommentThread = ({
         onElement(element);
       }}
       tabIndex={-1}
-      aria-label={`Comment by ${first.author.name}`}
+      aria-label={t`Comment by ${authorName}`}
       aria-current={active ? "true" : undefined}
       className={cn(
         "rounded-xl border border-border bg-background transition-colors motion-reduce:transition-none",
@@ -313,13 +322,13 @@ const CommentThread = ({
           {canWrite && (
             <div className="-mr-1.5 flex shrink-0">
               <PanelIconButton
-                label={resolved ? "Reopen" : "Resolve"}
+                label={resolved ? t`Reopen` : t`Resolve`}
                 icon={resolved ? ReverseLeft : Check}
                 onClick={() => onSetResolved(!resolved)}
                 mountPortalContainer={mountPortalContainer}
               />
               <PanelIconButton
-                label="Delete comment"
+                label={t`Delete comment`}
                 icon={Trash01}
                 onClick={onDelete}
                 mountPortalContainer={mountPortalContainer}
@@ -339,8 +348,8 @@ const CommentThread = ({
             resolved && "line-through decoration-muted-foreground/60"
           )}
         >
-          <span className="sr-only">Commented text: </span>
-          {quote || "The commented text was removed."}
+          <span className="sr-only">{t`Commented text:`} </span>
+          {quote || t`The commented text was removed.`}
         </button>
         {renderBody(first.body)}
         {replies.length > 0 && (
@@ -419,6 +428,7 @@ export const DocumentCommentsPanel = ({
   mountPortalContainer,
   renderAuthorAvatar,
 }: DocumentCommentsPanelProps) => {
+  const { t } = useLingui();
   const {
     comments: threads,
     quotes,
@@ -457,6 +467,8 @@ export const DocumentCommentsPanel = ({
   );
   const unresolved = sorted.filter((comment) => comment.status === "open");
   const resolved = sorted.filter((comment) => comment.status === "resolved");
+  const unresolvedCount = unresolved.length;
+  const resolvedCount = resolved.length;
   // Threads whose text was removed have no start and stay after the draft.
   const draftIndex = draft
     ? unresolved.filter(
@@ -510,7 +522,7 @@ export const DocumentCommentsPanel = ({
     <aside
       id={id}
       ref={panelRef}
-      aria-label="Comments"
+      aria-label={t`Comments`}
       data-state={panelOpen ? "open" : "closed"}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -533,13 +545,13 @@ export const DocumentCommentsPanel = ({
           ref={headingRef}
           tabIndex={-1}
           aria-label={
-            unresolved.length > 0
-              ? `Comments, ${unresolved.length} unresolved`
-              : "Comments"
+            unresolvedCount > 0
+              ? t`Comments, ${plural(unresolvedCount, { one: "# unresolved", other: "# unresolved" })}`
+              : t`Comments`
           }
           className="rounded-md text-sm font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Comments
+          <Trans>Comments</Trans>
           {unresolved.length > 0 && (
             <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
               {unresolved.length}
@@ -547,7 +559,7 @@ export const DocumentCommentsPanel = ({
           )}
         </h2>
         <PanelIconButton
-          label="Close comments"
+          label={t`Close comments`}
           icon={XClose}
           onClick={closePanel}
           mountPortalContainer={mountPortalContainer}
@@ -558,10 +570,12 @@ export const DocumentCommentsPanel = ({
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <Icon visual={MessageTextCircle01} size="md" />
             <p className="text-sm font-medium text-foreground">
-              No comments yet
+              <Trans>No comments yet</Trans>
             </p>
             <p className="text-xs">
-              Select some text and choose Comment to start a thread.
+              <Trans>
+                Select some text and choose Comment to start a thread.
+              </Trans>
             </p>
           </div>
         )}
@@ -581,7 +595,7 @@ export const DocumentCommentsPanel = ({
           <Collapsible className="mt-1">
             <CollapsibleTrigger
               variant="secondary"
-              label={`Resolved (${resolved.length})`}
+              label={t`Resolved (${resolvedCount})`}
             />
             <CollapsibleContent className="flex flex-col gap-3 pt-3">
               {resolved.map(renderThread)}
@@ -602,6 +616,7 @@ export const DocumentCommentsToggle = ({
   panelId,
   comments,
 }: DocumentCommentsToggleProps) => {
+  const { t } = useLingui();
   const unresolvedCount = comments.unresolved.length;
   return (
     <Button
@@ -610,11 +625,11 @@ export const DocumentCommentsToggle = ({
       variant="ghost"
       size="xs"
       icon={MessageTextCircle01}
-      label="Comments"
+      label={t`Comments`}
       aria-label={
         unresolvedCount > 0
-          ? `Comments, ${unresolvedCount} unresolved`
-          : "Comments"
+          ? t`Comments, ${plural(unresolvedCount, { one: "# unresolved", other: "# unresolved" })}`
+          : t`Comments`
       }
       isCounter={unresolvedCount > 0}
       counterValue={String(unresolvedCount)}
