@@ -2177,7 +2177,9 @@ export async function getFeatureFlagsForContext(
 export function getFeatureFlags(
   auth: Authenticator
 ): Promise<WhitelistableFeature[]> {
-  return auth.getFeatureFlags();
+  return getFeatureFlagsForContext(auth.getNonNullableWorkspace(), {
+    plan: auth.plan(),
+  });
 }
 
 export async function hasFeatureFlag(
