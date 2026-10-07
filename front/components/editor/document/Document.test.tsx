@@ -361,7 +361,7 @@ describe("Document comments", () => {
     fireEvent.click(highlight(dom, "c1"));
     const thread = screen.getByRole("article", { name: "Comment by Daph" });
     expect(thread.textContent).toMatch(
-      /Option 1.*Suggested change.*over here.*Option 2.*Suggested change.*yonder/
+      /Option 1[\s\S]*Suggested change[\s\S]*over here[\s\S]*Option 2[\s\S]*Suggested change[\s\S]*yonder/
     );
     fireEvent.click(
       within(thread).getAllByRole("button", { name: "Apply" })[1]
