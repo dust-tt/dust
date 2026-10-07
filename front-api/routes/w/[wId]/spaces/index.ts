@@ -45,20 +45,17 @@ async function listRequestedSpaces(
   auth: Authenticator,
   { isAdminRole, kinds }: ListRequestedSpacesParams
 ): Promise<SpaceResource[]> {
-  if (!isAdminRole) {
-    return SpaceResource.listWorkspaceSpacesAsMember(auth, { kinds });
-  }
-
-  if (kinds?.length === 1 && kinds[0] === "system") {
+  if (isAdminRole && kinds?.length === 1 && kinds[0] === "system") {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     return systemSpace ? [systemSpace] : [];
   }
 
-  // `listWorkspaceSpaces` does not filter by permission, so Pods are only listed to admins.
-  const includeProjectSpaces =
-    auth.isAdmin() && (kinds?.includes("project") ?? false);
+  if (!isAdminRole || !auth.isAdmin()) {
+    return SpaceResource.listWorkspaceSpacesAsMember(auth, { kinds });
+  }
+
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
-    includeProjectSpaces,
+    includeProjectSpaces: kinds?.includes("project") ?? false,
   });
   return kinds ? spaces.filter((s) => kinds.includes(s.kind)) : spaces;
 }
