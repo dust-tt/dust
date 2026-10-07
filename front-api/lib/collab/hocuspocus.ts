@@ -132,6 +132,9 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         return logUnexpected(documentName, "Collab checkpoint failed")(err);
       }
       if (checkpoint.isErr()) {
+        // TODO(co-edition): a revision conflict never recovers. `session.checkpoint` only moves on
+        // success, so once another writer changes the file every later checkpoint conflicts too,
+        // the document stays loaded and its edits never reach the file.
         session.checkpointFailed = true;
         logger.error(
           {
@@ -161,6 +164,8 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         session.graceTimer = undefined;
         document.removeDirectConnection();
         // Unloading would drop the edits the file does not have.
+        // TODO(co-edition): retry the failed checkpoint; until the next edit, its edits only live
+        // in memory.
         if (!session.checkpointFailed) {
           void instance.unloadDocument(document);
         }
