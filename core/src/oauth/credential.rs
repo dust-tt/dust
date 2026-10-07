@@ -39,6 +39,9 @@ pub enum CredentialProvider {
     Openai,
     Anthropic,
     GoogleAiStudio,
+    // AI gateways: the workspace admin connection, and the per-user keys minted through it.
+    Edgee,
+    EdgeeGatewayKey,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -177,120 +180,7 @@ impl Credential {
             }
         }
 
-        let keys_to_check = match provider {
-            CredentialProvider::Snowflake => {
-                // Check if it's OAuth (client_id + client_secret) or data warehouse auth
-                if content.contains_key("client_id") && content.contains_key("client_secret") {
-                    // OAuth credentials for MCP server integration (snowflake_account is in metadata)
-                    vec!["client_id", "client_secret"]
-                } else if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
-                    // Key-pair auth for data warehouse
-                    vec![
-                        "account",
-                        "warehouse",
-                        "username",
-                        "private_key",
-                        "role",
-                        "auth_type",
-                    ]
-                } else {
-                    // Legacy or explicit password auth for data warehouse
-                    vec!["account", "warehouse", "username", "password", "role"]
-                }
-            }
-            CredentialProvider::Modjo => {
-                vec!["api_key"]
-            }
-            CredentialProvider::Linear => {
-                vec!["api_key"]
-            }
-            CredentialProvider::Hubspot => {
-                vec!["accessToken", "portalId"]
-            }
-            CredentialProvider::Bigquery => {
-                vec![
-                    "type",
-                    "project_id",
-                    "private_key_id",
-                    "private_key",
-                    "client_email",
-                    "client_id",
-                    "auth_uri",
-                    "token_uri",
-                    "auth_provider_x509_cert_url",
-                    "client_x509_cert_url",
-                    "universe_domain",
-                    "location",
-                ]
-            }
-            CredentialProvider::Salesforce => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Slack => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Microsoft => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::MicrosoftTools => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Gmail => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Jira => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Monday => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Mcp => {
-                vec!["client_id"]
-            }
-            CredentialProvider::McpStatic => {
-                vec!["client_id"]
-            }
-            CredentialProvider::Notion => {
-                vec!["integration_token"]
-            }
-            CredentialProvider::Freshservice => {
-                vec!["freshservice_domain"]
-            }
-            CredentialProvider::Servicenow => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Shopify => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::UkgReady => {
-                // PKCE flow doesn't require client_secret
-                vec!["client_id"]
-            }
-            CredentialProvider::Vanta => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Openai => {
-                vec!["api_key"]
-            }
-            CredentialProvider::Anthropic => {
-                vec!["api_key"]
-            }
-            CredentialProvider::GoogleAiStudio => {
-                vec!["api_key"]
-            }
-        };
-
-        for key in keys_to_check {
-            if !content.contains_key(key)
-                || content[key].is_null()
-                || (content[key].is_string() && content[key].as_str().unwrap().is_empty())
-            {
-                return Err(anyhow::anyhow!(
-                    "Missing a value for '{}' key in content",
-                    key
-                ));
-            }
-        }
+        validate_content(provider, &content)?;
 
         // Encrypt for database
         let encrypted_content = seal_str(&serde_json::to_string(&content)?)?;
@@ -327,5 +217,172 @@ impl Credential {
         let content: serde_json::Map<String, serde_json::Value> =
             serde_json::from_str(&unsealed_str)?;
         Ok(content)
+    }
+}
+
+fn validate_content(
+    provider: CredentialProvider,
+    content: &serde_json::Map<String, serde_json::Value>,
+) -> Result<()> {
+    let keys_to_check = match provider {
+        CredentialProvider::Snowflake => {
+            // Check if it's OAuth (client_id + client_secret) or data warehouse auth
+            if content.contains_key("client_id") && content.contains_key("client_secret") {
+                // OAuth credentials for MCP server integration (snowflake_account is in metadata)
+                vec!["client_id", "client_secret"]
+            } else if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
+                // Key-pair auth for data warehouse
+                vec![
+                    "account",
+                    "warehouse",
+                    "username",
+                    "private_key",
+                    "role",
+                    "auth_type",
+                ]
+            } else {
+                // Legacy or explicit password auth for data warehouse
+                vec!["account", "warehouse", "username", "password", "role"]
+            }
+        }
+        CredentialProvider::Modjo => {
+            vec!["api_key"]
+        }
+        CredentialProvider::Linear => {
+            vec!["api_key"]
+        }
+        CredentialProvider::Hubspot => {
+            vec!["accessToken", "portalId"]
+        }
+        CredentialProvider::Bigquery => {
+            vec![
+                "type",
+                "project_id",
+                "private_key_id",
+                "private_key",
+                "client_email",
+                "client_id",
+                "auth_uri",
+                "token_uri",
+                "auth_provider_x509_cert_url",
+                "client_x509_cert_url",
+                "universe_domain",
+                "location",
+            ]
+        }
+        CredentialProvider::Salesforce => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Slack => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Microsoft => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::MicrosoftTools => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Gmail => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Jira => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Monday => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Mcp => {
+            vec!["client_id"]
+        }
+        CredentialProvider::McpStatic => {
+            vec!["client_id"]
+        }
+        CredentialProvider::Notion => {
+            vec!["integration_token"]
+        }
+        CredentialProvider::Freshservice => {
+            vec!["freshservice_domain"]
+        }
+        CredentialProvider::Servicenow => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Shopify => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::UkgReady => {
+            // PKCE flow doesn't require client_secret
+            vec!["client_id"]
+        }
+        CredentialProvider::Vanta => {
+            vec!["client_id", "client_secret"]
+        }
+        CredentialProvider::Openai => {
+            vec!["api_key"]
+        }
+        CredentialProvider::Anthropic => {
+            vec!["api_key"]
+        }
+        CredentialProvider::GoogleAiStudio => {
+            vec!["api_key"]
+        }
+        CredentialProvider::Edgee => {
+            vec!["api_key", "organization_id"]
+        }
+        CredentialProvider::EdgeeGatewayKey => {
+            vec!["api_key", "api_key_id"]
+        }
+    };
+
+    for key in keys_to_check {
+        if !content.contains_key(key)
+            || content[key].is_null()
+            || (content[key].is_string() && content[key].as_str().unwrap().is_empty())
+        {
+            return Err(anyhow::anyhow!(
+                "Missing a value for '{}' key in content",
+                key
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn content(pairs: &[(&str, &str)]) -> serde_json::Map<String, serde_json::Value> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), serde_json::Value::String(v.to_string())))
+            .collect()
+    }
+
+    #[test]
+    fn edgee_requires_admin_token_and_organization_id() {
+        let full = content(&[("api_key", "pat"), ("organization_id", "org")]);
+        assert!(validate_content(CredentialProvider::Edgee, &full).is_ok());
+
+        let missing_org = content(&[("api_key", "pat")]);
+        assert!(validate_content(CredentialProvider::Edgee, &missing_org).is_err());
+    }
+
+    #[test]
+    fn edgee_gateway_key_requires_key_and_its_edgee_id() {
+        let full = content(&[("api_key", "key"), ("api_key_id", "id")]);
+        assert!(validate_content(CredentialProvider::EdgeeGatewayKey, &full).is_ok());
+
+        let missing_id = content(&[("api_key", "key")]);
+        assert!(validate_content(CredentialProvider::EdgeeGatewayKey, &missing_id).is_err());
+    }
+
+    #[test]
+    fn edgee_providers_round_trip_as_snake_case() {
+        assert_eq!(CredentialProvider::Edgee.to_string(), "edgee");
+        assert_eq!(
+            CredentialProvider::from_str("edgee_gateway_key").unwrap(),
+            CredentialProvider::EdgeeGatewayKey
+        );
     }
 }
