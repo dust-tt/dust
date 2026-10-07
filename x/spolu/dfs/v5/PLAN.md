@@ -9,12 +9,12 @@
 - [x] Verify real ES/FDB behavior for directories, scope, moves without descendant reindexing,
       revocation, stale content, deletion, tenant isolation, retries, and index rebuilds.
 - [x] Benchmark search locally and on GCP and check filesystem performance for regressions.
-- [ ] Populate two persistent GCP tenants with 1M and 10M files, plus realistic directory
+- [x] Populate two persistent GCP tenants with 1M and 10M files, plus realistic directory
       depth and grants. Preserve existing fixture data and record actual counts and storage usage.
-- [ ] Measure permission-tree bootstrap from those FDB tenants with empty server memory, recording
+- [x] Measure permission-tree bootstrap from those FDB tenants with empty server memory, recording
       wall time, FDB work, final tree size, process RSS and peak memory. Synthetic builder timing is
       not evidence for this requirement. Verify authorization after every bootstrap.
-- [ ] Document reproducible commands, raw report locations, identities and limitations.
+- [x] Document reproducible commands, raw report locations, identities and limitations.
 
 The user cancelled the 100M benchmark for now. The current goal covers only 1M and 10M population,
 warmup and persistent serving. No 100M population was started. Older synthetic 100M results remain
@@ -28,54 +28,52 @@ from recreating an unmapped index. The derived schema is now `dfs-v5-es-2`. The 
 completed local/GCP Search run `f` has matching source identity and includes both publication
 and safe pre-commit FDB retry fixes.
 
-The first durable GCP population contains 1,000,000 files + 10,000 directories + root. A new
-process bootstrapped its 1,010,001 permission nodes from FDB in 15.688 s, with 86.85 MiB tree accounting,
-101.23 MiB final RSS and 118.19 MiB peak RSS. Exact count and sampled owner/empty-grant checks passed.
-This is an actual FDB-to-RAM measurement, not the earlier synthetic builder test. Raw reports are
-under `/var/log/dfs-bench/v5/scale-20261007-a`; FDB/OS caches were retained.
+Both persistent fixtures are now complete under FDB prefix `dfs-v5-scale-20261007-a`. Report
+`/var/log/dfs-bench/v5/scale-20261007-c/run.json` verifies 1,010,001 and 10,100,001 permission nodes.
+Fresh-process production bootstrap took 15.759 s and 147.669 s, with 86.85 MiB and 806.53 MiB of
+accounted tree memory. Final process RSS was 99.01 MiB / 513.27 MiB; peak RSS was 116.34 MiB /
+727.04 MiB. Owner/empty-grant checks passed on 748 / 741 sampled objects. FDB/OS caches were retained;
+the 10M run still had storage write queues and repartitioning after population. Both runs preserved
+FDB configuration and restored the captured interactive services. Cluster read counters and these
+conditions are recorded in [the results](bench/SEARCH.md).
 
-The 10M loader hit an FDB read timeout after earlier `process_behind` failures exposed missing read
-retries. Typed pre-commit errors now use fresh-snapshot bounded retries; unknown commits remain
-non-replayable. Tests verify that writes from a failed preparation disappear and the retry commits
-once. The loader's durable 16-way partitioning is separate from its new eight-transaction concurrency
-limit, allowing safe resumption with less backend pressure. The updated runtime passed GCP
-tests/clippy/mounted and Search checks. Report `scale-20261007-b` repeated the 1M warmup in 17.537 s.
-Its 10M loader was deliberately stopped after 2.1M inserted files when stronger public-RPC validation
-found a fixture-only child-index encoding bug: it wrote tagged 17-byte references, while lookup/list
-require raw 16-byte UUIDs. Normal filesystem creation already uses the correct representation.
-The loader is fixed and now verifies actual lookup and root listing before reporting success.
-Its offline repair checks the original manifest and exact deterministic key/value, changes only the
-legacy encoding, and accepts already-correct rows without rewriting them. The local 10,100-row repair
-and repeat passed; real gRPC checks passed on repaired and newly seeded tenants for file bytes,
-namespace links, metadata, inherited/explicit grants, empty grants and cross-tenant isolation.
-Runtime h passed the GCP full filesystem benchmark and repaired all 1,010,000 existing 1M child rows
-and 2,286,240 partial-10M child rows. Second repair scans changed zero rows. Report `scale-20261007-c`
-then verified the repaired 1M tree: 15.759 s bootstrap, 86.85 MiB accounted, 99.01 MiB final RSS and
-116.34 MiB peak RSS, with exactly 1,010,001 nodes and all 748 permission samples passing.
-The 10M loader added another 200K files before exhausting its bounded retries on FDB process_behind.
-The driver now resumes only terminal typed 1031/1037 failures from atomic cursors, lowers concurrency
-and waits 30–60 seconds, with an eight-attempt bound and retained failure logs. Other failures stop.
-The replacement `dfs-v5-resume-20261007-i` unit resumes only 1M/10M in report `scale-20261007-c` and
-retains the measured Rust binaries. Do not replace binaries while this job is running.
-The 10M fixture, its actual warmup, and live persistent service verification remain unfinished.
-The read-only `fixture_size` example is ready for post-warmup tenant storage measurements. Its local
-release build, strict clippy, existing-tenant read and missing-tenant rejection passed. It reports
-FDB's sampled logical key/value byte estimate separately from tree RAM; actual GCP sizes remain
-pending. Do not deploy or build it while the population/warmup pipeline is running.
-GCP filesystem run `f` stopped at drain with one expired client dependency. The client now excludes
-actual prerequisite RPC intervals from its 200 ms buffering clock, counting overlaps once and
-retaining queued/local time. A 350 ms stalled-prerequisite test, the full local suite, strict clippy
-and mounted checks pass. Local full filesystem run `g` passed all 24 checks, content hashes and cleanup: 5.789 s untar,
-zero drain and zero dispatch expirations. GCP runtime h passed all 24 checks, hash passes and cleanup:
-15.779 s untar, 25 ms drain, zero dispatch expirations and 360.52 MiB peak accounted client memory.
-Search and filesystem tables retain the measured performance caveats; no blanket absence of slowdown
-is claimed under background indexing.
-The earlier follow-up unit `dfs-v5-finalize-20261007-g` was stopped with the old loader. Runtime h
-includes the client correction. Its state and logs are under `/var/log/dfs-bench/v5/finalize-20261007-h`.
-After both selected populations and measured warmups pass, the resume unit starts the persistent
-server and runs `gcp/verify_scale.py` against the real API. Starting a unit is not completion evidence.
-`gcp/serve_scale.py` prepares the service only after the selected measurements pass and keeps credentials
-in private files. The workload VM and existing FDB configuration are unchanged.
+The persistent `dfs-v5-scale-server` now serves both tenants at `http://127.0.0.1:18095` on the
+workload VM. Its current-start readiness records contain both exact tree sizes. Public-RPC checks
+passed for sampled bytes, MIME metadata, namespace links, inherited/explicit grants, empty-grant
+rejection and cross-tenant isolation. Fresh owner-session/root reads also passed after verification.
+[Usage commands](gcp/README.md) create private one-hour owner sessions. ES backfill continues
+asynchronously: the 14:20:44 UTC observation had 199,680 documents, and the 10M tenant still returned
+no Search hits while its initial backfill ran. This is not a completed 11M-file ES indexing benchmark.
+
+The read-only `fixture_size` helper passed GCP clippy/build and measured approximately 0.739 GiB /
+7.525 GiB of logical FDB key/value data at 14:16:56 UTC. These byte-sample estimates include the
+remaining durable indexes and exclude physical replication/log overhead, ES and RAM. Its build
+preserved all measured runtime binaries. The population/warmup/service pipeline
+`dfs-v5-resume-20261007-i` and the subsequent storage job `dfs-v5-size-20261007-k` both completed.
+Their private state and logs remain under `/var/log/dfs-bench/v5`.
+
+Earlier population exposed a fixture-only child-index encoding error: tagged 17-byte references
+were used where normal lookup/list require raw 16-byte UUIDs. The loader is fixed, verifies those
+real core operations, and repaired 1,010,000 existing 1M child rows and 2,286,240 partial-10M rows.
+Repeat repair scans changed zero rows; local repaired/new fixtures passed real gRPC validation.
+Typed pre-commit read retries and checkpointed process retries handle bounded FDB 1031/1037 failures;
+unknown commits are not automatically replayed. The final 10M resume inserted 7,608,192 files in
+6,823.748 s with four concurrent transactions and no process-level retry. This excludes prior
+population attempts and is not the warmup measurement. Older reports and failure logs are retained.
+
+GCP filesystem run `f` exposed a cached-client prerequisite-clock error. The corrected client
+excludes actual prerequisite RPC intervals from its 200 ms buffering clock, counts overlaps once,
+and retains queued/local time. The delayed-prerequisite test, full Rust suites, strict clippy and
+mounted checks passed locally and on GCP. Local full filesystem run `g` and GCP run `h` each passed
+all 24 checks, content hashes and cleanup: 5.789 s / 15.779 s untar, 0 ms / 25 ms remaining drain,
+and zero dispatch expirations. GCP peak accounted client memory was 360.52 MiB. The result tables
+retain performance caveats under background indexing; no blanket absence of slowdown is claimed.
+
+## Original implementation checkpoint
+
+The section below retains the original implementation checklist and its broader audit follow-ups.
+It predates the completed Search and durable warmup work recorded above; use the linked current
+results for the latest measurements.
 
 Objective: implement every behavior in [DESIGN.md](DESIGN.md), validate with real FoundationDB and
 mounted FUSE, run the untar and full jd benchmark locally and on the existing dust-dev fixture,
@@ -121,7 +119,7 @@ code is a starting point only; its old behavior must be replaced before v5 is co
 Runtime artifacts, credentials and generated corpora stay outside Git. Do not reconfigure existing
 GCP FDB or provision/delete cloud resources. No builds/tests overlap timed workloads.
 
-## Current checkpoint
+### Earlier checkpoint
 
 The current v5 runtime compiles and passes unit tests, the real-FDB contract suite and unprivileged
 mounted checks. The retained/transient memory audit is recorded in [MEMORY.md](MEMORY.md); scratch

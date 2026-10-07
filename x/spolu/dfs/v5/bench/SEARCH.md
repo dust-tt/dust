@@ -119,66 +119,100 @@ GCP FUSE SHA-256: `77529713e04d786182f5d4e3b57a23eb5331743888eacf49c056b3a597b90
 GCP filesystem source SHA-256: `95e0d70b288039fdd5caae2705f1a3b6f0f3c81919d92e6b6a15ba49b3b30788`. Runtime `h` includes the
 fixture repair helper; runtime search semantics are unchanged from the matching Search runs `f`.
 
-## Durable scale fixture — in progress
+## Durable scale fixture, 2026-10-07
 
-Stronger public-RPC verification found an offline-loader child-index encoding error after the first
-tree measurements: tagged 17-byte references prevented lookup/list, although direct reads and tree
-bootstrap worked. The corrected loader writes raw 16-byte UUIDs and verifies actual lookup/list.
-An idempotent repair validated 10,100 existing local child rows; both repaired and freshly seeded
-tenants passed exact bytes, namespace, metadata, inherited/explicit grants and tenant-isolation checks.
-Runtime h repaired 1,010,000 GCP child rows for 1M and 2,286,240 for the partially loaded 10M tenant;
-second scans changed zero rows. The 1M population then passed actual lookup/list validation and a new
-warmup under `scale-20261007-c`. The current table uses that repaired result. The user cancelled 100M
-before its population started; only the 1M/10M fixtures and service are now in scope.
-Earlier Search and filesystem benchmarks populated through normal RPCs and are unaffected by this
-fixture encoding defect.
+Both persistent GCP tenants are populated and verified. The user deferred 100M before its population
+started; the current scope is 1M and 10M. FDB prefix: `dfs-v5-scale-20261007-a`. Measurement directory:
+`/var/log/dfs-bench/v5/scale-20261007-c`.
 
-The offline loader writes complete v5 records, content, metadata, child/grant indexes, tree heads
-and log rows, and search obligations in resumable FDB batches. Its 10,000-file / 100-directory
-local smoke test passed; a second invocation inserted zero files. This is fixture-loading throughput,
-not filesystem throughput.
-
-A fresh process bootstrapped those 10,101 nodes from real FDB in 1.838 s with the original adapter.
-Explicit bounded range pages reduced that smoke test to 0.185 s using the same production bootstrap
-path. FDB/OS caches remained warm. This is not a million-file result or an extrapolated scale claim.
-
-GCP population uses prefix `dfs-v5-scale-20261007-a`, with private manifests and logs under
-`/var/log/dfs-bench/v5/scale-20261007-a`. Initial attempts stopped on FDB `process_behind` during
-heavy ingestion. The server now preserves the typed FDB cause and retries only safe pre-commit read
-failures with fresh snapshots and bounded backoff. Unknown commits and application failures remain
-non-replayable. Real-FDB tests verify discarded attempt writes and exactly one committed increment.
-The loader resumed its atomic cursors without duplicating committed objects.
+The offline loader writes complete objects, content, metadata, child/grant indexes, tree heads/log
+rows and search obligations. Sixteen top-level directories branch four ways. Files span depths 2–7
+for 1M and 2–9 for 10M, with 100 files per directory on average. Content is 128 bytes normally and
+4096 bytes for every thousandth file. Grants include a root owner and selected explicit attachments
+from a 64-team dictionary. This is a realistic tree shape with small generated payloads.
 
 | Tenant | Files | Directories + root | Verified nodes | FDB bootstrap s | Tree MiB | Final RSS MiB | Peak RSS MiB |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1M | 1,000,000 | 10,001 | 1,010,001 | 15.759 | 86.85 | 99.01 | 116.34 |
-| 10M | pending | pending | pending | pending | pending | pending | pending |
+| 10M | 10,000,000 | 100,001 | 10,100,001 | 147.669 | 806.53 | 513.27 | 727.04 |
 | 100M | deferred by user | — | — | — | — | — | — |
 
-The 1M warmup used the production `Replica::bootstrap`, a fresh process, 4096-node bounded base pages,
-and a 24 GiB peak allowance. FDB/OS caches remained. RSS before the repeated bootstrap was
-22.58 MiB. All 748 sampled objects allowed the owner and denied empty grants.
-FDB may return a partial range page, so the sample can be shorter than its row limit. The exact
-node count is checked across the complete loaded tree. The final successful loader invocation took
-156.454 seconds to finish its remaining files; it excludes earlier partial attempts and is not a
-full-population throughput measurement.
+Each timed interval calls production `Replica::bootstrap` in a new process, after database/tenant
+connection setup, with 4096-node base pages and a 24 GiB peak allowance. FDB/OS caches remain.
+RSS before bootstrap was 22.58 MiB / 22.86 MiB.
+The exact complete node counts passed, as did owner-allowed and empty-grant-denied checks on 748 /
+741 sampled objects. FDB can return partial range pages, so samples can be shorter than the row limit.
+Tree memory is conservative accounting; RSS is separately measured process residency and can be lower.
+These figures describe the permission tree, not a content/filename cache or an ES index.
 
-Raw report: `/var/log/dfs-bench/v5/scale-20261007-c/run.json`; raw warmup:
-`/var/log/dfs-bench/v5/scale-20261007-c/1m/warmup.log`. The report records binary hashes, FDB configuration
-checks and service restoration. A local checkpoint copy is `/tmp/dfs-v5-gcp-scale-c-run.json`.
-The 10M attempt subsequently stopped on a pre-commit read timeout. The updated runtime also retries
-that case within its shared deadline, and the loader now uses eight concurrent transactions across
-its unchanged sixteen durable partitions. Report directory `scale-20261007-b` resumes the same FDB
-prefix and private manifests. It repeated the 1M warmup, then was stopped during 10M population for
-the child-index repair described above. The replacement `dfs-v5-finalize-20261007-h` job retains
-separate reports and proceeds to `scale-20261007-c` after validation and repair. Persistent service
-and live access verification remain outstanding. Search publication uses per-incarnation write
-aliases to prevent late bulk requests from recreating deleted indices.
+| Cluster counters during warmup | 1M | 10M |
+| --- | ---: | ---: |
+| Read-request counter delta | 10,904 | 125,402 |
+| Read-byte counter delta, MiB | 112.39 | 1,569.12 |
 
-The table uses the repaired 1M warmup from report `scale-20261007-c` (15.759 s). Older tree-only
-reports remain: `a` at 15.688 s and `b` at 17.537 s. All loaded exactly 1,010,001 nodes and checked
-748 permission candidates; the latest 1M loader resume inserted zero additional files. The following
-10M attempt added another 200K files, then stopped on FDB process_behind. The driver now resumes only
-terminal typed 1031/1037 failures from atomic cursors, lowers concurrency and backs off 30–60 seconds
-within eight attempts. Unit `dfs-v5-resume-20261007-i` selects only 1M and 10M, preserving the measured
-Rust binaries and all prior logs. The actual 10M warmup and persistent service remain outstanding.
+These are cluster-wide before/after counter differences, including other activity, not isolated
+bootstrap RPC counts. FDB remained available and fully replicated at both boundaries; configuration
+was unchanged and the captured interactive service states were restored. The 1M backend was quiet.
+The 10M run followed ingestion with 1.40 GiB of queued storage writes, decreasing to 0.96 GiB by the
+end, while FDB repartitioned data. These are single measurements under the recorded conditions.
+
+| Tenant storage at 14:16:56 UTC | Estimated logical FDB bytes | GiB | File payload bytes |
+| --- | ---: | ---: | ---: |
+| 1M | 793,471,750 | 0.739 | 131,968,000 |
+| 10M | 8,079,625,500 | 7.525 | 1,319,680,000 |
+
+`fixture_size` uses FDB's byte-sample estimate over each existing tenant prefix without initialization
+or writes. This includes metadata, content and remaining durable indexes; it excludes physical
+replication/log overhead, ES and RAM. Background indexing/GC can change these stored indexes. The
+helper was built after all timed runs, passed strict GCP clippy, and left the server, client, FUSE,
+seed and warmup binary hashes unchanged.
+
+The persistent `dfs-v5-scale-server` is live at `http://127.0.0.1:18095` on the workload VM, using
+immutable copies of runtime h. Its current-start readiness records verify both complete trees;
+these separate live-service bootstraps took 18.130 s / 159.544 s with ES indexing enabled. At
+14:20:44 UTC, the combined server had 654.37 MiB RSS and 837.53 MiB process high-water RSS.
+These service figures are separate from the fresh-process measurements above.
+
+Public-RPC verification checked six files per tenant (8704 total bytes per tenant), exact content,
+MIME metadata, lookup links, the root's 16 directories, inherited/explicit team grants, owner access,
+empty-grant rejection and cross-tenant isolation. The owner allowed all nine sampled objects; empty
+grants denied all nine. Team-01 allowed 2 / 3 objects and team-07 allowed one per tenant, matching the
+fixture oracle. Each tenant rejected the sampled foreign object. Follow-up current-session/root
+reads passed, and owner key files were mode 0600. [Usage and renewal commands](../gcp/README.md) keep
+credentials in private files; sessions expire after one hour.
+
+The large fixture's full ES drain is not measured here. At 14:20:44 UTC its index was green with
+199,680 documents. Metadata Search returned a hit for 1M and no hits yet for 10M: each tenant's
+initial FDB backfill must finish before its jobs publish to ES. This is independent of permission-tree
+readiness; the 10M filesystem and permission tree are complete while its search index is still
+building. The earlier 10K-object Search benchmarks verified their own full indexing drains.
+
+Raw evidence on the workload VM:
+
+- `scale-20261007-c/run.json`, plus each size's `warmup.log`, `fdb-before-warmup.json`,
+  `fdb-after-warmup.json` and `service-states.json` under `scale-20261007-c/1m` and `10m`.
+- `scale-20261007-c/service-1791382530856184189.json`.
+- `scale-20261007-c/verification-1791382534760121244.json`.
+- `resume-20261007-i/state.json`: population, both warmups, serving and verification completed.
+- `size-20261007-k/state.json`: storage measurements and unchanged runtime identities; build/clippy
+  logs and raw per-tenant outputs are retained alongside it.
+
+All paths above are relative to `/var/log/dfs-bench/v5`. Local checkpoint copies are
+`/tmp/dfs-v5-gcp-scale-c-run.json` and `/tmp/dfs-v5-gcp-scale-final-evidence.json`.
+Seed SHA-256: `e6101a3228f221b82f7ec1553d20acf7bcd3a3fae3b707c7b82b9d0cb8f0cea8`.
+Warmup SHA-256: `61abbd2ba4f5f05e8f10826b7760ab659e54c6b74a73b8e4373249fb28a64c9f`.
+Size-helper SHA-256: `efb3688f452fd47382579742a21dda15e954bf4b874ceede774225bc44e4dc44`.
+The server identity is recorded above and in the service report.
+
+Population resumed previously committed batches: the final invocation inserted 7,608,192 files in
+6823.748 s at concurrency four, using the same sixteen durable partitions and 256-file batches.
+This excludes earlier attempts and is not full-population or filesystem throughput. FDB storage
+write queues limited ingestion. The driver can resume only terminal typed 1031/1037 failures with
+bounded backoff and lower concurrency; this final process needed no such restart.
+
+Before these measurements, an offline-loader bug wrote tagged 17-byte child references where
+lookup/list require raw 16-byte UUIDs. The fixed loader and its idempotent repair passed local real
+RPC checks; GCP repair corrected 1,010,000 1M child rows and 2,286,240 partial-10M rows, and repeat
+scans changed zero rows. Normal RPC-created files and the Search/filesystem benchmarks were
+unaffected. Older tree-only reports `scale-20261007-a` (15.688 s for 1M) and `b` (17.537 s) remain
+historical; the table uses repaired report `c` and the completed 10M fixture.

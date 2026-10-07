@@ -1,5 +1,9 @@
 # Permission tree memory and access measurements
 
+These are synthetic in-memory builder/access measurements. Actual empty-process FDB bootstrap
+measurements for the persistent 1M and 10M fixtures are in [SEARCH.md](SEARCH.md#durable-scale-fixture-2026-10-07).
+The later 100M FDB population/warmup was deferred; it is separate from the completed synthetic cases.
+
 All six **1M / 10M / 100M** cases completed on 2026-10-07 using the production `dfs-core` Builder,
 Tree and TenantTree evaluators. This is an in-memory measurement on the GCP n2-standard-8 workload
 VM (x86-64, 32 GiB), one thread in a fresh container per case, with a 20 GiB memory limit and no
