@@ -644,25 +644,38 @@ export async function finalizeConnection(
   }
 
   if (connectionWorkspace) {
-    const auditAuth =
+    const auditAuthPromise =
       auth && auth.workspace()?.sId === connectionWorkspace.sId
-        ? auth
-        : await Authenticator.fromUserIdAndWorkspaceId(
+        ? Promise.resolve(auth)
+        : Authenticator.fromUserIdAndWorkspaceId(
             user.sId,
             connectionWorkspace.sId
           );
+    // The code has already been exchanged: audit preparation must not fail the callback.
     // No req available in this library function — context defaults to auth.clientIp().
-    void emitAuditLogEvent({
-      auth: auditAuth,
-      action: "oauth.authorized",
-      targets: [
-        buildAuditLogTarget("workspace", auditAuth.getNonNullableWorkspace()),
-      ],
-      metadata: {
-        provider: String(provider),
-        connection_id: connectionId,
-      },
-    });
+    void auditAuthPromise
+      .then((auditAuth) =>
+        emitAuditLogEvent({
+          auth: auditAuth,
+          action: "oauth.authorized",
+          targets: [
+            buildAuditLogTarget(
+              "workspace",
+              auditAuth.getNonNullableWorkspace()
+            ),
+          ],
+          metadata: {
+            provider: String(provider),
+            connection_id: connectionId,
+          },
+        })
+      )
+      .catch((err) => {
+        childLogger.error(
+          { connectionId, err },
+          "oauth.authorized: failed to emit audit log"
+        );
+      });
   } else {
     childLogger.warn(
       { connectionId },
