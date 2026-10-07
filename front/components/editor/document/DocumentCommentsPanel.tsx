@@ -1,3 +1,4 @@
+import { parseInlineMarkdown } from "@app/components/editor/document/content";
 import { DocumentCommentInput } from "@app/components/editor/document/DocumentCommentInput";
 import type {
   DocumentCommentAvatarSize,
@@ -7,6 +8,7 @@ import type { DocumentCommentsController } from "@app/components/editor/document
 import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { formatDateTime } from "@app/lib/i18n/format";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
+import { readMessageSuggestions } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import {
   AlertCircle,
@@ -26,7 +28,7 @@ import {
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 interface PanelIconButtonProps {
   label: string;
@@ -121,12 +123,134 @@ const MessageByline = ({
   );
 };
 
+interface SuggestionCardProps {
+  quote: string | undefined;
+  suggestion: string;
+  renderBody: (body: string) => ReactNode;
+  onApply?: () => Result<void, string>;
+}
+
+/**
+ * @cc [owner:tdraier,label:react] document-comment-suggestion-card
+ * A message with a suggestion MUST show the current commented text it would replace and the
+ * suggested text, or that it deletes the text. Apply MUST render only when the thread can take
+ * a suggestion and the suggestion reads as one paragraph of inline Markdown, and a refused Apply
+ * MUST show the reason.
+ */
+const SuggestionCard = ({
+  quote,
+  suggestion,
+  renderBody,
+  onApply,
+}: SuggestionCardProps) => {
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border text-sm">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted-background py-1 pl-2 pr-1">
+        <span className="text-xs font-medium text-muted-foreground">
+          Suggested change
+        </span>
+        {onApply && (
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            label="Apply"
+            onClick={(event) => {
+              event.stopPropagation();
+              const applied = onApply();
+              setError(applied.isErr() ? applied.error : null);
+            }}
+          />
+        )}
+      </div>
+      <div className="bg-warning-100/60 px-2 py-1 line-through decoration-foreground/40 wrap-anywhere dark:bg-warning-500/20">
+        <span className="sr-only">Replaces: </span>
+        {quote || "The commented text was removed."}
+      </div>
+      <div className="bg-success-100/60 px-2 py-1 dark:bg-success-500/20">
+        <span className="sr-only">With: </span>
+        {suggestion ? (
+          renderBody(suggestion)
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            Deletes the text.
+          </span>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className="px-2 py-1 text-xs text-warning-500">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+};
+
+interface MessageBodyProps {
+  body: string;
+  quote: string | undefined;
+  renderBody: (body: string) => ReactNode;
+  onApplySuggestion?: (suggestion: string) => Result<void, string>;
+}
+
+/**
+ * @cc [owner:tdraier,label:react] document-comment-message-body
+ * A message MUST render its text and each of its suggestions where they stand in the body, each
+ * suggestion as its own card, applying its own text.
+ */
+const MessageBody = ({
+  body,
+  quote,
+  renderBody,
+  onApplySuggestion,
+}: MessageBodyProps) => {
+  const parts = useMemo(() => {
+    const read = readMessageSuggestions(body);
+    return read.isOk() && read.value
+      ? read.value.map((part) => ({
+          ...part,
+          applicable:
+            part.kind === "suggestion" &&
+            parseInlineMarkdown(part.suggestion).isOk(),
+        }))
+      : null;
+  }, [body]);
+  if (!parts) {
+    return renderBody(body);
+  }
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.kind === "text" ? (
+          <Fragment key={`text-${index}`}>{renderBody(part.text)}</Fragment>
+        ) : (
+          <SuggestionCard
+            key={`suggestion-${index}`}
+            quote={quote}
+            suggestion={part.suggestion}
+            renderBody={renderBody}
+            onApply={
+              onApplySuggestion && part.applicable
+                ? () => onApplySuggestion(part.suggestion)
+                : undefined
+            }
+          />
+        )
+      )}
+    </>
+  );
+};
+
 interface ReplyComposerProps {
   author: DfmAuthor | undefined;
   renderAuthorAvatar: RenderAuthorAvatar;
   onReply: (body: string) => Promise<Result<void, string>>;
   /** Escape clears the field and hands focus back to the thread. */
   onCancel: () => void;
+  onSuggest?: () => Result<string, string>;
+  mountPortalContainer?: HTMLElement;
 }
 
 const ReplyComposer = ({
@@ -134,6 +258,8 @@ const ReplyComposer = ({
   renderAuthorAvatar,
   onReply,
   onCancel,
+  onSuggest,
+  mountPortalContainer,
 }: ReplyComposerProps) => {
   const { t } = useLingui();
   const [body, setBody] = useState("");
@@ -170,6 +296,8 @@ const ReplyComposer = ({
       }}
       error={error}
       pending={sending}
+      onSuggest={onSuggest}
+      mountPortalContainer={mountPortalContainer}
       className="-mb-1 border-t border-border pt-2"
     />
   );
@@ -183,6 +311,8 @@ interface DraftCardProps {
   visible: boolean;
   onSubmit: (body: string) => Promise<Result<void, string>>;
   onCancel: () => void;
+  onSuggest?: () => Result<string, string>;
+  mountPortalContainer?: HTMLElement;
 }
 
 const DraftCard = ({
@@ -192,6 +322,8 @@ const DraftCard = ({
   visible,
   onSubmit,
   onCancel,
+  onSuggest,
+  mountPortalContainer,
 }: DraftCardProps) => {
   const { t } = useLingui();
   const [body, setBody] = useState("");
@@ -237,6 +369,8 @@ const DraftCard = ({
         pending={sending}
         // Hidden elements ignore focus(), so wait until the panel shows.
         autoFocus={visible}
+        onSuggest={onSuggest}
+        mountPortalContainer={mountPortalContainer}
       />
     </article>
   );
@@ -255,6 +389,8 @@ interface CommentThreadProps {
   onDelete: () => void;
   onElement: (element: HTMLElement | null) => void;
   renderBody: (body: string) => ReactNode;
+  onSuggest?: () => Result<string, string>;
+  onApplySuggestion?: (suggestion: string) => Result<void, string>;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
 }
@@ -272,6 +408,8 @@ const CommentThread = ({
   onDelete,
   onElement,
   renderBody,
+  onSuggest,
+  onApplySuggestion,
   mountPortalContainer,
   renderAuthorAvatar,
 }: CommentThreadProps) => {
@@ -351,7 +489,12 @@ const CommentThread = ({
           <span className="sr-only">{t`Commented text:`} </span>
           {quote || t`The commented text was removed.`}
         </button>
-        {renderBody(first.body)}
+        <MessageBody
+          body={first.body}
+          quote={quote}
+          renderBody={renderBody}
+          onApplySuggestion={onApplySuggestion}
+        />
         {replies.length > 0 && (
           <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
             {replies.map((reply, index) => (
@@ -366,7 +509,12 @@ const CommentThread = ({
                   verified={isVerified(index + 1)}
                   mountPortalContainer={mountPortalContainer}
                 />
-                {renderBody(reply.body)}
+                <MessageBody
+                  body={reply.body}
+                  quote={quote}
+                  renderBody={renderBody}
+                  onApplySuggestion={onApplySuggestion}
+                />
               </li>
             ))}
           </ul>
@@ -377,6 +525,8 @@ const CommentThread = ({
             renderAuthorAvatar={renderAuthorAvatar}
             onReply={onReply}
             onCancel={() => ref.current?.focus()}
+            onSuggest={onSuggest}
+            mountPortalContainer={mountPortalContainer}
           />
         )}
       </div>
@@ -449,6 +599,11 @@ export const DocumentCommentsPanel = ({
     submitDraft,
     cancelDraft,
     isVerified,
+    suggestable,
+    draftSuggestable,
+    suggestionTemplate,
+    draftSuggestionTemplate,
+    applySuggestion,
   } = comments;
   const [hasOpened, setHasOpened] = useState(panelOpen);
   if (panelOpen && !hasOpened) {
@@ -489,6 +644,8 @@ export const DocumentCommentsPanel = ({
 
   const renderThread = (comment: DfmComment) => {
     const siblings = comment.status === "resolved" ? resolved : unresolved;
+    const canSuggest =
+      canWrite && comment.status === "open" && suggestable.has(comment.id);
     return (
       <CommentThread
         key={comment.id}
@@ -513,6 +670,19 @@ export const DocumentCommentsPanel = ({
         }}
         renderAuthorAvatar={renderVisibleAvatar}
         renderBody={renderCommentBody}
+        onSuggest={
+          canSuggest ? () => suggestionTemplate(comment.id) : undefined
+        }
+        onApplySuggestion={
+          canSuggest
+            ? (suggestion) =>
+                applySuggestion(
+                  comment.id,
+                  suggestion,
+                  neighbourId(siblings, comment.id)
+                )
+            : undefined
+        }
         mountPortalContainer={mountPortalContainer}
       />
     );
@@ -588,6 +758,8 @@ export const DocumentCommentsPanel = ({
             visible={panelOpen}
             onSubmit={submitDraft}
             onCancel={cancelDraft}
+            onSuggest={draftSuggestable ? draftSuggestionTemplate : undefined}
+            mountPortalContainer={mountPortalContainer}
           />
         )}
         {unresolved.slice(Math.max(draftIndex, 0)).map(renderThread)}
