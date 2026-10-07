@@ -45,4 +45,34 @@ describe("useLiveSession", () => {
     );
     unmount();
   });
+  it("waits longer between attempts while the server stays down", async () => {
+    const { port } = server.address;
+    await server.destroy();
+    const RealWebSocket = globalThis.WebSocket;
+    let opened = 0;
+    globalThis.WebSocket = class extends RealWebSocket {
+      constructor(...args: ConstructorParameters<typeof WebSocket>) {
+        super(...args);
+        opened++;
+      }
+    };
+    server = new Server({ quiet: true });
+    try {
+      const { unmount } = renderHook(() =>
+        useLiveSession({
+          url: `ws://127.0.0.1:${port}`,
+          documentName: DOCUMENT_NAME,
+          token: "u_1",
+          user: { name: "Daph", color: "#0ea5e9" },
+        })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 4_500));
+      unmount();
+    } finally {
+      globalThis.WebSocket = RealWebSocket;
+    }
+
+    // Attempts at 0, 1 s and 3 s; a fixed delay would make five.
+    expect(opened).toBe(3);
+  }, 10_000);
 });
