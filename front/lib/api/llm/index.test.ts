@@ -4,12 +4,14 @@ import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
 import {
   AGENT_PLATFORM_HOST,
+  EDGEE_HOST,
   FIREWORKS_HOST,
   GOOGLE_AI_STUDIO_HOST,
   MISTRAL_HOST,
 } from "@app/lib/model_constructors/types/hosts";
 import {
   CLAUDE_OPUS_5,
+  CLAUDE_SONNET_5,
   GEMINI_3_1_PRO,
   GEMINI_3_8_FLASH,
   GLM_5P3,
@@ -160,6 +162,44 @@ describe("getWorkspaceFilter", () => {
       });
       expect(endpoints.length).toBeGreaterThan(0);
       expect(endpoints.every((e) => e.host !== AGENT_PLATFORM_HOST)).toBe(true);
+    }
+  });
+
+  it("routes an Edgee workspace to Edgee endpoints only", async () => {
+    const workspace = await WorkspaceFactory.edgee();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const workspaceConfig = await getWorkspaceConfig(auth);
+    const endpoints = getStreamEndpoints(workspaceConfig, getWorkspaceFilter(auth));
+
+    expect(endpoints.length).toBeGreaterThan(0);
+    expect(endpoints.every((e) => e.host === EDGEE_HOST)).toBe(true);
+    expect(endpoints.map((e) => e.model)).toContain(CLAUDE_SONNET_5);
+  });
+
+  it("never routes a workspace off the Edgee plan to an Edgee endpoint", async () => {
+    const byokWorkspace = await WorkspaceFactory.byok();
+    await ProviderCredentialFactory.basic(byokWorkspace, "anthropic");
+    const workspaces = [
+      await WorkspaceFactory.basic(),
+      await WorkspaceFactory.enterprise(),
+      byokWorkspace,
+    ];
+    const allowAllConfig: WorkspaceConfig = {
+      featureFlags: [...WHITELISTABLE_FEATURES],
+      isEnterprise: true,
+      isCreditPriced: true,
+      isAdvancedModels: true,
+    };
+
+    for (const workspace of workspaces) {
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const endpoints = getStreamEndpoints(
+        allowAllConfig,
+        getWorkspaceFilter(auth)
+      );
+      expect(endpoints.length).toBeGreaterThan(0);
+      expect(endpoints.some((e) => e.host === EDGEE_HOST)).toBe(false);
     }
   });
 

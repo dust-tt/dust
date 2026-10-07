@@ -19,8 +19,10 @@ import type {
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fireworks/constants";
 import {
   AGENT_PLATFORM_HOST,
+  EDGEE_HOST,
   GOOGLE_AI_STUDIO_HOST,
 } from "@app/lib/model_constructors/types/hosts";
+import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import { isModel, NOOP_MODEL } from "@app/lib/model_constructors/types/models";
@@ -33,6 +35,7 @@ import type {
   ModelIdType,
   WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
+import type { PlanGatewayType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import compact from "lodash/compact";
 import intersection from "lodash/intersection";
@@ -74,6 +77,10 @@ const EAP_MODELS = compact(
 
 // Custom models are test models that run on Dust's keys, whichever one they use.
 const BYOK_EXCLUDED_MODELS: Model[] = [...EAP_MODELS, ...CUSTOM_MODEL_IDS];
+
+const GATEWAY_HOSTS: Record<PlanGatewayType, Host> = {
+  edgee: EDGEE_HOST,
+};
 
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   const dustRegion = multiRegionsConfig.getCurrentRegion();
@@ -157,24 +164,43 @@ function getLabFilter(
  * endpoint, whether or not it carries `useEapKey`: it is a test model served on Dust's keys.
  * `isModelAvailable` must reject it too.
  */
+/**
+ * @cc [owner:pmilliotte,label:security;product] gateway-plans-route-only-through-their-gateway
+ * A workspace whose plan has a `gateway` MUST only reach endpoints served by that gateway's host,
+ * and a workspace without one MUST never reach a gateway host. A gateway workspace with no endpoint
+ * for a model gets no endpoint, never a direct provider one.
+ */
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
-  const byok = auth.getNonNullablePlan().isByok;
+  const { isByok, gateway } = auth.getNonNullablePlan();
   const makerIds = getWhitelistedMakerIds(auth);
-
-  return {
+  const baseFilter = {
     ...getLabFilter(makerIds),
     region: getRegionFilter(auth),
+  };
+
+  if (gateway) {
+    return { ...baseFilter, host: { eq: GATEWAY_HOSTS[gateway] } };
+  }
+
+  const gatewayHosts = Object.values(GATEWAY_HOSTS);
+
+  return {
+    ...baseFilter,
     // Conversely we route all non-byok gemini requests to agent platform.
-    ...(byok
+    not: isByok
       ? {
-          not: {
-            or: [
-              { host: { eq: AGENT_PLATFORM_HOST } },
-              { model: { in: BYOK_EXCLUDED_MODELS } },
-            ],
-          },
+          or: [
+            { host: { eq: AGENT_PLATFORM_HOST } },
+            { host: { in: gatewayHosts } },
+            { model: { in: BYOK_EXCLUDED_MODELS } },
+          ],
         }
-      : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
+      : {
+          or: [
+            { host: { eq: GOOGLE_AI_STUDIO_HOST } },
+            { host: { in: gatewayHosts } },
+          ],
+        },
   };
 }
 
