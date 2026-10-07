@@ -53,11 +53,11 @@ function Description({ children }: { children: ReactNode }) {
   return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
-function NameChips({ names }: { names: string[] }) {
+function NameChips({ items }: { items: { sId: string; name: string }[] }) {
   return (
     <div className="flex flex-wrap gap-1">
-      {names.map((name, index) => (
-        <Chip key={`${name}-${index}`} size="xs" label={name} />
+      {items.map((item) => (
+        <Chip key={item.sId} size="xs" label={item.name} />
       ))}
     </div>
   );
@@ -168,7 +168,7 @@ function APIKeyDetails({
               </Trans>
             </Description>
             {apiKey.spaces.length > 0 ? (
-              <NameChips names={apiKey.spaces.map((space) => space.name)} />
+              <NameChips items={apiKey.spaces} />
             ) : (
               <Description>
                 <Trans>No spaces</Trans>
