@@ -539,7 +539,7 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
           signal: options?.signal,
         }
       );
-      return new Ok(response.similar_skills);
+      return new Ok(response.skills);
     },
     [owner.sId, fetcher]
   );
