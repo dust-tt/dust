@@ -16,6 +16,7 @@ import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import {
   authenticateConnection,
+  checkpointAllDocuments,
   createCollabHocuspocus,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
@@ -106,6 +107,25 @@ describe("createCollabHocuspocus", () => {
     expect(calls[0][1].comments).toBe(COMMENTS);
     expect(calls.map(([, , last]) => last.revision)).toEqual(["1", "2"]);
     expect(loadLiveDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkpoints every document at once on shutdown, edits waiting for their store included", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    vi.useFakeTimers();
+
+    const edited = await hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
+    await edited.transact((doc) => typeInto(doc, "Not stored yet."));
+    await hocuspocus.openDirectConnection("w1:user-u1/untouched.md", writer);
+    expect(checkpointLiveDocument).not.toHaveBeenCalled();
+
+    await checkpointAllDocuments(hocuspocus);
+
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(checkpointLiveDocument).mock.calls[0][0]).toBe(writer);
+    // The debounced store it replaced does not run again.
+    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a document for the grace period, then reads the file again", async () => {

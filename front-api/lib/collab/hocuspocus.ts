@@ -234,3 +234,30 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
     },
   });
 }
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-checkpoint
+ * Every loaded document MUST be checkpointed at once, in place of its pending debounced store, and
+ * the returned promise MUST resolve only once each checkpoint has finished or failed.
+ */
+export async function checkpointAllDocuments(
+  hocuspocus: Hocuspocus<LiveFile>
+): Promise<void> {
+  await Promise.all(
+    [...hocuspocus.documents.values()].map((document) =>
+      hocuspocus.storeDocumentHooks(
+        document,
+        {
+          clientsCount: document.getConnectionsCount(),
+          document,
+          documentName: document.name,
+          instance: hocuspocus,
+          // The store hook checkpoints through the last writer it recorded, not this context.
+          lastContext: undefined,
+          lastTransactionOrigin: undefined,
+        },
+        true
+      )
+    )
+  );
+}

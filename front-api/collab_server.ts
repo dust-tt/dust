@@ -5,13 +5,17 @@ import "./lib/startup-log";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { serve } from "@hono/node-server";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
-import { createCollabHocuspocus } from "./lib/collab/hocuspocus";
+import {
+  checkpointAllDocuments,
+  createCollabHocuspocus,
+} from "./lib/collab/hocuspocus";
 import { createHono } from "./lib/hono";
 import { healthzApp } from "./routes/healthz";
 
@@ -98,3 +102,29 @@ server.on("error", (err) => {
   logger.error({ err }, "Collab server error");
   process.exit(1);
 });
+
+// The pod is stopped with SIGTERM: take no more connections, then checkpoint every loaded document
+// so the edits still waiting for their debounced store reach the file.
+async function shutdown(signal: NodeJS.Signals) {
+  logger.info(
+    { signal, documents: hocuspocus.getDocumentsCount() },
+    "Collab server shutting down"
+  );
+  server.close();
+  hocuspocus.closeConnections();
+  await checkpointAllDocuments(hocuspocus);
+  logger.info("Collab server stopped");
+  process.exit(0);
+}
+
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.once(signal, () => {
+    shutdown(signal).catch((err: unknown) => {
+      logger.error(
+        { err: normalizeError(err) },
+        "Collab server shutdown failed"
+      );
+      process.exit(1);
+    });
+  });
+}
