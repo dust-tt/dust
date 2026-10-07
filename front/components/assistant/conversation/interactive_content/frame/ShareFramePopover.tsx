@@ -29,6 +29,7 @@ import {
   Upload01,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useId, useState } from "react";
 
 interface ShareFramePopoverProps {
@@ -48,6 +49,7 @@ export function ShareFramePopover({
   owner,
   contentHash,
 }: ShareFramePopoverProps) {
+  const { t } = useLingui();
   const titleId = useId();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
@@ -64,8 +66,8 @@ export function ShareFramePopover({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          label={isMobile ? undefined : "Share"}
-          tooltip={isMobile ? "Share" : undefined}
+          label={isMobile ? undefined : t`Share`}
+          tooltip={isMobile ? t`Share` : undefined}
           icon={fileShare ? SHARE_SCOPE_ICONS[fileShare.scope] : Upload01}
           isLoading={isFileShareLoading}
         />
@@ -80,7 +82,7 @@ export function ShareFramePopover({
         className="flex w-80 max-h-(--radix-popover-content-available-height) flex-col overflow-hidden p-2"
       >
         <span id={titleId} className="sr-only">
-          Share this frame
+          <Trans>Share this frame</Trans>
         </span>
         <ShareFramePopoverContent
           fileId={fileId}
@@ -107,6 +109,7 @@ function ShareFramePopoverContent({
   titleId,
   fileSharing,
 }: ShareFramePopoverContentProps) {
+  const { t } = useLingui();
   const [shareBlockError, setShareBlockError] = useState<string[] | null>(null);
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
@@ -155,6 +158,8 @@ function ShareFramePopoverContent({
     currentScope,
   });
 
+  const blockedRefs = shareBlockError?.join(", ");
+
   const showGrants =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
 
@@ -184,10 +189,10 @@ function ShareFramePopoverContent({
             className="flex items-center justify-between gap-2 py-4"
           >
             <p className="text-sm text-muted-foreground">
-              Could not load sharing settings.
+              <Trans>Could not load sharing settings.</Trans>
             </p>
             <Button
-              label="Retry"
+              label={t`Retry`}
               variant="outline"
               onClick={() => {
                 void mutateFileShare();
@@ -199,32 +204,35 @@ function ShareFramePopoverContent({
             {!canInviteExternal && (
               <ContentMessage
                 variant="info"
-                title="Only workspace members can be added"
+                title={t`Only workspace members can be added`}
                 size="sm"
               >
                 {externalSharingDisabledByPolicy
-                  ? "Your admin has disabled external sharing. You can only invite people already in your workspace."
-                  : "You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace."}
+                  ? t`Your admin has disabled external sharing. You can only invite people already in your workspace.`
+                  : t`You don’t have permission to invite people outside your workspace. You can only invite people already in your workspace.`}
               </ContentMessage>
             )}
             {lostPublishPermission && (
               <ContentMessage
-                title="You no longer have permission to share frames publicly"
+                title={t`You no longer have permission to share frames publicly`}
                 size="sm"
               >
-                This frame is currently shared publicly. You can restrict
-                access, but you won’t be able to make it public again.
+                <Trans>
+                  This frame is currently shared publicly. You can restrict
+                  access, but you won’t be able to make it public again.
+                </Trans>
               </ContentMessage>
             )}
             {shareBlockError && shareBlockError.length > 0 && (
               <ContentMessage
                 variant="warning"
-                title="Some referenced files cannot be shared"
+                title={t`Some referenced files cannot be shared`}
                 size="sm"
               >
-                Viewers will only be able to access files you can verify. Fix or
-                remove these references before sharing:{" "}
-                {shareBlockError.join(", ")}
+                <Trans>
+                  Viewers will only be able to access files you can verify. Fix
+                  or remove these references before sharing: {blockedRefs}
+                </Trans>
               </ContentMessage>
             )}
             <FrameSharingFiles viewerFiles={viewerFiles} />
@@ -283,19 +291,22 @@ function AccessScopeSection({
   onScopeChange,
   shareURL,
 }: AccessScopeSectionProps) {
+  const { t } = useLingui();
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   return (
     <Section
       label={
         <span className="flex items-center">
-          Who has access
+          <Trans>Who has access</Trans>
           {isUpdatingScope && (
             <span role="status" className="ml-2 inline-flex items-center">
               <span aria-hidden="true">
                 <Spinner size="xs" />
               </span>
-              <span className="sr-only">Updating sharing settings</span>
+              <span className="sr-only">
+                <Trans>Updating sharing settings</Trans>
+              </span>
             </span>
           )}
         </span>
@@ -304,7 +315,7 @@ function AccessScopeSection({
         <Button
           variant="ghost-secondary"
           size="xs"
-          label={isCopied ? "Copied!" : "Copy link"}
+          label={isCopied ? t`Copied!` : t`Copy link`}
           disabled={!shareURL}
           onClick={async () => {
             await copyToClipboard(shareURL);
@@ -353,7 +364,7 @@ function AccessScopeSection({
                   id={`${inputId}-label`}
                   className="min-w-0 flex-1 label-xs text-muted-foreground"
                 >
-                  {option.label}
+                  {t(option.label)}
                 </span>
                 {isSelected && (
                   <Icon

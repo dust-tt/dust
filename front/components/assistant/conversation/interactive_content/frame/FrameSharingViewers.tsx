@@ -16,11 +16,12 @@ import {
   SearchMd,
   Spinner,
 } from "@dust-tt/sparkle";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useId, useState } from "react";
 
 const INITIAL_VIEWERS_COUNT = 5;
-const VIEWERS_DESCRIPTION =
-  "People who accessed this frame through an email or domain invitation.";
+const VIEWERS_DESCRIPTION = msg`People who accessed this frame through an email or domain invitation.`;
 
 interface FrameSharingViewersProps {
   viewers: FileViewerType[] | undefined;
@@ -39,32 +40,35 @@ export function FrameSharingViewers({
   hasError,
   onRetry,
 }: FrameSharingViewersProps) {
+  const { t } = useLingui();
+  const viewerCount = viewers?.length ?? 0;
+
   return (
-    <Section label="Viewers" description={VIEWERS_DESCRIPTION}>
+    <Section label={t`Viewers`} description={t(VIEWERS_DESCRIPTION)}>
       {isLoading ? (
         <div role="status" className="flex items-center gap-2 py-2">
           <div aria-hidden="true">
             <Spinner size="sm" />
           </div>
           <span className="text-sm text-muted-foreground">
-            Loading viewers…
+            <Trans>Loading viewers…</Trans>
           </span>
         </div>
       ) : hasError || !viewers ? (
         <div role="alert" className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            Could not load viewers.
+            <Trans>Could not load viewers.</Trans>
           </p>
-          <Button label="Retry" variant="outline" onClick={onRetry} />
+          <Button label={t`Retry`} variant="outline" onClick={onRetry} />
         </div>
       ) : viewers.length === 0 ? (
         <p className="p-2 text-sm text-muted-foreground">
-          No views recorded yet.
+          <Trans>No views recorded yet.</Trans>
         </p>
       ) : (
         <>
           <ListGroup className="border-0">
-            <ul aria-label="Recent viewers">
+            <ul aria-label={t`Recent viewers`}>
               {viewers.slice(0, INITIAL_VIEWERS_COUNT).map((viewer) => (
                 <li key={viewer.email}>
                   <ViewerRow viewer={viewer} />
@@ -76,7 +80,10 @@ export function FrameSharingViewers({
             <Dialog>
               <DialogTrigger asChild>
                 <Button
-                  label={`View all ${viewers.length} viewers`}
+                  label={t`${plural(viewerCount, {
+                    one: "View all # viewer",
+                    other: "View all # viewers",
+                  })}`}
                   variant="ghost"
                   className="w-fit"
                 />
@@ -101,24 +108,29 @@ interface ViewersDialogContentProps {
 }
 
 function ViewersDialogContent({ viewers }: ViewersDialogContentProps) {
+  const { t } = useLingui();
   const searchId = useId();
   const [search, setSearch] = useState("");
   const query = search.trim().toLowerCase();
   const matchingViewers = viewers.filter((viewer) =>
     viewer.email.toLowerCase().includes(query)
   );
+  const matchingCount = matchingViewers.length;
+  const viewerCount = viewers.length;
 
   return (
     <>
       <DialogHeader hideButton>
-        <DialogTitle>Viewers</DialogTitle>
-        <DialogDescription>{VIEWERS_DESCRIPTION}</DialogDescription>
+        <DialogTitle>
+          <Trans>Viewers</Trans>
+        </DialogTitle>
+        <DialogDescription>{t(VIEWERS_DESCRIPTION)}</DialogDescription>
         <div className="flex flex-col gap-2 py-4">
           <Input
             name={searchId}
             id={searchId}
-            label="Search by email"
-            placeholder="Search viewers…"
+            label={t`Search by email`}
+            placeholder={t`Search viewers…`}
             icon={SearchMd}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -129,25 +141,31 @@ function ViewersDialogContent({ viewers }: ViewersDialogContentProps) {
             className="text-xs text-muted-foreground"
           >
             {query
-              ? `${matchingViewers.length} of ${viewers.length} viewers`
-              : `${viewers.length} viewers`}
+              ? t`${plural(viewerCount, {
+                  one: `${matchingCount} of # viewer`,
+                  other: `${matchingCount} of # viewers`,
+                })}`
+              : t`${plural(viewerCount, {
+                  one: "# viewer",
+                  other: "# viewers",
+                })}`}
           </p>
         </div>
       </DialogHeader>
       <div
         key={query}
         role="region"
-        aria-label="Viewer list"
+        aria-label={t`Viewer list`}
         tabIndex={0}
         className="min-h-0 flex-1 overflow-y-auto px-5 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-highlight-300"
       >
         {matchingViewers.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">
-            No viewers match your search.
+            <Trans>No viewers match your search.</Trans>
           </p>
         ) : (
           <ListGroup className="border-0">
-            <ul aria-label="All viewers">
+            <ul aria-label={t`All viewers`}>
               {matchingViewers.map((viewer) => (
                 <li key={viewer.email}>
                   <ViewerRow viewer={viewer} />
@@ -157,7 +175,9 @@ function ViewersDialogContent({ viewers }: ViewersDialogContentProps) {
           </ListGroup>
         )}
       </div>
-      <DialogFooter rightButtonProps={{ label: "Close", variant: "outline" }} />
+      <DialogFooter
+        rightButtonProps={{ label: t`Close`, variant: "outline" }}
+      />
     </>
   );
 }
@@ -172,14 +192,17 @@ function ViewerRow({ viewer }: ViewerRowProps) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+  const timeAgo = formatTimeDistance(lastViewedAt, new Date());
 
   return (
     <FrameSharingRow label={viewer.email}>
       <time dateTime={lastViewedAt.toISOString()} title={exactTime}>
         <span aria-hidden="true">
-          Last viewed {formatTimeDistance(lastViewedAt, new Date())}
+          <Trans>Last viewed {timeAgo}</Trans>
         </span>
-        <span className="sr-only">Last viewed {exactTime}</span>
+        <span className="sr-only">
+          <Trans>Last viewed {exactTime}</Trans>
+        </span>
       </time>
     </FrameSharingRow>
   );

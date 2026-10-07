@@ -14,53 +14,56 @@ import {
 } from "@app/types/sharing_grants";
 import { Button, Globe01, Input, ListGroup, Spinner } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-const recipientsSchema = z
-  .string()
-  .transform((raw, ctx) => {
-    const recipients = raw
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
-    if (
-      recipients.length === 0 ||
-      recipients.length > MAX_EMAILS_OR_DOMAINS_PER_INVITE
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Add between 1 and ${MAX_EMAILS_OR_DOMAINS_PER_INVITE} email addresses or domains.`,
-      });
-      return z.NEVER;
-    }
+function getRecipientsSchema(recipientCountMessage: string) {
+  return z
+    .string()
+    .transform((raw, ctx) => {
+      const recipients = raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      if (
+        recipients.length === 0 ||
+        recipients.length > MAX_EMAILS_OR_DOMAINS_PER_INVITE
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: recipientCountMessage,
+        });
+        return z.NEVER;
+      }
 
-    const emails: string[] = [];
-    const domains: string[] = [];
-    for (const recipient of recipients) {
-      const email = sharingEmailSchema.safeParse(recipient);
-      if (email.success) {
-        emails.push(email.data);
-        continue;
+      const emails: string[] = [];
+      const domains: string[] = [];
+      for (const recipient of recipients) {
+        const email = sharingEmailSchema.safeParse(recipient);
+        if (email.success) {
+          emails.push(email.data);
+          continue;
+        }
+        const domain = sharingDomainSchema.safeParse(recipient);
+        if (domain.success) {
+          domains.push(domain.data);
+          continue;
+        }
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: fromError(domain.error, {
+            prefix: `"${recipient}"`,
+          }).toString(),
+        });
+        return z.NEVER;
       }
-      const domain = sharingDomainSchema.safeParse(recipient);
-      if (domain.success) {
-        domains.push(domain.data);
-        continue;
-      }
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: fromError(domain.error, {
-          prefix: `"${recipient}"`,
-        }).toString(),
-      });
-      return z.NEVER;
-    }
-    return { emails, domains };
-  })
-  .pipe(addSharingGrantsSchema);
+      return { emails, domains };
+    })
+    .pipe(addSharingGrantsSchema);
+}
 
 interface FrameSharingGrantsProps {
   sharing: SharingGrantsResponse | undefined;
@@ -85,17 +88,21 @@ export function FrameSharingGrants({
   onRevoke,
   onRetry,
 }: FrameSharingGrantsProps) {
+  const { t } = useLingui();
   const inputId = useId();
   const errorId = `${inputId}-error`;
   const canGrantDomains = sharing?.canGrantDomains ?? false;
+  const maxRecipients = MAX_EMAILS_OR_DOMAINS_PER_INVITE;
   const formSchema = z.object({
-    recipients: recipientsSchema.superRefine(({ domains }, ctx) => {
+    recipients: getRecipientsSchema(
+      t`Add between 1 and ${maxRecipients} email addresses or domains.`
+    ).superRefine(({ domains }, ctx) => {
       if (!canGrantDomains && domains?.length) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: canInviteExternal
-            ? "Add individual email addresses. Domain sharing is not available."
-            : "Only workspace member email addresses can be added.",
+            ? t`Add individual email addresses. Domain sharing is not available.`
+            : t`Only workspace member email addresses can be added.`,
         });
       }
     }),
@@ -128,15 +135,17 @@ export function FrameSharingGrants({
         ? `@${grant.target.value}`
         : grant.target.value;
     const confirmed = await showDialog({
-      title: "Remove access rule",
-      validateLabel: "Remove",
+      title: t`Remove access rule`,
+      validateLabel: t`Remove`,
       validateVariant: "warning",
-      cancelLabel: "Cancel",
+      cancelLabel: t`Cancel`,
       children: (
         <p>
-          Remove access for <strong>{label}</strong>? People may still have
-          access through another invitation, domain or the frame’s general
-          access setting.
+          <Trans>
+            Remove access for <strong>{label}</strong>? People may still have
+            access through another invitation, domain or the frame’s general
+            access setting.
+          </Trans>
         </p>
       ),
     });
@@ -152,10 +161,10 @@ export function FrameSharingGrants({
   };
 
   const inviteLabel = canGrantDomains
-    ? "Add people or domains"
+    ? t`Add people or domains`
     : canInviteExternal
-      ? "Invite by email"
-      : "Invite workspace members by email";
+      ? t`Invite by email`
+      : t`Invite workspace members by email`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -178,7 +187,7 @@ export function FrameSharingGrants({
                 placeholder={
                   canGrantDomains
                     ? "alice@example.com, example.com"
-                    : "Add comma separated emails"
+                    : t`Add comma separated emails`
                 }
                 {...register("recipients")}
                 isError={!!errors.recipients}
@@ -189,7 +198,7 @@ export function FrameSharingGrants({
             </div>
             <Button
               variant="primary"
-              label={canGrantDomains ? "Add" : "Invite"}
+              label={canGrantDomains ? t`Add` : t`Invite`}
               type="submit"
               isLoading={isSubmitting}
               disabled={isLoading || hasError}
@@ -206,8 +215,10 @@ export function FrameSharingGrants({
           )}
           {canGrantDomains && !errors.recipients && (
             <p className="text-xs text-muted-foreground px-2">
-              Invitations are sent to email addresses only. People at an added
-              domain can open the link after verifying their email.
+              <Trans>
+                Invitations are sent to email addresses only. People at an added
+                domain can open the link after verifying their email.
+              </Trans>
             </p>
           )}
         </form>
@@ -216,7 +227,7 @@ export function FrameSharingGrants({
       {isLoading ? (
         <div
           role="status"
-          aria-label="Loading access rules"
+          aria-label={t`Loading access rules`}
           className="flex justify-center py-4"
         >
           <div aria-hidden="true">
@@ -226,18 +237,18 @@ export function FrameSharingGrants({
       ) : hasError ? (
         <div role="alert" className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            Could not load access rules.
+            <Trans>Could not load access rules.</Trans>
           </p>
-          <Button label="Retry" variant="outline" onClick={onRetry} />
+          <Button label={t`Retry`} variant="outline" onClick={onRetry} />
         </div>
       ) : grants.length === 0 ? (
         <p className="px-2 text-sm text-muted-foreground">
           {canGrantDomains
-            ? "No people or domains have been added yet."
-            : "No one has been invited yet."}
+            ? t`No people or domains have been added yet.`
+            : t`No one has been invited yet.`}
         </p>
       ) : (
-        <Section label="People with access">
+        <Section label={t`People with access`}>
           <ListGroup className="border-0">
             <ul>
               {grants.map((grant) => (
@@ -268,15 +279,19 @@ interface GrantRowProps {
 }
 
 function GrantRow({ grant, isRevoking, onRevoke }: GrantRowProps) {
+  const { t } = useLingui();
   const isDomain = grant.target.kind === "domain";
   const label = isDomain ? `@${grant.target.value}` : grant.target.value;
   const now = new Date();
   const grantedBy = grant.grantedBy?.fullName ?? grant.grantedBy?.email;
   const grantedAgo = formatTimeDistance(new Date(grant.grantedAt), now);
-  const action = isDomain ? "Added" : "Invited";
-  const grantedLabel = grantedBy
-    ? `${action} by ${grantedBy} ${grantedAgo}`
-    : `${action} ${grantedAgo}`;
+  const grantedLabel = isDomain
+    ? grantedBy
+      ? t`Added by ${grantedBy} ${grantedAgo}`
+      : t`Added ${grantedAgo}`
+    : grantedBy
+      ? t`Invited by ${grantedBy} ${grantedAgo}`
+      : t`Invited ${grantedAgo}`;
 
   return (
     <FrameSharingRow
@@ -289,8 +304,8 @@ function GrantRow({ grant, isRevoking, onRevoke }: GrantRowProps) {
       {grant.blockedByPolicy && (
         <span>
           {isDomain
-            ? "External viewers cannot access this frame."
-            : "This invitation is restricted to workspace members."}
+            ? t`External viewers cannot access this frame.`
+            : t`This invitation is restricted to workspace members.`}
         </span>
       )}
     </FrameSharingRow>
