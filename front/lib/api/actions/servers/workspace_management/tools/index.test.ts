@@ -1,6 +1,7 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import createWorkspaceManagementServer from "@app/lib/api/actions/servers/workspace_management";
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -26,6 +27,12 @@ const { mockSearch, mockWithEs } = vi.hoisted(() => ({
   mockSearch: vi.fn(),
   mockWithEs: vi.fn(),
 }));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: vi.fn().mockResolvedValue(undefined) };
+});
 
 vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   const actual =
@@ -1090,6 +1097,7 @@ describe("workspace_management tools", () => {
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
 
+      vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
       const lines = await callToolLines(
         "create_group",
         { name: "Sales Team", memberIds: [member.sId] },
@@ -1097,6 +1105,16 @@ describe("workspace_management tools", () => {
       );
 
       expect(lines).toHaveLength(2);
+      expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "group.created",
+          metadata: {
+            group_name: "Sales Team",
+            member_count: "1",
+            manager_count: "0",
+          },
+        })
+      );
       expect(lines[0]).toMatch(/^Created group Sales Team \[.+\]\.$/);
       expect(lines[1]).toBe(`Members: ${member.fullName()} [${member.sId}]`);
 

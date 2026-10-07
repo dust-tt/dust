@@ -702,6 +702,105 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("updateRegularManualGroup", () => {
+    async function makeNamedGroup(name: string) {
+      const group = await GroupResource.makeNew({
+        name,
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+      return group;
+    }
+
+    it("returns the previous name only when the name changes", async () => {
+      const group = await makeNamedGroup("Sales");
+
+      const renamed = await group.updateRegularManualGroup(authenticator, {
+        name: "New Sales",
+      });
+      expect(renamed.isOk()).toBe(true);
+      if (renamed.isOk()) {
+        expect(renamed.value).toEqual({
+          addedUsers: [],
+          removedUsers: [],
+          previousName: "Sales",
+        });
+      }
+      expect(group.name).toBe("New Sales");
+
+      const same = await group.updateRegularManualGroup(authenticator, {
+        name: "New Sales",
+      });
+      expect(same.isOk()).toBe(true);
+      if (same.isOk()) {
+        expect(same.value.previousName).toBeNull();
+      }
+      expect(group.name).toBe("New Sales");
+    });
+
+    it("leaves the name unchanged when a member id is unknown", async () => {
+      const group = await makeNamedGroup("Sales");
+
+      const res = await group.updateRegularManualGroup(authenticator, {
+        name: "New Sales",
+        memberIds: ["unknown"],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("user_not_found");
+      }
+      expect(group.name).toBe("Sales");
+      const refetched = await GroupResource.fetchById(authenticator, group.sId);
+      if (refetched.isErr()) {
+        throw refetched.error;
+      }
+      expect(refetched.value.name).toBe("Sales");
+    });
+
+    it("leaves the name unchanged when a member is outside the workspace", async () => {
+      const outsider = await UserFactory.basic();
+      const group = await makeNamedGroup("Sales");
+
+      const res = await group.updateRegularManualGroup(authenticator, {
+        name: "New Sales",
+        memberIds: [user.sId, outsider.sId],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("user_not_found");
+      }
+      expect(group.name).toBe("Sales");
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([user.sId]);
+    });
+  });
+
+  describe("deleteRegularManualGroup", () => {
+    it("returns the active member count captured before the delete", async () => {
+      const group = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+
+      const res = await group.deleteRegularManualGroup(authenticator);
+
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        expect(res.value.memberCount).toBe(1);
+      }
+    });
+  });
+
   // Nothing suspends memberships any more, so the tests below suspend the row by hand.
   async function suspendMemberships(group: GroupResource) {
     await GroupMembershipModel.update(

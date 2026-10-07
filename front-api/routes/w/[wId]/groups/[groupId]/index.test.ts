@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -5,7 +6,22 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockReset();
+  vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
+});
 
 function getGroupRequest(wId: string, groupId: string) {
   return honoApp.request(`/api/w/${wId}/groups/${groupId}`);
@@ -20,6 +36,12 @@ function patchGroupRequest(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+function deleteGroupRequest(wId: string, groupId: string) {
+  return honoApp.request(`/api/w/${wId}/groups/${groupId}`, {
+    method: "DELETE",
   });
 }
 
@@ -189,5 +211,101 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       managerIds: [alice.sId],
     });
     expect(user.status).toBe(403);
+  });
+
+  it("emits group.name_updated when the name changes", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Sales");
+
+    const response = await patchGroupRequest(workspace.sId, group.sId, {
+      name: "New Sales",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).group.name).toBe("New Sales");
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "group.name_updated",
+        metadata: {
+          previous_name: "Sales",
+          new_name: "New Sales",
+        },
+      })
+    );
+  });
+
+  it("does not emit group.name_updated when the name is unchanged, and does emit it after a real rename", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Sales");
+
+    const same = await patchGroupRequest(workspace.sId, group.sId, {
+      name: "Sales",
+    });
+    expect(same.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+
+    const renamed = await patchGroupRequest(workspace.sId, group.sId, {
+      name: "New Sales",
+    });
+    expect(renamed.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "group.name_updated",
+        metadata: {
+          previous_name: "Sales",
+          new_name: "New Sales",
+        },
+      })
+    );
+  });
+
+  it("does not rename or emit when a member id is unknown", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Sales");
+
+    const response = await patchGroupRequest(workspace.sId, group.sId, {
+      name: "New Sales",
+      memberIds: ["unknown"],
+    });
+
+    expect(response.status).toBe(404);
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+    const body = await (await getGroupRequest(workspace.sId, group.sId)).json();
+    expect(body.group.name).toBe("Sales");
+  });
+});
+
+describe("DELETE /api/w/:wId/groups/:groupId", () => {
+  it("emits group.deleted with the member count", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
+    const alice = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+    const group = await GroupFactory.regularManual(workspace, "Sales");
+    await GroupFactory.withMembers(auth, group, [alice]);
+
+    const response = await deleteGroupRequest(workspace.sId, group.sId);
+
+    expect(response.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "group.deleted",
+        metadata: {
+          group_name: "Sales",
+          member_count: "1",
+        },
+      })
+    );
   });
 });

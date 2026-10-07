@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -11,7 +12,22 @@ import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockReset();
+  vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
+});
 
 function getSpace(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`);
@@ -160,17 +176,65 @@ describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
     });
     const regularSpace = await SpaceFactory.regular(workspace);
 
+    const previousName = regularSpace.name;
     const regularResponse = await patchSpace(workspace, regularSpace.sId, {
       name: "Renamed space",
     });
     expect(regularResponse.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "space.name_updated",
+        metadata: {
+          previous_name: previousName,
+          new_name: "Renamed space",
+          space_kind: "regular",
+        },
+      })
+    );
 
     // The global space is always displayed as "Company Data" and its member group is named after
     // it, so it cannot be renamed.
+    vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
     const globalResponse = await patchSpace(workspace, globalSpace.sId, {
       name: "Not Company Data",
     });
     expect(globalResponse.status).toBe(400);
+    expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not emit space.name_updated when the trimmed name is unchanged", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    const response = await patchSpace(workspace, regularSpace.sId, {
+      name: `  ${regularSpace.name}  `,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).space.name).toBe(regularSpace.name);
+    expect(
+      vi
+        .mocked(workosAudit.emitAuditLogEvent)
+        .mock.calls.map((call) => call[0].action)
+    ).not.toContain("space.name_updated");
+
+    vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+    const renamed = await patchSpace(workspace, regularSpace.sId, {
+      name: "Renamed space",
+    });
+    expect(renamed.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "space.name_updated",
+        metadata: {
+          previous_name: regularSpace.name,
+          new_name: "Renamed space",
+          space_kind: "regular",
+        },
+      })
+    );
   });
 
   it("rejects renaming a space to a name longer than 256 characters", async () => {

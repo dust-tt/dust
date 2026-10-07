@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -6,7 +7,22 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockReset();
+  vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
+});
 
 function getGroupsRequest(wId: string, query: Record<string, string> = {}) {
   const qs = new URLSearchParams(query).toString();
@@ -147,5 +163,37 @@ describe("GET /api/w/:wId/groups", () => {
       canSetUsageLimits: true,
       canAssignManagers: false,
     });
+  });
+});
+
+describe("POST /api/w/:wId/groups", () => {
+  it("emits group.created with member and manager counts", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "group_management");
+
+    const response = await honoApp.request(`/api/w/${workspace.sId}/groups`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Sales",
+        memberIds: [user.sId],
+        managerIds: [user.sId],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "group.created",
+        metadata: {
+          group_name: "Sales",
+          member_count: "1",
+          manager_count: "1",
+        },
+      })
+    );
   });
 });

@@ -1,17 +1,22 @@
 import assert from "node:assert";
 
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { createGroupPlugin } from "@app/lib/api/poke/plugins/workspaces/create_group";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
   return { ...actual, emitAuditLogEvent: vi.fn().mockResolvedValue(undefined) };
+});
+
+beforeEach(() => {
+  vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
 });
 
 describe("createGroupPlugin.execute", () => {
@@ -37,6 +42,16 @@ describe("createGroupPlugin.execute", () => {
     const members = await group.getActiveMembers(auth);
     expect(members.map((m) => m.sId).sort()).toEqual(
       [alice.sId, bob.sId].sort()
+    );
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "group.created",
+        metadata: {
+          group_name: "Sales",
+          member_count: "2",
+          manager_count: "0",
+        },
+      })
     );
   });
 
