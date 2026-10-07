@@ -25,6 +25,7 @@ const authType: AuthenticatorType = {
   authMethod: "internal",
   groupIds: [],
   isByok: false,
+  gateway: null,
   role: "admin",
   subscriptionId: null,
   userId: null,
