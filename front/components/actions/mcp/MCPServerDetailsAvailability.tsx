@@ -9,6 +9,7 @@ import {
   Separator,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -90,6 +91,7 @@ export function MCPServerDetailsAvailability({
   spaces,
   confirmSkillsRestrictionChange,
 }: MCPServerDetailsAvailabilityProps) {
+  const { t } = useLingui();
   const form = useFormContext<MCPServerFormValues>();
   const sharingSettings = form.watch("sharingSettings") || {};
   const [filter, setFilter] = useState("");
@@ -144,7 +146,7 @@ export function MCPServerDetailsAvailability({
   const columns: ColumnDef<RowData>[] = [
     {
       id: "name",
-      header: "Name",
+      header: t`Name`,
       accessorKey: "name",
     },
     {
@@ -167,7 +169,7 @@ export function MCPServerDetailsAvailability({
     <div className="flex flex-col gap-5">
       <div className="pt-2">
         <AvailabilityRule
-          title="Restrict this tool to skills"
+          title={t`Restrict this tool to skills`}
           selected={isRestrictedToSkillsField.value}
           onToggle={() => {
             void handleSkillsRestrictionChange(
@@ -175,9 +177,17 @@ export function MCPServerDetailsAvailability({
             );
           }}
         >
-          {isRestrictedToSkillsField.value
-            ? "Agents can only reach this tool through a skill, which carries the workspace context and safety rules with it."
-            : "Agents can pick this tool up on its own, without a skill to frame how it is used."}
+          {isRestrictedToSkillsField.value ? (
+            <Trans>
+              Agents can only reach this tool through a skill, which carries the
+              workspace context and safety rules with it.
+            </Trans>
+          ) : (
+            <Trans>
+              Agents can pick this tool up on its own, without a skill to frame
+              how it is used.
+            </Trans>
+          )}
         </AvailabilityRule>
       </div>
 
@@ -186,7 +196,7 @@ export function MCPServerDetailsAvailability({
           <Separator />
 
           <AvailabilityRule
-            title="Available to all workspace members"
+            title={t`Available to all workspace members`}
             selected={!isRestricted}
             onToggle={() => {
               if (globalSpace) {
@@ -194,16 +204,23 @@ export function MCPServerDetailsAvailability({
               }
             }}
           >
-            {isRestricted
-              ? "These tools are only available to the users of the selected spaces."
-              : "These tools are accessible to everyone in the workspace."}
+            {isRestricted ? (
+              <Trans>
+                These tools are only available to the users of the selected
+                spaces.
+              </Trans>
+            ) : (
+              <Trans>
+                These tools are accessible to everyone in the workspace.
+              </Trans>
+            )}
           </AvailabilityRule>
 
           {isRestricted && (
             <div className="flex flex-col gap-2">
               <SearchInput
                 name="filter"
-                placeholder="Search a space"
+                placeholder={t`Search a space`}
                 className="w-full"
                 value={filter}
                 onChange={(e) => setFilter(e)}

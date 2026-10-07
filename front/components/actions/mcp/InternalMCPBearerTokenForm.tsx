@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
   Input,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useFormContext, useWatch } from "react-hook-form";
 
 interface InternalMCPBearerTokenFormProps {
@@ -22,12 +23,15 @@ export function InternalMCPBearerTokenForm({
   });
 
   const { label, placeholder, tooltip } = getTokenFieldLabel(serverName);
+  const headerCount = (customHeaders ?? []).length;
 
   return (
     <div className="space-y-5 text-foreground">
       <Collapsible>
         <CollapsibleTrigger className="pb-2">
-          <div className="heading-lg">Authorization</div>
+          <div className="heading-lg">
+            <Trans>Authorization</Trans>
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
@@ -45,7 +49,7 @@ export function InternalMCPBearerTokenForm({
       <Collapsible>
         <CollapsibleTrigger className="pb-2">
           <div className="heading-lg">
-            Headers ({(customHeaders ?? []).length})
+            <Trans>Headers ({headerCount})</Trans>
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>

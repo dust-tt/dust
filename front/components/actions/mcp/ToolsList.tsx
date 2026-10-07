@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
   InfoCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { memo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
@@ -58,6 +59,7 @@ function ToolItem({
   settings,
   onChange,
 }: ToolItemProps) {
+  const { t } = useLingui();
   const toolPermission = settings.permission;
   const toolEnabled = settings.enabled;
 
@@ -85,7 +87,7 @@ function ToolItem({
       </div>
       {tool.description && (
         <Collapsible>
-          <CollapsibleTrigger label="Description" variant="secondary" />
+          <CollapsibleTrigger label={t`Description`} variant="secondary" />
           <CollapsibleContent>
             <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
               {tool.description}
@@ -96,7 +98,7 @@ function ToolItem({
       {toolEnabled && (
         <Card variant="primary" className="flex-col">
           <div className="heading-sm text-muted-foreground">
-            Tool stake setting
+            <Trans>Tool stake setting</Trans>
           </div>
           <div className="flex justify-end">
             <DropdownMenu>
@@ -134,6 +136,7 @@ const noop = () => {};
 // you can configure per agent
 export const ToolsList = memo(
   ({ owner, mcpServerView, disableUpdates }: ToolsListProps) => {
+    const { t } = useLingui();
     const formContext = useFormContext<MCPServerFormValues>();
     const mayUpdate = !disableUpdates && isAdmin(owner);
     const { tools } = mcpServerView.server;
@@ -142,10 +145,14 @@ export const ToolsList = memo(
       return null;
     }
 
+    const toolCount = tools.length;
+
     return (
-      <Collapsible defaultOpen={tools.length <= 5}>
+      <Collapsible defaultOpen={toolCount <= 5}>
         <CollapsibleTrigger>
-          <div className="heading-lg">Available Tools ({tools.length})</div>
+          <div className="heading-lg">
+            <Trans>Available tools ({toolCount})</Trans>
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <>
@@ -154,7 +161,7 @@ export const ToolsList = memo(
               variant="blue"
               size="lg"
               icon={InfoCircle}
-              title="User Approval Settings"
+              title={t`User approval settings`}
             >
               <ul>
                 {MCP_TOOL_STAKE_LEVELS.map((stakeLevel) => (

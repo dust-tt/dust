@@ -1,4 +1,3 @@
-import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import {
   PokeTable,
   PokeTableBody,
@@ -10,8 +9,14 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { PokeMCPServerViewType } from "@app/types/poke";
 import type { LightWorkspaceType } from "@app/types/user";
+
+const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
+  platform_actions: "Shared account",
+  personal_actions: "Personal accounts",
+};
 
 interface ViewMCPServerViewTableProps {
   mcpServerView: PokeMCPServerViewType;

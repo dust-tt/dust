@@ -31,6 +31,7 @@ import {
   TabsTrigger,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -64,6 +65,7 @@ export function MCPServerDetailsSheet({
   sensitivityLabelsController,
   confirmSkillsRestrictionChange,
 }: MCPServerDetailsSheetProps) {
+  const { t } = useLingui();
   const [selectedTab, setSelectedTab] = useState<TabType>("general");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,10 +116,9 @@ export function MCPServerDetailsSheet({
 
     if (hasUnsavedChanges) {
       const confirmed = await confirm({
-        title: "Unsaved changes will be lost",
-        message:
-          "All unsaved changes will be lost. Are you sure you want to close?",
-        validateLabel: "Close without saving",
+        title: t`Unsaved changes will be lost`,
+        message: t`All unsaved changes will be lost. Are you sure you want to close?`,
+        validateLabel: t`Close without saving`,
         validateVariant: "warning",
       });
       if (!confirmed) {
@@ -134,21 +135,21 @@ export function MCPServerDetailsSheet({
       return;
     }
     const server = mcpServerView.server;
+    const serverName = getMcpServerViewDisplayName(mcpServerView);
     const confirmed = await confirm({
-      title: "Confirm Removal",
+      title: t`Confirm removal`,
       message: (
         <div>
-          Are you sure you want to remove {""}
-          <span className="font-semibold">
-            {getMcpServerViewDisplayName(mcpServerView)}
-          </span>
-          ?
+          <Trans>
+            Are you sure you want to remove{" "}
+            <span className="font-semibold">{serverName}</span>?
+          </Trans>
           <div className="mt-2 font-semibold">
-            This action cannot be undone.
+            <Trans>This action cannot be undone.</Trans>
           </div>
         </div>
       ),
-      validateLabel: "Remove",
+      validateLabel: t`Remove`,
       validateVariant: "warning",
     });
     if (!confirmed) {
@@ -181,9 +182,9 @@ export function MCPServerDetailsSheet({
               onValueChange={(v) => setSelectedTab(v as TabType)}
             >
               <TabsList>
-                <TabsTrigger value="general" label="General" />
-                <TabsTrigger value="tools" label="Tools & Stakes" />
-                <TabsTrigger value="availability" label="Availability" />
+                <TabsTrigger value="general" label={t`General`} />
+                <TabsTrigger value="tools" label={t`Tools & stakes`} />
+                <TabsTrigger value="availability" label={t`Availability`} />
                 {mcpServerView?.server.availability === "manual" && (
                   <>
                     <div className="grow" />
@@ -191,7 +192,7 @@ export function MCPServerDetailsSheet({
                       <Button
                         icon={Trash01}
                         variant="warning"
-                        label={isDeleting ? "Removing..." : "Remove"}
+                        label={isDeleting ? t`Removing...` : t`Remove`}
                         size="sm"
                         disabled={isDeleting}
                         onClick={() => void handleRemove()}
@@ -244,7 +245,7 @@ export function MCPServerDetailsSheet({
           <div className="mt-2">
             <div className="flex flex-row gap-2 border-t border-border px-3 py-3">
               <Button
-                label="Cancel"
+                label={t`Cancel`}
                 variant="outline"
                 disabled={isSaving || form.formState.isSubmitting}
                 onClick={() => handleOpenChange(false)}
@@ -252,7 +253,9 @@ export function MCPServerDetailsSheet({
               <div className="flex-grow" />
               <Button
                 label={
-                  isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
+                  isSaving || form.formState.isSubmitting
+                    ? t`Saving...`
+                    : t`Save`
                 }
                 variant="primary"
                 disabled={

@@ -37,7 +37,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -204,6 +204,7 @@ export function MCPServerDetailsTools({
   mcpServerView,
   controller,
 }: MCPServerDetailsToolsProps) {
+  const { t } = useLingui();
   const {
     search,
     setSearch,
@@ -220,17 +221,20 @@ export function MCPServerDetailsTools({
   if (tools.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        This server exposes no tools.
+        <Trans>This server exposes no tools.</Trans>
       </p>
     );
   }
 
+  const toolCount = tools.length;
+  const visibleToolCount = visibleTools.length;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="heading-base text-foreground">
-        {visibleTools.length === tools.length
-          ? `${tools.length} tools available`
-          : `${visibleTools.length} of ${tools.length} tools available`}
+        {visibleToolCount === toolCount
+          ? t`${plural(toolCount, { one: "# tool available", other: "# tools available" })}`
+          : t`${visibleToolCount} of ${plural(toolCount, { one: "# tool available", other: "# tools available" })}`}
       </div>
 
       <ContentMessage
@@ -238,7 +242,7 @@ export function MCPServerDetailsTools({
         variant="blue"
         size="lg"
         icon={InfoCircle}
-        title="User Approval Settings"
+        title={t`User approval settings`}
       >
         <ul>
           {MCP_TOOL_STAKE_LEVELS.map((stakeLevel) => (
@@ -253,7 +257,7 @@ export function MCPServerDetailsTools({
       <div className="flex items-center gap-2">
         <SearchInput
           name="tool-filter"
-          placeholder="Search tools"
+          placeholder={t`Search tools`}
           className="grow"
           value={search}
           onChange={setSearch}
@@ -261,7 +265,7 @@ export function MCPServerDetailsTools({
         <Button
           size="sm"
           variant="outline"
-          label={areAllVisibleSelected ? "Deselect all" : "Select all"}
+          label={areAllVisibleSelected ? t`Deselect all` : t`Select all`}
           disabled={visibleTools.length === 0}
           onClick={toggleSelectAllVisible}
         />
@@ -269,7 +273,7 @@ export function MCPServerDetailsTools({
 
       {visibleTools.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No tool matches that search.
+          <Trans>No tool matches that search.</Trans>
         </p>
       ) : (
         <ListGroup>
@@ -316,6 +320,8 @@ function ToolRow({
   onSelectedChange,
   onPatch,
 }: ToolRowProps) {
+  const { t } = useLingui();
+  const toolDisplayName = asDisplayName(tool.name);
   const checkboxId = `select-tool-${encodeMCPToolNameForForm(tool.name)}`;
 
   return (
@@ -333,8 +339,8 @@ function ToolRow({
             checked={isSelected}
             aria-label={
               isSelected
-                ? `Deselect ${asDisplayName(tool.name)}`
-                : `Select ${asDisplayName(tool.name)}`
+                ? t`Deselect ${toolDisplayName}`
+                : t`Select ${toolDisplayName}`
             }
             onCheckedChange={onSelectedChange}
           />
@@ -344,7 +350,7 @@ function ToolRow({
               settings.enabled ? "text-foreground" : "text-muted-foreground"
             )}
           >
-            {asDisplayName(tool.name)}
+            {toolDisplayName}
           </span>
         </Label>
         <SliderToggle
@@ -367,7 +373,9 @@ function ToolRow({
 
       {settings.enabled && (
         <div className="flex w-full items-center justify-between gap-2 pl-6">
-          <Label isMuted>Stake</Label>
+          <Label isMuted>
+            <Trans>Stake</Trans>
+          </Label>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -407,6 +415,7 @@ export function ClampedDescription({
   description,
   className,
 }: ClampedDescriptionProps) {
+  const { t } = useLingui();
   const textRef = useRef<HTMLParagraphElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
@@ -435,7 +444,7 @@ export function ClampedDescription({
         <Button
           size="xs"
           variant="ghost-secondary"
-          label={isExpanded ? "Show less" : "Show more"}
+          label={isExpanded ? t`Show less` : t`Show more`}
           onClick={() => setIsExpanded(!isExpanded)}
         />
       )}
@@ -470,10 +479,10 @@ export function MCPServerDetailsToolsBulkBar({
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="primary" isSelect label="Set stake" />
+          <Button size="sm" variant="primary" isSelect label={t`Set stake`} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top">
-          <DropdownMenuLabel label="Set stake" />
+          <DropdownMenuLabel label={t`Set stake`} />
           {selectionStakeLevels.map((stakeLevel) => (
             <DropdownMenuItem
               key={stakeLevel}
@@ -485,18 +494,18 @@ export function MCPServerDetailsToolsBulkBar({
       </DropdownMenu>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="primary" isSelect label="State" />
+          <Button size="sm" variant="primary" isSelect label={t`State`} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top">
-          <DropdownMenuLabel label="State" />
+          <DropdownMenuLabel label={t`State`} />
           <DropdownMenuItem
             icon={Check}
-            label="Enable"
+            label={t`Enable`}
             onClick={() => applyToSelection({ enabled: true })}
           />
           <DropdownMenuItem
             icon={XClose}
-            label="Disable"
+            label={t`Disable`}
             onClick={() => applyToSelection({ enabled: false })}
           />
         </DropdownMenuContent>
