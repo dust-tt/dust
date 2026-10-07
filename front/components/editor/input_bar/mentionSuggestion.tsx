@@ -15,7 +15,7 @@ import type { RefAttributes } from "react";
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");
 
-// Longer than any agent or user name in practice.
+// Longer than any agent or user name in practice; agent name search returns nothing past this.
 const MAX_MENTION_QUERY_LENGTH = 256;
 
 export function createMentionSuggestion({
@@ -43,8 +43,8 @@ export function createMentionSuggestion({
     // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
     // text and keeps the dropdown active over the full label).
     allowSpaces: true,
-    // With spaces allowed, the query runs to the end of the line. Past any name's length, the user
-    // is writing text: close the dropdown and stop searching.
+    // With spaces allowed, the query is all the text from the "@" to the cursor. Past any name's
+    // length, the user is writing text: close the dropdown and stop searching.
     shouldShow: ({ query }: { query: string }) =>
       query.length <= MAX_MENTION_QUERY_LENGTH,
 
