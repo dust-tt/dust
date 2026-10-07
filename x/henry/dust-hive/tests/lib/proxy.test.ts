@@ -27,6 +27,28 @@ describe("proxy routing", () => {
     }
   }, 30_000);
 
+  it("answers 503 on /collab when started without a collab port", async () => {
+    const upstream = Bun.serve({
+      port: 0,
+      hostname: "localhost",
+      fetch: () => new Response("ok"),
+    });
+    // What an older CLI does: it passes no collab port.
+    const proxy = startProxy(0, {
+      "front-api": upstream.port ?? 0,
+      marketing: upstream.port ?? 0,
+    });
+    try {
+      const collab = await fetch(`http://localhost:${proxy.port}/collab`);
+      expect(collab.status).toBe(503);
+      const api = await fetch(`http://localhost:${proxy.port}/api/healthz`);
+      expect(api.status).toBe(200);
+    } finally {
+      proxy.stop(true);
+      upstream.stop(true);
+    }
+  });
+
   describe("routeFor", () => {
     it("routes /api/* to front-api", () => {
       expect(routeFor("/api/auth-context")).toBe("front-api");
