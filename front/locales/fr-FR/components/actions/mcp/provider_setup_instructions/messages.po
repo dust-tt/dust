@@ -93,7 +93,7 @@ msgstr "Consumer Key de l’enregistrement d’intégration (étape 4)"
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Client Secret"
-msgstr "Client Secret"
+msgstr "Secret client"
 
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 msgid "Consumer Secret from the integration record (step 4)"
@@ -112,7 +112,7 @@ msgstr "URL du jeton"
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Scope"
-msgstr "Portée"
+msgstr "Périmètre"
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Power BI OAuth setup guide"
@@ -184,11 +184,11 @@ msgstr "La Value du secret de l’étape 3"
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "<0>Important:</0> the scope must use <1>analysis.windows.net</1>, not <2>api.fabric.microsoft.com</2>."
-msgstr "<0>Important :</0> le scope doit utiliser <1>analysis.windows.net</1>, et non <2>api.fabric.microsoft.com</2>."
+msgstr "<0>Important :</0> le périmètre doit utiliser <1>analysis.windows.net</1>, et non <2>api.fabric.microsoft.com</2>."
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "The <0>offline_access</0> scope allows Dust to automatically refresh the authentication token in the background, so users don't have to re-authenticate every time the token expires (typically after one hour)."
-msgstr "Le scope <0>offline_access</0> permet à Dust d’actualiser automatiquement le jeton d’authentification en arrière-plan, pour que les utilisateurs n’aient pas à se réauthentifier à chaque expiration du jeton (généralement au bout d’une heure)."
+msgstr "Le périmètre <0>offline_access</0> permet à Dust d’actualiser automatiquement le jeton d’authentification en arrière-plan, pour que les utilisateurs n’aient pas à se réauthentifier à chaque expiration du jeton (généralement au bout d’une heure)."
 
 #: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
 msgid "Snowflake custom OAuth setup guide"
@@ -204,7 +204,7 @@ msgstr "1. Créer la Security Integration OAuth :"
 
 #: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
 msgid "2. Get the Client ID and Client Secret:"
-msgstr "2. Récupérer le Client ID et le Client Secret :"
+msgstr "2. Récupérer l’ID client et le secret client :"
 
 #: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
 msgid "This returns a JSON object with <0>OAUTH_CLIENT_ID</0> and <1>OAUTH_CLIENT_SECRET</1>. Copy these values into the form below."

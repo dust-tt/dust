@@ -350,7 +350,7 @@ msgstr "Créer une clé API"
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "new key scope spaces monthly cap"
-msgstr "nouvelle clé portée espaces plafond mensuel"
+msgstr "nouvelle clé périmètre espaces plafond mensuel"
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "API key list"
@@ -358,7 +358,7 @@ msgstr "Liste des clés API"
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "name scope key spaces credits last used status"
-msgstr "nom portée clé espaces crédits dernière utilisation statut"
+msgstr "nom périmètre clé espaces crédits dernière utilisation statut"
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "Revoke API key"

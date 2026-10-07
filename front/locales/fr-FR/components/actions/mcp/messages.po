@@ -131,11 +131,11 @@ msgstr "Type de connexion"
 
 #: front/components/actions/mcp/MCPServerAuthConnection.tsx
 msgid "Customize scopes ({enabledOptionalScopeCount}/{optionalScopeCount} optional enabled)"
-msgstr "Personnaliser les portées ({enabledOptionalScopeCount}/{optionalScopeCount} optionnelles activées)"
+msgstr "Personnaliser les périmètres ({enabledOptionalScopeCount}/{optionalScopeCount} optionnels activés)"
 
 #: front/components/actions/mcp/MCPServerAuthConnection.tsx
 msgid "Customize scopes"
-msgstr "Personnaliser les portées"
+msgstr "Personnaliser les périmètres"
 
 #: front/components/actions/mcp/MCPServerAuthConnection.tsx
 msgid "Questions? Read <0>our guide</0> on {toolName}."

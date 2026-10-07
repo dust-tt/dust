@@ -359,7 +359,7 @@ msgstr "Clé API introuvable."
 
 #: front/lib/api_error_messages.ts
 msgid "The API key doesn't have the required scope."
-msgstr "La clé API n’a pas la portée requise."
+msgstr "La clé API n’a pas le périmètre requis."
 
 #: front/lib/api_error_messages.ts
 msgid "Transcripts configuration not found."

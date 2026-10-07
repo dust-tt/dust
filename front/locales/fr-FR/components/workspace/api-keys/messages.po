@@ -108,7 +108,7 @@ msgstr "Sans nom"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Scope"
-msgstr "Portée"
+msgstr "Périmètre"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Key"
@@ -252,7 +252,7 @@ msgstr "Aucun espace trouvé"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Access scope"
-msgstr "Portée de l’accès"
+msgstr "Périmètre de l’accès"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Can create conversations, read agents and data sources."

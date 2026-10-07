@@ -32,7 +32,7 @@ msgstr "Tous"
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
 msgid "Scopes"
-msgstr "Portées"
+msgstr "Périmètres"
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
 msgid "Groups"

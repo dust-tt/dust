@@ -142,11 +142,11 @@ msgstr "Description"
 
 #: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
 msgid "Customize OAuth scopes"
-msgstr "Personnaliser les portées OAuth"
+msgstr "Personnaliser les périmètres OAuth"
 
 #: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
 msgid "Select which permissions to request. Required scopes cannot be removed."
-msgstr "Sélectionnez les permissions à demander. Les portées obligatoires ne peuvent pas être retirées."
+msgstr "Sélectionnez les permissions à demander. Les périmètres obligatoires ne peuvent pas être retirés."
 
 #: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
 msgctxt "OAuth scope badge"
