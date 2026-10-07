@@ -1,5 +1,6 @@
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+import { Trans } from "@lingui/react/macro";
 
 interface DiscoverButtonProps {
   onClick: () => void;
@@ -38,7 +39,7 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
               "-translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
-          Discover Skills and Agents
+          <Trans>Discover skills and agents</Trans>
         </span>
         <span
           aria-hidden={!isOpening}
@@ -48,7 +49,7 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
               "translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
-          Opening Discover
+          <Trans>Opening Discover</Trans>
         </span>
       </span>
     </button>

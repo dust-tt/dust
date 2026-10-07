@@ -15,10 +15,10 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -34,6 +34,9 @@ import {
   TextCellSkeleton,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
   PaginationState,
@@ -44,6 +47,12 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
+
+const SCOPE_SHORT_LABELS: Record<AgentConfigurationScope, MessageDescriptor> = {
+  global: msg({ message: "Default", context: "agent scope" }),
+  hidden: msg`Not published`,
+  visible: msg`Published`,
+};
 
 interface AgentSearchTableProps {
   owner: LightWorkspaceType;
@@ -159,7 +168,7 @@ function AgentSearchTagSelector({
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
  * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner`, `readOnly`,
- * `renderActions` or the theme change, never on data the table loads itself. Callers MUST keep
+ * `renderActions`, the theme or the locale change, never on data the table loads itself. Callers MUST keep
  * `canSelect`, `onSelect`, `onRefresh` and `renderActions` referentially stable while the search
  * inputs are unchanged.
  */
@@ -193,6 +202,7 @@ export function AgentSearchTable({
   setSelectedAgentIds,
   canSelect,
 }: AgentSearchTableProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const columns = useMemo(
     () =>
@@ -220,8 +230,8 @@ export function AgentSearchTable({
                   }
                   tooltip={
                     areAllPageRowsSelected
-                      ? "Clear selection"
-                      : "Select all on page"
+                      ? t`Clear selection`
+                      : t`Select all on page`
                   }
                   onClick={(event) => event.stopPropagation()}
                   onCheckedChange={(checked) => {
@@ -241,6 +251,7 @@ export function AgentSearchTable({
               return null;
             }
             const checkboxId = `select-agent-${row.id}`;
+            const agentName = row.original.name;
             return (
               // Keep the click from reaching the row, which opens the agent details.
               <Label
@@ -253,8 +264,8 @@ export function AgentSearchTable({
                   id={checkboxId}
                   aria-label={
                     row.getIsSelected()
-                      ? `Deselect ${row.original.name}`
-                      : `Select ${row.original.name}`
+                      ? t`Deselect ${agentName}`
+                      : t`Select ${agentName}`
                   }
                   checked={row.getIsSelected()}
                   onCheckedChange={(checked) => row.toggleSelected(!!checked)}
@@ -267,7 +278,7 @@ export function AgentSearchTable({
         {
           id: "name" as const,
           accessorKey: "name",
-          header: "Name",
+          header: t`Name`,
           sortDescFirst: false,
           enableMultiSort: false,
           cell: ({ row: { original: agent } }) => (
@@ -309,13 +320,13 @@ export function AgentSearchTable({
         },
         {
           id: "access" as const,
-          header: "Access",
+          header: t`Access`,
           cell: ({ row: { original: agent } }) => (
             <DataTable.CellContent>
               {agent.scope !== "hidden" && (
                 <Chip
                   size="xs"
-                  label={SCOPE_INFO[agent.scope].shortLabel}
+                  label={t(SCOPE_SHORT_LABELS[agent.scope])}
                   color={SCOPE_INFO[agent.scope].color}
                   icon={SCOPE_INFO[agent.scope].icon}
                 />
@@ -329,7 +340,7 @@ export function AgentSearchTable({
         },
         {
           id: "model" as const,
-          header: "Model",
+          header: t`Model`,
           cell: ({ row: { original: agent } }) => (
             <AgentSearchModelCell model={agent.model} isDark={isDark} />
           ),
@@ -341,7 +352,7 @@ export function AgentSearchTable({
         {
           id: "usage" as const,
           accessorKey: "activeUsersCount",
-          header: "Usage",
+          header: t`Usage`,
           sortDescFirst: true,
           enableMultiSort: false,
           cell: ({ row: { original: agent } }) => (
@@ -354,8 +365,8 @@ export function AgentSearchTable({
               }
               tooltip={
                 agent.activeUsersCount === null
-                  ? "Usage is not available for this agent."
-                  : "Number of active users in the last 30 days."
+                  ? t`Usage is not available for this agent.`
+                  : t`Number of active users in the last 30 days.`
               }
             />
           ),
@@ -367,17 +378,21 @@ export function AgentSearchTable({
         },
         {
           id: "feedback" as const,
-          header: "Feedback",
+          header: t`Feedback`,
           cell: ({ row: { original: agent } }) => {
             if (agent.scope === "global") {
               return <DataTable.BasicCellContent label="-" />;
             }
             const { up, down } = agent.feedbacks;
+            const total = up + down;
             return (
               <DataTable.BasicCellContent
                 className="font-mono"
-                label={`${up + down}`}
-                tooltip={`${up} positive and ${down} negative feedback${pluralize(up + down)}`}
+                label={`${total}`}
+                tooltip={t`${plural(total, {
+                  one: `${up} positive and ${down} negative feedback`,
+                  other: `${up} positive and ${down} negative feedbacks`,
+                })}`}
               />
             );
           },
@@ -388,7 +403,7 @@ export function AgentSearchTable({
         },
         {
           id: "editors" as const,
-          header: "Editors",
+          header: t`Editors`,
           cell: ({ row: { original: agent } }) => (
             <SkillEditorsCell
               editors={agent.scope === "global" ? null : agent.editors}
@@ -398,7 +413,7 @@ export function AgentSearchTable({
         },
         {
           id: "tags" as const,
-          header: "Tags",
+          header: t`Tags`,
           cell: ({ row: { original: agent } }) => {
             const tagNames = agent.tags.map((tag) => tag.name).join(", ");
             return (
@@ -430,7 +445,7 @@ export function AgentSearchTable({
         {
           id: "updatedAt" as const,
           accessorKey: "updatedAt",
-          header: "Last edited",
+          header: t`Last edited`,
           sortDescFirst: true,
           enableMultiSort: false,
           cell: ({ row: { original: agent } }) => (
@@ -466,7 +481,7 @@ export function AgentSearchTable({
           meta: { className: "w-14 md:hidden md:@md:table-cell" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, onRefresh, onSelect, owner, readOnly, renderActions]
+    [canSelect, isDark, onRefresh, onSelect, owner, readOnly, renderActions, t]
   );
 
   const hasSelectableRows = !readOnly && agents.some(canSelect);
@@ -485,7 +500,11 @@ export function AgentSearchTable({
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && agents.length === 0) {
     return (
-      <div role="status" aria-label="Loading agents" className={tableClassName}>
+      <div
+        role="status"
+        aria-label={t`Loading agents`}
+        className={tableClassName}
+      >
         <DataTableSkeleton
           columns={visibleColumns}
           rowCount={12}

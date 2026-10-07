@@ -31,12 +31,13 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 const PIN_POSITIONS = [0, 1, 2];
 
-function getAudienceName(group: GroupType): string {
-  return group.kind === "global" ? "Everyone" : group.name;
+function getAudienceName(group: GroupType, everyoneLabel: string): string {
+  return group.kind === "global" ? everyoneLabel : group.name;
 }
 
 interface DiscoverPinDialogProps {
@@ -50,6 +51,8 @@ export function DiscoverPinDialog({
   item,
   onClose,
 }: DiscoverPinDialogProps) {
+  const { t } = useLingui();
+  const everyoneLabel = t`Everyone`;
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: USER_VISIBLE_GROUP_KINDS,
@@ -73,9 +76,9 @@ export function DiscoverPinDialog({
       return audiences;
     }
     return audiences.filter((g) =>
-      getAudienceName(g).toLowerCase().includes(query)
+      getAudienceName(g, everyoneLabel).toLowerCase().includes(query)
     );
-  }, [audiences, audienceQuery]);
+  }, [audiences, audienceQuery, everyoneLabel]);
   const { doPin, isPinning } = usePinDiscoveryItem({ workspaceId: owner.sId });
 
   const name = getItemName(item);
@@ -90,7 +93,7 @@ export function DiscoverPinDialog({
       type: item.kind,
       itemId: getItemId(item),
       itemName: name,
-      audienceName: getAudienceName(group),
+      audienceName: getAudienceName(group, everyoneLabel),
     });
     if (pinned) {
       onClose();
@@ -106,16 +109,22 @@ export function DiscoverPinDialog({
       >
         <DialogHeader>
           <DialogTitle className="pr-8">
-            Pin <span className="notranslate">{name}</span>
+            <Trans>
+              Pin <span className="notranslate">{name}</span>
+            </Trans>
           </DialogTitle>
           <DialogDescription>
-            It will show at the top of Featured for the audience you pick.
+            <Trans>
+              It will show at the top of Featured for the audience you pick.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <span className="heading-sm text-foreground">Show to</span>
+              <span className="heading-sm text-foreground">
+                <Trans>Show to</Trans>
+              </span>
               <DropdownMenu
                 modal={false}
                 open={audienceOpen}
@@ -130,7 +139,11 @@ export function DiscoverPinDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    label={group ? getAudienceName(group) : "Loading…"}
+                    label={
+                      group
+                        ? getAudienceName(group, everyoneLabel)
+                        : t`Loading…`
+                    }
                     isSelect
                     disabled={!group}
                     className="w-fit"
@@ -144,7 +157,7 @@ export function DiscoverPinDialog({
                   <DropdownMenuSearchbar
                     autoFocus
                     name="audience-search"
-                    placeholder="Search groups"
+                    placeholder={t`Search groups`}
                     value={audienceQuery}
                     onChange={setAudienceQuery}
                   />
@@ -157,13 +170,13 @@ export function DiscoverPinDialog({
                       filteredAudiences.map((g) => (
                         <DropdownMenuItem
                           key={g.sId}
-                          label={getAudienceName(g)}
+                          label={getAudienceName(g, everyoneLabel)}
                           onClick={() => setSelectedGroup(g)}
                         />
                       ))
                     ) : (
                       <div className="flex h-16 items-center justify-center text-sm text-muted-foreground">
-                        No groups found
+                        <Trans>No groups found</Trans>
                       </div>
                     )}
                   </div>
@@ -182,11 +195,11 @@ export function DiscoverPinDialog({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Pin",
+            label: t({ message: "Pin", context: "verb, button label" }),
             variant: "highlight",
             disabled: !group,
             isLoading: isPinning,
@@ -214,6 +227,7 @@ function PinPositions({
   position,
   onPositionChange,
 }: PinPositionsProps) {
+  const { t } = useLingui();
   const { groupPins, isGroupPinsLoading, isGroupPinsRefreshing } =
     useGroupDiscoveryPins({
       workspaceId: owner.sId,
@@ -223,23 +237,26 @@ function PinPositions({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="heading-sm text-foreground">Position</span>
+        <span className="heading-sm text-foreground">
+          <Trans>Position</Trans>
+        </span>
         {isGroupPinsRefreshing && <Spinner size="xs" />}
       </div>
       <div
         role="radiogroup"
-        aria-label="Position in Featured"
+        aria-label={t`Position in Featured`}
         className="grid grid-cols-3 gap-3"
       >
         {PIN_POSITIONS.map((i) => {
           const current = groupPins.find((p) => p.pin.position === i);
+          const positionNumber = i + 1;
           return (
             <button
               key={i}
               type="button"
               role="radio"
               aria-checked={position === i}
-              aria-label={`Position ${i + 1}`}
+              aria-label={t`Position ${positionNumber}`}
               onClick={() => onPositionChange(i)}
               className={cn(
                 "flex h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2",
@@ -260,7 +277,7 @@ function PinPositions({
                   </span>
                 </>
               ) : (
-                <span className="heading-lg">{i + 1}</span>
+                <span className="heading-lg">{positionNumber}</span>
               )}
             </button>
           );
