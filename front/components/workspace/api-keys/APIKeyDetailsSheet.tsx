@@ -11,6 +11,7 @@ import type { KeyType } from "@app/types/key";
 import {
   Chip,
   Label,
+  LoadingBlock,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -31,16 +32,16 @@ interface APIKeyDetailsSheetProps {
   // Credits used over the selected period, null when unknown. Shown only with
   // `showAnalyticsConsumption`.
   credits: number | null;
+  isCreditsLoading: boolean;
   showAnalyticsConsumption: boolean;
 }
 
-function DetailsSection({
-  title,
-  children,
-}: {
+interface DetailsSectionProps {
   title: string;
   children: ReactNode;
-}) {
+}
+
+function DetailsSection({ title, children }: DetailsSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <Label>{title}</Label>
@@ -49,11 +50,19 @@ function DetailsSection({
   );
 }
 
-function Description({ children }: { children: ReactNode }) {
+interface DescriptionProps {
+  children: ReactNode;
+}
+
+function Description({ children }: DescriptionProps) {
   return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
-function NameChips({ items }: { items: { sId: string; name: string }[] }) {
+interface NameChipsProps {
+  items: { sId: string; name: string }[];
+}
+
+function NameChips({ items }: NameChipsProps) {
   return (
     <div className="flex flex-wrap gap-1">
       {items.map((item) => (
@@ -69,6 +78,7 @@ export function APIKeyDetailsSheet({
   monthlyCap,
   monthlyCapLabel,
   credits,
+  isCreditsLoading,
   showAnalyticsConsumption,
 }: APIKeyDetailsSheetProps) {
   const { t } = useLingui();
@@ -89,6 +99,7 @@ export function APIKeyDetailsSheet({
             monthlyCap={monthlyCap}
             monthlyCapLabel={monthlyCapLabel}
             credits={credits}
+            isCreditsLoading={isCreditsLoading}
             showAnalyticsConsumption={showAnalyticsConsumption}
           />
         )}
@@ -104,15 +115,21 @@ export function APIKeyDetailsSheet({
   );
 }
 
+interface APIKeyDetailsProps extends Omit<
+  APIKeyDetailsSheetProps,
+  "apiKey" | "onClose"
+> {
+  apiKey: KeyType;
+}
+
 function APIKeyDetails({
   apiKey,
   monthlyCap,
   monthlyCapLabel,
   credits,
+  isCreditsLoading,
   showAnalyticsConsumption,
-}: Omit<APIKeyDetailsSheetProps, "apiKey" | "onClose"> & {
-  apiKey: KeyType;
-}) {
+}: APIKeyDetailsProps) {
   const { t } = useLingui();
   const status = getKeyStatus(apiKey);
   const isAdmin = apiKey.role === "admin";
@@ -123,7 +140,7 @@ function APIKeyDetails({
   return (
     <>
       <SheetHeader>
-        <SheetTitle>{name}</SheetTitle>
+        <SheetTitle className="dd-privacy-mask">{name}</SheetTitle>
       </SheetHeader>
       <SheetContainer>
         <div className="dd-privacy-mask space-y-4">
@@ -143,7 +160,12 @@ function APIKeyDetails({
             </p>
           </DetailsSection>
 
-          <DetailsSection title={t`Created`}>
+          <DetailsSection
+            title={t({
+              message: "Created",
+              context: "API key details section, creation date",
+            })}
+          >
             <Description>
               <Trans>
                 {createdOn} by {creator}
@@ -197,9 +219,13 @@ function APIKeyDetails({
 
           {showAnalyticsConsumption && (
             <DetailsSection title={t`Credits used`}>
-              <Description>
-                {credits === null ? "—" : formatCredits(credits)}
-              </Description>
+              {isCreditsLoading ? (
+                <LoadingBlock className="h-3 w-16" />
+              ) : (
+                <Description>
+                  {credits === null ? "—" : formatCredits(credits)}
+                </Description>
+              )}
             </DetailsSection>
           )}
         </div>

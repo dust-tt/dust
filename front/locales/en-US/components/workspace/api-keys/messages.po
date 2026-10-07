@@ -67,6 +67,7 @@ msgid "Key"
 msgstr "Key"
 
 #: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgctxt "API key details section, creation date"
 msgid "Created"
 msgstr "Created"
 

@@ -565,7 +565,9 @@ export function APIKeysTable({
     pageSize: API_KEYS_PAGE_SIZE,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [detailsKeyId, setDetailsKeyId] = useState<ModelId | null>(null);
+  const [detailsKeyModelId, setDetailsKeyModelId] = useState<ModelId | null>(
+    null
+  );
 
   const { spaces: workspaceSpaces, isSpacesLoading } = useSpacesAsAdmin({
     workspaceId,
@@ -654,7 +656,7 @@ export function APIKeysTable({
           }),
           lastUsedAt: key.lastUsedAt,
           menuItems,
-          onClick: () => setDetailsKeyId(key.id),
+          onClick: () => setDetailsKeyModelId(key.id),
         };
       }),
     [
@@ -671,7 +673,8 @@ export function APIKeysTable({
     ]
   );
 
-  const detailsRow = rows.find((row) => row.key.id === detailsKeyId) ?? null;
+  const detailsRow =
+    rows.find((row) => row.key.id === detailsKeyModelId) ?? null;
   const monthlyCapLabel = showCreditMonthlyCap
     ? t`Credits cap`
     : t`Monthly cap`;
@@ -772,10 +775,11 @@ export function APIKeysTable({
     >
       <APIKeyDetailsSheet
         apiKey={detailsRow?.key ?? null}
-        onClose={() => setDetailsKeyId(null)}
+        onClose={() => setDetailsKeyModelId(null)}
         monthlyCap={detailsRow?.monthlyCap ?? null}
         monthlyCapLabel={monthlyCapLabel}
         credits={detailsRow?.credits ?? null}
+        isCreditsLoading={isConsumptionLoading}
         showAnalyticsConsumption={showAnalyticsConsumption}
       />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
