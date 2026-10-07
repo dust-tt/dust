@@ -26,9 +26,59 @@ msgid "Billing information"
 msgstr "Informations de facturation"
 
 #: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
 msgid "Invoices"
 msgstr "Factures"
 
 #: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
 msgid "Coupons"
 msgstr "Coupons"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Subscription"
+msgstr "Abonnement"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "plan status frequency next billing date amount cancel subscription"
+msgstr "forfait statut fréquence prochaine date de facturation montant annuler abonnement"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Seats by type"
+msgstr "Sièges par type"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "pro max platform yearly seats assigned credits"
+msgstr "pro max platform annuel sièges attribués crédits"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Billing contact"
+msgstr "Contact de facturation"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "email"
+msgstr "e-mail"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Address"
+msgstr "Adresse"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "billing address"
+msgstr "adresse de facturation"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Payment method"
+msgstr "Moyen de paiement"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "card visa"
+msgstr "carte visa"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "download invoice pdf"
+msgstr "télécharger facture pdf"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "redeemed coupon codes"
+msgstr "codes de coupon utilisés"

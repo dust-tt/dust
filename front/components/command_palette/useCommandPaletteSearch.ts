@@ -313,7 +313,7 @@ function useCommandPaletteSettings({
     }
     const labelFor = (pageId: string) =>
       menusByPageId.get(pageId as SubNavigationAdminId)?.label ?? pageId;
-    const matches = searchAdminSettingsIndex(trimmedQuery, labelFor).filter(
+    const matches = searchAdminSettingsIndex(trimmedQuery, labelFor, t).filter(
       (entry) => menusByPageId.has(entry.pageId)
     );
     return {
@@ -324,7 +324,7 @@ function useCommandPaletteSettings({
         }
         return [
           {
-            label: entry.label,
+            label: t(entry.label),
             pageLabel: menu.label,
             pageHref: menu.href,
             sectionId: entry.sectionId,
@@ -334,7 +334,7 @@ function useCommandPaletteSettings({
       }),
       hasMoreSettings: matches.length > MAX_DISPLAYED_SETTINGS,
     };
-  }, [canSearchSettings, isSearchActive, trimmedQuery, menusByPageId]);
+  }, [canSearchSettings, isSearchActive, trimmedQuery, menusByPageId, t]);
 
   return { settings, hasMoreSettings, canSearchSettings };
 }

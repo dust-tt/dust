@@ -1,19 +1,11 @@
 import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
-import {
-  CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL,
-  INACTIVE_AGENT_ARCHIVAL_LABEL,
-  OPEN_PODS_LABEL,
-  POD_KNOWLEDGE_LABEL,
-  PRIVATE_CONVERSATION_URLS_LABEL,
-  VOICE_TRANSCRIPTION_LABEL,
-  WORKSPACE_ANALYTICS_LABEL,
-  WORKSPACE_DEFAULT_AGENT_LABEL,
-} from "@app/components/workspace/settings/settings_metadata";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { GOVERNANCE_CAPABILITIES } from "@app/types/group_permissions";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 const G = ADMIN_SECTION_IDS.governance;
 const S = ADMIN_SECTION_IDS.selfImprovingSkills;
@@ -32,7 +24,11 @@ const CAPABILITY_SECTION: Record<
 function capabilityEntries(): AdminSettingEntry[] {
   const byKey = new Map<
     string,
-    { sectionId: AdminSectionId; tab: string; items: [string, string][] }
+    {
+      sectionId: AdminSectionId;
+      tab: string;
+      items: [MessageDescriptor, MessageDescriptor][];
+    }
   >();
   for (const [group, capabilities] of Object.entries(GOVERNANCE_CAPABILITIES)) {
     if (group === "billingAndSecurity") {
@@ -54,7 +50,7 @@ function capabilityEntries(): AdminSettingEntry[] {
       if (!metadata) {
         continue;
       }
-      bucket.items.push([metadata.label, metadata.searchKeywords ?? ""]);
+      bucket.items.push([metadata.label, metadata.searchKeywords]);
     }
     byKey.set(key, bucket);
   }
@@ -70,7 +66,7 @@ function capabilityEntries(): AdminSettingEntry[] {
 export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   // Always mounted above the tabs (no `?tab=`).
   ...adminSearchEntries(PAGE, G.workspaceName, [
-    ["Workspace Name", "rename workspace organization name"],
+    [msg`Workspace Name`, msg`rename workspace organization name`],
   ]),
   ...capabilityEntries(),
   ...adminSearchEntries(
@@ -78,12 +74,12 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     S.settings,
     [
       [
-        "Allow self-improving skills",
-        "self improving skills reinforcement analyze conversations",
+        msg`Allow self-improving skills`,
+        msg`self improving skills reinforcement analyze conversations`,
       ],
       [
-        "Enable batch processing",
-        "self improving skills zdr immediate data deletion batches",
+        msg`Enable batch processing`,
+        msg`self improving skills zdr immediate data deletion batches`,
       ],
     ],
     "agents"
@@ -91,21 +87,21 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     S.skills,
-    [["Skills", "per skill editors enabled currently spent lock state"]],
+    [[msg`Skills`, msg`per skill editors enabled currently spent lock state`]],
     "agents"
   ),
   ...adminSearchEntries(
     PAGE,
     G.frame,
-    [["Frame sharing", "shareable outside workspace restriction"]],
+    [[msg`Frame sharing`, msg`shareable outside workspace restriction`]],
     "pods"
   ),
   ...adminSearchEntries(
     PAGE,
     G.pods,
     [
-      [OPEN_PODS_LABEL, "members create open pods"],
-      [POD_KNOWLEDGE_LABEL, "manually add files to pods manual updates"],
+      [msg`Restricted and open Pods`, msg`members create open pods`],
+      [msg`Pod files`, msg`manually add files to pods manual updates`],
     ],
     "pods"
   ),
@@ -113,14 +109,20 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     G.features,
     [
-      [WORKSPACE_DEFAULT_AGENT_LABEL, "workspace default agent picker"],
-      ["Language", "locale localisation"],
-      [VOICE_TRANSCRIPTION_LABEL, "dictation conversations"],
-      [CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL, "conversation notifications"],
-      [PRIVATE_CONVERSATION_URLS_LABEL, "conversation privacy participants"],
-      [WORKSPACE_ANALYTICS_LABEL, "analyst agent analytics tools admins"],
-      [INACTIVE_AGENT_ARCHIVAL_LABEL, "archive them once auto"],
-      ["Inactivity threshold", "days unmentioned archived schedule excluded"],
+      [msg`Default agent`, msg`workspace default agent picker`],
+      [msg`Language`, msg`locale localisation`],
+      [msg`Voice transcription`, msg`dictation conversations`],
+      [msg`Email and Slack notifications`, msg`conversation notifications`],
+      [
+        msg`Private conversation URLs by default`,
+        msg`conversation privacy participants`,
+      ],
+      [msg`Workspace Analyst`, msg`analyst agent analytics tools admins`],
+      [msg`Archive unused agents`, msg`archive them once auto`],
+      [
+        msg`Inactivity threshold`,
+        msg`days unmentioned archived schedule excluded`,
+      ],
     ],
     "features"
   ),

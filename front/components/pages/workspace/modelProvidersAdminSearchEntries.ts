@@ -1,6 +1,7 @@
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import { msg } from "@lingui/core/macro";
 
 const M = ADMIN_SECTION_IDS.modelProviders;
 const A = ADMIN_SECTION_IDS.appCredentials;
@@ -12,11 +13,11 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     M.providers,
     [
-      ["Model Providers", "ai models llm openai anthropic google"],
-      ["EU-hosted models only", "regional data residency europe"],
-      ["Make all providers available", "enable all providers"],
-      ["Provider list", "toggle enable disable models"],
-      ["Embedding model", "default embedding provider"],
+      [msg`Model Providers`, msg`ai models llm openai anthropic google`],
+      [msg`EU-hosted models only`, msg`regional data residency europe`],
+      [msg`Make all providers available`, msg`enable all providers`],
+      [msg`Provider list`, msg`toggle enable disable models`],
+      [msg`Embedding model`, msg`default embedding provider`],
     ],
     "providers"
   ),
@@ -25,17 +26,17 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     M.tiers,
     [
       [
-        "Workspace model tiers",
-        "model tiers workspace access tier standard advanced frontier",
+        msg`Workspace model tiers`,
+        msg`model tiers workspace access tier standard advanced frontier`,
       ],
-      ["Models tier", "model tiers workspace defaults"],
+      [msg`Models tier`, msg`model tiers workspace defaults`],
       [
-        "Workspace access",
-        "model tiers highest workspace access standard advanced frontier",
+        msg`Workspace access`,
+        msg`model tiers highest workspace access standard advanced frontier`,
       ],
       [
-        "Published agents",
-        "model tiers run above member tier published agents",
+        msg`Published agents`,
+        msg`model tiers run above member tier published agents`,
       ],
     ],
     "tiers"
@@ -45,10 +46,10 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     A.modelProviders,
     [
       [
-        "App Credentials",
-        "dust apps providers api keys openai azure anthropic",
+        msg`App Credentials`,
+        msg`dust apps providers api keys openai azure anthropic`,
       ],
-      ["Model Providers for Dust Apps", "api key openai azure anthropic"],
+      [msg`Model Providers for Dust Apps`, msg`api key openai azure anthropic`],
     ],
     "apps"
   ),
@@ -57,8 +58,8 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     A.serviceProviders,
     [
       [
-        "Service Providers",
-        "serpapi serper browserless google search web scrape",
+        msg`Service Providers`,
+        msg`serpapi serper browserless google search web scrape`,
       ],
     ],
     "apps"
@@ -67,7 +68,7 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     M.apps,
-    [["App Credentials tab", "legacy dust apps credentials"]],
+    [[msg`App Credentials tab`, msg`legacy dust apps credentials`]],
     "apps"
   ),
 ];
