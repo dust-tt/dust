@@ -17,6 +17,11 @@ import {
 } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import {
+  AgentTargetPill,
+  SkillTargetPill,
+  SuggestionTargetList,
+} from "@app/components/markdown/suggestion/SuggestionTargetList";
+import {
   AgentSuggestionsDiff,
   SkillSuggestionsDiff,
 } from "@app/components/markdown/suggestion/SuggestionTargetSection";
@@ -106,6 +111,34 @@ export function PendingBatchSuggestionCard({
       title={getBatchSuggestionTitle(batch, t)}
       titleAside={titleAside}
       analysis={batch.analysis}
+      targetList={
+        <SuggestionTargetList
+          pills={[
+            ...Object.entries(agentSuggestionsByAgentId).map(
+              ([agentId, suggestions]) => (
+                <AgentTargetPill
+                  key={agentId}
+                  owner={owner}
+                  batchId={batch.id}
+                  agentId={agentId}
+                  suggestions={suggestions}
+                />
+              )
+            ),
+            ...Object.entries(skillSuggestionsBySkillId).map(
+              ([skillId, suggestions]) => (
+                <SkillTargetPill
+                  key={skillId}
+                  owner={owner}
+                  batchId={batch.id}
+                  skillId={skillId}
+                  suggestions={suggestions}
+                />
+              )
+            ),
+          ]}
+        />
+      }
       collapsibleContent={
         <div className="flex flex-col gap-2">
           {Object.entries(agentSuggestionsByAgentId).map(
