@@ -37,6 +37,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Breadcrumbs } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
@@ -47,7 +48,7 @@ import {
   useRef,
 } from "react";
 
-const BROWSE_EMPTY_MESSAGE = "Nothing to browse here";
+const BROWSE_EMPTY_MESSAGE = msg`Nothing to browse here`;
 
 function toSlashCommandItem(
   item: AttachContextSlashMenuItem
@@ -361,7 +362,9 @@ export const AttachContextSubMenuDropdown = forwardRef<
         clientRect={clientRect}
         command={handleSelect}
         dropdownHeaders={dropdownHeaders}
-        emptyMessage={mode === "browse" ? BROWSE_EMPTY_MESSAGE : emptyMessage}
+        emptyMessage={
+          mode === "browse" ? t(BROWSE_EMPTY_MESSAGE) : emptyMessage
+        }
         headerContent={breadcrumbs}
         isLoading={
           mode === "browse" ? isBrowseLoading : mode === "search" && isLoading

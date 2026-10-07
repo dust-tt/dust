@@ -13,6 +13,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
@@ -49,6 +50,7 @@ export const PickModelSubMenuDropdown = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const dropdownRef = useRef<{
       onKeyDown: (props: { event: KeyboardEvent }) => boolean;
     }>(null);
@@ -114,7 +116,7 @@ export const PickModelSubMenuDropdown = forwardRef<
         command={handleSelect}
         defaultSelectedItemId={defaultSelectedItemId}
         dropdownHeaders={dropdownHeaders}
-        emptyMessage="No models found"
+        emptyMessage={t`No models found`}
         isLoading={isModelsLoading}
         items={items}
         onClose={onClose}

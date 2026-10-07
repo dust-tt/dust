@@ -10,6 +10,7 @@ import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper } from "@tiptap/react";
 import type React from "react";
@@ -36,6 +37,7 @@ function KnowledgeDisplayComponent({
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
+  const { t } = useLingui();
   const needsFetch = !isFullKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
@@ -87,7 +89,9 @@ function KnowledgeDisplayComponent({
         title={item.label}
         onRemove={onRemove}
         errorMessage={
-          isDataSourceViewError ? "Data source not found" : "Content not found"
+          isDataSourceViewError
+            ? t`Data source not found`
+            : t`Content not found`
         }
       />
     );

@@ -1,0 +1,311 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 12:06+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Add a block"
+msgstr "Ajouter un bloc"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "No matching blocks"
+msgstr "Aucun bloc correspondant"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Navigate"
+msgstr "Naviguer"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Insert"
+msgstr "Insérer"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
+msgid "Sending"
+msgstr "Envoi en cours"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
+msgid "Send"
+msgstr "Envoyer"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "{count, plural, one {# comment} other {# comments}}"
+msgstr "{count, plural, one {# commentaire} other {# commentaires}}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show {count, plural, one {# comment} other {# comments}}"
+msgstr "Afficher {count, plural, one {# commentaire} other {# commentaires}}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Comment by {authorName}"
+msgstr "Commentaire de {authorName}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show comment by {authorName}"
+msgstr "Afficher le commentaire de {authorName}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Comment by unknown"
+msgstr "Commentaire d’un auteur inconnu"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show comment by unknown"
+msgstr "Afficher le commentaire d’un auteur inconnu"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
+msgstr "Dust ne peut pas confirmer l’auteur de ce message. Il peut provenir d’un agent ou d’une modification faite en dehors de l’éditeur."
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Unverified"
+msgstr "Non vérifié"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Reply"
+msgstr "Répondre"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Reply…"
+msgstr "Répondre…"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "New comment"
+msgstr "Nouveau commentaire"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Commented text:"
+msgstr "Texte commenté :"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Comment"
+msgstr "Commenter"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Add a comment…"
+msgstr "Ajouter un commentaire…"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Reopen"
+msgstr "Rouvrir"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Resolve"
+msgstr "Résoudre"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Delete comment"
+msgstr "Supprimer le commentaire"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "The commented text was removed."
+msgstr "Le texte commenté a été supprimé."
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Comments"
+msgstr "Commentaires"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Comments, {unresolvedCount, plural, one {# unresolved} other {# unresolved}}"
+msgstr "Commentaires, {unresolvedCount, plural, one {# non résolu} other {# non résolus}}"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Close comments"
+msgstr "Fermer les commentaires"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "No comments yet"
+msgstr "Aucun commentaire pour l’instant"
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Select some text and choose Comment to start a thread."
+msgstr "Sélectionnez du texte et choisissez Commenter pour lancer une discussion."
+
+#: front/components/editor/document/DocumentCommentsPanel.tsx
+msgid "Resolved ({resolvedCount})"
+msgstr "Résolus ({resolvedCount})"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Not saved"
+msgstr "Non enregistré"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saving…"
+msgstr "Enregistrement…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Changes pending"
+msgstr "Modifications en attente"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saved"
+msgstr "Enregistré"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Changes save automatically after {autosaveDebounceSeconds}s of inactivity"
+msgstr "Les modifications sont enregistrées automatiquement après {autosaveDebounceSeconds} s d’inactivité"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Retry"
+msgstr "Réessayer"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+msgstr "L’enregistrement est indisponible. Vos modifications non enregistrées sont toujours là. Copiez-les avant de rouvrir le document."
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Format selection"
+msgstr "Mettre en forme la sélection"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Bold"
+msgstr "Gras"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Italic"
+msgstr "Italique"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Strikethrough"
+msgstr "Barré"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Inline code"
+msgstr "Code en ligne"
+
+#: front/components/editor/document/DocumentSourcePreview.tsx
+msgid "{reason} The original Markdown is shown below and editing is disabled to preserve it."
+msgstr "{reason} Le Markdown d’origine est affiché ci-dessous et la modification est désactivée pour le préserver."
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block type"
+msgid "Text"
+msgstr "Texte"
+
+#: front/components/editor/document/blocks.ts
+msgid "Start writing with plain text"
+msgstr "Commencer à écrire en texte brut"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 1"
+msgstr "Titre 1"
+
+#: front/components/editor/document/blocks.ts
+msgid "A big section heading"
+msgstr "Un grand titre de section"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 2"
+msgstr "Titre 2"
+
+#: front/components/editor/document/blocks.ts
+msgid "A medium section heading"
+msgstr "Un titre de section moyen"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 3"
+msgstr "Titre 3"
+
+#: front/components/editor/document/blocks.ts
+msgid "A small section heading"
+msgstr "Un petit titre de section"
+
+#: front/components/editor/document/blocks.ts
+msgid "Bulleted list"
+msgstr "Liste à puces"
+
+#: front/components/editor/document/blocks.ts
+msgid "A simple list of ideas"
+msgstr "Une simple liste d’idées"
+
+#: front/components/editor/document/blocks.ts
+msgid "Numbered list"
+msgstr "Liste numérotée"
+
+#: front/components/editor/document/blocks.ts
+msgid "Keep things in order"
+msgstr "Mettre les éléments dans l’ordre"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block type"
+msgid "Quote"
+msgstr "Citation"
+
+#: front/components/editor/document/blocks.ts
+msgid "Make a passage stand out"
+msgstr "Mettre un passage en valeur"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block type"
+msgid "Code"
+msgstr "Code"
+
+#: front/components/editor/document/blocks.ts
+msgid "A block of code"
+msgstr "Un bloc de code"
+
+#: front/components/editor/document/blocks.ts
+msgid "Divider"
+msgstr "Séparateur"
+
+#: front/components/editor/document/blocks.ts
+msgid "Separate sections"
+msgstr "Séparer les sections"
+
+#: front/components/editor/document/extensions.ts
+msgid "Untitled"
+msgstr "Sans titre"
+
+#: front/components/editor/document/extensions.ts
+msgid "Heading"
+msgstr "Titre"
+
+#: front/components/editor/document/extensions.ts
+msgid "Start writing, or type / for elements…"
+msgstr "Commencez à écrire, ou tapez / pour insérer des éléments…"
+
+#: front/components/editor/document/extensions.ts
+msgid "Type / for elements…"
+msgstr "Tapez / pour insérer des éléments…"
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "Commenting is unavailable."
+msgstr "Les commentaires sont indisponibles."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "The selected text can no longer take a comment. Select other text to comment."
+msgstr "Le texte sélectionné ne peut plus recevoir de commentaire. Sélectionnez un autre texte pour commenter."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This comment can't be saved in this document. Try shortening or simplifying it."
+msgstr "Ce commentaire ne peut pas être enregistré dans ce document. Essayez de le raccourcir ou de le simplifier."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This comment was deleted."
+msgstr "Ce commentaire a été supprimé."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This thread changed while sending. Send again."
+msgstr "Cette discussion a changé pendant l’envoi. Renvoyez votre message."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Could not save. Your changes are still here. Try again."
+msgstr "Impossible d’enregistrer. Vos modifications sont toujours là. Réessayez."
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Document content"
+msgstr "Contenu du document"

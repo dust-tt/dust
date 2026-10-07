@@ -16,10 +16,11 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
-const SCOPED_SEARCH_EMPTY_MESSAGE = "No matches here";
+const SCOPED_SEARCH_EMPTY_MESSAGE = msg`No matches here`;
 
 interface UseAttachContextSearchSectionsParams {
   // The views listed at the category level, so the scope needs no fetch of its own.
@@ -103,7 +104,9 @@ export function useAttachContextSearchSections({
         items: scopedCommands,
         isLoading: scopedSearch.isLoading,
         // Below the minimum query length the global section already shows the hint.
-        emptyMessage: hasMinimalQuery ? SCOPED_SEARCH_EMPTY_MESSAGE : undefined,
+        emptyMessage: hasMinimalQuery
+          ? t(SCOPED_SEARCH_EMPTY_MESSAGE)
+          : undefined,
       },
       {
         label: t(ALL_KNOWLEDGE_SECTION_LABEL),

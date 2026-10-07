@@ -4,6 +4,7 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { i18n } from "@app/lib/i18n/i18n";
 import { describe, expect, it } from "vitest";
 
 const row: SlashCommand = {
@@ -32,7 +33,11 @@ describe("someSectionShowsOwnState", () => {
     expect(someSectionShowsOwnState([{ label: "A", items: [] }])).toBe(false);
     expect(
       someSectionShowsOwnState(
-        buildSlashCommandSections({ commandItems: [], capabilityItems: [] })
+        buildSlashCommandSections({
+          commandItems: [],
+          capabilityItems: [],
+          t: (descriptor) => i18n._(descriptor),
+        })
       )
     ).toBe(false);
   });

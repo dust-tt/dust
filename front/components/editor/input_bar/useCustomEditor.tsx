@@ -38,6 +38,9 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
@@ -47,7 +50,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
-export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
+export const INPUT_BAR_DEFAULT_PLACEHOLDER = msg`Get work done`;
 // Matches the sidebar conversation title TypingAnimation cadence.
 export const TYPING_INTERVAL_MS = 32;
 export const TYPING_MAX_DURATION_MS = 700;
@@ -398,6 +401,7 @@ export const buildEditorExtensions = ({
   slashSuggestion,
   placeholderRef,
   onSuggestionActiveChangeRef,
+  t,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -414,6 +418,7 @@ export const buildEditorExtensions = ({
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
   placeholderRef?: React.RefObject<string>;
   onSuggestionActiveChangeRef?: CustomEditorProps["onSuggestionActiveChangeRef"];
+  t: (descriptor: MessageDescriptor) => string;
 }) => {
   const notifySuggestionActiveChange = (active: boolean) => {
     onSuggestionActiveChangeRef?.current?.(active);
@@ -511,7 +516,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return placeholderRef?.current ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
+        return placeholderRef?.current ?? t(INPUT_BAR_DEFAULT_PLACEHOLDER);
       },
       emptyNodeClass:
         "first:before:text-faint dark:first:before:text-stone-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -540,6 +545,7 @@ export const buildEditorExtensions = ({
         includeSelectSpacesRef: slashSuggestion.includeSelectSpacesRef,
         slashMenuModeRef: slashSuggestion.slashMenuModeRef,
         spaceIdRef: slashSuggestion.spaceIdRef,
+        t,
       })
     );
   }
@@ -575,10 +581,10 @@ const useCustomEditor = ({
   animatePlaceholder,
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
+  const { t } = useLingui();
+  const defaultPlaceholder = t(INPUT_BAR_DEFAULT_PLACEHOLDER);
   // Read through a ref so placeholder changes don't rebuild the editor.
-  const placeholderRef = useRef(
-    placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER
-  );
+  const placeholderRef = useRef(placeholderOverride ?? defaultPlaceholder);
 
   const editor = useEditor(
     {
@@ -597,6 +603,7 @@ const useCustomEditor = ({
         slashSuggestion,
         placeholderRef,
         onSuggestionActiveChangeRef,
+        t,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
@@ -633,7 +640,7 @@ const useCustomEditor = ({
   // so dispatch an empty transaction for each change. Skipped on mount since
   // the ref starts in sync with the override.
   useEffect(() => {
-    const target = placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
+    const target = placeholderOverride ?? defaultPlaceholder;
     if (!editor || editor.isDestroyed || placeholderRef.current === target) {
       return;
     }
@@ -660,7 +667,7 @@ const useCustomEditor = ({
     }, TYPING_INTERVAL_MS);
 
     return () => clearInterval(typingEffect);
-  }, [editor, placeholderOverride, animatePlaceholder]);
+  }, [editor, placeholderOverride, animatePlaceholder, defaultPlaceholder]);
 
   const isMobileViewport = useIsMobile();
   const editorService = useEditorService(editor, isMobileViewport);

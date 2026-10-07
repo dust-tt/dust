@@ -5,6 +5,7 @@ import {
 import useCustomEditor, {
   buildEditorExtensions,
 } from "@app/components/editor/input_bar/useCustomEditor";
+import { i18n } from "@app/lib/i18n/i18n";
 import type { WorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { Editor } from "@tiptap/react";
@@ -64,6 +65,7 @@ describe("buildEditorExtensions", () => {
         conversationId: "cId",
         onInlineText: () => {},
         onUrlDetected: () => {},
+        t: (descriptor) => i18n._(descriptor),
       }),
     });
   });

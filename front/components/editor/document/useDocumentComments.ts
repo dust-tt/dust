@@ -13,6 +13,8 @@ import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ChainedCommands, Editor, JSONContent } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { useEditorState } from "@tiptap/react";
@@ -63,11 +65,9 @@ const EMPTY_STATE: EditorCommentsState = {
   draftQuote: "",
 };
 
-const UNAVAILABLE_MESSAGE = "Commenting is unavailable.";
-const UNANCHORED_MESSAGE =
-  "The selected text can no longer take a comment. Select other text to comment.";
-const UNSAVABLE_MESSAGE =
-  "This comment can't be saved in this document. Try shortening or simplifying it.";
+const UNAVAILABLE_MESSAGE = msg`Commenting is unavailable.`;
+const UNANCHORED_MESSAGE = msg`The selected text can no longer take a comment. Select other text to comment.`;
+const UNSAVABLE_MESSAGE = msg`This comment can't be saved in this document. Try shortening or simplifying it.`;
 
 const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
   a?.author.kind === b?.author.kind &&
@@ -129,6 +129,7 @@ export const useDocumentComments = ({
   sign,
   verify,
 }: UseDocumentCommentsProps) => {
+  const { t } = useLingui();
   const state =
     useEditorState({
       editor,
@@ -239,14 +240,14 @@ export const useDocumentComments = ({
       body,
     };
     if (!isWritableThread(withMessage(local))) {
-      return new Err(UNSAVABLE_MESSAGE);
+      return new Err(t(UNSAVABLE_MESSAGE));
     }
     if (!sign) {
       return new Ok(local);
     }
     const signed = await sign(commentId, thread?.messages ?? [], body);
     if (signed.isOk() && !isWritableThread(withMessage(signed.value))) {
-      return new Err(UNSAVABLE_MESSAGE);
+      return new Err(t(UNSAVABLE_MESSAGE));
     }
     return signed;
   };
@@ -338,7 +339,7 @@ export const useDocumentComments = ({
     },
     submitDraft: async (body: string): Promise<Result<void, string>> => {
       if (!canWrite || !editor || !author || !state.draft) {
-        return new Err(UNAVAILABLE_MESSAGE);
+        return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const id = crypto.randomUUID();
       const written = await writeMessage(author, id, undefined, body);
@@ -346,7 +347,7 @@ export const useDocumentComments = ({
         return written;
       }
       if (!editor.isEditable) {
-        return new Err(UNAVAILABLE_MESSAGE);
+        return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const comment: DfmComment = {
         id,
@@ -359,10 +360,10 @@ export const useDocumentComments = ({
         ? previewDocument(editor, (chain) => chain.addComment(comment))
         : null;
       if (!draft || !next) {
-        return new Err(UNANCHORED_MESSAGE);
+        return new Err(t(UNANCHORED_MESSAGE));
       }
       if (!isSavable(next.toJSON())) {
-        return new Err(UNSAVABLE_MESSAGE);
+        return new Err(t(UNSAVABLE_MESSAGE));
       }
       editor
         .chain()
@@ -376,36 +377,36 @@ export const useDocumentComments = ({
     reply: async (id: string, body: string): Promise<Result<void, string>> => {
       const thread = comments.find((comment) => comment.id === id);
       if (!canWrite || !editor || !author || !thread) {
-        return new Err(UNAVAILABLE_MESSAGE);
+        return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const written = await writeMessage(author, id, thread, body);
       if (written.isErr()) {
         return written;
       }
       if (!editor.isEditable) {
-        return new Err(UNAVAILABLE_MESSAGE);
+        return new Err(t(UNAVAILABLE_MESSAGE));
       }
       // The reply is signed after the thread's last message; it must still follow that one.
       const current = getDocumentComments(editor.state.doc).find(
         (comment) => comment.id === id
       );
       if (!current) {
-        return new Err("This comment was deleted.");
+        return new Err(t`This comment was deleted.`);
       }
       if (
         current.messages.length !== thread.messages.length ||
         !sameMessage(current.messages.at(-1), thread.messages.at(-1))
       ) {
-        return new Err("This thread changed while sending. Send again.");
+        return new Err(t`This thread changed while sending. Send again.`);
       }
       const next = previewDocument(editor, (chain) =>
         chain.replyToComment(id, written.value)
       );
       if (!next) {
-        return new Err("This comment was deleted.");
+        return new Err(t`This comment was deleted.`);
       }
       if (!isSavable(next.toJSON())) {
-        return new Err(UNSAVABLE_MESSAGE);
+        return new Err(t(UNSAVABLE_MESSAGE));
       }
       editor.commands.replyToComment(id, written.value);
       return new Ok(undefined);

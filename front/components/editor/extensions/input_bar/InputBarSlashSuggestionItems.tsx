@@ -6,26 +6,26 @@ import {
   createSelectSpacesSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { MessageDescriptor } from "@lingui/core";
 import type {
   InputBarSlashCommand,
   InputBarSlashCommandId,
 } from "./InputBarSlashSuggestionTypes";
 import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
-const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
-const PICK_MODEL_SLASH_COMMAND = createPickModelSlashCommand();
-const SELECT_SPACES_SLASH_COMMAND = createSelectSpacesSlashCommand();
+type Translate = (descriptor: MessageDescriptor) => string;
 
 function getInputBarRunCommandSlashCommandItem(
-  command: InputBarSlashCommand
+  command: InputBarSlashCommand,
+  t: Translate
 ): SlashCommand {
   return {
     action: RUN_COMMAND_SLASH_COMMAND_ACTION,
     data: { command },
-    description: command.description,
+    description: t(command.description),
     icon: getSlashCommandAvatarIcon(command.icon),
     id: `command-${command.id}`,
-    label: command.label,
+    label: t(command.label),
   };
 }
 
@@ -48,28 +48,30 @@ function getInputBarSlashCommandById({
   includeAttachKnowledge,
   includePickModel,
   includeSelectSpaces,
+  t,
 }: {
   commandId: InputBarSlashCommandId;
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
   includePickModel: boolean;
   includeSelectSpaces: boolean;
+  t: Translate;
 }): SlashCommand | null {
   const runCommand = commands.find((command) => command.id === commandId);
   if (runCommand) {
-    return getInputBarRunCommandSlashCommandItem(runCommand);
+    return getInputBarRunCommandSlashCommandItem(runCommand, t);
   }
 
   if (commandId === "attach-knowledge") {
-    return includeAttachKnowledge ? ATTACH_KNOWLEDGE_SLASH_COMMAND : null;
+    return includeAttachKnowledge ? createAttachKnowledgeSlashCommand(t) : null;
   }
 
   if (commandId === "pick-model") {
-    return includePickModel ? PICK_MODEL_SLASH_COMMAND : null;
+    return includePickModel ? createPickModelSlashCommand(t) : null;
   }
 
   if (commandId === "select-spaces") {
-    return includeSelectSpaces ? SELECT_SPACES_SLASH_COMMAND : null;
+    return includeSelectSpaces ? createSelectSpacesSlashCommand(t) : null;
   }
 
   return null;
@@ -80,11 +82,13 @@ export function getInputBarSlashCommandItems({
   includeAttachKnowledge,
   includePickModel,
   includeSelectSpaces,
+  t,
 }: {
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
   includePickModel: boolean;
   includeSelectSpaces: boolean;
+  t: Translate;
 }): SlashCommand[] {
   return INPUT_BAR_SLASH_COMMAND_ORDER.flatMap((commandId) => {
     const item = getInputBarSlashCommandById({
@@ -93,6 +97,7 @@ export function getInputBarSlashCommandItems({
       includeAttachKnowledge,
       includePickModel,
       includeSelectSpaces,
+      t,
     });
 
     return item ? [item] : [];

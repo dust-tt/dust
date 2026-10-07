@@ -9,6 +9,8 @@ import {
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { i18n } from "@app/lib/i18n/i18n";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -27,14 +29,16 @@ const ALL_COMMANDS = getAvailableInputBarSlashCommands({
   hasConversation: true,
 });
 
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
+
 function buildInputBarSlashCommandItems({
   query,
   ...options
-}: Parameters<typeof getInputBarSlashCommandItems>[0] & {
+}: Omit<Parameters<typeof getInputBarSlashCommandItems>[0], "t"> & {
   query: string;
 }): SlashCommand[] {
   return filterInputBarSlashCommandItems(
-    getInputBarSlashCommandItems(options),
+    getInputBarSlashCommandItems({ ...options, t: translate }),
     query
   );
 }
