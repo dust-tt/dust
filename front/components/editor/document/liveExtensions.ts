@@ -23,7 +23,7 @@ const LiveCommentThreads = Extension.create<
   name: "liveCommentThreads",
   addOptions: () => ({ channel: null }),
   addStorage: () => ({ unsubscribe: null }),
-  onCreate() {
+  onBeforeCreate() {
     const { channel } = this.options;
     if (!channel) {
       return;
@@ -33,10 +33,14 @@ const LiveCommentThreads = Extension.create<
         this.editor.commands.setCommentThreads(comments);
       }
     };
-    const current = channel.getThreads();
-    if (current) {
-      show(current);
-    }
+    // Not on `create`, which TipTap emits a tick after mounting: the file's threads would show
+    // until then.
+    this.editor.on("mount", () => {
+      const current = channel.getThreads();
+      if (current) {
+        show(current);
+      }
+    });
     this.storage.unsubscribe = channel.onThreads(show);
   },
   onDestroy() {
@@ -54,8 +58,9 @@ const LiveCommentThreads = Extension.create<
  */
 /**
  * @cc [owner:tdraier,label:product] document-live-threads
- * A live document's threads MUST be the ones the session last sent, replaced whole on each
- * message, outside undo history, and MUST stay as loaded from the file until the first one.
+ * A live document's threads MUST be the ones the session last sent, from the moment the editor
+ * mounts, replaced whole on each message, outside undo history, and MUST stay as loaded from the
+ * file until the first one.
  */
 export const buildLiveDocumentExtensions = ({
   t,

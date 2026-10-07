@@ -23,16 +23,18 @@ export interface LiveCommentChannel {
 /**
  * @cc [owner:tdraier,label:product] live-comment-channel
  * The channel MUST ask the server for the threads when created and each time the provider syncs
- * again, and MUST resolve each command with the server's answer to that command only. A command
+ * again, and MUST report the threads it was created with until the server's arrive. It MUST
+ * resolve each command with the server's answer to that command only. A command
  * sent while the provider is not synced, or waiting when its connection closes, MUST resolve as
  * `unavailable`: the provider drops the messages it queued for a lost connection. Once closed the
  * channel MUST NOT report threads, and every command waiting or sent after MUST resolve as
  * `unavailable`, so no caller waits for an answer a lost connection will never bring.
  */
 export function createLiveCommentChannel(
-  provider: HocuspocusProvider
+  provider: HocuspocusProvider,
+  initialThreads: DfmComment[] | null
 ): LiveCommentChannel {
-  let threads: DfmComment[] | null = null;
+  let threads = initialThreads;
   let closed = false;
   const listeners = new Set<(comments: DfmComment[]) => void>();
   const pending = new Map<

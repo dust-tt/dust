@@ -546,7 +546,7 @@ describe("comment threads in a live session", () => {
     });
     providers.push(provider);
     await new Promise<void>((resolve) => provider.on("synced", resolve));
-    const channel = createLiveCommentChannel(provider);
+    const channel = createLiveCommentChannel(provider, null);
     channels.push(channel);
     await vi.waitFor(() => expect(channel.getThreads()).not.toBeNull());
     return { channel, provider };

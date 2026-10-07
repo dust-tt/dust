@@ -3,6 +3,7 @@ import { loadDfm } from "@app/components/editor/document/dfm_persistence";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
 import {
   getDocumentComments,
+  getDocumentJSONComments,
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
@@ -13,6 +14,7 @@ import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
 import { describe, expect, it, vi } from "vitest";
@@ -30,8 +32,26 @@ function sharedDocumentFor(source: string) {
     withoutDocumentJSONComments(loaded.value.content),
     document.getXmlFragment(BODY_FRAGMENT_NAME)
   );
-  return { document, commentIds: getMarkedCommentIds(loaded.value.content) };
+  return {
+    document,
+    commentIds: getMarkedCommentIds(loaded.value.content),
+    fileThreads: getDocumentJSONComments(loaded.value.content),
+  };
 }
+
+const SESSION_THREADS: DfmComment[] = [
+  {
+    id: "c-live",
+    status: "resolved",
+    messages: [
+      {
+        author: { kind: "user", id: "usr_daph", name: "Daph" },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        body: "From the session.",
+      },
+    ],
+  },
+];
 
 /** A session's comment side, whose thread pushes the test makes. */
 function fakeCommentChannel() {
@@ -120,6 +140,44 @@ describe("useDocumentEditor in a live session", () => {
     expect(result.current.editable).toBe(true);
   });
 
+  it("shows the file's threads until the session sends its own", async () => {
+    const { document, fileThreads } = sharedDocumentFor(FIXTURE);
+    expect(fileThreads.length).toBeGreaterThan(0);
+
+    const { result } = renderLiveEditor(document);
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+
+    expect(getDocumentComments(editor.state.doc)).toEqual(fileThreads);
+  });
+
+  // Checked right after construction: TipTap emits `create` a tick later, which a `waitFor`
+  // would let run first.
+  it("shows the threads the session sent before the editor existed, from its mount", () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    push(SESSION_THREADS);
+
+    const editor = new Editor({
+      extensions: buildLiveDocumentExtensions({
+        t: (descriptor) => descriptor.id ?? "",
+        document,
+        awareness: null,
+        user: { name: "Daph", color: "#0ea5e9" },
+        comments: channel,
+      }),
+    });
+
+    try {
+      expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it("shows the threads the session sends, without touching the shared document", async () => {
     const { document } = sharedDocumentFor(FIXTURE);
     const { channel, push } = fakeCommentChannel();
@@ -130,23 +188,10 @@ describe("useDocumentEditor in a live session", () => {
       return;
     }
     const before = Y.encodeStateVector(document);
-    const threads: DfmComment[] = [
-      {
-        id: "c-live",
-        status: "resolved",
-        messages: [
-          {
-            author: { kind: "user", id: "usr_daph", name: "Daph" },
-            createdAt: "2026-01-01T00:00:00.000Z",
-            body: "From the session.",
-          },
-        ],
-      },
-    ];
 
-    act(() => push(threads));
+    act(() => push(SESSION_THREADS));
 
-    expect(getDocumentComments(editor.state.doc)).toEqual(threads);
+    expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
     expect(Y.encodeStateVector(document)).toEqual(before);
   });
 
