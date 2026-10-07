@@ -161,7 +161,7 @@ function getActivityContext(): Context | null {
  * @cc [owner:philipperolet,label:error-handling] await-heartbeat
  * Inside a cancelled Temporal activity, the returned promise rejects with `CancelledFailure`.
  * Callers MUST await it (or otherwise handle the rejection); fire-and-forget callers such as timers
- * MUST use `heartbeatWithoutCancellationCheck` instead.
+ * MUST use `heartbeatWithoutCancelCheck` instead.
  */
 export async function heartbeat() {
   const context = getActivityContext();
@@ -179,6 +179,6 @@ export async function heartbeat() {
  * activity is cancelled. It does not report cancellation, which `Context.current().cancellationSignal`
  * exposes.
  */
-export function heartbeatWithoutCancellationCheck(): void {
+export function heartbeatWithoutCancelCheck(): void {
   getActivityContext()?.heartbeat();
 }
