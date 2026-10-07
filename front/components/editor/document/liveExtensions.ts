@@ -1,6 +1,6 @@
+import type { Translate } from "@app/components/editor/document/extensions";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
-import type { MessageDescriptor } from "@lingui/core";
 import type { AnyExtension } from "@tiptap/core";
 import { Collaboration } from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
@@ -17,8 +17,9 @@ export interface DocumentLiveUser {
  * @cc [owner:PopDaph,label:product] document-live-extensions
  * A live document MUST use the same schema as `documentExtensions`, bind its body to the
  * `BODY_FRAGMENT_NAME` fragment of the shared document, and replace StarterKit's undo history
- * with the collaboration one, so undo reverts only the local user's own changes. It MUST NOT
- * remove comment marks whose thread the editor lacks.
+ * with the collaboration one, so undo reverts only the local user's own changes. A comment mark
+ * whose thread the editor lacks MUST be kept, its edges protected and text inserted inside it
+ * marked, as for a comment with a thread.
  */
 export const buildLiveDocumentExtensions = ({
   t,
@@ -26,7 +27,7 @@ export const buildLiveDocumentExtensions = ({
   awareness,
   user,
 }: {
-  t: (descriptor: MessageDescriptor) => string;
+  t: Translate;
   document: Y.Doc;
   awareness: Awareness | null;
   user: DocumentLiveUser;

@@ -55,9 +55,11 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 export const Document = (props: DocumentProps) => <DocumentView {...props} />;
 
 interface DocumentViewProps extends DocumentProps {
-  /** A live editor's extensions, bound to the shared document, and whether it is connected. */
-  liveBinding?: { extensions: AnyExtension[]; connected: boolean };
-  liveStatus?: LiveStatus;
+  liveView?: {
+    status: LiveStatus;
+    /** Bound to the shared document once synced; until then the file shows read-only. */
+    binding: { extensions: AnyExtension[]; connected: boolean } | null;
+  };
 }
 
 /** The editor itself, saving the file or, given live extensions, editing a shared document. */
@@ -69,8 +71,7 @@ const DocumentView = ({
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
   onStateChange,
-  liveBinding,
-  liveStatus,
+  liveView,
   badge,
   commentAuthor,
   renderCommentAuthorAvatar,
@@ -90,13 +91,13 @@ const DocumentView = ({
     isSavable,
   } = useDocumentEditor({
     initialContent,
-    readOnly,
+    readOnly: readOnly || liveView?.binding === null,
     autosaveDebounceMs,
     onSave,
     onStateChange,
-    live: liveBinding,
+    live: liveView?.binding ?? undefined,
   });
-  const isLive = liveStatus !== undefined;
+  const isLive = liveView !== undefined;
   const blockMenu = useDocumentBlockMenu(editor, editable);
   const comments = useDocumentComments({
     editor,
@@ -190,7 +191,7 @@ const DocumentView = ({
             onRetry={save}
             badge={badge}
           >
-            {liveStatus && <DocumentLiveStatus status={liveStatus} />}
+            {liveView && <DocumentLiveStatus status={liveView.status} />}
             {showCommentsToggle && (
               <DocumentCommentsToggle panelId={panelId} comments={comments} />
             )}

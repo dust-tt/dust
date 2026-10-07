@@ -7,6 +7,7 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
@@ -131,6 +132,72 @@ describe("useDocumentEditor in a live session", () => {
         id
       );
     }
+  });
+
+  describe("with a comment whose thread the fetched file does not have", () => {
+    const TAGGED = `Hi :comment-start{id=c1}run all tests:comment-end{id=c1} now\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=2026-01-01T00:00:00.000Z}\n\nNote.\n:::\n`;
+
+    async function renderStaleEditor() {
+      const { document } = sharedDocumentFor(TAGGED);
+      const { result } = renderLiveEditor(document, {
+        initialContent: "Hi run all tests now\n",
+      });
+      await waitFor(() => expect(result.current.editor).not.toBeNull());
+      const editor = result.current.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      return editor;
+    }
+
+    function commentedText(node: ProseMirrorNode, id: string) {
+      let text = "";
+      node.descendants((child) => {
+        if (child.marks.some((mark) => mark.attrs.id === id)) {
+          text += child.text ?? "";
+        }
+      });
+      return text;
+    }
+
+    it("refuses inline code over its edge", async () => {
+      const editor = await renderStaleEditor();
+      const before = editor.state.doc;
+
+      act(() => {
+        editor
+          .chain()
+          .setTextSelection({ from: 12, to: 17 })
+          .toggleCode()
+          .run();
+      });
+
+      expect(editor.state.doc.eq(before)).toBe(true);
+    });
+
+    it("marks text pasted inside it", async () => {
+      const editor = await renderStaleEditor();
+
+      act(() => {
+        editor.commands.insertContentAt(8, {
+          type: "text",
+          text: "x",
+          marks: [{ type: "bold" }],
+        });
+      });
+
+      expect(commentedText(editor.state.doc, "c1")).toBe("run xall tests");
+    });
+  });
+
+  it("does not write its empty paragraph into an empty shared document", async () => {
+    const { document } = sharedDocumentFor("");
+    for (const _ of [1, 2]) {
+      const { result } = renderLiveEditor(document, { initialContent: "" });
+      await waitFor(() => expect(result.current.editor).not.toBeNull());
+    }
+
+    expect(document.getXmlFragment(BODY_FRAGMENT_NAME).length).toBe(0);
   });
 
   it("undoes only the local edit, and never saves", async () => {
