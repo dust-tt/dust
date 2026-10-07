@@ -23,7 +23,8 @@ const imageMarkdown = (src: string, alt: string, title: string | null) =>
  * @cc [owner:tdraier,label:product;security] document-image-source
  * An image MUST keep its alt text, destination and title through load and save, and MUST be
  * displayed only from the URL `resolveSource` returns for its destination; without one it MUST
- * show as its alt text, so the editor never loads a source the host did not resolve.
+ * show as text, its alt text or its destination when the alt text is empty, so the editor never
+ * loads a source the host did not resolve. Copied and pasted, it MUST keep its destination.
  */
 export const DocumentImage = Node.create<DocumentImageOptions>({
   name: DOCUMENT_IMAGE_NODE_NAME,
@@ -32,21 +33,26 @@ export const DocumentImage = Node.create<DocumentImageOptions>({
   atom: true,
   draggable: true,
   addOptions: () => ({ resolveSource: () => null }),
+  // Each attribute reads its own HTML attribute: the displayed `src` is a resolved URL, never
+  // the destination to save.
   addAttributes: () => ({
-    src: { default: null, rendered: false },
-    alt: { default: "", rendered: false },
-    title: { default: null, rendered: false },
-  }),
-  parseHTML: () => [
-    {
-      tag: `[${IMAGE_SOURCE_ATTRIBUTE}]`,
-      getAttrs: (element) => ({
-        src: element.getAttribute(IMAGE_SOURCE_ATTRIBUTE),
-        alt: element.getAttribute("data-alt") ?? "",
-        title: element.getAttribute("title"),
-      }),
+    src: {
+      default: null,
+      rendered: false,
+      parseHTML: (element) => element.getAttribute(IMAGE_SOURCE_ATTRIBUTE),
     },
-  ],
+    alt: {
+      default: "",
+      rendered: false,
+      parseHTML: (element) => element.getAttribute("data-alt") ?? "",
+    },
+    title: {
+      default: null,
+      rendered: false,
+      parseHTML: (element) => element.getAttribute("title"),
+    },
+  }),
+  parseHTML: () => [{ tag: `[${IMAGE_SOURCE_ATTRIBUTE}]` }],
   renderHTML({ node }) {
     const { src, alt, title } = node.attrs;
     const attributes = {

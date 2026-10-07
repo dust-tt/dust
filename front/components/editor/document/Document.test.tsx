@@ -641,6 +641,26 @@ describe("Document images", () => {
     expect(within(dom).getByText("Logo")).toBeDefined();
   });
 
+  it("keeps an image's destination when its HTML is pasted back", async () => {
+    const dom = await renderImages((src) =>
+      src.startsWith("pod-") ? `https://files.test/${src}` : null
+    );
+    const image = within(dom).getByRole("img", { name: "Chart" });
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        `<p>${image.outerHTML}</p>`
+      );
+    });
+
+    const markdown = dom.editor.getMarkdown();
+    expect(markdown.match(/!\[Chart\]\(pod-abc\/chart\.png\)/g)).toHaveLength(
+      2
+    );
+    expect(markdown).not.toContain("files.test");
+  });
+
   it("shows every image as its alt text without a resolver", async () => {
     const dom = await renderImages();
 
