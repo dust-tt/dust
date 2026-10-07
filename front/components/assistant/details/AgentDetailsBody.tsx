@@ -108,7 +108,6 @@ const EMAIL_AGENTS_DOCS_URL =
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
   {
-    shortLabel: string;
     label: MessageDescriptor;
     color: "success" | "info" | "highlight" | "primary";
     icon?: typeof Users01 | undefined;
@@ -116,19 +115,16 @@ export const SCOPE_INFO: Record<
   }
 > = {
   global: {
-    shortLabel: "Default",
     label: msg`Default agent`,
     color: "primary",
     text: msg`Default agents provided by Dust.`,
   },
   hidden: {
-    shortLabel: "Not published",
     label: msg`Not published`,
     color: "primary",
     text: msg`Hidden agents.`,
   },
   visible: {
-    shortLabel: "Published",
     label: msg`Published`,
     color: "success",
     text: msg`Visible agents.`,
