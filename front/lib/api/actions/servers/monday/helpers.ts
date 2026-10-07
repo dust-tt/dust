@@ -648,7 +648,7 @@ export const createUpdate = async (
 };
 
 /**
- * @cc [label:mcp] item-not-found-vs-no-updates
+ * @cc [owner:thomasc2a,label:mcp] item-not-found-vs-no-updates
  * MUST return `null` when the item does not exist or is not accessible with `accessToken`, and an
  * empty array when the item exists but has no updates on the requested page.
  */
