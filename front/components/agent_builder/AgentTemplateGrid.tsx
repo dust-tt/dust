@@ -1,24 +1,25 @@
-import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
+import {
+  getUniqueTemplateTags,
+  TEMPLATE_TAG_LABELS,
+} from "@app/components/agent_builder/utils";
 import type { AssistantTemplateListType } from "@app/lib/resources/template_resource";
-import type {
-  TemplateTagCodeType,
-  TemplateTagsType,
-} from "@app/types/assistant/templates";
+import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import { CardGrid, CompactAssistantCard, ContextItem } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface AgentTemplateGridProps {
   templates: AssistantTemplateListType[];
-  templateTagsMapping: TemplateTagsType;
   selectedTags: TemplateTagCodeType[];
   onTemplateClick: (templateId: string) => void;
 }
 
 export function AgentTemplateGrid({
   templates,
-  templateTagsMapping,
   selectedTags,
   onTemplateClick,
 }: AgentTemplateGridProps) {
+  const { t } = useLingui();
+
   if (!templates.length) {
     return null;
   }
@@ -41,7 +42,7 @@ export function AgentTemplateGrid({
           return (
             <div key={tagName}>
               <ContextItem.SectionHeader
-                title={templateTagsMapping[tagName].label}
+                title={t(TEMPLATE_TAG_LABELS[tagName])}
                 hasBorder={false}
               />
               <CardGrid>

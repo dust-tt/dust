@@ -356,3 +356,83 @@ msgstr "You must select at least one data source"
 #: front/components/agent_builder/types.ts
 msgid "You must use time frame between that and that when you have required enums in mcpServerViews."
 msgstr "You must use time frame between that and that when you have required enums in mcpServerViews."
+
+#: front/components/agent_builder/utils.ts
+msgid "Content"
+msgstr "Content"
+
+#: front/components/agent_builder/utils.ts
+msgid "Data"
+msgstr "Data"
+
+#: front/components/agent_builder/utils.ts
+msgid "Design"
+msgstr "Design"
+
+#: front/components/agent_builder/utils.ts
+msgid "Engineering"
+msgstr "Engineering"
+
+#: front/components/agent_builder/utils.ts
+msgid "Finance"
+msgstr "Finance"
+
+#: front/components/agent_builder/utils.ts
+msgid "Hiring"
+msgstr "Hiring"
+
+#: front/components/agent_builder/utils.ts
+msgid "IT"
+msgstr "IT"
+
+#: front/components/agent_builder/utils.ts
+msgid "Legal"
+msgstr "Legal"
+
+#: front/components/agent_builder/utils.ts
+msgid "Knowledge"
+msgstr "Knowledge"
+
+#: front/components/agent_builder/utils.ts
+msgid "Marketing"
+msgstr "Marketing"
+
+#: front/components/agent_builder/utils.ts
+msgid "Operations"
+msgstr "Operations"
+
+#: front/components/agent_builder/utils.ts
+msgid "Product"
+msgstr "Product"
+
+#: front/components/agent_builder/utils.ts
+msgid "Product management"
+msgstr "Product management"
+
+#: front/components/agent_builder/utils.ts
+msgid "Productivity"
+msgstr "Productivity"
+
+#: front/components/agent_builder/utils.ts
+msgid "Recruiting & people"
+msgstr "Recruiting & people"
+
+#: front/components/agent_builder/utils.ts
+msgid "Sales"
+msgstr "Sales"
+
+#: front/components/agent_builder/utils.ts
+msgid "Support"
+msgstr "Support"
+
+#: front/components/agent_builder/utils.ts
+msgid "UX design"
+msgstr "UX design"
+
+#: front/components/agent_builder/utils.ts
+msgid "UX research"
+msgstr "UX research"
+
+#: front/components/agent_builder/utils.ts
+msgid "Writing"
+msgstr "Writing"
