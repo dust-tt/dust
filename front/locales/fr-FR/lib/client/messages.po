@@ -43,7 +43,7 @@ msgstr "{callCount, plural, one {# utilisation} other {# utilisations}}"
 
 #: front/lib/client/greetings.ts
 msgid "What’s next, {name}?"
-msgstr "Et maintenant, {name} ?"
+msgstr "Quelle est la prochaine étape, {name} ?"
 
 #: front/lib/client/greetings.ts
 msgid "What are we working on, {name}?"
@@ -79,7 +79,7 @@ msgstr "Qu’est-ce qui se prépare, {name} ?"
 
 #: front/lib/client/greetings.ts
 msgid "Ready when you are, {name}."
-msgstr "Quand vous voulez, {name}."
+msgstr "À votre écoute, {name}."
 
 #: front/lib/client/model_tier_options.ts
 msgid "Includes {tierNames}"
