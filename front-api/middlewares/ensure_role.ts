@@ -2,6 +2,7 @@ import {
   type GroupManagementVerb,
   hasAnyGroupPermission,
 } from "@app/lib/resources/group_management_access";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { APIErrorType } from "@app/types/error";
 import type {
   ConcreteResourceType,
@@ -104,6 +105,27 @@ export const ensureHasAnyGroupPermission = (
       return apiError(ctx, {
         status_code: 403,
         api_error: { type: "workspace_auth_error", message },
+      });
+    }
+
+    await next();
+  });
+
+/**
+ * Guards the workspace-wide analytics routes on `read_analytics` over every group.
+ */
+export const ensureCanReadAnalyticsOfAllGroups = () =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!GroupResource.canReadAnalyticsOfAllGroups(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only workspace admins, managers, and users allowed to read the analytics of every group can perform this action.",
+        },
       });
     }
 

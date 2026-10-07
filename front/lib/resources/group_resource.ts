@@ -2791,6 +2791,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     return verbs;
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:security;backend] read-analytics-on-all-groups
+   * Returns true iff the caller holds `read_analytics` on every manual and provisioned group of
+   * its workspace.
+   */
+  static canReadAnalyticsOfAllGroups(auth: Authenticator): boolean {
+    return (
+      auth.isManager() ||
+      auth.getResourceIdsWithVerb("group", "read_analytics").kind === "all"
+    );
+  }
+
   isSystem(): boolean {
     return this.kind === "system";
   }

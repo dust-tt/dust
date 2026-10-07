@@ -4,7 +4,7 @@ import { AutomationsOverviewBodySchema } from "@app/lib/api/analytics/automation
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { ensureCanReadAnalyticsOfAllGroups } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -14,7 +14,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
+  ensureCanReadAnalyticsOfAllGroups(),
   validate("json", AutomationsOverviewBodySchema),
   async (ctx): HandlerResult<GetAutomationsOverviewResponse> => {
     const auth = ctx.get("auth");

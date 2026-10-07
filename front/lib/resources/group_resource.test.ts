@@ -80,6 +80,7 @@ import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_pe
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -1998,5 +1999,72 @@ describe("GroupResource", () => {
         expect(targetSeatType).toBeNull();
       });
     });
+  });
+});
+
+describe("GroupResource.canReadAnalyticsOfAllGroups", () => {
+  it("requires the manager role or a type-wide read_analytics grant", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+
+    async function authFor(role: "user" | "manager") {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role });
+      return {
+        member,
+        auth: await Authenticator.fromUserIdAndWorkspaceId(
+          member.sId,
+          workspace.sId
+        ),
+      };
+    }
+
+    expect(GroupResource.canReadAnalyticsOfAllGroups(adminAuth)).toBe(true);
+    const { auth: managerAuth } = await authFor("manager");
+    expect(GroupResource.canReadAnalyticsOfAllGroups(managerAuth)).toBe(true);
+
+    // A grant on one group is not enough.
+    const manual = await GroupResource.makeNew({
+      name: "Manual",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    const { member: scopedMember } = await authFor("user");
+    const grantRes = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: scopedMember.toJSON(),
+      grantType: "analytics_reader",
+      resourceType: "group",
+      resourceId: manual.id,
+    });
+    assert(grantRes.isOk());
+    // The member's groups were cached when their authenticator was first built.
+    inMemoryCache.clear();
+    const scopedAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      scopedMember.sId,
+      workspace.sId
+    );
+    expect(scopedAuth.can("read_analytics", manual)).toBe(true);
+    expect(GroupResource.canReadAnalyticsOfAllGroups(scopedAuth)).toBe(false);
+
+    // A type-wide grant is.
+    const readers = await GroupResource.makeNew({
+      name: "readers",
+      workspaceId: workspace.id,
+      kind: "regular_auto",
+    });
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: readers,
+      grantType: "analytics_reader",
+      resourceType: "group",
+    });
+    const { member: reader } = await authFor("user");
+    await GroupFactory.withMembers(adminAuth, readers, [reader]);
+    inMemoryCache.clear();
+    const readerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      reader.sId,
+      workspace.sId
+    );
+    expect(GroupResource.canReadAnalyticsOfAllGroups(readerAuth)).toBe(true);
   });
 });
