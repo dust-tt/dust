@@ -24,10 +24,15 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 type PageId = "trigger-selection" | "schedule-edition" | "webhook-edition";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 interface UseTriggerSheetStateParams {
   owner: LightWorkspaceType;
@@ -41,23 +46,26 @@ function getPageTitle(
   currentPageId: PageId,
   editTrigger: AgentBuilderTriggerType | null,
   isEditor: boolean,
-  webhookSourceView: WebhookSourceViewType | null
+  webhookSourceView: WebhookSourceViewType | null,
+  t: Translate
 ): string {
   switch (currentPageId) {
     case "trigger-selection":
-      return "Add trigger";
+      return t(msg`Add trigger`);
     case "schedule-edition":
       if (!editTrigger) {
-        return "Create Schedule";
+        return t(msg`Create schedule`);
       }
-      return isEditor ? "Edit Schedule" : "View Schedule";
+      return isEditor ? t(msg`Edit schedule`) : t(msg`View schedule`);
     case "webhook-edition":
       if (!editTrigger) {
-        return webhookSourceView
-          ? `Create ${webhookSourceView.customName} Trigger`
-          : "Create Trigger";
+        if (!webhookSourceView) {
+          return t(msg`Create trigger`);
+        }
+        const sourceName = webhookSourceView.customName;
+        return t(msg`Create ${sourceName} trigger`);
       }
-      return isEditor ? "Edit Trigger" : "View Trigger";
+      return isEditor ? t(msg`Edit trigger`) : t(msg`View trigger`);
     default:
       assertNever(currentPageId);
   }
@@ -70,6 +78,7 @@ export function useTriggerSheetState({
   webhookSourceViews,
   onSuccess,
 }: UseTriggerSheetStateParams) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const getScheduleFormDefaultValues = useGetScheduleFormDefaultValues();
   const getWebhookFormDefaultValues = useGetWebhookFormDefaultValues();
@@ -199,7 +208,7 @@ export function useTriggerSheetState({
           if (webhookSourceView?.provider && !values.webhook.event) {
             form.setError("webhook.event", {
               type: "manual",
-              message: "Please select an event",
+              message: t`Please select an event`,
             });
             return;
           }
@@ -247,6 +256,7 @@ export function useTriggerSheetState({
       updateTrigger,
       onSuccess,
       form,
+      t,
     ]
   );
 
@@ -277,7 +287,8 @@ export function useTriggerSheetState({
     currentPageId,
     editTrigger,
     isEditor,
-    webhookSourceView
+    webhookSourceView,
+    t
   );
 
   return {

@@ -1,0 +1,139 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Folders"
+msgstr "Folders"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Knowledge"
+msgstr "Knowledge"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Documents"
+msgstr "Documents"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Tables"
+msgstr "Tables"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Deleted data source"
+msgstr "Deleted data source"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Filters"
+msgstr "Filters"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgctxt "tags filter mode counter"
+msgid "auto"
+msgstr "auto"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Must-have"
+msgstr "Must-have"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Must-not-have"
+msgstr "Must-not-have"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "In-conversation filtering"
+msgstr "In-conversation filtering"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Activated"
+msgstr "Activated"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
+msgid "Skills"
+msgstr "Skills"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
+msgid "{toolsCount, plural, one {Show all # tool} other {Show all # tools}}"
+msgstr "{toolsCount, plural, one {Show all # tool} other {Show all # tools}}"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Security notice"
+msgstr "Security notice"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?"
+msgstr "By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Proceed"
+msgstr "Proceed"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "{missingSpacesCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+msgstr "{missingSpacesCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Joined {spaceName}"
+msgstr "Joined {spaceName}"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "You are now a member of {spaceName}."
+msgstr "You are now a member of {spaceName}."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Restricted access"
+msgstr "Restricted access"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "You cannot see the details of this agent."
+msgstr "You cannot see the details of this agent."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "The agent is not published and you are not one of its editors."
+msgstr "The agent is not published and you are not one of its editors."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "The agent uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+msgstr "The agent uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Join space {missingSpaceName}"
+msgstr "Join space {missingSpaceName}"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Join all required spaces"
+msgstr "Join all required spaces"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "No tags"
+msgstr "No tags"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "Model"
+msgstr "Model"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "Structured output"
+msgstr "Structured output"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "No structured output"
+msgstr "No structured output"
