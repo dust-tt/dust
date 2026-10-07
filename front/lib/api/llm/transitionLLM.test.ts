@@ -664,6 +664,30 @@ describe("convertToOldEvent", () => {
     });
   });
 
+  it("maps response_id to interaction_id, carrying the input transformations", () => {
+    const inputTransformations = [
+      {
+        type: "thinking_mismatch_allowed",
+        path: "messages.1.content.0",
+        reason: "prefix_binding_mismatch",
+      },
+    ];
+
+    expect(
+      convertToOldEvent(
+        {
+          type: "response_id",
+          content: { responseId: "msg_123" },
+          metadata: { ...endpointMetadata, content: { inputTransformations } },
+        },
+        llmMetadata
+      )
+    ).toMatchObject({
+      type: "interaction_id",
+      content: { modelInteractionId: "msg_123", inputTransformations },
+    });
+  });
+
   it("maps response_id to interaction_id without a cache miss reason", () => {
     expect(
       convertToOldEvent(

@@ -1,12 +1,18 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   getToolCallStartDeduplicationKeys,
+  reportInputTransformations,
   resolveStableToolCallName,
   withPeriodicHeartbeat,
 } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const shutdownMock = vi.hoisted(() => ({ controller: new AbortController() }));
+const mockStatsDIncrement = vi.hoisted(() => vi.fn());
+
+vi.mock("@app/lib/utils/statsd", () => ({
+  statsDMetrics: { increment: mockStatsDIncrement },
+}));
 
 vi.mock("@app/lib/shutdown_signal", () => ({
   DUST_WORKER_SHUTDOWN_ABORT_REASON: "DUST_WORKER_SHUTDOWN_ABORT",
@@ -174,5 +180,61 @@ describe("withPeriodicHeartbeat", () => {
 
     await expect(generator.next()).rejects.toThrow(/activity time budget/);
     expect(returnFn).toHaveBeenCalled();
+  });
+});
+
+describe("reportInputTransformations", () => {
+  beforeEach(() => {
+    mockStatsDIncrement.mockClear();
+  });
+
+  it("counts each transformation by model, type and reason", () => {
+    reportInputTransformations({
+      inputTransformations: [
+        {
+          type: "thinking_mismatch_allowed",
+          path: "messages.1.content.0",
+          reason: "prefix_binding_mismatch",
+        },
+        {
+          type: "thinking_dropped",
+          path: "messages.3.content.0",
+          reason: "model_binding_mismatch",
+        },
+      ],
+      modelId: "claude-sonnet-5-5",
+      logContext: {},
+    });
+
+    expect(mockStatsDIncrement.mock.calls).toEqual([
+      [
+        "llm.input_transformation.count",
+        1,
+        [
+          "model_id:claude-sonnet-5-5",
+          "type:thinking_mismatch_allowed",
+          "reason:prefix_binding_mismatch",
+        ],
+      ],
+      [
+        "llm.input_transformation.count",
+        1,
+        [
+          "model_id:claude-sonnet-5-5",
+          "type:thinking_dropped",
+          "reason:model_binding_mismatch",
+        ],
+      ],
+    ]);
+  });
+
+  it("emits nothing when the provider did not transform the input", () => {
+    reportInputTransformations({
+      inputTransformations: undefined,
+      modelId: "claude-sonnet-5-5",
+      logContext: {},
+    });
+
+    expect(mockStatsDIncrement).not.toHaveBeenCalled();
   });
 });
