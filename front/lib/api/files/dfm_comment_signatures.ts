@@ -5,7 +5,11 @@ import {
   DustFileSystem,
   DustFileSystemError,
 } from "@app/lib/api/file_system/dust_file_system";
-import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
+import {
+  isPathWritableContentType,
+  readCanonicalFileContent,
+  WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+} from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -40,7 +44,8 @@ export type DfmCommentSignatureErrorCode =
   | "unsigned_message"
   | "altered_message"
   | "moved_message"
-  | "unreadable_file";
+  | "unreadable_file"
+  | "file_too_large";
 
 export class DfmCommentSignatureError extends Error {
   constructor(
@@ -488,7 +493,9 @@ export interface MarkdownCommentsCheck {
  * the accepted new messages. For a write it does not validate, `newMessages` MUST be null, and
  * in a workspace with `co_edition` the write MUST be bound to the stored state it was classified
  * against: it MUST return the stored file's revision, or for an absent file the revision that
- * only matches an absent file, and MUST validate the write instead when storage has no revision.
+ * only matches an absent file, and MUST validate the write instead when storage has no revision,
+ * refusing it with `file_too_large` when the stored file exceeds the write size limit. A file
+ * stored with a content type the write refuses MUST NOT be read nor validated.
  * A stored file that still exists but cannot be read MUST refuse the write with
  * `unreadable_file`, never count as absent; one deleted before it could be read counts as absent.
  * Other writes, such as archive extraction and sandbox or plain agent file writes, are not
@@ -513,6 +520,14 @@ export async function validateMarkdownCommentsForWrite(
     return new Err(unreadableFileError());
   }
   const stored = read.value;
+  // The write refuses a file stored with a content type it cannot write, so it is never read.
+  if (
+    stored &&
+    !isPathWritableContentType(stripMimeParameters(stored.contentType))
+  ) {
+    stored.stream.on("error", () => undefined).destroy();
+    return new Ok({ revision: stored.revision, newMessages: null });
+  }
 
   // The editor opens a file by its stored content type, so a file stored as Markdown is
   // validated whatever its name and the request's content type.
@@ -532,6 +547,16 @@ export async function validateMarkdownCommentsForWrite(
         stored.stream.on("error", () => undefined).destroy();
       }
       return new Ok({ revision: classifiedRevision, newMessages: null });
+    }
+    // Validating instead reads the whole stored file, so it is bounded like the write itself.
+    if (stored && stored.sizeBytes > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
+      stored.stream.on("error", () => undefined).destroy();
+      return new Err(
+        new DfmCommentSignatureError(
+          "file_too_large",
+          `This file exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit and cannot be updated.`
+        )
+      );
     }
   }
 

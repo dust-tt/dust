@@ -607,7 +607,12 @@ export async function readCanonicalFileContent(
   scopedPath: string
 ): Promise<
   Result<
-    { stream: Readable; contentType: string; revision?: string } | null,
+    {
+      stream: Readable;
+      contentType: string;
+      sizeBytes: number;
+      revision?: string;
+    } | null,
     DustFileSystemError
   >
 > {
@@ -622,8 +627,13 @@ export async function readCanonicalFileContent(
   const normalizedPath = DustFileSystem.normalizeScopedPath(scopedPath);
   const mountFilePath =
     normalizedPath && dustFs.toMountFilePath(normalizedPath);
+  const { sizeBytes } = statResult.value;
   if (dustFs.isGCSBacked() && mountFilePath) {
-    return readFileWithRevision(mountFilePath);
+    const read = await readFileWithRevision(mountFilePath);
+    if (read.isErr()) {
+      return read;
+    }
+    return new Ok(read.value && { ...read.value, sizeBytes });
   }
 
   const readResult = await dustFs.read(scopedPath);
@@ -636,6 +646,7 @@ export async function readCanonicalFileContent(
   return new Ok({
     stream: readResult.value,
     contentType: statResult.value.contentType,
+    sizeBytes,
   });
 }
 
@@ -677,10 +688,13 @@ function resolvePathWriteContentType(
   return contentTypeFromFileName(fileName) ?? "text/plain";
 }
 
+export const isPathWritableContentType = (contentType: string) =>
+  contentType.startsWith("text/") || contentType === "application/json";
+
 function validatePathWritableContentType(
   contentType: string
 ): Result<void, WriteCanonicalFileContentError> {
-  if (!contentType.startsWith("text/") && contentType !== "application/json") {
+  if (!isPathWritableContentType(contentType)) {
     return new Err(
       new WriteCanonicalFileContentError(
         "unsupported_content_type",
@@ -702,6 +716,12 @@ function validatePathWritableContentType(
  * MUST be checked atomically or rejected when storage cannot enforce it.
  * A stale revision MUST leave the current file unchanged. Without a revision,
  * the existing overwrite behavior MUST remain available.
+ */
+/**
+ * @cc [owner:tdraier,label:security] canonical-file-write-keeps-stored-type
+ * A write to an existing file MUST keep its stored content type, whatever the requested one, and
+ * MUST be refused with `unsupported_content_type` when that type is not `text/*` or
+ * `application/json`.
  */
 export async function writeCanonicalFileContent(
   _auth: Authenticator,

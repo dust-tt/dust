@@ -4,7 +4,11 @@ import assert from "node:assert";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
+import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { messageSignaturePayload } from "@app/lib/markdown/dfm";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -1510,5 +1514,75 @@ describe("comment signatures on Markdown saves", () => {
     expect(fileStorageMock.getObject(mountPath)).toBe(
       file("user:usr_someone_else")
     );
+  });
+
+  describe("in a database-backed pod", () => {
+    const setupStored = async (content: string, contentType: string) => {
+      const { workspace, auth, user } = await createPrivateApiMockRequest({
+        role: "admin",
+      });
+      await FeatureFlagFactory.basic(auth, "co_edition");
+      const pod = await SpaceFactory.project(workspace, user.id, {
+        name: `${DATABASE_FILE_SYSTEM_POD_PREFIX}Test`,
+      });
+      const dustFs = await DustFileSystem.forPod(
+        await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId),
+        pod
+      );
+      assert(dustFs.isOk());
+      const path = `pod-${pod.sId}/notes`;
+      fileStorageMock.setFileMetadata(() => ({
+        contentType,
+        size: `${content.length}`,
+      }));
+      assert((await dustFs.value.write(path, content, contentType)).isOk());
+      return { workspace, path };
+    };
+
+    it("leaves a file stored as a type the write refuses to the write", async () => {
+      const { workspace, path } = await setupStored(
+        "%PDF-1.7",
+        "application/pdf"
+      );
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain" },
+        body: file("user:usr_someone_else"),
+      });
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.message).toContain(
+        "Only text and JSON files"
+      );
+    });
+
+    it("refuses a plain-text file larger than the write limit", async () => {
+      const { workspace, path } = await setupStored(
+        "a".repeat(WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES + 1),
+        "text/plain"
+      );
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain" },
+        body: "Hi there\n",
+      });
+
+      expect(response.status).toBe(413);
+    });
+
+    it("validates a plain-text file within the write limit", async () => {
+      const { workspace, path } = await setupStored("Hi there\n", "text/plain");
+
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain" },
+        body: file("user:usr_someone_else"),
+      });
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.message).toContain("not yours");
+    });
   });
 });
