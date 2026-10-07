@@ -4,6 +4,7 @@ import type {
   AgentSearchFacet,
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
+  AgentSearchSelectionMode,
   AgentSearchSort,
   AgentSearchSortOrder,
   SearchAgentsResponseBody,
@@ -34,7 +35,7 @@ export function useSearchAgents({
   permissionFiltering,
   filters,
   facets,
-  favoritesFirst,
+  selectionMode,
   disabled,
   keepPreviousData = true,
   debounceMs = SEARCH_AGENTS_DEBOUNCE_MS,
@@ -50,7 +51,7 @@ export function useSearchAgents({
   permissionFiltering?: AgentSearchPermissionFiltering;
   filters?: AgentSearchFilters;
   facets?: AgentSearchFacet[];
-  favoritesFirst?: boolean;
+  selectionMode?: AgentSearchSelectionMode;
   disabled?: boolean;
   /** When false, clear results while the next query loads (e.g. command palette). */
   keepPreviousData?: boolean;
@@ -89,7 +90,7 @@ export function useSearchAgents({
     sortOrder,
     permissionFiltering,
     facets,
-    favoritesFirst,
+    selectionMode,
   };
   const agentsFetcher: () => Promise<SearchAgentsResponseBody> = () =>
     fetcherWithBody([url, body, "POST"]);

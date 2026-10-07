@@ -2,6 +2,7 @@ import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdo
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import type { AgentSearchSelectionMode } from "@app/types/agent_search/agent_search";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -40,16 +41,16 @@ interface AgentPickerProps {
   onOpenChange?: (open: boolean) => void;
   selectedAgentId?: string | null;
   onDeselect?: () => void;
-  favoritesFirst?: boolean;
+  selectionMode?: AgentSearchSelectionMode;
 }
 
 /**
  * @cc [owner:aubin-tchoi,label:react;product] agent-picker-search-rollout
- * The open, enabled picker MUST search agents in alphabetical order.
+ * The open, enabled picker MUST search agents in alphabetical order in "all" mode.
  * A selected match MUST stay first, including a supplied selection beyond the
  * first search page when the query is blank.
- * With favoritesFirst, the search MUST rank the user's favorites first (see
- * `agent-search-favorites-first`), right after the selection.
+ * Favorite selection modes MUST use the search API's default ordering: "favorites_or_all"
+ * selects favorites alphabetically for empty queries and otherwise searches by relevance.
  */
 export function AgentPicker({
   owner,
@@ -66,7 +67,7 @@ export function AgentPicker({
   onOpenChange,
   selectedAgentId,
   onDeselect,
-  favoritesFirst = false,
+  selectionMode = "all",
 }: AgentPickerProps) {
   const { t } = useLingui();
   const clientType = useClientType();
@@ -81,10 +82,9 @@ export function AgentPicker({
   } = useSearchAgents({
     owner,
     searchTerm: searchText,
-    sortBy: "name",
-    sortOrder: "asc",
+    sortBy: selectionMode === "all" ? "name" : undefined,
     permissionFiltering: "strict",
-    favoritesFirst,
+    selectionMode,
     disabled: !isOpen || disabled,
   });
   const selected =

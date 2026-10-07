@@ -132,7 +132,7 @@ describe("AgentPicker", () => {
       expect.objectContaining({
         query: "",
         sortBy: "name",
-        sortOrder: "asc",
+        selectionMode: "all",
         permissionFiltering: "strict",
       }),
       "POST",
@@ -149,7 +149,10 @@ describe("AgentPicker", () => {
     const { legacyAgent, onDeselect, onItemClick, renderPicker } =
       await setup();
     const user = userEvent.setup();
-    renderPicker({ selectedAgentId: legacyAgent.sId });
+    renderPicker({
+      selectedAgentId: legacyAgent.sId,
+      selectionMode: "favorites_or_all",
+    });
     await user.click(screen.getByRole("button", { name: "Pick an agent" }));
     await screen.findByRole("menuitem", { name: "Zulu" });
     expect(
@@ -163,24 +166,47 @@ describe("AgentPicker", () => {
     ).toBeInTheDocument();
   });
 
-  it("asks the search to rank favorites first and keeps its order", async () => {
+  it("prefers favorites without overriding the API's query-dependent sorting", async () => {
     const { fetcherWithBody, renderPicker } = await setup();
     fetcherWithBody.mockResolvedValue({
       ...searchResponse,
       agents: [remoteAgents[1], remoteAgents[0]],
     });
     const user = userEvent.setup();
-    renderPicker({ favoritesFirst: true, agents: [] });
+    renderPicker({ selectionMode: "favorites_or_all", agents: [] });
     await user.click(screen.getByRole("button", { name: "Pick an agent" }));
     await screen.findByRole("menuitem", { name: "Beta" });
     expect(fetcherWithBody).toHaveBeenCalledWith([
       expect.any(String),
-      expect.objectContaining({ favoritesFirst: true }),
+      expect.objectContaining({
+        query: "",
+        selectionMode: "favorites_or_all",
+        sortBy: undefined,
+        sortOrder: undefined,
+      }),
       "POST",
     ]);
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent)
     ).toEqual(["Beta", "Alpha"]);
+
+    fireEvent.change(screen.getByPlaceholderText("Search for agents"), {
+      target: { value: "beta" },
+    });
+    await waitFor(() => expect(fetcherWithBody).toHaveBeenCalledTimes(2));
+    expect(fetcherWithBody).toHaveBeenLastCalledWith([
+      expect.any(String),
+      expect.objectContaining({
+        query: "beta",
+        selectionMode: "favorites_or_all",
+        sortBy: undefined,
+        sortOrder: undefined,
+      }),
+      "POST",
+    ]);
+    for (const [[, body]] of fetcherWithBody.mock.calls) {
+      expect(body).not.toHaveProperty("favoritesFirst");
+    }
   });
 
   it("does not select stale results while a typed query is loading", async () => {
