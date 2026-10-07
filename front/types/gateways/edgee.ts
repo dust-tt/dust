@@ -18,3 +18,23 @@ export const EdgeeGatewayKeyCredentialsSchema = z.object({
 export type EdgeeGatewayKeyCredentials = z.infer<
   typeof EdgeeGatewayKeyCredentialsSchema
 >;
+
+export const EdgeeConnectionBodySchema = z.object({
+  adminToken: z.string().min(1),
+  organizationId: z.string().min(1),
+});
+export type EdgeeConnectionBody = z.infer<typeof EdgeeConnectionBodySchema>;
+
+export type EdgeeConnectionType = {
+  organizationId: string;
+  editedByUserId: number | null;
+  updatedAt: number;
+};
+
+export type GetEdgeeConnectionResponseBody = {
+  connection: EdgeeConnectionType | null;
+};
+
+export type PutEdgeeConnectionResponseBody = {
+  connection: EdgeeConnectionType;
+};

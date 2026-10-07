@@ -3,27 +3,17 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type { EdgeeConnectionType } from "@app/lib/resources/edgee_connection_resource";
 import { EdgeeConnectionResource } from "@app/lib/resources/edgee_connection_resource";
+import type {
+  GetEdgeeConnectionResponseBody,
+  PutEdgeeConnectionResponseBody,
+} from "@app/types/gateways/edgee";
+import { EdgeeConnectionBodySchema } from "@app/types/gateways/edgee";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
-import { z } from "zod";
-
-const EdgeeConnectionBodySchema = z.object({
-  adminToken: z.string().min(1),
-  organizationId: z.string().min(1),
-});
-
-export type GetEdgeeConnectionResponseBody = {
-  connection: EdgeeConnectionType | null;
-};
-
-export type PutEdgeeConnectionResponseBody = {
-  connection: EdgeeConnectionType;
-};
 
 function notEdgeeWorkspaceError(ctx: Context) {
   return apiError(ctx, {
