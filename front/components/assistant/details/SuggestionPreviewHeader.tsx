@@ -1,4 +1,5 @@
 import { Button, ContentMessage, SliderToggle, XClose } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface SuggestionPreviewHeaderProps {
   isApplied: boolean;
@@ -24,7 +25,7 @@ export function SuggestionPreviewHeader({
           )
         }
       >
-        Suggestion preview
+        <Trans>Suggestion preview</Trans>
       </ContentMessage>
       <Button
         variant="ghost"

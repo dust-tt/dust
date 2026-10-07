@@ -41,6 +41,7 @@ import {
   StarFilled,
   Trash01,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface AgentDetailsButtonBarProps {
@@ -54,6 +55,7 @@ export function AgentDetailsButtonBar({
   isAgentConfigurationValidating,
   owner,
 }: AgentDetailsButtonBarProps) {
+  const { t } = useLingui();
   const tracking = useManageTracking();
   const { user, providersHealth } = useAuth();
   const router = useAppRouter();
@@ -97,7 +99,9 @@ export function AgentDetailsButtonBar({
     <div className="flex flex-row items-center gap-2 px-1.5">
       <Button
         icon={agentIsFavorite ? StarFilled : Star01}
-        tooltip={agentIsFavorite ? "Remove from favorites" : "Add to favorites"}
+        tooltip={
+          agentIsFavorite ? t`Remove from favorites` : t`Add to favorites`
+        }
         size="sm"
         variant="outline"
         disabled={isFavoriteDisabled}
@@ -110,7 +114,7 @@ export function AgentDetailsButtonBar({
             icon={MessagePlusCircle}
             size="sm"
             variant="outline"
-            tooltip="New conversation"
+            tooltip={t`New conversation`}
             onClick={handleNewConversation}
           />
         )}
@@ -118,7 +122,7 @@ export function AgentDetailsButtonBar({
       {agentConfiguration.scope !== "global" && (
         <Button
           size="sm"
-          tooltip="Edit agent"
+          tooltip={t`Edit agent`}
           href={
             canEditAgent
               ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
@@ -168,6 +172,7 @@ export function AgentDetailsDropdownMenu({
   showEditOption = false,
   contextMenuPosition,
 }: AgentDetailsDropdownMenuProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
@@ -196,12 +201,13 @@ export function AgentDetailsDropdownMenu({
 
     if (!response.ok) {
       const errorData = await response.json();
-      sendApiErrorNotification({ title: "Export failed", error: errorData });
+      sendApiErrorNotification({ title: t`Export failed`, error: errorData });
       setIsExporting(false);
       return;
     }
 
     const { yamlContent, filename } = await response.json();
+    const agentName = agentConfiguration.name;
     try {
       const blob = new Blob([yamlContent], { type: "application/yaml" });
       const url = window.URL.createObjectURL(blob);
@@ -214,15 +220,15 @@ export function AgentDetailsDropdownMenu({
       window.URL.revokeObjectURL(url);
 
       sendNotification({
-        title: "Export successful",
-        description: `Agent "${agentConfiguration.name}" exported to YAML`,
+        title: t`Export successful`,
+        description: t`Agent "${agentName}" exported to YAML`,
         type: "success",
       });
     } catch (error) {
       sendNotification({
-        title: "Export failed",
+        title: t`Export failed`,
         description:
-          normalizeError(error).message || "An error occurred while exporting",
+          normalizeError(error).message || t`An error occurred while exporting`,
         type: "error",
       });
 
@@ -241,7 +247,7 @@ export function AgentDetailsDropdownMenu({
         agentConfiguration.scope !== "global" &&
         canEditAgent && (
           <DropdownMenuItem
-            label="Edit agent"
+            label={t`Edit agent`}
             disabled={noHealthyProviders}
             onClick={(e) => {
               e.stopPropagation();
@@ -255,7 +261,7 @@ export function AgentDetailsDropdownMenu({
           />
         )}
       <DropdownMenuItem
-        label="Copy agent ID"
+        label={t`Copy agent ID`}
         onClick={async (e) => {
           e.stopPropagation();
           await navigator.clipboard.writeText(agentConfiguration.sId);
@@ -265,7 +271,7 @@ export function AgentDetailsDropdownMenu({
       />
       {!isRedactedForAdmin && (
         <DropdownMenuItem
-          label={isExporting ? "Exporting…" : "Export to YAML"}
+          label={isExporting ? t`Exporting…` : t`Export to YAML`}
           onClick={(e) => {
             e.stopPropagation();
             void handleExportToYAML();
@@ -279,7 +285,7 @@ export function AgentDetailsDropdownMenu({
         <>
           {!isRedactedForAdmin && (
             <DropdownMenuItem
-              label="Duplicate (New)"
+              label={t`Duplicate (new)`}
               disabled={noHealthyProviders}
               data-gtm-label="agentDuplicationButton"
               data-gtm-location="agentDetails"
@@ -304,7 +310,7 @@ export function AgentDetailsDropdownMenu({
           )}
           {allowDeletion && (
             <DropdownMenuItem
-              label="Archive"
+              label={t({ message: "Archive", context: "verb, menu item" })}
               icon={Trash01}
               onClick={(e) => {
                 e.stopPropagation();

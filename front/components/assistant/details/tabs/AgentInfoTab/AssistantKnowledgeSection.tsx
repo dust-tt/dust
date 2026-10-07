@@ -48,6 +48,7 @@ import {
   Table,
   Tree,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import uniq from "lodash/uniq";
 import { useMemo, useState } from "react";
 
@@ -60,6 +61,7 @@ export function AssistantKnowledgeSection({
   agentConfiguration,
   owner,
 }: AssistantKnowledgeSectionProps) {
+  const { t } = useLingui();
   const editedSections = useEditedAgentSections();
   const { dataSourceViews, isDataSourceViewsLoading } = useDataSourceViews(
     owner,
@@ -248,7 +250,7 @@ export function AssistantKnowledgeSection({
     <>
       {hasConnections && connectionItems}
       {hasFolders && (
-        <Tree.Item label="Folders" visual={Folder}>
+        <Tree.Item label={t`Folders`} visual={Folder}>
           {folderItems}
         </Tree.Item>
       )}
@@ -264,13 +266,15 @@ export function AssistantKnowledgeSection({
   return (
     <div className="relative flex flex-col gap-4">
       {editedSections.has("knowledge") && <EditedSectionBar />}
-      <div className="heading-lg text-foreground">Knowledge</div>
+      <div className="heading-lg text-foreground">
+        <Trans>Knowledge</Trans>
+      </div>
       {hasDocuments && hasTables ? (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
-          <Tree.Item label="Documents" visual={Folder}>
+          <Tree.Item label={t`Documents`} visual={Folder}>
             {documentItems}
           </Tree.Item>
-          <Tree.Item label="Tables" visual={Table}>
+          <Tree.Item label={t`Tables`} visual={Table}>
             {tableItems}
           </Tree.Item>
         </Tree>
@@ -337,6 +341,7 @@ function DataSourceViewsSection({
   viewType,
   isLoading,
 }: DataSourceViewsSectionProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { isDark } = useTheme();
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
@@ -360,7 +365,7 @@ function DataSourceViewsSection({
             // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
             // supposed to happen as we delete the configurations when data sources are deleted.
             let dsLogo = null;
-            let dataSourceName = "Deleted data source";
+            let dataSourceName = t`Deleted data source`;
 
             if (dataSourceView) {
               const { dataSource } = dataSourceView;
@@ -436,6 +441,8 @@ function RetrievalActionTagsFilterPopover({
   tagsFilter: TagsFilter;
   connectorProvider: ConnectorProvider | null;
 }) {
+  const { t } = useLingui();
+
   if (tagsFilter === null) {
     return null;
   }
@@ -470,9 +477,13 @@ function RetrievalActionTagsFilterPopover({
         <Button
           variant="outline"
           size="xs"
-          label="Filters"
+          label={t`Filters`}
           isSelect
-          counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
+          counterValue={
+            tagsCounter
+              ? tagsCounter.toString()
+              : t({ message: "auto", context: "tags filter mode counter" })
+          }
           isCounter={tagsCounter !== null}
         />
       </PopoverTrigger>
@@ -480,7 +491,9 @@ function RetrievalActionTagsFilterPopover({
         <div className="flex flex-col gap-4">
           {tagsIn.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label>Must-have</Label>
+              <Label>
+                <Trans>Must-have</Trans>
+              </Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsIn.map((tag) => (
                   <Chip key={tag.tag} label={tag.tag} />
@@ -490,7 +503,9 @@ function RetrievalActionTagsFilterPopover({
           )}
           {tagsNot.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label>Must-not-have</Label>
+              <Label>
+                <Trans>Must-not-have</Trans>
+              </Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsNot.map((tag) => (
                   <Chip key={tag.tag} label={tag.tag} color="warning" />
@@ -500,9 +515,16 @@ function RetrievalActionTagsFilterPopover({
           )}
           {isTagsAuto && (
             <div className="flex flex-col gap-2">
-              <Label>In-Conversation filtering</Label>
+              <Label>
+                <Trans>In-conversation filtering</Trans>
+              </Label>
               <div className="flex flex-row flex-wrap gap-1">
-                <Chip color="success" label="Activated" icon={Stars02} isBusy />
+                <Chip
+                  color="success"
+                  label={t`Activated`}
+                  icon={Stars02}
+                  isBusy
+                />
               </div>
             </div>
           )}

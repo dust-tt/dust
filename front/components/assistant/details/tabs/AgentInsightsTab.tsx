@@ -44,6 +44,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import { useMemo, useState } from "react";
 
@@ -63,6 +64,7 @@ export function AgentInsightsTab({
   owner,
   agentConfiguration,
 }: AgentInsightsTabProps) {
+  const { t } = useLingui();
   const [selectedSubTab, setSelectedSubTab] =
     useState<InsightsSubTab>("analytics");
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
@@ -94,10 +96,15 @@ export function AgentInsightsTab({
   ) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-foreground">Insights</h2>
-        <ContentMessage title="Restricted access" icon={Lock01} size="md">
-          You need access to all spaces used by this agent to view its insights.
-          Open the Info tab to review the access requirements.
+        <h2 className="text-lg font-semibold text-foreground">
+          <Trans>Insights</Trans>
+        </h2>
+        <ContentMessage title={t`Restricted access`} icon={Lock01} size="md">
+          <Trans>
+            You need access to all spaces used by this agent to view its
+            insights.
+          </Trans>{" "}
+          <Trans>Open the Info tab to review the access requirements.</Trans>
         </ContentMessage>
       </div>
     );
@@ -107,7 +114,9 @@ export function AgentInsightsTab({
     <ObservabilityProvider>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Insights</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            <Trans>Insights</Trans>
+          </h2>
           {selectedSubTab === "feedback" && (
             <ObservabilityModeSelector
               workspaceId={owner.sId}
@@ -126,8 +135,8 @@ export function AgentInsightsTab({
         >
           <div className="flex items-center justify-between gap-4">
             <TabsList border>
-              <TabsTrigger value="analytics" label="Analytics" />
-              <TabsTrigger value="feedback" label="Feedback" />
+              <TabsTrigger value="analytics" label={t`Analytics`} />
+              <TabsTrigger value="feedback" label={t`Feedback`} />
             </TabsList>
             {selectedSubTab === "analytics" ? (
               <div className="flex items-center gap-2">
@@ -154,7 +163,7 @@ export function AgentInsightsTab({
               <Page.Vertical align="stretch" gap="xl">
                 <div className="flex flex-col gap-1">
                   <h3 className="text-base font-semibold text-foreground">
-                    Overview
+                    <Trans>Overview</Trans>
                   </h3>
                   <ConsumptionOverview
                     workspaceId={owner.sId}
@@ -173,7 +182,7 @@ export function AgentInsightsTab({
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-4">
                       <h3 className="text-base font-semibold text-foreground">
-                        Explore
+                        <Trans>Explore</Trans>
                       </h3>
                       <UsageFilterPanel
                         owner={owner}
