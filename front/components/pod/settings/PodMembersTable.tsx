@@ -15,6 +15,7 @@ import {
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
 
@@ -58,6 +59,7 @@ export function PodMembersTable({
   isEditor,
   mutatePodInfo,
 }: PodMembersTableProps) {
+  const { t } = useLingui();
   const sendNotifications = useSendNotification();
 
   const doUpdate = useUpdateSpace({ owner });
@@ -74,8 +76,8 @@ export function PodMembersTable({
         !updatedMembers.some((m) => m.isEditor)
       ) {
         sendNotifications({
-          title: "Pods must have at least one editor.",
-          description: "You cannot remove the last editor.",
+          title: t`Pods must have at least one editor.`,
+          description: t`You cannot remove the last editor.`,
           type: "error",
         });
         return;
@@ -93,15 +95,15 @@ export function PodMembersTable({
           name: pod.name,
         },
         {
-          title: "Successfully removed member",
-          description: "Pod member was successfully removed.",
+          title: t`Successfully removed member`,
+          description: t`Pod member was successfully removed.`,
         }
       );
       if (updateMember) {
         await mutatePodInfo();
       }
     },
-    [doUpdate, pod, selectedMembers, sendNotifications, mutatePodInfo]
+    [doUpdate, pod, selectedMembers, sendNotifications, mutatePodInfo, t]
   );
 
   const toggleEditor = useCallback(
@@ -123,8 +125,8 @@ export function PodMembersTable({
 
       if (updatedMembers.filter((m) => m.isEditor).length === 0) {
         sendNotifications({
-          title: "Pods must have at least one editor.",
-          description: "You cannot remove the last editor.",
+          title: t`Pods must have at least one editor.`,
+          description: t`You cannot remove the last editor.`,
           type: "error",
         });
         return;
@@ -145,18 +147,18 @@ export function PodMembersTable({
         },
         {
           title: newIsEditorValue
-            ? "Successfully added editor"
-            : "Successfully removed editor",
+            ? t`Successfully added editor`
+            : t`Successfully removed editor`,
           description: newIsEditorValue
-            ? "Pod editor was successfully added."
-            : "Pod editor was successfully removed.",
+            ? t`Pod editor was successfully added.`
+            : t`Pod editor was successfully removed.`,
         }
       );
       if (updateMember) {
         await mutatePodInfo();
       }
     },
-    [doUpdate, mutatePodInfo, pod, selectedMembers, sendNotifications]
+    [doUpdate, mutatePodInfo, pod, selectedMembers, sendNotifications, t]
   );
 
   const rows = useMemo(
@@ -168,7 +170,7 @@ export function PodMembersTable({
     () => [
       {
         accessorKey: "name",
-        header: "Name",
+        header: t`Name`,
         id: "name",
         sortingFn: "text",
         meta: {
@@ -192,7 +194,7 @@ export function PodMembersTable({
       },
       {
         accessorKey: "email",
-        header: "Email",
+        header: t`Email`,
         id: "email",
         meta: {
           className: "w-[250px]",
@@ -203,7 +205,7 @@ export function PodMembersTable({
       },
       {
         id: "role",
-        header: "Role",
+        header: t`Role`,
         meta: {
           className: "w-20",
         },
@@ -211,7 +213,7 @@ export function PodMembersTable({
           return (
             <DataTable.CellContent>
               {info.row.original.isEditor && (
-                <Chip color="success" size="xs" label="Editor" />
+                <Chip color="success" size="xs" label={t`Editor`} />
               )}
             </DataTable.CellContent>
           );
@@ -219,7 +221,7 @@ export function PodMembersTable({
       },
       {
         accessorKey: "joinedAt",
-        header: "Joined at",
+        header: t`Joined at`,
         id: "joinedAt",
         meta: {
           className: "w-[140px]",
@@ -250,10 +252,11 @@ export function PodMembersTable({
                 className: "w-12",
               },
               cell: (info: MemberRowInfo) => {
+                const memberName = info.row.original.name;
                 const menuItems: MenuItem[] = [];
                 let editorSettingItem: MenuItem;
                 if (info.row.original.isEditor) {
-                  const editorLabel = "Remove from editors";
+                  const editorLabel = t`Remove from editors`;
                   editorSettingItem = {
                     kind: "item",
                     label: editorLabel,
@@ -263,8 +266,8 @@ export function PodMembersTable({
                     onClick: async () => {
                       const confirmed = await confirm({
                         title: editorLabel,
-                        message: `Are you sure you want to remove "${info.row.original.name}" from editors?`,
-                        validateLabel: "Remove",
+                        message: t`Are you sure you want to remove "${memberName}" from editors?`,
+                        validateLabel: t`Remove`,
                         validateVariant: "primary",
                       });
 
@@ -274,7 +277,7 @@ export function PodMembersTable({
                     },
                   };
                 } else {
-                  const editorLabel = "Set as editor";
+                  const editorLabel = t`Set as editor`;
                   editorSettingItem = {
                     kind: "item",
                     label: editorLabel,
@@ -283,8 +286,8 @@ export function PodMembersTable({
                     onClick: async () => {
                       const confirmed = await confirm({
                         title: editorLabel,
-                        message: `Are you sure you want to add "${info.row.original.name}" as an editor?`,
-                        validateLabel: "Add",
+                        message: t`Are you sure you want to add "${memberName}" as an editor?`,
+                        validateLabel: t`Add`,
                         validateVariant: "primary",
                       });
 
@@ -298,14 +301,14 @@ export function PodMembersTable({
 
                 menuItems.push({
                   kind: "item",
-                  label: "Remove from Pod",
+                  label: t`Remove from Pod`,
                   icon: Trash01,
                   variant: "warning",
                   onClick: async () => {
                     const confirmed = await confirm({
-                      title: "Remove member",
-                      message: `Are you sure you want to remove "${info.row.original.name}" from this Pod?`,
-                      validateLabel: "Remove",
+                      title: t`Remove member`,
+                      message: t`Are you sure you want to remove "${memberName}" from this Pod?`,
+                      validateLabel: t`Remove`,
                       validateVariant: "warning",
                     });
 
@@ -320,7 +323,7 @@ export function PodMembersTable({
           ]
         : []),
     ],
-    [isEditor, removeMember, confirm, toggleEditor, rows]
+    [isEditor, removeMember, confirm, toggleEditor, rows, t]
   );
 
   return (

@@ -15,6 +15,7 @@ import {
   Icon,
   PuzzlePiece01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 100;
@@ -32,6 +33,7 @@ export function PodDefaultSkillPicker({
   onSelect,
   triggerClassName,
 }: PodDefaultSkillPickerProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
@@ -66,11 +68,13 @@ export function PodDefaultSkillPicker({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Add a default skill"
+          aria-label={t`Add a default skill`}
           className={triggerClassName}
         >
           <Icon visual={PuzzlePiece01} size="xs" />
-          <span className="grow truncate">Add skill</span>
+          <span className="grow truncate">
+            <Trans>Add skill</Trans>
+          </span>
           <Icon visual={ChevronDown} size="xs" className="-mr-1 text-faint" />
         </button>
       </DropdownMenuTrigger>
@@ -81,7 +85,7 @@ export function PodDefaultSkillPicker({
         dropdownHeaders={
           <DropdownMenuSearchbar
             name="search-default-skills"
-            placeholder="Search skills"
+            placeholder={t`Search skills`}
             value={searchTerm}
             onChange={setSearchTerm}
           />
@@ -93,7 +97,7 @@ export function PodDefaultSkillPicker({
         ) : addableSkills.length > 0 || !hasMore ? (
           <CapabilitiesPickerItemsList
             emptyMessage={
-              normalizedSearch ? "No skills found" : "No more skills to add"
+              normalizedSearch ? t`No skills found` : t`No more skills to add`
             }
             items={addableSkills.map((skill) => {
               const SkillAvatar = getSkillAvatarIcon(skill);

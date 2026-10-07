@@ -10,6 +10,7 @@ import type { GroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { Chip, DataTable, Trash01, Users01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
 
@@ -38,6 +39,7 @@ export function PodGroupMembersTable({
   isEditor,
   mutatePodInfo,
 }: PodGroupMembersTableProps) {
+  const { t } = useLingui();
   const doUpdate = useUpdateSpace({ owner });
   const confirm = useContext(ConfirmContext);
   const getGroupKindChip = useGroupKindChip();
@@ -59,15 +61,15 @@ export function PodGroupMembersTable({
           ),
         },
         {
-          title: "Successfully removed group",
-          description: "The group no longer has access to this Pod.",
+          title: t`Successfully removed group`,
+          description: t`The group no longer has access to this Pod.`,
         }
       );
       if (updated) {
         await mutatePodInfo();
       }
     },
-    [doUpdate, mutatePodInfo, pod]
+    [doUpdate, mutatePodInfo, pod, t]
   );
 
   const rows: GroupRowData[] = useMemo(
@@ -85,7 +87,7 @@ export function PodGroupMembersTable({
     () => [
       {
         accessorKey: "name",
-        header: "Group name",
+        header: t`Group name`,
         id: "name",
         sortingFn: "text",
         meta: { className: "w-[250px]" },
@@ -97,7 +99,7 @@ export function PodGroupMembersTable({
       },
       {
         id: "kind",
-        header: "Group type",
+        header: t`Group type`,
         meta: { className: "w-[250px]" },
         cell: (info: GroupRowInfo) => {
           const { label, color } = getGroupKindChip(info.row.original.kind);
@@ -110,12 +112,12 @@ export function PodGroupMembersTable({
       },
       {
         id: "role",
-        header: "Role",
+        header: t`Role`,
         meta: { className: "w-20" },
         cell: (info: GroupRowInfo) => (
           <DataTable.CellContent>
             {info.row.original.role === "editor" && (
-              <Chip color="success" size="xs" label="Editor" />
+              <Chip color="success" size="xs" label={t`Editor`} />
             )}
           </DataTable.CellContent>
         ),
@@ -131,14 +133,14 @@ export function PodGroupMembersTable({
                 const menuItems: MenuItem[] = [
                   {
                     kind: "item",
-                    label: "Remove from Pod",
+                    label: t`Remove from Pod`,
                     icon: Trash01,
                     variant: "warning",
                     onClick: async () => {
                       const confirmed = await confirm({
-                        title: "Remove group",
-                        message: `Are you sure you want to remove "${name}" from this Pod? Its members will lose access, unless they are members of the Pod some other way.`,
-                        validateLabel: "Remove",
+                        title: t`Remove group`,
+                        message: t`Are you sure you want to remove "${name}" from this Pod? Its members will lose access, unless they are members of the Pod some other way.`,
+                        validateLabel: t`Remove`,
                         validateVariant: "warning",
                       });
                       if (confirmed) {
@@ -153,7 +155,7 @@ export function PodGroupMembersTable({
           ]
         : []),
     ],
-    [confirm, getGroupKindChip, isEditor, removeGroup]
+    [confirm, getGroupKindChip, isEditor, removeGroup, t]
   );
 
   return (
