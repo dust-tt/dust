@@ -2,9 +2,9 @@ import { createServer } from "node:http";
 import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
 import type { LiveFile } from "@app/lib/api/collab/live_file";
 import {
+  checkLiveAccess,
   checkpointLiveDocument,
   loadLiveDocument,
-  openLiveFile,
 } from "@app/lib/api/collab/live_file";
 import { mintLiveTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
@@ -41,8 +41,8 @@ vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
     ...actual,
     loadLiveDocument: vi.fn(),
     checkpointLiveDocument: vi.fn(),
-    // Real until a test stubs it: tickets open the file they are minted for.
-    openLiveFile: vi.fn(actual.openLiveFile),
+    // Real until a test stubs it: minting a ticket and connecting both check access.
+    checkLiveAccess: vi.fn(actual.checkLiveAccess),
   };
 });
 
@@ -498,7 +498,7 @@ describe("comment threads in a live session", () => {
     providers.forEach((provider) => provider.destroy());
     close();
     vi.restoreAllMocks();
-    vi.mocked(openLiveFile).mockReset();
+    vi.mocked(checkLiveAccess).mockReset();
   });
 
   // The socket handlers run outside the test's database transaction: authentication and the
@@ -509,7 +509,7 @@ describe("comment threads in a live session", () => {
     vi.spyOn(Authenticator, "fromUserIdAndWorkspaceId").mockResolvedValue(
       writer.auth
     );
-    vi.mocked(openLiveFile).mockResolvedValue(new Ok(writer));
+    vi.mocked(checkLiveAccess).mockResolvedValue(new Ok(writer));
     vi.mocked(loadLiveDocument).mockImplementation(async () => {
       const live = dfmToYDoc(SOURCE);
       if (live.isErr()) {
