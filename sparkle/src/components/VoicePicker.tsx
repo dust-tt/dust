@@ -287,10 +287,11 @@ export function VoicePicker({
 
   const icon = shouldShowStop ? Square : Microphone01;
   const variant = shouldShowStop || isLoading ? "highlight" : "ghost-secondary";
+  const progress = transcribingProgress ?? 0;
   const label = isTranscribing
-    ? `${transcribingProgress ?? 0}%`
+    ? t`${progress}%`
     : shouldShowStop && showStopLabel
-      ? "Stop"
+      ? t({ message: "Stop", context: "verb, stop recording" })
       : undefined;
   const tooltip = t(
     computeTooltip(interactionMode, isRecording, isTranscribing)

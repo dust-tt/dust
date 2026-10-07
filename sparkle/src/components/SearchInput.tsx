@@ -1,3 +1,4 @@
+import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import type { ContentMessageProps } from "@sparkle/components/ContentMessage";
@@ -191,6 +192,7 @@ function BaseSearchInputWithPopover<T>(
   ref: Ref<HTMLInputElement>
 ) {
   const { t } = useLingui();
+  const itemCount = items.length;
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const showHeader =
@@ -292,8 +294,9 @@ function BaseSearchInputWithPopover<T>(
                 {stickyTopContent}
                 {displayItemCount && items.length > 0 && (
                   <span className="text-sm text-muted-foreground">
-                    {items.length} search results
-                    {totalItems && ` (out of ${totalItems})`}.
+                    {totalItems
+                      ? t`${plural(itemCount, { one: "# search result", other: "# search results" })} (out of ${totalItems}).`
+                      : t`${plural(itemCount, { one: "# search result.", other: "# search results." })}`}
                   </span>
                 )}
               </div>

@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import * as React from "react";
 import { Suspense } from "react";
@@ -71,7 +72,7 @@ export function SafeSuspense({ children, fallback }: SafeSuspenseProps) {
           {fallback}
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-sm text-muted-foreground">
-              Failed to load. Please reload the page.
+              <Trans>Failed to load. Please reload the page.</Trans>
             </p>
           </div>
         </div>

@@ -1,3 +1,5 @@
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { Chip } from "@sparkle/components/Chip";
 import { cn } from "@sparkle/lib/utils";
 import React, { useState } from "react";
@@ -119,6 +121,11 @@ function JsonValue({
   setExpandedPaths?: React.Dispatch<React.SetStateAction<Set<string>>>;
   currentPath?: string;
 }) {
+  const { t } = useLingui();
+  const expandLabel = t({
+    message: "expand",
+    context: "verb, show hidden JSON content",
+  });
   const handleToggleExpanded = (path: string) => {
     if (!setExpandedPaths) {
       return;
@@ -158,8 +165,8 @@ function JsonValue({
     return (
       <div className="flex items-center gap-1">
         <InlineExpandButton
-          label="Maximum depth reached"
-          buttonText="expand"
+          label={t`Maximum depth reached`}
+          buttonText={expandLabel}
           onClick={() => handleToggleExpanded(deepObjectPath)}
         />
       </div>
@@ -167,11 +174,15 @@ function JsonValue({
   }
 
   if (value === null || value === undefined) {
-    return <span className={EMPTY_CLASSES}>empty</span>;
+    return (
+      <span className={EMPTY_CLASSES}>
+        {t({ message: "empty", context: "a null JSON value" })}
+      </span>
+    );
   }
 
   if (typeof value === "boolean") {
-    return <span className={VALUE_CLASSES}>{value ? "Yes" : "No"}</span>;
+    return <span className={VALUE_CLASSES}>{value ? t`Yes` : t`No`}</span>;
   }
 
   if (typeof value === "number") {
@@ -182,6 +193,7 @@ function JsonValue({
     if (value.length > MAX_STRING_LENGTH) {
       const longStringPath = `${currentPath}:longstring`;
       const isExpanded = expandedPaths?.has(longStringPath) ?? false;
+      const hiddenCharCount = value.length - MAX_STRING_LENGTH;
 
       return (
         <span className={cn(VALUE_CLASSES, "whitespace-pre-wrap break-normal")}>
@@ -192,8 +204,8 @@ function JsonValue({
             className="cursor-pointer font-medium text-highlight hover:underline"
           >
             {isExpanded
-              ? "collapse"
-              : `expand (${(value.length - MAX_STRING_LENGTH).toLocaleString()} more characters)`}
+              ? t({ message: "collapse", context: "verb, hide JSON content" })
+              : t`expand (${plural(hiddenCharCount, { one: "# more character", other: "# more characters" })})`}
           </button>
         </span>
       );
@@ -208,7 +220,7 @@ function JsonValue({
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return <span className={EMPTY_CLASSES}>empty list</span>;
+      return <span className={EMPTY_CLASSES}>{t`empty list`}</span>;
     }
 
     // Check if it's a simple array of primitives.
@@ -242,30 +254,34 @@ function JsonValue({
       ? value.length
       : Math.min(value.length, MAX_ARRAY_ITEMS);
     const hasMore = value.length > MAX_ARRAY_ITEMS && !isExpanded;
+    const hiddenItemCount = value.length - itemsToShow;
 
     return (
       <div className="mt-2">
-        {value.slice(0, itemsToShow).map((item, index) => (
-          <div key={index} className={cn(INDENT_CLASSES)}>
-            <div className="flex flex-col gap-2">
-              <Chip size="xs" color="primary" label={`Item ${index + 1}`} />
-              <div className="max-w-full">
-                <JsonValue
-                  value={item}
-                  depth={depth + 1}
-                  expandedPaths={expandedPaths}
-                  setExpandedPaths={setExpandedPaths}
-                  currentPath={`${currentPath}[${index}]`}
-                />
+        {value.slice(0, itemsToShow).map((item, index) => {
+          const itemNumber = index + 1;
+          return (
+            <div key={index} className={cn(INDENT_CLASSES)}>
+              <div className="flex flex-col gap-2">
+                <Chip size="xs" color="primary" label={t`Item ${itemNumber}`} />
+                <div className="max-w-full">
+                  <JsonValue
+                    value={item}
+                    depth={depth + 1}
+                    expandedPaths={expandedPaths}
+                    setExpandedPaths={setExpandedPaths}
+                    currentPath={`${currentPath}[${index}]`}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {hasMore && (
           <div className={cn(INDENT_CLASSES)}>
             <InlineExpandButton
-              label={`${value.length - itemsToShow} more items`}
-              buttonText="expand"
+              label={t`${plural(hiddenItemCount, { one: "# more item", other: "# more items" })}`}
+              buttonText={expandLabel}
               onClick={() => handleToggleExpanded(arrayPath)}
             />
           </div>
@@ -277,7 +293,11 @@ function JsonValue({
   if (typeof value === "object") {
     const entries = Object.entries(value);
     if (entries.length === 0) {
-      return <span className={EMPTY_CLASSES}>empty</span>;
+      return (
+        <span className={EMPTY_CLASSES}>
+          {t({ message: "empty", context: "an empty JSON object" })}
+        </span>
+      );
     }
 
     // Truncate objects with too many properties.
@@ -288,6 +308,8 @@ function JsonValue({
       : Math.min(entries.length, MAX_OBJECT_KEYS);
     const hasMore = entries.length > MAX_OBJECT_KEYS && !isExpanded;
     const visibleEntries = entries.slice(0, keysToShow);
+    const hiddenPropertyCount = entries.length - keysToShow;
+    const hiddenPropertiesLabel = t`${plural(hiddenPropertyCount, { one: "# more property", other: "# more properties" })}`;
 
     // For nested objects, use a card-like layout with vertical bars.
     if (depth > 0) {
@@ -309,8 +331,8 @@ function JsonValue({
           {hasMore && (
             <div className={cn(INDENT_CLASSES)}>
               <InlineExpandButton
-                label={`${entries.length - keysToShow} more properties`}
-                buttonText="expand"
+                label={hiddenPropertiesLabel}
+                buttonText={expandLabel}
                 onClick={() => handleToggleExpanded(objectPath)}
               />
             </div>
@@ -345,8 +367,8 @@ function JsonValue({
         {hasMore && (
           <div className="border-structure-200 border-t pt-3">
             <InlineExpandButton
-              label={`${entries.length - keysToShow} more properties`}
-              buttonText="expand"
+              label={hiddenPropertiesLabel}
+              buttonText={expandLabel}
               onClick={() => handleToggleExpanded(objectPath)}
             />
           </div>

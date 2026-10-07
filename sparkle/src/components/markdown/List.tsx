@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Icon } from "@sparkle/components/Icon";
 import { markdownParagraphSize } from "@sparkle/components/markdown/markdownSizes";
 import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
@@ -139,18 +140,18 @@ interface TaskStepBadgeProps {
   number?: number;
 }
 
-function taskStepLabel({ checked, number }: TaskStepBadgeProps) {
-  if (checked) {
-    return "Done";
-  }
-  return number !== undefined ? `Step ${number}` : "To do";
-}
-
 function TaskStepBadge({ checked, number }: TaskStepBadgeProps) {
+  const { t } = useLingui();
+  const label = checked
+    ? t`Done`
+    : number !== undefined
+      ? t`Step ${number}`
+      : t`To do`;
+
   return (
     <div
       role="img"
-      aria-label={taskStepLabel({ checked, number })}
+      aria-label={label}
       className={taskStepBadgeVariants({ checked })}
     >
       {checked ? (
