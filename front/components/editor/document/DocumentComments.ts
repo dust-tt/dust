@@ -511,10 +511,23 @@ export const getCommentInlineContent = (
   return range ? inlineContentBetween(doc, range.from, range.to) : null;
 };
 
+/** The draft's text from the first character a comment mark can sit on to the last, the text its comment would anchor. */
 export const getDraftInlineContent = (
   doc: Node,
   draft: DocumentCommentDraft
-): JSONContent[] | null => inlineContentBetween(doc, draft.from, draft.to);
+): JSONContent[] | null => {
+  let from: number | null = null;
+  let to: number | null = null;
+  doc.nodesBetween(draft.from, draft.to, (node, pos, parent) => {
+    if (canCarryCommentMark(node, parent)) {
+      from ??= Math.max(pos, draft.from);
+      to = Math.min(pos + node.nodeSize, draft.to);
+    }
+  });
+  return from !== null && to !== null
+    ? inlineContentBetween(doc, from, to)
+    : null;
+};
 
 const suggestableComments = new WeakMap<Node, Set<string>>();
 

@@ -1094,5 +1094,25 @@ describe("useDocumentComments", () => {
         "```suggestion\nbrave\n```"
       );
     });
+
+    it("leaves out of the draft's template the edges its comment cannot anchor", async () => {
+      const { result } = await renderCommentedEditor("Hello wor`x`ld.\n");
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        select(editor, "wor");
+        const { from } = editor.state.selection;
+        editor.commands.setTextSelection({ from, to: from + "worx".length });
+        result.current.comments.startDraft();
+      });
+
+      const template = result.current.comments.draftSuggestionTemplate();
+      expect(template.isOk() && template.value).toBe(
+        "```suggestion\nwor\n```"
+      );
+    });
   });
 });
