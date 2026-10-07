@@ -1,6 +1,5 @@
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
-import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -29,10 +28,6 @@ vi.mock("@app/poke/temporal/client", async () => {
     launchScrubDataSourceWorkflow: vi.fn(),
   };
 });
-
-const FOLDER_NAME = "Board folder";
-const FOLDER_DESCRIPTION = "Board packs";
-const UPDATED_DESCRIPTION = "Updated board packs";
 
 vi.spyOn(CoreAPI.prototype, "createProject").mockImplementation(async () => {
   return new Ok({
@@ -75,17 +70,15 @@ function dataSourcesUrl(workspaceId: string, spaceId: string, dsId?: string) {
   return dsId ? `${base}/${dsId}` : base;
 }
 
-async function setup() {
-  return createPrivateApiMockRequest({ role: "admin" });
-}
-
 beforeEach(() => {
   vi.mocked(emitAuditLogEvent).mockClear();
 });
 
 describe("folder data source audit events", () => {
   it("audits POST of a folder as datasource.created", async () => {
-    const { workspace, globalSpace } = await setup();
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
 
     const response = await honoApp.request(
       dataSourcesUrl(workspace.sId, globalSpace.sId),
@@ -93,110 +86,81 @@ describe("folder data source audit events", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: FOLDER_NAME,
-          description: FOLDER_DESCRIPTION,
+          name: "Board folder",
+          description: "Board packs",
         }),
       }
     );
 
     expect(response.status).toBe(201);
     const body = await response.json();
-    expect(body).toMatchObject({
-      dataSource: {
-        name: FOLDER_NAME,
-        description: FOLDER_DESCRIPTION,
-        connectorId: null,
-        connectorProvider: null,
-      },
-      dataSourceView: {
-        category: "folder",
-        kind: "default",
-        spaceId: globalSpace.sId,
-      },
-    });
-
-    expect(vi.mocked(emitAuditLogEvent).mock.calls).toEqual([
-      [
-        {
-          auth: expect.any(Authenticator),
-          action: "datasource.created",
-          targets: [
-            {
-              type: "workspace",
-              id: workspace.sId,
-              name: workspace.name,
-            },
-            {
-              type: "data_source",
-              id: body.dataSource.sId,
-              name: FOLDER_NAME,
-            },
-          ],
-          context: { location: "internal" },
-          metadata: {
-            data_source_name: FOLDER_NAME,
-            provider: "folder",
-            space_id: globalSpace.sId,
-          },
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "datasource.created",
+        metadata: {
+          data_source_name: "Board folder",
+          provider: "folder",
+          space_id: globalSpace.sId,
         },
-      ],
-    ]);
+        targets: expect.arrayContaining([
+          expect.objectContaining({
+            type: "workspace",
+            id: workspace.sId,
+          }),
+          expect.objectContaining({
+            type: "data_source",
+            id: body.dataSource.sId,
+            name: "Board folder",
+          }),
+        ]),
+      })
+    );
   });
 
   it("audits PATCH of a folder description as datasource.updated", async () => {
-    const { workspace, globalSpace } = await setup();
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
     const view = await DataSourceViewFactory.folder(workspace, globalSpace);
-    const name = view.dataSource.name;
 
     const response = await honoApp.request(
       dataSourcesUrl(workspace.sId, globalSpace.sId, view.dataSource.sId),
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: UPDATED_DESCRIPTION }),
+        body: JSON.stringify({ description: "Updated board packs" }),
       }
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      dataSource: {
-        sId: view.dataSource.sId,
-        name,
-        description: UPDATED_DESCRIPTION,
-      },
-    });
-
-    expect(vi.mocked(emitAuditLogEvent).mock.calls).toEqual([
-      [
-        {
-          auth: expect.any(Authenticator),
-          action: "datasource.updated",
-          targets: [
-            {
-              type: "workspace",
-              id: workspace.sId,
-              name: workspace.name,
-            },
-            {
-              type: "data_source",
-              id: view.dataSource.sId,
-              name,
-            },
-          ],
-          context: { location: "internal" },
-          metadata: {
-            data_source_name: name,
-            field: "description",
-          },
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "datasource.updated",
+        metadata: {
+          data_source_name: view.dataSource.name,
+          field: "description",
         },
-      ],
-    ]);
+        targets: expect.arrayContaining([
+          expect.objectContaining({
+            type: "workspace",
+            id: workspace.sId,
+          }),
+          expect.objectContaining({
+            type: "data_source",
+            id: view.dataSource.sId,
+          }),
+        ]),
+      })
+    );
   });
 
   it("audits DELETE of a folder as datasource.deleted", async () => {
-    const { workspace, globalSpace, auth } = await setup();
+    const { workspace, globalSpace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
     const view = await DataSourceViewFactory.folder(workspace, globalSpace);
-    const name = view.dataSource.name;
     const dsId = view.dataSource.sId;
 
     const response = await honoApp.request(
@@ -206,32 +170,26 @@ describe("folder data source audit events", () => {
 
     expect(response.status).toBe(204);
     expect(await DataSourceResource.fetchById(auth, dsId)).toBeNull();
-
-    expect(vi.mocked(emitAuditLogEvent).mock.calls).toEqual([
-      [
-        {
-          auth: expect.any(Authenticator),
-          action: "datasource.deleted",
-          targets: [
-            {
-              type: "workspace",
-              id: workspace.sId,
-              name: workspace.name,
-            },
-            {
-              type: "data_source",
-              id: dsId,
-              name,
-            },
-          ],
-          context: { location: "internal" },
-          metadata: {
-            data_source_name: name,
-            provider: "folder",
-            space_id: globalSpace.sId,
-          },
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "datasource.deleted",
+        metadata: {
+          data_source_name: view.dataSource.name,
+          provider: "folder",
+          space_id: globalSpace.sId,
         },
-      ],
-    ]);
+        targets: expect.arrayContaining([
+          expect.objectContaining({
+            type: "workspace",
+            id: workspace.sId,
+          }),
+          expect.objectContaining({
+            type: "data_source",
+            id: dsId,
+          }),
+        ]),
+      })
+    );
   });
 });

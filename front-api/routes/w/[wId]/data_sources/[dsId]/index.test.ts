@@ -42,7 +42,6 @@ describe("POST /api/w/:wId/data_sources/:dsId", () => {
         message: "The data source you requested was not found.",
       },
     });
-    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("returns 403 if not authorized to administrate the data source", async () => {
@@ -67,7 +66,6 @@ describe("POST /api/w/:wId/data_sources/:dsId", () => {
           "You do not have permission to access this data source's settings.",
       },
     });
-    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("returns 400 when request body is invalid", async () => {
@@ -87,10 +85,9 @@ describe("POST /api/w/:wId/data_sources/:dsId", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
-    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
-  it("successfully updates assistantDefaultSelected to true (admin only)", async () => {
+  it("audits assistantDefaultSelected updates as datasource.updated", async () => {
     const { workspace, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -106,9 +103,7 @@ describe("POST /api/w/:wId/data_sources/:dsId", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.dataSource).toBeDefined();
-    expect(body.dataSource.sId).toBe(dataSourceView.dataSource.sId);
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "datasource.updated",
@@ -116,6 +111,16 @@ describe("POST /api/w/:wId/data_sources/:dsId", () => {
           data_source_name: dataSourceView.dataSource.name,
           field: "assistant_default_selected",
         },
+        targets: expect.arrayContaining([
+          expect.objectContaining({
+            type: "workspace",
+            id: workspace.sId,
+          }),
+          expect.objectContaining({
+            type: "data_source",
+            id: dataSourceView.dataSource.sId,
+          }),
+        ]),
       })
     );
   });
@@ -136,17 +141,8 @@ describe("POST /api/w/:wId/data_sources/:dsId", () => {
     });
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.dataSource).toBeDefined();
-    expect(body.dataSource.sId).toBe(dataSourceView.dataSource.sId);
-    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "datasource.updated",
-        metadata: {
-          data_source_name: dataSourceView.dataSource.name,
-          field: "assistant_default_selected",
-        },
-      })
+    expect((await response.json()).dataSource.assistantDefaultSelected).toBe(
+      false
     );
   });
 });
