@@ -1,0 +1,26 @@
+{
+  "babelrc": false,
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "chrome": "64",
+          "edge": "79",
+          "firefox": "78",
+          "safari": "12",
+          "ios": "12"
+        },
+        "modules": false,
+        "bugfixes": true
+      }
+    ],
+    "@babel/preset-typescript"
+  ],
+  "plugins": [
+    [
+      "@babel/plugin-transform-react-jsx",
+      { "runtime": "classic", "useSpread": true }
+    ]
+  ]
+}
