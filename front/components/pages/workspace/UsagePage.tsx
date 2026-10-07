@@ -16,10 +16,8 @@ import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
-import { CreditSpendCheckpointSettingsCard } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
@@ -49,7 +47,6 @@ import {
   buildModelTierDefinitionByName,
   expandMaxTierName,
 } from "@app/lib/client/model_tiers";
-import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatNumber } from "@app/lib/i18n/format";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
@@ -313,7 +310,6 @@ export function UsagePage() {
     []
   );
   const isWorkspaceAdmin = isAdmin(owner);
-  const hasSelfImprovement = useIsSelfImprovementAvailable();
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
@@ -1011,6 +1007,26 @@ export function UsagePage() {
                     variant="highlight-ghost"
                     href={`/w/${owner.sId}/analytics/consumption`}
                   />
+                  {isWorkspaceAdmin ? (
+                    <AdminSectionAnchor
+                      sectionId={ADMIN_SECTION_IDS.usage.addCredits}
+                    >
+                      <div className="flex justify-end">
+                        {isCreditPriced ? (
+                          topUpButton
+                        ) : (
+                          // Non–credit-priced plans still purchase on the legacy page.
+                          <Button
+                            label={t`Add credits`}
+                            icon={Plus}
+                            size="sm"
+                            variant="outline"
+                            href={`/w/${owner.sId}/developers/credits-usage`}
+                          />
+                        )}
+                      </div>
+                    </AdminSectionAnchor>
+                  ) : null}
                 </div>
               }
               description={t`Control credit consumption across your workspace.`}
@@ -1030,9 +1046,30 @@ export function UsagePage() {
                       variant="highlight-ghost"
                       href={`/w/${owner.sId}/analytics/consumption`}
                     />
+                    {isWorkspaceAdmin ? (
+                      <AdminSectionAnchor
+                        sectionId={ADMIN_SECTION_IDS.usage.addCredits}
+                      >
+                        <div className="flex justify-end">
+                          {isCreditPriced ? (
+                            topUpButton
+                          ) : (
+                            // Non–credit-priced plans still purchase on the legacy page.
+                            <Button
+                              label={t`Add credits`}
+                              icon={Plus}
+                              size="sm"
+                              variant="outline"
+                              href={`/w/${owner.sId}/developers/credits-usage`}
+                            />
+                          )}
+                        </div>
+                      </AdminSectionAnchor>
+                    ) : null}
                   </div>
                 </div>
               }
+              description={t`Control credit consumption across your workspace.`}
             />
           )}
 
@@ -1174,24 +1211,6 @@ export function UsagePage() {
             </div>
           ) : null}
 
-          {isWorkspaceAdmin ? (
-            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.addCredits}>
-              <div className="flex justify-end">
-                {isCreditPriced ? (
-                  topUpButton
-                ) : (
-                  // Non–credit-priced plans still purchase on the legacy page.
-                  <Button
-                    label={t`Add credits`}
-                    icon={Plus}
-                    size="sm"
-                    variant="outline"
-                    href={`/w/${owner.sId}/developers/credits-usage`}
-                  />
-                )}
-              </div>
-            </AdminSectionAnchor>
-          ) : null}
           {isCreditPriced ? (
             <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
           ) : null}
@@ -1325,13 +1344,6 @@ export function UsagePage() {
                       />
                     </AdminSectionAnchor>
                   )}
-                  <AdminSectionAnchor
-                    sectionId={ADMIN_SECTION_IDS.usage.costManagement}
-                  >
-                    <CreditSpendCheckpointSettingsCard
-                      workspaceId={owner.sId}
-                    />
-                  </AdminSectionAnchor>
                   {/* Always mounted so search deep links resolve on all plans. */}
                   {isCreditPriced ? (
                     <LockedSection
@@ -1342,13 +1354,7 @@ export function UsagePage() {
                         sectionId={ADMIN_SECTION_IDS.usage.programmatic}
                       >
                         <div className="flex flex-col gap-8">
-                          <UsageProgrammaticLimitCard workspaceId={owner.sId} />
-                          {hasSelfImprovement && (
-                            <SelfImprovingSkillsSettingsSection
-                              owner={owner}
-                              showToggles={false}
-                            />
-                          )}
+                          <UsageProgrammaticLimitCard owner={owner} />
                         </div>
                       </AdminSectionAnchor>
                       <AdminSectionAnchor
@@ -1362,13 +1368,7 @@ export function UsagePage() {
                       sectionId={ADMIN_SECTION_IDS.usage.programmatic}
                     >
                       <div className="flex flex-col gap-8">
-                        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
-                        {hasSelfImprovement && (
-                          <SelfImprovingSkillsSettingsSection
-                            owner={owner}
-                            showToggles={false}
-                          />
-                        )}
+                        <UsageProgrammaticLimitCard owner={owner} />
                       </div>
                     </AdminSectionAnchor>
                   )}

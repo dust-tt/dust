@@ -47,16 +47,16 @@ msgid "Features"
 msgstr "Features"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Frames"
 msgstr "Frames"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Automations"
 msgstr "Automations"
-
-#: front/components/pages/workspace/governance/GovernancePage.tsx
-msgid "Pods"
-msgstr "Pods"
 
 #: front/components/pages/workspace/governance/GovernancePageLayout.tsx
 msgid "Governance"
