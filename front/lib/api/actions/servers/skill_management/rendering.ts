@@ -13,6 +13,11 @@ type EnableSkillResultResourceType = z.infer<
   typeof EnableSkillResultResourceSchema
 >;
 
+/**
+ * @cc [owner:philipperolet,label:performance] skill-management-tools-only
+ * This output MUST only be returned by tools of the `skill_management` internal server:
+ * `canEnableSkill` relies on it to skip loading the outputs of every other action.
+ */
 export function makeEnableSkillResultOutput({
   skillId,
   text,
