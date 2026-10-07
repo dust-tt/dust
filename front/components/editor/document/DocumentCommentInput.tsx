@@ -73,7 +73,13 @@ export const DocumentCommentInput = ({
   const { t } = useLingui();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingSelectionRef = useRef<Selection | null>(null);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [refusedSuggestion, setRefusedSuggestion] = useState<{
+    reason: string;
+    value: string;
+  } | null>(null);
+  // A refusal shows only while the text it was raised on stays as it is.
+  const suggestError =
+    refusedSuggestion?.value === value ? refusedSuggestion.reason : null;
   const trimmed = value.trim();
 
   // Runs on every value change, though it reads none: the height follows the rendered value.
@@ -99,7 +105,7 @@ export const DocumentCommentInput = ({
 
   const submit = () => {
     if (trimmed && !pending) {
-      setSuggestError(null);
+      setRefusedSuggestion(null);
       void onSubmit(trimmed);
     }
   };
@@ -113,10 +119,10 @@ export const DocumentCommentInput = ({
       return;
     }
     if (block.isErr()) {
-      setSuggestError(block.error);
+      setRefusedSuggestion({ reason: block.error, value });
       return;
     }
-    setSuggestError(null);
+    setRefusedSuggestion(null);
     const prefix = value.trimEnd() ? `${value.trimEnd()}\n\n` : "";
     const start = prefix.length + block.value.indexOf("\n") + 1;
     const end = prefix.length + block.value.lastIndexOf("\n");
@@ -143,10 +149,7 @@ export const DocumentCommentInput = ({
             aria-busy={pending}
             minRows={1}
             resize="none"
-            onChange={(event) => {
-              setSuggestError(null);
-              onChange(event.target.value);
-            }}
+            onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.nativeEvent.isComposing) {
                 return;
