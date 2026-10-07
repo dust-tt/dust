@@ -1,7 +1,7 @@
 import { QueryTypes } from "sequelize";
 
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -25,8 +25,10 @@ makeScript({}, async ({ execute }, logger) => {
   );
 
   // Walks apps (small) rather than runs (every LLM call lands there) so each lookup hits the
-  // (workspaceId, appId, runType, createdAt) index.
-  const activeRows = await frontSequelize.query<{ workspaceId: number }>(
+  // (workspaceId, appId, runType, createdAt) index. Read-only, so it runs on the replica.
+  const activeRows = await getFrontReplicaDbConnection().query<{
+    workspaceId: number;
+  }>(
     `
       SELECT DISTINCT a."workspaceId"
       FROM apps a
