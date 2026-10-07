@@ -5,6 +5,9 @@ import type { PodManagerEditInformationInput } from "@app/lib/api/actions/server
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface PodEditInformationValidationDetailsProps {
@@ -19,13 +22,20 @@ interface ChangeRowProps {
   after: string;
 }
 
-function formatAccess(access: "restricted" | "open"): string {
-  return access === "open" ? "Open" : "Restricted";
+type Translate = (descriptor: MessageDescriptor) => string;
+
+function formatAccess(access: "restricted" | "open", t: Translate): string {
+  return access === "open"
+    ? t(msg({ message: "Open", context: "pod access" }))
+    : t(msg({ message: "Restricted", context: "pod access" }));
 }
 
-function formatPinnedFramePath(path: string | null | undefined): string {
+function formatPinnedFramePath(
+  path: string | null | undefined,
+  t: Translate
+): string {
   if (path === null) {
-    return "Unpinned";
+    return t(msg`Unpinned`);
   }
   if (path === undefined) {
     return "—";
@@ -34,6 +44,7 @@ function formatPinnedFramePath(path: string | null | undefined): string {
 }
 
 function ChangeRow({ label, before, after }: ChangeRowProps) {
+  const { t } = useLingui();
   const hasChanged = before !== after;
 
   return (
@@ -47,7 +58,7 @@ function ChangeRow({ label, before, after }: ChangeRowProps) {
             <span className="font-medium text-foreground">{after}</span>
           </>
         )}
-        {!hasChanged && <Chip size="xs" color="primary" label="No change" />}
+        {!hasChanged && <Chip size="xs" color="primary" label={t`No change`} />}
       </div>
     </div>
   );
@@ -58,6 +69,7 @@ export function PodEditInformationValidationDetails({
   owner,
   conversationId,
 }: PodEditInformationValidationDetailsProps) {
+  const { t } = useLingui();
   const { podLabel, isPodLabelLoading } = usePodLabel({
     owner,
     dustPodUri: input.dustPod?.uri,
@@ -100,55 +112,58 @@ export function PodEditInformationValidationDetails({
       : "open"
     : null;
 
+  const loadingLabel = t`Loading…`;
   const changes: ChangeRowProps[] = [];
 
   if (input.title !== undefined) {
     changes.push({
-      label: "Title",
-      before: spaceInfo?.name ?? (isCurrentPodInfoLoading ? "Loading…" : "—"),
+      label: t`Title`,
+      before: spaceInfo?.name ?? (isCurrentPodInfoLoading ? loadingLabel : "—"),
       after: input.title,
     });
   }
 
   if (input.description !== undefined) {
     changes.push({
-      label: "Description",
+      label: t`Description`,
       before:
-        spaceInfo?.description ?? (isCurrentPodInfoLoading ? "Loading…" : "—"),
+        spaceInfo?.description ??
+        (isCurrentPodInfoLoading ? loadingLabel : "—"),
       after: input.description,
     });
   }
 
   if (input.access !== undefined) {
     changes.push({
-      label: "Access",
+      label: t`Access`,
       before: currentAccess
-        ? formatAccess(currentAccess)
+        ? formatAccess(currentAccess, t)
         : isCurrentPodInfoLoading
-          ? "Loading…"
+          ? loadingLabel
           : "—",
-      after: formatAccess(input.access),
+      after: formatAccess(input.access, t),
     });
   }
 
   if (input.pinnedFramePath !== undefined) {
     changes.push({
-      label: "Pinned frame",
+      label: t`Pinned frame`,
       before: isCurrentPodInfoLoading
-        ? "Loading…"
-        : formatPinnedFramePath(spaceInfo?.pinnedFramePath ?? undefined),
-      after: formatPinnedFramePath(input.pinnedFramePath),
+        ? loadingLabel
+        : formatPinnedFramePath(spaceInfo?.pinnedFramePath ?? undefined, t),
+      after: formatPinnedFramePath(input.pinnedFramePath, t),
     });
   }
+
+  const podName = isPodLabelLoading ? loadingLabel : podLabel;
 
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        The agent wants to update information for{" "}
-        <span className="font-medium text-foreground">
-          {isPodLabelLoading ? "Loading…" : podLabel}
-        </span>
-        .
+        <Trans>
+          The agent wants to update information for{" "}
+          <span className="font-medium text-foreground">{podName}</span>.
+        </Trans>
       </p>
 
       {changes.length > 0 && (
