@@ -60,8 +60,9 @@ msgid "{selectedCount, plural, one {# selected} other {# selected}}"
 msgstr "{selectedCount, plural, one {# sélectionné} other {# sélectionnés}}"
 
 #: front/components/shared/BulkSelectionBar.tsx
+msgctxt "clear the selection"
 msgid "Clear all"
-msgstr "Tout effacer"
+msgstr "Tout désélectionner"
 
 #: front/components/shared/RegionalFlag.tsx
 msgctxt "European Union"

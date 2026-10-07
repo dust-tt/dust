@@ -26,6 +26,7 @@ msgid "Customer Support"
 msgstr "Support client"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
 msgid "Data"
 msgstr "Data"
 
@@ -42,6 +43,7 @@ msgid "Finance"
 msgstr "Finance"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
 msgid "IT"
 msgstr "IT"
 

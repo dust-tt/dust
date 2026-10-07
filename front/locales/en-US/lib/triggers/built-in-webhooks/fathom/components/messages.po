@@ -87,6 +87,7 @@ msgid "Transcript"
 msgstr "Transcript"
 
 #: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgctxt "meeting summary"
 msgid "Summary"
 msgstr "Summary"
 

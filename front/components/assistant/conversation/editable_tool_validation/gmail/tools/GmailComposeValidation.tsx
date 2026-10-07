@@ -247,7 +247,7 @@ export function GmailComposeValidation({
           <textarea
             {...register("body")}
             disabled={isSubmitting}
-            placeholder={t`Body`}
+            placeholder={t({ message: "Body", context: "email body" })}
             className="h-64 w-full resize-none border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-faint disabled:cursor-not-allowed"
           />
           {errors.body && (

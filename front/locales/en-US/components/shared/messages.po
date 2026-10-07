@@ -60,6 +60,7 @@ msgid "{selectedCount, plural, one {# selected} other {# selected}}"
 msgstr "{selectedCount, plural, one {# selected} other {# selected}}"
 
 #: front/components/shared/BulkSelectionBar.tsx
+msgctxt "clear the selection"
 msgid "Clear all"
 msgstr "Clear all"
 

@@ -340,7 +340,7 @@ msgstr "{fieldName} : {errorMessage}"
 
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Invalid: {errorDetails}"
-msgstr "Non valide : {errorDetails}"
+msgstr "Invalide : {errorDetails}"
 
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Invalid form data"

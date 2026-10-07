@@ -84,7 +84,7 @@ msgstr "URL du serveur"
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Client ID"
-msgstr "Client ID"
+msgstr "ID client"
 
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 msgid "Consumer Key from the integration record (step 4)"
@@ -112,7 +112,7 @@ msgstr "URL du jeton"
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Scope"
-msgstr "Scope"
+msgstr "Portée"
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Power BI OAuth setup guide"

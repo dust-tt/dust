@@ -767,7 +767,7 @@ msgstr "Ajouter des outils"
 
 #: front/components/spaces/SpaceManagedActionsViewsModal.tsx
 msgid "Search tools..."
-msgstr "Rechercher des outils..."
+msgstr "Rechercher des outils…"
 
 #: front/components/spaces/SpaceManagedActionsViewsModal.tsx
 msgid "No more tools to add"

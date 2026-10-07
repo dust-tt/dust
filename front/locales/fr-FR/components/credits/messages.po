@@ -67,7 +67,7 @@ msgstr "Un motif est requis pour envoyer une demande de mise à niveau."
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Go to workspace usage"
-msgstr "Accéder à l’utilisation du workspace"
+msgstr "Voir l’utilisation du workspace"
 
 #: front/components/credits/UsageUpgradeButton.tsx
 msgid "Requested"

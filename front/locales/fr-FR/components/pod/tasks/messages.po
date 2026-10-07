@@ -65,7 +65,7 @@ msgstr "Ouvrir la conversation de la tâche"
 
 #: front/components/pod/tasks/EditableTaskItem.tsx
 msgid "Reopen this task before starting work."
-msgstr "Rouvrez cette tâche avant de commencer à travailler dessus."
+msgstr "Rouvrez cette tâche avant de commencer à travailler."
 
 #: front/components/pod/tasks/PodTaskCreateBar.tsx
 msgid "No Pod members available to assign."

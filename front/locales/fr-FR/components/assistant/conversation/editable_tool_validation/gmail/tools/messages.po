@@ -67,6 +67,7 @@ msgid "Kept from the original message"
 msgstr "Conservé du message d’origine"
 
 #: front/components/assistant/conversation/editable_tool_validation/gmail/tools/GmailComposeValidation.tsx
+msgctxt "email body"
 msgid "Body"
 msgstr "Message"
 

@@ -455,6 +455,7 @@ msgid "Search Pods"
 msgstr "Rechercher des Pods"
 
 #: front/components/sandbox/SandboxScopeSelector.tsx
+msgctxt "clear the selection"
 msgid "Clear all"
 msgstr "Tout désélectionner"
 

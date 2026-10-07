@@ -926,6 +926,7 @@ msgid "Older"
 msgstr "Older"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
+msgctxt "Pod status"
 msgid "Archived"
 msgstr "Archived"
 
