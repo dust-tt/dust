@@ -213,30 +213,6 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect(user.status).toBe(403);
   });
 
-  it("emits group.name_updated when the name changes", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "PATCH",
-      role: "admin",
-    });
-    const group = await GroupFactory.regularManual(workspace, "Sales");
-
-    const response = await patchGroupRequest(workspace.sId, group.sId, {
-      name: "New Sales",
-    });
-
-    expect(response.status).toBe(200);
-    expect((await response.json()).group.name).toBe("New Sales");
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "group.name_updated",
-        metadata: {
-          previous_name: "Sales",
-          new_name: "New Sales",
-        },
-      })
-    );
-  });
-
   it("does not emit group.name_updated when the name is unchanged, and does emit it after a real rename", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",

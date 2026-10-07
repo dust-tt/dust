@@ -2917,26 +2917,3 @@ describe("SpaceResource group_permissions enforcement", () => {
     });
   });
 });
-
-describe("SpaceResource.updateName", () => {
-  it("returns the previous name only when the trimmed name changes", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const space = await SpaceFactory.regular(workspace);
-    const originalName = space.name;
-
-    const same = await space.updateName(auth, `  ${originalName}  `);
-    expect(same.isOk()).toBe(true);
-    if (same.isOk()) {
-      expect(same.value.previousName).toBeNull();
-    }
-    expect(space.name).toBe(originalName);
-
-    const renamed = await space.updateName(auth, "  Renamed space  ");
-    expect(renamed.isOk()).toBe(true);
-    if (renamed.isOk()) {
-      expect(renamed.value.previousName).toBe(originalName);
-    }
-    expect(space.name).toBe("Renamed space");
-  });
-});

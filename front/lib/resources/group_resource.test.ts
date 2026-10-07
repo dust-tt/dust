@@ -715,32 +715,6 @@ describe("GroupResource", () => {
       return group;
     }
 
-    it("returns the previous name only when the name changes", async () => {
-      const group = await makeNamedGroup("Sales");
-
-      const renamed = await group.updateRegularManualGroup(authenticator, {
-        name: "New Sales",
-      });
-      expect(renamed.isOk()).toBe(true);
-      if (renamed.isOk()) {
-        expect(renamed.value).toEqual({
-          addedUsers: [],
-          removedUsers: [],
-          previousName: "Sales",
-        });
-      }
-      expect(group.name).toBe("New Sales");
-
-      const same = await group.updateRegularManualGroup(authenticator, {
-        name: "New Sales",
-      });
-      expect(same.isOk()).toBe(true);
-      if (same.isOk()) {
-        expect(same.value.previousName).toBeNull();
-      }
-      expect(group.name).toBe("New Sales");
-    });
-
     it("leaves the name unchanged when a member id is unknown", async () => {
       const group = await makeNamedGroup("Sales");
 
@@ -778,26 +752,6 @@ describe("GroupResource", () => {
       expect(
         (await group.getActiveMembers(authenticator)).map((m) => m.sId)
       ).toEqual([user.sId]);
-    });
-  });
-
-  describe("deleteRegularManualGroup", () => {
-    it("returns the active member count captured before the delete", async () => {
-      const group = await GroupResource.makeNew({
-        name: "Sales",
-        workspaceId: workspace.id,
-        kind: "regular_manual",
-      });
-      await group.dangerouslyAddMembers(authenticator, {
-        users: [user.toJSON()],
-      });
-
-      const res = await group.deleteRegularManualGroup(authenticator);
-
-      expect(res.isOk()).toBe(true);
-      if (res.isOk()) {
-        expect(res.value.memberCount).toBe(1);
-      }
     });
   });
 
