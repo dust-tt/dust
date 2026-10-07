@@ -70,12 +70,10 @@ describe("GET /api/v1/public/branding/:wId/:asset", () => {
 
   it("ignores a plan-conditioned global rollout", async () => {
     const workspace = await WorkspaceFactory.enterprise();
-    await GlobalFeatureFlagResource.setConditions("whitelabel_frames", [
-      "enterprise_plan",
-    ]);
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "whitelabel_frames",
-      100
+      100,
+      "enterprise"
     );
     mockGetFileContentType.mockResolvedValue(new Ok("image/png"));
     mockFetchFileBuffer.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
@@ -88,7 +86,8 @@ describe("GET /api/v1/public/branding/:wId/:asset", () => {
     } finally {
       await GlobalFeatureFlagResource.setRolloutPercentage(
         "whitelabel_frames",
-        0
+        0,
+        null
       );
     }
   });

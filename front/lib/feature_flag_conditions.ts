@@ -1,9 +1,6 @@
 import {
-  isBusinessPlanPrefix,
   isCreditPricedPlanPrefix,
   isEnterprisePlanPrefix,
-  isFreePlan,
-  isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import type { PlanType } from "@app/types/plan";
 
@@ -22,13 +19,13 @@ export type FeatureFlagContext = {
 };
 
 export const FEATURE_FLAG_CONDITIONS = {
-  credit_priced_plan: ({ plan }) =>
+  enterprise: ({ plan }) => plan !== null && isEnterprisePlanPrefix(plan.code),
+  non_enterprise: ({ plan }) =>
+    plan !== null && !isEnterprisePlanPrefix(plan.code),
+  credit_priced_plans: ({ plan }) =>
     plan !== null && isCreditPricedPlanPrefix(plan.code),
-  enterprise_plan: ({ plan }) =>
-    plan !== null && isEnterprisePlanPrefix(plan.code),
-  business_plan: ({ plan }) => plan !== null && isBusinessPlanPrefix(plan.code),
-  legacy_pro_plan: ({ plan }) => plan !== null && isProPlanPrefix(plan.code),
-  free_plan: ({ plan }) => plan !== null && isFreePlan(plan.code),
+  legacy_plans: ({ plan }) =>
+    plan !== null && !isCreditPricedPlanPrefix(plan.code),
 } satisfies Record<string, (context: FeatureFlagContext) => boolean>;
 
 export type FeatureFlagCondition = keyof typeof FEATURE_FLAG_CONDITIONS;
@@ -43,13 +40,15 @@ export function isFeatureFlagCondition(
   return Object.hasOwn(FEATURE_FLAG_CONDITIONS, value);
 }
 
-export function meetsFeatureFlagConditions(
-  conditions: string[],
+export function meetsFeatureFlagCondition(
+  condition: string | null,
   context: FeatureFlagContext
 ): boolean {
-  return conditions.every(
-    (condition) =>
-      isFeatureFlagCondition(condition) &&
-      FEATURE_FLAG_CONDITIONS[condition](context)
+  if (condition === null) {
+    return true;
+  }
+  return (
+    isFeatureFlagCondition(condition) &&
+    FEATURE_FLAG_CONDITIONS[condition](context)
   );
 }

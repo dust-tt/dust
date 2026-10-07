@@ -9,7 +9,10 @@ import type {
 import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
-import { formatGlobalRollout } from "@app/lib/poke/feature_flags";
+import {
+  formatGlobalRollout,
+  NO_FEATURE_FLAG_CONDITION,
+} from "@app/lib/poke/feature_flags";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { CellType } from "@app/types/cell";
@@ -166,7 +169,7 @@ function makeColumns({
                     ? "—"
                     : formatGlobalRollout(
                         stat.globalRolloutPercentage,
-                        stat.globalConditions
+                        stat.globalCondition
                       );
                 return (
                   <Chip
@@ -189,7 +192,7 @@ function makeColumns({
                   ? "—"
                   : formatGlobalRollout(
                       stat.globalRolloutPercentage,
-                      stat.globalConditions
+                      stat.globalCondition
                     );
               return (
                 <div key={stat.cell} className="flex items-center gap-1">
@@ -339,6 +342,9 @@ export function FeatureFlagsPage() {
     [deleteLegacyPlugin, onDeleteLegacyRows, onEditGlobalRollout, rolloutPlugin]
   );
 
+  const pendingCellStat = pendingAction?.candidateCells.find(
+    (stat) => stat.cell === pendingAction.cell
+  );
   const pendingPlugin = pendingAction
     ? plugins.find((plugin) => plugin.id === pendingAction.pluginId)
     : undefined;
@@ -399,6 +405,13 @@ export function FeatureFlagsPage() {
         <RunPluginDialog
           initialValues={{
             [FEATURE_FLAG_PLUGIN_ARG]: [pendingAction.flagName],
+            ...(pendingAction.pluginId === TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID &&
+              pendingCellStat && {
+                rolloutPercentage: pendingCellStat.globalRolloutPercentage ?? 0,
+                condition: [
+                  pendingCellStat.globalCondition ?? NO_FEATURE_FLAG_CONDITION,
+                ],
+              }),
           }}
           onClose={handlePluginDialogClose}
           plugin={pendingPlugin}

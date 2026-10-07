@@ -18,7 +18,7 @@ export interface PokeFeatureFlagCellRollout {
   cell: CellType;
   region: RegionType;
   globalRolloutPercentage: number | null;
-  globalConditions: string[];
+  globalCondition: string | null;
   totalCount: number;
 }
 
@@ -69,7 +69,7 @@ export function usePokeFeatureFlagWorkspacesAllCells({
           cell: result.cell.name,
           region: result.cell.region,
           globalRolloutPercentage: result.data.globalRolloutPercentage,
-          globalConditions: result.data.globalConditions,
+          globalCondition: result.data.globalCondition,
           totalCount: result.data.totalCount,
         });
         for (const workspace of result.data.workspaces) {

@@ -14,7 +14,7 @@ import {
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import type { FeatureFlagContext } from "@app/lib/feature_flag_conditions";
-import { meetsFeatureFlagConditions } from "@app/lib/feature_flag_conditions";
+import { meetsFeatureFlagCondition } from "@app/lib/feature_flag_conditions";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -2129,11 +2129,11 @@ export async function prodAPICredentialsForOwner(
 }
 
 /**
- * @cc [owner:adrsimon,label:product] global-flag-conditions
+ * @cc [owner:adrsimon,label:product] global-flag-condition
  * Outside the development all-features override, a global flag applies to a workspace only if
- * every one of its `conditions` holds for `context` and the workspace falls in its rollout
+ * its `condition`, when set, holds for `context` and the workspace falls in its rollout
  * percentage. A condition name unknown to the code counts as not holding. Workspace-level flags
- * apply regardless of conditions.
+ * apply regardless of the condition.
  */
 export async function getFeatureFlagsForContext(
   workspace: LightWorkspaceType,
@@ -2161,7 +2161,7 @@ export async function getFeatureFlagsForContext(
 
     if (
       !workspaceFlagNames.has(globalFlagName) &&
-      meetsFeatureFlagConditions(globalFlag.conditions, context) &&
+      meetsFeatureFlagCondition(globalFlag.condition, context) &&
       GlobalFeatureFlagResource.isInRollout(
         workspace.id,
         globalFlag.rolloutPercentage

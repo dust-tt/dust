@@ -20,7 +20,7 @@ export interface PokeFeatureFlagUsage {
   stage: FeatureFlagStage | null;
   workspaceCount: number;
   globalRolloutPercentage: number | null;
-  globalConditions: string[];
+  globalCondition: string | null;
 }
 
 export interface PokeFeatureFlagWorkspace {
@@ -36,7 +36,7 @@ export interface GetPokeFeatureFlagsResponseBody {
 
 export interface GetPokeFeatureFlagWorkspacesResponseBody {
   globalRolloutPercentage: number | null;
-  globalConditions: string[];
+  globalCondition: string | null;
   workspaces: PokeFeatureFlagWorkspace[];
   totalCount: number;
 }
@@ -65,7 +65,7 @@ export async function listFeatureFlagUsage(): Promise<PokeFeatureFlagUsage[]> {
       workspaceCount: countByName.get(name) ?? 0,
       globalRolloutPercentage:
         globalFlagByName.get(name)?.rolloutPercentage ?? null,
-      globalConditions: globalFlagByName.get(name)?.conditions ?? [],
+      globalCondition: globalFlagByName.get(name)?.condition ?? null,
     })
   );
 
@@ -77,7 +77,7 @@ export async function listFeatureFlagUsage(): Promise<PokeFeatureFlagUsage[]> {
       stage: null,
       workspaceCount,
       globalRolloutPercentage: null,
-      globalConditions: [],
+      globalCondition: null,
     }));
 
   return [...configuredFlags, ...legacyFlags];
@@ -99,12 +99,12 @@ export async function listWorkspacesForFeatureFlag(
 
   const globalFlag = globalFlags.find((flag) => flag.name === name);
   const globalRolloutPercentage = globalFlag?.rolloutPercentage ?? null;
-  const globalConditions = globalFlag?.conditions ?? [];
+  const globalCondition = globalFlag?.condition ?? null;
 
   if (flags.length === 0) {
     return {
       globalRolloutPercentage,
-      globalConditions,
+      globalCondition,
       workspaces: [],
       totalCount: 0,
     };
@@ -128,7 +128,7 @@ export async function listWorkspacesForFeatureFlag(
 
   return {
     globalRolloutPercentage,
-    globalConditions,
+    globalCondition,
     workspaces: flags.map((flag) => {
       const workspace = workspaceByModelId.get(flag.workspaceId);
       if (!workspace) {

@@ -82,12 +82,16 @@ describe("GET /api/poke/feature-flags", () => {
     expect(flag.stage).not.toBeNull();
     expect(flag.description).not.toBeNull();
     expect(flag.globalRolloutPercentage).toBeNull();
-    expect(flag.globalConditions).toEqual([]);
+    expect(flag.globalCondition).toBeNull();
   });
 
-  it("returns the global rollout conditions", async () => {
+  it("returns the global rollout condition", async () => {
     await createPokeApiMockRequest({ isSuperUser: true });
-    await GlobalFeatureFlagResource.setConditions(FLAG_A, ["enterprise_plan"]);
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      FLAG_A,
+      30,
+      "enterprise"
+    );
 
     try {
       const response = await listFeatureFlags();
@@ -97,10 +101,10 @@ describe("GET /api/poke/feature-flags", () => {
       const flag = featureFlags.find(
         (f: { name: string }) => f.name === FLAG_A
       );
-      expect(flag.globalRolloutPercentage).toBe(0);
-      expect(flag.globalConditions).toEqual(["enterprise_plan"]);
+      expect(flag.globalRolloutPercentage).toBe(30);
+      expect(flag.globalCondition).toBe("enterprise");
     } finally {
-      await GlobalFeatureFlagResource.setRolloutPercentage(FLAG_A, 0);
+      await GlobalFeatureFlagResource.setRolloutPercentage(FLAG_A, 0, null);
     }
   });
 

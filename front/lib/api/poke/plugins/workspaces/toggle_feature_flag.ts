@@ -62,7 +62,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
         const config = WHITELISTABLE_FEATURES_CONFIG[feature];
         const globalFlag = globalFlagMap.get(feature);
         const globalLabel = globalFlag
-          ? ` [Global: ${formatGlobalRollout(globalFlag.rolloutPercentage, globalFlag.conditions)}]`
+          ? ` [Global: ${formatGlobalRollout(globalFlag.rolloutPercentage, globalFlag.condition)}]`
           : "";
         return {
           label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} (@${config.owner})${globalLabel}`,

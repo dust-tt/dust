@@ -24,7 +24,8 @@ describe("getFeatureFlags with global flags", () => {
     // Set global flag at 100%.
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      null
     );
 
     const flags = await getFeatureFlags(auth);
@@ -42,7 +43,8 @@ describe("getFeatureFlags with global flags", () => {
     );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      null
     );
 
     const flags = await getFeatureFlags(auth);
@@ -59,11 +61,13 @@ describe("getFeatureFlags with global flags", () => {
     // Setting to 0 should remove the global flag.
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      null
     );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      0
+      0,
+      null
     );
 
     const flags = await getFeatureFlags(auth);
@@ -78,7 +82,8 @@ describe("getFeatureFlags with global flags", () => {
     // Set percentage just above the workspace bucket so it's included.
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      bucket + 1
+      bucket + 1,
+      null
     );
 
     const flagsIn = await getFeatureFlags(auth);
@@ -88,7 +93,8 @@ describe("getFeatureFlags with global flags", () => {
     if (bucket > 0) {
       await GlobalFeatureFlagResource.setRolloutPercentage(
         "dummy_feature_for_flag_testing",
-        bucket
+        bucket,
+        null
       );
 
       const flagsOut = await getFeatureFlags(auth);
@@ -96,17 +102,14 @@ describe("getFeatureFlags with global flags", () => {
     }
   });
 
-  it("global flag applies only to workspaces meeting all its conditions", async () => {
+  it("global flag applies only to workspaces meeting its condition", async () => {
     const enterpriseWorkspace = await WorkspaceFactory.enterprise();
     const proWorkspace = await WorkspaceFactory.basic();
 
-    await GlobalFeatureFlagResource.setConditions(
-      "dummy_feature_for_flag_testing",
-      ["enterprise_plan"]
-    );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      "enterprise"
     );
 
     const enterpriseFlags = await getFeatureFlags(
@@ -119,42 +122,25 @@ describe("getFeatureFlags with global flags", () => {
     expect(proFlags).not.toContain("dummy_feature_for_flag_testing");
   });
 
-  it("changing the rollout percentage keeps the conditions", async () => {
+  it("setting the rollout replaces the condition", async () => {
     const proWorkspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(
       proWorkspace.sId
     );
 
-    await GlobalFeatureFlagResource.setConditions(
+    await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      ["enterprise_plan"]
+      100,
+      "enterprise"
     );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      50
-    );
-    await GlobalFeatureFlagResource.setRolloutPercentage(
-      "dummy_feature_for_flag_testing",
-      100
+      100,
+      null
     );
 
     const flags = await getFeatureFlags(auth);
-    expect(flags).not.toContain("dummy_feature_for_flag_testing");
-  });
-
-  it("setting conditions on a flag without rollout does not enable it", async () => {
-    const enterpriseWorkspace = await WorkspaceFactory.enterprise();
-    const auth = await Authenticator.internalAdminForWorkspace(
-      enterpriseWorkspace.sId
-    );
-
-    await GlobalFeatureFlagResource.setConditions(
-      "dummy_feature_for_flag_testing",
-      ["enterprise_plan"]
-    );
-
-    const flags = await getFeatureFlags(auth);
-    expect(flags).not.toContain("dummy_feature_for_flag_testing");
+    expect(flags).toContain("dummy_feature_for_flag_testing");
   });
 
   it("global flag with an unknown condition applies to no workspace", async () => {
@@ -164,14 +150,14 @@ describe("getFeatureFlags with global flags", () => {
     await GlobalFeatureFlagModel.create({
       name: "dummy_feature_for_flag_testing",
       rolloutPercentage: 100,
-      conditions: ["legacy_pro_plan", "removed_condition"],
+      condition: "removed_condition",
     });
 
     const flags = await getFeatureFlags(auth);
     expect(flags).not.toContain("dummy_feature_for_flag_testing");
   });
 
-  it("workspace flag applies regardless of global flag conditions", async () => {
+  it("workspace flag applies regardless of the global flag condition", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -179,13 +165,10 @@ describe("getFeatureFlags with global flags", () => {
       workspace,
       "dummy_feature_for_flag_testing"
     );
-    await GlobalFeatureFlagResource.setConditions(
-      "dummy_feature_for_flag_testing",
-      ["enterprise_plan"]
-    );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      "enterprise"
     );
 
     const flags = await getFeatureFlags(auth);
@@ -199,7 +182,8 @@ describe("getFeatureFlags with global flags", () => {
     await FeatureFlagResource.enable(workspace, "deepseek_feature");
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      null
     );
 
     const flags = await getFeatureFlags(auth);
@@ -278,10 +262,15 @@ describe("getFeatureFlags with global flags", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    await GlobalFeatureFlagResource.setRolloutPercentage("frames_v2", 100);
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "frames_v2",
+      100,
+      null
+    );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100
+      100,
+      null
     );
     await FeatureFlagResource.enable(workspace, "disable_frames_v2");
 

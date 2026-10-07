@@ -42,7 +42,8 @@ describe("feature flag resource caches", () => {
 
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      50
+      50,
+      null
     );
     const enabled = await GlobalFeatureFlagResource.listAll();
     expect(enabled).toHaveLength(1);
@@ -51,7 +52,8 @@ describe("feature flag resource caches", () => {
 
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      0
+      0,
+      null
     );
     await expect(GlobalFeatureFlagResource.listAll()).resolves.toEqual([]);
   });

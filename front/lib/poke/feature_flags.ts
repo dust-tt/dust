@@ -1,6 +1,10 @@
+export const NO_FEATURE_FLAG_CONDITION = "none";
+
 export function formatGlobalRollout(
   rolloutPercentage: number,
-  conditions: string[]
+  condition: string | null
 ): string {
-  return [`${rolloutPercentage}%`, ...conditions].join(", ");
+  return condition === null
+    ? `${rolloutPercentage}%`
+    : `${rolloutPercentage}%, ${condition}`;
 }

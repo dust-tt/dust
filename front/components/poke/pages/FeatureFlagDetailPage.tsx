@@ -280,7 +280,7 @@ export function FeatureFlagDetailPage() {
                   ? "—"
                   : formatGlobalRollout(
                       rollout.globalRolloutPercentage,
-                      rollout.globalConditions
+                      rollout.globalCondition
                     );
               return (
                 <Chip

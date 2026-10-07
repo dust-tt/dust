@@ -24,7 +24,7 @@ type CachedGlobalFeatureFlagData = {
   id: ModelId;
   name: WhitelistableFeature;
   rolloutPercentage: number;
-  conditions: string[];
+  condition: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -67,7 +67,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
         id: flag.id,
         name: flag.name,
         rolloutPercentage: flag.rolloutPercentage,
-        conditions: flag.conditions,
+        condition: flag.condition,
         createdAt: flag.createdAt.getTime(),
         updatedAt: flag.updatedAt.getTime(),
       })),
@@ -78,7 +78,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
             id: flag.id,
             name: flag.name,
             rolloutPercentage: flag.rolloutPercentage,
-            conditions: flag.conditions,
+            condition: flag.condition,
             createdAt: new Date(flag.createdAt),
             updatedAt: new Date(flag.updatedAt),
           })
@@ -91,14 +91,10 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     );
   }
 
-  /**
-   * @cc [owner:adrsimon,label:product] rollout-keeps-conditions
-   * Setting a non-zero percentage MUST NOT change the flag's `conditions`. Setting 0 removes the
-   * flag, conditions included.
-   */
   static async setRolloutPercentage(
     name: WhitelistableFeature,
-    rolloutPercentage: number
+    rolloutPercentage: number,
+    condition: FeatureFlagCondition | null
   ): Promise<void> {
     if (rolloutPercentage < 0 || rolloutPercentage > 100) {
       throw new Error(
@@ -109,24 +105,10 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     if (rolloutPercentage === 0) {
       await GlobalFeatureFlagModel.destroy({ where: { name } });
     } else {
-      await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
-    }
-    await GlobalFeatureFlagResource.store.invalidate("all");
-  }
-
-  static async setConditions(
-    name: WhitelistableFeature,
-    conditions: FeatureFlagCondition[]
-  ): Promise<void> {
-    const [updatedCount] = await GlobalFeatureFlagModel.update(
-      { conditions },
-      { where: { name } }
-    );
-    if (updatedCount === 0) {
-      await GlobalFeatureFlagModel.create({
+      await GlobalFeatureFlagModel.upsert({
         name,
-        rolloutPercentage: 0,
-        conditions,
+        rolloutPercentage,
+        condition,
       });
     }
     await GlobalFeatureFlagResource.store.invalidate("all");
