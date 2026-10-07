@@ -18,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -69,8 +69,12 @@ export function UsageUpgradeButton({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
+  const requestUpgradeFormSchema = useMemo(
+    () => getRequestUpgradeFormSchema(requireReason, t),
+    [requireReason, t]
+  );
   const form = useForm<RequestUpgradeFormValues>({
-    resolver: zodResolver(getRequestUpgradeFormSchema(requireReason, t)),
+    resolver: zodResolver(requestUpgradeFormSchema),
     defaultValues: { reason: "" },
   });
 

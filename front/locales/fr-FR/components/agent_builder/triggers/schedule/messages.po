@@ -73,6 +73,22 @@ msgstr "un autre utilisateur"
 msgid "You cannot edit this schedule. It is managed by <0>{editorName}</0>."
 msgstr "Vous ne pouvez pas modifier cette planification. Elle est gérée par <0>{editorName}</0>."
 
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "Every {weekday} at {time}"
+msgstr "Chaque {weekday} à {time}"
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "{weeks, plural, one {Every # week on {weekday} at {time}} other {Every # weeks on {weekday} at {time}}}"
+msgstr "{weeks, plural, one {Chaque semaine le {weekday} à {time}} other {Toutes les # semaines le {weekday} à {time}}}"
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "Every day at {time}"
+msgstr "Tous les jours à {time}"
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "{intervalDays, plural, one {Every # day at {time}} other {Every # days at {time}}}"
+msgstr "{intervalDays, plural, one {Chaque jour à {time}} other {Tous les # jours à {time}}}"
+
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Name is required"
 msgstr "Le nom est obligatoire"
@@ -92,19 +108,3 @@ msgstr "L’expression cron est obligatoire"
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Schedule"
 msgstr "Planification"
-
-#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
-msgid "Every {weekday} at {time}"
-msgstr "Chaque {weekday} à {time}"
-
-#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
-msgid "{weeks, plural, one {Every # week on {weekday} at {time}} other {Every # weeks on {weekday} at {time}}}"
-msgstr "{weeks, plural, one {Chaque semaine le {weekday} à {time}} other {Toutes les # semaines le {weekday} à {time}}}"
-
-#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
-msgid "Every day at {time}"
-msgstr "Tous les jours à {time}"
-
-#: front/components/agent_builder/triggers/schedule/useDescribeScheduleConfig.ts
-msgid "{intervalDays, plural, one {Every # day at {time}} other {Every # days at {time}}}"
-msgstr "{intervalDays, plural, one {Chaque jour à {time}} other {Tous les # jours à {time}}}"

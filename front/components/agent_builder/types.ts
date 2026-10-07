@@ -10,10 +10,10 @@ import type { DataSourceViewSelectionConfigurations } from "@app/types/data_sour
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import type { Icon } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { ComponentProps } from "react";
-import { useMemo } from "react";
 import { z } from "zod";
 
 export const BUILDER_FLOWS = [
@@ -42,21 +42,15 @@ const TOOLS_SHEET_PAGE_IDS = {
 export type ConfigurationPagePageId =
   (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
 
-interface CapabilityFormSchemaMessages {
-  nameRequired: string;
-  descriptionRequired: string;
-  descriptionTooLong: string;
-  sourcesRequired: string;
-  timeFrameRequired: string;
-}
-
 // TODO: merge this with MCP form schema. Right now it only validates two fields.
-const getCapabilityFormSchema = (messages: CapabilityFormSchemaMessages) =>
+export const getCapabilityFormSchema = (
+  t: (descriptor: MessageDescriptor) => string
+) =>
   z
     .object({
       name: z
         .string()
-        .min(1, messages.nameRequired)
+        .min(1, t(msg`The name cannot be empty.`))
         .transform((val) => {
           // Convert to lowercase and replace spaces and special chars with underscores
           return (
@@ -72,13 +66,18 @@ const getCapabilityFormSchema = (messages: CapabilityFormSchemaMessages) =>
         .default(""),
       description: z
         .string()
-        .min(1, messages.descriptionRequired)
-        .max(DESCRIPTION_MAX_LENGTH, messages.descriptionTooLong),
+        .min(1, t(msg`Description is required`))
+        .max(
+          DESCRIPTION_MAX_LENGTH,
+          t(
+            msg`Description should be less than ${DESCRIPTION_MAX_LENGTH} characters.`
+          )
+        ),
       sources: dataSourceBuilderTreeType.refine(
         (val) => {
           return val.in.length > 0;
         },
-        { message: messages.sourcesRequired }
+        { message: t(msg`You must select at least one data source`) }
       ),
       mcpServerView: z.custom<MCPServerViewType>().nullable(),
       configuration: mcpServerConfigurationSchema,
@@ -99,7 +98,9 @@ const getCapabilityFormSchema = (messages: CapabilityFormSchemaMessages) =>
           return ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["configuration.timeFrame"],
-            message: messages.timeFrameRequired,
+            message: t(
+              msg`You must use time frame between that and that when you have required enums in mcpServerViews.`
+            ),
           });
         }
       }
@@ -123,22 +124,6 @@ const getCapabilityFormSchema = (messages: CapabilityFormSchemaMessages) =>
 
       return true;
     });
-
-export function useCapabilityFormSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      getCapabilityFormSchema({
-        nameRequired: t`The name cannot be empty.`,
-        descriptionRequired: t`Description is required`,
-        descriptionTooLong: t`Description should be less than ${DESCRIPTION_MAX_LENGTH} characters.`,
-        sourcesRequired: t`You must select at least one data source`,
-        timeFrameRequired: t`You must use time frame between that and that when you have required enums in mcpServerViews.`,
-      }),
-    [t]
-  );
-}
 
 export interface ActionSpecification {
   label: string;

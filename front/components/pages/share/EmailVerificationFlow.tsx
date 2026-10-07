@@ -5,6 +5,8 @@ import { LinkWrapper } from "@app/lib/platform";
 import { useSendOtpVerification, useVerifyOtpCode } from "@app/lib/swr/share";
 import { Button, DustLogo, Input, Label } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { usePostHog } from "posthog-js/react";
 import type { ReactNode } from "react";
@@ -47,36 +49,24 @@ function VerificationLayout({
   );
 }
 
-function useEmailFormSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.object({
-        email: z.string().email(t`Please enter a valid email address`),
-      }),
-    [t]
-  );
+function getEmailFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    email: z.string().email(t(msg`Please enter a valid email address`)),
+  });
 }
 
-type EmailFormValues = z.infer<ReturnType<typeof useEmailFormSchema>>;
+type EmailFormValues = z.infer<ReturnType<typeof getEmailFormSchema>>;
 
-function useCodeFormSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      z.object({
-        code: z
-          .string()
-          .length(6, t`Code must be 6 digits`)
-          .regex(/^\d+$/, t`Code must be numeric`),
-      }),
-    [t]
-  );
+function getCodeFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    code: z
+      .string()
+      .length(6, t(msg`Code must be 6 digits`))
+      .regex(/^\d+$/, t(msg`Code must be numeric`)),
+  });
 }
 
-type CodeFormValues = z.infer<ReturnType<typeof useCodeFormSchema>>;
+type CodeFormValues = z.infer<ReturnType<typeof getCodeFormSchema>>;
 
 interface EmailStepFormProps {
   onCodeSent: (email: string) => void;
@@ -85,7 +75,7 @@ interface EmailStepFormProps {
 
 function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
   const { t } = useLingui();
-  const emailFormSchema = useEmailFormSchema();
+  const emailFormSchema = useMemo(() => getEmailFormSchema(t), [t]);
   const doSendOtp = useSendOtpVerification({ shareToken });
   const formatErrorDescription = useFormatErrorDescription();
   const posthog = usePostHog();
@@ -155,7 +145,7 @@ interface CodeStepFormProps {
 
 function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
   const { t } = useLingui();
-  const codeFormSchema = useCodeFormSchema();
+  const codeFormSchema = useMemo(() => getCodeFormSchema(t), [t]);
   const doSendOtp = useSendOtpVerification({ shareToken });
   const doVerifyCode = useVerifyOtpCode({ shareToken });
   const formatErrorDescription = useFormatErrorDescription();

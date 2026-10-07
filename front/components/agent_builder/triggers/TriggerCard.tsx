@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { useDescribeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/useDescribeScheduleConfig";
+import { describeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/describeScheduleConfig";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
@@ -42,14 +42,13 @@ export function TriggerCard({
   onEdit,
 }: TriggerCardProps) {
   const { t } = useLingui();
-  const describeScheduleConfig = useDescribeScheduleConfig();
   const { isAdmin } = useAgentBuilderContext();
   const { user } = useAuth();
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
     switch (trigger.kind) {
       case "schedule": {
-        const schedule = describeScheduleConfig(trigger.configuration);
+        const schedule = describeScheduleConfig(trigger.configuration, t);
         return schedule ? t`Runs ${schedule}.` : "";
       }
       case "webhook": {
@@ -62,7 +61,7 @@ export function TriggerCard({
           : t`Triggered on ${sourceName}'s source.`;
       }
     }
-  }, [trigger, webhookSourceView, describeScheduleConfig, t]);
+  }, [trigger, webhookSourceView, t]);
 
   const editorName = trigger.editorName;
 

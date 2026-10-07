@@ -6,13 +6,13 @@ import type {
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import {
   CreateWebhookSourceFormContent,
-  useCreateWebhookSourceSchema,
+  getCreateWebhookSourceSchema,
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import {
   diffWebhookSourceForm,
   getWebhookSourceFormDefaults,
-  useWebhookSourceFormSchema,
+  getWebhookSourceFormSchema,
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
@@ -239,7 +239,10 @@ function WebhookSourceSheetContent({
     };
   }, [mode.provider, t]);
 
-  const createWebhookSourceSchema = useCreateWebhookSourceSchema();
+  const createWebhookSourceSchema = useMemo(
+    () => getCreateWebhookSourceSchema(t),
+    [t]
+  );
   const createForm = useForm<CreateWebhookSourceFormData>({
     resolver: zodResolver(createWebhookSourceSchema),
     defaultValues: createFormDefaultValues,
@@ -261,7 +264,10 @@ function WebhookSourceSheetContent({
     );
   }, [systemView, webhookSourceWithViews, spaces]);
 
-  const webhookSourceFormSchema = useWebhookSourceFormSchema();
+  const webhookSourceFormSchema = useMemo(
+    () => getWebhookSourceFormSchema(t),
+    [t]
+  );
   const editForm = useForm<WebhookSourceFormValues>({
     defaultValues: editDefaults ?? undefined,
     mode: "onChange",

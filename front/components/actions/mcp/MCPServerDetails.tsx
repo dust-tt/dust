@@ -147,6 +147,16 @@ export function MCPServerDetails({
     };
   }, [mcpServerView, mcpServerWithViews, spaces]);
 
+  const mcpServerFormSchema = useMemo(
+    () =>
+      mcpServerView
+        ? getMCPServerFormSchema(mcpServerView, t, {
+            existingViewNames,
+            initialName: mcpServerView.name ?? mcpServerView.server.name,
+          })
+        : null,
+    [mcpServerView, t, existingViewNames]
+  );
   const form = useForm<MCPServerFormValues>({
     values: defaults,
     mode: "onChange",
@@ -154,13 +164,8 @@ export function MCPServerDetails({
     resetOptions: {
       keepDirtyValues: true, // Preserve user edits on SWR refetch.
     },
-    resolver: mcpServerView
-      ? zodResolver(
-          getMCPServerFormSchema(mcpServerView, t, {
-            existingViewNames,
-            initialName: mcpServerView.name ?? mcpServerView.server.name,
-          })
-        )
+    resolver: mcpServerFormSchema
+      ? zodResolver(mcpServerFormSchema)
       : undefined,
   });
 

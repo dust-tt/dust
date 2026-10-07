@@ -67,7 +67,7 @@ const feedbackBaseSchema = z.object({
   isConversationShared: z.boolean().default(true),
 });
 
-function makeFeedbackSchema(
+function getFeedbackSchema(
   showPredefinedAnswers: boolean,
   t: (descriptor: MessageDescriptor) => string
 ) {
@@ -92,7 +92,7 @@ function makeFeedbackSchema(
   });
 }
 
-type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
+type FeedbackFormValues = z.infer<ReturnType<typeof getFeedbackSchema>>;
 
 const DEFAULT_FEEDBACK_FORM_VALUES: FeedbackFormValues = {
   thumbDirection: null,
@@ -117,8 +117,12 @@ export function FeedbackSelector({
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
+  const feedbackSchema = React.useMemo(
+    () => getFeedbackSchema(showPredefinedAnswers, t),
+    [showPredefinedAnswers, t]
+  );
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(showPredefinedAnswers, t)),
+    resolver: zodResolver(feedbackSchema),
     defaultValues: DEFAULT_FEEDBACK_FORM_VALUES,
   });
 

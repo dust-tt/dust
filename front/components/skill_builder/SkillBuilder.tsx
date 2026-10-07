@@ -6,7 +6,7 @@ import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
-import { useSkillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { getSkillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
@@ -125,7 +125,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     });
   }, [skill, user]);
 
-  const formSchema = useSkillBuilderFormSchema();
+  const formSchema = useMemo(() => getSkillBuilderFormSchema(t), [t]);
 
   const form = useForm<SkillBuilderFormData>({
     disabled: isEditorLocked,

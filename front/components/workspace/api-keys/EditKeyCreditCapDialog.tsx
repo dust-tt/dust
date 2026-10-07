@@ -2,7 +2,7 @@ import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSectio
 import {
   creditsToString,
   parseCreditsString,
-  useMonthlyCapCreditsSchema,
+  getMonthlyCapCreditsSchema,
 } from "@app/components/workspace/api-keys/utils";
 import type { KeyType } from "@app/types/key";
 import {
@@ -15,24 +15,19 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
-function useFormSchema() {
-  const monthlyCapCreditsSchema = useMonthlyCapCreditsSchema();
-
-  return useMemo(
-    () =>
-      z.object({
-        capValueCredits: monthlyCapCreditsSchema,
-      }),
-    [monthlyCapCreditsSchema]
-  );
+function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    capValueCredits: getMonthlyCapCreditsSchema(t),
+  });
 }
 
-type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
+type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 interface EditKeyCreditCapDialogProps {
   keyData: KeyType;
@@ -50,7 +45,7 @@ export function EditKeyCreditCapDialog({
   isSaving,
 }: EditKeyCreditCapDialogProps) {
   const { t } = useLingui();
-  const formSchema = useFormSchema();
+  const formSchema = useMemo(() => getFormSchema(t), [t]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onChange",

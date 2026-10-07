@@ -5,15 +5,15 @@ import type {
 } from "@app/components/agent_builder/agentBuilderFormSchema";
 import {
   formValuesToScheduleTriggerData,
-  useGetScheduleFormDefaultValues,
+  getScheduleFormDefaultValues,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { useTriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { getTriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import {
   formValuesToWebhookTriggerData,
-  useGetWebhookFormDefaultValues,
+  getWebhookFormDefaultValues,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
@@ -63,9 +63,7 @@ export function TriggerViewsSheet({
 }: TriggerViewsSheetProps) {
   const { t } = useLingui();
   const { user } = useAuth();
-  const getScheduleFormDefaultValues = useGetScheduleFormDefaultValues();
-  const getWebhookFormDefaultValues = useGetWebhookFormDefaultValues();
-  const formSchema = useTriggerViewsSheetFormSchema();
+  const formSchema = useMemo(() => getTriggerViewsSheetFormSchema(t), [t]);
 
   const [currentPageId, setCurrentPageId] = useState<string>(
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
@@ -90,7 +88,7 @@ export function TriggerViewsSheet({
       case "schedule": {
         return {
           type: "schedule",
-          schedule: getScheduleFormDefaultValues(editTrigger),
+          schedule: getScheduleFormDefaultValues({ trigger: editTrigger, t }),
         };
       }
       case "webhook": {
@@ -99,22 +97,18 @@ export function TriggerViewsSheet({
           webhook: getWebhookFormDefaultValues({
             trigger: editTrigger,
             webhookSourceView: editWebhookSourceView,
+            t,
           }),
         };
       }
       default: {
         return {
           type: "schedule",
-          schedule: getScheduleFormDefaultValues(null),
+          schedule: getScheduleFormDefaultValues({ trigger: null, t }),
         };
       }
     }
-  }, [
-    editTrigger,
-    editWebhookSourceView,
-    getScheduleFormDefaultValues,
-    getWebhookFormDefaultValues,
-  ]);
+  }, [editTrigger, editWebhookSourceView, t]);
 
   const form = useForm<TriggerViewsSheetFormValues>({
     defaultValues,
@@ -135,10 +129,10 @@ export function TriggerViewsSheet({
   const handleScheduleSelect = useCallback(() => {
     form.reset({
       type: "schedule",
-      schedule: getScheduleFormDefaultValues(null),
+      schedule: getScheduleFormDefaultValues({ trigger: null, t }),
     });
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
-  }, [form, getScheduleFormDefaultValues]);
+  }, [form, t]);
 
   const handleWebhookSelect = useCallback(
     (webhookSourceView: WebhookSourceViewType) => {
@@ -148,11 +142,12 @@ export function TriggerViewsSheet({
         webhook: getWebhookFormDefaultValues({
           trigger: null,
           webhookSourceView,
+          t,
         }),
       });
       setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
     },
-    [form, getWebhookFormDefaultValues]
+    [form, t]
   );
 
   const handleFormSubmit = useCallback(

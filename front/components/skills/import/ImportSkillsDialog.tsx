@@ -3,8 +3,8 @@ import type {
   ImportType,
 } from "@app/components/skills/import/formSchema";
 import {
+  getImportFormSchema,
   isImportType,
-  useImportFormSchema,
 } from "@app/components/skills/import/formSchema";
 import { ImportFromFilesTab } from "@app/components/skills/import/ImportFromFilesTab";
 import { ImportFromRepositoryTab } from "@app/components/skills/import/ImportFromRepositoryTab";
@@ -47,7 +47,7 @@ export function ImportSkillsDialog({
   owner,
 }: ImportSkillsDialogProps) {
   const { t } = useLingui();
-  const importFormSchema = useImportFormSchema();
+  const importFormSchema = useMemo(() => getImportFormSchema(t), [t]);
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedCount, setDetectedCount] = useState(0);
 

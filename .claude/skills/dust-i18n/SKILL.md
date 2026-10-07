@@ -22,9 +22,10 @@ be written translated. After changing strings, follow [Workflow](#workflow) and 
 | Where the text is | Use | Import |
 |---|---|---|
 | JSX children | `<Trans>Save changes</Trans>` | `import { Trans } from "@lingui/react/macro"` |
-| String props, toasts, `aria-label`, `placeholder`, zod messages built in a component | ``const { t } = useLingui();`` then ``t`Search agents` `` | `import { useLingui } from "@lingui/react/macro"` |
+| String props, toasts, `aria-label`, `placeholder` | ``const { t } = useLingui();`` then ``t`Search agents` `` | `import { useLingui } from "@lingui/react/macro"` |
 | Module-level constants (labels maps, option lists) | ``msg`Admin` `` at module level, ``t(LABELS[role])`` at render | `import { msg } from "@lingui/core/macro"` |
 | Counts | ``t`${count} ${plural(count, { one: "agent", other: "agents" })}` `` or `<Plural>` | `@lingui/core/macro` / `@lingui/react/macro` |
+| Zod schema messages | `getXSchema(t)` factory, see [Zod schemas](#zod-schemas) | `import { msg } from "@lingui/core/macro"` |
 | Short ambiguous words | ``t({ message: "Open", context: "verb, button label" })`` | |
 
 Rules:
@@ -41,6 +42,27 @@ Rules:
   reference when the locale changes, so memos depending on it would not recompute.
 - Write English in sentence case. Do not apply CSS `uppercase`/`capitalize` to translated text.
 - Format dates and numbers with the active locale (`i18n.locale`), never a hardcoded `"en-US"`.
+
+## Zod schemas
+
+A schema with translated messages is a plain factory taking `t`. Write messages as
+``t(msg`...`)`` (the ``t`...` `` shorthand only works inside components and hooks), and memoize at
+the call site so the schema is rebuilt only when the locale changes:
+
+```ts
+export function getXFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({ name: z.string().min(1, t(msg`Name is required.`)) });
+}
+export type XFormValues = z.infer<ReturnType<typeof getXFormSchema>>;
+
+// In the component:
+const { t } = useLingui();
+const schema = useMemo(() => getXFormSchema(t), [t]);
+```
+
+Compose factories by passing `t` down (`getParentSchema(t)` calls `getChildSchema(t)`). Do not
+wrap a schema in a `useXSchema()` hook, and do not pass pre-translated message objects. Tests call
+the factory directly with `(descriptor) => i18n._(descriptor)`.
 
 ## Never translate
 
