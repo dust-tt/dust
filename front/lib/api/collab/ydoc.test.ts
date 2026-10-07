@@ -4,12 +4,12 @@ import {
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
-  BODY_FRAGMENT_NAME,
   dfmToYDoc,
   ENVELOPE_MAP_NAME,
   yDocToDfm,
 } from "@app/lib/api/collab/ydoc";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
