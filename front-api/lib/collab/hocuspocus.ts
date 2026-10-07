@@ -593,7 +593,10 @@ export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
  * in this sweep, and MUST be closed when the check fails.
  * A failure checking one user and document MUST NOT stop the others: it is logged and their
  * connections stay open until the next sweep, an exception to `no-catching-own-errors` limited to
- * it. The returned promise MUST resolve once every connection has been checked.
+ * it. The returned promise MUST resolve once every connection has been checked. Its per-user and
+ * per-document reads are an exception to `batch-database-queries`, limited to it: they reuse the
+ * Authenticator and the file system's permission checks, which have no batch API, and run at most
+ * 4 at a time.
  */
 export async function recheckAllConnections(
   hocuspocus: Hocuspocus<LiveFile>
@@ -630,6 +633,10 @@ export async function recheckAllConnections(
 
   let closed = 0;
   let failed = 0;
+  // TODO(co-edition): batch these reads. Each group still builds an Authenticator per user and
+  // resolves the file's permissions per document; batching needs a way to load many users' groups
+  // at once and to resolve many files' permissions at once. Do it once the sweep log shows
+  // durations growing towards ACCESS_RECHECK_INTERVAL_MS.
   await concurrentExecutor(
     [...groups.values()],
     async (connections) => {
@@ -661,7 +668,7 @@ export async function recheckAllConnections(
       }
       closed += connections.length;
     },
-    { concurrency: 8 }
+    { concurrency: 4 }
   );
 
   // A sweep growing close to the interval means revocation gets slower: time to scale.

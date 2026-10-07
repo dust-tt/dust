@@ -110,6 +110,8 @@ server.on("error", (err) => {
 let rechecking = false;
 const recheckTimer = setInterval(() => {
   if (rechecking) {
+    // Repeated, this means a sweep is stuck and revoked users stay connected.
+    logger.warn("Collab access re-check still running, skipping this one");
     return;
   }
   rechecking = true;
