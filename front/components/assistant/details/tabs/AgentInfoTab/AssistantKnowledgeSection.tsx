@@ -23,6 +23,7 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
+import { getSafeSourceUrl, openSourceUrl } from "@app/lib/utils/source_urls";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { ConnectorProvider, DataSourceTag } from "@app/types/data_source";
@@ -558,57 +559,56 @@ function DataSourceViewSelectedNodes({
     viewType,
   });
 
-  return nodes.map((node) => (
-    <Tree.Item
-      key={node.internalId}
-      label={node.title}
-      type={node.expandable && viewType !== "table" ? "node" : "leaf"}
-      visual={getVisualForDataSourceViewContentNode(node)}
-      className="whitespace-nowrap"
-      actions={
-        <div className="mr-8 flex flex-row gap-2">
-          <IconButton
-            size="xs"
-            icon={LinkExternal01}
-            onClick={() => {
-              if (node.sourceUrl) {
-                window.open(node.sourceUrl, "_blank");
-              }
-            }}
-            className={classNames(
-              node.sourceUrl ? "" : "pointer-events-none opacity-0"
-            )}
-            disabled={!node.sourceUrl}
-            variant="ghost"
-          />
-          <IconButton
-            size="xs"
-            icon={Brackets}
-            onClick={() => {
-              if (node.type === "document") {
-                setDataSourceViewToDisplay(dataSourceView);
-                setDocumentToDisplay(node.internalId);
-              }
-            }}
-            className={classNames(
-              node.type === "document" ? "" : "pointer-events-none opacity-0"
-            )}
-            disabled={node.type !== "document"}
-            variant="outline"
-          />
-        </div>
-      }
-    >
-      <DataSourceViewPermissionTree
-        owner={owner}
-        dataSourceView={dataSourceView}
-        parentId={node.internalId}
-        onDocumentViewClick={(documentId: string) => {
-          setDataSourceViewToDisplay(dataSourceView);
-          setDocumentToDisplay(documentId);
-        }}
-        viewType="all"
-      />
-    </Tree.Item>
-  ));
+  return nodes.map((node) => {
+    const sourceUrl = getSafeSourceUrl(node.sourceUrl);
+    return (
+      <Tree.Item
+        key={node.internalId}
+        label={node.title}
+        type={node.expandable && viewType !== "table" ? "node" : "leaf"}
+        visual={getVisualForDataSourceViewContentNode(node)}
+        className="whitespace-nowrap"
+        actions={
+          <div className="mr-8 flex flex-row gap-2">
+            <IconButton
+              size="xs"
+              icon={LinkExternal01}
+              onClick={() => openSourceUrl(sourceUrl)}
+              className={classNames(
+                sourceUrl ? "" : "pointer-events-none opacity-0"
+              )}
+              disabled={!sourceUrl}
+              variant="ghost"
+            />
+            <IconButton
+              size="xs"
+              icon={Brackets}
+              onClick={() => {
+                if (node.type === "document") {
+                  setDataSourceViewToDisplay(dataSourceView);
+                  setDocumentToDisplay(node.internalId);
+                }
+              }}
+              className={classNames(
+                node.type === "document" ? "" : "pointer-events-none opacity-0"
+              )}
+              disabled={node.type !== "document"}
+              variant="outline"
+            />
+          </div>
+        }
+      >
+        <DataSourceViewPermissionTree
+          owner={owner}
+          dataSourceView={dataSourceView}
+          parentId={node.internalId}
+          onDocumentViewClick={(documentId: string) => {
+            setDataSourceViewToDisplay(dataSourceView);
+            setDocumentToDisplay(documentId);
+          }}
+          viewType="all"
+        />
+      </Tree.Item>
+    );
+  });
 }

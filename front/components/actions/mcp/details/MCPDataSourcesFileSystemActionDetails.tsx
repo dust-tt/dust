@@ -8,6 +8,7 @@ import {
   getDocumentIcon,
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
+import { getSafeSourceUrl, openSourceUrl } from "@app/lib/utils/source_urls";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
 import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
@@ -32,7 +33,7 @@ export function DataSourceNodeContentDetails({
     .map((o) => o.resource)?.[0];
 
   const { metadata, text } = dataSourceNodeContent || {};
-  const { sourceUrl } = metadata || {};
+  const sourceUrl = getSafeSourceUrl(metadata?.sourceUrl);
 
   return (
     <ActionDetailsWrapper
@@ -48,9 +49,7 @@ export function DataSourceNodeContentDetails({
         <div>
           {metadata && (
             <Citation
-              onClick={
-                sourceUrl ? () => window.open(sourceUrl, "_blank") : undefined
-              }
+              onClick={sourceUrl ? () => openSourceUrl(sourceUrl) : undefined}
               tooltip={`${metadata.parentTitle || metadata.path}${metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""}`}
             >
               <CitationIcons>
@@ -61,7 +60,7 @@ export function DataSourceNodeContentDetails({
           )}
         </div>
 
-        {displayContext !== "conversation" && sourceUrl && text && (
+        {displayContext !== "conversation" && metadata?.sourceUrl && text && (
           <Markdown
             content={text}
             isStreaming={false}

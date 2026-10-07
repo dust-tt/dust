@@ -268,4 +268,35 @@ describe("ContentNodeTree", () => {
     expect(setSelectedNodes).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Select all" })).toBeDisabled();
   });
+
+  it("only renders http(s) sourceUrl values as external links", () => {
+    const safe = makeNode({
+      internalId: "safe",
+      sourceUrl: "https://example.com/doc",
+      title: "Safe",
+    });
+    const unsafe = makeNode({
+      internalId: "unsafe",
+      sourceUrl: "javascript:alert(1)",
+      title: "Unsafe",
+    });
+
+    render(
+      <ContentNodeTree
+        selectedNodes={{}}
+        setSelectedNodes={vi.fn()}
+        useResourcesHook={() => ({
+          resources: [safe, unsafe],
+          isResourcesLoading: false,
+          isResourcesError: false,
+        })}
+      />
+    );
+
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "https://example.com/doc");
+    expect(links[0]).toHaveAttribute("target", "_blank");
+    expect(links[0]).toHaveAttribute("rel", "noopener noreferrer");
+  });
 });

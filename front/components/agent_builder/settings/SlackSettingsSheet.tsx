@@ -3,6 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBu
 import { buildDefaultAgentSlackPickerChannels } from "@app/components/agent_builder/settings/buildDefaultAgentSlackPickerChannels";
 import { useSlackUserPrivateChannels } from "@app/lib/swr/assistants";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { getSafeSourceUrl } from "@app/lib/utils/source_urls";
 import type { DataSourceType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isAdmin } from "@app/types/user";
@@ -179,44 +180,49 @@ function SlackChannelsList({
                 : t`No channels match "${searchQuery}"`}
             </div>
           ) : (
-            filteredChannels.map((channel) => (
-              <div
-                key={channel.slackChannelId}
-                className="group flex cursor-pointer items-center justify-between rounded-lg p-2"
-                onClick={() => handleChannelToggle(channel)}
-              >
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    checked={isChannelSelected(channel)}
-                    onCheckedChange={(checked) =>
-                      handleChannelToggle(channel, checked === true)
-                    }
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                  />
-                  <span className="text-sm font-medium text-primary-900">
-                    {channel.slackChannelName}
-                  </span>
-                  {channel.isPrivate && (
-                    <Icon
-                      visual={Lock01}
-                      size="xs"
-                      className="text-muted-foreground"
-                    />
-                  )}
-                </div>
-                {channel.sourceUrl && (
-                  <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button
-                      href={channel.sourceUrl}
-                      icon={LinkExternal01}
-                      size="xs"
-                      variant="outline"
+            filteredChannels.map((channel) => {
+              const sourceUrl = getSafeSourceUrl(channel.sourceUrl);
+              return (
+                <div
+                  key={channel.slackChannelId}
+                  className="group flex cursor-pointer items-center justify-between rounded-lg p-2"
+                  onClick={() => handleChannelToggle(channel)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      checked={isChannelSelected(channel)}
+                      onCheckedChange={(checked) =>
+                        handleChannelToggle(channel, checked === true)
+                      }
                       onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     />
+                    <span className="text-sm font-medium text-primary-900">
+                      {channel.slackChannelName}
+                    </span>
+                    {channel.isPrivate && (
+                      <Icon
+                        visual={Lock01}
+                        size="xs"
+                        className="text-muted-foreground"
+                      />
+                    )}
                   </div>
-                )}
-              </div>
-            ))
+                  {sourceUrl && (
+                    <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        icon={LinkExternal01}
+                        size="xs"
+                        variant="outline"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}

@@ -11,13 +11,13 @@ import {
 } from "@app/lib/data_sources";
 import type { AppRouter } from "@app/lib/platform";
 import { setQueryParam } from "@app/lib/utils/router";
+import { getSafeSourceUrl, openSourceUrl } from "@app/lib/utils/source_urls";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { FileUseCase } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
-import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
   DocumentDeletionKey,
   DocumentViewRawContentKey,
@@ -305,19 +305,16 @@ const makeViewSourceUrlContentAction = (
       ? t(msg`View associated URL`)
       : t(msg`View in ${dataSourceName}`);
 
+  const sourceUrl = getSafeSourceUrl(contentNode.sourceUrl);
+
   return {
     kind: "item",
     label,
     icon: LinkExternal01,
-    disabled: contentNode.sourceUrl === null,
+    disabled: sourceUrl === null,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
-      if (contentNode.sourceUrl) {
-        const { valid } = validateUrl(contentNode.sourceUrl);
-        if (valid) {
-          window.open(contentNode.sourceUrl, "_blank", "noopener,noreferrer");
-        }
-      }
+      openSourceUrl(sourceUrl);
     },
   };
 };
