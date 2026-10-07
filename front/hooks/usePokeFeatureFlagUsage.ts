@@ -15,6 +15,7 @@ export interface PokeFeatureFlagCellStats {
   region: RegionType;
   workspaceCount: number;
   globalRolloutPercentage: number | null;
+  globalConditions: string[];
 }
 
 export interface PokeFeatureFlagUsageAllCells {
@@ -42,6 +43,7 @@ function mergeFeatureFlagUsage(
         region,
         workspaceCount: flag.workspaceCount,
         globalRolloutPercentage: flag.globalRolloutPercentage,
+        globalConditions: flag.globalConditions,
       };
 
       if (!existing) {

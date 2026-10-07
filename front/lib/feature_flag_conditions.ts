@@ -6,16 +6,18 @@ import {
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import type { PlanType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * @cc [owner:adrsimon,label:product] workspace-level-data-only
  * `FeatureFlagContext` MUST only hold workspace-level data. It MUST NOT hold the user, the role or
- * anything else that differs between two evaluations of the same workspace, so that a web request
- * and a background job resolve the same flags.
+ * anything else that differs between two callers evaluating the same workspace.
+ */
+/**
+ * @cc [owner:adrsimon,label:product] unknown-plan-fails-conditions
+ * `plan` is `null` when the caller cannot load the workspace's plan (public unauthenticated paths).
+ * Every plan-based condition MUST evaluate to false for a `null` plan.
  */
 export type FeatureFlagContext = {
-  workspace: LightWorkspaceType;
   plan: PlanType | null;
 };
 

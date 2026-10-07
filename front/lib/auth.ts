@@ -1504,8 +1504,7 @@ export class Authenticator {
   }
 
   getFeatureFlags(): Promise<WhitelistableFeature[]> {
-    return getFeatureFlagsForContext({
-      workspace: this.getNonNullableWorkspace(),
+    return getFeatureFlagsForContext(this.getNonNullableWorkspace(), {
       plan: this.plan(),
     });
   }
@@ -2131,15 +2130,15 @@ export async function prodAPICredentialsForOwner(
 
 /**
  * @cc [owner:adrsimon,label:product] global-flag-conditions
- * A global flag applies to a workspace only if every one of its `conditions` holds for `context`
- * and the workspace falls in its rollout percentage. A condition name unknown to the code counts as
- * not holding. Workspace-level flags apply regardless of conditions.
+ * Outside the development all-features override, a global flag applies to a workspace only if
+ * every one of its `conditions` holds for `context` and the workspace falls in its rollout
+ * percentage. A condition name unknown to the code counts as not holding. Workspace-level flags
+ * apply regardless of conditions.
  */
 export async function getFeatureFlagsForContext(
+  workspace: LightWorkspaceType,
   context: FeatureFlagContext
 ): Promise<WhitelistableFeature[]> {
-  const { workspace } = context;
-
   if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
     return [...WHITELISTABLE_FEATURES];
   }

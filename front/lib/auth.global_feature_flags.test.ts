@@ -100,10 +100,13 @@ describe("getFeatureFlags with global flags", () => {
     const enterpriseWorkspace = await WorkspaceFactory.enterprise();
     const proWorkspace = await WorkspaceFactory.basic();
 
+    await GlobalFeatureFlagResource.setConditions(
+      "dummy_feature_for_flag_testing",
+      ["enterprise_plan"]
+    );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100,
-      ["enterprise_plan"]
+      100
     );
 
     const enterpriseFlags = await getFeatureFlags(
@@ -114,6 +117,44 @@ describe("getFeatureFlags with global flags", () => {
     );
     expect(enterpriseFlags).toContain("dummy_feature_for_flag_testing");
     expect(proFlags).not.toContain("dummy_feature_for_flag_testing");
+  });
+
+  it("changing the rollout percentage keeps the conditions", async () => {
+    const proWorkspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(
+      proWorkspace.sId
+    );
+
+    await GlobalFeatureFlagResource.setConditions(
+      "dummy_feature_for_flag_testing",
+      ["enterprise_plan"]
+    );
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "dummy_feature_for_flag_testing",
+      50
+    );
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "dummy_feature_for_flag_testing",
+      100
+    );
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).not.toContain("dummy_feature_for_flag_testing");
+  });
+
+  it("setting conditions on a flag without rollout does not enable it", async () => {
+    const enterpriseWorkspace = await WorkspaceFactory.enterprise();
+    const auth = await Authenticator.internalAdminForWorkspace(
+      enterpriseWorkspace.sId
+    );
+
+    await GlobalFeatureFlagResource.setConditions(
+      "dummy_feature_for_flag_testing",
+      ["enterprise_plan"]
+    );
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).not.toContain("dummy_feature_for_flag_testing");
   });
 
   it("global flag with an unknown condition applies to no workspace", async () => {
@@ -138,10 +179,13 @@ describe("getFeatureFlags with global flags", () => {
       workspace,
       "dummy_feature_for_flag_testing"
     );
+    await GlobalFeatureFlagResource.setConditions(
+      "dummy_feature_for_flag_testing",
+      ["enterprise_plan"]
+    );
     await GlobalFeatureFlagResource.setRolloutPercentage(
       "dummy_feature_for_flag_testing",
-      100,
-      ["enterprise_plan"]
+      100
     );
 
     const flags = await getFeatureFlags(auth);

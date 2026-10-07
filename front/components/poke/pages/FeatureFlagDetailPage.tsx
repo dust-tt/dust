@@ -8,6 +8,7 @@ import { useCellContext } from "@app/lib/auth/CellContext";
 import { formatDateTime } from "@app/lib/i18n/format";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { formatGlobalRollout } from "@app/lib/poke/feature_flags";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { CellType } from "@app/types/cell";
@@ -277,7 +278,10 @@ export function FeatureFlagDetailPage() {
               const pctLabel =
                 rollout.globalRolloutPercentage === null
                   ? "—"
-                  : `${rollout.globalRolloutPercentage}%`;
+                  : formatGlobalRollout(
+                      rollout.globalRolloutPercentage,
+                      rollout.globalConditions
+                    );
               return (
                 <Chip
                   key={rollout.cell}

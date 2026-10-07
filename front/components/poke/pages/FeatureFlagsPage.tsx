@@ -9,6 +9,7 @@ import type {
 import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { formatGlobalRollout } from "@app/lib/poke/feature_flags";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { CellType } from "@app/types/cell";
@@ -163,7 +164,10 @@ function makeColumns({
                 const label =
                   stat.globalRolloutPercentage === null
                     ? "—"
-                    : `${stat.globalRolloutPercentage}%`;
+                    : formatGlobalRollout(
+                        stat.globalRolloutPercentage,
+                        stat.globalConditions
+                      );
                 return (
                   <Chip
                     key={stat.cell}
@@ -183,7 +187,10 @@ function makeColumns({
               const label =
                 stat.globalRolloutPercentage === null
                   ? "—"
-                  : `${stat.globalRolloutPercentage}%`;
+                  : formatGlobalRollout(
+                      stat.globalRolloutPercentage,
+                      stat.globalConditions
+                    );
               return (
                 <div key={stat.cell} className="flex items-center gap-1">
                   <Chip

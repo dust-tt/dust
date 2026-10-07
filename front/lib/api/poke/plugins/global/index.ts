@@ -4,5 +4,6 @@ export * from "./delete_legacy_feature_flag";
 export * from "./force_client_reload";
 export * from "./get_admins_for_workspaces";
 export * from "./reset_phone_verification";
+export * from "./set_global_feature_flag_conditions";
 export * from "./toggle_global_feature_flag";
 export * from "./wipe_user";

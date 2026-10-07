@@ -74,10 +74,10 @@ export async function getWorkspaceBrandingPublicUrls(
   logoUrl: string | null;
   ogImageUrl: string | null;
 }> {
-  const featureFlags = await getFeatureFlagsForContext({
-    workspace: renderLightWorkspaceType({ workspace }),
-    plan: null,
-  });
+  const featureFlags = await getFeatureFlagsForContext(
+    renderLightWorkspaceType({ workspace }),
+    { plan: null }
+  );
   if (!featureFlags.includes("whitelabel_frames")) {
     return { faviconUrl: null, logoUrl: null, ogImageUrl: null };
   }

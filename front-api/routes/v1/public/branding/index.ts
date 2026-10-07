@@ -82,10 +82,10 @@ app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {
     return redirectToDefaultAsset(ctx, asset);
   }
 
-  const featureFlags = await getFeatureFlagsForContext({
-    workspace: renderLightWorkspaceType({ workspace }),
-    plan: null,
-  });
+  const featureFlags = await getFeatureFlagsForContext(
+    renderLightWorkspaceType({ workspace }),
+    { plan: null }
+  );
   if (!featureFlags.includes("whitelabel_frames")) {
     return redirectToDefaultAsset(ctx, asset);
   }

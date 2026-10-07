@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -81,6 +82,26 @@ describe("GET /api/poke/feature-flags", () => {
     expect(flag.stage).not.toBeNull();
     expect(flag.description).not.toBeNull();
     expect(flag.globalRolloutPercentage).toBeNull();
+    expect(flag.globalConditions).toEqual([]);
+  });
+
+  it("returns the global rollout conditions", async () => {
+    await createPokeApiMockRequest({ isSuperUser: true });
+    await GlobalFeatureFlagResource.setConditions(FLAG_A, ["enterprise_plan"]);
+
+    try {
+      const response = await listFeatureFlags();
+
+      expect(response.status).toBe(200);
+      const { featureFlags } = await response.json();
+      const flag = featureFlags.find(
+        (f: { name: string }) => f.name === FLAG_A
+      );
+      expect(flag.globalRolloutPercentage).toBe(0);
+      expect(flag.globalConditions).toEqual(["enterprise_plan"]);
+    } finally {
+      await GlobalFeatureFlagResource.setRolloutPercentage(FLAG_A, 0);
+    }
   });
 
   it("surfaces flag rows whose name is no longer configured", async () => {
