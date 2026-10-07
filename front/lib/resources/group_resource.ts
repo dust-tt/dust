@@ -2274,6 +2274,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         );
       }
 
+      // Checked before any mutation so a rejected update leaves both name and members untouched.
+      if (memberIds !== undefined && memberIds.length === 0) {
+        return new Err(
+          new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
+        );
+      }
+
       const lockedIds = await GroupResource.lockGroupIdsForUpdate(
         auth,
         [this.id],
@@ -2296,13 +2303,6 @@ export class GroupResource extends BaseResource<GroupModel> {
             )
           );
         }
-      }
-
-      // Checked before any mutation so a rejected update leaves both name and members untouched.
-      if (memberIds !== undefined && memberIds.length === 0) {
-        return new Err(
-          new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
-        );
       }
 
       if (name !== undefined) {
