@@ -62,7 +62,7 @@ struct ConversationDetailView: View {
                 onReplySendFailed: { viewModel.removeOptimisticUserMessage() }
             )
         }
-        .background(Color.dustBackground)
+        .background(Color.dustBackground.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {

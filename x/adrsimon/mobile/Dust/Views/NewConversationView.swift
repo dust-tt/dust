@@ -104,7 +104,7 @@ struct NewConversationView: View {
                 .transition(.opacity)
             }
         }
-        .background(Color.dustBackground)
+        .background(Color.dustBackground.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .task {
             async let agents: () = inputBarViewModel.loadAgents()

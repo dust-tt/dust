@@ -57,7 +57,7 @@ struct CatchUpView: View {
                 actionButtons
             }
         }
-        .background(Color.dustBackground)
+        .background(Color.dustBackground.ignoresSafeArea())
         .task {
             await viewModel.loadCurrentMessages()
         }
