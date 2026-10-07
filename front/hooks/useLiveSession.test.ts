@@ -5,12 +5,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const DOCUMENT_NAME = "w_1:notes.md";
 
+// Hocuspocus reads a port of 0 as none and falls back to 80, so the free port goes through the
+// configuration. No signal handlers in tests.
+const newServer = () =>
+  new Server({ quiet: true, port: 0, stopOnSignals: false });
+
 describe("useLiveSession", () => {
   let server: Server;
 
   beforeEach(async () => {
-    server = new Server({ quiet: true });
-    await server.listen(0);
+    server = newServer();
+    await server.listen();
   });
 
   afterEach(async () => {
@@ -56,7 +61,7 @@ describe("useLiveSession", () => {
         opened++;
       }
     };
-    server = new Server({ quiet: true });
+    server = newServer();
     try {
       const { unmount } = renderHook(() =>
         useLiveSession({
