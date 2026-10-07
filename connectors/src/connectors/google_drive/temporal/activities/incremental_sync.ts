@@ -53,6 +53,12 @@ type ParentsUpdate = {
 
 type EnqueueParentsUpdate = (update: ParentsUpdate) => Promise<void>;
 
+/**
+ * @cc [owner:philipperolet,label:performance] folder-move-detection
+ * A folder change MUST trigger the recursive parents update of the folder's subtree only when the
+ * folder's stored `parentId` differs from its current synced parent. A top-level synced folder
+ * (stored `parentId` null, no synced parent in Drive) MUST NOT be treated as moved.
+ */
 export async function incrementalSync(
   connectorId: ModelId,
   driveId: string,
@@ -268,8 +274,9 @@ export async function incrementalSync(
         });
 
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+        // A top-level synced folder has no parent in `parentGoogleIds` and a null `parentId`.
         const moved =
-          localFolder && localFolder.parentId !== parentGoogleIds[1];
+          localFolder && localFolder.parentId !== (parentGoogleIds[1] ?? null);
 
         // Drive change events do not tell us which folder field changed, so we
         // refresh folder metadata on every seen folder change.
