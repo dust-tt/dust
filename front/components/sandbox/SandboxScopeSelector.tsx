@@ -13,7 +13,12 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // The scopes edited together on the central Computer admin page: the workspace
 // baseline and/or any Pods. Every selected scope is a write target.
@@ -24,7 +29,8 @@ export type SandboxScopeSelection = {
 
 export function labelForSelection(
   selection: SandboxScopeSelection,
-  pods: SandboxAdminPod[]
+  pods: SandboxAdminPod[],
+  t: Translate
 ): string {
   const podIds = new Set(selection.podIds);
   // Count only Pods still present in the list: a selected Pod that lost its
@@ -34,19 +40,29 @@ export function labelForSelection(
   const allPodsSelected =
     pods.length > 0 && selectedPods.length === pods.length;
   if (selection.includeWorkspace && allPodsSelected) {
-    return "All scopes";
+    return t(msg`All scopes`);
   }
 
-  const parts: string[] = [];
+  const podCount = selectedPods.length;
+  if (podCount === 0) {
+    return selection.includeWorkspace
+      ? t(msg`Workspace`)
+      : t(msg`Select scope`);
+  }
+  if (podCount === 1) {
+    const podName = selectedPods[0].name;
+    return selection.includeWorkspace
+      ? t(msg`Workspace + ${podName}`)
+      : podName;
+  }
   if (selection.includeWorkspace) {
-    parts.push("Workspace");
+    return t(
+      msg`Workspace + ${plural(podCount, { one: "# Pod", other: "# Pods" })}`
+    );
   }
-  if (selectedPods.length === 1) {
-    parts.push(selectedPods[0].name);
-  } else if (selectedPods.length > 1) {
-    parts.push(allPodsSelected ? "all Pods" : `${selectedPods.length} Pods`);
-  }
-  return parts.length === 0 ? "Select scope" : parts.join(" + ");
+  return allPodsSelected
+    ? t(msg`All Pods`)
+    : t(msg`${plural(podCount, { one: "# Pod", other: "# Pods" })}`);
 }
 
 interface SandboxScopeSelectorProps {
@@ -66,6 +82,7 @@ export function SandboxScopeSelector({
   isError = false,
   disabled = false,
 }: SandboxScopeSelectorProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -101,22 +118,22 @@ export function SandboxScopeSelector({
     if (isLoading) {
       return (
         <DropdownMenuItem
-          label="Loading"
+          label={t`Loading`}
           disabled
           endComponent={<Spinner size="xs" />}
         />
       );
     }
     if (isError) {
-      return <DropdownMenuItem label="Failed to load Pods" disabled />;
+      return <DropdownMenuItem label={t`Failed to load Pods`} disabled />;
     }
     if (pods.length === 0) {
       return (
-        <DropdownMenuItem label="No Pods with their own policy" disabled />
+        <DropdownMenuItem label={t`No Pods with their own policy`} disabled />
       );
     }
     if (filteredPods.length === 0) {
-      return <DropdownMenuItem label="No matching Pods" disabled />;
+      return <DropdownMenuItem label={t`No matching Pods`} disabled />;
     }
     return filteredPods.map((pod) => (
       <DropdownMenuCheckboxItem
@@ -145,7 +162,7 @@ export function SandboxScopeSelector({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          label={labelForSelection(selection, pods)}
+          label={labelForSelection(selection, pods, t)}
           isSelect
           disabled={disabled}
         />
@@ -156,7 +173,7 @@ export function SandboxScopeSelector({
         collisionPadding={8}
       >
         <DropdownMenuCheckboxItem
-          label="Workspace"
+          label={t`Workspace`}
           icon={Building04}
           checked={selection.includeWorkspace}
           onCheckedChange={(checked) =>
@@ -167,17 +184,17 @@ export function SandboxScopeSelector({
           }}
         />
         <DropdownMenuSeparator />
-        <DropdownMenuLabel label="Pods" />
+        <DropdownMenuLabel label={t`Pods`} />
         <DropdownMenuSearchbar
           autoFocus
           name="search-pods"
-          placeholder="Search Pods"
+          placeholder={t`Search Pods`}
           value={searchText}
           onChange={setSearchText}
           disabled={isLoading}
         />
         <DropdownMenuItem
-          label={allPodsSelected ? "Clear all" : "Select all"}
+          label={allPodsSelected ? t`Clear all` : t`Select all`}
           disabled={pods.length === 0}
           onClick={() =>
             onChange({
@@ -192,7 +209,7 @@ export function SandboxScopeSelector({
         {renderPodItems()}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          label="Reset"
+          label={t`Reset`}
           disabled={selection.includeWorkspace && selection.podIds.length === 0}
           onClick={() => onChange({ includeWorkspace: true, podIds: [] })}
           onSelect={(event) => {

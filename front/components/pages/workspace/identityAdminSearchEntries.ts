@@ -2,7 +2,6 @@ import {
   COMPUTER_ALLOWED_DOMAINS_LABEL,
   COMPUTER_NETWORK_SECTION_LABEL,
 } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
-import { AGENT_REQUESTED_DOMAINS_LABEL } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -43,7 +42,7 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     C.agentDomains,
     [
       [
-        AGENT_REQUESTED_DOMAINS_LABEL,
+        "Agent-requested domains",
         "computer sandbox approval per domain egress",
       ],
     ],

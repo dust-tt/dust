@@ -1,12 +1,7 @@
-import {
-  CONFIG_ENV_VARS_LABEL,
-  ENVIRONMENT_VARIABLES_LABEL,
-  HTTPS_SECRETS_LABEL,
-  WRITE_ONLY_ENV_VALUES_LABEL,
-} from "@app/components/sandbox/SandboxEnvVarsSection";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import { SANDBOX_ENV_VAR_PREFIX } from "@app/lib/api/sandbox/env_vars";
 
 const K = ADMIN_SECTION_IDS.apiKeys;
 const S = ADMIN_SECTION_IDS.secrets;
@@ -42,16 +37,16 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     C.environment,
     [
+      ["Environment variables", "computer env vars secrets config workspace"],
       [
-        ENVIRONMENT_VARIABLES_LABEL,
-        "computer env vars secrets config workspace",
-      ],
-      [
-        HTTPS_SECRETS_LABEL,
+        "HTTPS secrets (DSEC_)",
         "computer encrypted outbound https allowlisted domains env",
       ],
-      [CONFIG_ENV_VARS_LABEL, "computer plain environment variables"],
-      [WRITE_ONLY_ENV_VALUES_LABEL, "snapshotted at computer start"],
+      [
+        `Config (${SANDBOX_ENV_VAR_PREFIX})`,
+        "computer plain environment variables",
+      ],
+      ["Write-only values", "snapshotted at computer start"],
     ],
     "env"
   ),

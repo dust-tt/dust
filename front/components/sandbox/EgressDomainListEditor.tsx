@@ -7,6 +7,7 @@ import {
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface EgressDomainListEditorProps {
   allowedDomains: string[];
@@ -42,6 +43,7 @@ export function EgressDomainListEditor({
   readOnly = false,
   onRequestDomain,
 }: EgressDomainListEditorProps) {
+  const { t } = useLingui();
   // Members can't edit the allowlist, but may submit a domain request when the
   // caller provides onRequestDomain — the input stays, everything else hides.
   const isRequestMode = readOnly && onRequestDomain !== undefined;
@@ -56,19 +58,19 @@ export function EgressDomainListEditor({
       {showDomainInput && (
         <DomainInputForm
           isUpdating={isUpdating}
-          submitLabel={isRequestMode ? "Request domain" : "Add domain"}
+          submitLabel={isRequestMode ? t`Request domain` : t`Add domain`}
           duplicateMessage={(domain) =>
             allowedDomains.includes(domain)
-              ? "This domain is already allowed."
+              ? t`This domain is already allowed.`
               : isRequestMode &&
                   (pendingRequests?.some((r) => r.domain === domain) ?? false)
-                ? "This domain has already been requested."
+                ? t`This domain has already been requested.`
                 : null
           }
           validMessage={(domain) =>
             isRequestMode
-              ? `Will be requested as ${domain}.`
-              : `Will be saved as ${domain}.`
+              ? t`Will be requested as ${domain}.`
+              : t`Will be saved as ${domain}.`
           }
           onSubmit={(domain) =>
             isRequestMode && onRequestDomain
@@ -84,29 +86,29 @@ export function EgressDomainListEditor({
         </ContentMessage>
       ) : (
         <div className="flex w-full flex-col divide-y divide-separator">
-          {pendingRequests?.map((request) => (
-            <div key={request.domain} className="flex items-center gap-3 py-3">
-              <DomainBadge domain={request.domain}>
-                <Chip size="xs" color="warning" label="Pending approval" />
+          {pendingRequests?.map(({ domain }) => (
+            <div key={domain} className="flex items-center gap-3 py-3">
+              <DomainBadge domain={domain}>
+                <Chip size="xs" color="warning" label={t`Pending approval`} />
               </DomainBadge>
               {!readOnly && (
                 <>
                   <Button
                     variant="highlight"
                     size="mini"
-                    label="Approve"
-                    tooltip={`Add ${request.domain} to the allowlist`}
+                    label={t`Approve`}
+                    tooltip={t`Add ${domain} to the allowlist`}
                     disabled={isUpdating}
-                    onClick={() => onApproveRequest?.(request.domain)}
+                    onClick={() => onApproveRequest?.(domain)}
                     className="shrink-0"
                   />
                   <Button
                     variant="ghost"
                     size="mini"
                     icon={XClose}
-                    tooltip={`Reject ${request.domain}`}
+                    tooltip={t`Reject ${domain}`}
                     disabled={isUpdating}
-                    onClick={() => onRejectRequest?.(request.domain)}
+                    onClick={() => onRejectRequest?.(domain)}
                     className="shrink-0"
                   />
                 </>
@@ -121,7 +123,7 @@ export function EgressDomainListEditor({
                   variant="warning"
                   size="mini"
                   icon={Trash01}
-                  tooltip={`Remove ${domain}`}
+                  tooltip={t`Remove ${domain}`}
                   disabled={isUpdating}
                   onClick={() => {
                     void handleRemoveDomain(domain);
