@@ -13,8 +13,6 @@ import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { ordinalDay } from "@app/types/shared/utils/date_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ProgressBar,
@@ -23,6 +21,8 @@ import {
   Stars02,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface PersonalUsageCardProps {
   owner: WorkspaceType;
@@ -35,6 +35,7 @@ export function PersonalUsageCard({
   visible,
   onManagerNavigate,
 }: PersonalUsageCardProps) {
+  const { t } = useLingui();
   const { isManager, subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const isCreditBased = isCreditPricedPlan(subscription.plan);
@@ -103,15 +104,42 @@ export function PersonalUsageCard({
       ? getTimeframeSecondsFromLiteral(fairUseAwuCreditsState.timeframe) /
         (24 * 60 * 60)
       : null;
+  const formatRollingResetLabel = (windowDays: number) =>
+    t`${plural(windowDays, {
+      one: "Resets on a rolling #-day basis",
+      other: "Resets on a rolling #-day basis",
+    })}`;
   // A fixed window resets all at once at `nextResetAt`; a rolling one slides
   // continuously, so it is described by its window length instead.
-  const fairUseResetLabel =
+  let fairUseResetLabel: string | null = null;
+  if (
     fairUseAwuCreditsState?.windowKind === "fixed" &&
     fairUseAwuCreditsState.nextResetAt
-      ? `Resets ${formatRelativeResetDay(fairUseAwuCreditsState.nextResetAt)}`
-      : fairUseWindowDays !== null
-        ? `Resets on a rolling ${fairUseWindowDays}-day basis`
-        : null;
+  ) {
+    const resetDay = formatRelativeResetDay(fairUseAwuCreditsState.nextResetAt);
+    fairUseResetLabel = t`Resets ${resetDay}`;
+  } else if (fairUseWindowDays !== null) {
+    fairUseResetLabel = formatRollingResetLabel(fairUseWindowDays);
+  }
+  let fairUseRefillLabel: string | null = null;
+  if (isFairUseCreditsAtLimit && nextFairUseRefill) {
+    const refillCredits = formatCreditValue(nextFairUseRefill.credits);
+    const refillDay = formatRelativeResetDay(nextFairUseRefill.date);
+    fairUseRefillLabel = t`${refillCredits} available again ${refillDay}`;
+  }
+  const premiumModelWindowDays = premiumModelUsage?.windowDays ?? 0;
+  const premiumModelRefillMessages =
+    premiumModelUsage?.nextRefill?.messages ?? null;
+  const premiumModelLimitLabel =
+    premiumModelRefillMessages !== null && nextPremiumModelRefillDate
+      ? t`${plural(premiumModelRefillMessages, {
+          one: `# message available again ${nextPremiumModelRefillDate}`,
+          other: `# messages available again ${nextPremiumModelRefillDate}`,
+        })}`
+      : t`${plural(premiumModelWindowDays, {
+          one: "Messages become available # day after use",
+          other: "Messages become available # days after use",
+        })}`;
   const isLoading = isMyUsageLoading || isFairUseCreditsLoading;
 
   return (
@@ -145,23 +173,23 @@ export function PersonalUsageCard({
             <>
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground">
-                  Your Credits
+                  <Trans>Your credits</Trans>
                 </span>
                 {nextCreditResetAt &&
                   myUsage?.seatType !== "free" &&
                   (() => {
-                    const resetAt = new Date(nextCreditResetAt);
-                    const month = formatDate(
-                      resetAt,
+                    const resetDate = formatDate(
+                      new Date(nextCreditResetAt),
                       {
                         month: "long",
+                        day: "numeric",
                         timeZone: "UTC",
                       },
                       getActiveLocale()
                     );
                     return (
                       <span className="text-xs text-muted-foreground">
-                        Resets on {month} {ordinalDay(resetAt.getUTCDate())}
+                        <Trans>Resets on {resetDate}</Trans>
                       </span>
                     );
                   })()}
@@ -187,7 +215,7 @@ export function PersonalUsageCard({
               <div className="flex items-end justify-between gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium text-foreground">
-                    Fair Usage credits
+                    <Trans>Fair usage credits</Trans>
                   </span>
                   {fairUseResetLabel && (
                     <span className="text-xs text-muted-foreground">
@@ -207,7 +235,7 @@ export function PersonalUsageCard({
                   trigger={
                     <div className="flex h-1.5 w-full cursor-help items-center">
                       <ProgressBar
-                        label="Fair-use credits consumed"
+                        label={t`Fair-use credits consumed`}
                         className="h-1.5 w-full bg-primary-100"
                         values={[
                           {
@@ -224,7 +252,9 @@ export function PersonalUsageCard({
                   }
                   label={
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-medium">Reset schedule:</span>
+                      <span className="font-medium">
+                        <Trans>Reset schedule:</Trans>
+                      </span>
                       {fairUseAwuCreditsState.refillSchedule.map(
                         ({ date, credits }) => (
                           <span key={date}>
@@ -246,7 +276,7 @@ export function PersonalUsageCard({
                 />
               ) : (
                 <ProgressBar
-                  label="Fair-use credits consumed"
+                  label={t`Fair-use credits consumed`}
                   className="h-1.5 w-full bg-primary-100"
                   values={[
                     {
@@ -260,10 +290,9 @@ export function PersonalUsageCard({
                   ]}
                 />
               )}
-              {isFairUseCreditsAtLimit && nextFairUseRefill ? (
+              {fairUseRefillLabel ? (
                 <span className="text-xs text-muted-foreground">
-                  {formatCreditValue(nextFairUseRefill.credits)} available again{" "}
-                  {formatRelativeResetDay(nextFairUseRefill.date)}
+                  {fairUseRefillLabel}
                 </span>
               ) : null}
             </div>
@@ -273,10 +302,10 @@ export function PersonalUsageCard({
               <div className="flex items-end justify-between gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium text-foreground">
-                    Premium messages
+                    <Trans>Premium messages</Trans>
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Resets on a rolling {premiumModelUsage.windowDays}-day basis
+                    {formatRollingResetLabel(premiumModelUsage.windowDays)}
                   </span>
                 </div>
                 <span className="text-sm tabular-nums text-muted-foreground">
@@ -291,7 +320,7 @@ export function PersonalUsageCard({
                   trigger={
                     <div className="flex h-1.5 w-full cursor-help items-center">
                       <ProgressBar
-                        label="Premium messages used"
+                        label={t`Premium messages used`}
                         className="h-1.5 w-full bg-primary-100"
                         values={[
                           {
@@ -308,7 +337,9 @@ export function PersonalUsageCard({
                   }
                   label={
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-medium">Reset schedule:</span>
+                      <span className="font-medium">
+                        <Trans>Reset schedule:</Trans>
+                      </span>
                       {premiumModelUsage.refillSchedule.map(
                         ({ date, messages }) => (
                           <span key={date}>
@@ -330,7 +361,7 @@ export function PersonalUsageCard({
                 />
               ) : (
                 <ProgressBar
-                  label="Premium messages used"
+                  label={t`Premium messages used`}
                   className="h-1.5 w-full bg-primary-100"
                   values={[
                     {
@@ -346,16 +377,7 @@ export function PersonalUsageCard({
               )}
               {isPremiumModelUsageAtLimit ? (
                 <span className="text-xs text-muted-foreground">
-                  {premiumModelUsage.nextRefill &&
-                  nextPremiumModelRefillDate ? (
-                    <>
-                      {premiumModelUsage.nextRefill.messages} message
-                      {pluralize(premiumModelUsage.nextRefill.messages)}{" "}
-                      available again {nextPremiumModelRefillDate}
-                    </>
-                  ) : (
-                    `Messages become available ${premiumModelUsage.windowDays} days after use`
-                  )}
+                  {premiumModelLimitLabel}
                 </span>
               ) : null}
             </div>
