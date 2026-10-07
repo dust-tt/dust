@@ -80,7 +80,7 @@ export function AddTriggerDialog({
         return {
           provider,
           name: preset.featureFlag ? t`${presetName} (Preview)` : presetName,
-          description: preset.description,
+          description: t(preset.description),
           icon: getIcon(preset.icon),
         };
       }),

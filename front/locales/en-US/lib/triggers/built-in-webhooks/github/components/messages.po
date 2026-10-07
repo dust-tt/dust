@@ -1,0 +1,66 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 14:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Loading repositories and organizations..."
+msgstr "Loading repositories and organizations..."
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Repositories"
+msgstr "Repositories"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Choose which repositories can activate this trigger"
+msgstr "Choose which repositories can activate this trigger"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Add repository"
+msgstr "Add repository"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Search repositories..."
+msgstr "Search repositories..."
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "No repositories found"
+msgstr "No repositories found"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Organizations"
+msgstr "Organizations"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Choose which organizations can activate this trigger"
+msgstr "Choose which organizations can activate this trigger"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Add organization"
+msgstr "Add organization"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Search organizations..."
+msgstr "Search organizations..."
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "No organizations found"
+msgstr "No organizations found"
+
+#: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
+msgid "Please select at least one repository or organization to create the webhook"
+msgstr "Please select at least one repository or organization to create the webhook"
+
+#: front/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails.tsx
+msgid "Connected sources"
+msgstr "Connected sources"

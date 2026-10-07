@@ -1,6 +1,7 @@
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { JiraAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/jira/types";
 import { Chip, LinkExternal01, Page } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 export function WebhookSourceJiraDetails({
   webhookSource,
@@ -23,7 +24,9 @@ export function WebhookSourceJiraDetails({
   return (
     <div className="space-y-4">
       <div>
-        <Page.H variant="h6">Connected Sources</Page.H>
+        <Page.H variant="h6">
+          <Trans>Connected sources</Trans>
+        </Page.H>
       </div>
       <div>
         {projects.map((project) => (
