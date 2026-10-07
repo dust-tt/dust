@@ -33,6 +33,7 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import {
   hasRedactedHeaderValue,
   REDACTED_HEADER_VALUES_ERROR_MESSAGE,
@@ -508,6 +509,9 @@ export function MCPServerDetails({
 
         const details =
           keys.length > 0 ? `Invalid: ${errorDetails}` : undefined;
+        const errorMessages = keys
+          .map((key) => errors[key as keyof typeof errors]?.message)
+          .filter(isString);
         datadogLogger.error(
           {
             fields: keys,
@@ -520,8 +524,8 @@ export function MCPServerDetails({
           type: "error",
           title: t`Validation error`,
           description:
-            keys.length > 0
-              ? t`Invalid: ${errorDetails}`
+            errorMessages.length > 0
+              ? errorMessages.join(" ")
               : t`Please fix the highlighted fields and try again.`,
         });
         success = false;

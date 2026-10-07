@@ -57,10 +57,6 @@ msgid "Clear"
 msgstr "Effacer"
 
 #: front/components/shared/filter_panel/FilterPanel.tsx
-msgid "Search {activeCategoryLabel}"
-msgstr "Rechercher : {activeCategoryLabel}"
-
-#: front/components/shared/filter_panel/FilterPanel.tsx
 msgid "Failed to load filters."
 msgstr "Impossible de charger les filtres."
 
@@ -71,6 +67,10 @@ msgstr "Tout sélectionner"
 #: front/components/shared/filter_panel/FilterSelectionSummary.tsx
 msgid "{selectionCount, plural, one {# filter selected} other {# filters selected}}"
 msgstr "{selectionCount, plural, one {# filtre sélectionné} other {# filtres sélectionnés}}"
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "{categoryLabel} ({selectedCount})"
+msgstr "{categoryLabel} ({selectedCount})"
 
 #: front/components/shared/filter_panel/FilterSelectionSummary.tsx
 msgid "Collapse"
@@ -152,6 +152,42 @@ msgstr "Outils"
 msgctxt "filter category"
 msgid "Usage"
 msgstr "Utilisation"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search access"
+msgstr "Rechercher des accès"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search availability"
+msgstr "Rechercher une disponibilité"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search editors"
+msgstr "Rechercher des éditeurs"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search models"
+msgstr "Rechercher des modèles"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search skills"
+msgstr "Rechercher des compétences"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search spaces"
+msgstr "Rechercher des espaces"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search tags"
+msgstr "Rechercher des tags"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search tools"
+msgstr "Rechercher des outils"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search usage"
+msgstr "Rechercher une utilisation"
 
 #: front/components/shared/filter_panel/searchFilter.ts
 msgctxt "filter category"

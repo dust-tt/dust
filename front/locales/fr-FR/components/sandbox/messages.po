@@ -158,7 +158,7 @@ msgid "Remove Workspace domain"
 msgstr "Retirer le domaine du Workspace"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
-msgid "{removeTargetDomain} is a Workspace domain, inherited by every Pod and running Computer. Removing it here drops it from the Workspace and {removeTargetPodNames}. This cannot be undone."
+msgid "{removeTargetDomain} is a Workspace domain, inherited by every Pod and running Computer. Removing it here drops it from the Workspace and from {removeTargetPodNames}. This cannot be undone."
 msgstr "{removeTargetDomain} est un domaine du Workspace, hérité par chaque Pod et chaque Computer en cours d’exécution. Le retirer ici le supprime du Workspace et de {removeTargetPodNames}. Cette action est irréversible."
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx

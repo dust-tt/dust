@@ -60,8 +60,8 @@ msgid "This conversation belongs to an archived Pod. No new messages can be sent
 msgstr "This conversation belongs to an archived Pod. No new messages can be sent."
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
-msgid "{blockedActionCount, plural, one {<0>{blockedActionCount} manual action</0> required} other {<1>{blockedActionCount} manual actions</1> required}}"
-msgstr "{blockedActionCount, plural, one {<0>{blockedActionCount} manual action</0> required} other {<1>{blockedActionCount} manual actions</1> required}}"
+msgid "{blockedActionCount, plural, one {<0># manual action</0> required} other {<1># manual actions</1> required}}"
+msgstr "{blockedActionCount, plural, one {<0># manual action</0> required} other {<1># manual actions</1> required}}"
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Review"

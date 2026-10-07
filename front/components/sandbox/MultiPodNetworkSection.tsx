@@ -1,7 +1,8 @@
 import { DomainBadge } from "@app/components/sandbox/DomainBadge";
 import { DomainInputForm } from "@app/components/sandbox/DomainInputForm";
 import { podIcon } from "@app/components/sandbox/pod_icon";
-import { compareStrings } from "@app/lib/i18n/format";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { compareStrings, formatList } from "@app/lib/i18n/format";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkPodEgressPolicies,
@@ -381,8 +382,11 @@ export function MultiPodNetworkSection({
     !isWorkspaceEgressPolicyError;
 
   const removeTargetDomain = removeTarget?.domain;
-  const removeTargetPodNames =
-    removeTarget?.ownedByPods.map((pod) => pod.name).join(", ") ?? "";
+  const removeTargetPodNames = formatList(
+    removeTarget?.ownedByPods.map((pod) => pod.name) ?? [],
+    { type: "conjunction" },
+    getActiveLocale()
+  );
 
   const renderRows = () => {
     if (isPodPoliciesLoading || isWorkspaceEgressPolicyLoading) {
@@ -514,7 +518,8 @@ export function MultiPodNetworkSection({
                 <Trans>
                   {removeTargetDomain} is a Workspace domain, inherited by every
                   Pod and running Computer. Removing it here drops it from the
-                  Workspace and {removeTargetPodNames}. This cannot be undone.
+                  Workspace and from {removeTargetPodNames}. This cannot be
+                  undone.
                 </Trans>
               ) : (
                 <Trans>

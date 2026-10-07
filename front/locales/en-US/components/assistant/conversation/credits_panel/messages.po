@@ -38,8 +38,8 @@ msgid "Total credits consumed"
 msgstr "Total credits consumed"
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
-msgid "{billedCredits, plural, one {credit} other {credits}}"
-msgstr "{billedCredits, plural, one {credit} other {credits}}"
+msgid "{displayedBilledCredits, plural, one {<0>{formattedBilledCredits}</0> <1>credit</1>} other {<2>{formattedBilledCredits}</2> <3>credits</3>}}"
+msgstr "{displayedBilledCredits, plural, one {<0>{formattedBilledCredits}</0> <1>credit</1>} other {<2>{formattedBilledCredits}</2> <3>credits</3>}}"
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
 msgid "By tools"

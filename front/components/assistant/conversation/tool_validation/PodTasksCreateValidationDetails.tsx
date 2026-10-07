@@ -107,20 +107,43 @@ export function PodTasksCreateValidationDetails({
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
         {input.creatorType === "user" ? (
-          <Trans>
-            Review the{" "}
-            <span className="font-medium text-foreground">{taskCount}</span>{" "}
-            <Plural value={taskCount} one="task" other="tasks" /> below before
-            adding them to{" "}
-            <span className="font-medium text-foreground">{podName}</span>.
-          </Trans>
+          <Plural
+            value={taskCount}
+            one={
+              <Trans>
+                Review the{" "}
+                <span className="font-medium text-foreground">#</span> task
+                below before adding it to{" "}
+                <span className="font-medium text-foreground">{podName}</span>.
+              </Trans>
+            }
+            other={
+              <Trans>
+                Review the{" "}
+                <span className="font-medium text-foreground">#</span> tasks
+                below before adding them to{" "}
+                <span className="font-medium text-foreground">{podName}</span>.
+              </Trans>
+            }
+          />
         ) : (
-          <Trans>
-            The agent wants to create{" "}
-            <span className="font-medium text-foreground">{taskCount}</span>{" "}
-            <Plural value={taskCount} one="task" other="tasks" /> in{" "}
-            <span className="font-medium text-foreground">{podName}</span>.
-          </Trans>
+          <Plural
+            value={taskCount}
+            one={
+              <Trans>
+                The agent wants to create{" "}
+                <span className="font-medium text-foreground">#</span> task in{" "}
+                <span className="font-medium text-foreground">{podName}</span>.
+              </Trans>
+            }
+            other={
+              <Trans>
+                The agent wants to create{" "}
+                <span className="font-medium text-foreground">#</span> tasks in{" "}
+                <span className="font-medium text-foreground">{podName}</span>.
+              </Trans>
+            }
+          />
         )}
         {doneCount > 0 && (
           <>

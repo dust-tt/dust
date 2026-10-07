@@ -1,5 +1,7 @@
 import type { AppStatus } from "@app/lib/api/status";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
@@ -143,13 +145,16 @@ function UnhealthyCredentialsBanner({
   } else if (!hasConfiguredEmbeddingProvider) {
     description = t`Please set up your OpenAI credentials.`;
   } else if (!isWorkspaceHealthy) {
-    const invalidProviderNames = Object.entries(providersHealth)
-      .filter(([_, isHealthy]) => !isHealthy)
-      .map(
-        ([providerId]) =>
-          PRETTIFIED_PROVIDER_NAMES[providerId as ByokModelProviderIdType]
-      )
-      .join(", ");
+    const invalidProviderNames = formatList(
+      Object.entries(providersHealth)
+        .filter(([_, isHealthy]) => !isHealthy)
+        .map(
+          ([providerId]) =>
+            PRETTIFIED_PROVIDER_NAMES[providerId as ByokModelProviderIdType]
+        ),
+      { type: "conjunction" },
+      getActiveLocale()
+    );
     description = t`The following model providers have invalid credentials: ${invalidProviderNames}.`;
   } else {
     return null;

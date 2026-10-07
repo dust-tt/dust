@@ -58,10 +58,13 @@ export function DataSourceSpaceSelector({
     [confirm, removeNode, t]
   );
 
+  const spacesLabel = t(KNOWLEDGE_BROWSER_GROUP_LABELS.spaces);
+  const podsLabel = t(KNOWLEDGE_BROWSER_GROUP_LABELS.pods);
+
   return (
     <div className="flex h-full flex-col">
       <div className="heading-sm bg-muted-background p-2 text-foreground">
-        {t(KNOWLEDGE_BROWSER_GROUP_LABELS.spaces)}:
+        {t`${spacesLabel}:`}
       </div>
       <DataSourceList
         items={spaceItems}
@@ -71,7 +74,7 @@ export function DataSourceSpaceSelector({
       {projectItems.length > 0 && (
         <>
           <div className="heading-sm bg-muted-background p-2 text-foreground">
-            {t(KNOWLEDGE_BROWSER_GROUP_LABELS.pods)}:
+            {t`${podsLabel}:`}
           </div>
           <DataSourceList
             items={projectItems}

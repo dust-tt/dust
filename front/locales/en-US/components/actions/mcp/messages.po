@@ -207,10 +207,6 @@ msgid "Validation error"
 msgstr "Validation error"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
-msgid "Invalid: {errorDetails}"
-msgstr "Invalid: {errorDetails}"
-
-#: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Please fix the highlighted fields and try again."
 msgstr "Please fix the highlighted fields and try again."
 

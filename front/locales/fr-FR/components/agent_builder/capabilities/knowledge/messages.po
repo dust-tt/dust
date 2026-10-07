@@ -111,6 +111,14 @@ msgstr "Erreur lors de la recherche."
 msgid "Location"
 msgstr "Emplacement"
 
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "{spacesLabel}:"
+msgstr "{spacesLabel} :"
+
+#: front/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector.tsx
+msgid "{podsLabel}:"
+msgstr "{podsLabel} :"
+
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet.tsx
 msgid "Unsaved changes"
 msgstr "Modifications non enregistrées"

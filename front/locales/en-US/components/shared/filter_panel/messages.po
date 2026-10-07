@@ -57,10 +57,6 @@ msgid "Clear"
 msgstr "Clear"
 
 #: front/components/shared/filter_panel/FilterPanel.tsx
-msgid "Search {activeCategoryLabel}"
-msgstr "Search {activeCategoryLabel}"
-
-#: front/components/shared/filter_panel/FilterPanel.tsx
 msgid "Failed to load filters."
 msgstr "Failed to load filters."
 
@@ -71,6 +67,10 @@ msgstr "Select all"
 #: front/components/shared/filter_panel/FilterSelectionSummary.tsx
 msgid "{selectionCount, plural, one {# filter selected} other {# filters selected}}"
 msgstr "{selectionCount, plural, one {# filter selected} other {# filters selected}}"
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "{categoryLabel} ({selectedCount})"
+msgstr "{categoryLabel} ({selectedCount})"
 
 #: front/components/shared/filter_panel/FilterSelectionSummary.tsx
 msgid "Collapse"
@@ -152,6 +152,42 @@ msgstr "Tools"
 msgctxt "filter category"
 msgid "Usage"
 msgstr "Usage"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search access"
+msgstr "Search access"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search availability"
+msgstr "Search availability"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search editors"
+msgstr "Search editors"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search models"
+msgstr "Search models"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search skills"
+msgstr "Search skills"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search spaces"
+msgstr "Search spaces"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search tags"
+msgstr "Search tags"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search tools"
+msgstr "Search tools"
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search usage"
+msgstr "Search usage"
 
 #: front/components/shared/filter_panel/searchFilter.ts
 msgctxt "filter category"

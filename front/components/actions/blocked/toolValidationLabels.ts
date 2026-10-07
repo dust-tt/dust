@@ -20,6 +20,8 @@ import {
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
@@ -147,7 +149,11 @@ const MCP_TOOL_OVERRIDES: Partial<
         if (fields.length === 0) {
           return t(msg`Allow agent to edit Pod information?`);
         }
-        const fieldList = fields.join(", ");
+        const fieldList = formatList(
+          fields,
+          { type: "conjunction" },
+          getActiveLocale()
+        );
         return t(msg`Allow agent to update Pod ${fieldList}?`);
       },
       alwaysAllowLabel: msg`Always allow agents to edit Pod information`,
@@ -261,9 +267,11 @@ export function getToolValidationAlwaysAllowLabel(
     return t(msg`Always allow agents to ${toolName} only for ${value}`);
   }
   if (approvalScopes.length > 1) {
-    const conditions = approvalScopes
-      .map(({ label }) => label)
-      .reduce((previous, label) => t(msg`${previous} and ${label}`));
+    const conditions = formatList(
+      approvalScopes.map(({ label }) => label),
+      { type: "conjunction" },
+      getActiveLocale()
+    );
     return t(msg`Always allow agents to ${toolName} only when ${conditions}`);
   }
 

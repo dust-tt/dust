@@ -32,6 +32,7 @@ interface FilterPanelProps<
   panel: FilterPanelState<Category, Option>;
   categories: readonly Category[];
   categoryLabels: Record<Category, string>;
+  searchPlaceholders: Record<Category, string>;
   filter: CategoryFilter<Category, Option>;
   onFilterChange: (filter: CategoryFilter<Category, Option>) => void;
   activeCategoryOptions: Option[];
@@ -63,6 +64,7 @@ export function FilterPanel<
   panel,
   categories,
   categoryLabels,
+  searchPlaceholders,
   filter,
   onFilterChange,
   activeCategoryOptions,
@@ -119,7 +121,6 @@ export function FilterPanel<
   );
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
   const activeCategoryContent = renderCategoryContent?.(activeCategory);
-  const activeCategoryLabel = categoryLabels[activeCategory].toLowerCase();
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -191,7 +192,7 @@ export function FilterPanel<
                     setSearchText(value);
                     resetContentScroll();
                   }}
-                  placeholder={t`Search ${activeCategoryLabel}`}
+                  placeholder={searchPlaceholders[activeCategory]}
                 />
               )}
             </FilterSection>
