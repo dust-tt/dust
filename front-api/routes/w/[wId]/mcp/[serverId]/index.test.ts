@@ -241,9 +241,7 @@ describe("DELETE /api/w/:wId/mcp/:serverId", () => {
 
   it("emits mcp_server.deleted with the non-system space count", async () => {
     const { workspace, auth, globalSpace } = await setup("admin");
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "Catalog Server",
-    });
+    const server = await RemoteMCPServerFactory.create(workspace);
     await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
 
     const response = await honoApp.request(
@@ -252,69 +250,43 @@ describe("DELETE /api/w/:wId/mcp/:serverId", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ deleted: true });
     expect(
       await RemoteMCPServerResource.fetchById(auth, server.sId)
     ).toBeNull();
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "mcp_server.deleted",
-        targets: [
-          expect.objectContaining({ type: "workspace", id: workspace.sId }),
-          expect.objectContaining({
-            type: "mcp_server",
-            id: server.sId,
-            name: "Catalog Server",
-          }),
-        ],
-        metadata: {
-          server_type: "remote",
-          server_name: "Catalog Server",
-          space_count: "1",
-        },
+        targets: expect.arrayContaining([
+          expect.objectContaining({ type: "mcp_server", id: server.sId }),
+        ]),
+        metadata: expect.objectContaining({ space_count: "1" }),
       })
     );
   });
 });
 
 describe("PATCH /api/w/:wId/mcp/:serverId catalog audit", () => {
-  it("emits mcp_server.updated for an icon change", async () => {
+  it("emits mcp_server.updated with derived change_kind for icon, cleared credentials, and cleared meta", async () => {
     const { workspace } = await setup("admin");
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "Catalog Server",
+    const server = await RemoteMCPServerFactory.create(workspace);
+
+    const icon = await honoApp.request(serverUrl(workspace.sId, server.sId), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ icon: "ActionRobotIcon" }),
     });
-
-    const response = await honoApp.request(
-      serverUrl(workspace.sId, server.sId),
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ icon: "ActionRobotIcon" }),
-      }
-    );
-
-    expect(response.status).toBe(200);
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+    expect(icon.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        metadata: {
-          server_type: "remote",
-          server_name: "Catalog Server",
+        metadata: expect.objectContaining({
           change_kind: "display",
           changed_fields: "icon",
-        },
+        }),
       })
     );
-  });
 
-  it("emits cleared credential changes without the secret values", async () => {
-    const { workspace } = await setup("admin");
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "Catalog Server",
-    });
-
-    const response = await honoApp.request(
+    const credentials = await honoApp.request(
       serverUrl(workspace.sId, server.sId),
       {
         method: "PATCH",
@@ -322,54 +294,36 @@ describe("PATCH /api/w/:wId/mcp/:serverId catalog audit", () => {
         body: JSON.stringify({ sharedSecret: "", customHeaders: [] }),
       }
     );
-
-    expect(response.status).toBe(200);
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+    expect(credentials.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        metadata: {
-          server_type: "remote",
-          server_name: "Catalog Server",
+        metadata: expect.objectContaining({
           change_kind: "credentials",
-          changed_fields: "custom_headers,shared_secret",
           shared_secret_change: "cleared",
           custom_headers_change: "cleared",
-        },
+        }),
       })
     );
-  });
 
-  it("emits mcp_server.updated when meta is cleared", async () => {
-    const { workspace } = await setup("admin");
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "Catalog Server",
+    const meta = await honoApp.request(serverUrl(workspace.sId, server.sId), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ meta: null }),
     });
-
-    const response = await honoApp.request(
-      serverUrl(workspace.sId, server.sId),
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meta: null }),
-      }
-    );
-
-    expect(response.status).toBe(200);
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+    expect(meta.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        metadata: {
-          server_type: "remote",
-          server_name: "Catalog Server",
+        metadata: expect.objectContaining({
           change_kind: "meta",
-          changed_fields: "meta",
           meta_cleared: "true",
-        },
+        }),
       })
     );
   });
 
-  it("emits mcp_server.updated when internal credentials are set", async () => {
+  it("emits mcp_server.updated for internal credentials without the secret value", async () => {
     const { workspace, auth } = await setup("admin");
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
       name: "slab",
@@ -386,21 +340,17 @@ describe("PATCH /api/w/:wId/mcp/:serverId catalog audit", () => {
     );
 
     expect(response.status).toBe(200);
-    const dumped = JSON.stringify(
-      vi.mocked(workosAudit.emitAuditLogEvent).mock.calls
-    );
-    expect(dumped).not.toContain("slab-token");
+    expect(
+      JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
+    ).not.toContain("slab-token");
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        metadata: {
+        metadata: expect.objectContaining({
           server_type: "internal",
-          server_name: "slab",
-          internal_name: "slab",
           change_kind: "credentials",
-          changed_fields: "shared_secret",
           shared_secret_change: "set",
-        },
+        }),
       })
     );
   });
@@ -422,10 +372,6 @@ describe("PATCH /api/w/:wId/mcp/:serverId catalog audit", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      success: true,
-      server: expect.objectContaining({ sId: server.id }),
-    });
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
   });
 });

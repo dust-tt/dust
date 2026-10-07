@@ -8,16 +8,6 @@ import {
   getAuditLogContext,
 } from "./workos_audit";
 
-/**
- * Stored display name for a catalog server.
- *
- * `displayName` is the system view name when that override is non-blank,
- * otherwise the server's own name. UI suffixes from `getMcpServerDisplayName`
- * are not part of this value.
- *
- * `sId` is the MCP server id used in `/api/w/:wId/mcp/:serverId`.
- * `internalName` is the code-registry key and exists only for internal servers.
- */
 export type McpServerCatalogIdentity =
   | {
       readonly serverType: "remote";
@@ -33,10 +23,6 @@ export type McpServerCatalogIdentity =
 
 export type McpServerSecretChange = "set" | "cleared";
 
-/**
- * Secret values, header maps, meta maps, remote URLs, and OAuth scope strings
- * are not members of a catalog edit.
- */
 export type McpServerCatalogChange =
   | {
       readonly kind: "display";
@@ -86,10 +72,6 @@ type McpServerCatalogNameInput =
       readonly internalName: string;
     };
 
-/**
- * A blank view name means there is no override.
- * Create, update, and delete share this rule.
- */
 export function mcpServerCatalogIdentity(
   input: McpServerCatalogNameInput
 ): McpServerCatalogIdentity {
@@ -110,11 +92,6 @@ export function mcpServerCatalogIdentity(
   };
 }
 
-/**
- * Returns null when neither credential field was in the request, so the caller
- * skips the emit. Absent fields were not written. "cleared" is an empty secret,
- * a null header list, or an empty header list.
- */
 export function credentialsChange(input: {
   readonly sharedSecret?: McpServerSecretChange;
   readonly customHeaders?: McpServerSecretChange;
@@ -245,7 +222,6 @@ export function recordMcpServerUpdated(
   });
 }
 
-/** `spaceCount` is the number of non-system spaces the server was in. */
 export function recordMcpServerDeleted(
   auth: Authenticator,
   identity: McpServerCatalogIdentity,

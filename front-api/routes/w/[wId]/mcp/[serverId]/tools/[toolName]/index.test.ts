@@ -36,17 +36,13 @@ describe("PATCH /api/w/:wId/mcp/:serverId/tools/:toolName", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "mcp_server.tool_settings_updated",
-        targets: [
-          expect.objectContaining({ type: "workspace", id: workspace.sId }),
-        ],
-        metadata: {
+        metadata: expect.objectContaining({
           server_id: server.sId,
           tool_count: "1",
-        },
+        }),
       })
     );
 

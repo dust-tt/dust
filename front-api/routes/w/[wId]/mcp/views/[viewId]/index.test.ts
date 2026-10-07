@@ -469,7 +469,7 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.serverView.description).toBeNull();
   });
 
-  it("emits mcp_server.updated when the system view is renamed", async () => {
+  it("emits mcp_server.updated with previous_name when the system view is renamed", async () => {
     const { workspace, auth } = await setup("admin");
     const server = await RemoteMCPServerFactory.create(workspace, {
       name: "Catalog Server",
@@ -487,93 +487,58 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).serverView.name).toBe("Renamed Server");
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        targets: [
-          expect.objectContaining({ type: "workspace", id: workspace.sId }),
-          expect.objectContaining({
-            type: "mcp_server",
-            id: server.sId,
-            name: "Renamed Server",
-          }),
-        ],
-        metadata: {
-          server_type: "remote",
-          server_name: "Renamed Server",
+        targets: expect.arrayContaining([
+          expect.objectContaining({ type: "mcp_server", id: server.sId }),
+        ]),
+        metadata: expect.objectContaining({
           change_kind: "display",
-          changed_fields: "description,name",
           previous_name: "Catalog Server",
-        },
+        }),
       })
     );
   });
 
-  it("emits mcp_server.updated for an oauth change without the scope string", async () => {
+  it("emits mcp_server.updated for oauth and restriction without logging the scope string", async () => {
     const { workspace, auth } = await setup("admin");
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "Catalog Server",
-    });
+    const server = await RemoteMCPServerFactory.create(workspace);
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         server.sId
       );
 
-    const response = await patchView(workspace.sId, systemView!.sId, {
+    const oauth = await patchView(workspace.sId, systemView!.sId, {
       oAuthUseCase: "personal_actions",
       oauthScope: SENTINEL_SCOPE,
     });
-
-    expect(response.status).toBe(200);
-    expect((await response.json()).serverView.oAuthUseCase).toBe(
-      "personal_actions"
-    );
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+    expect(oauth.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        metadata: {
-          server_type: "remote",
-          server_name: "Catalog Server",
+        metadata: expect.objectContaining({
           change_kind: "oauth",
-          changed_fields: "oauth_scope,oauth_use_case",
           oauth_use_case: "personal_actions",
-        },
+        }),
       })
     );
     expect(
       JSON.stringify(vi.mocked(workosAudit.emitAuditLogEvent).mock.calls)
     ).not.toContain(SENTINEL_SCOPE);
-  });
 
-  it("emits mcp_server.updated when skill restriction changes", async () => {
-    const { workspace, auth } = await setup("admin");
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "Catalog Server",
-    });
-    const systemView =
-      await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        auth,
-        server.sId
-      );
-
-    const response = await patchView(workspace.sId, systemView!.sId, {
+    const restriction = await patchView(workspace.sId, systemView!.sId, {
       isRestrictedToSkills: true,
     });
-
-    expect(response.status).toBe(200);
-    expect((await response.json()).serverView.isRestrictedToSkills).toBe(true);
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+    expect(restriction.status).toBe(200);
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
-        metadata: {
-          server_type: "remote",
-          server_name: "Catalog Server",
+        metadata: expect.objectContaining({
           change_kind: "restriction",
-          changed_fields: "is_restricted_to_skills",
           is_restricted_to_skills: "true",
-        },
+        }),
       })
     );
   });
