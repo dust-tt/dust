@@ -1,5 +1,5 @@
 import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import {
@@ -36,7 +36,7 @@ type SoundNotificationFormValues = z.infer<typeof SoundNotificationFormSchema>;
 
 export function useSoundNotificationPreferencesForm() {
   const { t } = useLingui();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const {
     metadata: enabledMetadata,
     mutateMetadata: mutateEnabled,
@@ -92,10 +92,9 @@ export function useSoundNotificationPreferencesForm() {
         form.reset(data);
         succeeded = true;
       } catch (error) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Error updating sound notification preferences`,
-          description: error instanceof Error ? error.message : String(error),
+          error,
         });
       }
     })();

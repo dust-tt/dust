@@ -859,7 +859,6 @@ msgid "Your agent has been successfully saved"
 msgstr "Your agent has been successfully saved"
 
 #: front/components/agent_builder/AgentBuilder.tsx
-#: front/components/pages/workspace/developers/APIKeysPage.tsx
 msgid "Unknown error"
 msgstr "Unknown error"
 
@@ -4317,7 +4316,6 @@ msgid "Failed to edit Zendesk configuration"
 msgstr "Failed to edit Zendesk configuration"
 
 #: front/components/data_source/ZendeskConfigView.tsx
-#: front/components/data_source/ZendeskCustomTagFilters.tsx
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 #: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "An unknown error occurred"
@@ -6831,10 +6829,6 @@ msgid "Error saving secret"
 msgstr "Error saving secret"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
-msgid "An error occurred while saving the secret value: {errorMessage}"
-msgstr "An error occurred while saving the secret value: {errorMessage}"
-
-#: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Secret deleted"
 msgstr "Secret deleted"
 
@@ -8953,12 +8947,6 @@ msgid "Are you sure you want to remove them?"
 msgstr "Are you sure you want to remove them?"
 
 #: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
-#: front/components/spaces/SpaceDataSourceViewContentList.tsx
-#: front/components/spaces/SpaceSearchLayout.tsx
-msgid "An unknown error {errorMessage} occurred while adding data to space."
-msgstr "An unknown error {errorMessage} occurred while adding data to space."
-
-#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
 msgid "Error adding data to space"
 msgstr "Error adding data to space"
 
@@ -9172,6 +9160,11 @@ msgstr "Error while adding data to space"
 #: front/components/spaces/SpaceSearchLayout.tsx
 msgid "Data added to space"
 msgstr "Data added to space"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "An unknown error {errorMessage} occurred while adding data to space."
+msgstr "An unknown error {errorMessage} occurred while adding data to space."
 
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 msgid "Manage data"

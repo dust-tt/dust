@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
@@ -33,6 +36,7 @@ export function ZendeskCustomFieldFilters({
   dataSource: DataSourceType;
 }) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [inputValue, setInputValue] = useState("");
 
@@ -113,13 +117,9 @@ export function ZendeskCustomFieldFilters({
         });
       } else {
         const err = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to add custom field`,
-          description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            err.error?.connectors_error?.message ||
-            t`An unknown error occurred`,
+          error: err,
         });
       }
     },
@@ -130,6 +130,7 @@ export function ZendeskCustomFieldFilters({
       mutateCustomFieldsConfig,
       sendNotification,
       t,
+      sendApiErrorNotification,
     ]
   );
 
@@ -168,13 +169,9 @@ export function ZendeskCustomFieldFilters({
         });
       } else {
         const err = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to remove custom field`,
-          description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            err.error?.connectors_error?.message ||
-            t`An unknown error occurred`,
+          error: err,
         });
       }
     },
@@ -185,6 +182,7 @@ export function ZendeskCustomFieldFilters({
       mutateCustomFieldsConfig,
       sendNotification,
       t,
+      sendApiErrorNotification,
     ]
   );
 
