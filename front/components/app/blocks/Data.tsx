@@ -8,6 +8,7 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Edit04, Label } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 import Block from "./Block";
 
@@ -42,6 +43,8 @@ export default function Data({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
+
   const handleSetDataset = (dataset: string) => {
     const b = shallowBlockClone(block);
     b.spec.dataset = dataset;
@@ -68,7 +71,9 @@ export default function Data({
     >
       <div className="flex flex-col sm:flex-row">
         <div className="flex flex-row items-center text-sm font-medium leading-8 text-foreground">
-          <Label>Dataset</Label>
+          <Label>
+            <Trans>Dataset</Trans>
+          </Label>
           {block.spec.dataset_id && block.spec.hash ? (
             <div className="flex items-center">
               {block.spec.dataset_id}
@@ -92,7 +97,7 @@ export default function Data({
                 window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.spec.dataset}`;
               }}
               icon={Edit04}
-              label={readOnly ? "View" : "Edit"}
+              label={readOnly ? t`View` : t`Edit`}
               size="xs"
             />
           )}

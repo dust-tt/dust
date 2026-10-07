@@ -13,6 +13,7 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Label, Plus, XClose } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import last from "lodash/last";
 import { useCallback, useEffect } from "react";
 import Block from "./Block";
@@ -36,6 +37,8 @@ export function TablesManager({
   readOnly: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
 }>) {
+  const { t } = useLingui();
+
   const addNewTable = useCallback(() => {
     const b = shallowBlockClone(block);
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -86,7 +89,9 @@ export function TablesManager({
 
   return (
     <div className="pb-2">
-      <Label>Table</Label>
+      <Label>
+        <Trans>Table</Trans>
+      </Label>
       {block.config.tables?.map((table: TableConfig, index: number) => (
         <div key={index}>
           <div className="flex flex-col items-center xl:flex-row">
@@ -168,7 +173,7 @@ export function TablesManager({
           onClick={addNewTable}
           className="mt-2"
           icon={Plus}
-          label="Add Table"
+          label={t`Add table`}
           size="xs"
           variant="outline"
           disabled={
@@ -241,7 +246,9 @@ export default function Database({
         />
 
         <div>
-          <Label>Query</Label>
+          <Label>
+            <Trans>Query</Trans>
+          </Label>
           <div className="w-full font-normal">
             <SuspensedCodeEditor
               data-color-mode={isDark ? "dark" : "light"}

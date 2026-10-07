@@ -19,6 +19,7 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 import Block from "./Block";
@@ -175,7 +176,9 @@ export default function Curl({
           </div>
         </div>
         <div className="copy-sm flex flex-col gap-2">
-          <Label>Headers</Label>
+          <Label>
+            <Trans>Headers</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
               <SuspensedCodeEditor
@@ -197,7 +200,9 @@ export default function Curl({
           </div>
         </div>
         <div className="copy-sm flex flex-col gap-2">
-          <Label>Body</Label>
+          <Label>
+            <Trans>Body</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
               <SuspensedCodeEditor

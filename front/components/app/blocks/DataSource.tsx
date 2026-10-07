@@ -20,6 +20,7 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 import Block from "./Block";
@@ -55,6 +56,7 @@ export default function DataSource({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
   const [newTagsIn, setNewTagsIn] = useState("");
   const [newTagsNot, setNewTagsNot] = useState("");
 
@@ -225,7 +227,9 @@ export default function DataSource({
       <div className="flex w-full flex-col gap-2">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center space-x-2">
-            <Label>Data Source</Label>
+            <Label>
+              <Trans>Data source</Trans>
+            </Label>
             <DataSourcePicker
               owner={owner}
               readOnly={readOnly}
@@ -249,7 +253,9 @@ export default function DataSource({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Label>Full Text</Label>
+            <Label>
+              <Trans>Full text</Trans>
+            </Label>
             <div className="flex flex-initial font-normal">
               <Checkbox
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -262,7 +268,9 @@ export default function DataSource({
         </div>
 
         <div className="flex flex-col space-y-1">
-          <Label>Query</Label>
+          <Label>
+            <Trans>Query</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <SuspensedCodeEditor
@@ -287,7 +295,7 @@ export default function DataSource({
 
         <div className="w-full">
           <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger label="Filters" />
+            <CollapsibleTrigger label={t`Filters`} />
             <CollapsibleContent>
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
@@ -317,7 +325,7 @@ export default function DataSource({
                         {!readOnly && (
                           <Input
                             type="text"
-                            placeholder="add tag"
+                            placeholder={t`add tag`}
                             value={newTagsIn}
                             onChange={(e) => setNewTagsIn(e.target.value)}
                             readOnly={readOnly}
@@ -368,7 +376,7 @@ export default function DataSource({
                         {!readOnly && (
                           <Input
                             type="text"
-                            placeholder="add tag"
+                            placeholder={t`add tag`}
                             value={newTagsNot}
                             onChange={(e) => setNewTagsNot(e.target.value)}
                             readOnly={readOnly}
