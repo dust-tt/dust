@@ -84,10 +84,14 @@ export type LiveCommentErrorCode = (typeof LIVE_COMMENT_ERROR_CODES)[number];
 export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("threads"), comments: dfmCommentsSchema }),
   z.object({
-    type: z.literal("result"),
+    type: z.literal("accepted"),
     requestId: z.string(),
-    error: z.enum(LIVE_COMMENT_ERROR_CODES).nullable(),
     comment: dfmCommentSchema.nullable(),
+  }),
+  z.object({
+    type: z.literal("refused"),
+    requestId: z.string(),
+    error: z.enum(LIVE_COMMENT_ERROR_CODES),
   }),
 ]);
 

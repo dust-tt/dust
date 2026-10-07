@@ -25,6 +25,9 @@ const signatureRefusal = ({
  * a thread; `reply`, `resolve` and `delete` as `not_found` for one that has none; `reply` as
  * `thread_changed` unless its position is the thread's length. A refused command MUST leave the
  * threads unchanged; an accepted one MUST change only its own thread.
+ *
+ * Callers MUST apply a session's commands one at a time, each to the threads the previous one
+ * left: the result is built from `comments` across an await, so overlapping calls would drop one.
  */
 export async function applyLiveCommentCommand(
   file: LiveFile,
