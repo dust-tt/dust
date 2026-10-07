@@ -118,6 +118,12 @@ async function findUserMessageForRetry(
   });
 }
 
+/**
+ * @cc [owner:avervaet,label:error-handling] nothing-to-resume-errors
+ * `no_blocked_actions` and `agent_message_not_resumable` MUST only be returned when no action of
+ * the message is still waiting on the user, or its run can no longer resume: callers treat them as
+ * a successful no-op, not a failure.
+ */
 export async function retryBlockedActions(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
