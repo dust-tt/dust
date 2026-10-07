@@ -20,9 +20,22 @@ describe("readMessageSuggestions", () => {
         )
       )
     ).toEqual([
-      { kind: "text", text: "Shorter:" },
+      { kind: "text", text: "Shorter:\n\n" },
       { kind: "suggestion", suggestion: "Ship on **Friday**." },
-      { kind: "text", text: "Thoughts?" },
+      { kind: "text", text: "\n\nThoughts?" },
+    ]);
+  });
+
+  it("keeps the text around a suggestion as written, indentation included", () => {
+    expect(
+      unwrap(
+        readMessageSuggestions(
+          "```suggestion\nShip.\n```\n\n    npm run build\n"
+        )
+      )
+    ).toEqual([
+      { kind: "suggestion", suggestion: "Ship." },
+      { kind: "text", text: "\n\n    npm run build\n" },
     ]);
   });
 
@@ -40,9 +53,9 @@ describe("readMessageSuggestions", () => {
         )
       )
     ).toEqual([
-      { kind: "text", text: "**Option 1**" },
+      { kind: "text", text: "**Option 1**\n\n" },
       { kind: "suggestion", suggestion: "One" },
-      { kind: "text", text: "**Option 2**" },
+      { kind: "text", text: "\n\n**Option 2**\n\n" },
       { kind: "suggestion", suggestion: "Two" },
       { kind: "suggestion", suggestion: "Three" },
     ]);
@@ -63,7 +76,7 @@ describe("readMessageSuggestions", () => {
       .messages;
 
     expect(unwrap(readMessageSuggestions(message.body))).toEqual([
-      { kind: "text", text: "The last fix lands Thursday night." },
+      { kind: "text", text: "The last fix lands Thursday night.\n\n" },
       { kind: "suggestion", suggestion: "Ship on **Friday**." },
     ]);
   });

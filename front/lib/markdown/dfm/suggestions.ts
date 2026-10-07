@@ -24,7 +24,8 @@ export type DfmMessagePart =
  * @cc [owner:tdraier,label:product] dfm-message-suggestions
  * Every top-level fenced code block whose language is `suggestion` MUST be read as a suggestion,
  * its content as CommonMark reads it, and the body as its text and suggestions in order, each
- * text trimmed and none empty. A body without one MUST read as having no suggestion.
+ * text as written between them and none blank. A body without one MUST read as having no
+ * suggestion.
  */
 export function readMessageSuggestions(
   body: string
@@ -40,7 +41,7 @@ export function readMessageSuggestions(
   const parts: DfmMessagePart[] = [];
   const pushText = (text: string) => {
     if (text.trim()) {
-      parts.push({ kind: "text", text: text.trim() });
+      parts.push({ kind: "text", text });
     }
   };
   let offset = 0;
@@ -57,7 +58,8 @@ export function readMessageSuggestions(
  * @cc [owner:tdraier,label:product] dfm-suggestion-block
  * The block MUST read back through `readMessageSuggestions` as `suggestion`, whatever backticks
  * or line endings it contains, up to CommonMark reading NUL as U+FFFD. A block outside the
- * parser's input bounds MUST be refused with the located bounds error instead.
+ * parser's input bounds MUST be refused with the bounds error instead, located in the block,
+ * whose opening fence is line 1.
  */
 export function suggestionBlock(suggestion: string): Result<string, DfmError> {
   let longestRun = 0;
