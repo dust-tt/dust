@@ -277,6 +277,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         ? liveCommentClientMessageSchema.safeParse(json.value)
         : null;
       if (!session || !message?.success) {
+        // TODO(co-edition): log the connection's `workspaceId`.
         logger.warn({ documentName }, "Collab stateless message ignored");
         const request = json.isOk()
           ? commandRequestSchema.safeParse(json.value)
@@ -334,8 +335,14 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           return;
         }
 
+        // TODO(co-edition): refuse commands while `session.checkpointFailed`: an accepted comment
+        // only lives in memory until a checkpoint succeeds, and is lost if none ever does.
+        // TODO(co-edition): a command still applies after its sender left, whose channel already
+        // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;
         session.lastChangedBy = file;
+        // TODO(co-edition): broadcast only the changed thread rather than every thread to every
+        // connection.
         document.broadcastStateless(
           serverMessage({ type: "threads", comments: session.comments })
         );

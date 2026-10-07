@@ -70,6 +70,7 @@ export function createLiveCommentChannel(
   sendMessage({ type: "threads" });
 
   return {
+    // TODO(co-edition): return null once closed, as the contract requires.
     getThreads: () => threads,
     onThreads: (listener) => {
       listeners.add(listener);
@@ -79,6 +80,8 @@ export function createLiveCommentChannel(
       if (closed) {
         return Promise.resolve(new Err("unavailable"));
       }
+      // TODO(co-edition): `crypto.randomUUID` only exists in secure contexts, so this throws over
+      // plain HTTP on a host other than localhost.
       const requestId = crypto.randomUUID();
       return new Promise((resolve) => {
         pending.set(requestId, resolve);
