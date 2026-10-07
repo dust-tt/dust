@@ -206,7 +206,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     null
   );
 
-  // Providers with user-overridable credentials (e.g. a Snowflake role) collect them in a dialog
+  // Providers with user-overridable credentials, collect them in a dialog
   // before starting the OAuth flow.
   const [overridesDialog, setOverridesDialog] = useState<{
     serverView: MCPServerViewType;
