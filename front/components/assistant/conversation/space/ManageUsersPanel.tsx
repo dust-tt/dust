@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -45,6 +46,7 @@ interface EditorsOnlyMode extends BaseManageUsersPanelProps {
 type ManageUsersPanelProps = SpaceMembersMode | EditorsOnlyMode;
 
 export function ManageUsersPanel(props: ManageUsersPanelProps) {
+  const { t } = useLingui();
   const { isOpen, setIsOpen, owner, mode } = props;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -102,8 +104,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
       if (editorIds.length === 0) {
         setIsOpen(false);
         sendNotification({
-          title: "At least one editor is required.",
-          description: "You cannot remove the last editor.",
+          title: t`At least one editor is required.`,
+          description: t`You cannot remove the last editor.`,
           type: "error",
         });
         setIsSaving(false);
@@ -121,8 +123,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
           name: props.space.name,
         },
         {
-          title: "Successfully updated Pod members",
-          description: "Pod members were successfully updated.",
+          title: t`Successfully updated Pod members`,
+          description: t`Pod members were successfully updated.`,
         }
       );
 
@@ -187,7 +189,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
               <Button
                 size="xs"
                 variant={isEditor ? "highlight" : "outline"}
-                label={isEditor ? "Editor" : "Set as editor"}
+                label={isEditor ? t`Editor` : t`Set as editor`}
                 icon={isEditor ? Check : undefined}
                 onClick={(e) => {
                   toggleEditor(sId);
@@ -199,7 +201,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         },
       },
     ];
-  }, [mode, currentMembers, currentEditors, toggleEditor]);
+  }, [mode, currentMembers, currentEditors, toggleEditor, t]);
 
   const initialMembers =
     mode === "editors-only" ? props.editors : props.currentProjectMembers;
@@ -207,10 +209,11 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const canSave =
     !isSaving && (mode !== "space-members" || currentEditors.size > 0);
 
+  const spaceName = mode === "space-members" ? props.space.name : "";
   const sheetTitle =
     mode === "space-members"
-      ? `Manage Members of ${props.space.name}`
-      : (props.title ?? "Manage Editors");
+      ? t`Manage Members of ${spaceName}`
+      : (props.title ?? t`Manage Editors`);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -229,19 +232,19 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "highlight",
             onClick: handleSave,
             disabled: !canSave,
             isLoading: isSaving,
             tooltip:
               !canSave && mode === "space-members"
-                ? "Please select at least one editor to save."
+                ? t`Please select at least one editor to save.`
                 : undefined,
           }}
         />

@@ -15,6 +15,9 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,39 +27,62 @@ interface ComposeFormValues {
   body: string;
 }
 
+type Translate = (descriptor: MessageDescriptor) => string;
+
 function getComposeFormSchema({
   isSubjectEditable,
   isBodyEditable,
+  t,
 }: {
   isSubjectEditable: boolean;
   isBodyEditable: boolean;
+  t: Translate;
 }) {
   return z.object({
     subject: isSubjectEditable
-      ? z.string().trim().min(1, "Subject is required.")
+      ? z
+          .string()
+          .trim()
+          .min(1, t(msg`Subject is required.`))
       : z.string(),
     body: isBodyEditable
-      ? z.string().trim().min(1, "Body is required.")
+      ? z
+          .string()
+          .trim()
+          .min(1, t(msg`Body is required.`))
       : z.string(),
   });
 }
 
 // Recipient rows shown read-only, in Gmail's compose order.
 function getRecipientRows(
-  inputs: GmailComposeInput
+  inputs: GmailComposeInput,
+  t: Translate
 ): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
   if (inputs.from) {
-    rows.push({ label: "From", value: inputs.from });
+    rows.push({
+      label: t(msg({ message: "From", context: "email header" })),
+      value: inputs.from,
+    });
   }
   if (inputs.to?.length) {
-    rows.push({ label: "To", value: inputs.to.join(", ") });
+    rows.push({
+      label: t(msg({ message: "To", context: "email header" })),
+      value: inputs.to.join(", "),
+    });
   }
   if (inputs.cc?.length) {
-    rows.push({ label: "Cc", value: inputs.cc.join(", ") });
+    rows.push({
+      label: t(msg({ message: "Cc", context: "email header" })),
+      value: inputs.cc.join(", "),
+    });
   }
   if (inputs.bcc?.length) {
-    rows.push({ label: "Bcc", value: inputs.bcc.join(", ") });
+    rows.push({
+      label: t(msg({ message: "Bcc", context: "email header" })),
+      value: inputs.bcc.join(", "),
+    });
   }
   return rows;
 }
@@ -67,11 +93,13 @@ function getComposeTitle({
 }: {
   isDraft: boolean;
   isReply: boolean;
-}): string {
+}): MessageDescriptor {
   if (isDraft) {
-    return isReply ? "Draft reply" : "New draft";
+    return isReply ? msg`Draft reply` : msg`New draft`;
   }
-  return isReply ? "Reply" : "New Message";
+  return isReply
+    ? msg({ message: "Reply", context: "email compose title" })
+    : msg`New message`;
 }
 
 interface RecipientRowProps {
@@ -102,6 +130,7 @@ export function GmailComposeValidation({
   isPulsing,
   onApproveWithEditedArguments,
 }: GmailComposeValidationProps) {
+  const { t } = useLingui();
   const inputs = useMemo(
     () =>
       isGmailComposeInput(blockedAction.inputs) ? blockedAction.inputs : null,
@@ -125,8 +154,8 @@ export function GmailComposeValidation({
   const isBodyEditable = !!editableArguments?.includes("body");
 
   const formSchema = useMemo(
-    () => getComposeFormSchema({ isSubjectEditable, isBodyEditable }),
-    [isSubjectEditable, isBodyEditable]
+    () => getComposeFormSchema({ isSubjectEditable, isBodyEditable, t }),
+    [isSubjectEditable, isBodyEditable, t]
   );
 
   const {
@@ -141,7 +170,7 @@ export function GmailComposeValidation({
   });
 
   const attachmentName = inputs?.attachmentFilePath?.split("/").pop() ?? null;
-  const recipientRows = inputs ? getRecipientRows(inputs) : [];
+  const recipientRows = inputs ? getRecipientRows(inputs, t) : [];
 
   const onApprove = (approved: MCPValidationOutputType) =>
     handleSubmit(async ({ subject, body }) => {
@@ -165,7 +194,7 @@ export function GmailComposeValidation({
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-md">
       <div className="bg-gray-900 px-4 py-2.5">
         <span className="text-sm font-medium text-white">
-          {getComposeTitle({ isDraft, isReply })}
+          {t(getComposeTitle({ isDraft, isReply }))}
         </span>
       </div>
 
@@ -178,7 +207,7 @@ export function GmailComposeValidation({
           <input
             {...register("subject")}
             disabled={isSubmitting}
-            placeholder="Subject"
+            placeholder={t`Subject`}
             className="w-full border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-faint disabled:cursor-not-allowed"
           />
           {errors.subject && (
@@ -189,7 +218,7 @@ export function GmailComposeValidation({
         </div>
       ) : (
         <div className="border-b border-border px-4 py-2 text-sm text-muted-foreground">
-          {isReply ? "Kept from the original message" : originalSubject}
+          {isReply ? t`Kept from the original message` : originalSubject}
         </div>
       )}
 
@@ -218,7 +247,7 @@ export function GmailComposeValidation({
           <textarea
             {...register("body")}
             disabled={isSubmitting}
-            placeholder="Body"
+            placeholder={t`Body`}
             className="h-64 w-full resize-none border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-faint disabled:cursor-not-allowed"
           />
           {errors.body && (
@@ -241,7 +270,7 @@ export function GmailComposeValidation({
 
       <div className="flex items-center gap-3 border-t border-border px-4 py-2.5">
         <Button
-          label="Decline"
+          label={t`Decline`}
           variant="outline"
           size="sm"
           icon={XClose}
@@ -252,7 +281,7 @@ export function GmailComposeValidation({
         <div className="flex-1" />
         {alwaysAllowLabel && (
           <Button
-            label="Always allow"
+            label={t`Always allow`}
             variant="outline"
             size="sm"
             icon={CheckDouble}
@@ -263,7 +292,7 @@ export function GmailComposeValidation({
           />
         )}
         <Button
-          label={alwaysAllowLabel ? "Allow once" : "Allow"}
+          label={alwaysAllowLabel ? t`Allow once` : t`Allow`}
           variant="highlight"
           size="sm"
           icon={Check}

@@ -12,6 +12,7 @@ import {
   Stop,
   Zap,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface InputBarMessageNavigationProps {
   variant: "floating" | "compact";
@@ -40,6 +41,7 @@ export function InputBarMessageNavigation({
   onScrollUp,
   onScrollDown,
 }: InputBarMessageNavigationProps) {
+  const { t } = useLingui();
   const stopButtonVariant = variant === "compact" ? "ghost-secondary" : "ghost";
   const isStopActionPending = pendingAction !== null;
   const stopIcon = hasPendingMessages ? Zap : Stop;
@@ -114,13 +116,13 @@ export function InputBarMessageNavigation({
             ArrowUp,
             onScrollUp,
             !canScrollUp,
-            "Previous user message"
+            t`Previous user message`
           )}
           {renderNavigationArrowButton(
             ArrowDown,
             onScrollDown,
             !canScrollDown,
-            "Next user message"
+            t`Next user message`
           )}
         </>
       )}

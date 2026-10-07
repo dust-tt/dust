@@ -3,12 +3,14 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface InputBarUsageBannerProps {
   owner: LightWorkspaceType;
 }
 
 export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
+  const { t } = useLingui();
   const { isManager } = useAuth();
   const {
     userNearCreditLimit,
@@ -32,7 +34,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
         )}
       >
         <span className="copy-sm grow truncate text-warning-900">
-          You don&apos;t have a seat in this workspace.
+          <Trans>You don&apos;t have a seat in this workspace.</Trans>
         </span>
         {showUpgradeCta && (
           <div className="shrink-0">
@@ -56,12 +58,11 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
 
   let message: string;
   if (isBlocked) {
-    message = "You've reached your usage limit";
+    message = t`You've reached your usage limit`;
+  } else if (willAutoUpgrade) {
+    message = t`You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit`;
   } else {
-    message = "You've used 80% of your usage limit";
-    if (willAutoUpgrade) {
-      message += ". You'll be automatically upgraded when you reach the limit";
-    }
+    message = t`You've used 80% of your usage limit`;
   }
 
   return (

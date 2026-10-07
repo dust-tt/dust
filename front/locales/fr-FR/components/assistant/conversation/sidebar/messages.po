@@ -13,10 +13,27 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
-msgid "New conversation"
-msgstr "Nouvelle conversation"
+#: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
+msgid "No description"
+msgstr "Aucune description"
 
+#: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
+msgid "Archived"
+msgstr "Archivées"
+
+#: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
+msgid "Search Pods..."
+msgstr "Rechercher des Pods…"
+
+#: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
+msgid "No Pods found"
+msgstr "Aucun Pod trouvé"
+
+#: front/components/assistant/conversation/sidebar/SidebarSearch.tsx
 #: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
 msgid "Search"
 msgstr "Rechercher"
+
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+msgid "New conversation"
+msgstr "Nouvelle conversation"

@@ -16,15 +16,24 @@ import {
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useMemo, useState } from "react";
 
-export function getSpacesPickerLabel(selectedSpaceIds: string[]): string {
-  if (selectedSpaceIds.length === 0) {
-    return "Spaces";
+export function getSpacesPickerLabel(
+  selectedSpaceIds: string[]
+): MessageDescriptor {
+  const count = selectedSpaceIds.length;
+  if (count === 0) {
+    return msg`Spaces`;
   }
 
-  return `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`;
+  return msg`${plural(count, {
+    one: "# additional Space",
+    other: "# additional Spaces",
+  })}`;
 }
 
 interface InputBarSpacesPickerProps {
@@ -54,6 +63,7 @@ export function InputBarSpacesPicker({
   onExternalOpenChange,
   anchorRef,
 }: InputBarSpacesPickerProps) {
+  const { t } = useLingui();
   const [internalOpen, setInternalOpen] = useState(false);
   const isExternallyControlled = externalOpen !== undefined;
   const isOpen = isExternallyControlled ? externalOpen : internalOpen;
@@ -77,7 +87,7 @@ export function InputBarSpacesPicker({
     );
   }, [searchText, spaces]);
 
-  const label = getSpacesPickerLabel(selectedSpaceIds);
+  const label = t(getSpacesPickerLabel(selectedSpaceIds));
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
@@ -141,7 +151,7 @@ export function InputBarSpacesPicker({
             <DropdownMenuSearchbar
               autoFocus
               name="search-spaces"
-              placeholder="Search Spaces"
+              placeholder={t`Search Spaces`}
               value={searchText}
               onChange={setSearchText}
               disabled={isLoading}
@@ -150,19 +160,19 @@ export function InputBarSpacesPicker({
           </>
         }
       >
-        <DropdownMenuCheckboxItem label="Agent's Spaces" checked disabled />
+        <DropdownMenuCheckboxItem label={t`Agent's Spaces`} checked disabled />
         <DropdownMenuSeparator />
-        <DropdownMenuLabel label="Additional Spaces" />
+        <DropdownMenuLabel label={t`Additional Spaces`} />
         {isLoading ? (
           <DropdownMenuItem
-            label="Loading"
+            label={t`Loading`}
             disabled
             endComponent={<Spinner size="xs" />}
           />
         ) : spaces.length === 0 ? (
-          <DropdownMenuItem label="No Spaces available" disabled />
+          <DropdownMenuItem label={t`No Spaces available`} disabled />
         ) : filteredSpaces.length === 0 ? (
-          <DropdownMenuItem label="No matching Spaces" disabled />
+          <DropdownMenuItem label={t`No matching Spaces`} disabled />
         ) : (
           <div>
             {filteredSpaces.map((space) => {
