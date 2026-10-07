@@ -20,7 +20,6 @@ import {
   Folder,
   FolderPlus,
   Icon,
-  Input,
   IntersectDust,
   LayersThree01,
   Link01,
@@ -44,6 +43,7 @@ import { type ComponentType, useMemo, useRef, useState } from "react";
 import { ConversationListItem } from "../components/ConversationListItem";
 import { ConversationView } from "../components/ConversationView";
 import { InputBar } from "../components/InputBar";
+import { TreeDnd } from "../components/TreeDnd";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -76,6 +76,27 @@ type IconType = ComponentType<{ className?: string }>;
 
 // What the main column shows: the selected folder, or a document opened on
 // top of it (a file from the tree, or a draft that lives in a conversation).
+// What is being dragged: a tree node, a conversation, or an unsaved draft.
+type DragItem =
+  | { kind: "node"; id: string }
+  | { kind: "conversation"; id: string }
+  | { kind: "draft"; id: string };
+
+interface PendingMove {
+  item: DragItem;
+  targetId: string;
+  name: string;
+  fromSpaceId: string;
+  toSpaceId: string;
+}
+
+/** Drag-and-drop wiring for one row, computed by the story. */
+interface RowDnd {
+  props: React.HTMLAttributes<HTMLDivElement>;
+  isDropTarget: boolean;
+  isDragging: boolean;
+}
+
 type MainView =
   | { kind: "folder" }
   | { kind: "file"; nodeId: string; query: string | null }
@@ -137,7 +158,7 @@ function DustWorkspaceFs() {
     const move = (ev: PointerEvent) => {
       const rect = row.getBoundingClientRect();
       setRailWidth(
-        Math.max(320, Math.min(rect.width * 0.6, rect.right - ev.clientX))
+        Math.max(384, Math.min(rect.width * 0.6, rect.right - ev.clientX))
       );
     };
     const up = () => {
@@ -153,8 +174,13 @@ function DustWorkspaceFs() {
     null
   );
   const [searchText, setSearchText] = useState("");
-  const [promoteFolderId, setPromoteFolderId] = useState<string | null>(null);
+  // A folder where "Start working here" was clicked; it becomes a pod only
+  // once the first message is sent.
+  const [startFolderId, setStartFolderId] = useState<string | null>(null);
   const [attachPodId, setAttachPodId] = useState<string | null>(null);
+  const [dragItem, setDragItem] = useState<DragItem | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
 
   const openConversationData = conversations.find(
     (c) => c.id === openConversationId
@@ -231,6 +257,7 @@ function DustWorkspaceFs() {
       target.kind === "file" && target.parentId ? target.parentId : nodeId;
     setSelectedId(folderId);
     setMainView({ kind: "folder" });
+    setStartFolderId(null);
     setExpandedIds((prev) => {
       const next = new Set(prev);
       for (const n of getPath(index, folderId)) {
@@ -313,6 +340,137 @@ function DustWorkspaceFs() {
     }
   };
 
+  // ── Moves ──────────────────────────────────────────────────────────────────
+  // Where the dragged item lives today, for no-op checks and access changes.
+  const dragSource = (
+    item: DragItem
+  ): { name: string; folderId: string } | null => {
+    if (item.kind === "node") {
+      const node = index.byId.get(item.id);
+      return node?.parentId
+        ? { name: node.name, folderId: node.parentId }
+        : null;
+    }
+    if (item.kind === "conversation") {
+      const conv = conversations.find((c) => c.id === item.id);
+      return conv ? { name: conv.title, folderId: conv.podFolderId } : null;
+    }
+    const draft = drafts.find((d) => d.id === item.id);
+    const conv = conversations.find((c) => c.id === draft?.conversationId);
+    return draft && conv
+      ? { name: draft.name, folderId: conv.podFolderId }
+      : null;
+  };
+
+  const canDrop = (item: DragItem, targetId: string): boolean => {
+    const target = index.byId.get(targetId);
+    const source = dragSource(item);
+    if (!target || target.kind === "file" || !source) {
+      return false;
+    }
+    const targetPodId = getEnclosingPodId(index, podIds, targetId);
+    if (item.kind === "conversation") {
+      // Conversations live in pods: drop anywhere in another pod.
+      return targetPodId !== null && targetPodId !== source.folderId;
+    }
+    if (item.kind === "draft") {
+      return true;
+    }
+    if (targetId === source.folderId || isInside(index, targetId, item.id)) {
+      return false;
+    }
+    // No pod in a pod.
+    const carriesPod = [...podIds].some((id) => isInside(index, id, item.id));
+    return !(carriesPod && targetPodId !== null);
+  };
+
+  const applyMove = (item: DragItem, targetId: string) => {
+    if (item.kind === "node") {
+      setNodes((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, parentId: targetId } : n))
+      );
+    } else if (item.kind === "conversation") {
+      const podId = getEnclosingPodId(index, podIds, targetId);
+      if (!podId) {
+        return;
+      }
+      setConversations((prev) =>
+        prev.map((c) => (c.id === item.id ? { ...c, podFolderId: podId } : c))
+      );
+      navigate(podId);
+      setOpenConversationId(item.id);
+    } else {
+      saveDraft(item.id, targetId);
+    }
+  };
+
+  // Moving to another space changes who can see the item: confirm first.
+  const requestMove = (item: DragItem, targetId: string) => {
+    const source = dragSource(item);
+    if (!source || !canDrop(item, targetId)) {
+      return;
+    }
+    const fromSpaceId = getSpaceId(index, source.folderId);
+    const toSpaceId = getSpaceId(index, targetId);
+    if (fromSpaceId !== toSpaceId) {
+      setPendingMove({
+        item,
+        targetId,
+        name: source.name,
+        fromSpaceId,
+        toSpaceId,
+      });
+    } else {
+      applyMove(item, targetId);
+    }
+  };
+
+  // Drag handlers shared by every drop target (tree rows, folder rows).
+  const dropTargetProps = (targetId: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (dragItem && canDrop(dragItem, targetId)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setDropTargetId(targetId);
+      }
+    },
+    onDragLeave: () =>
+      setDropTargetId((current) => (current === targetId ? null : current)),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dragItem) {
+        requestMove(dragItem, targetId);
+      }
+      setDragItem(null);
+      setDropTargetId(null);
+    },
+  });
+
+  const dragSourceProps = (item: DragItem) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.stopPropagation();
+      // Firefox only starts a drag that carries data.
+      e.dataTransfer.setData("text/plain", item.id);
+      e.dataTransfer.effectAllowed = "move";
+      setDragItem(item);
+    },
+    onDragEnd: () => {
+      setDragItem(null);
+      setDropTargetId(null);
+    },
+  });
+
+  const rowDnd = (node: FsNode): RowDnd => ({
+    props: {
+      ...dragSourceProps({ kind: "node", id: node.id }),
+      ...(node.kind === "file" ? {} : dropTargetProps(node.id)),
+    },
+    isDropTarget: dropTargetId === node.id,
+    isDragging: dragItem?.kind === "node" && dragItem.id === node.id,
+  });
+
   const toggleExpanded = (nodeId: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -325,13 +483,48 @@ function DustWorkspaceFs() {
     });
   };
 
-  const promoteFolder = (folderId: string, description: string) => {
-    setPods((prev) => [
-      ...prev,
-      { folderId, description, attachments: [], createdAt: new Date() },
-    ]);
-    setPromoteFolderId(null);
-    navigate(folderId);
+  // No pod in a pod: a folder inside a pod, or holding one, stays a folder.
+  const canBecomePod = (folderId: string): boolean => {
+    const node = index.byId.get(folderId);
+    return (
+      node?.kind === "folder" &&
+      getEnclosingPodId(index, podIds, folderId) === null &&
+      ![...podIds].some((id) => isInside(index, id, folderId))
+    );
+  };
+
+  // First message from a folder: it becomes a pod, or, when it can't, the
+  // conversation starts in My files with the folder added to its context.
+  const sendFirstMessage = (folderId: string) => {
+    setStartFolderId(null);
+    if (canBecomePod(folderId)) {
+      setPods((prev) => [
+        ...prev,
+        { folderId, description: "", attachments: [], createdAt: new Date() },
+      ]);
+      startConversation(folderId);
+      return;
+    }
+    setPods((prev) =>
+      prev.map((p) =>
+        p.folderId === MY_FILES_ID &&
+        !p.attachments.some((a) => a.nodeId === folderId)
+          ? {
+              ...p,
+              attachments: [
+                ...p.attachments,
+                {
+                  nodeId: folderId,
+                  addedById: CURRENT_USER_ID,
+                  addedAt: new Date(),
+                },
+              ],
+            }
+          : p
+      )
+    );
+    navigate(MY_FILES_ID);
+    startConversation(MY_FILES_ID);
   };
 
   const setAttachments = (podId: string, nodeIds: string[]) => {
@@ -404,10 +597,16 @@ function DustWorkspaceFs() {
     const isAttached = attachedIdsInFocus.has(node.id);
 
     return (
-      <Tree.Item
+      <TreeDnd.Item
         key={node.id}
         label={node.name}
         visual={nodeVisual(node)}
+        {...(node.kind === "space"
+          ? {}
+          : dragSourceProps({ kind: "node", id: node.id }))}
+        {...dropTargetProps(node.id)}
+        isDropHighlight={dropTargetId === node.id}
+        isDragging={dragItem?.kind === "node" && dragItem.id === node.id}
         type={folders.length > 0 ? "node" : "leaf"}
         collapsed={!isExpanded}
         onChevronClick={() => toggleExpanded(node.id)}
@@ -427,7 +626,7 @@ function DustWorkspaceFs() {
         }
       >
         {folders.map(renderTreeNode)}
-      </Tree.Item>
+      </TreeDnd.Item>
     );
   };
 
@@ -474,15 +673,15 @@ function DustWorkspaceFs() {
             />
           ) : (
             <>
-              <Tree variant="navigator">
+              <TreeDnd variant="navigator">
                 {myFilesNode && renderTreeNode(myFilesNode)}
-              </Tree>
+              </TreeDnd>
               <div className="px-2 pb-1 pt-4 text-xs font-semibold text-muted-foreground">
                 Workspace
               </div>
-              <Tree variant="navigator">
+              <TreeDnd variant="navigator">
                 {workspaceRoots.map(renderTreeNode)}
-              </Tree>
+              </TreeDnd>
             </>
           )}
         </div>
@@ -507,11 +706,12 @@ function DustWorkspaceFs() {
   );
 
   // ── Main panel ─────────────────────────────────────────────────────────────
-  // No pod in a pod: a folder inside a pod, or holding one, can't be promoted.
-  const canPromote =
-    selected?.kind === "folder" &&
-    !enclosingPodId &&
-    ![...podIds].some((id) => isInside(index, id, selected.id));
+  // Inside a pod the conversations column is already there to start from.
+  const canStartHere =
+    selected !== undefined &&
+    selected.kind !== "file" &&
+    enclosingPodId === null &&
+    startFolderId !== selected.id;
   const openedFile =
     mainView.kind === "file" ? index.byId.get(mainView.nodeId) : undefined;
   const openedDraft =
@@ -617,13 +817,13 @@ function DustWorkspaceFs() {
                   onClick={() => setIsRailOpen(true)}
                 />
               )
-            ) : canPromote ? (
+            ) : canStartHere ? (
               <Button
-                variant="outline"
+                variant="highlight"
                 size="sm"
-                icon={Cube01}
-                label="Make it a pod"
-                onClick={() => setPromoteFolderId(selected.id)}
+                icon={MessageCircle01}
+                label="Start working here"
+                onClick={() => setStartFolderId(selected.id)}
               />
             ) : null
           }
@@ -636,6 +836,7 @@ function DustWorkspaceFs() {
             spaceAccess={spaceAccess}
             visualFor={nodeVisual}
             citedIds={citedIds}
+            dndFor={rowDnd}
             onNavigate={openNode}
             onAttach={() => setAttachPodId(selectedPod.folderId)}
             onDetach={(nodeId) =>
@@ -653,6 +854,7 @@ function DustWorkspaceFs() {
             index={index}
             visualFor={nodeVisual}
             citedIds={citedIds}
+            dndFor={rowDnd}
             onOpen={openNode}
             emptyLabel="This folder is empty."
           />
@@ -663,6 +865,7 @@ function DustWorkspaceFs() {
             drafts={podDrafts}
             conversations={conversations}
             index={index}
+            dragPropsFor={(id) => dragSourceProps({ kind: "draft", id })}
             onOpen={openDraft}
             onSave={saveDraft}
           />
@@ -673,7 +876,17 @@ function DustWorkspaceFs() {
   const railPod = enclosingPodId ? podById.get(enclosingPodId) : undefined;
   const railPodName = railPod ? index.byId.get(railPod.folderId)?.name : "";
 
-  const railTopBarLeft = openConversationData ? (
+  const startFolder = startFolderId ? index.byId.get(startFolderId) : undefined;
+  const isRailShown =
+    startFolder !== undefined || (railPod !== undefined && isRailOpen);
+
+  const railTopBarLeft = startFolder ? (
+    <Breadcrumbs
+      size="sm"
+      hasLighterFont
+      items={[{ label: `New conversation in ${startFolder.name}` }]}
+    />
+  ) : openConversationData ? (
     <div className="flex min-w-0 items-center gap-1">
       <Button
         size="xmini"
@@ -719,7 +932,7 @@ function DustWorkspaceFs() {
             <div className="h-full min-w-0 flex-1 overflow-y-auto">
               {mainContent}
             </div>
-            {railPod && isRailOpen && (
+            {isRailShown && (
               <>
                 <div
                   className="group relative flex w-px flex-none cursor-col-resize items-stretch"
@@ -734,7 +947,7 @@ function DustWorkspaceFs() {
                 <aside
                   className={cn(
                     "flex shrink-0 flex-col",
-                    railWidth === null && "w-[clamp(24rem,32%,44rem)]"
+                    railWidth === null && "w-[clamp(28rem,40%,48rem)]"
                   )}
                   style={railWidth === null ? undefined : { width: railWidth }}
                 >
@@ -748,11 +961,23 @@ function DustWorkspaceFs() {
                       onClick={() => {
                         setIsRailOpen(false);
                         setOpenConversationId(null);
+                        setStartFolderId(null);
                       }}
                     />
                   </div>
                   <div className="min-h-0 flex-1">
-                    {openConversationData ? (
+                    {startFolder ? (
+                      <StartHere
+                        folderName={startFolder.name}
+                        becomesPod={canBecomePod(startFolder.id)}
+                        visibility={visibilityLine(
+                          spaceAccess[getSpaceId(index, startFolder.id)],
+                          index.byId.get(getSpaceId(index, startFolder.id))
+                            ?.name ?? ""
+                        )}
+                        onSend={() => sendFirstMessage(startFolder.id)}
+                      />
+                    ) : openConversationData ? (
                       <ConversationView
                         key={openConversationData.id}
                         conversation={toViewConversation(
@@ -770,15 +995,20 @@ function DustWorkspaceFs() {
                         }
                       />
                     ) : (
-                      <ConversationRail
-                        pod={railPod}
-                        podName={railPodName ?? ""}
-                        conversations={railConversations}
-                        draftsByConversationId={draftsByConversationId}
-                        openedName={openedName}
-                        onStart={() => startConversation(railPod.folderId)}
-                        onOpen={openConversation}
-                      />
+                      railPod && (
+                        <ConversationRail
+                          pod={railPod}
+                          podName={railPodName ?? ""}
+                          conversations={railConversations}
+                          draftsByConversationId={draftsByConversationId}
+                          openedName={openedName}
+                          dragPropsFor={(id) =>
+                            dragSourceProps({ kind: "conversation", id })
+                          }
+                          onStart={() => startConversation(railPod.folderId)}
+                          onOpen={openConversation}
+                        />
+                      )
                     )}
                   </div>
                 </aside>
@@ -788,13 +1018,19 @@ function DustWorkspaceFs() {
         </PanelLayoutPanel>
       </PanelLayout>
 
-      <PromoteDialog
-        folderId={promoteFolderId}
-        index={index}
-        spaceAccess={spaceAccess}
-        onClose={() => setPromoteFolderId(null)}
-        onConfirm={promoteFolder}
-      />
+      {pendingMove && (
+        <MoveDialog
+          move={pendingMove}
+          targetName={index.byId.get(pendingMove.targetId)?.name ?? ""}
+          spaceAccess={spaceAccess}
+          spaceName={(id) => index.byId.get(id)?.name ?? ""}
+          onCancel={() => setPendingMove(null)}
+          onConfirm={() => {
+            applyMove(pendingMove.item, pendingMove.targetId);
+            setPendingMove(null);
+          }}
+        />
+      )}
 
       {attachPodId && podById.get(attachPodId) && (
         <AttachDialog
@@ -826,6 +1062,53 @@ function accessLabel(access: FsSpaceAccess | undefined): string {
   return access.isRestricted
     ? `Restricted · ${count} ${count === 1 ? "person" : "people"}`
     : "Everyone in the workspace";
+}
+
+/** Who sees conversations started in a space, as one sentence. */
+function visibilityLine(
+  access: FsSpaceAccess | undefined,
+  spaceName: string
+): string {
+  if (!access) {
+    return "";
+  }
+  if (
+    access.memberIds.length === 1 &&
+    access.memberIds[0] === CURRENT_USER_ID
+  ) {
+    return "Only you can see them.";
+  }
+  return access.isRestricted
+    ? `Only the ${access.memberIds.length} people in ${spaceName} can see them.`
+    : "Everyone in the workspace can see them.";
+}
+
+function StartHere({
+  folderName,
+  becomesPod,
+  visibility,
+  onSend,
+}: {
+  folderName: string;
+  becomesPod: boolean;
+  visibility: string;
+  onSend: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 px-4 py-4">
+      <InputBar
+        isFloating={false}
+        autoFocus
+        placeholder={`Ask in ${folderName}`}
+        onSend={onSend}
+      />
+      <p className="px-1 text-xs text-muted-foreground">
+        {becomesPod
+          ? `Conversations here read ${folderName} and everything in it. ${visibility}`
+          : `This starts in My files, with ${folderName} added to its context. Only you can see it.`}
+      </p>
+    </div>
+  );
 }
 
 function NodeHeader({
@@ -880,6 +1163,7 @@ function NodeRow({
   badges,
   action,
   isCited = false,
+  dnd,
 }: {
   node: FsNode;
   index: FsIndex;
@@ -889,13 +1173,20 @@ function NodeRow({
   badges?: React.ReactNode;
   action?: React.ReactNode;
   isCited?: boolean;
+  dnd?: RowDnd;
 }) {
   const author = getFsUserById(node.updatedById);
   return (
     <div
+      {...dnd?.props}
       className={cn(
         "group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2",
-        isCited ? "bg-highlight-50" : "hover:bg-hover"
+        dnd?.isDropTarget
+          ? "bg-highlight-50 ring-1 ring-inset ring-highlight-300"
+          : isCited
+            ? "bg-highlight-50"
+            : "hover:bg-hover",
+        dnd?.isDragging && "opacity-50"
       )}
       onClick={onOpen}
     >
@@ -934,6 +1225,7 @@ function NodeList({
   index,
   visualFor,
   citedIds,
+  dndFor,
   onOpen,
   emptyLabel,
 }: {
@@ -941,6 +1233,7 @@ function NodeList({
   index: FsIndex;
   visualFor: (n: FsNode) => IconType;
   citedIds: Set<string>;
+  dndFor?: (n: FsNode) => RowDnd;
   onOpen: (id: string) => void;
   emptyLabel: string;
 }) {
@@ -957,6 +1250,7 @@ function NodeList({
           visual={visualFor(n)}
           onOpen={() => onOpen(n.id)}
           isCited={containsCited(index, citedIds, n.id)}
+          dnd={dndFor?.(n)}
         />
       ))}
     </div>
@@ -1017,6 +1311,7 @@ function PodContext({
   spaceAccess,
   visualFor,
   citedIds,
+  dndFor,
   onNavigate,
   onAttach,
   onDetach,
@@ -1026,6 +1321,7 @@ function PodContext({
   spaceAccess: Record<string, FsSpaceAccess>;
   visualFor: (n: FsNode) => IconType;
   citedIds: Set<string>;
+  dndFor: (n: FsNode) => RowDnd;
   onNavigate: (id: string) => void;
   onAttach: () => void;
   onDetach: (nodeId: string) => void;
@@ -1039,6 +1335,7 @@ function PodContext({
           index={index}
           visualFor={visualFor}
           citedIds={citedIds}
+          dndFor={dndFor}
           onOpen={onNavigate}
           emptyLabel="Nothing here yet. Drop files in this folder to give the pod context."
         />
@@ -1263,12 +1560,14 @@ function DraftsSection({
   drafts,
   conversations,
   index,
+  dragPropsFor,
   onOpen,
   onSave,
 }: {
   drafts: ConversationDraft[];
   conversations: PodConversation[];
   index: FsIndex;
+  dragPropsFor: (draftId: string) => React.HTMLAttributes<HTMLDivElement>;
   onOpen: (draft: ConversationDraft) => void;
   onSave: (draftId: string, folderId: string) => void;
 }) {
@@ -1298,6 +1597,7 @@ function DraftsSection({
             return (
               <div
                 key={d.id}
+                {...dragPropsFor(d.id)}
                 className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 hover:bg-hover"
                 onClick={() => onOpen(d)}
               >
@@ -1337,6 +1637,7 @@ function ConversationRail({
   conversations,
   draftsByConversationId,
   openedName,
+  dragPropsFor,
   onStart,
   onOpen,
 }: {
@@ -1345,6 +1646,9 @@ function ConversationRail({
   conversations: PodConversation[];
   draftsByConversationId: Map<string, ConversationDraft[]>;
   openedName: string | null;
+  dragPropsFor: (
+    conversationId: string
+  ) => React.HTMLAttributes<HTMLDivElement>;
   onStart: () => void;
   onOpen: (id: string) => void;
 }) {
@@ -1386,32 +1690,33 @@ function ConversationRail({
               (d) => d.savedNodeId === null
             ).length;
             return (
-              <ConversationListItem
-                key={c.id}
-                conversation={{
-                  id: c.id,
-                  title: c.title,
-                  description: [
-                    author?.firstName,
-                    `@${agent?.name}`,
-                    unsaved > 0 ? pluralize(unsaved, "draft") : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
-                  updatedAt: c.updatedAt,
-                }}
-                // An avatar instead of `creator` keeps the name off the
-                // title line, which the narrow column needs for the title.
-                avatar={{
-                  name: author?.fullName,
-                  visual: author?.portrait,
-                  isRounded: true,
-                }}
-                className="rounded-2xl border-b-0 border-t-0 hover:bg-hover"
-                time={formatAgo(c.updatedAt)}
-                unread={c.isUnread}
-                onClick={() => onOpen(c.id)}
-              />
+              <div key={c.id} {...dragPropsFor(c.id)}>
+                <ConversationListItem
+                  conversation={{
+                    id: c.id,
+                    title: c.title,
+                    description: [
+                      author?.firstName,
+                      `@${agent?.name}`,
+                      unsaved > 0 ? pluralize(unsaved, "draft") : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+                    updatedAt: c.updatedAt,
+                  }}
+                  // An avatar instead of `creator` keeps the name off the
+                  // title line, which the narrow column needs for the title.
+                  avatar={{
+                    name: author?.fullName,
+                    visual: author?.portrait,
+                    isRounded: true,
+                  }}
+                  className="rounded-2xl border-b-0 border-t-0 hover:bg-hover"
+                  time={formatAgo(c.updatedAt)}
+                  unread={c.isUnread}
+                  onClick={() => onOpen(c.id)}
+                />
+              </div>
             );
           })}
         </div>
@@ -1548,80 +1853,57 @@ function SearchResults({
   );
 }
 
-function PromoteDialog({
-  folderId,
-  index,
+function MoveDialog({
+  move,
+  targetName,
   spaceAccess,
-  onClose,
+  spaceName,
+  onCancel,
   onConfirm,
 }: {
-  folderId: string | null;
-  index: FsIndex;
+  move: PendingMove;
+  targetName: string;
   spaceAccess: Record<string, FsSpaceAccess>;
-  onClose: () => void;
-  onConfirm: (folderId: string, description: string) => void;
+  spaceName: (id: string) => string;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
-  const [description, setDescription] = useState("");
-  const folder = folderId ? index.byId.get(folderId) : undefined;
-  const space = folderId
-    ? index.byId.get(getSpaceId(index, folderId))
-    : undefined;
-  const access = space ? spaceAccess[space.id] : undefined;
-
-  const close = () => {
-    setDescription("");
-    onClose();
-  };
-
+  const from = spaceAccess[move.fromSpaceId];
+  const to = spaceAccess[move.toSpaceId];
   return (
-    <Dialog open={folder !== undefined} onOpenChange={(o) => !o && close()}>
+    <Dialog open={true} onOpenChange={(o) => !o && onCancel()}>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Make “{folder?.name}” a pod</DialogTitle>
+          <DialogTitle>
+            Move “{move.name}” to {targetName}?
+          </DialogTitle>
         </DialogHeader>
-        <DialogContainer className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
-            A pod is a folder you work from. Conversations started here read
-            this folder by default, and you can add more from your workspace
-            later.
-          </p>
-          <div className="flex flex-col gap-2 rounded-xl border border-border p-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Icon visual={Link01} size="xs" />
-              Context:{" "}
-              {pluralize(folderId ? countFiles(index, folderId) : 0, "file")} in
-              this folder
-            </div>
+        <DialogContainer className="flex flex-col gap-3 text-sm">
+          <p className="text-muted-foreground">This changes who can see it.</p>
+          <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
             <div className="flex items-center gap-2">
               <Icon
-                visual={access?.isRestricted ? Lock01 : Building01}
+                visual={from?.isRestricted ? Lock01 : Building01}
                 size="xs"
               />
-              Access: same as {space?.name} ({accessLabel(access)})
+              Now: {spaceName(move.fromSpaceId)} ({accessLabel(from)})
+            </div>
+            <div className="flex items-center gap-2">
+              <Icon visual={to?.isRestricted ? Lock01 : Building01} size="xs" />
+              After: {spaceName(move.toSpaceId)} ({accessLabel(to)})
             </div>
           </div>
-          <Input
-            label="Description (optional)"
-            placeholder="What is this pod for?"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: close,
+            onClick: onCancel,
           }}
           rightButtonProps={{
-            label: "Make it a pod",
+            label: "Move",
             variant: "primary",
-            onClick: () => {
-              if (folderId) {
-                onConfirm(folderId, description.trim());
-                setDescription("");
-              }
-            },
+            onClick: onConfirm,
           }}
         />
       </DialogContent>
