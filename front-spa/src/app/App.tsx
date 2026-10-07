@@ -1,12 +1,13 @@
+import { SparkleLocaleProvider } from "@dust-tt/front/components/app/SparkleLocaleProvider";
 import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
-import { i18n } from "@dust-tt/front/lib/i18n/i18n";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { SparkleContext } from "@dust-tt/sparkle";
+import { i18n } from "@dust-tt/front/lib/i18n/i18n";
 import { I18nProvider } from "@lingui/react";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { routes } from "@spa/app/routes";
@@ -31,11 +32,13 @@ export default function App() {
           <PostHogTracker authenticated>
             <SparkleContext.Provider value={sparkleContextValue}>
               <I18nProvider i18n={i18n}>
+                <SparkleLocaleProvider>
                 <RootLayout>
                   <ErrorBoundary fallback={<GlobalErrorFallback />}>
                     <RouterProvider router={router} />
                   </ErrorBoundary>
                 </RootLayout>
+                </SparkleLocaleProvider>
               </I18nProvider>
             </SparkleContext.Provider>
           </PostHogTracker>

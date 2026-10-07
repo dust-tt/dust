@@ -4,15 +4,22 @@ import type { RenderHookOptions, RenderOptions } from "@testing-library/react";
 import type { JSXElementConstructor, ReactNode } from "react";
 import { afterEach, vi } from "vitest";
 
-// Wrap every rendered tree in the Lingui provider, composing with any wrapper the test passes.
+// Wrap every rendered tree in front's and sparkle's Lingui providers, composing with any wrapper
+// the test passes.
 vi.mock("@testing-library/react", async (importOriginal) => {
-  const [actual, { createElement }, { I18nProvider }, { i18n }] =
-    await Promise.all([
-      importOriginal<typeof import("@testing-library/react")>(),
-      import("react"),
-      import("@lingui/react"),
-      import("@app/lib/i18n/i18n"),
-    ]);
+  const [
+    actual,
+    { createElement },
+    { I18nProvider },
+    { i18n },
+    { SparkleLocaleProvider },
+  ] = await Promise.all([
+    importOriginal<typeof import("@testing-library/react")>(),
+    import("react"),
+    import("@lingui/react"),
+    import("@app/lib/i18n/i18n"),
+    import("@app/components/app/SparkleLocaleProvider"),
+  ]);
 
   const withI18n =
     (Wrapper?: JSXElementConstructor<{ children: ReactNode }>) =>
@@ -20,7 +27,11 @@ vi.mock("@testing-library/react", async (importOriginal) => {
       createElement(
         I18nProvider,
         { i18n },
-        Wrapper ? createElement(Wrapper, null, children) : children
+        createElement(
+          SparkleLocaleProvider,
+          null,
+          Wrapper ? createElement(Wrapper, null, children) : children
+        )
       );
 
   const render = (ui: ReactNode, options?: RenderOptions) =>

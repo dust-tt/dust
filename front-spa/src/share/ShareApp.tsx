@@ -1,3 +1,4 @@
+import { SparkleLocaleProvider } from "@dust-tt/front/components/app/SparkleLocaleProvider";
 import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
@@ -5,9 +6,9 @@ import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFile
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
 import { ShareOgPage } from "@dust-tt/front/components/pages/share/ShareOgPage";
 import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
-import { i18n } from "@dust-tt/front/lib/i18n/i18n";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
+import { i18n } from "@dust-tt/front/lib/i18n/i18n";
 import { I18nProvider } from "@lingui/react";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -47,9 +48,11 @@ export default function ShareApp() {
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <PostHogTracker>
           <I18nProvider i18n={i18n}>
+            <SparkleLocaleProvider>
             <ErrorBoundary fallback={<GlobalErrorFallback />}>
               <RouterProvider router={router} />
             </ErrorBoundary>
+            </SparkleLocaleProvider>
           </I18nProvider>
         </PostHogTracker>
       </FetcherProvider>
