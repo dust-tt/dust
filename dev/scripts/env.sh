@@ -109,7 +109,10 @@ export CARGO_TERM_COLOR="${CARGO_TERM_COLOR:-always}"
 apply_local_overrides() {
   export DUST_REPO_ROOT="${DUST_REPO_ROOT:-/workspace}"
   export NODE_ENV="development"
-  export SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
+  # Force in-container secret file paths (1Password may still ship laptop absolute paths).
+  export SERVICE_ACCOUNT="/tmp/dust-dev-sa.json"
+  export OAUTH_GITHUB_APP_PRIVATE_KEY_PATH="/tmp/dust-dev-github-connector-private-key.pem"
+  export OAUTH_GITHUB_APP_PLATFORM_ACTIONS_PRIVATE_KEY_PATH="/tmp/dust-dev-github-action-private-key.pem"
 
   export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
   export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
