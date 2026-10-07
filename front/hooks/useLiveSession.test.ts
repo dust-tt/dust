@@ -1,4 +1,4 @@
-import { useLiveSession } from "@app/components/editor/document/useLiveSession";
+import { useLiveSession } from "@app/hooks/useLiveSession";
 import { Server } from "@hocuspocus/server";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

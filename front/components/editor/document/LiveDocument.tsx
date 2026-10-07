@@ -4,14 +4,16 @@ import type {
   DocumentLiveSession,
   DocumentProps,
 } from "@app/components/editor/document/types";
-import { useLiveSession } from "@app/components/editor/document/useLiveSession";
+import { useLiveSession } from "@app/hooks/useLiveSession";
 import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
+interface LiveDocumentProps extends DocumentProps {
+  live: DocumentLiveSession;
+}
+
 /** A Document in a live session: the file read-only until the shared document has synced. */
-export default function LiveDocument(
-  props: DocumentProps & { live: DocumentLiveSession }
-) {
+export default function LiveDocument(props: LiveDocumentProps) {
   const { t } = useLingui();
   const { connection, status } = useLiveSession(props.live);
   const { name, color } = props.live.user;
