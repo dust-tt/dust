@@ -16,6 +16,12 @@ const CATALOG_LOADERS: Record<CatalogLocale, () => Promise<Messages>> = {
     (await import("@app/locales/fr-FR/messages.po")).messages,
 };
 
+/**
+ * @cc [owner:ykmsd,label:architecture] i18n-module-without-sparkle
+ * This module is bundled into front-api, which does not depend on `@dust-tt/sparkle`: it MUST NOT
+ * import sparkle, directly or transitively. Sparkle's catalogs are loaded by sparkle itself (see
+ * `SparkleLocaleProvider`).
+ */
 export function loadCatalog(locale: SupportedLocale): Promise<Messages> {
   return CATALOG_LOADERS[CATALOG_LOCALE_BY_LOCALE[locale]]();
 }
