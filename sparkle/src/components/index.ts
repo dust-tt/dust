@@ -310,8 +310,6 @@ export type { SliderStepsProps } from "./SliderSteps";
 export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
-export type { SpinnerBrandProps } from "./SpinnerBrand";
-export { SpinnerBrand } from "./SpinnerBrand";
 export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";

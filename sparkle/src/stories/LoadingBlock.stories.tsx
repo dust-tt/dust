@@ -16,7 +16,7 @@ const meta = {
 
 **Guidelines**
 - Match each block's dimensions and rounding to the real element it stands in for, so the swap feels seamless.
-- For an indeterminate spinner with no known layout, use a **Spinner** or **SpinnerBrand** instead.
+- For an indeterminate spinner with no known layout, use a **Spinner** instead.
 - For an empty result rather than a loading state, use an **EmptyCTA**.`,
       },
     },
