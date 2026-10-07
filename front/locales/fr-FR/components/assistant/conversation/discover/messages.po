@@ -1,0 +1,229 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:12+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/discover/DiscoverButton.tsx
+msgid "Discover skills and agents"
+msgstr "Découvrir des compétences et des agents"
+
+#: front/components/assistant/conversation/discover/DiscoverButton.tsx
+msgid "Opening Discover"
+msgstr "Ouverture de la page Découvrir"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgctxt "catalog filter"
+msgid "All"
+msgstr "Tous"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Most popular"
+msgstr "Les plus populaires"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Favorites"
+msgstr "Favoris"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgctxt "catalog filter"
+msgid "Mine"
+msgstr "Les miens"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Agents & skills"
+msgstr "Agents et compétences"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Agents"
+msgstr "Agents"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Skills"
+msgstr "Compétences"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "{others, plural, one {{author} and # other} other {{author} and # others}}"
+msgstr "{others, plural, one {{author} et # autre} other {{author} et # autres}}"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Search for agents or skills"
+msgstr "Rechercher des agents ou des compétences"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgctxt "noun, navigation label"
+msgid "Filter"
+msgstr "Filtres"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Unable to load agents and skills"
+msgstr "Impossible de charger les agents et les compétences"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Try again in a moment."
+msgstr "Réessayez dans un instant."
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "No agents or skills found"
+msgstr "Aucun agent ni aucune compétence trouvé"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Try another search or different filters."
+msgstr "Essayez une autre recherche ou d’autres filtres."
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Clear filters"
+msgstr "Effacer les filtres"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Couldn't load more. Try again in a moment."
+msgstr "Impossible d’en charger davantage. Réessayez dans un instant."
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Load more"
+msgstr "Charger plus"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Chat with {name}"
+msgstr "Discuter avec {name}"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Use {name}"
+msgstr "Utiliser {name}"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "{activeUsersCount, plural, one {# active user} other {# active users}}"
+msgstr "{activeUsersCount, plural, one {# utilisateur actif} other {# utilisateurs actifs}}"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Pin to Featured"
+msgstr "Épingler à la une"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Pin {name} to Featured"
+msgstr "Épingler {name} à la une"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Details"
+msgstr "Détails"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Show {name} details"
+msgstr "Afficher les détails de {name}"
+
+#: front/components/assistant/conversation/discover/DiscoverContainer.tsx
+msgctxt "discover tab"
+msgid "Featured"
+msgstr "À la une"
+
+#: front/components/assistant/conversation/discover/DiscoverContainer.tsx
+msgctxt "discover tab"
+msgid "Catalog"
+msgstr "Catalogue"
+
+#: front/components/assistant/conversation/discover/DiscoverContainer.tsx
+msgctxt "page title"
+msgid "Discover"
+msgstr "Découvrir"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Curated by {workspaceName}"
+msgstr "Sélection de {workspaceName}"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Agent & skill for you"
+msgstr "Agents et compétences pour vous"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Recommendations will show up here as you chat with agents and use skills."
+msgstr "Des recommandations apparaîtront ici à mesure que vous discuterez avec des agents et utiliserez des compétences."
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Trending in the workspace"
+msgstr "Tendances dans le workspace"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Trending picks will fill in as usage grows across the workspace."
+msgstr "Les tendances apparaîtront à mesure que l’utilisation augmentera dans le workspace."
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Previous featured"
+msgstr "Élément à la une précédent"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Next featured"
+msgstr "Élément à la une suivant"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Nothing featured yet. Pin agents and skills from the list to show them here."
+msgstr "Rien à la une pour le moment. Épinglez des agents et des compétences depuis la liste pour les afficher ici."
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Find more"
+msgstr "Voir plus"
+
+#: front/components/assistant/conversation/discover/DiscoverHome.tsx
+msgid "Browse agents & skills"
+msgstr "Parcourir les agents et compétences"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Everyone"
+msgstr "Tout le monde"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Pin <0>{name}</0>"
+msgstr "Épingler <0>{name}</0>"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "It will show at the top of Featured for the audience you pick."
+msgstr "L’élément apparaîtra en tête de la rubrique À la une pour l’audience choisie."
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Show to"
+msgstr "Afficher pour"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Loading…"
+msgstr "Chargement…"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Search groups"
+msgstr "Rechercher des groupes"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "No groups found"
+msgstr "Aucun groupe trouvé"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgctxt "verb, button label"
+msgid "Pin"
+msgstr "Épingler"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Position"
+msgstr "Position"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Position in Featured"
+msgstr "Position dans la rubrique À la une"
+
+#: front/components/assistant/conversation/discover/DiscoverPinDialog.tsx
+msgid "Position {positionNumber}"
+msgstr "Position {positionNumber}"
+
+#: front/components/assistant/conversation/discover/HomepageUseCases.tsx
+msgid "Hide this suggestion"
+msgstr "Masquer cette suggestion"

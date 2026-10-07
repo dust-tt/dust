@@ -1,0 +1,169 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:12+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/manager/AgentFilterPanel.tsx
+msgid "Too many tools selected."
+msgstr "Too many tools selected."
+
+#: front/components/assistant/manager/AgentFilterPanel.tsx
+msgid "Hidden agents"
+msgstr "Hidden agents"
+
+#: front/components/assistant/manager/AgentFilterPanel.tsx
+msgid "Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
+msgstr "Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgid "Loading actions…"
+msgstr "Loading actions…"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgid "Retrying…"
+msgstr "Retrying…"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgid "Could not load actions. Retry"
+msgstr "Could not load actions. Retry"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgctxt "verb, menu item"
+msgid "Edit"
+msgstr "Edit"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgid "Copy agent ID"
+msgstr "Copy agent ID"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgid "More info"
+msgstr "More info"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgid "Duplicate (New)"
+msgstr "Duplicate (New)"
+
+#: front/components/assistant/manager/AgentSearchActionsMenu.tsx
+msgctxt "verb, menu item"
+msgid "Archive"
+msgstr "Archive"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgctxt "agent scope"
+msgid "Default"
+msgstr "Default"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Not published"
+msgstr "Not published"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Published"
+msgstr "Published"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Clear selection"
+msgstr "Clear selection"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Select all on page"
+msgstr "Select all on page"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Deselect {agentName}"
+msgstr "Deselect {agentName}"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Select {agentName}"
+msgstr "Select {agentName}"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Access"
+msgstr "Access"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Model"
+msgstr "Model"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Usage"
+msgstr "Usage"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Usage is not available for this agent."
+msgstr "Usage is not available for this agent."
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Number of active users in the last 30 days."
+msgstr "Number of active users in the last 30 days."
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Feedback"
+msgstr "Feedback"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "{total, plural, one {{up} positive and {down} negative feedback} other {{up} positive and {down} negative feedbacks}}"
+msgstr "{total, plural, one {{up} positive and {down} negative feedback} other {{up} positive and {down} negative feedbacks}}"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Editors"
+msgstr "Editors"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Tags"
+msgstr "Tags"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Last edited"
+msgstr "Last edited"
+
+#: front/components/assistant/manager/AgentSearchTable.tsx
+msgid "Loading agents"
+msgstr "Loading agents"
+
+#: front/components/assistant/manager/DefaultAgentToggle.tsx
+msgid "Could not update agent. Please try again."
+msgstr "Could not update agent. Please try again."
+
+#: front/components/assistant/manager/GlobalAgentAction.tsx
+msgid "Free plan"
+msgstr "Free plan"
+
+#: front/components/assistant/manager/GlobalAgentAction.tsx
+msgid "{agentName} is only available on our paid plans."
+msgstr "{agentName} is only available on our paid plans."
+
+#: front/components/assistant/manager/GlobalAgentAction.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/assistant/manager/GlobalAgentAction.tsx
+msgid "Check Dust plans"
+msgstr "Check Dust plans"
+
+#: front/components/assistant/manager/TableTagSelector.tsx
+msgid "Add tags"
+msgstr "Add tags"
+
+#: front/components/assistant/manager/TableTagSelector.tsx
+msgid "Available tags"
+msgstr "Available tags"
+
+#: front/components/assistant/manager/TableTagSelector.tsx
+msgid "No tags available"
+msgstr "No tags available"

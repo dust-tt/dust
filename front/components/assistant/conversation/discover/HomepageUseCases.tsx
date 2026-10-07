@@ -24,6 +24,7 @@ import {
   MOTION_EASINGS,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { TargetAndTransition, Variants } from "framer-motion";
 import {
   AnimatePresence,
@@ -269,6 +270,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
     { isDisabled, isMotionReduced, onDismiss, onPick, useCase },
     ref
   ) {
+    const { t } = useLingui();
     const [isDismissing, setIsDismissing] = useState(false);
 
     return (
@@ -302,8 +304,8 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
               variant="ghost-secondary"
               size="xs"
               icon={XClose}
-              tooltip="Hide this suggestion"
-              aria-label="Hide this suggestion"
+              tooltip={t`Hide this suggestion`}
+              aria-label={t`Hide this suggestion`}
               className={cn(
                 "group-hover:opacity-100 focus-visible:opacity-100",
                 !isDismissing && "opacity-0"

@@ -38,6 +38,7 @@ import {
   LoadingBlock,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const FEATURED_SLOT_COUNT = 3;
@@ -107,6 +108,7 @@ export function DiscoverHome({
   onDetails,
   onFindMore,
 }: DiscoverHomeProps) {
+  const { t } = useLingui();
   const { featuredItems, isFeaturedLoading, isFeaturedRefreshing } =
     useDiscoveryFeatured({
       workspaceId: owner.sId,
@@ -135,12 +137,13 @@ export function DiscoverHome({
 
   const isFeaturedHidden =
     !onPin && !isFeaturedLoading && featured.length === 0;
+  const workspaceName = owner.name;
 
   return (
     <>
       {!isFeaturedHidden && (
         <FeaturedCarousel
-          title={`Curated by ${owner.name}`}
+          title={t`Curated by ${workspaceName}`}
           items={featured}
           isLoading={isFeaturedLoading}
           isRefreshing={isFeaturedRefreshing}
@@ -151,8 +154,8 @@ export function DiscoverHome({
         />
       )}
       <DiscoverSection
-        title="Agent & Skill for you"
-        emptyMessage="Recommendations will show up here as you chat with agents and use skills."
+        title={t`Agent & skill for you`}
+        emptyMessage={t`Recommendations will show up here as you chat with agents and use skills.`}
         section="for_you"
         items={forYou}
         isLoading={isForYouLoading}
@@ -163,8 +166,8 @@ export function DiscoverHome({
         onFindMore={onFindMore}
       />
       <DiscoverSection
-        title="Trending in the workspace"
-        emptyMessage="Trending picks will fill in as usage grows across the workspace."
+        title={t`Trending in the workspace`}
+        emptyMessage={t`Trending picks will fill in as usage grows across the workspace.`}
         section="trending"
         items={trending}
         isLoading={isTrendingLoading}
@@ -207,6 +210,7 @@ function FeaturedCarousel({
   isRefreshing,
   onUse,
 }: FeaturedCarouselProps) {
+  const { t } = useLingui();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = useState({ left: false, right: false });
 
@@ -256,7 +260,7 @@ function FeaturedCarousel({
               variant="ghost"
               size="xs"
               icon={ChevronLeft}
-              aria-label="Previous featured"
+              aria-label={t`Previous featured`}
               disabled={!canScroll.left}
               onClick={() => scrollByPage(-1)}
             />
@@ -264,7 +268,7 @@ function FeaturedCarousel({
               variant="ghost"
               size="xs"
               icon={ChevronRight}
-              aria-label="Next featured"
+              aria-label={t`Next featured`}
               disabled={!canScroll.right}
               onClick={() => scrollByPage(1)}
             />
@@ -310,8 +314,10 @@ function FeaturedCarousel({
         {!isLoading && items.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center px-6">
             <p className="copy-sm text-center text-muted-foreground">
-              Nothing featured yet. Pin agents and skills from the list to show
-              them here.
+              <Trans>
+                Nothing featured yet. Pin agents and skills from the list to
+                show them here.
+              </Trans>
             </p>
           </div>
         )}
@@ -345,6 +351,7 @@ function DiscoverSection({
   onDetails,
   onFindMore,
 }: DiscoverSectionProps) {
+  const { t } = useLingui();
   useEffect(() => {
     if (isLoading) {
       return;
@@ -374,7 +381,7 @@ function DiscoverSection({
           <Button
             variant="ghost"
             size="xs"
-            label="Find more"
+            label={t`Find more`}
             onClick={onFindMore}
           />
         )}
@@ -388,7 +395,7 @@ function DiscoverSection({
             <Button
               variant="outline"
               size="sm"
-              label="Browse agents & skills"
+              label={t`Browse agents & skills`}
               onClick={onFindMore}
             />
           }

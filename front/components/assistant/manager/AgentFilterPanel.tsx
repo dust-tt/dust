@@ -23,6 +23,7 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Checkbox, InfoCircle, Label, Tooltip } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 // The agent search endpoint accepts at most 100 MCP server view IDs.
@@ -56,6 +57,7 @@ export function AgentFilterPanel({
   onFilterChange,
   hiddenAgents,
 }: AgentFilterPanelProps) {
+  const { t } = useLingui();
   const panel = useFilterPanel<AgentFilterCategory, SearchFilterOption>(
     filter,
     categories
@@ -114,7 +116,7 @@ export function AgentFilterPanel({
       isLoading={!!facet && isAgentsLoading}
       isError={!!facet && isAgentsError}
       idPrefix="agent-filter"
-      warning={hasTooManyTools ? "Too many tools selected." : undefined}
+      warning={hasTooManyTools ? t`Too many tools selected.` : undefined}
       applyDisabled={hasTooManyTools}
       categoryNavFooter={
         hiddenAgents && (
@@ -130,10 +132,10 @@ export function AgentFilterPanel({
               htmlFor="agent-filter-hidden-agents"
               className="cursor-pointer text-sm leading-none"
             >
-              Hidden agents
+              <Trans>Hidden agents</Trans>
             </Label>
             <Tooltip
-              label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
+              label={t`Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces`}
               trigger={<InfoCircle className="h-4 w-4 text-muted-foreground" />}
             />
           </div>

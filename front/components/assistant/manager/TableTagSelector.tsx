@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 type TableTagSelectorProps = {
@@ -34,6 +35,7 @@ export const TableTagSelector = ({
   owner,
   onChange,
 }: TableTagSelectorProps) => {
+  const { t } = useLingui();
   const [isLoading, setIsLoading] = useState(false);
   const { isDark } = useTheme();
   const updateAgentTags = useUpdateAgentTags({
@@ -52,7 +54,7 @@ export const TableTagSelector = ({
           <Button
             variant="ghost"
             size="xs"
-            label="Add tags"
+            label={t`Add tags`}
             isSelect
             className="invisible text-muted-foreground group-hover:visible"
           />
@@ -69,35 +71,35 @@ export const TableTagSelector = ({
         mountPortalContainer={document.body}
         className="w-60"
       >
-        <DropdownMenuLabel label="Available tags" />
+        <DropdownMenuLabel label={t`Available tags`} />
         <DropdownMenuSeparator />
         <DropdownMenuTagList>
           {tags.length === 0 ? (
             <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-              No tags available
+              <Trans>No tags available</Trans>
             </div>
           ) : (
             tags
-              .filter((t) => canPublishAgents || t.kind !== "protected")
-              .map((t) => {
-                const isChecked = agentTags.some((x) => x.sId === t.sId);
+              .filter((tag) => canPublishAgents || tag.kind !== "protected")
+              .map((tag) => {
+                const isChecked = agentTags.some((x) => x.sId === tag.sId);
                 return (
                   <div
-                    key={t.sId}
+                    key={tag.sId}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
                   >
                     <DropdownMenuTagItem
-                      label={t.name}
+                      label={tag.name}
                       color="info"
                       icon={isChecked ? Check : undefined}
                       onClick={async () => {
                         setIsLoading(true);
                         await updateAgentTags(agentConfigurationId, {
-                          addTagIds: isChecked ? [] : [t.sId],
-                          removeTagIds: isChecked ? [t.sId] : [],
+                          addTagIds: isChecked ? [] : [tag.sId],
+                          removeTagIds: isChecked ? [tag.sId] : [],
                         });
                         await onChange();
                       }}
