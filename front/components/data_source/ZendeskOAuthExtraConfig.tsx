@@ -1,6 +1,7 @@
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { isValidZendeskSubdomain } from "@app/types/oauth/lib";
 import { Input } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 export function ZendeskOAuthExtraConfig({
@@ -8,6 +9,7 @@ export function ZendeskOAuthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
+  const { t } = useLingui();
   useEffect(() => {
     setIsExtraConfigValid(
       isValidZendeskSubdomain(extraConfig.zendesk_subdomain)
@@ -16,8 +18,8 @@ export function ZendeskOAuthExtraConfig({
 
   return (
     <Input
-      label="Zendesk account subdomain"
-      message="The first part of your Zendesk account URL."
+      label={t`Zendesk account subdomain`}
+      message={t`The first part of your Zendesk account URL.`}
       messageStatus="info"
       name="subdomain"
       placeholder="my-subdomain"

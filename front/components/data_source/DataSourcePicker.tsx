@@ -14,6 +14,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 export default function DataSourcePicker({
@@ -36,6 +37,7 @@ export default function DataSourcePicker({
   ) => void;
   linksDisabled?: boolean;
 }) {
+  const { t } = useLingui();
   const hasDataSourceView =
     currentDataSources.length > 0 &&
     currentDataSources[0].workspace_id &&
@@ -112,8 +114,8 @@ export default function DataSourcePicker({
 
   useEffect(() => {
     const newDataSources = searchFilter
-      ? spaceDataSourceViews.filter((t) =>
-          t.dataSource.name.toLowerCase().includes(searchFilter.toLowerCase())
+      ? spaceDataSourceViews.filter((dsv) =>
+          dsv.dataSource.name.toLowerCase().includes(searchFilter.toLowerCase())
         )
       : spaceDataSourceViews;
     setFilteredDataSourceViews(newDataSources.slice(0, 30));
@@ -132,7 +134,7 @@ export default function DataSourcePicker({
               </div>
             </MaybeLink>
           ) : (
-            "No DataSource"
+            <Trans>No data source</Trans>
           )
         ) : (
           <PopoverRoot open={open} onOpenChange={setOpen}>
@@ -155,7 +157,7 @@ export default function DataSourcePicker({
               ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
                 <Button
                   variant="outline"
-                  label="Select DataSource"
+                  label={t`Select data source`}
                   isSelect
                   size="xs"
                 />
@@ -166,7 +168,7 @@ export default function DataSourcePicker({
                     readOnly ? "text-primary-400" : "text-muted-foreground"
                   )}
                 >
-                  Create DataSource
+                  <Trans>Create data source</Trans>
                 </LinkWrapper>
               )}
             </PopoverTrigger>
@@ -175,7 +177,7 @@ export default function DataSourcePicker({
               <PopoverContent className="mr-2 p-4">
                 <SearchInput
                   name="search"
-                  placeholder="Search"
+                  placeholder={t`Search`}
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e)}
                 />
@@ -202,7 +204,7 @@ export default function DataSourcePicker({
                   ))}
                   {filteredDataSourceViews.length === 0 && (
                     <span className="block px-4 py-2 text-sm text-muted-foreground">
-                      No datasources found
+                      <Trans>No data sources found</Trans>
                     </span>
                   )}
                 </ScrollArea>

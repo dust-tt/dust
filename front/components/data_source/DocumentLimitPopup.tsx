@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 
 type DocumentLimitPopupProps = {
   isOpen: boolean;
@@ -23,26 +24,35 @@ export const DocumentLimitPopup = ({
   onClose,
   owner,
 }: DocumentLimitPopupProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
+  const planName = plan.name;
+  const documentCount = plan.limits.dataSources.documents.count;
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">
         <DialogHeader hideButton={false}>
-          <DialogTitle>{`${plan.name} plan`}</DialogTitle>
+          <DialogTitle>{t`${planName} plan`}</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          You have reached the limit of documents per data source (
-          {plan.limits.dataSources.documents.count} documents). Upgrade your
-          plan for unlimited documents and data sources.
+          <Trans>
+            You have reached the limit of documents per data source (
+            <Plural
+              value={documentCount}
+              one="# document"
+              other="# documents"
+            />
+            ). Upgrade your plan for unlimited documents and data sources.
+          </Trans>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Check Dust plans",
+            label: t`Check Dust plans`,
             variant: "primary",
             onClick: () => {
               void router.push(`/w/${owner.sId}/subscription`);

@@ -8,6 +8,7 @@ import {
   XClose,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface TagFilters {
@@ -36,8 +37,9 @@ export function ZendeskTagFilters({
   addTag,
   removeTag,
   loading,
-  placeholder = "Enter tag name",
+  placeholder,
 }: ZendeskTagFiltersProps) {
+  const { t } = useLingui();
   const [inputValue, setInputValue] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"include" | "exclude">("exclude");
@@ -121,15 +123,15 @@ export function ZendeskTagFilters({
                   }
                 >
                   <TabsList>
-                    <TabsTrigger value="include" label="Include Tags" />
-                    <TabsTrigger value="exclude" label="Exclude Tags" />
+                    <TabsTrigger value="include" label={t`Include tags`} />
+                    <TabsTrigger value="exclude" label={t`Exclude tags`} />
                   </TabsList>
                 </Tabs>
                 <Input
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
+                  placeholder={placeholder ?? t`Enter tag name`}
                   disabled={readOnly || !isAdmin || loading}
                 />
               </div>
@@ -140,14 +142,14 @@ export function ZendeskTagFilters({
                   disabled={
                     readOnly || !isAdmin || loading || !inputValue.trim()
                   }
-                  label="Add"
+                  label={t`Add`}
                 />
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleCancel}
                   disabled={readOnly || !isAdmin || loading}
-                  label="Cancel"
+                  label={t`Cancel`}
                 />
               </div>
             </>
@@ -164,7 +166,7 @@ export function ZendeskTagFilters({
                 size="sm"
                 onClick={handleEdit}
                 disabled={readOnly || !isAdmin || loading}
-                label="Add Tags"
+                label={t`Add tags`}
               />
             )}
           </div>
@@ -172,7 +174,7 @@ export function ZendeskTagFilters({
           {hasIncludedTags && (
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium text-success-800">
-                Include Tags (sync only items with these tags):
+                <Trans>Include tags (sync only items with these tags):</Trans>
               </p>
               {renderTagList(
                 includedTags,
@@ -186,7 +188,7 @@ export function ZendeskTagFilters({
           {hasExcludedTags && (
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium text-warning-800">
-                Exclude Tags (don't sync items with these tags):
+                <Trans>Exclude tags (don't sync items with these tags):</Trans>
               </p>
               {renderTagList(
                 excludedTags,
@@ -199,7 +201,7 @@ export function ZendeskTagFilters({
 
           {!hasTags && (
             <p className="mb-4 text-sm text-muted-foreground">
-              No tag filters configured.
+              <Trans>No tag filters configured.</Trans>
             </p>
           )}
         </div>

@@ -17,6 +17,7 @@ import {
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface SetupNotionPrivateIntegrationModalProps {
@@ -36,6 +37,7 @@ export function SetupNotionPrivateIntegrationModal({
   onSuccess,
   sendNotification,
 }: SetupNotionPrivateIntegrationModalProps) {
+  const { t } = useLingui();
   const [integrationToken, setIntegrationToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function SetupNotionPrivateIntegrationModal({
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch webhook configuration");
+          throw new Error(t`Failed to fetch webhook configuration`);
         }
 
         const data: GetNotionWebhookConfigResponseBody = await response.json();
@@ -66,8 +68,9 @@ export function SetupNotionPrivateIntegrationModal({
       } catch (err) {
         sendNotification({
           type: "error",
-          title: "Failed to fetch webhook configuration",
-          description: err instanceof Error ? err.message : "An error occurred",
+          title: t`Failed to fetch webhook configuration`,
+          description:
+            err instanceof Error ? err.message : t`An error occurred`,
         });
       } finally {
         setIsLoadingWebhookConfig(false);
@@ -75,7 +78,7 @@ export function SetupNotionPrivateIntegrationModal({
     };
 
     void fetchWebhookConfig();
-  }, [isOpen, owner.sId, dataSource.sId, sendNotification]);
+  }, [isOpen, owner.sId, dataSource.sId, sendNotification, t]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -98,7 +101,7 @@ export function SetupNotionPrivateIntegrationModal({
       if (!response.ok) {
         const error = await response.json();
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        throw new Error(error.error?.message || "Failed to create credential");
+        throw new Error(error.error?.message || t`Failed to create credential`);
       }
 
       const data = await response.json();
@@ -122,25 +125,24 @@ export function SetupNotionPrivateIntegrationModal({
         const error = await configRes.json();
         throw new Error(
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          error.error?.message || "Failed to set connector configuration"
+          error.error?.message || t`Failed to set connector configuration`
         );
       }
 
       sendNotification({
         type: "success",
-        title: "Private integration setup successfully",
-        description:
-          "Your Notion connector will now use the private integration token.",
+        title: t`Private integration setup successfully`,
+        description: t`Your Notion connector will now use the private integration token.`,
       });
 
       onSuccess(credentialId);
     } catch (err) {
       sendNotification({
         type: "error",
-        title: "Failed to setup private integration",
-        description: err instanceof Error ? err.message : "An error occurred",
+        title: t`Failed to setup private integration`,
+        description: err instanceof Error ? err.message : t`An error occurred`,
       });
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t`An error occurred`);
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +152,9 @@ export function SetupNotionPrivateIntegrationModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Setup Notion Private Integration</DialogTitle>
+          <DialogTitle>
+            <Trans>Setup Notion private integration</Trans>
+          </DialogTitle>
         </DialogHeader>
 
         <div className="mx-4 mb-8 mt-5 space-y-6">
@@ -161,9 +165,9 @@ export function SetupNotionPrivateIntegrationModal({
           ) : (
             <>
               <div>
-                <Page.SectionHeader title="Integration Token" />
+                <Page.SectionHeader title={t`Integration token`} />
                 <p className="mb-4 mt-2 text-sm text-muted-foreground">
-                  Paste your Notion integration token below.
+                  <Trans>Paste your Notion integration token below.</Trans>
                 </p>
                 <Input
                   type="text"
@@ -189,9 +193,9 @@ export function SetupNotionPrivateIntegrationModal({
               {webhookConfig && (
                 <>
                   <div>
-                    <Page.SectionHeader title="Webhook URL" />
+                    <Page.SectionHeader title={t`Webhook URL`} />
                     <p className="mb-4 mt-2 text-sm text-muted-foreground">
-                      Use this URL to set up Notion webhooks.
+                      <Trans>Use this URL to set up Notion webhooks.</Trans>
                     </p>
                     <div className="relative w-full">
                       <Input
@@ -214,7 +218,9 @@ export function SetupNotionPrivateIntegrationModal({
                             copyWebhookUrl(webhookConfig.webhookUrl)
                           }
                           tooltip={
-                            isCopiedWebhookUrl ? "Copied!" : "Copy to clipboard"
+                            isCopiedWebhookUrl
+                              ? t`Copied!`
+                              : t`Copy to clipboard`
                           }
                           variant="ghost"
                           size="sm"
@@ -224,11 +230,11 @@ export function SetupNotionPrivateIntegrationModal({
                   </div>
 
                   <div>
-                    <Page.SectionHeader title="Verification Token" />
+                    <Page.SectionHeader title={t`Verification token`} />
                     <p className="mb-4 mt-2 text-sm text-muted-foreground">
                       {webhookConfig.verificationToken
-                        ? "Use this token to verify your webhook in Notion."
-                        : "Set the webhook URL in your Notion integration and come back here to get the token."}
+                        ? t`Use this token to verify your webhook in Notion.`
+                        : t`Set the webhook URL in your Notion integration and come back here to get the token.`}
                     </p>
                     {webhookConfig.verificationToken && (
                       <div className="relative w-full">
@@ -252,7 +258,7 @@ export function SetupNotionPrivateIntegrationModal({
                               copyToken(webhookConfig.verificationToken!)
                             }
                             tooltip={
-                              isCopiedToken ? "Copied!" : "Copy to clipboard"
+                              isCopiedToken ? t`Copied!` : t`Copy to clipboard`
                             }
                             variant="ghost"
                             size="sm"
@@ -269,12 +275,12 @@ export function SetupNotionPrivateIntegrationModal({
 
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: isLoading ? "Saving..." : "Save",
+            label: isLoading ? t`Saving...` : t`Save`,
             onClick: handleSave,
             disabled: isLoading || !integrationToken.trim(),
           }}

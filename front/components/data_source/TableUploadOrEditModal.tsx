@@ -31,6 +31,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -58,6 +59,7 @@ export const TableUploadOrEditModal = ({
   onClose,
   owner,
 }: TableUploadOrEditModalProps) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -184,8 +186,8 @@ export const TableUploadOrEditModal = ({
     if (isTableLoading) {
       sendNotification({
         type: "error",
-        title: "Error",
-        description: "Cannot save the table: the file is still loading.",
+        title: t`Error`,
+        description: t`Cannot save the table: the file is still loading.`,
       });
       return;
     }
@@ -194,8 +196,8 @@ export const TableUploadOrEditModal = ({
       if (!initialId && !fileId) {
         sendNotification({
           type: "error",
-          title: "Missing file",
-          description: "You must upload a file to create a table.",
+          title: t`Missing file`,
+          description: t`You must upload a file to create a table.`,
         });
         return;
       }
@@ -205,8 +207,8 @@ export const TableUploadOrEditModal = ({
       ) {
         sendNotification({
           type: "error",
-          title: "Invalid name",
-          description: "You must provide a valid name for the table.",
+          title: t`Invalid name`,
+          description: t`You must provide a valid name for the table.`,
         });
         return;
       }
@@ -214,8 +216,8 @@ export const TableUploadOrEditModal = ({
       if (tableState.description.trim() === "") {
         sendNotification({
           type: "error",
-          title: "Invalid description",
-          description: "You must provide a description for the table.",
+          title: t`Invalid description`,
+          description: t`You must provide a description for the table.`,
         });
         return;
       }
@@ -223,8 +225,8 @@ export const TableUploadOrEditModal = ({
       // Fallback
       sendNotification({
         type: "error",
-        title: "Invalid table",
-        description: "Please fill all the required fields.",
+        title: t`Invalid table`,
+        description: t`Please fill all the required fields.`,
       });
       return;
     }
@@ -238,6 +240,7 @@ export const TableUploadOrEditModal = ({
     sendNotification,
     initialId,
     fileId,
+    t,
   ]);
 
   const handleFileChange = useCallback(
@@ -247,8 +250,8 @@ export const TableUploadOrEditModal = ({
       if (files && files.length > 1) {
         sendNotification({
           type: "error",
-          title: "Multiple files",
-          description: "Please upload only one file at a time.",
+          title: t`Multiple files`,
+          description: t`Please upload only one file at a time.`,
         });
         return;
       }
@@ -285,7 +288,7 @@ export const TableUploadOrEditModal = ({
       } catch (error) {
         sendNotification({
           type: "error",
-          title: "Error uploading file",
+          title: t`Error uploading file`,
           description: error instanceof Error ? error.message : String(error),
         });
       } finally {
@@ -293,7 +296,7 @@ export const TableUploadOrEditModal = ({
         fileUploaderService.resetUpload();
       }
     },
-    [fileUploaderService, sendNotification]
+    [fileUploaderService, sendNotification, t]
   );
 
   // Effect: Validate the table state when inputs change
@@ -323,6 +326,8 @@ export const TableUploadOrEditModal = ({
     }
   }, [initialId, table]);
 
+  const maxFileSize = formatFileSize(MAX_FILE_SIZES.delimited, { decimals: 0 });
+
   return (
     <Sheet
       open={isOpen}
@@ -334,7 +339,7 @@ export const TableUploadOrEditModal = ({
     >
       <SheetContent size="xl">
         <SheetHeader>
-          <SheetTitle>{`${initialId ? "Edit" : "Add"} table`}</SheetTitle>
+          <SheetTitle>{initialId ? t`Edit table` : t`Add table`}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           {isTableLoading ? (
@@ -344,11 +349,13 @@ export const TableUploadOrEditModal = ({
           ) : (
             <Page.Vertical align="stretch">
               {isTableError ? (
-                <div className="space-y-4 p-4">Content cannot be loaded.</div>
+                <div className="space-y-4 p-4">
+                  <Trans>Content cannot be loaded.</Trans>
+                </div>
               ) : (
                 <div className="space-y-4 p-4">
                   <div>
-                    <Page.SectionHeader title="Table name" />
+                    <Page.SectionHeader title={t`Table name`} />
                     <Input
                       placeholder="table_name"
                       name="name"
@@ -365,7 +372,7 @@ export const TableUploadOrEditModal = ({
                       message={
                         editionStatus.name &&
                         (!tableState.name || !isSlugified(tableState.name))
-                          ? "Invalid name: Must be lowercase alphanumeric, max 32 characters and no space."
+                          ? t`Invalid name: Must be lowercase alphanumeric, max 32 characters and no space.`
                           : null
                       }
                       messageStatus="error"
@@ -374,11 +381,11 @@ export const TableUploadOrEditModal = ({
 
                   <div>
                     <Page.SectionHeader
-                      title="Description"
-                      description="Describe the content of your data. It will be used by the LLM model to generate relevant queries."
+                      title={t`Description`}
+                      description={t`Describe the content of your data. It will be used by the LLM model to generate relevant queries.`}
                     />
                     <TextArea
-                      placeholder="This table contains..."
+                      placeholder={t`This table contains...`}
                       value={tableState.description}
                       onChange={(e) => {
                         setEditionStatus((prev) => ({
@@ -392,7 +399,7 @@ export const TableUploadOrEditModal = ({
                       }}
                       error={
                         !tableState.description && editionStatus.description
-                          ? "You need to provide a description for your data file."
+                          ? t`You need to provide a description for your data file.`
                           : null
                       }
                       showErrorLabel
@@ -402,16 +409,16 @@ export const TableUploadOrEditModal = ({
 
                   <div>
                     <Page.SectionHeader
-                      title="Data File"
-                      description={`Select your data file for extraction. Supported formats: CSV, XLSX. Maximum file size: ${formatFileSize(MAX_FILE_SIZES.delimited, { decimals: 0 })}.`}
+                      title={t`Data file`}
+                      description={t`Select your data file for extraction. Supported formats: CSV, XLSX. Maximum file size: ${maxFileSize}.`}
                       action={{
                         label: fileUploaderService.isProcessingFiles
-                          ? "Uploading..."
+                          ? t`Uploading...`
                           : tableState.file
                             ? truncate(tableState.file.name, 24)
                             : initialId
-                              ? "Replace file"
-                              : "Upload file",
+                              ? t`Replace file`
+                              : t`Upload file`,
                         variant: "primary",
                         icon: FilePlus03,
                         onClick: () => fileInputRef.current?.click(),
@@ -428,10 +435,12 @@ export const TableUploadOrEditModal = ({
                       <div className="flex flex-col gap-y-2 pt-4">
                         <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-warning-500">
                           <AlertCircle />
-                          Warning: Large file (5MB+)
+                          <Trans>Warning: Large file (5MB+)</Trans>
                         </div>
                         <div className="text-sm font-normal text-muted-foreground">
-                          This file is large and may take a while to upload.
+                          <Trans>
+                            This file is large and may take a while to upload.
+                          </Trans>
                         </div>
                       </div>
                     )}
@@ -443,11 +452,11 @@ export const TableUploadOrEditModal = ({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isUpserting ? "Saving..." : "Save",
+            label: isUpserting ? t`Saving...` : t`Save`,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();

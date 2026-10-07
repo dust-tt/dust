@@ -139,7 +139,8 @@ export function BotToggle({
         oauth.extraConfig,
         connectorProvider,
         botDataSource,
-        owner
+        owner,
+        t
       );
 
       if (updateRes.error) {

@@ -5,6 +5,7 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 export function GithubCodeEnableView({
@@ -18,6 +19,7 @@ export function GithubCodeEnableView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const { configValue, mutateConfig } = useConnectorConfig({
     owner,
     dataSource,
@@ -48,7 +50,7 @@ export function GithubCodeEnableView({
       const err = (await res.json()) as { error: APIError };
       sendNotification({
         type: "error",
-        title: "Failed to enable GitHub code sync",
+        title: t`Failed to enable GitHub code sync`,
         description: err.error.message,
       });
     }
@@ -58,7 +60,7 @@ export function GithubCodeEnableView({
   return (
     <ContextItem.List>
       <ContextItem
-        title="Code Synchronization"
+        title={t`Code synchronization`}
         visual={<ContextItem.Visual visual={GithubLogo} />}
         action={
           <div className="relative">
@@ -74,7 +76,9 @@ export function GithubCodeEnableView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground">
-            Your GitHub repositories code is synced with Dust every 8h.
+            <Trans>
+              Your GitHub repositories code is synced with Dust every 8h.
+            </Trans>
           </div>
         </ContextItem.Description>
       </ContextItem>

@@ -5,6 +5,7 @@ import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, ContextItem, Input, ZendeskLogo } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 export function ZendeskRateLimitConfig({
@@ -18,6 +19,7 @@ export function ZendeskRateLimitConfig({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
   const [rateLimitInput, setRateLimitInput] = useState("");
@@ -58,18 +60,18 @@ export function ZendeskRateLimitConfig({
       setLoading(false);
       sendNotification({
         type: "success",
-        title: "Rate limit transactions per second updated",
-        description: `The rate limit transactions per second has been updated to ${configValue}.`,
+        title: t`Rate limit transactions per second updated`,
+        description: t`The rate limit transactions per second has been updated to ${configValue}.`,
       });
     } else {
       setLoading(false);
       const err = await res.json();
       sendNotification({
         type: "info",
-        title: "Failed to edit Zendesk configuration",
+        title: t`Failed to edit Zendesk configuration`,
         description:
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          err.error?.connectors_error.message || "An unknown error occurred",
+          err.error?.connectors_error.message || t`An unknown error occurred`,
       });
     }
     return true;
@@ -88,9 +90,8 @@ export function ZendeskRateLimitConfig({
     if (isNaN(numValue) || numValue < 1) {
       sendNotification({
         type: "info",
-        title: "Invalid rate limit transactions per second",
-        description:
-          "Rate limit transactions per second must be a positive integer.",
+        title: t`Invalid rate limit transactions per second`,
+        description: t`Rate limit transactions per second must be a positive integer.`,
       });
       return;
     }
@@ -100,14 +101,16 @@ export function ZendeskRateLimitConfig({
 
   return (
     <ContextItem
-      title="Rate Limit Transactions Per Second"
+      title={t`Rate limit transactions per second`}
       visual={<ContextItem.Visual visual={ZendeskLogo} />}
     >
       <ContextItem.Description>
         <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground">
           <div className="text-sm text-muted-foreground">
-            Set a transaction-per-second limit to manage Zendesk rate
-            restrictions. Leave empty to disable.
+            <Trans>
+              Set a transaction-per-second limit to manage Zendesk rate
+              restrictions. Leave empty to disable.
+            </Trans>
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -117,13 +120,13 @@ export function ZendeskRateLimitConfig({
               disabled={readOnly || !isAdmin || loading}
               placeholder={
                 rateLimitTransactionsPerSecond
-                  ? `${rateLimitTransactionsPerSecond} tps`
-                  : "Disabled"
+                  ? t`${rateLimitTransactionsPerSecond} tps`
+                  : t`Disabled`
               }
               className="w-24"
             />
             <span className="text-sm text-muted-foreground">
-              transactions per second
+              <Trans>transactions per second</Trans>
             </span>
             <Button
               size="sm"
@@ -134,7 +137,7 @@ export function ZendeskRateLimitConfig({
                 loading ||
                 rateLimitInput === rateLimitTransactionsPerSecond?.toString()
               }
-              label="Save"
+              label={t`Save`}
             />
           </div>
         </div>

@@ -15,6 +15,8 @@ import {
   SliderToggle,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 export function ZendeskConfigView({
@@ -28,6 +30,7 @@ export function ZendeskConfigView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const {
     configValue: syncUnresolvedTicketsConfigValue,
     mutateConfig: mutateSyncUnresolvedTicketsConfig,
@@ -85,10 +88,14 @@ export function ZendeskConfigView({
 
       // Show a notif only for the retention period (the others are toggles).
       if (configKey === ZENDESK_CONFIG_KEYS.RETENTION_PERIOD) {
+        const retentionDays = Number(configValue);
         sendNotification({
           type: "success",
-          title: "Retention period updated",
-          description: `The retention period has been updated to ${configValue} days.`,
+          title: t`Retention period updated`,
+          description: t`${plural(retentionDays, {
+            one: "The retention period has been updated to # day.",
+            other: "The retention period has been updated to # days.",
+          })}`,
         });
       }
     } else {
@@ -97,10 +104,10 @@ export function ZendeskConfigView({
 
       sendNotification({
         type: "info",
-        title: "Failed to edit Zendesk configuration",
+        title: t`Failed to edit Zendesk configuration`,
         description:
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          err.error?.connectors_error.message || "An unknown error occurred",
+          err.error?.connectors_error.message || t`An unknown error occurred`,
       });
     }
     return true;
@@ -114,8 +121,8 @@ export function ZendeskConfigView({
       if (isNaN(numValue) || numValue <= 0) {
         sendNotification({
           type: "info",
-          title: "Invalid retention period",
-          description: "Retention period must be a positive integer.",
+          title: t`Invalid retention period`,
+          description: t`Retention period must be a positive integer.`,
         });
         return;
       }
@@ -123,10 +130,12 @@ export function ZendeskConfigView({
     }
   };
 
+  const savedRetentionDays = Number(retentionPeriodDays);
+
   return (
     <ContextItem.List>
       <ContextItem
-        title="Sync unresolved tickets"
+        title={t`Sync unresolved tickets`}
         visual={<ContextItem.Visual visual={ZendeskLogo} />}
         action={
           <div className="relative">
@@ -145,13 +154,15 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground">
-            If activated, Dust will also sync the unresolved tickets.
+            <Trans>
+              If activated, Dust will also sync the unresolved tickets.
+            </Trans>
           </div>
         </ContextItem.Description>
       </ContextItem>
 
       <ContextItem
-        title="Hide Customer Information"
+        title={t`Hide customer information`}
         visual={<ContextItem.Visual visual={ZendeskLogo} />}
         action={
           <div className="relative">
@@ -170,21 +181,25 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground">
-            Enable this option to prevent customer names and email addresses
-            from being synced with Dust. This does not impact data within
-            tickets, only the metadata attached to tickets.
+            <Trans>
+              Enable this option to prevent customer names and email addresses
+              from being synced with Dust. This does not impact data within
+              tickets, only the metadata attached to tickets.
+            </Trans>
           </div>
         </ContextItem.Description>
       </ContextItem>
 
       <ContextItem
-        title="Data Retention Period"
+        title={t`Data retention period`}
         visual={<ContextItem.Visual visual={ZendeskLogo} />}
       >
         <ContextItem.Description>
           <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground">
-            Set the retention period (in days), tickets older than the retention
-            period will not be synced with Dust.
+            <Trans>
+              Set the retention period (in days), tickets older than the
+              retention period will not be synced with Dust.
+            </Trans>
             <div className="flex items-center gap-2">
               <Input
                 value={retentionInput}
@@ -193,7 +208,10 @@ export function ZendeskConfigView({
                 disabled={readOnly || !isAdmin || loading}
                 placeholder={
                   retentionPeriodDays
-                    ? `${retentionPeriodDays} days`
+                    ? t`${plural(savedRetentionDays, {
+                        one: "# day",
+                        other: "# days",
+                      })}`
                     : undefined
                 }
                 className="w-24"
@@ -207,7 +225,7 @@ export function ZendeskConfigView({
                   loading ||
                   retentionInput === retentionPeriodDays?.toString()
                 }
-                label="Save"
+                label={t`Save`}
               />
             </div>
           </div>
