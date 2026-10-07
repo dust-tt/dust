@@ -7,6 +7,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -137,14 +138,37 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
     fileStorageMock.setFetchFileContentNotFound(() => true);
   });
 
-  it("returns 403 for non-admin users", async () => {
+  it("lets a member with the admin:security permission read bulk policies", async () => {
+    const { workspace, auth, user, podA } = await setupTest({ role: "user" });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+    await configurePod(auth, podA, ["api.github.com"]);
+    markConfigured(workspace.sId, [podA]);
+
+    const response = await getBulk(workspace.sId, `podIds=${podA.sId}`);
+
+    expect(response.status).toBe(200);
+    const { policies } = BulkPoliciesResponseSchema.parse(
+      await response.json()
+    );
+    expect(policies).toEqual([
+      { podId: podA.sId, policy: { allowedDomains: ["api.github.com"] } },
+    ]);
+  });
+
+  it("returns 403 for a member without the admin:security permission", async () => {
     const { workspace, podA } = await setupTest({ role: "user" });
 
     const response = await getBulk(workspace.sId, `podIds=${podA.sId}`);
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "workspace_auth_error" },
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to manage the sandbox.",
+      },
     });
   });
 
@@ -219,7 +243,26 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     fileStorageMock.setFetchFileContentNotFound(() => true);
   });
 
-  it("returns 403 for non-admin users", async () => {
+  it("lets a member with the admin:security permission write bulk policies", async () => {
+    const { workspace, user, podA } = await setupTest({ role: "user" });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ scopeId: podA.sId, success: true }],
+    });
+  });
+
+  it("returns 403 for a member without the admin:security permission", async () => {
     const { workspace, podA } = await setupTest({ role: "user" });
 
     const response = await postBulk(workspace.sId, {
@@ -229,8 +272,11 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "workspace_auth_error" },
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to manage the sandbox.",
+      },
     });
   });
 

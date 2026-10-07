@@ -1,4 +1,5 @@
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -88,6 +89,22 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     );
   });
 
+  it("lets a member with the admin:security permission read the workspace policy", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "admin",
+      resourceType: "security",
+    });
+
+    const response = await getPolicy(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      policy: { allowedDomains: ["api.github.com"] },
+      requestedDomains: [],
+    });
+  });
+
   it("returns the workspace egress policy to workspace admins with Computer enabled", async () => {
     const { workspace } = await setupTest();
 
@@ -150,7 +167,7 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     expect(mockDismissRequestedWorkspacePolicyDomain).not.toHaveBeenCalled();
   });
 
-  it("rejects a dismiss from a non-admin user", async () => {
+  it("rejects a dismiss from a member without the admin:security permission", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await dismissRequest(workspace.sId, {
@@ -158,6 +175,12 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     });
 
     expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to manage the sandbox.",
+      },
+    });
     expect(mockDismissRequestedWorkspacePolicyDomain).not.toHaveBeenCalled();
   });
 
@@ -217,15 +240,16 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 
-  it("rejects non-admin users", async () => {
+  it("returns 403 for a member without the admin:security permission", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await getPolicy(workspace.sId);
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
+    expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
+        message: "You are not authorized to manage the sandbox.",
       },
     });
   });

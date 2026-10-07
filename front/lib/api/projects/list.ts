@@ -240,16 +240,18 @@ export async function enrichProjectsWithMetadata(
 
 /**
  * Every non-archived project space in the workspace, regardless of the
- * caller's Pod membership. Admin surfaces only (central Computer admin page
- * and its bulk sandbox reads) — membership is not consulted, so the admin
- * role is enforced here rather than trusted from the caller. Pods with a
- * missing metadata row are treated as invalid and excluded.
+ * caller's Pod membership. Computer-admin surfaces only (central Computer
+ * admin page and its bulk sandbox reads) — membership is not consulted, so
+ * `admin:security` is enforced here rather than trusted from the caller. Pods
+ * with a missing metadata row are treated as invalid and excluded.
  */
-export async function listNonArchivedProjectSpacesAsAdmin(
+export async function listNonArchivedProjectSpacesAsSecurityAdmin(
   auth: Authenticator
 ): Promise<Result<SpaceResource[], Error>> {
-  if (!auth.isAdmin()) {
-    return new Err(new Error("Only workspace admins can list all Pods."));
+  if (!auth.hasWorkspacePermission("admin", "security")) {
+    return new Err(
+      new Error("Only users with admin:security can list all Pods.")
+    );
   }
 
   const projectSpaces = await SpaceResource.listProjectSpaces(auth);
