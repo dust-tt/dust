@@ -54,8 +54,6 @@ interface ModelPickerContentProps {
   ignoreTierRestrictions: boolean;
   tiers: ModelTierDefinition[];
   degradedModelIds: ReadonlySet<string>;
-  // Meta-model ids whose preferred model is degraded and the stream has fallen
-  // back — same orange chip as a concrete degraded model row.
   fallbackStreamIds: ReadonlySet<string>;
   hostingRegion: RegionType | null;
   makerGroups: MakerGroup[];
