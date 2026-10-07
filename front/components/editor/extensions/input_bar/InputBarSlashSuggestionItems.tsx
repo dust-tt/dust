@@ -1,3 +1,4 @@
+import { withDefaultLocaleSearchText } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
 import {
@@ -29,19 +30,6 @@ function getInputBarRunCommandSlashCommandItem(
   };
 }
 
-function matchesInputBarSlashCommandItem(
-  item: SlashCommand,
-  normalizedQuery: string
-): boolean {
-  if (normalizedQuery.length === 0) {
-    return true;
-  }
-
-  return [item.label, item.description, item.tooltip?.description]
-    .filter((value): value is string => value !== undefined)
-    .some((value) => value.toLowerCase().includes(normalizedQuery));
-}
-
 function getInputBarSlashCommandById({
   commandId,
   commands,
@@ -59,24 +47,40 @@ function getInputBarSlashCommandById({
 }): SlashCommand | null {
   const runCommand = commands.find((command) => command.id === commandId);
   if (runCommand) {
-    return getInputBarRunCommandSlashCommandItem(runCommand, t);
+    return withDefaultLocaleSearchText(
+      (translate) =>
+        getInputBarRunCommandSlashCommandItem(runCommand, translate),
+      t
+    );
   }
 
   if (commandId === "attach-knowledge") {
-    return includeAttachKnowledge ? createAttachKnowledgeSlashCommand(t) : null;
+    return includeAttachKnowledge
+      ? withDefaultLocaleSearchText(createAttachKnowledgeSlashCommand, t)
+      : null;
   }
 
   if (commandId === "pick-model") {
-    return includePickModel ? createPickModelSlashCommand(t) : null;
+    return includePickModel
+      ? withDefaultLocaleSearchText(createPickModelSlashCommand, t)
+      : null;
   }
 
   if (commandId === "select-spaces") {
-    return includeSelectSpaces ? createSelectSpacesSlashCommand(t) : null;
+    return includeSelectSpaces
+      ? withDefaultLocaleSearchText(createSelectSpacesSlashCommand, t)
+      : null;
   }
 
   return null;
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] match-translated-and-english
+ * Every returned item MUST carry its `DEFAULT_LOCALE` label and descriptions in `searchText` (see
+ * `withDefaultLocaleSearchText`), so that `filterSlashCommandItems` matches a query against both
+ * the text translated by `t` and the English text, whatever the active locale.
+ */
 export function getInputBarSlashCommandItems({
   commands,
   includeAttachKnowledge,
@@ -102,15 +106,4 @@ export function getInputBarSlashCommandItems({
 
     return item ? [item] : [];
   });
-}
-
-export function filterInputBarSlashCommandItems(
-  items: SlashCommand[],
-  query: string
-): SlashCommand[] {
-  const normalizedQuery = query.trim().toLowerCase();
-
-  return items.filter((item) =>
-    matchesInputBarSlashCommandItem(item, normalizedQuery)
-  );
 }

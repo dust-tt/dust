@@ -111,6 +111,9 @@ export interface SlashCommand {
   icon: React.ComponentType<any>;
   id: string;
   label: string;
+  // Extra text a search query matches, on top of the label and descriptions (e.g. their
+  // default-locale rendering).
+  searchText?: string[];
   tooltip?: SlashCommandTooltip;
   tooltipLabel?: string;
 }

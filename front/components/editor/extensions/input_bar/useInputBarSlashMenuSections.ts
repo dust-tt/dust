@@ -1,11 +1,9 @@
-import {
-  filterInputBarSlashCommandItems,
-  getInputBarSlashCommandItems,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
+import { getInputBarSlashCommandItems } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
 import type {
   InputBarSlashCommand,
   InputBarSlashMenuRefs,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
@@ -86,10 +84,7 @@ export function useInputBarSlashMenuSections({
   const sections = useMemo(
     () =>
       buildSlashCommandSections({
-        commandItems: filterInputBarSlashCommandItems(
-          allCommandItems,
-          resolvedQuery
-        ),
+        commandItems: filterSlashCommandItems(allCommandItems, resolvedQuery),
         capabilityItems,
         t,
       }),
