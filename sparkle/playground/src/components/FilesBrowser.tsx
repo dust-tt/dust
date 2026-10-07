@@ -31,7 +31,13 @@ import {
   UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { type DragEvent, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  type DragEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type { DataSource } from "../data/types";
 import {
@@ -71,9 +77,14 @@ export interface FilesBrowserDnd {
 }
 
 interface FilesBrowserProps {
+  createAction?: ReactNode;
+  rootLabel?: string;
+  getTypeLabel?: (file: DataSource) => string;
+  getSourceLabel?: (file: DataSource) => string;
+  showViewOptions?: boolean;
   dataSources: DataSource[];
   onFileOpen: (dataSource: DataSource) => void;
-  onDeleteFile: (fileId: string) => void;
+  onDeleteFile?: (fileId: string) => void;
   /** Folder navigation + breadcrumbs; off for flat lists (conversations). */
   foldersEnabled?: boolean;
   emptyMessage?: string;
@@ -124,6 +135,11 @@ function CreateFilesMenu() {
 
 export function FilesBrowser({
   dataSources,
+  createAction = <CreateFilesMenu />,
+  rootLabel = "Files",
+  getTypeLabel = getItemTypeLabel,
+  getSourceLabel,
+  showViewOptions = true,
   onFileOpen,
   onDeleteFile,
   foldersEnabled = true,
@@ -196,9 +212,9 @@ export function FilesBrowser({
 
     const items: BreadcrumbsItem[] = [
       currentFolderId === null
-        ? { label: "Files", icon: Folder }
+        ? { label: rootLabel, icon: Folder }
         : {
-            label: "Files",
+            label: rootLabel,
             icon: Folder,
             onClick: () => {
               setCurrentFolderId(null);
@@ -229,6 +245,7 @@ export function FilesBrowser({
 
     return items;
   }, [
+    rootLabel,
     currentFolderId,
     dataSources,
     dnd,
@@ -362,9 +379,18 @@ export function FilesBrowser({
         meta: {
           // Responsive to the table's own width (@container/table), not the
           // window: secondary columns drop as the panel gets narrower.
-          className: "w-[84px] hidden @md:table-cell",
+          className: getSourceLabel
+            ? "w-[160px] hidden @md:table-cell"
+            : "w-[84px] hidden @md:table-cell",
         },
         cell: (info) => {
+          if (getSourceLabel) {
+            return (
+              <DataTable.BasicCellContent
+                label={getSourceLabel(info.row.original)}
+              />
+            );
+          }
           const source = info.getValue() as DataSource["source"];
           if (source !== "company") {
             return <DataTable.BasicCellContent label="" />;
@@ -386,16 +412,14 @@ export function FilesBrowser({
         header: "Type",
         id: "fileType",
         sortingFn: (rowA, rowB) =>
-          getItemTypeLabel(rowA.original).localeCompare(
-            getItemTypeLabel(rowB.original)
+          getTypeLabel(rowA.original).localeCompare(
+            getTypeLabel(rowB.original)
           ),
         meta: {
           className: "w-[84px] hidden @md:table-cell",
         },
         cell: (info) => (
-          <DataTable.BasicCellContent
-            label={getItemTypeLabel(info.row.original)}
-          />
+          <DataTable.BasicCellContent label={getTypeLabel(info.row.original)} />
         ),
       },
       {
@@ -455,25 +479,31 @@ export function FilesBrowser({
                   },
                 ]
               : []),
-            {
-              kind: "item" as const,
-              label: "Delete",
-              icon: Trash01,
-              variant: "warning" as const,
-              onClick: () => setDeleteFileId(dataSource.id),
-            },
+            ...(onDeleteFile
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Delete",
+                    icon: Trash01,
+                    variant: "warning" as const,
+                    onClick: () => setDeleteFileId(dataSource.id),
+                  },
+                ]
+              : []),
           ];
 
-          return <DataTable.MoreButton menuItems={menuItems} />;
+          return menuItems.length ? (
+            <DataTable.MoreButton menuItems={menuItems} />
+          ) : null;
         },
       },
     ],
-    [onAddFileToTopbar]
+    [onAddFileToTopbar, onDeleteFile, getTypeLabel, getSourceLabel]
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (dataSources.length === 0) {
-    return <EmptyCTA message={emptyMessage} action={<CreateFilesMenu />} />;
+    return <EmptyCTA message={emptyMessage} action={createAction} />;
   }
 
   return (
@@ -488,33 +518,39 @@ export function FilesBrowser({
           className="w-full min-w-0 max-w-80"
         />
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                icon={viewMode === "list" ? CheckDone01 : List}
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup
-                value={viewMode}
-                onValueChange={(value) => {
-                  if (value === "list" || value === "grid") {
-                    setViewMode(value);
-                  }
-                }}
-              >
-                <DropdownMenuRadioItem
-                  value="list"
-                  label="List"
-                  icon={CheckDone01}
+          {showViewOptions && (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  icon={viewMode === "list" ? CheckDone01 : List}
+                  isSelect
                 />
-                <DropdownMenuRadioItem value="grid" label="Grid" icon={List} />
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <CreateFilesMenu />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuRadioGroup
+                  value={viewMode}
+                  onValueChange={(value) => {
+                    if (value === "list" || value === "grid") {
+                      setViewMode(value);
+                    }
+                  }}
+                >
+                  <DropdownMenuRadioItem
+                    value="list"
+                    label="List"
+                    icon={CheckDone01}
+                  />
+                  <DropdownMenuRadioItem
+                    value="grid"
+                    label="Grid"
+                    icon={List}
+                  />
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {createAction}
         </div>
       </div>
 
@@ -597,7 +633,7 @@ export function FilesBrowser({
               variant: "warning",
               onClick: () => {
                 if (deleteFileId) {
-                  onDeleteFile(deleteFileId);
+                  onDeleteFile?.(deleteFileId);
                 }
                 setDeleteFileId(null);
               },

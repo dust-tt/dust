@@ -87,7 +87,10 @@ function StoryList({
 }
 
 function App() {
-  const [currentStory, setCurrentStory] = useState<string | null>(null);
+  const [currentStory, setCurrentStory] = useState<string | null>(() => {
+    const hash = window.location.hash.slice(1);
+    return stories.some((story) => story.name === hash) ? hash : null;
+  });
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") {
       return "light";
@@ -103,14 +106,6 @@ function App() {
     document.documentElement.classList.toggle("dark", isDark);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
-
-  // Read initial hash from URL
-  useEffect(() => {
-    const hash = window.location.hash.slice(1); // Remove the #
-    if (hash && stories.some((s) => s.name === hash)) {
-      setCurrentStory(hash);
-    }
-  }, []);
 
   // Update URL hash when story changes
   useEffect(() => {

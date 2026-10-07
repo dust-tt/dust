@@ -1,0 +1,64 @@
+@cc [owner:id13,label:product] references-preserve-originals
+Adding or removing a pod reference MUST NOT move, delete, or change the access of its source file. Uploads MUST be staged until the user selects a canonical destination and confirms. The upload MUST then create files at that destination and metadata references in the pod. Pods MUST NOT create storage folders. Sharing with a pod MUST require a separate explicit action on a file the current user can share.
+
+@cc [owner:id13,label:product] overview-on-entry
+Each initial pod MUST pin its tailored frame as the Overview tab. Pod tabs MUST reference canonical files with independently editable titles, icons, and order. Entering a pod MUST display its first pinned file, or Conversations when no files are pinned. Removing a tab MUST NOT delete or unlink its file. Trigger controls MUST only appear in Settings, with a panel for creation or editing and no duplicate management panel. Settings Customization MUST reuse the existing file-tab customization UI and open a frame’s canonical parent conversation for editing. Pod-level instructions and default-agent settings MUST NOT appear; agents own their instructions. Conversations MUST open only after an explicit selection or creation action.
+
+@cc [owner:id13,label:architecture;product] standalone-overview-frame
+Frames MUST run inside sandboxed iframes without a bridge to application panel navigation. Frame interactions MUST stay within the embedded document. Pod tabs MUST reuse NavTabPill below the conversation input.
+
+@cc [owner:id13,label:security] shared-entry-hides-ancestors
+Shared with me entries MUST NOT expose the source hierarchy above the shared entry. The playground simulates access; it MUST NOT claim to enforce backend permissions or execute agents.
+
+@cc [owner:id13,label:architecture;product] workspace-panel-navigation
+Pod detail views MUST use the enclosing New Navigation PanelLayout P3/P4 slots. Opening a detail from the pod MUST close its previous child panel; closing P3 MUST also close P4. Detail views MUST NOT create a nested PanelLayout or replace panel navigation with dialogs.
+
+@cc [owner:id13,label:product] persistent-pod-composer
+The pod MUST use the shared InputBar in the page header above the tabs, in normal document flow, and MUST NOT anchor it to the bottom of the pod. It MUST be available on every tab and preserve its draft between tabs. Sending a first message MUST create a conversation at the My files root with the selected initial audience and link it to the pod. Enter MUST submit, Shift+Enter MUST insert a line break, and an active mention picker MUST retain Enter for selection.
+
+@cc [owner:id13,label:architecture;product] typed-file-resolution
+Special file views MUST resolve the canonical file together with its linked configuration record. File name, content, location, and access MUST remain authoritative; a record identifier alone MUST NOT make a related file visible. Missing records MUST render an unavailable state. This playground MUST use local mock records and MUST NOT imply a live database connection.
+
+@cc [owner:id13,label:product] sidebar-folder-navigation
+Sidebar folder selections and browser breadcrumbs MUST address the same canonical folder. The sidebar MUST display folders and conversation containers, with distinct personal, workspace, and shared roots. Shared branches MUST begin at an accessible entry, never its inaccessible ancestors.
+
+
+@cc [owner:id13,label:security] canonical-access-and-provenance
+Files MUST inherit canonical parent permissions by default and support explicit per-person and workspace role overrides, including no access. Custom access MUST stop parent inheritance. The owner MUST retain access. Viewer, Commenter, and Editor roles and individual email grants MUST persist across reloads. A reference MUST NOT grant access to its target. Shared runs MUST exclude sources unavailable to any member of their output audience. Sharing or moving a derived file MUST check its sources against the resulting audience. Moving into a narrower location MUST preserve existing access, and moves into descendants MUST be rejected.
+
+@cc [owner:id13,label:product] company-demo-workflows
+The demo MUST provide exactly two initial pods: the recurring Voice of Customer loop and the bounded Northstar tender. Manual and simulated event runs MUST produce inspectable conversations, maintained outputs, and source references. Repeated runs MUST NOT duplicate approved roadmap issues. The demo MUST persist serializable local state, validate restored data.
+
+
+@cc [owner:id13,label:product] populated-on-first-open
+The initial workspace MUST contain completed runs, conversations, outputs, and roadmap activity for both examples without requiring simulation or generation actions. Loading an older saved example MUST preserve user edits and avoid duplicating existing issues.
+
+
+@cc [owner:id13,label:product] context-picker-navigation
+The context picker MUST use an expandable Tree. Chevrons MUST expand or collapse containers, checkboxes MUST select context, and clicking a file name MUST open the next panel without discarding the tree or its selections. Search MUST preserve ancestors within the accessible scope, including Shared with me entry boundaries. Already linked folders MUST remain navigable. Uploads MUST be available directly in Files, with drag feedback only while files are over the view.
+
+
+@cc [owner:id13,label:product] trigger-files
+Triggers MUST be canonical files linked to a pod, with persisted event or schedule configuration, a selected agent, and a conversation message. Changing an enabled state MUST NOT change source access. Local runs MUST record the selected agent and prompt, respect pod audience restrictions, and remain explicitly simulated.
+
+
+@cc [owner:id13,label:product] existing-navigation-and-conversations
+The playground MUST preserve New Navigation’s Work, Build, and Admin navigation and its Inbox, Requests, Free conversations, Automated work, Starred, and Pods surfaces. Files MUST be added to this navigation. Conversation files MUST use ConversationView with structured messages and file citations, the usual conversation composer, and an adjacent files panel. Pod overview composers MUST remain in the header.
+
+@cc [owner:id13,label:product;security] stable-file-links
+Copied links MUST address a canonical file ID and reopen its file or folder panel. Sending a known file URL in a conversation MUST create a reference under the conversation without moving or sharing the target. Linked files MUST remain subject to the conversation audience’s access checks.
+
+
+@cc [owner:id13,label:product] consistent-file-explorer
+File explorers MUST display aligned name, type, editor, and update columns. Arrows MUST expand containers without navigating; folder names MUST navigate; other file names MUST open their primary view. Pod breadcrumbs MUST stay within linked roots, without introducing unlinked siblings through canonical ancestors. Conversation files MUST use Add files to link existing workspace files. A separate Browse files panel and drag-and-drop transfers within explorers MUST NOT be exposed. Text previews and upload destination pickers MUST NOT expose fullscreen controls.
+
+@cc [owner:id13,label:product] upload-previews
+Staged uploads and destination selection MUST share file preview cards with image thumbnails or text previews, full filenames, file types, and sizes. Destination selection MUST use the same explorer tree and metadata columns as the Files view. No files MUST be saved before the user confirms a destination.
+
+
+@cc [owner:id13,label:product] editable-file-sharing
+Sharing MUST list people and roles, support searching workspace people or entering an email, and separate general workspace access from individual grants. Role changes, removal, and inheritance changes MUST be staged until Save changes. Cancel MUST discard the draft. Shared links MUST resolve the target’s current access. No invitation email is sent by the playground.
+
+
+@cc [owner:id13,label:product] pods-without-lifecycle-types
+One-off and recurring work MUST remain examples rather than pod types. Pod headers MUST NOT display lifecycle classifications, and pods MUST NOT expose complete or reopen actions. Legacy completion flags MUST NOT block conversations or triggers.

@@ -4,7 +4,6 @@ import {
   Download01,
   ArrowRight,
   AttachmentChip,
-  Attachment01,
   Avatar,
   Zap,
   Button,
@@ -24,7 +23,6 @@ import {
   ImageZoomDialog,
   Input,
   Markdown,
-  DotsHorizontal,
   NotionLogo,
   Sheet,
   SheetContainer,
@@ -36,7 +34,7 @@ import {
   SlackLogo,
   Table,
 } from "@dust-tt/sparkle";
-import { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
+import type { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   type ReactNode,
   useCallback,
@@ -79,7 +77,7 @@ import type {
 } from "../data/types";
 import { getAgentById } from "../data/agents";
 import { getUserById } from "../data/users";
-import { InputBar } from "./InputBar";
+import { InputBar, type InputBarMessage } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
 
 // Map an inline file insert type onto the citation icon vocabulary so file
@@ -117,7 +115,14 @@ interface ConversationViewProps {
   /** When validationDisplayMode is "sheet", the validation content to show in the sheet (e.g. when user clicked Send). */
   pendingValidationForSheet?: ConversationPendingValidation | null;
   /** When set, citation clicks call this instead of opening the internal sheet. */
-  onCitationOpen?: (citation: { title: string; icon?: string }) => void;
+  onCitationOpen?: (citation: {
+    id?: string;
+    title: string;
+    icon?: string;
+  }) => void;
+  onSubmitMessage?: (message: InputBarMessage) => void;
+  agentLabel?: string;
+  onAgentClick?: () => void;
 }
 
 export function ConversationView({
@@ -133,6 +138,9 @@ export function ConversationView({
   onSend,
   pendingValidationForSheet,
   onCitationOpen,
+  onSubmitMessage,
+  agentLabel,
+  onAgentClick,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -162,11 +170,17 @@ export function ConversationView({
     isRenameDialogOpen,
   ]);
 
-  const getUserByOwnerId = (id: string): User | undefined =>
-    getUserById(id) || users.find((user) => user.id === id);
+  const getUserByOwnerId = useCallback(
+    (id: string): User | undefined =>
+      getUserById(id) || users.find((user) => user.id === id),
+    [users]
+  );
 
-  const getAgentByOwnerId = (id: string): Agent | undefined =>
-    getAgentById(id) || agents.find((agent) => agent.id === id);
+  const getAgentByOwnerId = useCallback(
+    (id: string): Agent | undefined =>
+      getAgentById(id) || agents.find((agent) => agent.id === id),
+    [agents]
+  );
 
   const itemsToDisplay: ConversationItem[] = useMemo(() => {
     if (conversation.messages && conversation.messages.length > 0) {
@@ -317,6 +331,8 @@ export function ConversationView({
     conversation.userParticipants,
     conversationsWithMessages,
     locutor.id,
+    getUserByOwnerId,
+    getAgentByOwnerId,
   ]);
 
   const baseReactionsById = useMemo(() => {
@@ -502,7 +518,7 @@ export function ConversationView({
     (file: FileInsertTarget) => {
       const icon = fileInsertTypeToCitationIcon(file.fileType);
       if (onCitationOpen) {
-        onCitationOpen({ title: file.title, icon });
+        onCitationOpen({ id: file.id, title: file.title, icon });
         return;
       }
       setSelectedCitation({
@@ -749,6 +765,7 @@ export function ConversationView({
               onClick={() => {
                 if (onCitationOpen) {
                   onCitationOpen({
+                    id: citation.id,
                     title: citation.title,
                     icon: citation.icon,
                   });
@@ -1006,6 +1023,9 @@ export function ConversationView({
           <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
             <div className="pointer-events-auto w-full max-w-4xl px-4 pb-2">
               <InputBar
+                onSubmitMessage={onSubmitMessage}
+                agentLabel={agentLabel}
+                onAgentClick={onAgentClick}
                 isFloating
                 onSend={validationDisplayMode === "sheet" ? onSend : undefined}
               />
@@ -1019,7 +1039,9 @@ export function ConversationView({
             open={isImageZoomOpen}
             onOpenChange={(open) => {
               setIsImageZoomOpen(open);
-              if (!open) setSelectedCitation(null);
+              if (!open) {
+                setSelectedCitation(null);
+              }
             }}
             image={{
               src: selectedCitation.imgSrc,
