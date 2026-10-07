@@ -1,11 +1,11 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
-  type GroupLimitError,
-  MAX_GROUP_LIMIT_AWU_CREDITS,
-  MIN_GROUP_LIMIT_AWU_CREDITS,
-  setGroupLimit,
-} from "@app/lib/api/groups/group_limit";
-import type { PutGroupLimitResponseBody } from "@app/types/api/groups/group_limit";
+  type SharedUsageLimitError,
+  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
+  MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
+  setGroupSharedUsageLimit,
+} from "@app/lib/api/groups/group_shared_usage_limit";
+import type { PutSharedUsageLimitResponseBody } from "@app/types/api/groups/shared_usage_limit";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -14,15 +14,15 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-const UpdateGroupLimitBodySchema = z.discriminatedUnion("kind", [
+const UpdateSharedUsageLimitBodySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("unlimited") }),
   z.object({
     kind: z.literal("limited"),
     awuCredits: z
       .number()
       .int()
-      .min(MIN_GROUP_LIMIT_AWU_CREDITS)
-      .max(MAX_GROUP_LIMIT_AWU_CREDITS),
+      .min(MIN_SHARED_USAGE_LIMIT_AWU_CREDITS)
+      .max(MAX_SHARED_USAGE_LIMIT_AWU_CREDITS),
   }),
 ]);
 
@@ -30,8 +30,8 @@ const ParamsSchema = z.object({
   groupId: z.string(),
 });
 
-function groupLimitErrorToApiError(
-  error: GroupLimitError
+function sharedUsageLimitErrorToApiError(
+  error: SharedUsageLimitError
 ): APIErrorWithContentfulStatusCode {
   switch (error.type) {
     case "group_not_found":
@@ -50,7 +50,7 @@ function groupLimitErrorToApiError(
         status_code: 403,
         api_error: { type: "workspace_auth_error", message: error.message },
       };
-    case "group_limits_not_enabled":
+    case "shared_usage_limits_not_enabled":
       return {
         status_code: 403,
         api_error: { type: "feature_flag_not_found", message: error.message },
@@ -60,26 +60,26 @@ function groupLimitErrorToApiError(
   }
 }
 
-// Mounted at /api/w/:wId/groups/:groupId/group_limit.
+// Mounted at /api/w/:wId/groups/:groupId/shared_usage_limit.
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.put(
   "/",
   validate("param", ParamsSchema),
-  validate("json", UpdateGroupLimitBodySchema),
+  validate("json", UpdateSharedUsageLimitBodySchema),
   ensureIsAdmin(),
-  async (ctx): HandlerResult<PutGroupLimitResponseBody> => {
+  async (ctx): HandlerResult<PutSharedUsageLimitResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
 
-    const result = await setGroupLimit(auth, {
+    const result = await setGroupSharedUsageLimit(auth, {
       groupId,
       limit: ctx.req.valid("json"),
       auditContext: getAuditLogContext(auth),
     });
     if (result.isErr()) {
-      return apiError(ctx, groupLimitErrorToApiError(result.error));
+      return apiError(ctx, sharedUsageLimitErrorToApiError(result.error));
     }
     return ctx.json(result.value);
   }

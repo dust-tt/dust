@@ -3,7 +3,7 @@ import {
   computeAndStoreAgentMessageCredits,
 } from "@app/lib/api/assistant/credit_cost";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import { recordGroupLimitUsage } from "@app/lib/api/groups/group_limit";
+import { recordSharedUsageLimitWithUsage } from "@app/lib/api/groups/group_shared_usage_limit";
 import {
   recordFreeSeatLifetimeUsage,
   recordUserSpendLimitUsage,
@@ -43,8 +43,8 @@ vi.mock(
   })
 );
 
-vi.mock("@app/lib/api/groups/group_limit", () => ({
-  recordGroupLimitUsage: vi.fn(),
+vi.mock("@app/lib/api/groups/group_shared_usage_limit", () => ({
+  recordSharedUsageLimitWithUsage: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/credits/auto_seat_upgrade", () => ({
@@ -506,17 +506,20 @@ async function finalizeMessageOfMember(seatType: MembershipSeatType) {
   return { member, agentMessageId: agentMessage.sId, costCredits };
 }
 
-describe("computeAndStoreAgentMessageCredits group limit recording", () => {
-  it("records a paid seat's usage to its limit group", async () => {
+describe("computeAndStoreAgentMessageCredits shared usage limit recording", () => {
+  it("records a paid seat's usage to its shared limit group", async () => {
     const { member, agentMessageId, costCredits } =
       await finalizeMessageOfMember("workspace");
 
     expect(costCredits).toBeGreaterThan(0);
-    expect(recordGroupLimitUsage).toHaveBeenCalledWith(expect.anything(), {
-      user: expect.objectContaining({ sId: member.sId }),
-      agentMessageId,
-      incrementBy: costCredits,
-    });
+    expect(recordSharedUsageLimitWithUsage).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        user: expect.objectContaining({ sId: member.sId }),
+        agentMessageId,
+        incrementBy: costCredits,
+      }
+    );
   });
 
   it("does not record a free seat's usage to any group", async () => {
@@ -524,6 +527,6 @@ describe("computeAndStoreAgentMessageCredits group limit recording", () => {
 
     expect(costCredits).toBeGreaterThan(0);
     expect(recordFreeSeatLifetimeUsage).toHaveBeenCalled();
-    expect(recordGroupLimitUsage).not.toHaveBeenCalled();
+    expect(recordSharedUsageLimitWithUsage).not.toHaveBeenCalled();
   });
 });

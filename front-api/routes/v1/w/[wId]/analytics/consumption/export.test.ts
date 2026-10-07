@@ -65,7 +65,7 @@ const MOCK_ES_DOC: AgentMessageConsumptionAnalyticsData = {
     id: "user-1",
     group_ids: [],
     seat_type: "pro",
-    limit_group_id: null,
+    shared_limit_group_id: null,
   },
   consumption_type: "llm",
   gross_credit_micro: {

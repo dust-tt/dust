@@ -500,7 +500,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
-  declare limitGroupModelId: ModelId | null;
+  declare sharedLimitGroupModelId: ModelId | null;
 
   // "paused": loop stopped after crossing the spend checkpoint, waiting on the user.
   // "acknowledged": user confirmed continuing, kept for the rest of the message's lifetime.
@@ -611,7 +611,7 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    limitGroupModelId: {
+    sharedLimitGroupModelId: {
       type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,

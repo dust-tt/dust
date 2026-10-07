@@ -266,8 +266,8 @@ msgid "You've reached your usage limit."
 msgstr "You've reached your usage limit."
 
 #: front/lib/api_error_messages.ts
-msgid "Your group has reached its usage limit."
-msgstr "Your group has reached its usage limit."
+msgid "Your group has reached its shared usage limit."
+msgstr "Your group has reached its shared usage limit."
 
 #: front/lib/api_error_messages.ts
 msgid "You don't have a seat in this workspace."

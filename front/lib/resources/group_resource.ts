@@ -34,7 +34,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
-import type { GroupLimitUsage } from "@app/types/api/groups/group_limit";
+import type { SharedUsageLimitWithUsage } from "@app/types/api/groups/shared_usage_limit";
 import type { GrantVerb } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
@@ -92,8 +92,8 @@ type CachedGroup = {
   workspaceId: ModelId;
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
-  groupLimitAwuCredits: number | null;
-  groupLimitPriority: number | null;
+  sharedUsageLimitAwuCredits: number | null;
+  sharedUsageLimitPriority: number | null;
   grantedRole: GroupGrantableRole | null;
   grantedSeatType: GroupGrantableSeatType | null;
   createdAt: number;
@@ -155,8 +155,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
-      groupLimitAwuCredits: g.groupLimitAwuCredits,
-      groupLimitPriority: g.groupLimitPriority,
+      sharedUsageLimitAwuCredits: g.sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority: g.sharedUsageLimitPriority,
       grantedRole: g.grantedRole,
       grantedSeatType: g.grantedSeatType,
       createdAt: g.createdAt.getTime(),
@@ -199,8 +199,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
-      groupLimitAwuCredits: data.groupLimitAwuCredits,
-      groupLimitPriority: data.groupLimitPriority,
+      sharedUsageLimitAwuCredits: data.sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority: data.sharedUsageLimitPriority,
       grantedRole: data.grantedRole,
       grantedSeatType: data.grantedSeatType,
       createdAt: new Date(data.createdAt),
@@ -1253,17 +1253,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
-  static async listLimitedGroups(
+  static async listGroupsWithSharedUsageLimit(
     auth: Authenticator
   ): Promise<GroupResource[]> {
     const groups = await GroupModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         kind: [...CAP_ELIGIBLE_GROUP_KINDS],
-        groupLimitAwuCredits: { [Op.ne]: null },
+        sharedUsageLimitAwuCredits: { [Op.ne]: null },
       },
       order: [
-        ["groupLimitPriority", "ASC"],
+        ["sharedUsageLimitPriority", "ASC"],
         ["id", "ASC"],
       ],
     });
@@ -1273,12 +1273,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:rfrenoy,label:security;product;backend] limit-group-drop-not-reassign
-   * Each member's limit group is resolved from memberships and priorities alone, and the `read`
-   * filter applies to that resolved group: a member whose limit group the caller cannot read MUST
+   * @cc [owner:rfrenoy,label:security;product;backend] shared-limit-group-drop-not-reassign
+   * Each member's shared limit group is resolved from memberships and priorities alone, and the `read`
+   * filter applies to that resolved group: a member whose shared limit group the caller cannot read MUST
    * be absent from the result, never attributed to the next readable group.
    */
-  static async listLimitGroupByUserModelIdInWorkspace(
+  static async listSharedLimitGroupByUserModelIdInWorkspace(
     auth: Authenticator,
     { userModelIds }: { userModelIds: ModelId[] }
   ): Promise<Map<ModelId, GroupResource>> {
@@ -1291,11 +1291,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         workspaceId: workspace.id,
         kind: [...CAP_ELIGIBLE_GROUP_KINDS],
-        groupLimitAwuCredits: { [Op.ne]: null },
-        groupLimitPriority: { [Op.ne]: null },
+        sharedUsageLimitAwuCredits: { [Op.ne]: null },
+        sharedUsageLimitPriority: { [Op.ne]: null },
       },
       order: [
-        ["groupLimitPriority", "ASC"],
+        ["sharedUsageLimitPriority", "ASC"],
         ["id", "ASC"],
       ],
     });
@@ -2478,37 +2478,39 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:rfrenoy,label:product;backend] group-limit-columns-paired
-   * `groupLimitAwuCredits` and `groupLimitPriority` MUST be both null or both non-null, and MUST
-   * only be written by this method. A group is "limited" iff `groupLimitAwuCredits IS NOT NULL`
+   * @cc [owner:rfrenoy,label:product;backend] group-shared-usage-limit-columns-paired
+   * `sharedUsageLimitAwuCredits` and `sharedUsageLimitPriority` MUST be both null or both non-null, and MUST
+   * only be written by this method. A group is "limited" iff `sharedUsageLimitAwuCredits IS NOT NULL`
    */
-  async updateGroupLimit(groupLimitAwuCredits: number | null): Promise<void> {
-    if (groupLimitAwuCredits === null) {
+  async updateSharedUsageLimit(
+    sharedUsageLimitAwuCredits: number | null
+  ): Promise<void> {
+    if (sharedUsageLimitAwuCredits === null) {
       await this.update({
-        groupLimitAwuCredits: null,
-        groupLimitPriority: null,
+        sharedUsageLimitAwuCredits: null,
+        sharedUsageLimitPriority: null,
       });
       return;
     }
 
-    if (this.groupLimitPriority !== null) {
-      await this.update({ groupLimitAwuCredits });
+    if (this.sharedUsageLimitPriority !== null) {
+      await this.update({ sharedUsageLimitAwuCredits });
       return;
     }
 
     const maxPriority = await GroupModel.max<number | null, GroupModel>(
-      "groupLimitPriority",
+      "sharedUsageLimitPriority",
       {
         where: {
           workspaceId: this.workspaceId,
-          groupLimitPriority: { [Op.ne]: null },
+          sharedUsageLimitPriority: { [Op.ne]: null },
         },
       }
     );
 
     await this.update({
-      groupLimitAwuCredits,
-      groupLimitPriority: (maxPriority ?? 0) + 1,
+      sharedUsageLimitAwuCredits,
+      sharedUsageLimitPriority: (maxPriority ?? 0) + 1,
     });
   }
 
@@ -3561,14 +3563,14 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // JSON Serialization
 
-  toGroupLimitUsageJSON({
+  toSharedUsageLimitJSON({
     usedAwuCredits,
   }: {
     usedAwuCredits: number;
-  }): GroupLimitUsage {
+  }): SharedUsageLimitWithUsage {
     return {
       groupId: this.sId,
-      limitAwuCredits: this.groupLimitAwuCredits ?? 0,
+      limitAwuCredits: this.sharedUsageLimitAwuCredits ?? 0,
       usedAwuCredits,
     };
   }

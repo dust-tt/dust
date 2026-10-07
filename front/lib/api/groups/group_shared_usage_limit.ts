@@ -1,5 +1,5 @@
 import {
-  makeGroupLimitAwuCreditsRateLimitKeyForGroup,
+  makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
 import {
@@ -34,9 +34,9 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
-  GroupLimit,
-  SetGroupLimitResponse,
-} from "@app/types/api/groups/group_limit";
+  SharedUsageLimit,
+  SetSharedUsageLimitResponse,
+} from "@app/types/api/groups/shared_usage_limit";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
@@ -44,19 +44,19 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 
-export const MIN_GROUP_LIMIT_AWU_CREDITS = 0;
-export const MAX_GROUP_LIMIT_AWU_CREDITS = 100_000_000;
+export const MIN_SHARED_USAGE_LIMIT_AWU_CREDITS = 0;
+export const MAX_SHARED_USAGE_LIMIT_AWU_CREDITS = 100_000_000;
 
-type GroupLimitErrorType =
-  | "group_limits_not_enabled"
+type SharedUsageLimitErrorType =
+  | "shared_usage_limits_not_enabled"
   | "group_not_found"
   | "invalid_group_kind"
   | "invalid_threshold"
   | "unauthorized";
 
-export class GroupLimitError extends Error {
+export class SharedUsageLimitError extends Error {
   constructor(
-    readonly type: GroupLimitErrorType,
+    readonly type: SharedUsageLimitErrorType,
     message: string
   ) {
     super(message);
@@ -64,13 +64,13 @@ export class GroupLimitError extends Error {
 }
 
 /**
- * @cc [owner:rfrenoy,label:product;security] group-limit-pooled-only
- * Group limits MUST only apply when the `group_limits` flag is on and the workspace is credit-priced
+ * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-pooled-only
+ * Shared usage limits MUST only apply when the `group_limits` flag is on and the workspace is credit-priced
  * on a pool-only contract (no sold seat type carries personal credits). Every group-limit entry point
- * (setting a limit, recording, enforcement, UI data) MUST gate on this function. Group limit values
+ * (setting a limit, recording, enforcement, UI data) MUST gate on this function. Shared usage limit values
  * MUST NOT be serialized outside endpoints gated on this function (they are not part of `GroupType`).
  */
-export async function areGroupLimitsEnabled(
+export async function areGroupSharedUsageLimitsEnabled(
   auth: Authenticator
 ): Promise<boolean> {
   const owner = auth.getNonNullableWorkspace();
@@ -93,11 +93,11 @@ export async function areGroupLimitsEnabled(
 }
 
 /**
- * @cc [owner:rfrenoy,label:product;security] group-limit-admin-only-edit
- * Only workspace admins MAY set or remove a group limit. Group managers' `set_usage_limits`
+ * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-admin-only-edit
+ * Only workspace admins MAY set or remove a shared usage limit. Group managers' `set_usage_limits`
  * MUST NOT grant it (it only covers the per-member limit).
  */
-export async function setGroupLimit(
+export async function setGroupSharedUsageLimit(
   auth: Authenticator,
   {
     groupId,
@@ -105,24 +105,24 @@ export async function setGroupLimit(
     auditContext,
   }: {
     groupId: string;
-    limit: GroupLimit;
+    limit: SharedUsageLimit;
     auditContext: AuditLogContext;
   }
-): Promise<Result<SetGroupLimitResponse, GroupLimitError>> {
+): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
   if (!auth.isAdmin()) {
     return new Err(
-      new GroupLimitError(
+      new SharedUsageLimitError(
         "unauthorized",
-        "Only workspace admins can change group limits."
+        "Only workspace admins can change shared usage limits."
       )
     );
   }
 
-  if (!(await areGroupLimitsEnabled(auth))) {
+  if (!(await areGroupSharedUsageLimitsEnabled(auth))) {
     return new Err(
-      new GroupLimitError(
-        "group_limits_not_enabled",
-        "Group limits are not available for this workspace."
+      new SharedUsageLimitError(
+        "shared_usage_limits_not_enabled",
+        "Shared usage limits are not available for this workspace."
       )
     );
   }
@@ -130,13 +130,13 @@ export async function setGroupLimit(
   if (
     limit.kind === "limited" &&
     (!Number.isInteger(limit.awuCredits) ||
-      limit.awuCredits < MIN_GROUP_LIMIT_AWU_CREDITS ||
-      limit.awuCredits > MAX_GROUP_LIMIT_AWU_CREDITS)
+      limit.awuCredits < MIN_SHARED_USAGE_LIMIT_AWU_CREDITS ||
+      limit.awuCredits > MAX_SHARED_USAGE_LIMIT_AWU_CREDITS)
   ) {
     return new Err(
-      new GroupLimitError(
+      new SharedUsageLimitError(
         "invalid_threshold",
-        `awuCredits must be an integer between ${MIN_GROUP_LIMIT_AWU_CREDITS} and ${MAX_GROUP_LIMIT_AWU_CREDITS}`
+        `awuCredits must be an integer between ${MIN_SHARED_USAGE_LIMIT_AWU_CREDITS} and ${MAX_SHARED_USAGE_LIMIT_AWU_CREDITS}`
       )
     );
   }
@@ -144,7 +144,7 @@ export async function setGroupLimit(
   const groupRes = await GroupResource.fetchById(auth, groupId);
   if (groupRes.isErr()) {
     return new Err(
-      new GroupLimitError(
+      new SharedUsageLimitError(
         "group_not_found",
         "Could not find the group in this workspace."
       )
@@ -154,22 +154,22 @@ export async function setGroupLimit(
 
   if (!isCapEligibleGroupKind(group.kind)) {
     return new Err(
-      new GroupLimitError(
+      new SharedUsageLimitError(
         "invalid_group_kind",
-        `Group of kind '${group.kind}' cannot carry a group limit.`
+        `Group of kind '${group.kind}' cannot carry a shared usage limit.`
       )
     );
   }
 
-  const previousAwuCredits = group.groupLimitAwuCredits;
+  const previousAwuCredits = group.sharedUsageLimitAwuCredits;
 
-  await group.updateGroupLimit(
+  await group.updateSharedUsageLimit(
     limit.kind === "limited" ? limit.awuCredits : null
   );
 
   void emitAuditLogEvent({
     auth,
-    action: "group.group_limit_updated",
+    action: "group.shared_usage_limit_updated",
     targets: [
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("group", { sId: group.sId, name: group.name }),
@@ -189,57 +189,60 @@ export async function setGroupLimit(
 }
 
 /**
- * @cc [owner:rfrenoy,label:product;backend] limit-group-resolution
- * A member's limit group is, among their active memberships in cap-eligible groups that have a group
- * limit, the one with the lowest `groupLimitPriority`. Enforcement, UI data and the first recording of
- * a message MUST resolve it through this function. Returns nothing when group limits are not enabled.
+ * @cc [owner:rfrenoy,label:product;backend] shared-limit-group-resolution
+ * A member's shared limit group is, among their active memberships in cap-eligible groups that have a shared
+ * usage limit, the one with the lowest `sharedUsageLimitPriority`. Enforcement, UI data and the first recording of
+ * a message MUST resolve it through this function. Returns nothing when shared usage limits are not enabled.
  *
- * Returns each resolved member's limit group keyed by the member's sId; members without one, or whose
- * limit group the caller cannot `read`, are absent.
+ * Returns each resolved member's shared limit group keyed by the member's sId; members without one, or whose
+ * shared limit group the caller cannot `read`, are absent.
  */
-export async function resolveLimitGroupsForUsers(
+export async function resolveSharedLimitGroupsForUsers(
   auth: Authenticator,
   { users }: { users: UserResource[] }
 ): Promise<Map<string, GroupResource>> {
-  if (!(await areGroupLimitsEnabled(auth))) {
+  if (!(await areGroupSharedUsageLimitsEnabled(auth))) {
     return new Map();
   }
 
-  const limitGroupByUserModelId =
-    await GroupResource.listLimitGroupByUserModelIdInWorkspace(auth, {
+  const sharedLimitGroupByUserModelId =
+    await GroupResource.listSharedLimitGroupByUserModelIdInWorkspace(auth, {
       userModelIds: users.map((user) => user.id),
     });
 
-  const limitGroupByUserId = new Map<string, GroupResource>();
+  const sharedLimitGroupByUserId = new Map<string, GroupResource>();
   for (const user of users) {
-    const limitGroup = limitGroupByUserModelId.get(user.id);
-    if (limitGroup) {
-      limitGroupByUserId.set(user.sId, limitGroup);
+    const sharedLimitGroup = sharedLimitGroupByUserModelId.get(user.id);
+    if (sharedLimitGroup) {
+      sharedLimitGroupByUserId.set(user.sId, sharedLimitGroup);
     }
   }
-  return limitGroupByUserId;
+  return sharedLimitGroupByUserId;
 }
 
-export async function resolveLimitGroupForUser(
+export async function resolveSharedLimitGroupForUser(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<GroupResource | null> {
-  const limitGroups = await resolveLimitGroupsForUsers(auth, {
+  const sharedLimitGroups = await resolveSharedLimitGroupsForUsers(auth, {
     users: [user],
   });
-  return limitGroups.get(user.sId) ?? null;
+  return sharedLimitGroups.get(user.sId) ?? null;
 }
 
 /**
- * Whether the member's limit group has used its whole limit for the current cycle. Fails open (not
+ * Whether the member's shared limit group has used its whole limit for the current cycle. Fails open (not
  * blocked) when the cycle or the counter cannot be read.
  */
-export async function isGroupLimitReached(
+export async function isGroupSharedUsageLimitReached(
   auth: Authenticator,
   { user }: { user: UserResource }
 ): Promise<boolean> {
-  const limitGroup = await resolveLimitGroupForUser(auth, { user });
-  if (!limitGroup || limitGroup.groupLimitAwuCredits === null) {
+  const sharedLimitGroup = await resolveSharedLimitGroupForUser(auth, { user });
+  if (
+    !sharedLimitGroup ||
+    sharedLimitGroup.sharedUsageLimitAwuCredits === null
+  ) {
     return false;
   }
 
@@ -249,19 +252,25 @@ export async function isGroupLimitReached(
     return false;
   }
 
-  const count = await readGroupLimitCount(auth, { group: limitGroup, bounds });
+  const count = await readGroupSharedUsageCount(auth, {
+    group: sharedLimitGroup,
+    bounds,
+  });
   if (count === null) {
     logger.warn(
-      { workspaceId: workspace.sId, groupId: limitGroup.sId },
-      "[GroupLimit] Failed to read group limit count; allowing message"
+      { workspaceId: workspace.sId, groupId: sharedLimitGroup.sId },
+      "[SharedUsageLimit] Failed to read shared usage limit count; allowing message"
     );
     return false;
   }
 
-  return count >= roundCreditsToMicroCredits(limitGroup.groupLimitAwuCredits);
+  return (
+    count >=
+    roundCreditsToMicroCredits(sharedLimitGroup.sharedUsageLimitAwuCredits)
+  );
 }
 
-export async function recordGroupLimitUsage(
+export async function recordSharedUsageLimitWithUsage(
   auth: Authenticator,
   {
     user,
@@ -272,34 +281,34 @@ export async function recordGroupLimitUsage(
   if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
     return;
   }
-  if (!(await areGroupLimitsEnabled(auth))) {
+  if (!(await areGroupSharedUsageLimitsEnabled(auth))) {
     return;
   }
 
-  const agentMessage = await ConversationResource.fetchAgentMessageLimitGroup(
-    auth,
-    { agentMessageId }
-  );
+  const agentMessage =
+    await ConversationResource.fetchAgentMessageSharedLimitGroup(auth, {
+      agentMessageId,
+    });
   if (!agentMessage) {
     return;
   }
 
-  let limitGroup: GroupResource | null;
-  if (agentMessage.limitGroupModelId !== null) {
+  let sharedLimitGroup: GroupResource | null;
+  if (agentMessage.sharedLimitGroupModelId !== null) {
     const [storedGroup] = await GroupResource.dangerouslyFetchByModelIds(auth, [
-      agentMessage.limitGroupModelId,
+      agentMessage.sharedLimitGroupModelId,
     ]);
-    limitGroup = storedGroup ?? null;
+    sharedLimitGroup = storedGroup ?? null;
   } else {
-    limitGroup = await resolveLimitGroupForUser(auth, { user });
-    if (limitGroup) {
-      await ConversationResource.setAgentMessageLimitGroup(auth, {
+    sharedLimitGroup = await resolveSharedLimitGroupForUser(auth, { user });
+    if (sharedLimitGroup) {
+      await ConversationResource.setAgentMessageSharedLimitGroup(auth, {
         agentMessageModelId: agentMessage.agentMessageModelId,
-        limitGroupModelId: limitGroup.id,
+        sharedLimitGroupModelId: sharedLimitGroup.id,
       });
     }
   }
-  if (!limitGroup) {
+  if (!sharedLimitGroup) {
     return;
   }
 
@@ -309,31 +318,34 @@ export async function recordGroupLimitUsage(
     return;
   }
 
-  await readGroupLimitCount(auth, { group: limitGroup, bounds });
+  await readGroupSharedUsageCount(auth, { group: sharedLimitGroup, bounds });
 
   await addFixedWindowCount({
-    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, limitGroup),
+    key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(
+      workspace,
+      sharedLimitGroup
+    ),
     bounds,
     incrementBy: roundCreditsToMicroCredits(incrementBy),
     logger,
   });
 }
 
-type LimitGroupConsumedBucket = {
+type SharedLimitGroupConsumedBucket = {
   key: string;
   credits?: estypes.AggregationsSumAggregate;
 };
 
-type LimitGroupConsumedAggs = {
-  by_limit_group?: estypes.AggregationsMultiBucketAggregateBase<LimitGroupConsumedBucket>;
+type SharedLimitGroupConsumedAggs = {
+  by_shared_limit_group?: estypes.AggregationsMultiBucketAggregateBase<SharedLimitGroupConsumedBucket>;
 };
 
 /**
- * Microcredits consumed this billing cycle by the messages recorded to each limit group, keyed by
+ * Microcredits consumed this billing cycle by the messages recorded to each shared limit group, keyed by
  * group sId (groups without consumption are absent). Returns null when the cycle or the analytics
  * index cannot be read, so callers never mistake a failed read for zero usage.
  */
-async function fetchConsumedMicroCreditsByLimitGroupId({
+async function fetchConsumedMicroCreditsBySharedLimitGroupId({
   workspace,
   groupIds,
   cycle,
@@ -354,13 +366,13 @@ async function fetchConsumedMicroCreditsByLimitGroupId({
 
   const result = await searchConsumptionAnalytics<
     never,
-    LimitGroupConsumedAggs
+    SharedLimitGroupConsumedAggs
   >(
     {
       bool: {
         filter: [
           { term: { workspace_id: workspace.sId } },
-          { terms: { "user.limit_group_id": groupIds } },
+          { terms: { "user.shared_limit_group_id": groupIds } },
           {
             range: {
               completed_at: {
@@ -374,9 +386,9 @@ async function fetchConsumedMicroCreditsByLimitGroupId({
     },
     {
       aggregations: {
-        by_limit_group: {
+        by_shared_limit_group: {
           terms: {
-            field: "user.limit_group_id",
+            field: "user.shared_limit_group_id",
             size: Math.max(1, groupIds.length),
           },
           aggs: { credits: { sum: { field: "credit_micro" } } },
@@ -388,14 +400,14 @@ async function fetchConsumedMicroCreditsByLimitGroupId({
   if (result.isErr()) {
     logger.warn(
       { err: result.error, workspaceId: workspace.sId },
-      "[GroupLimit] Failed to read per-limit-group consumed credits from analytics index"
+      "[SharedUsageLimit] Failed to read per-limit-group consumed credits from analytics index"
     );
     return null;
   }
 
   const consumedByGroupId = new Map<string, number>();
-  for (const bucket of bucketsToArray<LimitGroupConsumedBucket>(
-    result.value.aggregations?.by_limit_group?.buckets
+  for (const bucket of bucketsToArray<SharedLimitGroupConsumedBucket>(
+    result.value.aggregations?.by_shared_limit_group?.buckets
   )) {
     consumedByGroupId.set(
       String(bucket.key),
@@ -409,20 +421,21 @@ async function fetchConsumedMicroCreditsByLimitGroupId({
  * Reads a group's limit counter (microcredits) for the cycle, seeding it from the analytics index
  * when it reads as 0 (absent key: new cycle, eviction). Returns null on a Redis read error.
  */
-export async function readGroupLimitCount(
+export async function readGroupSharedUsageCount(
   auth: Authenticator,
   { group, bounds }: { group: GroupResource; bounds: FixedWindowBounds }
 ): Promise<number | null> {
   const workspace = auth.getNonNullableWorkspace();
   return readFixedWindowCountWithLazySeed({
-    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
     bounds,
     logger,
     fetchSeedValue: async () => {
-      const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
-        workspace,
-        groupIds: [group.sId],
-      });
+      const consumedByGroupId =
+        await fetchConsumedMicroCreditsBySharedLimitGroupId({
+          workspace,
+          groupIds: [group.sId],
+        });
       return consumedByGroupId === null
         ? null
         : (consumedByGroupId.get(group.sId) ?? 0);
@@ -431,19 +444,19 @@ export async function readGroupLimitCount(
 }
 
 /**
- * Each limited group with its usage this cycle, or null when group limits are not enabled. Reads
+ * Each limited group with its usage this cycle, or null when shared usage limits are not enabled. Reads
  * the counters without seeding them; groups whose counter reads 0 are filled from a single
  * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
  */
-export async function getGroupLimitsUsage(
+export async function getGroupSharedUsageLimits(
   auth: Authenticator
 ): Promise<{ group: GroupResource; usedAwuCredits: number }[] | null> {
-  if (!(await areGroupLimitsEnabled(auth))) {
+  if (!(await areGroupSharedUsageLimitsEnabled(auth))) {
     return null;
   }
 
   const [groups, bounds] = await Promise.all([
-    GroupResource.listLimitedGroups(auth),
+    GroupResource.listGroupsWithSharedUsageLimit(auth),
     resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
   ]);
 
@@ -454,7 +467,10 @@ export async function getGroupLimitsUsage(
       groups,
       async (group) => {
         const count = await getFixedWindowCount({
-          key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+          key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(
+            workspace,
+            group
+          ),
           bounds,
         });
         return { groupId: group.sId, count: count.isOk() ? count.value : 0 };
@@ -470,10 +486,11 @@ export async function getGroupLimitsUsage(
     const uncountedGroupIds = groups
       .map((group) => group.sId)
       .filter((groupId) => !countByGroupId.has(groupId));
-    const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
-      workspace,
-      groupIds: uncountedGroupIds,
-    });
+    const consumedByGroupId =
+      await fetchConsumedMicroCreditsBySharedLimitGroupId({
+        workspace,
+        groupIds: uncountedGroupIds,
+      });
     for (const [groupId, consumed] of consumedByGroupId ?? []) {
       countByGroupId.set(groupId, consumed);
     }
@@ -489,14 +506,14 @@ export async function getGroupLimitsUsage(
  * Overwrites each limited group's counter for the current cycle with its analytics-index total.
  * Skips the write entirely when the index cannot be read, so an outage never erases live counters.
  */
-export async function resyncGroupLimitCountersFromEsUsage(
+export async function resyncGroupSharedUsageCountersFromEsUsage(
   auth: Authenticator
 ): Promise<Result<{ updatedGroupCount: number }, Error>> {
-  if (!(await areGroupLimitsEnabled(auth))) {
+  if (!(await areGroupSharedUsageLimitsEnabled(auth))) {
     return new Ok({ updatedGroupCount: 0 });
   }
 
-  const groups = await GroupResource.listLimitedGroups(auth);
+  const groups = await GroupResource.listGroupsWithSharedUsageLimit(auth);
   if (groups.length === 0) {
     return new Ok({ updatedGroupCount: 0 });
   }
@@ -509,11 +526,13 @@ export async function resyncGroupLimitCountersFromEsUsage(
     );
   }
 
-  const consumedByGroupId = await fetchConsumedMicroCreditsByLimitGroupId({
-    workspace,
-    groupIds: groups.map((group) => group.sId),
-    cycle,
-  });
+  const consumedByGroupId = await fetchConsumedMicroCreditsBySharedLimitGroupId(
+    {
+      workspace,
+      groupIds: groups.map((group) => group.sId),
+      cycle,
+    }
+  );
   if (consumedByGroupId === null) {
     return new Err(
       new Error(
@@ -530,7 +549,10 @@ export async function resyncGroupLimitCountersFromEsUsage(
     groups,
     async (group) => {
       const setResult = await setFixedWindowCount({
-        key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+        key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(
+          workspace,
+          group
+        ),
         bounds,
         value: consumedByGroupId.get(group.sId) ?? 0,
         logger,

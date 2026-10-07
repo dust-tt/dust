@@ -909,14 +909,6 @@ msgstr "Browser Extension Tools"
 msgid "Whether the Dust browser extension is allowed to list and read browser tabs."
 msgstr "Whether the Dust browser extension is allowed to list and read browser tabs."
 
-#: front/components/workspace/GroupLimitUsageCell.tsx
-msgid "Group limit usage"
-msgstr "Group limit usage"
-
-#: front/components/workspace/GroupLimitUsageCell.tsx
-msgid "{usedLabel} of {limitLabel} credits used"
-msgstr "{usedLabel} of {limitLabel} credits used"
-
 #: front/components/workspace/GroupSeatPickerDropdown.tsx
 msgid "Remove group seat"
 msgstr "Remove group seat"
@@ -962,8 +954,8 @@ msgid "Spend limit"
 msgstr "Spend limit"
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "Group limit"
-msgstr "Group limit"
+msgid "Shared limit"
+msgstr "Shared limit"
 
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx
@@ -975,8 +967,8 @@ msgid "A group's monthly spend limit applies to each of its members. When a memb
 msgstr "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "A group limit is shared by the members who draw from the group."
-msgstr "A group limit is shared by the members who draw from the group."
+msgid "A shared limit caps what all the group's members spend together."
+msgstr "A shared limit caps what all the group's members spend together."
 
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Limit"
@@ -1500,6 +1492,14 @@ msgstr "This will add an estimated <0>{extra}</0> to your next invoice — you'l
 #: front/components/workspace/SeatCard.tsx
 msgid "This will not change your invoice."
 msgstr "This will not change your invoice."
+
+#: front/components/workspace/SharedUsageLimitCell.tsx
+msgid "Shared limit usage"
+msgstr "Shared limit usage"
+
+#: front/components/workspace/SharedUsageLimitCell.tsx
+msgid "{usedLabel} of {limitLabel} credits used"
+msgstr "{usedLabel} of {limitLabel} credits used"
 
 #: front/components/workspace/TopUpsHistoryTable.tsx
 msgid "Date"

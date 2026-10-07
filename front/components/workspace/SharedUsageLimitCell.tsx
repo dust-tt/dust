@@ -4,15 +4,15 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import { formatCredits } from "@app/lib/client/credits";
-import type { GroupLimitUsage } from "@app/types/api/groups/group_limit";
+import type { SharedUsageLimitWithUsage } from "@app/types/api/groups/shared_usage_limit";
 import { ProgressBar } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
-interface GroupLimitUsageCellProps {
-  usage: GroupLimitUsage | undefined;
+interface SharedUsageLimitCellProps {
+  usage: SharedUsageLimitWithUsage | undefined;
 }
 
-export function GroupLimitUsageCell({ usage }: GroupLimitUsageCellProps) {
+export function SharedUsageLimitCell({ usage }: SharedUsageLimitCellProps) {
   const { t } = useLingui();
 
   if (!usage) {
@@ -39,7 +39,7 @@ export function GroupLimitUsageCell({ usage }: GroupLimitUsageCellProps) {
       </div>
       <div className="flex h-3 w-full items-center">
         <ProgressBar
-          aria-label={t`Group limit usage`}
+          aria-label={t`Shared limit usage`}
           aria-valuenow={percentage}
           aria-valuetext={t`${usedLabel} of ${limitLabel} credits used`}
           className="h-1 w-full gap-px"

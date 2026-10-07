@@ -2020,7 +2020,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "plan_message_limit_exceeded"
   | "credits_exhausted"
   | "user_cap_reached"
-  | "group_limit_reached"
+  | "group_shared_usage_limit_reached"
   | "plugin_execution_failed"
   | "plugin_not_found"
   | "provider_auth_error"

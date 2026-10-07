@@ -1,5 +1,5 @@
 import {
-  makeGroupLimitAwuCreditsRateLimitKeyForGroup,
+  makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
 import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
@@ -74,10 +74,10 @@ beforeEach(() => {
   mockActiveContract(POOL_ONLY_SEATS);
   vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
   vi.mocked(resolveMetronomeCycle).mockResolvedValue(CYCLE);
-  mockConsumedByLimitGroup([]);
+  mockConsumedBySharedLimitGroup([]);
 });
 
-function mockConsumedByLimitGroup(
+function mockConsumedBySharedLimitGroup(
   consumed: { group: GroupResource; microCredits: number }[]
 ) {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
@@ -87,7 +87,7 @@ function mockConsumedByLimitGroup(
       _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
       hits: { total: { value: 0, relation: "eq" }, hits: [] },
       aggregations: {
-        by_limit_group: {
+        by_shared_limit_group: {
           buckets: consumed.map(({ group, microCredits }) => ({
             key: group.sId,
             credits: { value: microCredits },
@@ -98,7 +98,7 @@ function mockConsumedByLimitGroup(
   );
 }
 
-async function groupLimitsWorkspace({
+async function sharedUsageLimitsWorkspace({
   withFlag = true,
 }: {
   withFlag?: boolean;
@@ -119,12 +119,12 @@ async function makeLimitedGroup(
   { awuCredits, priority }: { awuCredits: number; priority: number }
 ) {
   const group = await GroupFactory.regularManual(workspace, name);
-  await GroupFactory.withRawGroupLimit(group, {
-    groupLimitAwuCredits: awuCredits,
-    groupLimitPriority: priority,
+  await GroupFactory.withRawSharedUsageLimit(group, {
+    sharedUsageLimitAwuCredits: awuCredits,
+    sharedUsageLimitPriority: priority,
   });
   const expired = await expireRateLimiterKey({
-    key: `${makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group)}:${BOUNDS.label}`,
+    key: `${makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(workspace, group)}:${BOUNDS.label}`,
   });
   if (expired.isErr()) {
     throw expired.error;
@@ -138,7 +138,7 @@ async function setCounter(
   microCredits: number
 ) {
   const result = await setFixedWindowCount({
-    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
     bounds: BOUNDS,
     value: microCredits,
     logger,
@@ -153,7 +153,7 @@ async function readCounter(
   group: GroupResource
 ) {
   const result = await getFixedWindowCount({
-    key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+    key: makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
     bounds: BOUNDS,
   });
   if (result.isErr()) {
@@ -168,7 +168,7 @@ function getGroupsUsage(wId: string) {
 
 describe("GET /api/w/[wId]/credits/groups-usage", () => {
   it("reports each limited group's limit and usage this cycle", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const engineering = await makeLimitedGroup(workspace, "Engineering", {
       awuCredits: 10_000,
       priority: 1,
@@ -183,7 +183,9 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
     });
     await GroupFactory.regularManual(workspace, "Marketing");
     await setCounter(workspace, engineering, 2_500_000_000);
-    mockConsumedByLimitGroup([{ group: sales, microCredits: 500_000_000 }]);
+    mockConsumedBySharedLimitGroup([
+      { group: sales, microCredits: 500_000_000 },
+    ]);
     await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -207,7 +209,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
   });
 
   it("fills every group without a counter from a single analytics query, without seeding", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const engineering = await makeLimitedGroup(workspace, "Engineering", {
       awuCredits: 10_000,
       priority: 1,
@@ -216,7 +218,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
       awuCredits: 6_000,
       priority: 2,
     });
-    mockConsumedByLimitGroup([
+    mockConsumedBySharedLimitGroup([
       { group: engineering, microCredits: 2_000_000_000 },
       { group: sales, microCredits: 500_000_000 },
     ]);
@@ -235,7 +237,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
   });
 
   it("reports no usage when the analytics index cannot be read", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const engineering = await makeLimitedGroup(workspace, "Engineering", {
       awuCredits: 10_000,
       priority: 1,
@@ -264,7 +266,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
   });
 
   it("reports no usage when the billing cycle is unknown", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const engineering = await makeLimitedGroup(workspace, "Engineering", {
       awuCredits: 10_000,
       priority: 1,
@@ -293,7 +295,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
   });
 
   it.each(["user", "manager"] as const)("refuses a %s", async (role) => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     await createPrivateApiMockRequest({ method: "GET", role, workspace });
 
     const response = await getGroupsUsage(workspace.sId);
@@ -301,8 +303,8 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
     expect(response.status).toBe(403);
   });
 
-  it("returns 403 when group limits are not enabled", async () => {
-    const workspace = await groupLimitsWorkspace({ withFlag: false });
+  it("returns 403 when shared usage limits are not enabled", async () => {
+    const workspace = await sharedUsageLimitsWorkspace({ withFlag: false });
     await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",

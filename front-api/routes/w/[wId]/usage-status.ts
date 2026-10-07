@@ -86,7 +86,7 @@ app.get(
       isNearOrAtLimit:
         userNearCreditLimit ||
         (userBlockedReason !== null &&
-          userBlockedReason !== "group_limit_reached"),
+          userBlockedReason !== "group_shared_usage_limit_reached"),
     });
 
     return ctx.json({

@@ -32,7 +32,7 @@ beforeEach(() => {
   mockActiveContract(POOL_ONLY_SEATS);
 });
 
-async function groupLimitsWorkspace({
+async function sharedUsageLimitsWorkspace({
   withFlag = true,
 }: {
   withFlag?: boolean;
@@ -47,21 +47,21 @@ async function groupLimitsWorkspace({
   return workspace;
 }
 
-function putGroupLimit(
+function putSharedUsageLimit(
   wId: string,
   groupId: string,
   body: Record<string, unknown>
 ) {
-  return honoApp.request(`/api/w/${wId}/groups/${groupId}/group_limit`, {
+  return honoApp.request(`/api/w/${wId}/groups/${groupId}/shared_usage_limit`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
-  it("lets an admin set a group limit", async () => {
-    const workspace = await groupLimitsWorkspace();
+describe("PUT /api/w/[wId]/groups/[groupId]/shared_usage_limit", () => {
+  it("lets an admin set a shared usage limit", async () => {
+    const workspace = await sharedUsageLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     const { auth } = await createPrivateApiMockRequest({
       method: "PUT",
@@ -69,7 +69,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
       workspace,
     });
 
-    const response = await putGroupLimit(workspace.sId, group.sId, {
+    const response = await putSharedUsageLimit(workspace.sId, group.sId, {
       kind: "limited",
       awuCredits: 10_000,
     });
@@ -82,12 +82,12 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
     if (reloaded.isErr()) {
       throw reloaded.error;
     }
-    expect(reloaded.value.groupLimitAwuCredits).toBe(10_000);
-    expect(reloaded.value.groupLimitPriority).toBe(1);
+    expect(reloaded.value.sharedUsageLimitAwuCredits).toBe(10_000);
+    expect(reloaded.value.sharedUsageLimitPriority).toBe(1);
   });
 
   it("refuses a workspace manager", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
@@ -95,7 +95,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
       workspace,
     });
 
-    const response = await putGroupLimit(workspace.sId, group.sId, {
+    const response = await putSharedUsageLimit(workspace.sId, group.sId, {
       kind: "limited",
       awuCredits: 10_000,
     });
@@ -104,7 +104,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("refuses a group manager of that group", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     const { user: delegate } = await createPrivateApiMockRequest({
       method: "PUT",
@@ -123,7 +123,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
     });
     expect(grant.isOk()).toBe(true);
 
-    const response = await putGroupLimit(workspace.sId, group.sId, {
+    const response = await putSharedUsageLimit(workspace.sId, group.sId, {
       kind: "limited",
       awuCredits: 10_000,
     });
@@ -132,7 +132,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("returns 400 on an invalid amount", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
@@ -140,7 +140,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
       workspace,
     });
 
-    const response = await putGroupLimit(workspace.sId, group.sId, {
+    const response = await putSharedUsageLimit(workspace.sId, group.sId, {
       kind: "limited",
       awuCredits: -5,
     });
@@ -149,14 +149,14 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("returns 404 when the group does not exist", async () => {
-    const workspace = await groupLimitsWorkspace();
+    const workspace = await sharedUsageLimitsWorkspace();
     await createPrivateApiMockRequest({
       method: "PUT",
       role: "admin",
       workspace,
     });
 
-    const response = await putGroupLimit(workspace.sId, "unknown-group", {
+    const response = await putSharedUsageLimit(workspace.sId, "unknown-group", {
       kind: "limited",
       awuCredits: 10_000,
     });
@@ -165,8 +165,8 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
     expect((await response.json()).error.type).toBe("group_not_found");
   });
 
-  it("returns 403 when group limits are not enabled", async () => {
-    const workspace = await groupLimitsWorkspace({ withFlag: false });
+  it("returns 403 when shared usage limits are not enabled", async () => {
+    const workspace = await sharedUsageLimitsWorkspace({ withFlag: false });
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
@@ -174,7 +174,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
       workspace,
     });
 
-    const response = await putGroupLimit(workspace.sId, group.sId, {
+    const response = await putSharedUsageLimit(workspace.sId, group.sId, {
       kind: "limited",
       awuCredits: 10_000,
     });

@@ -132,7 +132,7 @@ export interface AgentMessageConsumptionAnalyticsUser {
   // Group sIds the user belonged to when the message completed.
   group_ids: string[];
   seat_type: string | null;
-  limit_group_id: string | null;
+  shared_limit_group_id: string | null;
 }
 
 export interface AgentMessageConsumptionAnalyticsTool {
