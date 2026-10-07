@@ -12,17 +12,20 @@ describe("documentCommentsSkill", () => {
     );
   });
 
-  it("recognizes a message opening with the comment heading", () => {
-    const heading = documentCommentMessageHeading({
-      commentId: "c1",
-      documentPath: "pod-abc/plan.md",
-      location: 'the pod "Launch"',
-    });
+  it.each(["pod-abc/plan.md", "pod-abc/use`code`.md"])(
+    "recognizes a message opening with the comment heading for %j",
+    (documentPath) => {
+      const heading = documentCommentMessageHeading({
+        commentId: "c1",
+        documentPath,
+        location: 'the pod "Launch"',
+      });
 
-    expect(isDocumentCommentMessage(`${heading}\n\nThoughts @dust?`)).toBe(
-      true
-    );
-  });
+      expect(isDocumentCommentMessage(`${heading}\n\nThoughts @dust?`)).toBe(
+        true
+      );
+    }
+  );
 
   it.each([
     "Summarize plan.md, please.",

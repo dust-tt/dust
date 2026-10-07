@@ -31,7 +31,7 @@ export const documentCommentMessageHeading = ({
   `Comment in thread \`${commentId}\` of the document \`${documentPath}\`, in ${location}:`;
 
 const COMMENT_MESSAGE_HEADING_PATTERN =
-  /^Comment in thread `[^`\n]+` of the document `[^`\n]+`, in [^\n]+:(?:\n|$)/;
+  /^Comment in thread `[^`\n]+` of the document `[^\n]+`, in [^\n]+:(?:\n|$)/;
 
 /** Whether `content` opens with a whole `documentCommentMessageHeading` line. */
 export const isDocumentCommentMessage = (content: string) =>
@@ -60,7 +60,9 @@ Write like a reviewer in the margin: short, about the passage, no headings.
  * @cc [owner:tdraier,label:product] document-comments-skill
  * In workspaces with `co_edition`, the skill MUST be always active, its instructions in the
  * system prompt from the first step, in an agent run whose user message opens with
- * `documentCommentMessageHeading`, and MUST be unavailable in any other run. Its instructions
+ * `documentCommentMessageHeading`, and MUST be unavailable in any other agent run. Skill
+ * resolution without the run's user message, such as for sandbox child tool calls, MAY include
+ * it, as for every auto-enabled system skill. Its instructions
  * MUST tell agents how to recognize and answer that message and find the thread it omits in the
  * document, and it MUST bring the user mention tools they name.
  */
