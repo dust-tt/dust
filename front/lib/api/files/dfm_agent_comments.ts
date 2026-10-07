@@ -1,31 +1,20 @@
 import { randomUUID } from "node:crypto";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import {
-  readStoredText,
-  signDfmAgentCommentMessage,
-} from "@app/lib/api/files/dfm_comment_signatures";
-import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { signDfmAgentCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
+import type { DfmStoredDocumentError } from "@app/lib/api/files/dfm_stored_documents";
+import { writeDocumentChange } from "@app/lib/api/files/dfm_stored_documents";
 import type { Authenticator } from "@app/lib/auth";
-import type { DfmDocument, DfmMessage } from "@app/lib/markdown/dfm";
-import { anchorComment, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import type { DfmMessage } from "@app/lib/markdown/dfm";
+import { anchorComment } from "@app/lib/markdown/dfm";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { contentTypeFromFileName } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const MAX_WRITE_ATTEMPTS = 3;
-
 export type DfmAgentCommentErrorCode =
   | "not_available"
-  | "not_markdown"
-  | "not_found"
   | "comment_not_found"
-  | "invalid_document"
   | "cannot_anchor"
-  | "invalid_comment"
-  | "conflict"
-  | "refused"
-  | "storage_failed";
+  | "invalid_comment";
 
 export class DfmAgentCommentError extends Error {
   constructor(
@@ -37,16 +26,6 @@ export class DfmAgentCommentError extends Error {
 }
 
 type DfmAgent = Pick<LightAgentConfigurationType, "sId" | "name">;
-
-function fileSystemError(error: {
-  code: string;
-  message: string;
-}): DfmAgentCommentError {
-  return new DfmAgentCommentError(
-    error.code === "internal" ? "storage_failed" : "refused",
-    error.message
-  );
-}
 
 async function signAgentMessage(
   auth: Authenticator,
@@ -86,105 +65,6 @@ async function signAgentMessage(
 }
 
 /**
- * @cc [owner:tdraier,label:concurrency] dfm-agent-comment-write
- * Only files whose name maps to `text/markdown` are changed. `change` MUST receive the document
- * as read, and its result MUST be written conditional on the revision read; a file whose storage
- * returns no revision MUST be refused. On a conflict it MUST start over from a fresh read, and
- * give up with `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write.
- */
-async function writeDocumentChange<T>(
-  auth: Authenticator,
-  dustFs: DustFileSystem,
-  scopedPath: string,
-  change: (
-    document: DfmDocument,
-    filePath: string
-  ) => Promise<
-    Result<{ document: DfmDocument; value: T }, DfmAgentCommentError>
-  >
-): Promise<Result<T, DfmAgentCommentError>> {
-  const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
-  if (resolvedPath.isErr()) {
-    return new Err(fileSystemError(resolvedPath.error));
-  }
-  if (contentTypeFromFileName(resolvedPath.value) !== "text/markdown") {
-    return new Err(
-      new DfmAgentCommentError(
-        "not_markdown",
-        "Only Markdown documents can be commented."
-      )
-    );
-  }
-
-  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-    const read = await readStoredText(dustFs, scopedPath);
-    if (read.isErr()) {
-      return new Err(fileSystemError(read.error));
-    }
-    if (read.value === null) {
-      return new Err(
-        new DfmAgentCommentError("not_found", `File not found: ${scopedPath}`)
-      );
-    }
-    const { text, revision } = read.value;
-    // Without a revision the write cannot be conditional, and could replace a concurrent edit.
-    if (revision === undefined) {
-      return new Err(
-        new DfmAgentCommentError(
-          "refused",
-          "Comments cannot be added to this document's storage yet."
-        )
-      );
-    }
-
-    const document = parseDfm(text);
-    if (document.isErr()) {
-      const { message, line } = document.error;
-      return new Err(
-        new DfmAgentCommentError(
-          "invalid_document",
-          line === undefined ? message : `Line ${line}: ${message}`
-        )
-      );
-    }
-
-    const changed = await change(document.value, resolvedPath.value);
-    if (changed.isErr()) {
-      return changed;
-    }
-
-    const serialized = serializeDfm(changed.value.document);
-    if (serialized.isErr()) {
-      return new Err(
-        new DfmAgentCommentError("invalid_document", serialized.error.message)
-      );
-    }
-
-    const written = await writeCanonicalFileContent(
-      auth,
-      dustFs,
-      scopedPath,
-      Buffer.from(serialized.value, "utf8"),
-      undefined,
-      revision
-    );
-    if (written.isOk()) {
-      return new Ok(changed.value.value);
-    }
-    if (written.error.code !== "revision_conflict") {
-      return new Err(fileSystemError(written.error));
-    }
-  }
-
-  return new Err(
-    new DfmAgentCommentError(
-      "conflict",
-      "The document kept changing while the comment was being added. Try again."
-    )
-  );
-}
-
-/**
  * @cc [owner:tdraier,label:product;concurrency] dfm-agent-comment
  * Adding a comment MUST add exactly one open thread whose only message is the one
  * `signDfmAgentCommentMessage` writes for `agent` (signed when a signing key is configured), with
@@ -208,14 +88,16 @@ export async function addAgentComment(
     occurrence: number;
     comment: string;
   }
-): Promise<Result<{ commentId: string }, DfmAgentCommentError>> {
+): Promise<
+  Result<{ commentId: string }, DfmAgentCommentError | DfmStoredDocumentError>
+> {
   const commentId = randomUUID();
   let signedMessage: DfmMessage | null = null;
   return writeDocumentChange(
     auth,
     dustFs,
     scopedPath,
-    async (document, filePath) => {
+    async ({ document, filePath }) => {
       const anchored = anchorComment({
         body: document.body,
         id: commentId,
@@ -284,12 +166,12 @@ export async function replyToAgentComment(
     commentId: string;
     reply: string;
   }
-): Promise<Result<undefined, DfmAgentCommentError>> {
+): Promise<Result<undefined, DfmAgentCommentError | DfmStoredDocumentError>> {
   return writeDocumentChange(
     auth,
     dustFs,
     scopedPath,
-    async (document, filePath) => {
+    async ({ document, filePath }) => {
       const thread = document.comments.find(({ id }) => id === commentId);
       if (!thread) {
         return new Err(
