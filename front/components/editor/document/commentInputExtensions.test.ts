@@ -84,6 +84,27 @@ describe("commentInputExtensions", () => {
     expect(commentMarkdown(field)).toBe("a\n\nb\\\nc\n\n```\nd\n\n```");
   });
 
+  it("splits a list item on Enter instead of submitting", () => {
+    const onSubmit = vi.fn();
+    const field = createEditor(onSubmit);
+    field.commands.setContent("- First", { contentType: "markdown" });
+    // The end of "First", inside its list item's paragraph.
+    field.commands.setTextSelection(3 + "First".length);
+    expect(field.isActive("listItem")).toBe(true);
+
+    field.commands.keyboardShortcut("Enter");
+    field.commands.insertContent("Second");
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(field.getMarkdown().trim()).toBe("- First\n- Second");
+
+    field.commands.keyboardShortcut("Enter");
+    field.commands.keyboardShortcut("Enter");
+    field.commands.keyboardShortcut("Enter");
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
   it("writes a suggestion block that reads back whatever backticks it holds", () => {
     const field = createEditor();
     const suggestion = "use ```fences``` here";

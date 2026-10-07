@@ -114,8 +114,9 @@ interface CommentKeymapOptions {
 /**
  * @cc [owner:tdraier,label:react] comment-input-keymap
  * Enter MUST submit, unless an extension of higher priority, such as an open mention list,
- * handles it first. Shift+Enter MUST insert a line break, inside a code block too, and MUST NOT
- * leave the block.
+ * handles it first, or the selection is in a list item, where Enter MUST be left to the list so
+ * it splits the item. Shift+Enter MUST insert a line break, inside a code block too, and MUST
+ * NOT leave the block.
  */
 const CommentKeymap = Extension.create<CommentKeymapOptions>({
   name: "commentKeymap",
@@ -123,6 +124,9 @@ const CommentKeymap = Extension.create<CommentKeymapOptions>({
   addKeyboardShortcuts() {
     return {
       Enter: () => {
+        if (this.editor.isActive("listItem")) {
+          return false;
+        }
         this.options.onSubmit.current?.();
         return true;
       },
