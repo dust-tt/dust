@@ -76,7 +76,8 @@ const selectLastSuggestion = (editor: Editor) => {
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-input
  * Enter MUST submit the content as trimmed Markdown, mentions and suggestion blocks included,
  * and Shift+Enter MUST insert a line break, except while an input method is composing text or a
- * mention list is open. Content without text, a mention or a code block MUST NOT submit, even
+ * mention list is open, and except in a list item, where Enter MUST split the item (see
+ * `comment-input-keymap`) and Send MUST still submit. Content without text, a mention or a code block MUST NOT submit, even
  * when line breaks or empty blocks make its Markdown non-empty. While a submission is pending,
  * the content MUST NOT change or submit again, and Send MUST show progress. An accepted submission
  * MUST clear the field; a refused one MUST keep the content and show the reason. Once a submission

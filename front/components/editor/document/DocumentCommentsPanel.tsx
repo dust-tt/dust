@@ -502,7 +502,7 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * among the open threads at the draft's place in document order, with its field focused once
  * the panel is visible. Escape the field hands to its onCancel (see `document-comment-input`)
  * and closing the panel MUST cancel the draft; a pointer press elsewhere MUST NOT, so typed text
- * survives a stray click. Enter MUST submit the trimmed Markdown. A refused submission MUST keep the typed text and show the reason.
+ * survives a stray click. Enter MUST submit the trimmed Markdown, outside a list item. A refused submission MUST keep the typed text and show the reason.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comments-panel
