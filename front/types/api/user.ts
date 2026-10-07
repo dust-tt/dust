@@ -13,6 +13,8 @@ export type GetMemberResponseBody = {
     lastName: string | null;
     fullName: string;
     image: string | null;
+    pronouns: string | null;
+    jobTitle: string | null;
     revoked: boolean;
     role: RoleType;
     startAt: string | null;

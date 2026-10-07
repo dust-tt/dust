@@ -76,6 +76,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
+  const { pronouns, jobTitle } = await user.getProfile();
+
   const response: GetMemberResponseBody = {
     member: {
       id: user.sId,
@@ -85,6 +87,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       lastName: user.lastName,
       fullName: user.fullName(),
       image: user.imageUrl,
+      pronouns,
+      jobTitle,
       revoked: membership.isRevoked(),
       role: membership.isRevoked() ? "none" : membership.role,
       startAt: membership.startAt?.toISOString() ?? null,

@@ -37,6 +37,11 @@ import type {
   UserProviderType,
   UserType,
 } from "@app/types/user";
+import type { UserProfileType } from "@app/types/user_profile";
+import {
+  USER_JOB_TITLE_METADATA_KEY,
+  USER_PRONOUNS_METADATA_KEY,
+} from "@app/types/user_profile";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import chunk from "lodash/chunk";
 import escape from "lodash/escape";
@@ -806,6 +811,36 @@ export class UserResource extends BaseResource<UserModel> {
     const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
     const storedLocale = metadata?.value;
     return isSupportedLocale(storedLocale) ? storedLocale : fallbackLocale;
+  }
+
+  async getProfile(): Promise<UserProfileType> {
+    const [pronouns, jobTitle] = await Promise.all([
+      this.getMetadata(USER_PRONOUNS_METADATA_KEY),
+      this.getMetadata(USER_JOB_TITLE_METADATA_KEY),
+    ]);
+    return {
+      pronouns: pronouns?.value ?? null,
+      jobTitle: jobTitle?.value ?? null,
+    };
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:product;backend] update-profile-partial
+   * Fields set to `undefined` MUST be left unchanged, and fields set to `null` MUST be cleared.
+   * Values are stored as global user metadata, shared across all workspaces of the user.
+   */
+  async updateProfile(profile: Partial<UserProfileType>): Promise<void> {
+    const entries: [string, string | null | undefined][] = [
+      [USER_PRONOUNS_METADATA_KEY, profile.pronouns],
+      [USER_JOB_TITLE_METADATA_KEY, profile.jobTitle],
+    ];
+    for (const [key, value] of entries) {
+      if (value === null) {
+        await this.deleteMetadata({ key, workspaceId: null });
+      } else if (value !== undefined) {
+        await this.setMetadata(key, value);
+      }
+    }
   }
 
   /**

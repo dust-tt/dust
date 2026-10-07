@@ -165,7 +165,7 @@
       },
       "patch": {
         "summary": "Update current user",
-        "description": "Update the authenticated user's profile (name, job type, favorite platforms, image).",
+        "description": "Update the authenticated user's profile (name, job type, favorite platforms, image, pronouns, job title).",
         "tags": [
           "Private User"
         ],
@@ -214,6 +214,18 @@
                   },
                   "workspaceId": {
                     "type": "string"
+                  },
+                  "pronouns": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 32,
+                    "description": "Omit to leave unchanged; null or blank clears it."
+                  },
+                  "jobTitle": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 128,
+                    "description": "Omit to leave unchanged; null or blank clears it."
                   }
                 }
               }
