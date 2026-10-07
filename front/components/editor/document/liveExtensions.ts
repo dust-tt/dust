@@ -16,37 +16,33 @@ export interface DocumentLiveUser {
   color: string;
 }
 
-const LiveCommentThreads = Extension.create<
-  { channel: LiveCommentChannel | null },
-  { unsubscribe: (() => void) | null }
->({
-  name: "liveCommentThreads",
-  addOptions: () => ({ channel: null }),
-  addStorage: () => ({ unsubscribe: null }),
-  onBeforeCreate() {
-    const { channel } = this.options;
-    if (!channel) {
-      return;
-    }
-    const show = (comments: DfmComment[]) => {
-      if (!this.editor.isDestroyed) {
-        this.editor.commands.setCommentThreads(comments);
-      }
-    };
-    // Not on `create`, which TipTap emits a tick after mounting: the file's threads would show
-    // until then.
-    this.editor.on("mount", () => {
-      const current = channel.getThreads();
-      if (current) {
-        show(current);
-      }
-    });
-    this.storage.unsubscribe = channel.onThreads(show);
-  },
-  onDestroy() {
-    this.storage.unsubscribe?.();
-  },
-});
+const liveCommentThreads = (channel: LiveCommentChannel) =>
+  Extension.create<
+    Record<string, never>,
+    { unsubscribe: (() => void) | null }
+  >({
+    name: "liveCommentThreads",
+    addStorage: () => ({ unsubscribe: null }),
+    onBeforeCreate() {
+      const show = (comments: DfmComment[]) => {
+        if (!this.editor.isDestroyed) {
+          this.editor.commands.setCommentThreads(comments);
+        }
+      };
+      // Not on `create`, which TipTap emits a tick after mounting: the file's threads would show
+      // until then.
+      this.editor.on("mount", () => {
+        const current = channel.getThreads();
+        if (current) {
+          show(current);
+        }
+      });
+      this.storage.unsubscribe = channel.onThreads(show);
+    },
+    onDestroy() {
+      this.storage.unsubscribe?.();
+    },
+  });
 
 /**
  * @cc [owner:PopDaph,label:product] document-live-extensions
@@ -76,7 +72,7 @@ export const buildLiveDocumentExtensions = ({
   comments: LiveCommentChannel;
 }): AnyExtension[] => [
   ...buildDocumentEditorExtensions(t, { live: true }),
-  LiveCommentThreads.configure({ channel: comments }),
+  liveCommentThreads(comments),
   Collaboration.configure({ document, field: BODY_FRAGMENT_NAME }),
   ...(awareness
     ? [CollaborationCaret.configure({ provider: { awareness }, user })]

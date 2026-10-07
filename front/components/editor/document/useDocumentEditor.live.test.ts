@@ -195,6 +195,28 @@ describe("useDocumentEditor in a live session", () => {
     expect(Y.encodeStateVector(document)).toEqual(before);
   });
 
+  it("leaves the document untouched when the session sends the threads it shows", async () => {
+    const { document, fileThreads } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    const { result } = renderLiveEditor(document, { comments: channel });
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+    let changes = 0;
+    editor.on("transaction", ({ transaction }) => {
+      changes += transaction.docChanged ? 1 : 0;
+    });
+
+    act(() => push(structuredClone(fileThreads)));
+    act(() => push(SESSION_THREADS));
+    act(() => push(structuredClone(SESSION_THREADS)));
+
+    expect(changes).toBe(1);
+    expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
+  });
+
   it("keeps the anchors through a remote edit, in the editor and the shared document", async () => {
     const { document, commentIds } = sharedDocumentFor(FIXTURE);
     const { result } = renderLiveEditor(document);

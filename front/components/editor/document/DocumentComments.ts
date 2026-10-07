@@ -10,6 +10,7 @@ import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import isEqual from "lodash/isEqual";
 import { z } from "zod";
 
 export const COMMENT_MARK_NAME = "comment";
@@ -419,7 +420,10 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
-      /** Replaces every thread, keeping the marks; a live document gets its threads this way. */
+      /**
+       * Replaces every thread, keeping the marks; a live document gets its threads this way.
+       * Threads equal to the current ones leave the document untouched.
+       */
       setCommentThreads: (comments: DfmComment[]) => ReturnType;
       /** Replaces the commented text with inline content that keeps the comment. */
       applyCommentSuggestion: (
@@ -906,8 +910,13 @@ export const DocumentComments = Extension.create({
       },
     setCommentThreads:
       (comments) =>
-      ({ tr, dispatch }) => {
-        if (dispatch) {
+      ({ state, tr, dispatch }) => {
+        // The session echoes every command, so most messages carry the threads already shown;
+        // new threads, even equal, rebuild every comment highlight.
+        if (
+          dispatch &&
+          !isEqual(state.doc.attrs[COMMENTS_ATTRIBUTE], comments)
+        ) {
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, comments);
           tr.setMeta("addToHistory", false);
         }

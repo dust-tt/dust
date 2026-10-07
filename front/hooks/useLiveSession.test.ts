@@ -93,13 +93,21 @@ describe("useLiveSession", () => {
 
     server.hocuspocus.closeConnections(DOCUMENT_NAME);
 
+    // Closed as soon as the connection is lost, before a fresh one replaces it: a closed channel
+    // reports no threads.
+    await waitFor(() => expect(result.current.status).toBe("offline"));
+    expect(result.current.connection).toBe(first);
+    expect(first?.comments.getThreads()).toBeNull();
     await waitFor(
       () => expect(result.current.connection?.id).not.toBe(first?.id),
       { timeout: 3_000 }
     );
     await waitFor(() => expect(asked).toBe(2));
-    expect(result.current.connection?.comments.getThreads()).toEqual(threads);
+    const second = result.current.connection;
+    expect(second?.comments.getThreads()).toEqual(threads);
+
     unmount();
+    expect(second?.comments.getThreads()).toBeNull();
   });
 
   it("retries when no ticket can be fetched", async () => {
