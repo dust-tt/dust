@@ -5,6 +5,10 @@ import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  DOCUMENT_THEME_DESCRIPTIONS,
+  DOCUMENT_THEMES,
+} from "@app/lib/editor/document_themes";
 import { z } from "zod";
 
 export const DOCUMENTS_SERVER_NAME = "documents" as const;
@@ -13,6 +17,8 @@ export const DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME =
   "reply_to_comment" as const;
 export const DOCUMENTS_READ_DOCUMENT_ACTION_NAME = "read_document" as const;
 export const DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME = "edit_document" as const;
+export const DOCUMENTS_SET_DOCUMENT_THEME_ACTION_NAME =
+  "set_document_theme" as const;
 
 export const READ_DOCUMENT_MAX_BYTES = 50 * 1024;
 
@@ -129,7 +135,8 @@ export const DOCUMENTS_TOOLS_METADATA = [
       "Use this tool, not a file edit, for documents people may have open in the document editor. " +
       `Match \`old_string\` against the source returned by \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\`, ` +
       "character for character. Only the body can change: not the front matter, and not the " +
-      "`:::annotations` block, whose threads are changed with the comment tools. Keep every " +
+      "`:::annotations` block, whose threads are changed with the comment tools. To change how " +
+      `the document looks, use \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_SET_DOCUMENT_THEME_ACTION_NAME)}\`. Keep every ` +
       "`:comment-start{…}` / `:comment-end{…}` anchor pair intact and never write new ones. " +
       "Fails if `old_string` is not found or if the number of occurrences does not match " +
       "`expected_replacements` (default 1); make `old_string` unique by including surrounding text. " +
@@ -161,6 +168,29 @@ export const DOCUMENTS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
+  {
+    name: DOCUMENTS_SET_DOCUMENT_THEME_ACTION_NAME,
+    description:
+      "Set the theme of a Markdown document: the fonts and page width the document editor shows " +
+      "it with. It changes how the document looks, never its text. Themes: " +
+      DOCUMENT_THEMES.map(
+        (theme) => `\`${theme}\` (${DOCUMENT_THEME_DESCRIPTIONS[theme]})`
+      ).join(", ") +
+      ". The current theme is the `theme` key of the front matter returned by " +
+      `\`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\`, ` +
+      "`default` without one. Never write the `theme` key with a file edit.",
+    schema: {
+      path: PATH_SCHEMA,
+      theme: z.enum(DOCUMENT_THEMES).describe("The theme to apply."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Setting document theme",
+      done: "Set document theme",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
 ] as const;
 
 /** Whether the tool changes the file at its `path`, so a client showing it must refetch. */
@@ -168,7 +198,8 @@ export function isDocumentsWritingTool(toolName: string): boolean {
   return (
     toolName === DOCUMENTS_ADD_COMMENT_ACTION_NAME ||
     toolName === DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME ||
-    toolName === DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME
+    toolName === DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME ||
+    toolName === DOCUMENTS_SET_DOCUMENT_THEME_ACTION_NAME
   );
 }
 

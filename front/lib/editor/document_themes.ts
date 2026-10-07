@@ -1,3 +1,6 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
 export const DOCUMENT_THEMES = ["default", "memo", "report"] as const;
 
 export type DocumentTheme = (typeof DOCUMENT_THEMES)[number];
@@ -12,6 +15,8 @@ export const DEFAULT_DOCUMENT_THEME: DocumentTheme = "default";
 
 const THEME_KEY_LINE = /^theme[ \t]*:/;
 const THEME_LINE = /^theme[ \t]*:[ \t]*(["']?)([a-z]+)\1[ \t]*(?:#.*)?$/;
+const THEME_LINE_WITH_VALUE = /^theme[ \t]*:[ \t]*[^\s#]/;
+const CONTINUATION_LINE = /^[ \t]/;
 
 const isDocumentTheme = (value: string): value is DocumentTheme =>
   DOCUMENT_THEMES.some((theme) => theme === value);
@@ -40,4 +45,54 @@ export function getDocumentTheme(frontMatter: string | null): DocumentTheme {
   return value !== undefined && isDocumentTheme(value)
     ? value
     : DEFAULT_DOCUMENT_THEME;
+}
+
+/**
+ * @cc [owner:tdraier,label:product] document-theme-write
+ * Setting a theme MUST return front matter that `getDocumentTheme` reads as that theme, with
+ * every other line kept in order and unchanged: front matter already read as that theme MUST be
+ * returned as is; otherwise the `theme` key line is replaced in place, appended when missing,
+ * or removed for `DEFAULT_DOCUMENT_THEME`, and front matter left with only blank lines MUST
+ * become null. A repeated `theme` key, or one whose value spans several lines, MUST be refused.
+ */
+export function withDocumentTheme(
+  frontMatter: string | null,
+  theme: DocumentTheme
+): Result<string | null, string> {
+  if (getDocumentTheme(frontMatter) === theme) {
+    return new Ok(frontMatter);
+  }
+
+  const lines =
+    frontMatter === null || frontMatter.trim() === ""
+      ? []
+      : frontMatter.split("\n");
+  const keyIndexes = lines.flatMap((line, index) =>
+    THEME_KEY_LINE.test(line) ? [index] : []
+  );
+  if (keyIndexes.length > 1) {
+    return new Err("The front matter repeats the `theme` key.");
+  }
+
+  const themeLines =
+    theme === DEFAULT_DOCUMENT_THEME ? [] : [`theme: ${theme}`];
+  const [keyIndex] = keyIndexes;
+  if (keyIndex === undefined) {
+    return new Ok([...lines, ...themeLines].join("\n"));
+  }
+  if (
+    !THEME_LINE_WITH_VALUE.test(lines[keyIndex]) ||
+    CONTINUATION_LINE.test(lines[keyIndex + 1] ?? "")
+  ) {
+    return new Err("The front matter's `theme` value spans several lines.");
+  }
+
+  const updated = [
+    ...lines.slice(0, keyIndex),
+    ...themeLines,
+    ...lines.slice(keyIndex + 1),
+  ];
+  return new Ok(
+    updated.every((line) => line.trim() === "") ? null : updated.join("\n")
+  );
 }
