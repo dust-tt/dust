@@ -2,10 +2,13 @@ import { QueryTypes } from "sequelize";
 
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 const BATCH_SIZE = 500;
+const CONCURRENCY = 8;
 const FEATURE_FLAG_NAME: WhitelistableFeature = "legacy_dust_apps";
 const USAGE_WINDOW_DAYS = 365;
 
@@ -53,7 +56,9 @@ makeScript({}, async ({ execute }, logger) => {
 
   const workspaceModelIdsToDisable = flags
     .map((flag) => flag.workspaceId)
-    .filter((workspaceId) => !activeWorkspaceModelIds.has(workspaceId));
+    .filter(
+      (workspaceModelId) => !activeWorkspaceModelIds.has(workspaceModelId)
+    );
 
   logger.info(
     {
@@ -72,20 +77,25 @@ makeScript({}, async ({ execute }, logger) => {
     return;
   }
 
+  // Goes through FeatureFlagResource.disable, one workspace at a time, so each workspace's flag
+  // cache is invalidated.
   let deletedCount = 0;
   for (
     let offset = 0;
     offset < workspaceModelIdsToDisable.length;
     offset += BATCH_SIZE
   ) {
-    const batch = workspaceModelIdsToDisable.slice(offset, offset + BATCH_SIZE);
-    deletedCount +=
-      await FeatureFlagResource.dangerouslyDisableForWorkspaceModelIds(
-        FEATURE_FLAG_NAME,
-        batch
-      );
+    const workspaces = await WorkspaceResource.fetchByModelIds(
+      workspaceModelIdsToDisable.slice(offset, offset + BATCH_SIZE)
+    );
+    const results = await concurrentExecutor(
+      workspaces,
+      (workspace) => FeatureFlagResource.disable(workspace, FEATURE_FLAG_NAME),
+      { concurrency: CONCURRENCY }
+    );
+    deletedCount += results.filter((deleted) => deleted).length;
     logger.info(
-      { processed: offset + batch.length, deletedCount },
+      { processed: offset + workspaces.length, deletedCount },
       "Removed legacy Dust Apps feature flag for batch."
     );
   }
