@@ -487,7 +487,11 @@ export const useDocumentComments = ({
       suggestion: string,
       focusNext: string | null
     ): Result<void, string> => {
-      const thread = comments.find((comment) => comment.id === id);
+      const thread = editor
+        ? getDocumentComments(editor.state.doc).find(
+            (comment) => comment.id === id
+          )
+        : undefined;
       if (!canWrite || !editor || thread?.status !== "open") {
         return new Err(UNAVAILABLE_MESSAGE);
       }

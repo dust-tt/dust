@@ -1063,6 +1063,19 @@ describe("useDocumentComments", () => {
       expect(result.current.comments.quotes.get("c1")).toBe("there");
     });
 
+    it("refuses a thread resolved since the last render", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const { comments } = result.current;
+
+      act(() => {
+        comments.setResolved("c1", true, null);
+        expect(comments.applySuggestion("c1", "here", null).isErr()).toBe(
+          true
+        );
+      });
+      expect(result.current.comments.quotes.get("c1")).toBe("there");
+    });
+
     it("offers the draft's text as a suggestion", async () => {
       const { result } = await renderCommentedEditor("Hello brave world.\n");
       const editor = result.current.document.editor;
