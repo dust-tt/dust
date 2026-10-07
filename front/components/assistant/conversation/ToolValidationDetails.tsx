@@ -46,6 +46,9 @@ import {
 } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 function humanizeFieldName(name: string): string {
   return name
@@ -54,7 +57,10 @@ function humanizeFieldName(name: string): string {
     .replace(/^\w/, (char) => char.toUpperCase());
 }
 
-function formatDisplayValue(value: unknown): string | null {
+function formatDisplayValue(
+  value: unknown,
+  t: (descriptor: MessageDescriptor) => string
+): string | null {
   if (value === null) {
     return null;
   }
@@ -67,7 +73,7 @@ function formatDisplayValue(value: unknown): string | null {
     return JSON.stringify(value, null, 2);
   }
   if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+    return value ? t(msg`Yes`) : t(msg`No`);
   }
   if (isNumber(value)) {
     return String(value);
@@ -103,6 +109,7 @@ export function ToolValidationDetails({
   owner,
   conversationId,
 }: ToolValidationDetailsProps) {
+  const { t } = useLingui();
   // For skill_authoring `update_skill`, the only identifier the agent passes is
   // the skill `sId`, which is meaningless to a human approving the call. Resolve
   // it to the skill's name (or "Unknown skill" if the id is wrong / missing).
@@ -122,16 +129,21 @@ export function ToolValidationDetails({
   });
 
   const resolvedSkillName = isSkillLoading
-    ? "Loading…"
-    : (skill?.name ?? "Unknown skill");
+    ? t`Loading…`
+    : (skill?.name ?? t`Unknown skill`);
 
   const displayableInputs: DisplayableInput[] = removeNulls(
     Object.entries(blockedAction.inputs).map(([key, value]) => {
       if (isSkillAuthoringUpdate && key === "sId") {
-        return { key, label: "Skill", value: resolvedSkillName, isJson: false };
+        return {
+          key,
+          label: t`Skill`,
+          value: resolvedSkillName,
+          isJson: false,
+        };
       }
 
-      const displayValue = formatDisplayValue(value);
+      const displayValue = formatDisplayValue(value, t);
       if (displayValue === null) {
         return null;
       }

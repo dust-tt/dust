@@ -7,6 +7,7 @@ import {
 } from "@app/lib/swr/files";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo } from "react";
 
@@ -35,6 +36,7 @@ export function FilePreviewProvider({
   owner,
   children,
 }: FilePreviewProviderProps) {
+  const { t } = useLingui();
   const { hasConversation, openPanel } = useConversationSidePanelContext();
   const sendNotification = useSendNotification();
 
@@ -77,15 +79,15 @@ export function FilePreviewProvider({
       if (!resolvedFileId) {
         sendNotification({
           type: "error",
-          title: "Failed to open Frame",
-          description: "No linked file was found for this Frame.",
+          title: t`Failed to open Frame`,
+          description: t`No linked file was found for this Frame.`,
         });
         return;
       }
 
       openPanel({ type: "interactive_content", fileId: resolvedFileId });
     },
-    [openPanel, owner, sendNotification]
+    [openPanel, owner, sendNotification, t]
   );
 
   const contextValue = useMemo(

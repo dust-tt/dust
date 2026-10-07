@@ -8,6 +8,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 type LeaveConversationDialogProps = {
   isOpen: boolean;
@@ -22,13 +23,17 @@ export const LeaveConversationDialog = ({
   onClose,
   isOpen,
 }: LeaveConversationDialogProps) => {
+  const { t } = useLingui();
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Leave conversation</DialogTitle>
+          <DialogTitle>
+            <Trans>Leave conversation</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Are you sure you want to leave this conversation?
+            <Trans>Are you sure you want to leave this conversation?</Trans>
           </DialogDescription>
         </DialogHeader>
         {isLeaving ? (
@@ -38,15 +43,19 @@ export const LeaveConversationDialog = ({
         ) : (
           <>
             <DialogContainer>
-              <b>You will no longer have access to this conversation.</b>
+              <b>
+                <Trans>
+                  You will no longer have access to this conversation.
+                </Trans>
+              </b>
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Leave",
+                label: t`Leave`,
                 onClick: async () => {
                   await onLeave();
                   onClose();

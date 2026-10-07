@@ -152,6 +152,7 @@ import {
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import type { ReactElement, ReactNode } from "react";
@@ -168,6 +169,8 @@ interface MessageInfoChipProps {
 
 // Popover, not Tooltip: on touch there is no hover, and links inside must stay reachable.
 function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
+  const { t } = useLingui();
+
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
@@ -178,7 +181,7 @@ function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
             "outline-hidden ring-offset-background",
             "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
           )}
-          aria-label={`${label}. Open details.`}
+          aria-label={t`${label}. Open details.`}
         >
           <Chip label={label} size="xs" color="primary" icon={InfoCircle} />
         </button>
@@ -197,42 +200,54 @@ function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
 }
 
 function PremiumDowngradeChip() {
+  const { t } = useLingui();
+
   return (
-    <MessageInfoChip label="Auto-switched to Standard">
+    <MessageInfoChip label={t`Auto-switched to Standard`}>
       <p>
-        You have reached your Premium model limit for the current 7-day window,
-        so Dust ran this message on a Standard model instead.
+        <Trans>
+          You have reached your Premium model limit for the current 7-day
+          window, so Dust ran this message on a Standard model instead.
+        </Trans>
       </p>
       <p>
-        <LinkWrapper
-          href="#personal-usage"
-          className="underline hover:text-foreground"
-          onClick={() => window.dispatchEvent(new OpenUserAnalyticsEvent())}
-        >
-          View your Premium model usage in Analytics
-        </LinkWrapper>
-        .
+        <Trans>
+          <LinkWrapper
+            href="#personal-usage"
+            className="underline hover:text-foreground"
+            onClick={() => window.dispatchEvent(new OpenUserAnalyticsEvent())}
+          >
+            View your Premium model usage in Analytics
+          </LinkWrapper>
+          .
+        </Trans>
       </p>
     </MessageInfoChip>
   );
 }
 
 function PrunedContextChip() {
+  const { t } = useLingui();
+
   return (
     <MessageInfoChip
-      label="Context limit reached"
-      title="This conversation reached its size limit"
+      label={t`Context limit reached`}
+      title={t`This conversation reached its size limit`}
     >
       <p>
-        Dust had to trim part of the tool output used to generate this message
-        to fit the model&apos;s context window. This usually happens when a
-        search or other tool returns more data than the model can process at
-        once.
+        <Trans>
+          Dust had to trim part of the tool output used to generate this message
+          to fit the model&apos;s context window. This usually happens when a
+          search or other tool returns more data than the model can process at
+          once.
+        </Trans>
       </p>
       <p>
-        For best accuracy, first use <code>/compact</code> to summarize this
-        conversation and free up context. If needed, start a fresh conversation
-        or narrow your request.
+        <Trans>
+          For best accuracy, first use <code>/compact</code> to summarize this
+          conversation and free up context. If needed, start a fresh
+          conversation or narrow your request.
+        </Trans>
       </p>
       <p>
         <a
@@ -241,7 +256,7 @@ function PrunedContextChip() {
           rel="noopener noreferrer"
           className="underline hover:text-foreground"
         >
-          Learn more
+          <Trans>Learn more</Trans>
         </a>
       </p>
     </MessageInfoChip>
@@ -293,6 +308,7 @@ export function AgentMessage({
   setLimitReachedCode,
   onAgentMessageRetry,
 }: AgentMessageProps) {
+  const { t } = useLingui();
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
@@ -723,7 +739,7 @@ export function AgentMessage({
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
       type: "success",
-      title: "Message link copied to clipboard",
+      title: t`Message link copied to clipboard`,
     });
   }
 
@@ -742,7 +758,7 @@ export function AgentMessage({
     alwaysVisibleButtons.push(
       <Button
         key="stop-msg-button"
-        label="Stop agent"
+        label={t`Stop agent`}
         variant="ghost-secondary"
         size="xs"
         onClick={async () => {
@@ -779,10 +795,9 @@ export function AgentMessage({
     }
 
     const confirmed = await confirm({
-      title: "Delete message",
-      message:
-        "Are you sure you want to delete this message? This action cannot be undone.",
-      validateLabel: "Delete",
+      title: t`Delete message`,
+      message: t`Are you sure you want to delete this message? This action cannot be undone.`,
+      validateLabel: t`Delete`,
       validateVariant: "warning",
     });
 
@@ -809,6 +824,7 @@ export function AgentMessage({
     deleteAgentMessage,
     agentMessage.sId,
     methods.data,
+    t,
   ]);
 
   const shouldShowMessageActions =
@@ -951,14 +967,14 @@ export function AgentMessage({
   if (shouldShowMessageActions) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
-        label: "Copy message link",
+        label: t`Copy message link`,
         icon: Link01,
         onSelect: handleCopyMessageLink,
       },
     ];
 
     dropdownItems.push({
-      label: "Branch from here",
+      label: t`Branch from here`,
       icon: GitBranch01,
       onSelect: () => {
         void branchConversation(agentMessage.sId);
@@ -968,7 +984,7 @@ export function AgentMessage({
 
     if (shouldShowRetry) {
       dropdownItems.push({
-        label: "Retry",
+        label: t`Retry`,
         icon: RefreshCw02,
         onSelect: () => {
           void retryHandler({
@@ -982,7 +998,7 @@ export function AgentMessage({
 
     if (canDeleteAgentMessage) {
       dropdownItems.push({
-        label: "Delete message",
+        label: t`Delete message`,
         icon: Trash01,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
@@ -993,7 +1009,7 @@ export function AgentMessage({
     alwaysVisibleButtons.push(
       <Button
         key="copy-message"
-        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+        tooltip={isCopied ? t`Copied!` : t`Copy to clipboard`}
         variant="ghost-secondary"
         size="xs"
         onClick={handleCopyToClipboard}
@@ -1003,6 +1019,7 @@ export function AgentMessage({
 
     if (agentMessage.costCredits !== null && agentMessage.costCredits > 0) {
       const formattedCredits = formatCredits(agentMessage.costCredits);
+      const formattedCreditValue = formatCreditValue(agentMessage.costCredits);
       const creditCostTrigger = (
         <Button
           variant="ghost-secondary"
@@ -1010,7 +1027,7 @@ export function AgentMessage({
           label={formattedCredits}
           iconRight={CoinsStacked01}
           className="gap-1 px-1 tracking-normal"
-          aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View consumption breakdown`}
+          aria-label={t`${formattedCreditValue} used for this message. View consumption breakdown`}
         />
       );
 
@@ -1029,7 +1046,7 @@ export function AgentMessage({
           <span
             key="message-credit-cost"
             role="status"
-            aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message`}
+            aria-label={t`${formattedCreditValue} used for this message`}
             className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
           >
             {formattedCredits}
@@ -1046,7 +1063,7 @@ export function AgentMessage({
             variant="ghost-secondary"
             size="xs"
             icon={DotsHorizontal}
-            aria-label="More message actions"
+            aria-label={t`More message actions`}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -1094,7 +1111,7 @@ export function AgentMessage({
 
       if (result.isErr()) {
         sendApiErrorNotification({
-          title: "Message not sent",
+          title: t`Message not sent`,
           error: result.error,
         });
       }
@@ -1104,6 +1121,7 @@ export function AgentMessage({
       agentMessage.configuration,
       handleSubmit,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -1128,31 +1146,34 @@ export function AgentMessage({
   const isFairUseDowngrade =
     agentMessage.modelResolutionMethod === "fair_use_downgrade";
 
-  const renderName = useCallback(
-    () => (
+  const renderName = useCallback(() => {
+    const agentName = agentConfiguration.name;
+    const parentAgentName = parentAgent?.name;
+
+    return (
       <span className="inline-flex items-center">
         <AgentHandle
           agent={{
             sId: agentConfiguration.sId,
-            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+            name: isArchived ? t`${agentName} (archived)` : agentName,
           }}
           canMention={canMention}
           isDisabled={isArchived}
         />
         {perMessageModelLabel && (
           <Tooltip
-            label="Model was overridden for this message using the model picker."
+            label={t`Model was overridden for this message using the model picker.`}
             tooltipTriggerAsChild
             trigger={
               <span className="pl-1 font-normal text-muted-foreground">
-                with {perMessageModelLabel}
+                <Trans>with {perMessageModelLabel}</Trans>
               </span>
             }
           />
         )}
         {parentAgent && (
           <Chip
-            label={`handoff from ${parentAgent.name}`}
+            label={t`Handoff from ${parentAgentName}`}
             size="xs"
             className="ml-1"
             color="primary"
@@ -1160,17 +1181,17 @@ export function AgentMessage({
           />
         )}
       </span>
-    ),
-    [
-      agentConfiguration.name,
-      agentConfiguration.sId,
-      canMention,
-      isArchived,
-      perMessageModelLabel,
-      parentAgent,
-      agentMessage.status,
-    ]
-  );
+    );
+  }, [
+    agentConfiguration.name,
+    agentConfiguration.sId,
+    canMention,
+    isArchived,
+    perMessageModelLabel,
+    parentAgent,
+    agentMessage.status,
+    t,
+  ]);
 
   const timestampMs = getAgentMessageHeaderTimestampMs({
     created: agentMessage.created,
@@ -1346,6 +1367,7 @@ function AgentMessageContent({
     VirtuosoMessageListContext
   >();
 
+  const { t } = useLingui();
   const { vizUrl } = useAuth();
   const { sId, configuration: agentConfiguration } = agentMessage;
 
@@ -1508,12 +1530,11 @@ function AgentMessageContent({
     return (
       <ErrorMessage
         error={{
-          message:
-            "Connection lost while generating message. Reconnect to check its progress.",
+          message: t`Connection lost while generating message. Reconnect to check its progress.`,
           code: "stream_error",
-          metadata: { errorTitle: "Connection lost" },
+          metadata: { errorTitle: t`Connection lost` },
         }}
-        retryLabel="Reconnect"
+        retryLabel={t`Reconnect`}
         retryHandler={() => {
           eventSourceManager.reconnect(`message-${agentMessage.sId}`);
           return reloadMessage({ conversationId, messageId: agentMessage.sId });
@@ -1575,12 +1596,15 @@ function AgentMessageContent({
       title: image.title,
       isLoading: false,
     })),
-    ...Array.from({ length: inProgressImageCount }, (_, i) => ({
-      imageUrl: "",
-      alt: `Generating image ${i + 1}`,
-      title: `Generating image ${i + 1}`,
-      isGenerating: true,
-    })),
+    ...Array.from({ length: inProgressImageCount }, (_, i) => {
+      const imageNumber = i + 1;
+      return {
+        imageUrl: "",
+        alt: t`Generating image ${imageNumber}`,
+        title: t`Generating image ${imageNumber}`,
+        isGenerating: true,
+      };
+    }),
   ];
 
   const generatedFiles = filesFromMessage.filter(
@@ -1658,12 +1682,14 @@ function AgentMessageContent({
          */}
         {agentMessage.status === "cancelled" &&
           creditSpendCheckpointStatus !== "stopped" && (
-            <div className="text-sm text-faint">Generation stopped.</div>
+            <div className="text-sm text-faint">
+              <Trans>Generation stopped.</Trans>
+            </div>
           )}
         {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint">
-              Skipped. Running your next message.
+              <Trans>Skipped. Running your next message.</Trans>
             </div>
             <div>
               <ButtonGroupDropdown
@@ -1677,7 +1703,7 @@ function AgentMessageContent({
                 }
                 items={[
                   {
-                    label: "Retry",
+                    label: t`Retry`,
                     icon: RefreshCw02,
                     onSelect: () => {
                       void retryHandler({
@@ -1697,7 +1723,7 @@ function AgentMessageContent({
           <ErrorMessage
             error={
               agentMessage.error ?? {
-                message: "Unexpected Error",
+                message: t`Unexpected error`,
                 code: "unexpected_error",
                 metadata: {},
               }

@@ -6,6 +6,7 @@ import { classNames, smoothScrollIntoView } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Page } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CSSProperties } from "react";
 import { useCallback } from "react";
 
@@ -24,6 +25,7 @@ export function AgentBrowserContainer({
   style,
   user,
 }: AgentBrowserContainerProps) {
+  const { t } = useLingui();
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -63,7 +65,7 @@ export function AgentBrowserContainer({
     >
       {!isMobileOrExtension && (
         <div id="agents-list-header">
-          <Page.SectionHeader title="Chat with..." />
+          <Page.SectionHeader title={t`Chat with...`} />
         </div>
       )}
       <AgentBrowser

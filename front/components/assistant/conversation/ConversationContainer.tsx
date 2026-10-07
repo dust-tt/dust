@@ -56,6 +56,7 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -156,6 +157,7 @@ export function ConversationContainerVirtuoso({
   suggestion,
   onDismissSuggestion,
 }: ConversationContainerProps) {
+  const { t } = useLingui();
   const conversationIdFromRouter = useActiveConversationId();
   const activeConversationId =
     conversationIdProp !== undefined
@@ -442,7 +444,7 @@ export function ConversationContainerVirtuoso({
                     variant="ghost"
                     size="xs"
                     icon={XClose}
-                    tooltip="Dismiss"
+                    tooltip={t`Dismiss`}
                     onClick={() => onDismissSuggestion?.(suggestion.id)}
                     className="text-highlight-600"
                   />
@@ -460,8 +462,8 @@ export function ConversationContainerVirtuoso({
 
   const body = (
     <DropzoneContainer
-      description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-      title="Attach files to the conversation"
+      description={t`Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here.`}
+      title={t`Attach files to the conversation`}
     >
       {activeConversationId ? (
         <ConversationViewer

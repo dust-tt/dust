@@ -17,6 +17,9 @@ import {
   ThumbsUp,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import React from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -46,16 +49,16 @@ interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
   isGlobalAgent: boolean;
 }
 
-const OTHER_ANSWER = "Other";
+const OTHER_ANSWER = msg({ message: "Other", context: "feedback reason" });
 
 const FEEDBACK_PREDEFINED_ANSWERS = [
-  "Factually incorrect",
-  "Didn’t follow instructions",
-  "Don’t like the tone",
-  "Wrong data sources",
-  "Took too long",
+  msg`Factually incorrect`,
+  msg`Didn’t follow instructions`,
+  msg`Don’t like the tone`,
+  msg`Wrong data sources`,
+  msg`Took too long`,
   OTHER_ANSWER,
-] as const;
+];
 
 const feedbackBaseSchema = z.object({
   thumbDirection: z.enum(["up", "down"]).nullable().default(null),
@@ -64,7 +67,10 @@ const feedbackBaseSchema = z.object({
   isConversationShared: z.boolean().default(true),
 });
 
-function makeFeedbackSchema(showPredefinedAnswers: boolean) {
+function makeFeedbackSchema(
+  showPredefinedAnswers: boolean,
+  t: (descriptor: MessageDescriptor) => string
+) {
   return feedbackBaseSchema.superRefine((data, ctx) => {
     if (data.thumbDirection !== "down") {
       return;
@@ -72,14 +78,14 @@ function makeFeedbackSchema(showPredefinedAnswers: boolean) {
     const hasAnswer =
       showPredefinedAnswers &&
       data.selectedAnswer.length > 0 &&
-      data.selectedAnswer !== OTHER_ANSWER;
+      data.selectedAnswer !== t(OTHER_ANSWER);
     const hasContent = data.feedbackContent.trim().length > 0;
     if (!hasAnswer && !hasContent) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: showPredefinedAnswers
-          ? "Please select a reason or describe the issue."
-          : "Please describe the issue.",
+          ? t(msg`Please select a reason or describe the issue.`)
+          : t(msg`Please describe the issue.`),
         path: ["feedbackContent"],
       });
     }
@@ -104,6 +110,7 @@ export function FeedbackSelector({
   agentName,
   isGlobalAgent,
 }: FeedbackSelectorProps) {
+  const { t } = useLingui();
   const isSidekick = agentConfigurationId === GLOBAL_AGENTS_SID.SIDEKICK;
   // Predefined answers are not so relevant in the context of sidekick.
   const showPredefinedAnswers = !isSidekick;
@@ -111,7 +118,7 @@ export function FeedbackSelector({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(showPredefinedAnswers)),
+    resolver: zodResolver(makeFeedbackSchema(showPredefinedAnswers, t)),
     defaultValues: DEFAULT_FEEDBACK_FORM_VALUES,
   });
 
@@ -193,7 +200,7 @@ export function FeedbackSelector({
         disabled={isSubmittingThumb}
         onClick={() => void handleThumbClick("up")}
         icon={ThumbsUp}
-        tooltip="I found this helpful"
+        tooltip={t`I found this helpful`}
       />
       <Button
         variant={feedback?.thumb === "down" ? "primary" : "ghost-secondary"}
@@ -201,7 +208,7 @@ export function FeedbackSelector({
         disabled={isSubmittingThumb}
         onClick={() => void handleThumbClick("down")}
         icon={ThumbsDown}
-        tooltip="Report an issue with this answer"
+        tooltip={t`Report an issue with this answer`}
       />
 
       <Dialog
@@ -214,7 +221,9 @@ export function FeedbackSelector({
       >
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>Provide feedback on {agentName}</DialogTitle>
+            <DialogTitle>
+              <Trans>Provide feedback on {agentName}</Trans>
+            </DialogTitle>
           </DialogHeader>
 
           <DialogContainer className="py-3">
@@ -226,18 +235,18 @@ export function FeedbackSelector({
               <div className="flex flex-col gap-4 pt-2">
                 <div>
                   <p className="mb-3 text-sm font-semibold text-foreground">
-                    Was this answer helpful?
+                    <Trans>Was this answer helpful?</Trans>
                   </p>
                   <div className="flex gap-2">
                     <Button
-                      label="Yes, helpful"
+                      label={t`Yes, helpful`}
                       icon={ThumbsUp}
                       size="sm"
                       variant={thumbDirection === "up" ? "primary" : "outline"}
                       onClick={() => handleThumbSelect("up")}
                     />
                     <Button
-                      label="Needs work"
+                      label={t`Needs work`}
                       icon={ThumbsDown}
                       size="sm"
                       variant={
@@ -262,8 +271,8 @@ export function FeedbackSelector({
                           className="mb-2 block"
                         >
                           {thumbDirection === "down"
-                            ? "What was the issue?"
-                            : "Glad you liked it! Tell us more?"}
+                            ? t`What was the issue?`
+                            : t`Glad you liked it! Tell us more?`}
                         </Label>
 
                         {showPredefinedAnswers && (
@@ -276,26 +285,32 @@ export function FeedbackSelector({
                           >
                             <div className="overflow-hidden">
                               <div className="mb-3 flex flex-wrap gap-2">
-                                {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
-                                  <Button
-                                    key={answer}
-                                    label={answer}
-                                    size="xs"
-                                    variant={
-                                      selectedAnswerField.field.value === answer
-                                        ? "primary"
-                                        : "outline"
-                                    }
-                                    onClick={() => {
-                                      selectedAnswerField.field.onChange(
-                                        selectedAnswerField.field.value ===
+                                {FEEDBACK_PREDEFINED_ANSWERS.map(
+                                  (answerDescriptor) => {
+                                    const answer = t(answerDescriptor);
+                                    return (
+                                      <Button
+                                        key={answer}
+                                        label={answer}
+                                        size="xs"
+                                        variant={
+                                          selectedAnswerField.field.value ===
                                           answer
-                                          ? ""
-                                          : answer
-                                      );
-                                    }}
-                                  />
-                                ))}
+                                            ? "primary"
+                                            : "outline"
+                                        }
+                                        onClick={() => {
+                                          selectedAnswerField.field.onChange(
+                                            selectedAnswerField.field.value ===
+                                              answer
+                                              ? ""
+                                              : answer
+                                          );
+                                        }}
+                                      />
+                                    );
+                                  }
+                                )}
                               </div>
                             </div>
                           </div>
@@ -305,8 +320,8 @@ export function FeedbackSelector({
                           id="feedback-content"
                           placeholder={
                             thumbDirection === "down"
-                              ? "Describe what went wrong"
-                              : "Share details"
+                              ? t`Describe what went wrong`
+                              : t`Share details`
                           }
                           resize="vertical"
                           rows={3}
@@ -336,13 +351,13 @@ export function FeedbackSelector({
                         <div className="flex flex-col">
                           <Label htmlFor="share-conversation">
                             {isGlobalAgent
-                              ? "Share conversation with the Dust team"
-                              : "Share conversation with the agent’s editors"}
+                              ? t`Share conversation with the Dust team`
+                              : t`Share conversation with the agent’s editors`}
                           </Label>
                           <span className="text-xs text-muted-foreground">
                             {isGlobalAgent
-                              ? `Helps the Dust team improve ${agentName}`
-                              : "Helps editors improve the agent"}
+                              ? t`Helps the Dust team improve ${agentName}`
+                              : t`Helps editors improve the agent`}
                           </span>
                         </div>
                       </div>
@@ -361,7 +376,7 @@ export function FeedbackSelector({
 
           <DialogFooter
             rightButtonProps={{
-              label: "Submit",
+              label: t`Submit`,
               variant: "primary",
               onClick: handleSubmit,
               disabled: !thumbDirection || isSubmittingThumb,

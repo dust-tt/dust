@@ -9,6 +9,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type EditConversationTitleDialogProps = {
@@ -26,6 +27,7 @@ export const EditConversationTitleDialog = ({
   conversationId,
   currentTitle,
 }: EditConversationTitleDialogProps) => {
+  const { t } = useLingui();
   const [title, setTitle] = useState<string>(currentTitle);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,12 +54,14 @@ export const EditConversationTitleDialog = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit conversation title</DialogTitle>
+          <DialogTitle>
+            <Trans>Edit conversation title</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <Input
             ref={inputRef}
-            placeholder="Enter new title..."
+            placeholder={t`Enter new title...`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
@@ -71,12 +75,12 @@ export const EditConversationTitleDialog = ({
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: editTitle,
           }}
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
         />

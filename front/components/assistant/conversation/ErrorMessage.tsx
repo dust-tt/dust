@@ -24,6 +24,7 @@ import {
   InfoCircle,
   RefreshCw02,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;
@@ -40,6 +41,7 @@ export function ErrorMessage({
   failedModel,
   modelResolutionMethod,
 }: ErrorMessageProps) {
+  const { t } = useLingui();
   const isContextWindowExceeded =
     isAgentErrorCategory(error.metadata?.category) &&
     error.metadata?.category === "context_window_exceeded";
@@ -77,8 +79,8 @@ export function ErrorMessage({
     <ContentMessage
       title={
         retryTierName
-          ? `${failedProviderName} did not respond in time`
-          : `${error.metadata?.errorTitle ?? "Something went wrong"}`
+          ? t`${failedProviderName} did not respond in time`
+          : `${error.metadata?.errorTitle ?? t`Something went wrong`}`
       }
       variant={
         errorIsRetryable || retryTierName !== null ? "golden" : "warning"
@@ -88,7 +90,7 @@ export function ErrorMessage({
     >
       <div className="whitespace-normal break-words">
         {retryTierName
-          ? `This model did not respond in time. Retry will use the ${retryTierName} model tier.`
+          ? t`This model did not respond in time. Retry will use the ${retryTierName} model tier.`
           : error.message}
         {isContextWindowExceeded && (
           <>
@@ -99,7 +101,7 @@ export function ErrorMessage({
               rel="noopener noreferrer"
               className="underline hover:text-foreground"
             >
-              Learn more
+              <Trans>Learn more</Trans>
             </a>
           </>
         )}
@@ -111,8 +113,8 @@ export function ErrorMessage({
           icon={RefreshCw02}
           label={
             retryTierName
-              ? `Retry with ${retryTierName} model tier`
-              : (retryLabel ?? "Retry")
+              ? t`Retry with ${retryTierName} model tier`
+              : (retryLabel ?? t`Retry`)
           }
           onClick={() => void retry()}
           isLoading={isRetrying}

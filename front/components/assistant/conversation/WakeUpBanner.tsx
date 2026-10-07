@@ -9,6 +9,7 @@ import {
   Tooltip,
   Trash04,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface WakeUpBannerProps {
   wakeUp: WakeUpType;
@@ -27,6 +28,7 @@ export const WakeUpBanner = ({
   conversationId,
   canDelete,
 }: WakeUpBannerProps) => {
+  const { t } = useLingui();
   const { cancelWakeUp } = useCancelWakeUp({ owner, conversationId });
   const scheduleDescription = describeWakeUpSchedule(wakeUp);
 
@@ -57,7 +59,7 @@ export const WakeUpBanner = ({
           icon={Trash04}
           variant="ghost"
           size="xs"
-          tooltip="Cancel wake-up"
+          tooltip={t`Cancel wake-up`}
           className="text-muted-foreground"
           onClick={() => {
             void cancelWakeUp(wakeUp.sId);

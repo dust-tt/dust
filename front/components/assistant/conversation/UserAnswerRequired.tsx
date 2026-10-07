@@ -7,6 +7,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -45,6 +46,7 @@ export function UserAnswerRequired({
   owner,
   retryHandler,
 }: UserAnswerRequiredProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
   const { answerQuestion, errorMessage } = useAnswerUserQuestion({ owner });
@@ -259,13 +261,22 @@ export function UserAnswerRequired({
   }
 
   if (!canCurrentUserRespond) {
+    const triggeringUserName = triggeringUser?.fullName;
     return (
       <div className="text-sm text-muted-foreground">
-        Waiting for&nbsp;
-        <span className="font-semibold">
-          {triggeringUser?.fullName ?? "another user"}
-        </span>
-        &nbsp; to answer.
+        {triggeringUserName ? (
+          <Trans>
+            Waiting for&nbsp;
+            <span className="font-semibold">{triggeringUserName}</span>
+            &nbsp; to answer.
+          </Trans>
+        ) : (
+          <Trans>
+            Waiting for&nbsp;
+            <span className="font-semibold">another user</span>
+            &nbsp; to answer.
+          </Trans>
+        )}
       </div>
     );
   }
@@ -337,7 +348,7 @@ export function UserAnswerRequired({
             inputRef={customResponseInputRef}
             id={`custom-response-${blockedAction.actionId}`}
             name="custom-response"
-            placeholder="Tell the agent what to do differently"
+            placeholder={t`Tell the agent what to do differently`}
             value={answerDraft.customResponse}
             disabled={isSubmitting}
             onFocus={() => {
@@ -362,8 +373,8 @@ export function UserAnswerRequired({
           <Spinner size="lg" />
           <span className="sr-only">
             {submission?.kind === "skip"
-              ? "Skipping question"
-              : "Submitting answer"}
+              ? t`Skipping question`
+              : t`Submitting answer`}
           </span>
         </div>
       </div>
@@ -374,7 +385,7 @@ export function UserAnswerRequired({
       )}
       <div className="flex items-center justify-between gap-3">
         <Button
-          label="Skip"
+          label={t`Skip`}
           variant="outline"
           size="sm"
           onClick={handleSkip}
@@ -388,7 +399,7 @@ export function UserAnswerRequired({
           isLoading={submission?.kind === "answer"}
           disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
-          aria-label="Send answer"
+          aria-label={t`Send answer`}
           className="rounded-full"
         />
       </div>

@@ -11,6 +11,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef } from "react";
 
 interface MCPToolValidationRequiredProps {
@@ -26,6 +27,7 @@ export function MCPToolValidationRequired({
   blockedAction,
   conversationId,
 }: MCPToolValidationRequiredProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const sendApiErrorNotification = useSendApiErrorNotification();
@@ -79,7 +81,7 @@ export function MCPToolValidationRequired({
 
     if (!result.success) {
       sendApiErrorNotification({
-        title: "Failed to assess action approval",
+        title: t`Failed to assess action approval`,
         error: result.error,
       });
       return false;
