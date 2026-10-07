@@ -130,7 +130,7 @@ function docWithUserGroups(
       id: "user-1",
       group_ids: groupIds,
       seat_type: "pro",
-      limit_group_id: null,
+      shared_usage_limit_group_id: null,
     },
   };
 }
