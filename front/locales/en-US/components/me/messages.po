@@ -242,6 +242,7 @@ msgid "This action cannot be undone."
 msgstr "This action cannot be undone."
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/me/UserToolsTable.tsx
 msgid "Cancel"
 msgstr "Cancel"
 
@@ -304,6 +305,10 @@ msgstr "No matching tools found"
 #: front/components/me/UserToolsTable.tsx
 msgid "No tools available yet."
 msgstr "No tools available yet."
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Connect {overridesDialogServerName}"
+msgstr "Connect {overridesDialogServerName}"
 
 #: front/components/me/UserWakeUpsTable.tsx
 msgid "Conversation"
