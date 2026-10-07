@@ -45,7 +45,7 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
           action={
             <ModelTierPickerDropdown
               selectedValue={selectedValue}
-              options={getWorkspaceModelTierOptions()}
+              options={getWorkspaceModelTierOptions(t)}
               onSelect={async (value) => {
                 await setWorkspaceAllowedModelTier({
                   tierName: value as ModelsTierName,

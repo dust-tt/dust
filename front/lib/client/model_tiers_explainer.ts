@@ -10,6 +10,10 @@ import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 export interface ModelTierExplainerEntry {
   displayName: string;
@@ -28,20 +32,24 @@ const HIDDEN_PROVIDER_IDS = new Set(["auto", "noop"]);
 
 function formatEffortsLabel(
   inTierEfforts: ReasoningEffort[],
-  supportedEfforts: ReasoningEffort[]
+  supportedEfforts: ReasoningEffort[],
+  t: Translate,
+  getEffortLabel: (effort: ReasoningEffort) => string
 ): string {
   if (
     inTierEfforts.length === supportedEfforts.length &&
     supportedEfforts.length > 1
   ) {
-    return "all efforts";
+    return t(msg`all efforts`);
   }
 
-  return inTierEfforts.join(" · ");
+  return inTierEfforts.map(getEffortLabel).join(" · ");
 }
 
 export function getModelTierExplainer(
-  availableModelIds: Set<string>
+  availableModelIds: Set<string>,
+  t: Translate,
+  getEffortLabel: (effort: ReasoningEffort) => string
 ): ModelTierExplainerTier[] {
   return MODELS_TIERS.map((tier) => {
     const models: ModelTierExplainerEntry[] = [];
@@ -69,7 +77,12 @@ export function getModelTierExplainer(
 
       models.push({
         displayName: config.displayName,
-        effortsLabel: formatEffortsLabel(inTierEfforts, supportedEfforts),
+        effortsLabel: formatEffortsLabel(
+          inTierEfforts,
+          supportedEfforts,
+          t,
+          getEffortLabel
+        ),
       });
     }
 

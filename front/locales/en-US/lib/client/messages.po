@@ -81,6 +81,27 @@ msgstr "What’s cooking, {name}?"
 msgid "Ready when you are, {name}."
 msgstr "Ready when you are, {name}."
 
+#: front/lib/client/model_tier_options.ts
+msgid "Includes {tierNames}"
+msgstr "Includes {tierNames}"
+
+#: front/lib/client/model_tier_options.ts
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from workspace"
+msgstr "Inherited from workspace"
+
+#: front/lib/client/model_tiers.ts
+msgid "Up to {tierName}"
+msgstr "Up to {tierName}"
+
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from groups"
+msgstr "Inherited from groups"
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "all efforts"
+msgstr "all efforts"
+
 #: front/lib/client/wakeup_schedule.ts
 msgid "at {time}"
 msgstr "at {time}"
