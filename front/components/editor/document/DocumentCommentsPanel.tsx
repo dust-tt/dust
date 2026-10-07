@@ -199,7 +199,8 @@ interface MessageBodyProps {
 /**
  * @cc [owner:tdraier,label:react] document-comment-message-body
  * A message MUST render its text and each of its suggestions where they stand in the body, each
- * suggestion as its own card, applying its own text.
+ * suggestion as its own card, applying its own text. The text between suggestions renders as
+ * separate Markdown bodies, so a reference definition applies only within its own part.
  */
 const MessageBody = ({
   body,
