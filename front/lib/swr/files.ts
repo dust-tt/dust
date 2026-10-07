@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
 import type {
@@ -688,8 +691,8 @@ export function useShareInteractiveContentFile({
   owner: LightWorkspaceType;
   cacheKey?: string | null;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
-  const sendNotification = useSendNotification();
 
   const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
 
@@ -703,7 +706,7 @@ export function useShareInteractiveContentFile({
     shareScope: FileShareScope
   ): Promise<
     | { success: true; response: ShareFileResponseBody }
-    | { success: false; message: string; unverifiableRefs?: string[] }
+    | { success: false; unverifiableRefs?: string[] }
   > => {
     const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
       method: "POST",
@@ -721,17 +724,12 @@ export function useShareInteractiveContentFile({
           ? errorData.unverifiableRefs
           : undefined;
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to update frame sharing",
-        description: errorData.message,
+        error: errorData,
       });
 
-      return {
-        success: false,
-        message: errorData.message,
-        unverifiableRefs,
-      };
+      return { success: false, unverifiableRefs };
     }
 
     await mutate();

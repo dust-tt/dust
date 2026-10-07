@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
@@ -31,6 +34,7 @@ export type RequestUpgradeResult = Result<void, RequestUpgradeError>;
 // success the usage-status read is revalidated so the banner reflects the now
 // pending request.
 export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
 
@@ -49,10 +53,9 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
         // A rejected reason is shown inline on the field by the caller, not as
         // a toast.
         if (errorType !== "invalid_request_error") {
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to request an upgrade",
-            description: errorData.message,
+            error: errorData,
           });
         }
         return new Err({ errorType, message: errorData.message });
@@ -66,7 +69,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
       });
       return new Ok(undefined);
     },
-    [workspaceId, sendNotification, mutate]
+    [workspaceId, sendNotification, mutate, sendApiErrorNotification]
   );
 
   return { doRequestUpgrade };
