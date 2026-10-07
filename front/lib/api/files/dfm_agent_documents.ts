@@ -105,6 +105,14 @@ function replaceInBody({
 > {
   // An empty `oldString` matches nowhere and everywhere, so it only writes an empty body.
   if (oldString === "") {
+    if (expectedReplacements !== 1) {
+      return new Err(
+        new DfmAgentDocumentError(
+          "unexpected_count",
+          `Expected ${expectedReplacements} replacements, but an empty text to replace makes exactly one.`
+        )
+      );
+    }
     return body.trim() === ""
       ? new Ok({ editedBody: newString, replacements: 1 })
       : new Err(
@@ -193,7 +201,8 @@ export async function readAgentDocument(
  * @cc [owner:tdraier,label:product;concurrency] dfm-agent-document-edit
  * An edit MUST replace exactly `expectedReplacements` occurrences of `oldString` in the body of
  * the source `readAgentDocument` returns, or, with an empty `oldString`, write `newString` as
- * the body of a document whose body is empty or blank, and refuse an empty `oldString` otherwise.
+ * the body of a document whose body is empty or blank, and refuse an empty `oldString` otherwise
+ * or with `expectedReplacements` other than 1.
  * Line breaks in the source and `oldString` MUST be matched normalized to `\n`, so a passage
  * quoted from a CRLF source still matches; they MAY be normalized to `\n` and trailing ones
  * dropped from the edited body. It MUST

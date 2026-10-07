@@ -214,6 +214,14 @@ describe("editAgentDocument", () => {
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
+  it("refuses an empty old_string expecting more than one replacement", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored("", "7"));
+
+    const result = await edit("", "# Plan\n", 2);
+    expect(result.isErr() && result.error.code).toBe("unexpected_count");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+
   it("refuses when the number of occurrences differs from the expected one", async () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
