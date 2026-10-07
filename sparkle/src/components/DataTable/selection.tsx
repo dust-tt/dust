@@ -1,3 +1,4 @@
+import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Checkbox } from "@sparkle/components/Checkbox";
 import {
@@ -12,10 +13,13 @@ interface SelectionColumnOptions {
   hideSelectAll?: boolean;
 }
 
-function useSelectionLabel<TData>(table: Table<TData>, row: Row<TData>) {
-  const { t } = useLingui();
+function getSelectionLabel<TData>(
+  t: ReturnType<typeof useLingui>["t"],
+  table: Table<TData>,
+  row: Row<TData>
+) {
   const label = table.options.meta?.getRowLabel?.(row.original);
-  return label ? t`Select ${label}` : t`Select row`;
+  return label ? t(msg`Select ${label}`) : t(msg`Select row`);
 }
 
 function SelectAllCheckbox<TData>({ table }: { table: Table<TData> }) {
@@ -47,11 +51,11 @@ function SelectRowCheckbox<TData>({
   table: Table<TData>;
   row: Row<TData>;
 }) {
-  const selectionLabel = useSelectionLabel(table, row);
+  const { t } = useLingui();
   return (
     <div className="flex h-full w-full items-center">
       <Checkbox
-        aria-label={selectionLabel}
+        aria-label={getSelectionLabel(t, table, row)}
         checked={row.getIsSelected()}
         disabled={!row.getCanSelect()}
         onCheckedChange={(state) => {
@@ -72,7 +76,7 @@ function SelectRowRadio<TData>({
   table: Table<TData>;
   row: Row<TData>;
 }) {
-  const selectionLabel = useSelectionLabel(table, row);
+  const { t } = useLingui();
   return (
     <div className="flex h-full w-full items-center">
       <div
@@ -82,7 +86,7 @@ function SelectRowRadio<TData>({
           !row.getCanSelect() && "cursor-not-allowed opacity-50"
         )}
         aria-checked={row.getIsSelected()}
-        aria-label={selectionLabel}
+        aria-label={getSelectionLabel(t, table, row)}
         role="radio"
       >
         {row.getIsSelected() && <div className={radioIndicatorStyles()} />}
