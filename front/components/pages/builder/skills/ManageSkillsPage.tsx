@@ -486,7 +486,6 @@ export function ManageSkillsPage({
               setFilter(clearFilterCategory(filter, category))
             }
             presets={getSearchFilterPresets({
-              filter,
               categories: SKILL_FILTER_CATEGORIES,
               currentUser: user,
               t,

@@ -381,7 +381,10 @@ export function ManageAgentsPage({
       limit: 0,
       filters: toAgentSearchFilters(
         Object.fromEntries(
-          filterCategories.map((category) => [category, pendingFilter[category]])
+          filterCategories.map((category) => [
+            category,
+            pendingFilter[category],
+          ])
         ),
         activeTab.filters
       ),
@@ -503,7 +506,6 @@ export function ManageAgentsPage({
               setFilter(clearFilterCategory(filter, category))
             }
             presets={getSearchFilterPresets({
-              filter: visibleFilter,
               categories: filterCategories,
               currentUser: user,
               t,

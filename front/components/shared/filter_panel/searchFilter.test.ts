@@ -170,10 +170,9 @@ describe("getSearchFilterPresets", () => {
     lastLoginAt: null,
   };
 
-  it("offers Editor is Me while the editor category is empty", () => {
+  it("offers Editor is Me when the editor category is listed", () => {
     expect(
       getSearchFilterPresets({
-        filter: {},
         categories: CATEGORIES,
         currentUser,
         t: translate,
@@ -195,28 +194,9 @@ describe("getSearchFilterPresets", () => {
     ]);
   });
 
-  it("offers no preset once the category has a selection or is not listed", () => {
+  it("offers no preset when the category is not listed", () => {
     expect(
       getSearchFilterPresets({
-        filter: {
-          editor: [
-            {
-              category: "editor",
-              id: "other",
-              name: "Bob",
-              image: null,
-              disabled: false,
-            },
-          ],
-        },
-        categories: CATEGORIES,
-        currentUser,
-        t: translate,
-      })
-    ).toEqual([]);
-    expect(
-      getSearchFilterPresets({
-        filter: {},
         categories: ["model"],
         currentUser,
         t: translate,

@@ -34,9 +34,25 @@ function SummaryLabel({
   );
 }
 
-// Shared by a category's active chip and its preset, so React keeps one element across the switch.
-function getCategoryChipKey(category: string) {
-  return `category:${category}`;
+// Shared by a preset and the active chip selecting exactly its options, so React keeps one element
+// when the preset is applied or removed.
+function getPresetChipKey({ category, options }: FilterSummary<string>) {
+  return `preset:${category}:${options
+    .map(({ id }) => id)
+    .toSorted()
+    .join(",")}`;
+}
+
+function isPresetApplied<Category extends string>(
+  preset: FilterSummary<Category>,
+  summaries: FilterSummary<Category>[]
+) {
+  const selectedIds = new Set(
+    summaries
+      .find(({ category }) => category === preset.category)
+      ?.options.map(({ id }) => id)
+  );
+  return preset.options.every(({ id }) => selectedIds.has(id));
 }
 
 interface FilterExtraChip {
@@ -53,7 +69,7 @@ interface FilterSummaryChipsProps<
   // Chips for settings outside the filter categories, shown after the category chips.
   extraChips?: FilterExtraChip[];
   // Faded filters, labelled as the chip they become, applied on click. Shown after the active
-  // chips. A preset shares its category's chip key, so applying it morphs it into the active chip.
+  // chips, unless all their options are already selected.
   presets?: Preset[];
   onApplyPreset?: (preset: Preset) => void;
   onClearCategory: (category: Category) => void;
@@ -76,9 +92,12 @@ export function FilterSummaryChips<
   className,
 }: FilterSummaryChipsProps<Category, Preset>) {
   const { t } = useLingui();
+  const presetKeys = new Set(presets.map(getPresetChipKey));
   const chips: FilterExtraChip[] = [
     ...summaries.map((summary) => ({
-      key: getCategoryChipKey(summary.category),
+      key: presetKeys.has(getPresetChipKey(summary))
+        ? getPresetChipKey(summary)
+        : `category:${summary.category}`,
       label: (
         <SummaryLabel
           categoryLabel={summary.categoryLabel}
@@ -91,17 +110,19 @@ export function FilterSummaryChips<
   ];
   const chipsAndPresets = [
     ...chips.map((chip) => ({ ...chip, onApply: undefined })),
-    ...presets.map((preset) => ({
-      key: getCategoryChipKey(preset.category),
-      label: (
-        <SummaryLabel
-          categoryLabel={preset.categoryLabel}
-          options={preset.options}
-        />
-      ),
-      onRemove: undefined,
-      onApply: () => onApplyPreset?.(preset),
-    })),
+    ...presets
+      .filter((preset) => !isPresetApplied(preset, summaries))
+      .map((preset) => ({
+        key: getPresetChipKey(preset),
+        label: (
+          <SummaryLabel
+            categoryLabel={preset.categoryLabel}
+            options={preset.options}
+          />
+        ),
+        onRemove: undefined,
+        onApply: () => onApplyPreset?.(preset),
+      })),
   ];
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion
