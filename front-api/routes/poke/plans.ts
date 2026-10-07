@@ -76,6 +76,7 @@ app.post(
       maxVaultsInWorkspace: body.limits.vaults.maxVaults,
       canUseProduct: body.limits.canUseProduct,
       isByok: body.isByok,
+      gateway: body.gateway,
       hasAdvancedModelAccess: body.hasAdvancedModelAccess,
     };
 

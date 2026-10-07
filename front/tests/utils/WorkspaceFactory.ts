@@ -3,6 +3,7 @@ import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
   FREE_BYOK_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -36,6 +37,10 @@ export class WorkspaceFactory {
 
   static async byok(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
     return this.create(FREE_BYOK_PLAN_CODE, overrides);
+  }
+
+  static async edgee(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
+    return this.create(CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE, overrides);
   }
 
   static async enterprise(

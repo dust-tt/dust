@@ -2,6 +2,7 @@ import type { PlanType } from "@app/types/plan";
 import {
   MAX_AWU_CREDITS_TIMEFRAMES,
   MAX_MESSAGE_TIMEFRAMES,
+  PLAN_GATEWAYS,
 } from "@app/types/plan";
 import { z } from "zod";
 
@@ -53,6 +54,7 @@ export const PlanTypeSchema = z.object({
     canUseProduct: z.boolean(),
   }),
   isByok: z.boolean(),
+  gateway: z.enum(PLAN_GATEWAYS).nullable(),
   isAuditLogsAllowed: z.boolean(),
   hasAdvancedModelAccess: z.boolean(),
 });

@@ -63,7 +63,11 @@ import type {
 } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
-import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type {
+  PlanGatewayType,
+  PlanType,
+  SubscriptionType,
+} from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WithAccessControl } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
@@ -137,6 +141,7 @@ export interface AuthenticatorType {
   groupIds: string[] | null;
   subscriptionId: string | null;
   isByok: boolean;
+  gateway: PlanGatewayType | null;
   key?: KeyAuthType;
   attributionKey?: { id: ModelId; name: string };
   clientIp?: string;
@@ -1809,6 +1814,7 @@ export class Authenticator {
         : null,
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
+      gateway: this.plan()?.gateway ?? null,
       key: this._key,
       attributionKey: this._attributionKey,
       clientIp: this._clientIp,

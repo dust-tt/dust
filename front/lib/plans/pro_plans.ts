@@ -63,6 +63,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
   PRO_PLANS_DATA.push({
@@ -96,6 +97,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
   PRO_PLANS_DATA.push({
@@ -129,6 +131,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: true,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
 }
