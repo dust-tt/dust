@@ -3,13 +3,19 @@ import {
   checkpointLiveDocument,
   loadLiveDocument,
 } from "@app/lib/api/collab/live_file";
+import { mintLiveTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { writeUserFile } from "@app/tests/utils/user_files";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import {
+  authenticateConnection,
   createCollabHocuspocus,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
@@ -207,5 +213,103 @@ describe("createCollabHocuspocus", () => {
     expect(checkpointLiveDocument).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
     expect(hocuspocus.getDocumentsCount()).toBe(1);
+  });
+});
+
+describe("authenticateConnection", () => {
+  async function ticketFor(auth: Authenticator, path: string) {
+    const ticket = await mintLiveTicket(auth, path);
+    if (ticket.isErr()) {
+      throw new Error(ticket.error.message);
+    }
+    return ticket.value;
+  }
+
+  it("opens the ticket's file for its user, once", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const name = { workspaceId: workspace.sId, canonicalPath: path };
+    const ticket = await ticketFor(auth, path);
+
+    const first = await authenticateConnection(name, ticket);
+    expect(first.isOk() && first.value.canonicalPath).toBe(path);
+    expect(first.isOk() && first.value.canWrite).toBe(true);
+
+    const second = await authenticateConnection(name, ticket);
+    expect(second.isErr() && second.error).toBe("Invalid or expired ticket.");
+  });
+
+  it("refuses a ticket minted for another file", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const notes = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const ticket = await ticketFor(auth, notes);
+    const other = notes.replace("notes.md", "other.md");
+
+    const result = await authenticateConnection(
+      { workspaceId: workspace.sId, canonicalPath: other },
+      ticket
+    );
+
+    expect(result.isErr() && result.error).toBe("Invalid or expired ticket.");
+  });
+
+  it("refuses a ticket used for another workspace", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const ticket = await ticketFor(auth, path);
+
+    const result = await authenticateConnection(
+      { workspaceId: "w_other", canonicalPath: path },
+      ticket
+    );
+
+    expect(result.isErr() && result.error).toBe("Invalid or expired ticket.");
+  });
+
+  it("refuses a user who left the workspace after the ticket was minted", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+    const ticket = await ticketFor(auth, path);
+    const revoked = await MembershipResource.revokeMembership({
+      user,
+      workspace,
+    });
+    if (revoked.isErr()) {
+      throw revoked.error;
+    }
+
+    const result = await authenticateConnection(
+      { workspaceId: workspace.sId, canonicalPath: path },
+      ticket
+    );
+
+    expect(result.isErr() && result.error).toBe(
+      "Not a member of this workspace."
+    );
+  });
+
+  it("refuses a token that is not a ticket", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({});
+    const path = await writeUserFile(auth, "notes.md", "# Notes\n");
+
+    // What the browser sent before tickets: the user's own id.
+    const result = await authenticateConnection(
+      { workspaceId: workspace.sId, canonicalPath: path },
+      user.sId
+    );
+
+    expect(result.isErr() && result.error).toBe("Invalid or expired ticket.");
   });
 });

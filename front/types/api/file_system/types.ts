@@ -67,3 +67,12 @@ export type PostDfmCommentSignatureRequestBody = {
 export type PostDfmCommentSignatureResponseBody = {
   message: DfmMessage;
 };
+
+export type PostCollabTicketRequestBody = {
+  /** Scoped path of the file opened live. */
+  filePath: string;
+};
+
+export type PostCollabTicketResponseBody = {
+  ticket: string;
+};

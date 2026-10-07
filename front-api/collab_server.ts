@@ -17,9 +17,9 @@ import { healthzApp } from "./routes/healthz";
 
 /**
  * @cc [owner:PopDaph,label:security] collab-server-dev-only
- * Until connections are authenticated with tickets minted by front-api, the server MUST refuse
- * to start outside development: the dev token is a bare user id. This runs before anything else
- * at startup.
+ * Until a connection's access is re-checked during its session, the server MUST refuse to start
+ * outside development: access is checked only when a connection opens, so a user removed from a
+ * workspace or a file keeps editing until disconnected. This runs before anything else at startup.
  */
 function assertDevelopmentOnly() {
   if (!isDevelopment()) {

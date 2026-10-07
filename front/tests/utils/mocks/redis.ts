@@ -111,6 +111,17 @@ class RedisMock {
         }
         return entry.value;
       }),
+      getDel: vi.fn(async (key: string) => {
+        const entry = this.stringStore.get(key);
+        this.stringStore.delete(key);
+        if (
+          !entry ||
+          (entry.expiresAtMs > 0 && Date.now() > entry.expiresAtMs)
+        ) {
+          return null;
+        }
+        return entry.value;
+      }),
       set: vi.fn(
         async (
           key: string,
