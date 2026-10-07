@@ -1,0 +1,18 @@
+{
+  "action": "mcp_server.oauth_settings_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "mcp_server"
+    }
+  ],
+  "metadata": {
+    "server_type": "string",
+    "previous_oauth_use_case": "string",
+    "new_oauth_use_case": "string",
+    "oauth_scope_changed": "string",
+    "actor_type": "string"
+  }
+}

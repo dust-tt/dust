@@ -77,6 +77,8 @@ export const AUDIT_ACTIONS = [
   "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
+  "mcp_server.credentials_updated",
+  "mcp_server.oauth_settings_updated",
   "mcp_server.tool_settings_updated",
   // Skill import GitHub connection.
   "skill_import_github_connection.created",
@@ -448,6 +450,7 @@ type AuditTargetType =
   | "group"
   | "credential"
   | "mcp_connection"
+  | "mcp_server"
   | "sandbox_env_var"
   | "skill"
   | "frame"
