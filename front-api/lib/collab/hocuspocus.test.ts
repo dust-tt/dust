@@ -25,7 +25,9 @@ import {
   authenticateConnection,
   checkpointAllDocuments,
   createCollabHocuspocus,
+  readLiveSource,
   UNLOAD_GRACE_PERIOD_MS,
+  writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { WebSocketLike } from "@hocuspocus/server";
@@ -286,6 +288,156 @@ describe("createCollabHocuspocus", () => {
     expect(checkpointLiveDocument).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
     expect(hocuspocus.getDocumentsCount()).toBe(1);
+  });
+});
+
+describe("readLiveSource and writeLiveSource", () => {
+  const THREAD_SOURCE =
+    "# Notes\n\nHello :comment-start{id=c1}there:comment-end{id=c1}.\n\n" +
+    ":::annotations\n::comment{id=c1 status=open}\n\n" +
+    '::message{author=agent:agt_1 name="Agent" at=2026-10-05T12:00:00.000Z}\n\nWhy?\n:::\n';
+
+  beforeEach(() => {
+    vi.mocked(loadLiveDocument).mockImplementation(loadSource);
+    vi.mocked(checkpointLiveDocument).mockImplementation(
+      async (_file, _live, last) =>
+        new Ok({ revision: String(Number(last.revision) + 1), content: "" })
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function openSource(
+    hocuspocus: ReturnType<typeof createCollabHocuspocus>
+  ) {
+    const read = await readLiveSource(hocuspocus, DOCUMENT_NAME);
+    if (read.isErr() || !read.value.open) {
+      throw new Error("The document is not open.");
+    }
+    return read.value.source;
+  }
+
+  it("report a document nobody has open as closed, without loading it", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const agent = await liveFile(true);
+
+    expect(await readLiveSource(hocuspocus, DOCUMENT_NAME)).toEqual(
+      new Ok({ open: false })
+    );
+    expect(
+      await writeLiveSource(hocuspocus, {
+        documentName: DOCUMENT_NAME,
+        file: agent,
+        base: SOURCE,
+        source: "# Notes\n\nEdited.\n",
+      })
+    ).toEqual(new Ok("closed"));
+    expect(loadLiveDocument).not.toHaveBeenCalled();
+  });
+
+  it("write through the open session as the agent's change, then checkpoint it", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const agent = await liveFile(true);
+    const reader = await liveFile(false);
+    vi.useFakeTimers();
+    await hocuspocus.openDirectConnection(DOCUMENT_NAME, reader);
+    const base = await openSource(hocuspocus);
+    expect(base).toBe(SOURCE);
+
+    const written = await writeLiveSource(hocuspocus, {
+      documentName: DOCUMENT_NAME,
+      file: agent,
+      base,
+      source: "# Notes\n\nHello, edited.\n",
+    });
+
+    expect(written).toEqual(new Ok("written"));
+    expect(await openSource(hocuspocus)).toBe("# Notes\n\nHello, edited.\n");
+    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(checkpointLiveDocument).mock.calls[0][0]).toBe(agent);
+  });
+
+  it("refuse a write made against another source, changing nothing", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const agent = await liveFile(true);
+    const human = await liveFile(true);
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      human
+    );
+    const base = await openSource(hocuspocus);
+    await connection.transact((doc) => typeInto(doc, "Typed meanwhile."));
+
+    const written = await writeLiveSource(hocuspocus, {
+      documentName: DOCUMENT_NAME,
+      file: agent,
+      base,
+      source: "# Notes\n\nHello, edited.\n",
+    });
+
+    expect(written).toEqual(new Ok("changed"));
+    expect(await openSource(hocuspocus)).toContain("Typed meanwhile.");
+    expect(await openSource(hocuspocus)).not.toContain("edited");
+  });
+
+  it("replace the session's threads, send them to every connection and checkpoint them", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const agent = await liveFile(true);
+    const reader = await liveFile(false);
+    vi.useFakeTimers();
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      reader
+    );
+    const broadcast = vi.spyOn(connection.document!, "broadcastStateless");
+
+    const written = await writeLiveSource(hocuspocus, {
+      documentName: DOCUMENT_NAME,
+      file: agent,
+      base: await openSource(hocuspocus),
+      source: THREAD_SOURCE,
+    });
+
+    expect(written).toEqual(new Ok("written"));
+    expect(await openSource(hocuspocus)).toBe(THREAD_SOURCE);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    const [message] = broadcast.mock.calls[0];
+    expect(JSON.parse(message)).toMatchObject({
+      type: "threads",
+      comments: [{ id: "c1" }],
+    });
+    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
+    const [[writer, live]] = vi.mocked(checkpointLiveDocument).mock.calls;
+    expect(writer).toBe(agent);
+    expect(live.comments.map(({ id }) => id)).toEqual(["c1"]);
+  });
+
+  it("refuse a source the editor refuses, or a file that cannot write, changing nothing", async () => {
+    const hocuspocus = createCollabHocuspocus();
+    const agent = await liveFile(true);
+    const reader = await liveFile(false);
+    await hocuspocus.openDirectConnection(DOCUMENT_NAME, reader);
+    const base = await openSource(hocuspocus);
+
+    const table = await writeLiveSource(hocuspocus, {
+      documentName: DOCUMENT_NAME,
+      file: agent,
+      base,
+      source: "| a | b |\n|---|---|\n| 1 | 2 |\n",
+    });
+    const unwritable = await writeLiveSource(hocuspocus, {
+      documentName: DOCUMENT_NAME,
+      file: reader,
+      base,
+      source: "# Notes\n\nHello, edited.\n",
+    });
+
+    expect(table.isErr()).toBe(true);
+    expect(unwritable.isErr()).toBe(true);
+    expect(await openSource(hocuspocus)).toBe(base);
   });
 });
 

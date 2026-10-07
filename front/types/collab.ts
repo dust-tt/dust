@@ -98,3 +98,21 @@ export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
 export type LiveCommentServerMessage = z.infer<
   typeof liveCommentServerMessageSchema
 >;
+
+/** What the collab server reports of a live document an agent wants to change. */
+export const liveSourceReadResponseSchema = z.discriminatedUnion("open", [
+  z.object({ open: z.literal(false) }),
+  z.object({ open: z.literal(true), source: z.string() }),
+]);
+
+export type LiveSourceReadResponse = z.infer<
+  typeof liveSourceReadResponseSchema
+>;
+
+export const LIVE_SOURCE_WRITE_RESULTS = [
+  "written",
+  "changed",
+  "closed",
+] as const;
+
+export type LiveSourceWriteResult = (typeof LIVE_SOURCE_WRITE_RESULTS)[number];
