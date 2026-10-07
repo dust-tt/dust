@@ -209,26 +209,35 @@ const MessageBody = ({
 }: MessageBodyProps) => {
   const parts = useMemo(() => {
     const read = readMessageSuggestions(body);
-    return read.isOk() && read.value
-      ? read.value.map((part) => ({
-          ...part,
-          applicable:
-            part.kind === "suggestion" &&
-            parseInlineMarkdown(part.suggestion).isOk(),
-        }))
-      : null;
+    if (read.isErr() || !read.value) {
+      return null;
+    }
+    // Keyed by where each part starts; the +1 keeps consecutive empty suggestions apart.
+    let position = 0;
+    return read.value.map((part) => {
+      const key = `${part.kind}-${position}`;
+      position +=
+        (part.kind === "text" ? part.text : part.suggestion).length + 1;
+      return {
+        ...part,
+        key,
+        applicable:
+          part.kind === "suggestion" &&
+          parseInlineMarkdown(part.suggestion).isOk(),
+      };
+    });
   }, [body]);
   if (!parts) {
     return renderBody(body);
   }
   return (
     <>
-      {parts.map((part, index) =>
+      {parts.map((part) =>
         part.kind === "text" ? (
-          <Fragment key={`text-${index}`}>{renderBody(part.text)}</Fragment>
+          <Fragment key={part.key}>{renderBody(part.text)}</Fragment>
         ) : (
           <SuggestionCard
-            key={`suggestion-${index}`}
+            key={part.key}
             quote={quote}
             suggestion={part.suggestion}
             renderBody={renderBody}
