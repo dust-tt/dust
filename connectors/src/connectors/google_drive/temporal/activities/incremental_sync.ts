@@ -45,6 +45,7 @@ import type { RedisClientType } from "redis";
 const PAGE_SIZE = 500;
 const UPDATE_PARENTS_BATCH_SIZE = 1_000;
 const UPDATE_PARENTS_CONCURRENCY = 8;
+const UPDATE_PARENTS_PROGRESS_TTL_SECONDS = 60 * 60 * 24; // 1 day
 
 type ParentsUpdate = {
   file: GoogleDriveFilesModel;
@@ -296,7 +297,8 @@ export async function incrementalSync(
               connector,
               localFolder,
               parents,
-              localLogger
+              localLogger,
+              { redisCli, startSyncTs }
             );
             hadRelevantChange = true;
           }
@@ -447,11 +449,18 @@ async function getQuietDriveBaselineAt(
   );
 }
 
+/**
+ * @cc [owner:philipperolet,label:performance] resumable-move
+ * When a move is retried with the same connector, `startSyncTs` and new parents chain, the retry
+ * MUST skip the descendants whose data source parents a previous attempt already updated (apart from
+ * updates still in flight when that attempt stopped), so that each attempt makes progress.
+ */
 async function recurseUpdateParents(
   connector: ConnectorResource,
   file: GoogleDriveFilesModel,
   parentIds: string[],
-  logger: Logger
+  logger: Logger,
+  { redisCli, startSyncTs }: { redisCli: RedisClientType; startSyncTs: number }
 ) {
   return tracer.trace(
     "gdrive",
@@ -463,9 +472,15 @@ async function recurseUpdateParents(
       span?.setTag("workspaceId", connector.workspaceId);
       span?.setTag("fileId", file.driveFileId);
 
+      // Records the descendants already updated, so that retries of a move too large for one
+      // activity attempt make progress. A different move gets a different key.
+      const progressKey = `google_drive_parents_updated_${connector.id}_${startSyncTs}_${parentIds.join("_")}`;
       let updateBatch: ParentsUpdate[] = [];
       const flushUpdateBatch = async () => {
-        await updateParentsFieldForBatch(connector, updateBatch, logger);
+        await updateParentsFieldForBatch(connector, updateBatch, logger, {
+          redisCli,
+          progressKey,
+        });
         updateBatch = [];
       };
       const enqueueUpdate = async (update: ParentsUpdate) => {
@@ -495,6 +510,7 @@ async function recurseUpdateParents(
         initialFolderUpdate.parentIds,
         logger
       );
+      await redisCli.del(progressKey);
     }
   );
 }
@@ -556,15 +572,22 @@ async function recurseUpdateParentsInner(
 async function updateParentsFieldForBatch(
   connector: ConnectorResource,
   updateBatch: ParentsUpdate[],
-  logger: Logger
+  logger: Logger,
+  { redisCli, progressKey }: { redisCli: RedisClientType; progressKey: string }
 ) {
   await concurrentExecutor(
     updateBatch,
     async ({ file, parentIds }) => {
+      const fileId = file.id.toString();
+      if (await redisCli.sIsMember(progressKey, fileId)) {
+        return;
+      }
       await updateParentsField(connector, file, parentIds, logger);
+      await redisCli.sAdd(progressKey, fileId);
     },
     { concurrency: UPDATE_PARENTS_CONCURRENCY, onBatchComplete: heartbeat }
   );
+  await redisCli.expire(progressKey, UPDATE_PARENTS_PROGRESS_TTL_SECONDS);
 }
 
 async function alreadySeenAndIgnored({
