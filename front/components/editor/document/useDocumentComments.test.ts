@@ -254,8 +254,8 @@ describe("useDocumentComments", () => {
         (await result.current.comments.reply("c1", "Not at all.")).isOk()
       ).toBe(true);
     });
-    act(() => {
-      result.current.comments.setResolved("c1", true, null);
+    await act(async () => {
+      await result.current.comments.setResolved("c1", true, null);
     });
     await act(() => result.current.document.save());
 
@@ -269,8 +269,8 @@ describe("useDocumentComments", () => {
       ]);
     }
 
-    act(() => {
-      result.current.comments.remove("c1", null);
+    await act(async () => {
+      await result.current.comments.remove("c1", null);
     });
     await act(() => result.current.document.save());
 
@@ -378,8 +378,8 @@ describe("useDocumentComments", () => {
           (await result.current.comments.reply("c1", "Not at all.")).isOk()
         ).toBe(true);
       });
-      act(() => {
-        result.current.comments.setResolved("c1", true, null);
+      await act(async () => {
+        await result.current.comments.setResolved("c1", true, null);
       });
 
       expect(send.mock.calls.map(([command]) => command)).toEqual([
@@ -390,8 +390,8 @@ describe("useDocumentComments", () => {
       expect(result.current.comments.comments[0].messages).toHaveLength(1);
       expect(result.current.comments.comments[0].status).toBe("open");
 
-      act(() => {
-        result.current.comments.remove("c1", null);
+      await act(async () => {
+        await result.current.comments.remove("c1", null);
       });
 
       expect(send).toHaveBeenLastCalledWith({
@@ -416,6 +416,99 @@ describe("useDocumentComments", () => {
         ).toBe(true);
       });
       expect(send).not.toHaveBeenCalled();
+    });
+
+    it("refuses a new comment or reply too large once signed, before the session sees it", async () => {
+      const { channel, send } = liveChannel(() => new Ok(null));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+        isSavable: (document) =>
+          !JSON.stringify(document).includes('"signature"'),
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        select(editor, "Hi");
+        result.current.comments.startDraft();
+      });
+      await act(async () => {
+        expect(
+          (await result.current.comments.submitDraft("Too bold?")).isErr()
+        ).toBe(true);
+        expect(
+          (await result.current.comments.reply("c1", "Not at all.")).isErr()
+        ).toBe(true);
+      });
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("tells a reply to a thread deleted since the last render that it was deleted", async () => {
+      const { channel, send } = liveChannel(() => new Ok(null));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+      const { comments, document } = result.current;
+
+      act(() => {
+        document.editor?.commands.setCommentThreads([]);
+      });
+
+      const replied = await comments.reply("c1", "Not at all.");
+      expect(replied.isErr() && replied.error).toBe(
+        "This comment was deleted."
+      );
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("reports a resolve or delete the session refuses, keeping the thread", async () => {
+      const { channel } = liveChannel(() => new Err("unavailable"));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      await act(async () => {
+        expect(
+          (await result.current.comments.setResolved("c1", true, null)).isErr()
+        ).toBe(true);
+        expect((await result.current.comments.remove("c1", null)).isErr()).toBe(
+          true
+        );
+      });
+
+      expect(result.current.comments.comments.map(({ id }) => id)).toEqual([
+        "c1",
+      ]);
+      expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
+    });
+
+    it("keeps an applied suggestion's text and reports the resolution the session refuses", async () => {
+      const { channel, send } = liveChannel(() => new Err("unavailable"));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+
+      await act(async () => {
+        expect(
+          (
+            await result.current.comments.applySuggestion("c1", "here", null)
+          ).isErr()
+        ).toBe(true);
+      });
+
+      expect(send).toHaveBeenCalledWith({
+        type: "resolve",
+        commentId: "c1",
+        resolved: true,
+      });
+      expect(result.current.comments.quotes.get("c1")).toBe("here");
+      expect(result.current.comments.comments[0].status).toBe("open");
     });
 
     it("refuses a reply the session refuses", async () => {
@@ -446,8 +539,8 @@ describe("useDocumentComments", () => {
         .deleteSelection()
         .run();
     });
-    act(() => {
-      result.current.comments.remove("c1", null);
+    await act(async () => {
+      await result.current.comments.remove("c1", null);
     });
     act(() => {
       editor.commands.undo();
@@ -605,6 +698,26 @@ describe("useDocumentComments", () => {
       ],
       1
     );
+  });
+
+  it("checks again only the messages a change to the threads adds", async () => {
+    const verify = vi.fn(
+      async (_commentId: string, _messages: DfmMessage[], _index: number) =>
+        true
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { verify });
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 0)).toBe(true)
+    );
+
+    await act(async () => {
+      await result.current.comments.reply("c1", "Not at all.");
+    });
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 1)).toBe(true)
+    );
+
+    expect(verify.mock.calls.map(([, , index]) => index)).toEqual([0, 1]);
   });
 
   it("reads messages as unknown again while a new verifier checks them", async () => {
@@ -1034,11 +1147,15 @@ describe("useDocumentComments", () => {
         "```suggestion\n**brave**\n```"
       );
 
-      act(() => {
+      await act(async () => {
         expect(
-          result.current.comments
-            .applySuggestion("c1", "**brave**", null)
-            .isOk()
+          (
+            await result.current.comments.applySuggestion(
+              "c1",
+              "**brave**",
+              null
+            )
+          ).isOk()
         ).toBe(true);
       });
       await act(() => result.current.document.save());
@@ -1051,11 +1168,15 @@ describe("useDocumentComments", () => {
     it("replaces the commented text, keeps the comment on it and resolves the thread", async () => {
       const { result, onSave } = await renderCommentedEditor(SOURCE);
 
-      act(() => {
+      await act(async () => {
         expect(
-          result.current.comments
-            .applySuggestion("c1", "*over* here", null)
-            .isOk()
+          (
+            await result.current.comments.applySuggestion(
+              "c1",
+              "*over* here",
+              null
+            )
+          ).isOk()
         ).toBe(true);
       });
       await act(() => result.current.document.save());
@@ -1071,8 +1192,8 @@ describe("useDocumentComments", () => {
     it("undoes the text change and leaves the thread resolved", async () => {
       const { result } = await renderCommentedEditor(SOURCE);
 
-      act(() => {
-        result.current.comments.applySuggestion("c1", "here", null);
+      await act(async () => {
+        await result.current.comments.applySuggestion("c1", "here", null);
       });
       act(() => {
         result.current.document.editor?.commands.undo();
@@ -1085,9 +1206,9 @@ describe("useDocumentComments", () => {
     it("deletes the commented text with an empty suggestion", async () => {
       const { result } = await renderCommentedEditor(SOURCE);
 
-      act(() => {
+      await act(async () => {
         expect(
-          result.current.comments.applySuggestion("c1", "", null).isOk()
+          (await result.current.comments.applySuggestion("c1", "", null)).isOk()
         ).toBe(true);
       });
 
@@ -1103,8 +1224,8 @@ describe("useDocumentComments", () => {
       const { result } = await renderCommentedEditor(SOURCE);
 
       let applied: Result<void, string> | undefined;
-      act(() => {
-        applied = result.current.comments.applySuggestion(
+      await act(async () => {
+        applied = await result.current.comments.applySuggestion(
           "c1",
           suggestion,
           null
@@ -1124,8 +1245,12 @@ describe("useDocumentComments", () => {
       });
 
       let applied: Result<void, string> | undefined;
-      act(() => {
-        applied = result.current.comments.applySuggestion("c1", "here", null);
+      await act(async () => {
+        applied = await result.current.comments.applySuggestion(
+          "c1",
+          "here",
+          null
+        );
       });
 
       expect(applied?.isErr()).toBe(true);
@@ -1144,8 +1269,12 @@ describe("useDocumentComments", () => {
         true
       );
       let applied: Result<void, string> | undefined;
-      act(() => {
-        applied = result.current.comments.applySuggestion("c1", "Three", null);
+      await act(async () => {
+        applied = await result.current.comments.applySuggestion(
+          "c1",
+          "Three",
+          null
+        );
       });
       expect(applied?.isErr()).toBe(true);
       expect(result.current.document.dirty).toBe(false);
@@ -1163,9 +1292,11 @@ describe("useDocumentComments", () => {
       const source = `the :comment-start{id=c2}quick :comment-start{id=c1}brown:comment-end{id=c1} fox:comment-end{id=c2}\n\n${threads("c1", "c2")}`;
       const { result, onSave } = await renderCommentedEditor(source);
 
-      act(() => {
+      await act(async () => {
         expect(
-          result.current.comments.applySuggestion("c1", "red", null).isOk()
+          (
+            await result.current.comments.applySuggestion("c1", "red", null)
+          ).isOk()
         ).toBe(true);
       });
       await act(() => result.current.document.save());
@@ -1203,8 +1334,8 @@ describe("useDocumentComments", () => {
         const quote = result.current.comments.quotes.get("c2");
 
         let applied: Result<void, string> | undefined;
-        act(() => {
-          applied = result.current.comments.applySuggestion(
+        await act(async () => {
+          applied = await result.current.comments.applySuggestion(
             "c1",
             suggestion,
             null
@@ -1232,8 +1363,12 @@ describe("useDocumentComments", () => {
       );
 
       let applied: Result<void, string> | undefined;
-      act(() => {
-        applied = result.current.comments.applySuggestion("c1", "here", null);
+      await act(async () => {
+        applied = await result.current.comments.applySuggestion(
+          "c1",
+          "here",
+          null
+        );
       });
 
       expect(applied?.isErr()).toBe(true);
@@ -1247,7 +1382,9 @@ describe("useDocumentComments", () => {
       );
 
       expect(
-        result.current.comments.applySuggestion("c1", "here", null).isErr()
+        (
+          await result.current.comments.applySuggestion("c1", "here", null)
+        ).isErr()
       ).toBe(true);
       expect(result.current.comments.quotes.get("c1")).toBe("there");
     });
@@ -1256,9 +1393,11 @@ describe("useDocumentComments", () => {
       const { result } = await renderCommentedEditor(SOURCE);
       const { comments } = result.current;
 
-      act(() => {
-        comments.setResolved("c1", true, null);
-        expect(comments.applySuggestion("c1", "here", null).isErr()).toBe(true);
+      await act(async () => {
+        void comments.setResolved("c1", true, null);
+        expect(
+          (await comments.applySuggestion("c1", "here", null)).isErr()
+        ).toBe(true);
       });
       expect(result.current.comments.quotes.get("c1")).toBe("there");
     });

@@ -329,6 +329,27 @@ describe("useDocumentEditor in a live session", () => {
       expect(editor.state.doc.eq(before)).toBe(true);
     });
 
+    it("loses its marks, in the shared document too, when they are removed", async () => {
+      const { document } = sharedDocumentFor(TAGGED);
+      const { result } = renderLiveEditor(document, {
+        initialContent: "Hi run all tests now\n",
+      });
+      await waitFor(() => expect(result.current.editor).not.toBeNull());
+      const editor = result.current.editor;
+      if (!editor) {
+        return;
+      }
+
+      act(() => {
+        editor.commands.removeCommentMarks("c1");
+      });
+
+      expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
+      expect(
+        document.getXmlFragment(BODY_FRAGMENT_NAME).toString()
+      ).not.toContain("c1");
+    });
+
     it("marks text pasted inside it", async () => {
       const editor = await renderStaleEditor();
 

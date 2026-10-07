@@ -128,7 +128,7 @@ interface SuggestionCardProps {
   quote: string | undefined;
   suggestion: string;
   renderBody: (body: string) => ReactNode;
-  onApply?: () => Result<void, string>;
+  onApply?: () => Promise<Result<void, string>>;
 }
 
 /**
@@ -162,8 +162,9 @@ const SuggestionCard = ({
             label={t`Apply`}
             onClick={(event) => {
               event.stopPropagation();
-              const applied = onApply();
-              setError(applied.isErr() ? applied.error : null);
+              void onApply().then((applied) =>
+                setError(applied.isErr() ? applied.error : null)
+              );
             }}
           />
         )}
@@ -195,7 +196,7 @@ interface MessageBodyProps {
   body: string;
   quote: string | undefined;
   renderBody: (body: string) => ReactNode;
-  onApplySuggestion?: (suggestion: string) => Result<void, string>;
+  onApplySuggestion?: (suggestion: string) => Promise<Result<void, string>>;
 }
 
 /**
@@ -325,12 +326,12 @@ interface CommentThreadProps {
   isVerified: (index: number) => boolean | null;
   onSelect: () => void;
   onReply: (body: string) => Promise<Result<void, string>>;
-  onSetResolved: (resolved: boolean) => void;
-  onDelete: () => void;
+  onSetResolved: (resolved: boolean) => Promise<Result<void, string>>;
+  onDelete: () => Promise<Result<void, string>>;
   onElement: (element: HTMLElement | null) => void;
   renderBody: (body: string) => ReactNode;
   onSuggest?: () => Result<string, string>;
-  onApplySuggestion?: (suggestion: string) => Result<void, string>;
+  onApplySuggestion?: (suggestion: string) => Promise<Result<void, string>>;
   inputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
@@ -357,7 +358,10 @@ const CommentThread = ({
 }: CommentThreadProps) => {
   const { t } = useLingui();
   const ref = useRef<HTMLElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [first, ...replies] = comment.messages;
+  const showResult = (result: Promise<Result<void, string>>) =>
+    void result.then((done) => setError(done.isErr() ? done.error : null));
   const resolved = comment.status === "resolved";
   const authorName = first.author.name;
 
@@ -404,18 +408,23 @@ const CommentThread = ({
               <PanelIconButton
                 label={resolved ? t`Reopen` : t`Resolve`}
                 icon={resolved ? ReverseLeft : Check}
-                onClick={() => onSetResolved(!resolved)}
+                onClick={() => showResult(onSetResolved(!resolved))}
                 mountPortalContainer={mountPortalContainer}
               />
               <PanelIconButton
                 label={t`Delete comment`}
                 icon={Trash01}
-                onClick={onDelete}
+                onClick={() => showResult(onDelete())}
                 mountPortalContainer={mountPortalContainer}
               />
             </div>
           )}
         </header>
+        {error && (
+          <p role="alert" className="text-xs text-warning-500">
+            {error}
+          </p>
+        )}
         <button
           type="button"
           onClick={(event) => {
@@ -511,8 +520,8 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * active open thread. Escape inside a reply field MUST NOT close the panel; when the field hands
  * it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST
  * return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
- * neighbouring thread or to the panel heading. Opening or closing the panel MUST NOT change the
- * document.
+ * neighbouring thread or to the panel heading; a refused one MUST show the reason on its thread
+ * instead. Opening or closing the panel MUST NOT change the document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars
