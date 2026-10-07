@@ -369,10 +369,8 @@ async function fetchFrameV2PackageAt(
 
 /**
  * @cc [owner:avervaet,label:product;backend] frame-manifest-moves-only-with-its-folder
- * When the file at `scopedPath` is the manifest of a registered Frames v2 package, this MUST
- * return `invalid_path` naming the package folder, and every file move or rename MUST honor that
- * refusal before any bytes move, leaving the Frame's registration and publication untouched.
- * Otherwise it returns the FileResource linked to the path, if any.
+ * A registered Frame manifest MUST NOT be moved or renamed on its own: the refusal names its
+ * folder and comes before any bytes move.
  */
 async function fetchRelocatableLinkedFileResource(
   auth: Authenticator,
