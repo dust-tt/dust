@@ -572,8 +572,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   /**
    * @cc [owner:tdraier,label:security] reject-unselectable-roots
    * A new `read` root MUST be rejected when `isSelectableInternalId` rejects it. When any is
-   * rejected, `setPermissions` MUST return an `Err` before deleting or creating any root or
-   * launching any workflow.
+   * rejected, `setPermissions` MUST return an `Err`; errors thrown while validating (Graph errors)
+   * MUST propagate. In both cases, no root is deleted or created and no workflow is launched.
    */
   async setPermissions({
     permissions,
@@ -1052,8 +1052,12 @@ const GraphDriveLocationSchema = z.object({
 
 type SelectedSitesIndex = {
   siteIds: Set<string>;
-  webUrlsBySiteCollectionId: Map<string, string[]>;
+  webUrlsBySiteCollectionId: Map<string, Set<string>>;
 };
+
+function normalizeWebUrl(webUrl: string): string {
+  return webUrl.toLowerCase().replace(/\/+$/, "");
+}
 
 function getSiteCollectionId(siteId: string): string | null {
   return siteId.split(",")[1]?.toLowerCase() ?? null;
@@ -1074,8 +1078,9 @@ function indexSelectedSites(
     if (!siteCollectionId || !webUrl) {
       continue;
     }
-    const webUrls = index.webUrlsBySiteCollectionId.get(siteCollectionId) ?? [];
-    webUrls.push(webUrl.toLowerCase().replace(/\/+$/, ""));
+    const webUrls =
+      index.webUrlsBySiteCollectionId.get(siteCollectionId) ?? new Set();
+    webUrls.add(normalizeWebUrl(webUrl));
     index.webUrlsBySiteCollectionId.set(siteCollectionId, webUrls);
   }
   return index;
@@ -1085,18 +1090,27 @@ function isLocatedUnderSelectedSite(
   selectedSites: SelectedSitesIndex,
   location: { siteCollectionId: string | null; webUrl: string }
 ): boolean {
-  if (!location.siteCollectionId) {
+  const selectedWebUrls = location.siteCollectionId
+    ? selectedSites.webUrlsBySiteCollectionId.get(location.siteCollectionId)
+    : undefined;
+  if (!selectedWebUrls) {
     return false;
   }
-  const webUrl = location.webUrl.toLowerCase();
-  // Only scans the selected sites of one site collection, usually a single one.
-  return (
-    selectedSites.webUrlsBySiteCollectionId.get(location.siteCollectionId) ??
-    []
-  ).some(
-    (selectedWebUrl) =>
-      webUrl === selectedWebUrl || webUrl.startsWith(`${selectedWebUrl}/`)
-  );
+
+  // Walks up the URL path (`/sites/a/b`, `/sites/a`, `/sites`, origin) instead of scanning the
+  // selected sites, so the cost is bounded by the URL depth.
+  let candidate = normalizeWebUrl(location.webUrl);
+  const originLength = candidate.indexOf("//") + 2;
+  while (candidate.length > originLength) {
+    if (selectedWebUrls.has(candidate)) {
+      return true;
+    }
+    candidate = candidate.slice(
+      0,
+      Math.max(candidate.lastIndexOf("/"), originLength)
+    );
+  }
+  return false;
 }
 
 /**

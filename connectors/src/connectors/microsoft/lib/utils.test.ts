@@ -56,6 +56,7 @@ describe("getSelectableContainer", () => {
     ["file", `/drives/${DRIVE_ID}/items/${ITEM_ID}`],
     ["worksheet", `/drives/${DRIVE_ID}/items/${ITEM_ID}/workbook/worksheets/1`],
     ["site", "/sites/contoso.sharepoint.com"],
+    ["site", "/sites/contoso.sharepoint.com,foo,bar"],
     ["site", "/sites/2c5a3b1e-1111-2222-3333-444455556666"],
     ["site", `/sites/${PERSONAL_SITE_ID}`],
     ["list", `/sites/${PERSONAL_SITE_ID}/lists/abc-123`],

@@ -69,7 +69,9 @@ export type SelectableContainer =
   | { type: "site"; siteId: string }
   | { type: "drive"; driveId: string };
 
-const SITE_ID_SEGMENT = "([A-Za-z0-9.-]+,[A-Za-z0-9-]+,[A-Za-z0-9-]+)";
+const GUID =
+  "[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}";
+const SITE_ID_SEGMENT = `([A-Za-z0-9.-]+,${GUID},${GUID})`;
 const DRIVE_ITEM_ID_SEGMENT = "([A-Za-z0-9!_-]+)";
 const PERSONAL_SITE_HOSTNAME_PATTERN = /-my\.sharepoint\.[a-z.]+$/i;
 
