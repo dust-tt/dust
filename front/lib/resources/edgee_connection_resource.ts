@@ -5,6 +5,7 @@ import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { EdgeeAdminCredentials } from "@app/types/gateways/edgee";
 import { EdgeeAdminCredentialsSchema } from "@app/types/gateways/edgee";
@@ -52,6 +53,13 @@ export class EdgeeConnectionResource extends BaseResource<ProviderCredentialMode
   ) {
     super(ProviderCredentialModel, blob);
     this.credentials = credentials;
+  }
+
+  get sId(): string {
+    return makeSId("provider_credential", {
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 
   get organizationId(): string {
