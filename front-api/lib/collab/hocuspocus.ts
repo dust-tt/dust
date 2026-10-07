@@ -1,5 +1,9 @@
 import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
-import type { LiveCheckpoint, LiveFile } from "@app/lib/api/collab/live_file";
+import type {
+  LiveCheckpoint,
+  LiveCheckpointError,
+  LiveFile,
+} from "@app/lib/api/collab/live_file";
 import {
   checkpointLiveDocument,
   loadLiveDocument,
@@ -33,6 +37,8 @@ interface LiveSession {
   comments: DfmComment[];
   checkpoint: LiveCheckpoint;
   checkpointFailed: boolean;
+  // The file changed outside the session, so no later checkpoint can succeed.
+  conflicted: boolean;
   lastChangedBy: LiveFile | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
   commentCommands: Promise<void>;
@@ -40,6 +46,8 @@ interface LiveSession {
 
 const serverMessage = (message: LiveCommentServerMessage) =>
   JSON.stringify(message);
+
+const CONFLICT_MESSAGE = serverMessage({ type: "conflict" });
 
 const unavailableResult = (requestId: string) =>
   serverMessage({
@@ -122,8 +130,17 @@ export async function authenticateConnection(
  * that last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
  * Hocuspocus keeps the document instead of unloading it. Once its last WebSocket client leaves,
  * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
- * unless a connection is open or its last checkpoint failed. A direct connection that leaves
- * during that period does not extend it.
+ * unless a connection is open or its last checkpoint failed, a conflicted document aside (see
+ * `collab-document-conflict`). A direct connection that leaves during that period does not extend
+ * it.
+ */
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] collab-document-conflict
+ * A checkpoint failing with `conflict` MUST mark the document conflicted for the rest of its life:
+ * every connection open then MUST be told with a `conflict` message, as MUST any connection that
+ * asks for the threads afterwards, and no later store may write the file. A conflicted document
+ * MUST unload once its last WebSocket client leaves, without a grace period, or when a grace
+ * period already running ends, so the next load reads the file as it now is.
  */
 /**
  * @cc [owner:tdraier,label:security;product] collab-comment-threads
@@ -131,10 +148,11 @@ export async function authenticateConnection(
  * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
  * connection of the document and the document stored through that connection, so the checkpoint
- * writes them. A command its document unloaded before it finished MUST change nothing. Every
- * command carrying a request id MUST be answered, as `unavailable` when it is invalid, failed or
- * outlived its document, and a failing command MUST NOT stop the later ones. Any other message
- * that is not a valid client message MUST be ignored.
+ * writes them. A command its document unloaded before it finished, or that finished once the
+ * document was conflicted, MUST change nothing. Every command carrying a request id MUST be
+ * answered, as `unavailable` when it is invalid, failed, outlived its document or met a conflict,
+ * and a failing command MUST NOT stop the later ones. Any other message that is not a valid client
+ * message MUST be ignored.
  */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const sessions = new WeakMap<Document, LiveSession>();
@@ -179,6 +197,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         comments: live.comments,
         checkpoint,
         checkpointFailed: false,
+        conflicted: false,
         lastChangedBy: undefined,
         graceTimer: undefined,
         commentCommands: Promise.resolve(),
@@ -202,7 +221,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       // Not `lastContext`: a direct connection's disconnect stores the document with its own
       // context, even when it changed nothing.
       const writer = session?.lastChangedBy;
-      if (!session || !writer) {
+      if (!session || !writer || session.conflicted) {
         return;
       }
       if (writer.canWrite !== true) {
@@ -214,7 +233,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         throw new Error("The document was changed without a writer.");
       }
 
-      let checkpoint: Result<LiveCheckpoint, string>;
+      let checkpoint: Result<LiveCheckpoint, LiveCheckpointError>;
       try {
         checkpoint = await checkpointLiveDocument(
           writer,
@@ -229,19 +248,25 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         )(err);
       }
       if (checkpoint.isErr()) {
-        // TODO(co-edition): a revision conflict never recovers. `session.checkpoint` only moves on
-        // success, so once another writer changes the file every later checkpoint conflicts too,
-        // the document stays loaded and its edits never reach the file.
-        session.checkpointFailed = true;
+        const { code, message } = checkpoint.error;
         logger.error(
           {
             documentName,
             workspaceId: writer.workspaceId,
-            reason: checkpoint.error,
+            code,
+            reason: message,
           },
           "Collab checkpoint failed"
         );
-        throw new Error(checkpoint.error);
+        if (code === "conflict") {
+          // Every later checkpoint would conflict too, since `session.checkpoint` only moves on
+          // success. TODO(co-edition): merge the file's changes instead of giving the edits up.
+          session.conflicted = true;
+          document.broadcastStateless(CONFLICT_MESSAGE);
+        } else {
+          session.checkpointFailed = true;
+        }
+        throw new Error(message);
       }
       session.checkpoint = checkpoint.value;
       session.checkpointFailed = false;
@@ -250,6 +275,11 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
     async onDisconnect({ instance, document, socketId }) {
       const session = sessions.get(document);
       if (!session || document.getConnections().length > 0) {
+        return;
+      }
+      // Its edits can no longer be saved: the next load reads the file instead.
+      if (session.conflicted) {
+        void instance.unloadDocument(document);
         return;
       }
       if (
@@ -273,7 +303,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         // Unloading would drop the edits the file does not have.
         // TODO(co-edition): retry the failed checkpoint; until the next edit, its edits only live
         // in memory.
-        if (!session.checkpointFailed) {
+        if (session.conflicted || !session.checkpointFailed) {
           void instance.unloadDocument(document);
         }
       }, UNLOAD_GRACE_PERIOD_MS);
@@ -300,6 +330,9 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         connection.sendStateless(
           serverMessage({ type: "threads", comments: session.comments })
         );
+        if (session.conflicted) {
+          connection.sendStateless(CONFLICT_MESSAGE);
+        }
         return;
       }
 
@@ -328,7 +361,8 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         }
         // Unloaded while the command waited or ran: a reload reads the file into a new document,
         // and storing this one would cancel that document's debounced store, keyed by name.
-        if (document.isDestroyed) {
+        // Conflicted: the comment could never reach the file.
+        if (document.isDestroyed || session.conflicted) {
           connection.sendStateless(unavailableResult(requestId));
           return;
         }
@@ -346,6 +380,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
 
         // TODO(co-edition): refuse commands while `session.checkpointFailed`: an accepted comment
         // only lives in memory until a checkpoint succeeds, and is lost if none ever does.
+        // Conflicts are refused above.
         // TODO(co-edition): a command still applies after its sender left, whose channel already
         // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;

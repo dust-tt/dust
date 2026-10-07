@@ -215,7 +215,7 @@ describe("checkpointLiveDocument", () => {
     expect(vi.mocked(writeCanonicalFileContent).mock.calls[0][5]).toBe("7");
   });
 
-  it("fails when the file changed since its last revision", async () => {
+  it("fails with a conflict when the file changed since its last revision", async () => {
     const { file, live, checkpoint } = await loadUserFile("# Notes\n");
     typeInto(live, "Edited.");
     vi.mocked(writeCanonicalFileContent).mockResolvedValueOnce(
@@ -228,6 +228,17 @@ describe("checkpointLiveDocument", () => {
       ...checkpoint,
       revision: "7",
     });
-    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.code).toBe("conflict");
+  });
+
+  it("fails without a conflict when the write fails otherwise", async () => {
+    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
+    typeInto(live, "Edited.");
+    vi.mocked(writeCanonicalFileContent).mockResolvedValueOnce(
+      new Err(new WriteCanonicalFileContentError("too_large", "Too large."))
+    );
+
+    const result = await checkpointLiveDocument(file, live, checkpoint);
+    expect(result.isErr() && result.error.code).toBe("failed");
   });
 });

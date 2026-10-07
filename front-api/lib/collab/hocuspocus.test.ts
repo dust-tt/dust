@@ -49,6 +49,8 @@ vi.mock("@app/lib/api/collab/live_comments", () => ({
 }));
 
 const DOCUMENT_NAME = "w1:user-u1/notes.md";
+// Hocuspocus's default `maxDebounce`: a store runs at the latest this long after an edit.
+const STORE_DEBOUNCE_MAX_MS = 10_000;
 const SOURCE = "# Notes\n\nHello.\n";
 const COMMENTS: DfmComment[] = [];
 
@@ -224,7 +226,7 @@ describe("createCollabHocuspocus", () => {
 
   it("keeps a document whose checkpoint failed after the grace period", async () => {
     vi.mocked(checkpointLiveDocument).mockResolvedValue(
-      new Err("This file changed since it was loaded.")
+      new Err({ code: "failed", message: "Storage is unavailable." })
     );
     const hocuspocus = createCollabHocuspocus();
     const writer = await liveFile(true);
@@ -239,6 +241,37 @@ describe("createCollabHocuspocus", () => {
 
     await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
     expect(hocuspocus.getDocumentsCount()).toBe(1);
+  });
+
+  it("stops checkpointing a conflicted document and unloads it once its last client leaves", async () => {
+    vi.mocked(checkpointLiveDocument).mockResolvedValue(
+      new Err({ code: "conflict", message: "This file changed." })
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await liveFile(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    // Past Hocuspocus's store debounce, so each edit is stored on its own.
+    await connection.transact((doc) => typeInto(doc, "First."));
+    await vi.advanceTimersByTimeAsync(STORE_DEBOUNCE_MAX_MS);
+    await connection.transact((doc) => typeInto(doc, "Second."));
+    await vi.advanceTimersByTimeAsync(STORE_DEBOUNCE_MAX_MS);
+    expect(checkpointLiveDocument).toHaveBeenCalledTimes(1);
+
+    await connection.disconnect();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hocuspocus.getDocumentsCount()).toBe(0);
+
+    const reopened = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    expect(loadLiveDocument).toHaveBeenCalledTimes(2);
+    await reopened.disconnect();
   });
 
   it("checkpoints through the last writer when a reader disconnects", async () => {
@@ -450,6 +483,8 @@ describe("comment threads in a live session", () => {
     channels.forEach((channel) => channel.close());
     providers.forEach((provider) => provider.destroy());
     close();
+    // The `Authenticator` spy would otherwise hand the next test's factories a stale workspace.
+    vi.restoreAllMocks();
   });
 
   async function join(url: string, writer: LiveFile) {
@@ -542,5 +577,59 @@ describe("comment threads in a live session", () => {
     expect(mine.getThreads()).toBeNull();
     const late = await mine.send({ type: "delete", commentId: "c2" });
     expect(late.isErr() && late.error).toBe("unavailable");
+  }, 15_000);
+
+  it("tells every connection of a conflict and refuses the commands after it", async () => {
+    const writer = await liveFile(true);
+    await FeatureFlagFactory.basic(writer.auth, "co_edition");
+    vi.spyOn(Authenticator, "fromUserIdAndWorkspaceId").mockResolvedValue(
+      writer.auth
+    );
+    vi.mocked(openLiveFile).mockResolvedValue(new Ok(writer));
+    vi.mocked(loadLiveDocument).mockImplementation(async () => {
+      const live = dfmToYDoc(SOURCE);
+      if (live.isErr()) {
+        throw new Error(live.error);
+      }
+      return new Ok({
+        live: { doc: live.value.doc, comments: [THREAD] },
+        checkpoint: { revision: "1", content: "" },
+      });
+    });
+    vi.mocked(checkpointLiveDocument).mockResolvedValue(
+      new Err({ code: "conflict", message: "This file changed." })
+    );
+    vi.mocked(applyLiveCommentCommand).mockImplementation(
+      async (_file, comments, command) => {
+        const created: DfmComment = { ...THREAD, id: command.commentId };
+        return new Ok({ comments: [...comments, created], created });
+      }
+    );
+    const server = await serve(createCollabHocuspocus());
+    close = server.close;
+
+    const mine = await join(server.url, writer);
+    expect(mine.isConflicted()).toBe(false);
+    const added = await mine.send({
+      type: "add",
+      commentId: "c2",
+      body: "Ship it.",
+    });
+    expect(added.isOk()).toBe(true);
+    // The command's store runs the checkpoint, which meets the conflict.
+    await vi.waitFor(() => expect(mine.isConflicted()).toBe(true), {
+      timeout: 5_000,
+    });
+
+    const refused = await mine.send({
+      type: "add",
+      commentId: "c3",
+      body: "Again.",
+    });
+    expect(refused.isErr() && refused.error).toBe("unavailable");
+    expect(mine.getThreads()?.map(({ id }) => id)).toEqual(["c1", "c2"]);
+
+    const theirs = await join(server.url, writer);
+    await vi.waitFor(() => expect(theirs.isConflicted()).toBe(true));
   }, 15_000);
 });

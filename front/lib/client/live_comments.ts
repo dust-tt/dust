@@ -17,22 +17,28 @@ export interface LiveCommentChannel {
   send: (
     command: LiveCommentCommand
   ) => Promise<Result<DfmComment | null, LiveCommentErrorCode>>;
+  /** Whether the server reported that the document's changes can no longer be saved. */
+  isConflicted: () => boolean;
+  onConflict: (listener: () => void) => () => void;
   close: () => void;
 }
 
 /**
  * @cc [owner:tdraier,label:product] live-comment-channel
  * The channel MUST ask the server for the threads when created, and MUST resolve each command
- * with the server's answer to that command only. Once closed it MUST NOT report threads, and
- * every command waiting or sent after MUST resolve as `unavailable`, so no caller waits for an
- * answer a lost connection will never bring.
+ * with the server's answer to that command only. It MUST report a conflict from the server's
+ * first `conflict` message on. Once closed it MUST NOT report threads nor a conflict, and every
+ * command waiting or sent after MUST resolve as `unavailable`, so no caller waits for an answer
+ * a lost connection will never bring.
  */
 export function createLiveCommentChannel(
   provider: HocuspocusProvider
 ): LiveCommentChannel {
   let threads: DfmComment[] | null = null;
+  let conflicted = false;
   let closed = false;
   const listeners = new Set<(comments: DfmComment[]) => void>();
+  const conflictListeners = new Set<() => void>();
   const pending = new Map<
     string,
     (result: Result<DfmComment | null, LiveCommentErrorCode>) => void
@@ -63,6 +69,13 @@ export function createLiveCommentChannel(
         resolve?.(error === null ? new Ok(comment) : new Err(error));
         return;
       }
+      case "conflict": {
+        if (!conflicted) {
+          conflicted = true;
+          conflictListeners.forEach((listener) => listener());
+        }
+        return;
+      }
     }
   };
 
@@ -87,11 +100,18 @@ export function createLiveCommentChannel(
         sendMessage({ type: "command", requestId, command });
       });
     },
+    isConflicted: () => conflicted,
+    onConflict: (listener) => {
+      conflictListeners.add(listener);
+      return () => conflictListeners.delete(listener);
+    },
     close: () => {
       closed = true;
       threads = null;
+      conflicted = false;
       provider.off("stateless", onStateless);
       listeners.clear();
+      conflictListeners.clear();
       pending.forEach((resolve) => resolve(new Err("unavailable")));
       pending.clear();
     },

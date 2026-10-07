@@ -93,6 +93,8 @@ export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
     requestId: z.string(),
     error: z.enum(LIVE_COMMENT_ERROR_CODES),
   }),
+  // The file changed outside the session: its edits and comments can no longer be saved.
+  z.object({ type: z.literal("conflict") }),
 ]);
 
 export type LiveCommentServerMessage = z.infer<

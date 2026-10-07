@@ -128,22 +128,29 @@ export async function loadLiveDocument({
   });
 }
 
+/** Why a checkpoint did not write: `conflict` when the file changed since `last.revision`. */
+export interface LiveCheckpointError {
+  code: "conflict" | "failed";
+  message: string;
+}
+
 /**
  * @cc [owner:tdraier,label:product;concurrency] live-document-checkpoint
  * The checkpoint MUST write `yDocToDfm` of the live document, its threads included, only when it
  * differs from `last.content`. With a `last.revision`, the write MUST be conditional on it: a file
- * changed since then MUST be left unchanged and the checkpoint MUST fail. Without one, the file is
- * overwritten, as the editor's own save does on such storage. It MUST return the file as now
- * stored: `last` when nothing was written, otherwise the written content and its revision.
+ * changed since then MUST be left unchanged and the checkpoint MUST fail with `conflict`; any other
+ * failure is `failed`. Without one, the file is overwritten, as the editor's own save does on such
+ * storage. It MUST return the file as now stored: `last` when nothing was written, otherwise the
+ * written content and its revision.
  */
 export async function checkpointLiveDocument(
   { auth, dustFs, canonicalPath }: LiveFile,
   live: LiveDocument,
   last: LiveCheckpoint
-): Promise<Result<LiveCheckpoint, string>> {
+): Promise<Result<LiveCheckpoint, LiveCheckpointError>> {
   const content = yDocToDfm(live);
   if (content.isErr()) {
-    return content;
+    return new Err({ code: "failed", message: content.error });
   }
   if (content.value === last.content) {
     return new Ok(last);
@@ -161,7 +168,10 @@ export async function checkpointLiveDocument(
     last.revision
   );
   if (written.isErr()) {
-    return new Err(written.error.message);
+    return new Err({
+      code: written.error.code === "revision_conflict" ? "conflict" : "failed",
+      message: written.error.message,
+    });
   }
   return new Ok({ revision: written.value.revision, content: content.value });
 }
