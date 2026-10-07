@@ -421,6 +421,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           onSubmit={handleConversationCreation}
           draftKey="home-new-conversation"
+          homepageVariant={isDiscoveryHomepage ? "discovery" : "classic"}
           disableAutoFocus={false}
           defaultAgentId={workspaceDefaultAgentId}
         />

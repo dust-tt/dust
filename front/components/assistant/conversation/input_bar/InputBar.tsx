@@ -72,6 +72,8 @@ function sameStringSet(a: string[], b: string[]) {
   return a.every((value) => bSet.has(value));
 }
 
+export type HomepageVariant = "classic" | "discovery";
+
 interface InputBarProps {
   owner: WorkspaceType;
   user: UserType | null;
@@ -84,6 +86,7 @@ interface InputBarProps {
     modelSelection?: ModelSelectionType
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
+  homepageVariant?: HomepageVariant;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   stickyMentions?: RichMention[];
@@ -116,6 +119,7 @@ export const InputBar = React.memo(function InputBar({
   onSubmit,
   conversation,
   draftKey,
+  homepageVariant,
   space,
   stickyMentions,
   defaultAgentId,
@@ -507,6 +511,7 @@ export const InputBar = React.memo(function InputBar({
         tool_count: trackedTools.length,
         tool_names: trackedTools.join(","),
         message_length: markdown.length,
+        ...(homepageVariant && { homepage_variant: homepageVariant }),
       },
     });
 
