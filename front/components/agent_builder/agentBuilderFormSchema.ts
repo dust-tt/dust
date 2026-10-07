@@ -12,8 +12,8 @@ import {
   TRIGGER_STATUSES,
 } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
-import { useLingui } from "@lingui/react/macro";
-import { useMemo } from "react";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -24,13 +24,7 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
-interface AgentBuilderFormSchemaMessages {
-  descriptionRequired: string;
-  instructionsRequired: string;
-  maxStepsPerRunTooLow: string;
-}
-
-const getAgentSettingsSchema = (messages: AgentBuilderFormSchemaMessages) =>
+const getAgentSettingsSchema = (t: (descriptor: MessageDescriptor) => string) =>
   z.object({
     name: z.string().superRefine((value, ctx) => {
       const error = getAgentNameFormatError(value);
@@ -38,7 +32,7 @@ const getAgentSettingsSchema = (messages: AgentBuilderFormSchemaMessages) =>
         ctx.addIssue({ code: "custom", message: error });
       }
     }),
-    description: z.string().min(1, messages.descriptionRequired),
+    description: z.string().min(1, t(msg`Agent description is required`)),
     pictureUrl: z.string().optional(),
     scope: z.enum(["hidden", "visible"]),
     editors: z.array(editorUserSchema),
@@ -140,10 +134,12 @@ export type AgentBuilderScheduleTriggerType = z.infer<
   typeof scheduleTriggerSchema
 >;
 
-const getAgentBuilderFormSchema = (messages: AgentBuilderFormSchemaMessages) =>
+export const getAgentBuilderFormSchema = (
+  t: (descriptor: MessageDescriptor) => string
+) =>
   z.object({
-    agentSettings: getAgentSettingsSchema(messages),
-    instructions: z.string().min(1, messages.instructionsRequired),
+    agentSettings: getAgentSettingsSchema(t),
+    instructions: z.string().min(1, t(msg`Instructions are required`)),
     instructionsHtml: z.string().optional(),
     generationSettings: generationSettingsSchema,
     skills: z.array(skillsSchema),
@@ -152,22 +148,11 @@ const getAgentBuilderFormSchema = (messages: AgentBuilderFormSchemaMessages) =>
     triggersToCreate: z.array(triggerSchema),
     triggersToUpdate: z.array(triggerSchema),
     triggersToDelete: z.array(z.string()),
-    maxStepsPerRun: z.number().min(1, messages.maxStepsPerRunTooLow).default(8),
+    maxStepsPerRun: z
+      .number()
+      .min(1, t(msg`Max steps per run must be at least 1`))
+      .default(8),
   });
-
-export function useAgentBuilderFormSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      getAgentBuilderFormSchema({
-        descriptionRequired: t`Agent description is required`,
-        instructionsRequired: t`Instructions are required`,
-        maxStepsPerRunTooLow: t`Max steps per run must be at least 1`,
-      }),
-    [t]
-  );
-}
 
 export type AgentBuilderFormData = z.infer<
   ReturnType<typeof getAgentBuilderFormSchema>

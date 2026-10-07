@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { useAgentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { getAgentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
@@ -29,7 +29,10 @@ import { ConversationFontProvider } from "@app/components/sparkle/ConversationFo
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useBuilderTracking } from "@app/hooks/useBuilderTracking";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
@@ -145,6 +148,7 @@ function AgentBuilderForm({
   const { fetcherWithBody } = useFetcher();
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
@@ -213,7 +217,10 @@ function AgentBuilderForm({
     newAgentDefaultModel,
   ]);
 
-  const agentBuilderFormSchema = useAgentBuilderFormSchema();
+  const agentBuilderFormSchema = useMemo(
+    () => getAgentBuilderFormSchema(t),
+    [t]
+  );
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues,
@@ -408,18 +415,16 @@ function AgentBuilderForm({
       });
 
       if (!result.isOk()) {
-        sendNotification({
+        sendApiErrorNotification({
           title: agentConfiguration
             ? t`Error updating agent`
             : t`Error creating agent`,
-          description: result.error.message,
-          type: "error",
+          error: result.error,
         });
         return;
       }
 
       const createdAgent = result.value;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
       trackSave({
@@ -818,7 +823,6 @@ function AgentBuilderContent({
                 />
               ) : null
             }
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}

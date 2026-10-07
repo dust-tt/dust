@@ -18,6 +18,9 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { AnimatedText, Check, XCircle } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -32,24 +35,35 @@ interface InlineActivityStepsProps {
 
 function getCompletionLabel(
   status: LightAgentMessageType["status"],
-  completionDurationMs: number
-): string {
+  completionDurationMs: number,
+  withoutTools: boolean
+): MessageDescriptor {
+  const duration = formatDurationString(Math.max(completionDurationMs, 0));
   switch (status) {
     case "failed":
-      return `Errored after ${formatDurationString(Math.max(completionDurationMs, 0))}`;
+      return withoutTools
+        ? msg`Errored after ${duration}, without tools.`
+        : msg`Errored after ${duration}`;
     case "cancelled":
-      return `Cancelled after ${formatDurationString(Math.max(completionDurationMs, 0))}`;
+      return withoutTools
+        ? msg`Cancelled after ${duration}, without tools.`
+        : msg`Cancelled after ${duration}`;
     default:
-      return `Completed in ${formatDurationString(Math.max(completionDurationMs, 0))}`;
+      return withoutTools
+        ? msg`Completed in ${duration}, without tools.`
+        : msg`Completed in ${duration}`;
   }
 }
 
-function getTerminalLabel(status: LightAgentMessageType["status"]): string {
+function getTerminalLabel(
+  status: LightAgentMessageType["status"],
+  withoutTools: boolean
+): MessageDescriptor {
   switch (status) {
     case "cancelled":
-      return "Cancelled";
+      return withoutTools ? msg`Cancelled, without tools.` : msg`Cancelled`;
     default:
-      return "Completed";
+      return withoutTools ? msg`Completed, without tools.` : msg`Completed`;
   }
 }
 
@@ -69,6 +83,7 @@ export function InlineActivitySteps({
   owner,
   conversationId,
 }: InlineActivityStepsProps) {
+  const { t } = useLingui();
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
   const actions = isAgentMessageWithActions ? agentMessage.actions : [];
@@ -100,15 +115,19 @@ export function InlineActivitySteps({
   const isActing = lastAgentStateClassification === "acting";
   const showPendingToolCalls = !isDone && pendingToolCalls.length > 0;
 
-  const headerLabel =
+  const getHeaderLabel = (withoutTools: boolean) =>
     agentMessage.completionDurationMs !== null
-      ? getCompletionLabel(
-          agentMessage.status,
-          agentMessage.completionDurationMs
+      ? t(
+          getCompletionLabel(
+            agentMessage.status,
+            agentMessage.completionDurationMs,
+            withoutTools
+          )
         )
       : isDone
-        ? getTerminalLabel(agentMessage.status)
+        ? t(getTerminalLabel(agentMessage.status, withoutTools))
         : null;
+  const headerLabel = getHeaderLabel(false);
 
   const isWritingOnly =
     isWriting && completedSteps.length === 0 && !showPendingToolCalls;
@@ -117,7 +136,7 @@ export function InlineActivitySteps({
   if (isDone && completedSteps.length === 0) {
     return (
       <div className="mt-2 text-sm text-muted-foreground">
-        {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
+        {getHeaderLabel(true) ?? <Trans>No tools used.</Trans>}
       </div>
     );
   }
@@ -128,7 +147,9 @@ export function InlineActivitySteps({
     return (
       <div className="flex flex-col text-sm">
         <span className="self-start text-muted-foreground flex gap-1 items-center">
-          <AnimatedText>Writing…</AnimatedText>
+          <AnimatedText>
+            <Trans>Writing…</Trans>
+          </AnimatedText>
         </span>
         {agentMessage.content && (
           // Streaming answer text: same font as the final answer (not the
@@ -204,7 +225,10 @@ export function InlineActivitySteps({
     agentMessage.status !== "gracefully_stopped"
       ? {
           icon: agentMessage.status === "cancelled" ? XCircle : Check,
-          label: agentMessage.status === "cancelled" ? "Cancelled" : "Done",
+          label:
+            agentMessage.status === "cancelled"
+              ? t`Cancelled`
+              : t({ message: "Done", context: "activity status" }),
         }
       : undefined;
 
@@ -226,7 +250,13 @@ export function InlineActivitySteps({
       runningToolRows={runningToolRows}
       activeCotContent={showActiveThinking ? chainOfThought : ""}
       isDone={isDone}
-      headerLabel={headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+      headerLabel={
+        headerLabel ?? (
+          <AnimatedText>
+            <Trans>Thinking…</Trans>
+          </AnimatedText>
+        )
+      }
       source="message"
       onActionClick={openBreakdownPanel}
       showTrailingSpinner={showTrailingSpinner}

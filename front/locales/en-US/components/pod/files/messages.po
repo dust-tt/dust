@@ -1,0 +1,190 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:53+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pod/files/CreateFolderDialog.tsx
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "New folder"
+msgstr "New folder"
+
+#: front/components/pod/files/CreateFolderDialog.tsx
+msgid "Folder name"
+msgstr "Folder name"
+
+#: front/components/pod/files/CreateFolderDialog.tsx
+msgid "Create"
+msgstr "Create"
+
+#: front/components/pod/files/CreateFolderDialog.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Add file tab"
+msgstr "Add file tab"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Edit file tab"
+msgstr "Edit file tab"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Change icon"
+msgstr "Change icon"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Tab title"
+msgstr "Tab title"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Remove tab"
+msgstr "Remove tab"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Add tab"
+msgstr "Add tab"
+
+#: front/components/pod/files/EditPodFileTabDialog.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/pod/files/PinPodBannerButton.tsx
+msgid "Unpin from Pod banner"
+msgstr "Unpin from Pod banner"
+
+#: front/components/pod/files/PinPodBannerButton.tsx
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Pin as Pod banner"
+msgstr "Pin as Pod banner"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Adding files to Pods is disabled by your workspace admin."
+msgstr "Adding files to Pods is disabled by your workspace admin."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "From Company Data"
+msgstr "From Company Data"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Upload file"
+msgstr "Upload file"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "No data available in Company Data"
+msgstr "No data available in Company Data"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "There is no data available in Company Data yet. Go to Company Data to add data."
+msgstr "There is no data available in Company Data yet. Go to Company Data to add data."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Close"
+msgstr "Close"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Go to Company Data"
+msgstr "Go to Company Data"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Drop files here to upload them."
+msgstr "Drop files here to upload them."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Upload files"
+msgstr "Upload files"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Unpin from banner"
+msgstr "Unpin from banner"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+#: front/components/pod/files/PodFileTabButton.tsx
+msgid "Remove from Pod tabs"
+msgstr "Remove from Pod tabs"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+#: front/components/pod/files/PodFileTabButton.tsx
+msgid "Add as Pod tab"
+msgstr "Add as Pod tab"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Remove content node?"
+msgstr "Remove content node?"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Are you sure you want to remove \"{fileName}\" from this Pod?"
+msgstr "Are you sure you want to remove \"{fileName}\" from this Pod?"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Delete folder?"
+msgstr "Delete folder?"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Are you sure you want to delete \"{folderName}\" and all its contents? This action cannot be undone."
+msgstr "Are you sure you want to delete \"{folderName}\" and all its contents? This action cannot be undone."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Delete Frame?"
+msgstr "Delete Frame?"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Are you sure you want to delete the Frame \"{frameName}\"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone."
+msgstr "Are you sure you want to delete the Frame \"{frameName}\"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Delete file?"
+msgstr "Delete file?"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Are you sure you want to delete \"{fileName}\"? This action cannot be undone."
+msgstr "Are you sure you want to delete \"{fileName}\"? This action cannot be undone."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Uploading..."
+msgstr "Uploading..."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Add"
+msgstr "Add"
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "This Pod is archived. No files have been added."
+msgstr "This Pod is archived. No files have been added."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "No files have been added to this Pod yet."
+msgstr "No files have been added to this Pod yet."
+
+#: front/components/pod/files/PodFileExplorer.tsx
+msgid "Add data from Company Data"
+msgstr "Add data from Company Data"
+
+#: front/components/pod/files/PodFrameSheet.tsx
+msgid "Exit full screen"
+msgstr "Exit full screen"
+
+#: front/components/pod/files/PodFrameSheet.tsx
+msgid "Open in full screen"
+msgstr "Open in full screen"
+
+#: front/components/pod/files/PodFrameSheet.tsx
+msgid "This frame is no longer available in the Pod files."
+msgstr "This frame is no longer available in the Pod files."

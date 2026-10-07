@@ -9,6 +9,7 @@ import { useConversationMessageAction } from "@app/hooks/conversations";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner, XClose } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 import type React from "react";
 
@@ -34,6 +35,7 @@ export function AgentSingleActionPanel({
   closeIcon = XClose,
   onClose,
 }: AgentSingleActionPanelProps) {
+  const { t } = useLingui();
   const {
     action: fetchedAction,
     messageStatus,
@@ -64,7 +66,7 @@ export function AgentSingleActionPanel({
   if (isActionLoading && !action) {
     return (
       <AgentActionsPanelHeader
-        title="Tool detail"
+        title={t`Tool detail`}
         closeIcon={closeIcon}
         onClose={onClose}
       >
@@ -78,12 +80,14 @@ export function AgentSingleActionPanel({
   if (!action) {
     return (
       <AgentActionsPanelHeader
-        title="Tool detail"
+        title={t`Tool detail`}
         closeIcon={closeIcon}
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <span className="text-muted-foreground">Nothing to display.</span>
+          <span className="text-muted-foreground">
+            <Trans>Nothing to display.</Trans>
+          </span>
         </div>
       </AgentActionsPanelHeader>
     );
@@ -92,7 +96,7 @@ export function AgentSingleActionPanel({
   return (
     <div className="flex h-panel flex-col bg-panel-background">
       <AgentActionsPanelHeader
-        title="Tool detail"
+        title={t`Tool detail`}
         closeIcon={closeIcon}
         onClose={onClose}
       />

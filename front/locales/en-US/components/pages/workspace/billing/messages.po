@@ -1,0 +1,84 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+msgid "Billing"
+msgstr "Billing"
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+msgid "Change your subscription and edit your billing information."
+msgstr "Change your subscription and edit your billing information."
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+msgid "Billing information"
+msgstr "Billing information"
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Invoices"
+msgstr "Invoices"
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Coupons"
+msgstr "Coupons"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Subscription"
+msgstr "Subscription"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "plan status frequency next billing date amount cancel subscription"
+msgstr "plan status frequency next billing date amount cancel subscription"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Seats by type"
+msgstr "Seats by type"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "pro max platform yearly seats assigned credits"
+msgstr "pro max platform yearly seats assigned credits"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Billing contact"
+msgstr "Billing contact"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "email"
+msgstr "email"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Address"
+msgstr "Address"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "billing address"
+msgstr "billing address"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "Payment method"
+msgstr "Payment method"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "card visa"
+msgstr "card visa"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "download invoice pdf"
+msgstr "download invoice pdf"
+
+#: front/components/pages/workspace/billing/billingAdminSearchEntries.ts
+msgid "redeemed coupon codes"
+msgstr "redeemed coupon codes"

@@ -1,4 +1,5 @@
 import { Avatar, Button, ListItem, User01, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps, ReactNode } from "react";
 
 interface FrameSharingRowProps {
@@ -16,6 +17,8 @@ export function FrameSharingRow({
   onRemove,
   isRemoving = false,
 }: FrameSharingRowProps) {
+  const { t } = useLingui();
+
   return (
     <ListItem
       className="gap-2 px-3 py-2"
@@ -44,7 +47,7 @@ export function FrameSharingRow({
         <Button
           variant="ghost"
           icon={XClose}
-          tooltip={`Remove ${label}`}
+          tooltip={t`Remove ${label}`}
           size="xs"
           onClick={onRemove}
           isLoading={isRemoving}

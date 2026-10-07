@@ -1,16 +1,16 @@
-import { useSkillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { getSkillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { i18n } from "@app/lib/i18n/i18n";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
 } from "@app/lib/skills/labels";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 describe("skill description validation", () => {
-  const { result: schema } = renderHook(() => useSkillBuilderFormSchema());
+  const schema = getSkillBuilderFormSchema((descriptor) => i18n._(descriptor));
   const resolver = zodResolver(
-    schema.current.pick({
+    schema.pick({
       agentFacingDescription: true,
       userFacingDescription: true,
     })

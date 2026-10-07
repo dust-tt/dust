@@ -1,5 +1,8 @@
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
-import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
+import {
+  getUniqueTemplateTags,
+  TEMPLATE_TAG_LABELS,
+} from "@app/components/agent_builder/utils";
 import Custom404 from "@app/components/pages/Custom404";
 import {
   useSetContentWidth,
@@ -16,10 +19,7 @@ import {
   getConversationRoute,
 } from "@app/lib/utils/router";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
-import {
-  isTemplateTagCodeArray,
-  TEMPLATES_TAGS_CONFIG,
-} from "@app/types/assistant/templates";
+import { isTemplateTagCodeArray } from "@app/types/assistant/templates";
 import { Button, Page, SearchInput } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
@@ -29,7 +29,6 @@ export function CreateAgentPage() {
   const { t } = useLingui();
   const router = useAppRouter();
   const owner = useWorkspace();
-  const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
 
   const { hasPermission } = useWorkspacePermissions();
   const canCreateAgent = hasPermission("create", "agent");
@@ -121,7 +120,7 @@ export function CreateAgentPage() {
             <div className="flex flex-row flex-wrap gap-2">
               {availableTags.map((tagName) => (
                 <Button
-                  label={templateTagsMapping[tagName].label}
+                  label={t(TEMPLATE_TAG_LABELS[tagName])}
                   variant={
                     selectedTags.includes(tagName) ? "primary" : "outline"
                   }
@@ -138,7 +137,6 @@ export function CreateAgentPage() {
               <div className="flex flex-col pb-56">
                 <AgentTemplateGrid
                   templates={filteredTemplates}
-                  templateTagsMapping={templateTagsMapping}
                   selectedTags={selectedTags}
                   onTemplateClick={(id) =>
                     router.push(

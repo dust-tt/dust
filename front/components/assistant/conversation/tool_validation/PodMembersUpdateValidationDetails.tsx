@@ -4,6 +4,9 @@ import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Avatar, Chip, cn } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface PodMembersUpdateValidationDetailsProps {
@@ -18,21 +21,23 @@ function formatMemberName({
   currentUserId,
   memberDisplayById,
   isMembersLoading,
+  t,
 }: {
   memberId: string;
   currentUserId: string;
   memberDisplayById: Record<string, MemberDisplayInfo>;
   isMembersLoading: boolean;
+  t: (descriptor: MessageDescriptor) => string;
 }): string {
   if (memberId === currentUserId) {
-    return "You";
+    return t(msg`You`);
   }
   const member = memberDisplayById[memberId];
   if (member) {
     return member.fullName;
   }
   if (isMembersLoading) {
-    return "Loading…";
+    return t(msg`Loading…`);
   }
   return memberId;
 }
@@ -54,12 +59,14 @@ function MemberChangeRow({
   memberDisplayById,
   isMembersLoading,
 }: MemberChangeRowProps) {
+  const { t } = useLingui();
   const member = memberDisplayById[memberId];
   const displayName = formatMemberName({
     memberId,
     currentUserId,
     memberDisplayById,
     isMembersLoading,
+    t,
   });
 
   return (
@@ -85,13 +92,13 @@ function MemberChangeRow({
           <Chip
             size="xs"
             color={role === "editor" ? "highlight" : "primary"}
-            label={role === "editor" ? "Editor" : "Member"}
+            label={role === "editor" ? t`Editor` : t`Member`}
           />
         )}
         <Chip
           size="xs"
           color={action === "add" ? "success" : "warning"}
-          label={action === "add" ? "Will add" : "Will remove"}
+          label={action === "add" ? t`Will add` : t`Will remove`}
         />
       </div>
     </div>
@@ -104,6 +111,7 @@ export function PodMembersUpdateValidationDetails({
   user,
   conversationId,
 }: PodMembersUpdateValidationDetailsProps) {
+  const { t } = useLingui();
   const membersToAdd = input.membersToAdd ?? {};
   const membersToRemove = input.membersToRemove ?? [];
   const addEntries = Object.entries(membersToAdd);
@@ -125,32 +133,47 @@ export function PodMembersUpdateValidationDetails({
     userIds: memberIds,
   });
 
-  const summaryParts: string[] = [];
-  if (addEntries.length > 0) {
-    summaryParts.push(
-      `add ${addEntries.length} user${addEntries.length === 1 ? "" : "s"}`
-    );
-  }
-  if (membersToRemove.length > 0) {
-    summaryParts.push(
-      `remove ${membersToRemove.length} user${membersToRemove.length === 1 ? "" : "s"}`
-    );
-  }
+  const addCount = addEntries.length;
+  const removeCount = membersToRemove.length;
+  const podName = isPodLabelLoading ? t`Loading…` : podLabel;
 
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        The agent wants to {summaryParts.join(" and ")} in{" "}
-        <span className="font-medium text-foreground">
-          {isPodLabelLoading ? "Loading…" : podLabel}
-        </span>
-        .
+        {addCount > 0 && removeCount > 0 && (
+          <Trans>
+            The agent wants to add{" "}
+            <Plural value={addCount} one="# user" other="# users" /> and remove{" "}
+            <Plural value={removeCount} one="# user" other="# users" /> in{" "}
+            <span className="font-medium text-foreground">{podName}</span>.
+          </Trans>
+        )}
+        {addCount > 0 && removeCount === 0 && (
+          <Trans>
+            The agent wants to add{" "}
+            <Plural value={addCount} one="# user" other="# users" /> in{" "}
+            <span className="font-medium text-foreground">{podName}</span>.
+          </Trans>
+        )}
+        {addCount === 0 && removeCount > 0 && (
+          <Trans>
+            The agent wants to remove{" "}
+            <Plural value={removeCount} one="# user" other="# users" /> in{" "}
+            <span className="font-medium text-foreground">{podName}</span>.
+          </Trans>
+        )}
+        {addCount === 0 && removeCount === 0 && (
+          <Trans>
+            The agent wants to update members in{" "}
+            <span className="font-medium text-foreground">{podName}</span>.
+          </Trans>
+        )}
       </p>
 
       {addEntries.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="text-xs font-medium text-muted-foreground">
-            Users to add
+            <Trans>Users to add</Trans>
           </div>
           <div
             className={cn(
@@ -175,7 +198,7 @@ export function PodMembersUpdateValidationDetails({
       {membersToRemove.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="text-xs font-medium text-muted-foreground">
-            Users to remove
+            <Trans>Users to remove</Trans>
           </div>
           <div
             className={cn(

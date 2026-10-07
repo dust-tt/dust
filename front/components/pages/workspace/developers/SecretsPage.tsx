@@ -1,12 +1,16 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { compareStrings } from "@app/lib/i18n/format";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
@@ -71,6 +75,7 @@ export function SecretsPageContent() {
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const { secrets, isSecretsLoading, isSecretsError } =
@@ -95,11 +100,10 @@ export function SecretsPageContent() {
           description: t`Successfully saved the secret value securely.`,
         });
       } else {
-        const errorMessage = await r.text();
-        sendNotification({
-          type: "error",
+        const errorData = await getErrorFromResponse(r);
+        sendApiErrorNotification({
           title: t`Error saving secret`,
-          description: t`An error occurred while saving the secret value: ${errorMessage}`,
+          error: errorData,
         });
       }
     });

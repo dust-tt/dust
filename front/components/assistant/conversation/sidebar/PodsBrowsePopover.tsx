@@ -18,6 +18,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface PodsBrowsePopoverProps {
@@ -45,7 +46,8 @@ function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
 }
 
 function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
-  const description = pod.description ? pod.description : "No description";
+  const { t } = useLingui();
+  const description = pod.description ? pod.description : t`No description`;
   return (
     <div
       className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
@@ -56,7 +58,11 @@ function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
         <div className="flex flex-row items-center justify-between gap-1.5">
           <div className="truncate text-sm">{pod.name}</div>
           {pod.archivedAt && (
-            <Chip size="mini" color="primary" label="Archived" />
+            <Chip
+              size="mini"
+              color="primary"
+              label={t({ message: "Archived", context: "Pod status" })}
+            />
           )}
         </div>
         <Tooltip
@@ -74,6 +80,7 @@ function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
 }
 
 export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,7 +108,7 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
           <div className="shrink-0 p-3 pb-2">
             <SearchInput
               name="browse-pods-search"
-              placeholder="Search Pods..."
+              placeholder={t`Search Pods...`}
               value={searchQuery}
               onChange={setSearchQuery}
             />
@@ -111,7 +118,7 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
               <PodBrowseItemSkeleton count={5} />
             ) : pods.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                No Pods found
+                <Trans>No Pods found</Trans>
               </div>
             ) : (
               <>

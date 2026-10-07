@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
@@ -210,6 +213,7 @@ export function useAddMemberToGroup({
   owner: LightWorkspaceType;
   userId: string | null;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isAdding, setIsAdding] = useState(false);
   const { mutateMemberGroups } = useMemberGroups({
@@ -239,11 +243,9 @@ export function useAddMemberToGroup({
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to add member to group",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return false;
         }
@@ -272,7 +274,13 @@ export function useAddMemberToGroup({
         setIsAdding(false);
       }
     },
-    [owner.sId, userId, mutateMemberGroups, sendNotification]
+    [
+      owner.sId,
+      userId,
+      mutateMemberGroups,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return { doAddMemberToGroup, isAdding };
@@ -285,6 +293,7 @@ export function useRemoveMemberFromGroup({
   owner: LightWorkspaceType;
   userId: string | null;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isRemoving, setIsRemoving] = useState(false);
   const { mutateMemberGroups } = useMemberGroups({
@@ -313,11 +322,9 @@ export function useRemoveMemberFromGroup({
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to remove member from group",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return false;
         }
@@ -347,7 +354,13 @@ export function useRemoveMemberFromGroup({
         setIsRemoving(false);
       }
     },
-    [owner.sId, userId, mutateMemberGroups, sendNotification]
+    [
+      owner.sId,
+      userId,
+      mutateMemberGroups,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return { doRemoveMemberFromGroup, isRemoving };
@@ -383,6 +396,7 @@ async function invalidatePeople(workspaceId: string): Promise<void> {
 }
 
 export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isCreating, setIsCreating] = useState(false);
   const { mutateGroups } = useGroups({
@@ -411,11 +425,9 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to create group",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return null;
         }
@@ -443,7 +455,7 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
         setIsCreating(false);
       }
     },
-    [owner.sId, mutateGroups, sendNotification]
+    [owner.sId, mutateGroups, sendNotification, sendApiErrorNotification]
   );
 
   return { doCreateGroup, isCreating };
@@ -456,6 +468,7 @@ export function useUpdateGroup({
   owner: LightWorkspaceType;
   groupId: string | null;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const { mutateGroup } = useGroup({ owner, groupId, disabled: true });
@@ -488,11 +501,9 @@ export function useUpdateGroup({
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update group",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return null;
         }
@@ -529,13 +540,21 @@ export function useUpdateGroup({
         setIsUpdating(false);
       }
     },
-    [owner.sId, groupId, mutateGroup, mutateGroups, sendNotification]
+    [
+      owner.sId,
+      groupId,
+      mutateGroup,
+      mutateGroups,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 
   return { doUpdateGroup, isUpdating };
 }
 
 export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDeleting, setIsDeleting] = useState(false);
   const { mutateGroups } = useGroups({
@@ -560,11 +579,9 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to delete group",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return false;
         }
@@ -593,7 +610,7 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
         setIsDeleting(false);
       }
     },
-    [owner.sId, mutateGroups, sendNotification]
+    [owner.sId, mutateGroups, sendNotification, sendApiErrorNotification]
   );
 
   return { doDeleteGroup, isDeleting };
@@ -604,6 +621,7 @@ export function useUpdateGroupSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdateGroupSpendLimit = useCallback(
@@ -624,10 +642,9 @@ export function useUpdateGroupSpendLimit({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to update group spend limit",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return null;
       }
@@ -670,7 +687,7 @@ export function useUpdateGroupSpendLimit({
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification]
   );
 
   return { doUpdateGroupSpendLimit };
@@ -681,6 +698,7 @@ export function useUpdateGroupGrantedRole({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -707,11 +725,9 @@ export function useUpdateGroupGrantedRole({
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update group role",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return null;
         }
@@ -736,7 +752,7 @@ export function useUpdateGroupGrantedRole({
         setIsUpdating(false);
       }
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification]
   );
 
   return { doUpdateGroupGrantedRole, isUpdating };
@@ -747,6 +763,7 @@ export function useUpdateGroupGrantedSeatType({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -773,11 +790,9 @@ export function useUpdateGroupGrantedSeatType({
 
         if (!res.ok) {
           const error = await res.json();
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to update group seat",
-            description:
-              error?.error?.message ?? "An unexpected error occurred.",
+            error,
           });
           return null;
         }
@@ -816,7 +831,7 @@ export function useUpdateGroupGrantedSeatType({
         setIsUpdating(false);
       }
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification]
   );
 
   return { doUpdateGroupGrantedSeatType, isUpdating };
@@ -830,7 +845,7 @@ export function useGroupSeatMappingPreview({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const doFetchGroupSeatMappingPreview = useCallback(
     async ({
@@ -851,10 +866,9 @@ export function useGroupSeatMappingPreview({
 
       if (!res.ok) {
         const error = await res.json();
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: "Failed to prepare seat change",
-          description: error?.error?.message ?? "An unexpected error occurred.",
+          error,
         });
         return null;
       }
@@ -862,7 +876,7 @@ export function useGroupSeatMappingPreview({
       return BulkSeatChangePreviewResponseSchema.parse(await res.json())
         .preview;
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendApiErrorNotification]
   );
 
   return { doFetchGroupSeatMappingPreview };

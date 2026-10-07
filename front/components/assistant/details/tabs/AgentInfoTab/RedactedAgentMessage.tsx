@@ -13,6 +13,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, ContentMessage, Lock01, UsersPlus } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useState } from "react";
 
 // Explains to an admin why the private fields of an agent were redacted: the agent is not
@@ -24,6 +26,7 @@ export function RedactedAgentMessage({
   agentConfiguration: AgentConfigurationType;
   owner: WorkspaceType;
 }) {
+  const { t } = useLingui();
   // Spaces the caller is a member of, and every space of the workspace to name the missing ones.
   const { spaces: memberSpaces, isSpacesLoading: isMemberSpacesLoading } =
     useSpaces({
@@ -51,10 +54,9 @@ export function RedactedAgentMessage({
       return;
     }
     const confirmed = await confirm({
-      title: "Security notice",
-      message:
-        "By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?",
-      validateLabel: "Proceed",
+      title: t`Security notice`,
+      message: t`By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?`,
+      validateLabel: t`Proceed`,
       validateVariant: "warning",
     });
     if (!confirmed) {
@@ -91,10 +93,15 @@ export function RedactedAgentMessage({
     if (isJoiningSpaces) {
       return;
     }
+    const missingSpacesCount = missingSpaceIds.length;
     const confirmed = await confirm({
-      title: "Security notice",
-      message: `You are about to join ${missingSpaceIds.length === 1 ? "this space" : "these spaces"}. This action will be logged for security purposes. Do you want to proceed?`,
-      validateLabel: "Proceed",
+      title: t`Security notice`,
+      message: t`${plural(missingSpacesCount, {
+        one: "You are about to join this space. This action will be logged for security purposes. Do you want to proceed?",
+        other:
+          "You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?",
+      })}`,
+      validateLabel: t`Proceed`,
       validateVariant: "warning",
     });
     if (!confirmed) {
@@ -111,9 +118,10 @@ export function RedactedAgentMessage({
           if (!space) {
             return;
           }
+          const spaceName = space.name;
           await addSpaceMembers(space, [user.sId], {
-            title: `Joined ${space.name}`,
-            description: `You are now a member of ${space.name}.`,
+            title: t`Joined ${spaceName}`,
+            description: t`You are now a member of ${spaceName}.`,
           });
         },
         { concurrency: 4 }
@@ -129,20 +137,28 @@ export function RedactedAgentMessage({
   const needsEditorAccess =
     agentConfiguration.scope !== "visible" && !agentConfiguration.canEdit;
   const showBecomeEditor = needsEditorAccess && missingSpaceIds.length === 0;
+  const missingSpaceNamesList = missingSpaceNames.join(", ");
+  const missingSpaceName = missingSpaceNames[0];
 
   return (
-    <ContentMessage title="Restricted access" icon={Lock01} size="md">
+    <ContentMessage title={t`Restricted access`} icon={Lock01} size="md">
       <div className="flex flex-col gap-2">
-        <span>You cannot see the details of this agent.</span>
+        <span>
+          <Trans>You cannot see the details of this agent.</Trans>
+        </span>
         {needsEditorAccess && (
           <span>
-            The agent is not published and you are not one of its editors.
+            <Trans>
+              The agent is not published and you are not one of its editors.
+            </Trans>
           </span>
         )}
         {missingSpaceNames.length > 0 && (
           <span>
-            The agent uses restricted spaces you are not a member of:{" "}
-            {missingSpaceNames.join(", ")}.
+            <Trans>
+              The agent uses restricted spaces you are not a member of:{" "}
+              {missingSpaceNamesList}.
+            </Trans>
           </span>
         )}
         {missingSpaceNames.length > 0 && (
@@ -153,8 +169,8 @@ export function RedactedAgentMessage({
               icon={UsersPlus}
               label={
                 missingSpaceNames.length === 1
-                  ? `Join space ${missingSpaceNames[0]}`
-                  : "Join all required spaces"
+                  ? t`Join space ${missingSpaceName}`
+                  : t`Join all required spaces`
               }
               isLoading={isSpacesLoading || isJoiningSpaces}
               disabled={isSpacesLoading || isJoiningSpaces}

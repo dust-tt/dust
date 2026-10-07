@@ -87,7 +87,6 @@ export function DataSourceViewPage() {
                 placeholder=""
                 name="document"
                 disabled={true}
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={document.source_url || ""}
               />
             </div>
@@ -107,7 +106,6 @@ export function DataSourceViewPage() {
                   "focus:border-gray-300 focus:ring-0"
                 )}
                 disabled={true}
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={document.text || ""}
               />
             </div>

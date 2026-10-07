@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
@@ -99,6 +102,7 @@ export function useBatchEditFrameText({
 }): (
   edits: FrameTextEditParams[]
 ) => Promise<{ success: boolean; error?: string }> {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   return useCallback(
@@ -120,10 +124,9 @@ export function useBatchEditFrameText({
         );
         if (!response.ok) {
           const errorData = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Couldn't save edits",
-            description: errorData.message,
+            error: errorData,
           });
           return { success: false, error: errorData.message };
         }
@@ -142,7 +145,13 @@ export function useBatchEditFrameText({
         };
       }
     },
-    [conversationId, fileId, owner.sId, sendNotification]
+    [
+      conversationId,
+      fileId,
+      owner.sId,
+      sendNotification,
+      sendApiErrorNotification,
+    ]
   );
 }
 
@@ -183,6 +192,7 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
 }
 
 export function useExportFrameAsPdf({ owner }: { owner: LightWorkspaceType }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   return async ({
@@ -205,10 +215,9 @@ export function useExportFrameAsPdf({ owner }: { owner: LightWorkspaceType }) {
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "PDF Export Failed",
-        description: errorData.message,
+        error: errorData,
       });
       return false;
     }

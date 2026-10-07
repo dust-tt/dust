@@ -4,7 +4,7 @@ import {
   CAPABILITY_CONFIGS,
   getInitialPageId,
   getKnowledgeDefaultValues,
-  getKnowledgeLookupMethodLabel,
+  getKnowledgeLookupMethodName,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   generateUniqueActionName,
@@ -24,7 +24,7 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import {
   CONFIGURATION_SHEET_PAGE_IDS,
-  useCapabilityFormSchema,
+  getCapabilityFormSchema,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -146,6 +146,7 @@ function KnowledgeConfigurationSheetForm({
   setIsDirty,
   initialRequestedSpaceIds,
 }: KnowledgeConfigurationSheetFormProps) {
+  const { t } = useLingui();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const handleSave = (formData: CapabilityFormData) => {
@@ -208,7 +209,7 @@ function KnowledgeConfigurationSheetForm({
     });
   }, [action, mcpServerViews, isEditing, presetActionData]);
 
-  const capabilityFormSchema = useCapabilityFormSchema();
+  const capabilityFormSchema = useMemo(() => getCapabilityFormSchema(t), [t]);
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
@@ -297,7 +298,7 @@ function KnowledgeConfigurationSheetContent({
   // Prefill name field and set defaults when mcpServerView.id changes
   useEffect(() => {
     if (mcpServerView && !isEditing) {
-      const processingMethodName = getKnowledgeLookupMethodLabel(
+      const processingMethodName = getKnowledgeLookupMethodName(
         mcpServerView.server.name,
         getMcpServerViewDisplayName(mcpServerView)
       );

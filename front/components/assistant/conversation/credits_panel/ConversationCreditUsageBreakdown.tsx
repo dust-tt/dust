@@ -13,7 +13,6 @@ import type {
   ConversationConsumptionModelDetails,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
   Chip,
@@ -30,6 +29,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
@@ -86,6 +86,7 @@ function ToolBreakdownCards({
   agentWorkCredits,
   tools,
 }: ToolBreakdownCardsProps) {
+  const { t } = useLingui();
   const rankedTools = [...tools].sort(
     (left, right) => right.attributedCredits - left.attributedCredits
   );
@@ -104,8 +105,8 @@ function ToolBreakdownCards({
     <div className="grid grid-cols-2 gap-4">
       <div className="col-span-2">
         <CreditBreakdownCard
-          label="Context and reasoning"
-          description="Agents use credits to process the conversation history and context. Longer conversations consume more credits."
+          label={t`Context and reasoning`}
+          description={t`Agents use credits to process the conversation history and context. Longer conversations consume more credits.`}
           value={agentWorkCredits}
           icon={InternalActionIcons.ActionBrainIcon}
         />
@@ -121,7 +122,7 @@ function ToolBreakdownCards({
       ))}
       {remainingTools.length > 0 && (
         <CreditBreakdownCard
-          label="Other tools"
+          label={t`Other tools`}
           labelBadge={String(remainingTools.length)}
           description={toolUsageLabel(remainingToolCallCount)}
           value={remainingToolCredits}
@@ -185,7 +186,9 @@ interface AgentBreakdownProps {
 }
 
 function AgentBreakdown({ agent }: AgentBreakdownProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
+  const agentName = agent.name;
 
   return (
     <Collapsible
@@ -194,7 +197,11 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
       className="rounded-xl border border-border bg-background"
     >
       <CollapsibleTrigger
-        aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
+        aria-label={
+          isOpen
+            ? t`Collapse credit details for ${agentName}`
+            : t`Expand credit details for ${agentName}`
+        }
         className="min-h-11 flex-row-reverse justify-between rounded-xl p-2 text-left focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
@@ -250,6 +257,7 @@ export function ConversationCreditUsageBreakdown({
   billedCredits,
   details,
 }: ConversationCreditUsageBreakdownProps) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
 
   return (
@@ -257,22 +265,22 @@ export function ConversationCreditUsageBreakdown({
       <section className="space-y-4">
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Total credits consumed
+            <Trans>Total credits consumed</Trans>
           </h2>
           <div className="flex items-end gap-1">
             <span className="text-2xl font-semibold leading-8 text-foreground">
               {formatCredits(billedCredits)}
             </span>
             <span className="pb-1 text-sm text-muted-foreground">
-              credit{pluralize(billedCredits)}
+              <Plural value={billedCredits} one="credit" other="credits" />
             </span>
           </div>
         </div>
         <Tabs defaultValue="tools">
           <TabsList>
-            <TabsTrigger value="tools" label="By tools" icon={ShapesPlus} />
-            <TabsTrigger value="models" label="By models" icon={CpuChip01} />
-            <TabsTrigger value="agents" label="By agents" icon={Robot} />
+            <TabsTrigger value="tools" label={t`By tools`} icon={ShapesPlus} />
+            <TabsTrigger value="models" label={t`By models`} icon={CpuChip01} />
+            <TabsTrigger value="agents" label={t`By agents`} icon={Robot} />
           </TabsList>
           <div className="mt-4">
             <TabsContent value="tools">

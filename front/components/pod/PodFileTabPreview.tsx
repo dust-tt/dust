@@ -8,7 +8,10 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { formatFileSize } from "@app/lib/i18n/format";
 import {
   getFilePathContentApiPath,
@@ -42,6 +45,7 @@ export function PodFileTabPreview({
   canEdit,
 }: PodFileTabPreviewProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
 
@@ -188,10 +192,9 @@ export function PodFileTabPreview({
         contentType: "text/markdown",
       });
       if (result.isErr()) {
-        sendNotification({
-          type: "error",
-          title: "Failed to save file",
-          description: result.error.message,
+        sendApiErrorNotification({
+          title: t`Failed to save file`,
+          error: result.error,
         });
         return;
       }
@@ -209,11 +212,13 @@ export function PodFileTabPreview({
       if (entry?.path) {
         markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
       }
-      sendNotification({ type: "success", title: "File saved" });
+      sendNotification({ type: "success", title: t`File saved` });
     } finally {
       setIsMarkdownSaving(false);
     }
   };
+
+  const fileSize = formatFileSize(sizeBytes, { decimals: 1 });
 
   if (isFileMetadataLoading) {
     return (
@@ -239,7 +244,7 @@ export function PodFileTabPreview({
             />
             <div className="flex items-center gap-2">
               <Button
-                label="Save"
+                label={t`Save`}
                 variant="highlight"
                 size="sm"
                 isLoading={isMarkdownSaving}
@@ -247,7 +252,7 @@ export function PodFileTabPreview({
                 onClick={() => void handleMarkdownSave()}
               />
               <Button
-                label="Revert"
+                label={t`Revert`}
                 variant="outline"
                 size="sm"
                 disabled={!isMarkdownDirty || isMarkdownSaving}
@@ -259,12 +264,12 @@ export function PodFileTabPreview({
         {isTooLarge ? (
           <FilePreviewFallback
             download={{ href: getFilePathDownloadUrl(owner, filePath) }}
-            message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 })}).`}
+            message={t`This file is too large to preview (${fileSize}).`}
           />
         ) : hasError ? (
           <FilePreviewFallback
             download={{ href: getFilePathDownloadUrl(owner, filePath) }}
-            message="Unable to preview this file."
+            message={t`Unable to preview this file.`}
           />
         ) : (
           <div

@@ -1,0 +1,126 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Cancel subscription"
+msgstr "Annuler l’abonnement"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Your subscription will end at the end of your current billing period."
+msgstr "Votre abonnement prendra fin à l’issue de votre période de facturation en cours."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Are you sure you want to proceed?"
+msgstr "Voulez-vous vraiment continuer ?"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Keep subscription"
+msgstr "Conserver l’abonnement"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Yes, cancel subscription"
+msgstr "Oui, annuler l’abonnement"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Estimated yearly billing: <0>{estimatedBilling}</0> (excluding taxes)."
+msgstr "Facturation annuelle estimée : <0>{estimatedBilling}</0> (hors taxes)."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Estimated monthly billing: <0>{estimatedBilling}</0> (excluding taxes)."
+msgstr "Facturation mensuelle estimée : <0>{estimatedBilling}</0> (hors taxes)."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Subscription to {planName}"
+msgstr "Abonnement à {planName}"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Your subscription to {planName} is now active. Thank you for your trust."
+msgstr "Votre abonnement à {planName} est désormais actif. Merci pour votre confiance."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Upgrade failed"
+msgstr "Échec de la mise à niveau"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Failed to upgrade to Enterprise seat-based plan."
+msgstr "Impossible de passer au forfait Enterprise par siège."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Upgrade successful"
+msgstr "Mise à niveau réussie"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Your workspace has been upgraded to Enterprise seat-based plan."
+msgstr "Votre workspace est passé au forfait Enterprise par siège."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Subscription"
+msgstr "Abonnement"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Manage your plan."
+msgstr "Gérez votre forfait."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Your plan"
+msgstr "Votre forfait"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Your subscription ends on {endDate}."
+msgstr "Votre abonnement prend fin le {endDate}."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Please reach out to your account manager to ensure continuity."
+msgstr "Contactez votre responsable de compte pour assurer la continuité du service."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Connections will be deleted and members will be revoked. Details <0>here</0>."
+msgstr "Les connexions seront supprimées et les membres révoqués. Plus de détails <0>ici</0>."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Resume subscription"
+msgstr "Reprendre l’abonnement"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Billing"
+msgstr "Facturation"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "{workspaceSeats, plural, one {# member, {seatPrice} per member.} other {# members, {seatPrice} per member.}}"
+msgstr "{workspaceSeats, plural, one {# membre, {seatPrice} par membre.} other {# membres, {seatPrice} par membre.}}"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Your billing dashboard on Stripe"
+msgstr "Votre tableau de bord de facturation sur Stripe"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Upgrade your plan"
+msgstr "Passer à un forfait supérieur"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "You are eligible to upgrade to the Enterprise seat-based plan with additional features."
+msgstr "Vous pouvez passer au forfait Enterprise par siège, qui offre des fonctionnalités supplémentaires."
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Upgrade to Enterprise seat-based plan"
+msgstr "Passer au forfait Enterprise par siège"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Choose a plan"
+msgstr "Choisir un forfait"
+
+#: front/components/pages/workspace/subscription/SubscriptionPage.tsx
+msgid "Pick a plan that best suits your team."
+msgstr "Choisissez le forfait le mieux adapté à votre équipe."

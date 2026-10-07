@@ -63,7 +63,7 @@ export function BulkSelectionBar({
             size="sm"
             variant="ghost-secondary"
             className="text-xs"
-            label={t`Clear all`}
+            label={t({ message: "Clear all", context: "clear the selection" })}
             onClick={onClear}
             disabled={disabled}
           />

@@ -1,5 +1,6 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -39,13 +40,16 @@ import {
   XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -59,11 +63,13 @@ function getStripePromise() {
   return stripePromise;
 }
 
-const couponFormSchema = z.object({
-  couponCode: z.string().min(1, "Please enter a promotion code"),
-});
+function getCouponFormSchema(t: (descriptor: MessageDescriptor) => string) {
+  return z.object({
+    couponCode: z.string().min(1, t(msg`Please enter a promotion code`)),
+  });
+}
 
-type CouponFormValues = z.infer<typeof couponFormSchema>;
+type CouponFormValues = z.infer<ReturnType<typeof getCouponFormSchema>>;
 
 type CheckoutPhase =
   | "card_capture" // Phase 1 — Stripe setup iframe
@@ -93,6 +99,7 @@ function useSeatTypeParam(): "pro" | "max" | null {
 }
 
 export function CheckoutPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const router = useAppRouter();
   const billingPeriod = useBillingPeriodParam();
@@ -151,6 +158,7 @@ export function CheckoutPage() {
     workspaceId: owner.sId,
   });
   const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
+  const formatErrorDescription = useFormatErrorDescription();
 
   const {
     preparePayment: livePreparePayment,
@@ -209,6 +217,7 @@ export function CheckoutPage() {
     // pending: keep polling
   }, [isActivating, checkoutPayment, mutateAuthContext]);
 
+  const couponFormSchema = useMemo(() => getCouponFormSchema(t), [t]);
   const {
     register: registerCoupon,
     handleSubmit: handleCouponSubmit,
@@ -375,7 +384,9 @@ export function CheckoutPage() {
   const handleApplyCoupon = handleCouponSubmit(async ({ couponCode }) => {
     const result = await validateCoupon(couponCode.trim(), "subscription");
     if (!result.ok) {
-      setCouponError("couponCode", { message: result.message });
+      setCouponError("couponCode", {
+        message: formatErrorDescription(result.error),
+      });
       return;
     }
     setAppliedCoupon(result.coupon);
@@ -440,7 +451,16 @@ export function CheckoutPage() {
   const totalDueTodayCents = subtotalCents - couponDiscountCents;
 
   // Plan display name.
-  const planDisplayName = seatType === "pro" ? "Pro seat" : "Max seat";
+  const planDisplayName = seatType === "pro" ? t`Pro seat` : t`Max seat`;
+
+  const couponAmount = appliedCoupon
+    ? getPriceAsString({ currency, priceInCents: appliedCoupon.amount * 100 })
+    : "";
+  const couponDurationMonths = appliedCoupon?.durationMonths ?? 1;
+  const couponValidityLabel = t`${couponAmount} valid for ${plural(
+    couponDurationMonths,
+    { one: "# month", other: "# months" }
+  )}`;
 
   if (!isInitialized) {
     return null;
@@ -488,14 +508,16 @@ export function CheckoutPage() {
             </h1>
             <span className="text-sm text-muted-foreground">
               {billingPeriod === "yearly"
-                ? "billed annually"
-                : "billed monthly"}
+                ? t`billed annually`
+                : t`billed monthly`}
             </span>
           </div>
 
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price per seat</span>
+              <span className="text-muted-foreground">
+                <Trans>Price per seat</Trans>
+              </span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -506,13 +528,17 @@ export function CheckoutPage() {
               </span>
             </div>
             <div className="mt-3 flex justify-between">
-              <span className="text-muted-foreground">Number of seats</span>
+              <span className="text-muted-foreground">
+                <Trans>Number of seats</Trans>
+              </span>
               <span>
                 {showActualTax ? preparePayment.seatCount : seatCountForSummary}
               </span>
             </div>
             <div className="mt-6 flex justify-between border-t border-separator pt-3">
-              <span className="text-lg">Subtotal</span>
+              <span className="text-lg">
+                <Trans>Subtotal</Trans>
+              </span>
               <span className="text-base">
                 {getPriceAsString({
                   currency,
@@ -534,13 +560,13 @@ export function CheckoutPage() {
                   <div className="my-4 flex flex-col gap-2">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter promotion code"
+                        placeholder={t`Enter promotion code`}
                         {...registerCoupon("couponCode")}
                         disabled={isApplyingCoupon}
                         className="flex-1"
                       />
                       <Button
-                        label={isApplyingCoupon ? "Applying…" : "Apply"}
+                        label={isApplyingCoupon ? t`Applying…` : t`Apply`}
                         disabled={isApplyingCoupon || !couponCodeValue.trim()}
                         onClick={handleApplyCoupon}
                         size="sm"
@@ -560,7 +586,7 @@ export function CheckoutPage() {
                       onClick={() => setShowCouponInput(true)}
                       className="text-sm font-semibold underline"
                     >
-                      Add promotion code
+                      <Trans>Add promotion code</Trans>
                     </button>
                   </div>
                 ))}
@@ -588,13 +614,7 @@ export function CheckoutPage() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {getPriceAsString({
-                      currency,
-                      priceInCents: appliedCoupon.amount * 100,
-                    })}
-                    {appliedCoupon.durationMonths !== null
-                      ? ` valid for ${appliedCoupon.durationMonths} month${appliedCoupon.durationMonths > 1 ? "s" : ""}`
-                      : " valid for 1 month"}
+                    {couponValidityLabel}
                   </p>
                 </div>
               )}
@@ -603,7 +623,9 @@ export function CheckoutPage() {
             {phase !== "card_capture" ? (
               <>
                 <div className="mt-3 flex justify-between">
-                  <span className="text-lg">Taxes</span>
+                  <span className="text-lg">
+                    <Trans>Taxes</Trans>
+                  </span>
                   <span className="text-base">
                     {showActualTax
                       ? getPriceAsString({
@@ -615,7 +637,7 @@ export function CheckoutPage() {
                 </div>
                 <div className="mt-3 flex justify-between border-t border-separator pt-3">
                   <span className="text-lg font-semibold">
-                    Total due with taxes
+                    <Trans>Total due with taxes</Trans>
                   </span>
                   <span className="text-base font-semibold">
                     {showActualTax
@@ -631,7 +653,7 @@ export function CheckoutPage() {
               <>
                 <div className="flex justify-between border-t border-separator pt-3">
                   <span className="text-lg font-semibold">
-                    Total due excl. taxes
+                    <Trans>Total due excl. taxes</Trans>
                   </span>
                   <span className="text-base font-semibold">
                     {getPriceAsString({
@@ -641,8 +663,10 @@ export function CheckoutPage() {
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Your country selection determines the applicable taxes and
-                  billing currency.
+                  <Trans>
+                    Your country selection determines the applicable taxes and
+                    billing currency.
+                  </Trans>
                 </p>
               </>
             )}
@@ -700,38 +724,37 @@ function CheckoutSuccessPage({
   receiptUrl,
   owner,
 }: CheckoutSuccessPageProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
+  const planName = seatType === "max" ? "Max" : "Pro";
+  const monthlyCredits = seatType === "max" ? "40,000" : "8,000";
 
   return (
     <main className="flex h-screen flex-col items-center justify-center gap-4 bg-white px-6 pb-24 pt-6">
       <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
       <div className="flex flex-col items-center gap-4 text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          You&apos;re all set!
+          <Trans>You're all set!</Trans>
         </h1>
         <p className="text-base text-muted-foreground">
-          Your{" "}
-          <span className="font-semibold">
-            {seatType === "max" ? "Max" : "Pro"}
-          </span>{" "}
-          seat is ready with{" "}
-          <span className="font-semibold">
-            {seatType === "max" ? "40,000" : "8,000"}
-          </span>{" "}
-          credits a month. Let&apos;s build something.
+          <Trans>
+            Your <span className="font-semibold">{planName}</span> seat is ready
+            with <span className="font-semibold">{monthlyCredits}</span> credits
+            a month. Let's build something.
+          </Trans>
         </p>
       </div>
       <div className="flex gap-4">
         {receiptUrl && (
           <Button
-            label="View receipt"
+            label={t`View receipt`}
             variant="outline"
             size="md"
             onClick={() => window.open(receiptUrl, "_blank")}
           />
         )}
         <Button
-          label="Start building"
+          label={t`Start building`}
           size="md"
           onClick={() => void router.replace(`/w/${owner.sId}`)}
         />
@@ -743,7 +766,7 @@ function CheckoutSuccessPage({
 interface RightPaneProps {
   phase: CheckoutPhase;
   phaseError: PhaseError | null;
-  checkoutSteps: readonly string[];
+  checkoutSteps: readonly MessageDescriptor[];
   activeStepIndex: number;
   clientSecret: string | null;
   isCreating: boolean;
@@ -775,6 +798,8 @@ function RightPane({
   onConfirmPayment,
   onCardCaptureComplete,
 }: RightPaneProps) {
+  const { t } = useLingui();
+
   switch (phase) {
     case "card_capture":
       if (isCreating || !clientSecret) {
@@ -795,20 +820,24 @@ function RightPane({
       if (isPreparePaymentError) {
         return (
           <CheckoutError
-            title="Couldn't load payment details"
+            title={t`Couldn't load payment details`}
             description={
               <>
-                Your payment was not processed and you have not been charged.
-                Please try again.
+                <Trans>
+                  Your payment was not processed and you have not been charged.
+                  Please try again.
+                </Trans>
                 <br />
-                If the issue persists, contact us at{" "}
-                <a
-                  href="mailto:support@dust.tt"
-                  className="text-primary underline"
-                >
-                  support@dust.tt
-                </a>
-                .
+                <Trans>
+                  If the issue persists, contact us at{" "}
+                  <a
+                    href="mailto:support@dust.tt"
+                    className="text-primary underline"
+                  >
+                    support@dust.tt
+                  </a>
+                  .
+                </Trans>
               </>
             }
             onRetry={onRestart}
@@ -825,10 +854,10 @@ function RightPane({
             <>
               <div className="flex flex-col gap-1 pb-4">
                 <h2 className="text-2xl font-semibold text-foreground">
-                  Select payment method
+                  <Trans>Select payment method</Trans>
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Your available payment method is shown below
+                  <Trans>Your available payment method is shown below</Trans>
                 </p>
               </div>
               {cardBrand && cardLast4 ? (
@@ -847,7 +876,7 @@ function RightPane({
                 />
               ) : null}
               <Button
-                label="Confirm payment"
+                label={t`Confirm payment`}
                 onClick={onConfirmPayment}
                 size="md"
                 className="w-full"
@@ -874,20 +903,24 @@ function RightPane({
         case "metronome_error":
           return (
             <CheckoutError
-              title="Something went wrong with your subscription"
+              title={t`Something went wrong with your subscription`}
               description={
                 <>
-                  Your subscription could not be activated. You have not been
-                  charged. Please try again.
+                  <Trans>
+                    Your subscription could not be activated. You have not been
+                    charged. Please try again.
+                  </Trans>
                   <br />
-                  If the issue persists, contact us at{" "}
-                  <a
-                    href="mailto:support@dust.tt"
-                    className="text-primary underline"
-                  >
-                    support@dust.tt
-                  </a>
-                  .
+                  <Trans>
+                    If the issue persists, contact us at{" "}
+                    <a
+                      href="mailto:support@dust.tt"
+                      className="text-primary underline"
+                    >
+                      support@dust.tt
+                    </a>
+                    .
+                  </Trans>
                 </>
               }
               onRetry={onRestart}
@@ -896,8 +929,8 @@ function RightPane({
         case "invalid_coupon":
           return (
             <CheckoutError
-              title="Coupon no longer valid"
-              description="This coupon is no longer valid. You have not been charged. Please try again with a different code."
+              title={t`Coupon no longer valid`}
+              description={t`This coupon is no longer valid. You have not been charged. Please try again with a different code.`}
               onRetry={onRestart}
             />
           );
@@ -907,20 +940,24 @@ function RightPane({
         default:
           return (
             <CheckoutError
-              title="Payment failed"
+              title={t`Payment failed`}
               description={
                 <>
-                  Your payment could not be processed and you have not been
-                  charged. Please try again.
+                  <Trans>
+                    Your payment could not be processed and you have not been
+                    charged. Please try again.
+                  </Trans>
                   <br />
-                  If the issue persists, contact us at{" "}
-                  <a
-                    href="mailto:support@dust.tt"
-                    className="text-primary underline"
-                  >
-                    support@dust.tt
-                  </a>
-                  .
+                  <Trans>
+                    If the issue persists, contact us at{" "}
+                    <a
+                      href="mailto:support@dust.tt"
+                      className="text-primary underline"
+                    >
+                      support@dust.tt
+                    </a>
+                    .
+                  </Trans>
                 </>
               }
               onRetry={onRestart}
@@ -938,28 +975,31 @@ function RightPane({
 // they happen server-side: the subscription (Metronome customer + contract) is
 // set up while confirming, then payment is charged and the workspace activated
 // while polling for the webhook result.
-const CHECKOUT_STEPS = [
-  "Setting up your subscription",
-  "Processing payment",
-  "Activating your workspace",
-] as const;
+const CHECKOUT_STEPS: readonly MessageDescriptor[] = [
+  msg`Setting up your subscription`,
+  msg`Processing payment`,
+  msg`Activating your workspace`,
+];
 
 // Zero-payment (coupon covers the full cost): no charge happens, so the
 // "Processing payment" step is dropped.
-const CHECKOUT_STEPS_NO_PAYMENT = [
-  "Setting up your subscription",
-  "Activating your workspace",
-] as const;
+const CHECKOUT_STEPS_NO_PAYMENT: readonly MessageDescriptor[] = [
+  msg`Setting up your subscription`,
+  msg`Activating your workspace`,
+];
 
 interface CheckoutProgressProps {
-  steps: readonly string[];
+  steps: readonly MessageDescriptor[];
   activeStepIndex: number;
 }
 
 function CheckoutProgress({ steps, activeStepIndex }: CheckoutProgressProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex flex-col gap-4">
-      {steps.map((label, index) => {
+      {steps.map((step, index) => {
+        const label = t(step);
         const isDone = index < activeStepIndex;
         const isActive = index === activeStepIndex;
         return (
@@ -998,6 +1038,8 @@ interface CheckoutErrorProps {
 }
 
 function CheckoutError({ title, description, onRetry }: CheckoutErrorProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <Icon visual={XCircle} size="2xl" className="text-warning-500" />
@@ -1005,7 +1047,7 @@ function CheckoutError({ title, description, onRetry }: CheckoutErrorProps) {
         <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      {onRetry && <Button label="Try again" onClick={onRetry} />}
+      {onRetry && <Button label={t`Try again`} onClick={onRetry} />}
     </div>
   );
 }

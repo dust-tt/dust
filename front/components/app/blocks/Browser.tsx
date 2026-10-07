@@ -17,6 +17,7 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 import Block from "./Block";
 
@@ -53,6 +54,7 @@ export default function Browser({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
     disabled: readOnly,
@@ -145,7 +147,9 @@ export default function Browser({
       <div className="flex w-full flex-col gap-4 pt-2 text-sm">
         <div className="flex w-full flex-col gap-2">
           <div className="flex flex-row items-center gap-2">
-            <Label>URL (with scheme)</Label>
+            <Label>
+              <Trans>URL (with scheme)</Trans>
+            </Label>
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly && (
               <div className="px-2">
                 <Button
@@ -153,8 +157,8 @@ export default function Browser({
                   variant="warning"
                   label={
                     isAdmin
-                      ? "Setup Browserless API"
-                      : "Browserless API not available"
+                      ? t`Setup Browserless API`
+                      : t`Browserless API not available`
                   }
                   disabled={!isAdmin}
                   size="xs"
@@ -173,7 +177,9 @@ export default function Browser({
         </div>
 
         <div className="flex w-full flex-col gap-2">
-          <Label>CSS selector</Label>
+          <Label>
+            <Trans>CSS selector</Trans>
+          </Label>
           <Input
             type="text"
             placeholder=""
@@ -184,11 +190,13 @@ export default function Browser({
         </div>
 
         <Collapsible defaultOpen={false}>
-          <CollapsibleTrigger label="Advanced" />
+          <CollapsibleTrigger label={t`Advanced`} />
           <CollapsibleContent>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex items-center space-x-2">
-                <Label className="whitespace-nowrap">Error as output</Label>
+                <Label className="whitespace-nowrap">
+                  <Trans>Error as output</Trans>
+                </Label>
                 <Checkbox
                   checked={block.config.error_as_output}
                   onCheckedChange={(checked) =>
@@ -199,7 +207,9 @@ export default function Browser({
               </div>
 
               <div className="flex items-center space-x-2">
-                <Label className="whitespace-nowrap">Timeout</Label>
+                <Label className="whitespace-nowrap">
+                  <Trans>Timeout</Trans>
+                </Label>
                 <Input
                   type="text"
                   readOnly={readOnly}
@@ -210,7 +220,9 @@ export default function Browser({
               </div>
 
               <div className="flex items-center space-x-2">
-                <Label className="whitespace-nowrap">Wait until</Label>
+                <Label className="whitespace-nowrap">
+                  <Trans>Wait until</Trans>
+                </Label>
                 <Input
                   type="text"
                   spellCheck={false}
@@ -221,7 +233,9 @@ export default function Browser({
               </div>
 
               <div className="flex items-center space-x-2">
-                <Label className="whitespace-nowrap">Wait for</Label>
+                <Label className="whitespace-nowrap">
+                  <Trans>Wait for</Trans>
+                </Label>
                 <Input
                   type="text"
                   placeholder=""

@@ -44,6 +44,7 @@ import type {
 } from "@app/types/project_task";
 import { POD_TASK_UNASSIGNED_GROUP_KEY } from "@app/types/project_task";
 import { resolveDefaultAgentId } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export function usePodTasksPanelState({
@@ -53,6 +54,7 @@ export function usePodTasksPanelState({
   taskOwnerFilter,
   onTaskOwnerFilterChange,
 }: UsePodTasksPanelArgs): PodTasksPanelData {
+  const { t } = useLingui();
   const [debouncedTaskSearchQuery, setDebouncedTaskSearchQuery] = useState("");
   const {
     tasks,
@@ -400,9 +402,9 @@ export function usePodTasksPanelState({
           ? `${task.text.slice(0, DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS)}…`
           : task.text;
       const confirmed = await confirm({
-        title: "Delete task?",
+        title: t`Delete task?`,
         message: `"${preview}"`,
-        validateLabel: "Delete",
+        validateLabel: t`Delete`,
         validateVariant: "warning",
       });
       if (!confirmed) {
@@ -410,7 +412,7 @@ export function usePodTasksPanelState({
       }
       void handleDelete(task);
     },
-    [confirm, handleDelete]
+    [confirm, handleDelete, t]
   );
 
   const handleAddTask = useCallback(

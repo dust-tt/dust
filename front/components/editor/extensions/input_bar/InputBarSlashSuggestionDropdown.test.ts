@@ -1,3 +1,4 @@
+import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
@@ -9,12 +10,12 @@ import {
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
+import type { MessageDescriptor } from "@lingui/core";
+import { setupI18n } from "@lingui/core";
 import { describe, expect, it } from "vitest";
 
-import {
-  filterInputBarSlashCommandItems,
-  getInputBarSlashCommandItems,
-} from "./InputBarSlashSuggestionItems";
+import { getInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
 import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
@@ -27,14 +28,18 @@ const ALL_COMMANDS = getAvailableInputBarSlashCommands({
   hasConversation: true,
 });
 
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
+
 function buildInputBarSlashCommandItems({
   query,
+  t = translate,
   ...options
-}: Parameters<typeof getInputBarSlashCommandItems>[0] & {
+}: Omit<Parameters<typeof getInputBarSlashCommandItems>[0], "t"> & {
   query: string;
+  t?: (descriptor: MessageDescriptor) => string;
 }): SlashCommand[] {
-  return filterInputBarSlashCommandItems(
-    getInputBarSlashCommandItems(options),
+  return filterSlashCommandItems(
+    getInputBarSlashCommandItems({ ...options, t }),
     query
   );
 }
@@ -214,6 +219,51 @@ describe("buildInputBarSlashCommandItems", () => {
         query: "zzz",
       })
     ).toEqual([]);
+  });
+});
+
+describe("buildInputBarSlashCommandItems in fr-FR", () => {
+  async function buildFrenchInputBarSlashCommandItemIds(query: string) {
+    const frenchI18n = setupI18n({
+      locale: "fr-FR",
+      messages: { "fr-FR": await loadCatalog("fr-FR") },
+    });
+
+    return buildInputBarSlashCommandItems({
+      commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
+      includePickModel: true,
+      includeSelectSpaces: true,
+      query,
+      t: (descriptor) => frenchI18n._(descriptor),
+    }).map(getInputBarSlashCommandItemId);
+  }
+
+  it("matches translated text regardless of accents", async () => {
+    expect(await buildFrenchInputBarSlashCommandItemIds("modèle")).toEqual([
+      "pick-model",
+    ]);
+    expect(await buildFrenchInputBarSlashCommandItemIds("modele")).toEqual([
+      "pick-model",
+    ]);
+    expect(await buildFrenchInputBarSlashCommandItemIds("RESUMANT")).toEqual([
+      "compact",
+    ]);
+  });
+
+  it("matches the English text", async () => {
+    expect(await buildFrenchInputBarSlashCommandItemIds("attach")).toEqual([
+      "attach-knowledge",
+    ]);
+    expect(await buildFrenchInputBarSlashCommandItemIds("upload")).toEqual([
+      "upload-file",
+    ]);
+    expect(await buildFrenchInputBarSlashCommandItemIds("model")).toEqual([
+      "pick-model",
+    ]);
+    expect(await buildFrenchInputBarSlashCommandItemIds("compact")).toEqual([
+      "compact",
+    ]);
   });
 });
 

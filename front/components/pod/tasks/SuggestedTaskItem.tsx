@@ -13,6 +13,7 @@ import {
   cn,
   TypingAnimation,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { memo, useState } from "react";
 
 interface SuggestedTaskItemProps {
@@ -34,6 +35,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
   isNew,
   isReadOnly,
 }: SuggestedTaskItemProps) {
+  const { t } = useLingui();
   const [isApproving, setIsApproving] = useState(false);
 
   const displayText = stripNewlines(task.text);
@@ -42,7 +44,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
 
   const canAct = viewerUserId !== null && !isReadOnly;
   const rationaleText =
-    task.actorRationale?.trim() || "Suggested for this Pod.";
+    task.actorRationale?.trim() || t`Suggested for this Pod.`;
 
   return (
     <div className="group/suggestion-item flex items-start gap-3 py-1 pl-6">
@@ -103,7 +105,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
           )}
         >
           <Button
-            label="Accept"
+            label={t`Accept`}
             size="sm"
             variant="outline"
             isLoading={isApproving}

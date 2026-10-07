@@ -238,7 +238,6 @@ export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
     goToDiscover,
     goToHome,
     inputBarRef,
-    isOpeningDiscover: stage === "transition",
     isScrollLocked: isLockEnabled && stage !== "discover",
     pullProgress,
     scrollerRef: setScroller,

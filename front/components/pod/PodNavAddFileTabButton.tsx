@@ -13,6 +13,7 @@ import {
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Plus } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface PodNavAddFileTabButtonProps {
@@ -32,6 +33,7 @@ export function PodNavAddFileTabButton({
   fileTabs,
   tabsOrder,
 }: PodNavAddFileTabButtonProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const displayFramePackages = hasFeature("frames_v2");
   const [createFileTabDraft, setCreateFileTabDraft] =
@@ -89,8 +91,8 @@ export function PodNavAddFileTabButton({
             icon={Plus}
             tooltip={
               atTabLimit
-                ? `A pod can have at most ${MAX_POD_FILE_TABS} custom tabs.`
-                : "Add file to Tabs"
+                ? t`A Pod can have at most ${MAX_POD_FILE_TABS} custom tabs.`
+                : t`Add file to Tabs`
             }
             disabled={atTabLimit}
           />

@@ -158,7 +158,7 @@ export function getKnowledgeBrowserEntryLabel(
     case "category":
       return t(CATEGORY_LABELS[entry.category]);
     default:
-      return navigationHistoryEntryTitle(entry);
+      return navigationHistoryEntryTitle(entry, t);
   }
 }
 

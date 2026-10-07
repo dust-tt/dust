@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { EmojiMartData } from "@emoji-mart/data";
+import { Trans } from "@lingui/react/macro";
 import { init, SearchIndex } from "emoji-mart";
 import shuffle from "lodash/shuffle";
 import type React from "react";
@@ -245,7 +246,7 @@ export const EmojiDropdown = forwardRef<
           </div>
         ) : (
           <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
-            No emoji found
+            <Trans>No emoji found</Trans>
           </div>
         )}
       </DropdownMenuContent>

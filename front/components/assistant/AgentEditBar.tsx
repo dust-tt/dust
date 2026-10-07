@@ -97,7 +97,7 @@ export const AgentEditBar = ({
             size="sm"
             variant="primary"
             isSelect
-            label="Change tag"
+            label={t`Change tag`}
             disabled={isLoading}
           />
         </DropdownMenuTrigger>
@@ -107,7 +107,7 @@ export const AgentEditBar = ({
             <>
               <DropdownMenuSearchbar
                 name="tagSearch"
-                placeholder="Search tags"
+                placeholder={t`Search tags`}
                 value={tagSearch}
                 onChange={setTagSearch}
               />

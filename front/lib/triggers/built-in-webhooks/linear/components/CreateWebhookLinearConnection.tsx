@@ -14,6 +14,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 export function CreateWebhookLinearConnection({
@@ -22,6 +23,7 @@ export function CreateWebhookLinearConnection({
   onReadyToSubmitChange,
   connectionId,
 }: WebhookCreateFormComponentProps) {
+  const { t } = useLingui();
   const [selectedTeams, setSelectedTeams] = useState<LinearTeam[]>([]);
 
   const {
@@ -91,14 +93,14 @@ export function CreateWebhookLinearConnection({
         <div className="mt-2 flex items-center gap-2 py-2">
           <Spinner size="sm" />
           <span className="text-sm text-muted-foreground">
-            Loading teams...
+            <Trans>Loading teams...</Trans>
           </span>
         </div>
       ) : (
         <div className="space-y-4">
           <div>
             <Label>
-              Teams{" "}
+              <Trans>Teams</Trans>{" "}
               {selectedTeams.length === 0 && (
                 <span className="text-warning">*</span>
               )}
@@ -121,7 +123,7 @@ export function CreateWebhookLinearConnection({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label="Add team"
+                        label={t`Add team`}
                         variant="outline"
                         icon={Plus}
                         size="sm"
@@ -131,7 +133,7 @@ export function CreateWebhookLinearConnection({
                       dropdownHeaders={
                         <DropdownMenuSearchbar
                           name="team"
-                          placeholder="Search teams..."
+                          placeholder={t`Search teams...`}
                           value={teamSearchQuery}
                           onChange={setTeamSearchQuery}
                         />
@@ -151,7 +153,7 @@ export function CreateWebhookLinearConnection({
                           ))
                         ) : (
                           <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No teams found
+                            <Trans>No teams found</Trans>
                           </div>
                         )}
                       </div>
@@ -164,7 +166,9 @@ export function CreateWebhookLinearConnection({
 
           {selectedTeams.length === 0 && (
             <p className="mt-1 text-xs text-warning">
-              Please select at least one team to create the webhook
+              <Trans>
+                Please select at least one team to create the webhook
+              </Trans>
             </p>
           )}
         </div>

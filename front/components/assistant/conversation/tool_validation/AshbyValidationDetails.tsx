@@ -5,10 +5,16 @@ import {
   CollapsibleTrigger,
   LinkExternal01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
-function formatFieldValue(value: string | number | boolean): string {
+function formatFieldValue(
+  value: string | number | boolean,
+  t: (descriptor: MessageDescriptor) => string
+): string {
   if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+    return value ? t(msg`Yes`) : t(msg`No`);
   }
   return String(value);
 }
@@ -41,28 +47,31 @@ export function AshbyJobPostingUpdateDetails({
   descriptionHtml,
   workplaceType,
 }: AshbyJobPostingUpdateDetailsProps) {
+  const { t } = useLingui();
   const jobPostingUrl = `https://app.ashbyhq.com/jobs/${jobId}/job-postings/${jobPostingId}/description`;
 
   const fields: DisplayableInput[] = [];
 
   if (title) {
-    fields.push({ label: "New title", value: title });
+    fields.push({ label: t`New title`, value: title });
   }
   if (workplaceType) {
-    fields.push({ label: "Workplace type", value: workplaceType });
+    fields.push({ label: t`Workplace type`, value: workplaceType });
   }
 
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        This will update the job posting on Ashby. Changes are applied
-        immediately and visible to candidates.
+        <Trans>
+          This will update the job posting on Ashby. Changes are applied
+          immediately and visible to candidates.
+        </Trans>
       </p>
 
       <Button
         variant="outline"
         size="xs"
-        label="View on Ashby"
+        label={t`View on Ashby`}
         icon={LinkExternal01}
         href={jobPostingUrl}
         target="_blank"
@@ -80,7 +89,9 @@ export function AshbyJobPostingUpdateDetails({
       {descriptionHtml && (
         <Collapsible>
           <CollapsibleTrigger>
-            <span className="text-sm font-medium">New description</span>
+            <span className="text-sm font-medium">
+              <Trans>New description</Trans>
+            </span>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted px-3 text-sm">
@@ -97,20 +108,22 @@ export function AshbyReferralDetails({
   fieldSubmissions,
   userEmail,
 }: AshbyReferralDetailsProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
         {/* Safe to show: this component only renders for users authorized to
             respond (canCurrentUserRespond guard in parent). */}
-        <>
+        <Trans>
           The referral will be credited to&nbsp;
           <span className="font-medium text-foreground">{userEmail}</span>.
-        </>
+        </Trans>
       </p>
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background">
         {fieldSubmissions.map(({ title, value }) => {
-          const displayValue = formatFieldValue(value);
+          const displayValue = formatFieldValue(value, t);
 
           if (!displayValue) {
             return null;

@@ -1,5 +1,6 @@
 import { getScopedRelativePath } from "@app/components/file_explorer/utils";
 import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface MissingPodFileTabCalloutProps {
   path: string;
@@ -11,6 +12,7 @@ export function MissingPodFileTabCallout({
   path,
   kind = "file",
 }: MissingPodFileTabCalloutProps) {
+  const { t } = useLingui();
   const relativePath = getScopedRelativePath(path);
 
   return (
@@ -19,11 +21,16 @@ export function MissingPodFileTabCallout({
         variant="warning"
         icon={AlertCircle}
         size="lg"
-        title={`${kind === "frame" ? "Frame" : "File"} no longer available`}
+        title={
+          kind === "frame"
+            ? t`Frame no longer available`
+            : t`File no longer available`
+        }
         className="max-w-md"
       >
-        This {kind} is missing or was renamed in Pod files ({relativePath}).
-        Remove it from Tabs in Settings, or restore the file.
+        {kind === "frame"
+          ? t`This frame is missing or was renamed in Pod files (${relativePath}). Remove it from Tabs in Settings, or restore the file.`
+          : t`This file is missing or was renamed in Pod files (${relativePath}). Remove it from Tabs in Settings, or restore the file.`}
       </ContentMessage>
     </div>
   );

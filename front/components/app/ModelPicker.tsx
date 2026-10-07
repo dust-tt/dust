@@ -12,6 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 export default function ModelPicker({
@@ -34,6 +35,7 @@ export default function ModelPicker({
   chatOnly?: boolean;
   embedOnly?: boolean;
 }) {
+  const { t } = useLingui();
   const { providers, isProvidersLoading } = useProviders({
     owner,
     disabled: readOnly,
@@ -67,7 +69,6 @@ export default function ModelPicker({
       if (result.models) {
         setProviderModels((prev) => ({
           ...prev,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           [providerId]: result.models || [], // Ensure we never set undefined
         }));
       }
@@ -84,12 +85,12 @@ export default function ModelPicker({
         isAdmin ? (
           <Button
             href={`/w/${owner.sId}/developers/providers`}
-            label={isProvidersLoading ? "Loading..." : "Setup provider"}
+            label={isProvidersLoading ? t`Loading...` : t`Setup provider`}
             size="xs"
           />
         ) : (
           <div className="inline-flex items-center rounded-md border border-white px-3 py-1 text-sm font-normal text-muted-foreground">
-            No Provider available
+            <Trans>No provider available</Trans>
           </div>
         )
       ) : readOnly ? (
@@ -115,7 +116,7 @@ export default function ModelPicker({
               label={
                 model.provider_id
                   ? `${model.provider_id}${model.model_id ? ` / ${model.model_id}` : ""}`
-                  : "Select provider"
+                  : t`Select provider`
               }
               size="xs"
             />
@@ -136,7 +137,7 @@ export default function ModelPicker({
                   <DropdownMenuSubContent>
                     {loadingProvider === p.providerId ? (
                       <DropdownMenuItem
-                        label="Loading models..."
+                        label={t`Loading models...`}
                         disabled={true}
                       />
                     ) : (

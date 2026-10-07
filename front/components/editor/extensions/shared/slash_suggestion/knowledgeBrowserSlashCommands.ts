@@ -12,6 +12,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ChevronRight, DotsHorizontal } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export const NAVIGATE_KNOWLEDGE_BROWSER_ACTION = "navigate-knowledge-browser";
 export const LOAD_MORE_KNOWLEDGE_BROWSER_ACTION = "load-more-knowledge-browser";
@@ -79,7 +80,7 @@ function toAttachNodeSlashCommand(
   };
 }
 
-export const ATTACH_FOLDER_ACTION_LABEL = "Add";
+export const ATTACH_FOLDER_ACTION_LABEL = msg`Add`;
 
 // The node an "Add" on a container row attaches: the folder itself, or a data source view's root.
 export function getAttachableNodeForItem(
@@ -134,7 +135,7 @@ export function toKnowledgeBrowserSlashCommands(
       endAction:
         attachable && onAttachNode
           ? {
-              label: ATTACH_FOLDER_ACTION_LABEL,
+              label: t(ATTACH_FOLDER_ACTION_LABEL),
               onSelect: () => onAttachNode(attachable),
             }
           : undefined,
@@ -152,14 +153,16 @@ export function toKnowledgeBrowserSlashCommands(
 
 export function getLoadMoreKnowledgeBrowserSlashCommand({
   isLoading,
+  t,
 }: {
   isLoading: boolean;
+  t: Translate;
 }): SlashCommand {
   return {
     action: LOAD_MORE_KNOWLEDGE_BROWSER_ACTION,
     icon: DotsHorizontal,
     id: LOAD_MORE_KNOWLEDGE_BROWSER_ID,
-    label: isLoading ? "Loading…" : "Show more",
+    label: isLoading ? t(msg`Loading…`) : t(msg`Show more`),
   };
 }
 
@@ -209,7 +212,7 @@ export function buildBrowseCommands(
   const commands = toKnowledgeBrowserSlashCommands(items, { onAttachNode, t });
   if (hasMore) {
     commands.push(
-      getLoadMoreKnowledgeBrowserSlashCommand({ isLoading: isLoadingMore })
+      getLoadMoreKnowledgeBrowserSlashCommand({ isLoading: isLoadingMore, t })
     );
   }
   return commands;

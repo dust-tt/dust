@@ -94,7 +94,9 @@ async function seedSkill(
 describe("skill_authoring tools", () => {
   beforeEach(() => {
     mockGetSimilarSkills.mockReset();
-    mockGetSimilarSkills.mockResolvedValue(new Ok({ similar_skills: [] }));
+    mockGetSimilarSkills.mockResolvedValue(
+      new Ok({ similar_skills: [], skills: [] })
+    );
   });
 
   it("creates, lists, reads, and updates a skill", async () => {

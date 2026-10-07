@@ -27,6 +27,7 @@ import {
   Separator,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 type MCPServerDetailsGeneralProps = {
@@ -47,6 +48,7 @@ export function MCPServerDetailsGeneral({
   readOnly = false,
   sensitivityLabelsController,
 }: MCPServerDetailsGeneralProps) {
+  const { t } = useLingui();
   const editedAt = useMemo(() => {
     const d = new Date(0);
     d.setUTCMilliseconds(mcpServerView?.editedByUser?.editedAt ?? 0);
@@ -59,12 +61,15 @@ export function MCPServerDetailsGeneral({
 
   if (readOnly) {
     const tools = mcpServerView.server.tools ?? [];
+    const toolCount = tools.length;
     return (
       <div className="flex flex-col gap-2">
         <ClampedDescription
           description={getMcpServerViewDescription(mcpServerView)}
         />
-        <div className="heading-lg">Available Tools ({tools.length})</div>
+        <div className="heading-lg">
+          <Trans>Available tools ({toolCount})</Trans>
+        </div>
         {tools.map((tool) => {
           const { permission } = getEffectiveToolSettings(
             mcpServerView,
@@ -90,7 +95,10 @@ export function MCPServerDetailsGeneral({
               </div>
               {tool.description && (
                 <Collapsible>
-                  <CollapsibleTrigger label="Description" variant="secondary" />
+                  <CollapsibleTrigger
+                    label={t`Description`}
+                    variant="secondary"
+                  />
                   <CollapsibleContent>
                     <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
                       {tool.description}
@@ -102,7 +110,9 @@ export function MCPServerDetailsGeneral({
           );
         })}
         {tools.length === 0 && (
-          <p className="text-sm text-muted-foreground">No tools available.</p>
+          <p className="text-sm text-muted-foreground">
+            <Trans>No tools available.</Trans>
+          </p>
         )}
       </div>
     );
@@ -111,11 +121,14 @@ export function MCPServerDetailsGeneral({
   const requiresBearerToken = requiresBearerTokenConfiguration(
     mcpServerView.server
   );
+  const editorName = mcpServerView.editedByUser?.fullName;
   return (
     <div className="flex flex-col gap-3">
       {mcpServerView.editedByUser && (
         <div className="flex w-full text-sm text-muted-foreground">
-          Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
+          <Trans>
+            Edited by {editorName}, {editedAt}
+          </Trans>
         </div>
       )}
       <Separator />

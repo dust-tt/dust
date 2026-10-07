@@ -1,6 +1,6 @@
 @cc [owner:sfriquet,label:architecture] lingui-macros-compiled
 Every platform webpack config MUST run `linguiMacroLoader` (`config/webpack_lingui.ts`) on `.ts` and
-`.tsx` sources, including the `front` ones, before `ts-loader`, and MUST load `.po` catalogs with
+`.tsx` sources, including the `front` ones, before `ts-loader`, and MUST load `.catalog` imports with
 `linguiCatalogRule`. The bundle MUST NOT contain a `@lingui/*/macro` module.
 
 @cc [owner:sfriquet,label:react] app-root-provides-i18n

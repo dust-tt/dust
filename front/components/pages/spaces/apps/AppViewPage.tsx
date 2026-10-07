@@ -125,11 +125,9 @@ export function AppViewPage() {
   // Initialize spec and config when app loads
   if (app && !specInitialized) {
     const initialSpec = JSON.parse(
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       app.savedSpecification || `[]`
     ) as SpecificationType;
     const initialConfig = extractConfig(
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       JSON.parse(app.savedSpecification || `{}`)
     );
     setSpec(initialSpec);
@@ -199,7 +197,6 @@ export function AppViewPage() {
     idx: number | null,
     blockType: BlockType | "map_reduce" | "while_end"
   ) => {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
     await update(s);
     if (idx === null) {

@@ -102,7 +102,7 @@ interface CreateSlashSuggestionExtensionConfig<
   onDropdownExit?: (ctx: { storage: Storage }) => void;
   pluginKey: PluginKey<SuggestionPluginState>;
   // Ghost text rendered after the trigger while the suggestion is active with an empty query.
-  queryPlaceholder?: string;
+  queryPlaceholder?: (options: Options) => string;
   // Extra classes applied to the `queryPlaceholder` span, on top of the shared base styling.
   queryPlaceholderClassName?: string;
   // Extra classes applied to the inline span tiptap wraps around the active trigger ("/" plus
@@ -362,7 +362,7 @@ export function createSlashSuggestionExtension<
                             queryPlaceholderClassName
                           );
                           span.contentEditable = "false";
-                          span.textContent = queryPlaceholder;
+                          span.textContent = queryPlaceholder(extensionOptions);
                           return span;
                         },
                         { side: 1 }

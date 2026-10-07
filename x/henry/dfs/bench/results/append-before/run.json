@@ -1,0 +1,62 @@
+{
+  "label": "dfs henry [FoundationDB]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "profile": "release",
+  "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
+  "cpu_count": 12,
+  "server_binary_sha256": "3d5341f1e21faafc5e6067594ac7fd5c7807a0a0063a2def372663f8ffb7924b",
+  "mount_binary_sha256": "40bee4ac45c237cdbbd7e23724602d085c3b77cd5abae491f00035023a4f0bbc",
+  "fdb_client_knobs": {},
+  "max_delay_ms": 1000,
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
+  "kernel_caching": "none (TTL 0, direct I/O)",
+  "fuse_threads": 1,
+  "max_background": 32,
+  "file_mib": 256,
+  "cycles": 10,
+  "spacing_s": 1.05,
+  "populate_seconds": 1.8757369089944405,
+  "append": {
+    "median_ms": 3069.003252498078,
+    "max_ms": 3453.4822439964046,
+    "ms": [
+      2691.970991996641,
+      2623.0145309964428,
+      3017.6715389970923,
+      2942.393757002719,
+      3453.4822439964046,
+      2996.004097003606,
+      3120.3349659990636,
+      3155.019841004105,
+      3276.512485004787,
+      3326.983933999145
+    ]
+  },
+  "pwrite": {
+    "median_ms": 2928.2732299980125,
+    "max_ms": 3249.0937990005477,
+    "ms": [
+      2840.491282993753,
+      2884.4227449953905,
+      3110.293758996704,
+      3249.0937990005477,
+      2972.1237150006345,
+      2828.3653420003247,
+      2865.4016139989835,
+      2864.5706629977212,
+      3056.824417995813,
+      3241.468405001797
+    ]
+  },
+  "writer_view_ok": true,
+  "mount_peak_rss_mib": 352.89453125,
+  "rpcs": {
+    "alloc_ids": 1,
+    "apply": 149,
+    "getattr": 22,
+    "read": 2856,
+    "readdir": 24
+  },
+  "new_mount_view_ok": true
+}

@@ -21,6 +21,7 @@ import { useUser } from "@app/lib/swr/user";
 import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 interface ConversationSkillPanelProps {
@@ -101,7 +102,9 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
         />
       ) : (
         <ConversationSidePanelHeader onClose={closePanel}>
-          <span className="text-sm font-medium text-foreground">Skill</span>
+          <span className="text-sm font-medium text-foreground">
+            <Trans context="side panel title">Skill</Trans>
+          </span>
         </ConversationSidePanelHeader>
       )}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">

@@ -198,7 +198,9 @@ export async function getSimilarSkills(
     excludeSkillId: string | null;
     availabilities?: SkillAvailability[];
   }
-): Promise<Result<{ similar_skills: string[] }, Error>> {
+): Promise<
+  Result<{ similar_skills: string[]; skills: SkillResource[] }, Error>
+> {
   const model = await getSmallWhitelistedModel(auth);
   if (!model) {
     return new Err(
@@ -208,6 +210,9 @@ export async function getSimilarSkills(
 
   const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
     onlyCustom: true,
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
     availability:
       inputs.availabilities ?? DEFAULT_SIMILAR_SKILLS_AVAILABILITIES,
   });
@@ -217,7 +222,7 @@ export async function getSimilarSkills(
     : allSkills;
 
   if (skills.length === 0) {
-    return new Ok({ similar_skills: [] });
+    return new Ok({ similar_skills: [], skills: [] });
   }
 
   // Check skills in batches, one LLM call per batch, so all skills are
@@ -242,5 +247,9 @@ export async function getSimilarSkills(
     similarSkillIds.push(...res.value);
   }
 
-  return new Ok({ similar_skills: uniq(similarSkillIds) });
+  const similarIds = new Set(similarSkillIds);
+  return new Ok({
+    similar_skills: uniq(similarSkillIds),
+    skills: skills.filter((skill) => similarIds.has(skill.sId)),
+  });
 }

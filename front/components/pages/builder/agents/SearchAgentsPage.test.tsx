@@ -4,6 +4,7 @@ import { serializeFilterHash } from "@app/components/shared/filter_panel/filterH
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import { i18n } from "@app/lib/i18n/i18n";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -53,6 +54,7 @@ const { push, patch, notify } = vi.hoisted(() => ({
 vi.mock("@app/lib/egress/client", () => ({ clientFetch: patch }));
 vi.mock("@app/hooks/useNotification", () => ({
   useSendNotification: () => notify,
+  useSendApiErrorNotification: () => vi.fn(),
 }));
 
 vi.mock("@app/lib/platform", () => ({
@@ -490,6 +492,44 @@ describe("search-backed Manage Agents", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("applies the Editor is Me preset and offers it again once removed", async () => {
+    const { editor, fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(
+      screen.queryByRole("button", { name: "Clear all" })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: `Editor is ${editor.fullName} (You)` })
+    );
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        editorIds: [editor.sId],
+      })
+    );
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", {
+          name: `Editor is ${editor.fullName} (You)`,
+        })
+      ).not.toBeInTheDocument()
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(
+      await screen.findByRole("button", {
+        name: `Editor is ${editor.fullName} (You)`,
+      })
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Remove" })
+      ).not.toBeInTheDocument()
+    );
+  });
+
   it("never requests unrestricted search for non-admins", async () => {
     const { fetcherWithBody, mount } = await setup({ role: "user" });
     mount();
@@ -733,7 +773,9 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {
-        name: getModelFilterDisplayName("claude-sonnet-5"),
+        name: getModelFilterDisplayName("claude-sonnet-5", (descriptor) =>
+          i18n._(descriptor)
+        ),
       })
     );
     const facetBodies = fetcherWithBody.mock.calls
@@ -807,7 +849,9 @@ describe("search-backed Manage Agents", () => {
       await userEvent.click(screen.getByRole("button", { name: "Filters" }));
       await userEvent.click(
         await screen.findByRole("checkbox", {
-          name: getModelFilterDisplayName("claude-sonnet-5"),
+          name: getModelFilterDisplayName("claude-sonnet-5", (descriptor) =>
+            i18n._(descriptor)
+          ),
         })
       );
       await userEvent.click(screen.getByRole("button", { name: "Apply" }));

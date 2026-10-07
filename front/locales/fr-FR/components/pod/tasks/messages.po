@@ -1,0 +1,224 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:12+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+#: front/components/pod/tasks/PodTaskUserSection.tsx
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "No assignee"
+msgstr "Aucun responsable"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "{memberName} (you)"
+msgstr "{memberName} (vous)"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+msgid "Assign to {assigneeLabel}"
+msgstr "Attribuer à {assigneeLabel}"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+msgid "Choose assignee"
+msgstr "Choisir un responsable"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "Search members"
+msgstr "Rechercher des membres"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "No members found"
+msgstr "Aucun membre trouvé"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+msgid "New task"
+msgstr "Nouvelle tâche"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+msgid "Add a task..."
+msgstr "Ajouter une tâche…"
+
+#: front/components/pod/tasks/AddTaskComposer.tsx
+msgid "Add"
+msgstr "Ajouter"
+
+#: front/components/pod/tasks/EditableTaskItem.tsx
+msgid "Edit task text"
+msgstr "Modifier le texte de la tâche"
+
+#: front/components/pod/tasks/EditableTaskItem.tsx
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Open task conversation"
+msgstr "Ouvrir la conversation de la tâche"
+
+#: front/components/pod/tasks/EditableTaskItem.tsx
+msgid "Reopen this task before starting work."
+msgstr "Rouvrez cette tâche avant de commencer à travailler."
+
+#: front/components/pod/tasks/PodTaskCreateBar.tsx
+msgid "No Pod members available to assign."
+msgstr "Aucun membre du Pod à qui attribuer la tâche."
+
+#: front/components/pod/tasks/PodTaskLocalSearch.tsx
+msgid "Filter tasks..."
+msgstr "Filtrer les tâches…"
+
+#: front/components/pod/tasks/PodTaskScopeFilter.tsx
+msgid "Status"
+msgstr "Statut"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Stay in this conversation"
+msgstr "Rester dans cette conversation"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "After start: open task conversation or stay here"
+msgstr "Après le démarrage : ouvrir la conversation de la tâche ou rester ici"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Redirect to conversation"
+msgstr "Rediriger vers la conversation"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Stay on tasks"
+msgstr "Rester sur les tâches"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "After start: open conversation or stay on tasks"
+msgstr "Après le démarrage : ouvrir la conversation ou rester sur les tâches"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Agent"
+msgstr "Agent"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Start working on task"
+msgstr "Commencer à travailler sur la tâche"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Can't start work on this task in this state yet."
+msgstr "Impossible de commencer à travailler sur cette tâche dans cet état pour le moment."
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Additional instructions for the agent"
+msgstr "Instructions supplémentaires pour l’agent"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "(optional) Add a custom message for the agent..."
+msgstr "(facultatif) Ajouter un message personnalisé pour l’agent…"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Selected agent: {selectedAgentName}"
+msgstr "Agent sélectionné : {selectedAgentName}"
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgstr "L’agent par défaut de ce Pod ne vous est pas accessible, @dust est donc utilisé à la place. Contactez les éditeurs de votre Pod si vous pensez qu’il s’agit d’une erreur."
+
+#: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
+msgid "Start working"
+msgstr "Commencer"
+
+#: front/components/pod/tasks/PodTaskUserSection.tsx
+msgid "{displayName} (you)"
+msgstr "{displayName} (vous)"
+
+#: front/components/pod/tasks/PodTaskUserSection.tsx
+msgid "Suggestions"
+msgstr "Suggestions"
+
+#: front/components/pod/tasks/PodTaskUserSection.tsx
+msgid "Dismiss all"
+msgstr "Tout ignorer"
+
+#: front/components/pod/tasks/PodTaskUserSection.tsx
+msgid "Accept all"
+msgstr "Tout accepter"
+
+#: front/components/pod/tasks/PodTasksPanelMain.tsx
+msgid "No tasks match your filter."
+msgstr "Aucune tâche ne correspond à votre filtre."
+
+#: front/components/pod/tasks/PodTasksPanelMain.tsx
+msgid "Error loading tasks."
+msgstr "Erreur lors du chargement des tâches."
+
+#: front/components/pod/tasks/PodTasksPanelMain.tsx
+msgid "You're all caught up!"
+msgstr "Vous êtes à jour !"
+
+#: front/components/pod/tasks/SuggestedTaskItem.tsx
+msgid "Suggested for this Pod."
+msgstr "Suggérée pour ce Pod."
+
+#: front/components/pod/tasks/SuggestedTaskItem.tsx
+msgid "Accept"
+msgstr "Accepter"
+
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "Task actions"
+msgstr "Actions sur la tâche"
+
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "Reassign"
+msgstr "Réattribuer"
+
+#: front/components/pod/tasks/TaskOverflowMenu.tsx
+msgid "Delete task"
+msgstr "Supprimer la tâche"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgctxt "task actor"
+msgid "someone"
+msgstr "quelqu’un"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgctxt "task actor"
+msgid "an agent"
+msgstr "un agent"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgctxt "task actor"
+msgid "you"
+msgstr "vous"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgctxt "task actor"
+msgid "a user"
+msgstr "un utilisateur"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgid "An agent is working on this task."
+msgstr "Un agent travaille sur cette tâche."
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgid "Created by {creatorLabel} · {createdAt}"
+msgstr "Créée par {creatorLabel} · {createdAt}"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgid "Done by {doneLabel} · {doneAt}"
+msgstr "Terminée par {doneLabel} · {doneAt}"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgid "ID: {taskId}"
+msgstr "ID : {taskId}"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgid "Slack thread"
+msgstr "Fil Slack"
+
+#: front/components/pod/tasks/TaskSubComponents.tsx
+msgid "From {sourceLinks}"
+msgstr "Source : {sourceLinks}"

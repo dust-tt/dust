@@ -1,5 +1,9 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useCallback, useState } from "react";
 
 type SubscriptionCancellationAction = "cancel" | "resume";
@@ -17,6 +21,7 @@ function useSubscriptionCancellationAction({
   successTitle: string;
   successDescription: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isApplying, setIsApplying] = useState(false);
 
@@ -35,12 +40,10 @@ function useSubscriptionCancellationAction({
         }
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        sendNotification({
-          type: "error",
+        const errorData = await getErrorFromResponse(res);
+        sendApiErrorNotification({
           title: errorTitle,
-          description:
-            body?.error?.message ?? "Please try again or contact support.",
+          error: errorData,
         });
         return false;
       }
@@ -57,6 +60,7 @@ function useSubscriptionCancellationAction({
     action,
     errorTitle,
     isApplying,
+    sendApiErrorNotification,
     sendNotification,
     successDescription,
     successTitle,

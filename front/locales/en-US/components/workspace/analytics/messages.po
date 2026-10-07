@@ -1,0 +1,269 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
+msgid "Close panel"
+msgstr "Close panel"
+
+#: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
+msgid "Unable to start Analyst"
+msgstr "Unable to start Analyst"
+
+#: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
+msgid "The Analyst session could not be started."
+msgstr "The Analyst session could not be started."
+
+#: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
+msgid "Try again"
+msgstr "Try again"
+
+#: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
+msgid "Starting Analyst session..."
+msgstr "Starting Analyst session..."
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Usage metrics"
+msgstr "Usage metrics"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Active users"
+msgstr "Active users"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Message source"
+msgstr "Message source"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Agents"
+msgstr "Agents"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Users"
+msgstr "Users"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Skills"
+msgstr "Skills"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Skill usage"
+msgstr "Skill usage"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Tool usage"
+msgstr "Tool usage"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Messages"
+msgstr "Messages"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Feedback"
+msgstr "Feedback"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Export data"
+msgstr "Export data"
+
+#: front/components/workspace/analytics/AnalyticsExportPanel.tsx
+msgid "Download analytics for the selected period as a CSV file."
+msgstr "Download analytics for the selected period as a CSV file."
+
+#: front/components/workspace/analytics/CsvDownloadButton.tsx
+msgid "Download CSV"
+msgstr "Download CSV"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Members"
+msgstr "Members"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Models"
+msgstr "Models"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Sources"
+msgstr "Sources"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Triggers"
+msgstr "Triggers"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "API keys"
+msgstr "API keys"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search agents"
+msgstr "Search agents"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search members"
+msgstr "Search members"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search groups"
+msgstr "Search groups"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search models"
+msgstr "Search models"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search tools"
+msgstr "Search tools"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search skills"
+msgstr "Search skills"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search sources"
+msgstr "Search sources"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search triggers"
+msgstr "Search triggers"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search API keys"
+msgstr "Search API keys"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Filters"
+msgstr "Filters"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Clear"
+msgstr "Clear"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Failed to load filters."
+msgstr "Failed to load filters."
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Select all"
+msgstr "Select all"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Agent"
+msgstr "Agent"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Member"
+msgstr "Member"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Group"
+msgstr "Group"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Model"
+msgstr "Model"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Tool"
+msgstr "Tool"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Skill"
+msgstr "Skill"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Source"
+msgstr "Source"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Trigger"
+msgstr "Trigger"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "API key"
+msgstr "API key"
+
+#: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
+msgid "{period} {period, plural, one {day} other {days}}"
+msgstr "{period} {period, plural, one {day} other {days}}"
+
+#: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
+msgid "{days} {days, plural, one {day} other {days}}"
+msgstr "{days} {days, plural, one {day} other {days}}"
+
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Type"
+msgstr "Type"
+
+#: front/components/workspace/analytics/automationsFilter.ts
+msgid "Pool"
+msgstr "Pool"
+
+#: front/components/workspace/analytics/creditsTableCells.tsx
+msgid "{formattedCredits} credits"
+msgstr "{formattedCredits} credits"
+
+#: front/components/workspace/analytics/creditsTableCells.tsx
+msgid "{averageCredits} credits / message"
+msgstr "{averageCredits} credits / message"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Conversation"
+msgstr "Conversation"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Chrome extension"
+msgstr "Chrome extension"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Email"
+msgstr "Email"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Self-improving skills"
+msgstr "Self-improving skills"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Transcript"
+msgstr "Transcript"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Wake-up"
+msgstr "Wake-up"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Onboarding"
+msgstr "Onboarding"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Analytics panel"
+msgstr "Analytics panel"
+
+#: front/components/workspace/analytics/sourceOriginLabels.ts
+msgid "Pod Kickoff"
+msgstr "Pod Kickoff"

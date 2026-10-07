@@ -2,7 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { listNonArchivedProjectSpacesAsAdmin } from "@app/lib/api/projects/list";
+import { listNonArchivedProjectSpacesAsSecurityAdmin } from "@app/lib/api/projects/list";
 import {
   addOwnerPolicyDomain,
   addWorkspacePolicyDomain,
@@ -70,7 +70,7 @@ export async function listPodsWithEgressPolicy(
   auth: Authenticator
 ): Promise<Result<SpaceResource[], Error>> {
   const [livePods, configuredPodIds] = await Promise.all([
-    listNonArchivedProjectSpacesAsAdmin(auth),
+    listNonArchivedProjectSpacesAsSecurityAdmin(auth),
     listPodIdsWithEgressPolicy(auth),
   ]);
   if (livePods.isErr()) {
@@ -237,7 +237,7 @@ export async function bulkUpdateEgressDomain(
 
   // Validate against the same live, non-archived project Pods the read path
   // surfaces, so an archived Pod's id can't be used to mutate its policy.
-  const livePods = await listNonArchivedProjectSpacesAsAdmin(auth);
+  const livePods = await listNonArchivedProjectSpacesAsSecurityAdmin(auth);
   if (livePods.isErr()) {
     // Admin-gated by the route; a failure here is a should-never-happen.
     throw livePods.error;

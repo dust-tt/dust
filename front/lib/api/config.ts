@@ -354,9 +354,17 @@ const config = {
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
   },
+  getOAuthGithubAppClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP_CLIENT_ID");
+  },
   getOAuthGithubAppPlatformActions: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "OAUTH_GITHUB_APP_PLATFORM_ACTIONS"
+    );
+  },
+  getOAuthGithubAppPlatformActionsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID"
     );
   },
   getOAuthGithubAppPersonalActions: (): string => {

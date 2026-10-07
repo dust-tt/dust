@@ -15,6 +15,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { IconButton, LinkExternal01, Spinner } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 export function MCPSkillEnableActionDetails({
   owner,
@@ -22,13 +23,21 @@ export function MCPSkillEnableActionDetails({
   toolParams,
   toolOutput,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
   const skillName = isSkillEnableInputType(toolParams)
     ? toolParams.skillName
     : null;
 
-  const actionName =
-    (displayContext === "conversation" ? "Enabling skill" : "Enable skill") +
-    (skillName ? `: ${skillName}` : "");
+  let actionName: string;
+  if (skillName) {
+    actionName =
+      displayContext === "conversation"
+        ? t`Enabling skill: ${skillName}`
+        : t`Enable skill: ${skillName}`;
+  } else {
+    actionName =
+      displayContext === "conversation" ? t`Enabling skill` : t`Enable skill`;
+  }
 
   const outputItems = toolOutput
     ? toolOutput.filter((o) => isTextContent(o) || isResourceContentWithText(o))
@@ -65,7 +74,7 @@ export function MCPSkillEnableActionDetails({
             }
             icon={LinkExternal01}
             size="xs"
-            tooltip={skill?.canAdministrate ? "Edit skill" : "View skill"}
+            tooltip={skill?.canAdministrate ? t`Edit skill` : t`View skill`}
           />
         ) : undefined
       }
@@ -85,15 +94,19 @@ export function MCPSkillEnableActionDetails({
 
           {shouldFetchSkill && (
             <div className="flex flex-col gap-4">
-              <div className="heading-base text-foreground">Skill details</div>
+              <div className="heading-base text-foreground">
+                <Trans>Skill details</Trans>
+              </div>
               {isSkillLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Spinner size="xs" />
-                  <span>Loading skill details...</span>
+                  <span>
+                    <Trans>Loading skill details...</Trans>
+                  </span>
                 </div>
               ) : isSkillError ? (
                 <div className="text-sm text-muted-foreground">
-                  Could not load the skill details.
+                  <Trans>Could not load the skill details.</Trans>
                 </div>
               ) : skill ? (
                 <SkillInfoTab skill={skill} owner={owner} />

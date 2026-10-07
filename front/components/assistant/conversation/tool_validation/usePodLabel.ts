@@ -3,6 +3,7 @@ import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 export function usePodLabel({
@@ -14,6 +15,7 @@ export function usePodLabel({
   dustPodUri: string | undefined;
   conversationId: string | null | undefined;
 }) {
+  const { t } = useLingui();
   const { conversation, isConversationLoading } = useConversation({
     workspaceId: owner.sId,
     conversationId: conversationId ?? null,
@@ -44,7 +46,7 @@ export function usePodLabel({
     isWaitingForConversationSpaceId ||
     (podSpaceId !== null && isSpaceInfoLoading && !spaceInfo);
 
-  const podLabel = spaceInfo?.name ?? (isPodLabelLoading ? null : "this Pod");
+  const podLabel = spaceInfo?.name ?? (isPodLabelLoading ? null : t`this Pod`);
 
   return { podLabel, isPodLabelLoading };
 }

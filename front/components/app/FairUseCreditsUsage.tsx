@@ -1,9 +1,14 @@
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import { FairUsageModal } from "@app/components/FairUsageModal";
-import { formatCredits, formatFairUseTimeframe } from "@app/lib/client/credits";
+import { formatCredits } from "@app/lib/client/credits";
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
+import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Hoverable } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 const CREDITS_USAGE_DISPLAY_THRESHOLD = 0.75;
@@ -13,11 +18,35 @@ const CREDITS_USAGE_CRITICAL_THRESHOLD = 0.9;
 // refreshing the gauge.
 const MUTATE_DELAY_MS = 3000;
 
+type Translate = (descriptor: MessageDescriptor) => string;
+
+function getCreditsUsageLabel(
+  usedCredits: string,
+  limitCredits: string,
+  timeframe: MaxAwuCreditsTimeframeType,
+  t: Translate
+): string {
+  switch (timeframe) {
+    case "day":
+      return t(msg`${usedCredits} / ${limitCredits} credits per day`);
+    case "week":
+      return t(msg`${usedCredits} / ${limitCredits} credits per week`);
+    case "month":
+      return t(msg`${usedCredits} / ${limitCredits} credits per month`);
+    case "lifetime":
+      return t(msg`${usedCredits} / ${limitCredits} credits`);
+    default:
+      assertNeverAndIgnore(timeframe);
+      return t(msg`${usedCredits} / ${limitCredits} credits`);
+  }
+}
+
 interface FairUseCreditsUsageProps {
   workspaceId: string;
 }
 
 export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
+  const { t } = useLingui();
   const { fairUseAwuCreditsState, mutateFairUseCredits } = useFairUseCredits({
     workspaceId,
   });
@@ -63,7 +92,12 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
   }
 
   const isCritical = percentage >= CREDITS_USAGE_CRITICAL_THRESHOLD;
-  const timeframeLabel = formatFairUseTimeframe(timeframe);
+  const usageLabel = getCreditsUsageLabel(
+    formatCredits(count),
+    formatCredits(limit),
+    timeframe,
+    t
+  );
 
   return (
     <>
@@ -74,18 +108,17 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
       />
       <div className="mx-3 mb-3">
         <CreditUsageCard
-          label="Fair usage"
+          label={t`Fair usage`}
           usedPercentage={Math.round(percentage * 100)}
           tone={isCritical ? "critical" : "elevated"}
           variant="companion"
         >
-          {formatCredits(count)} / {formatCredits(limit)} credits
-          {timeframeLabel ? ` ${timeframeLabel}` : ""} ·{" "}
+          {usageLabel} ·{" "}
           <Hoverable
             variant="highlight"
             onClick={() => setIsFairUsageModalOpened(true)}
           >
-            Fair Use policy
+            <Trans>Fair Use policy</Trans>
           </Hoverable>
         </CreditUsageCard>
       </div>

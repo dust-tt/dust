@@ -1,0 +1,163 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Gong configuration updated"
+msgstr "Gong configuration updated"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Participant filter successfully updated."
+msgstr "Participant filter successfully updated."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Failed to update Gong configuration"
+msgstr "Failed to update Gong configuration"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "An unknown error occurred"
+msgstr "An unknown error occurred"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Participant filter"
+msgstr "Participant filter"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "All participants"
+msgstr "All participants"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Saving..."
+msgstr "Saving..."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Filter calls by Gong permission profile."
+msgstr "Filter calls by Gong permission profile."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Only calls involving users listed in the selected profile's \"Specific Teams\" section will be synced."
+msgstr "Only calls involving users listed in the selected profile's \"Specific Teams\" section will be synced."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Changing the filter only affects future syncs."
+msgstr "Changing the filter only affects future syncs."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Invalid retention period"
+msgstr "Invalid retention period"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Retention period must be a positive integer or empty for no limit."
+msgstr "Retention period must be a positive integer or empty for no limit."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Retention period successfully updated."
+msgstr "Retention period successfully updated."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Trackers synchronization successfully updated."
+msgstr "Trackers synchronization successfully updated."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Accounts synchronization successfully updated."
+msgstr "Accounts synchronization successfully updated."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Exclude keywords successfully updated."
+msgstr "Exclude keywords successfully updated."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Configuration successfully updated."
+msgstr "Configuration successfully updated."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "All Gong data will sync automatically"
+msgstr "All Gong data will sync automatically"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "All your Gong resources will sync automatically."
+msgstr "All your Gong resources will sync automatically."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Selecting items individually is not available."
+msgstr "Selecting items individually is not available."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Exclude calls by title keywords"
+msgstr "Exclude calls by title keywords"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "e.g. internal, test, demo"
+msgstr "e.g. internal, test, demo"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Exclude calls whose title contains these keywords (case-insensitive, comma-separated)."
+msgstr "Exclude calls whose title contains these keywords (case-insensitive, comma-separated)."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Max {MAX_EXCLUDE_KEYWORDS} keywords of {MAX_EXCLUDE_KEYWORD_LENGTH} characters each."
+msgstr "Max {MAX_EXCLUDE_KEYWORDS} keywords of {MAX_EXCLUDE_KEYWORD_LENGTH} characters each."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Adding keywords removes existing matching transcripts."
+msgstr "Adding keywords removes existing matching transcripts."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Removing keywords only affects future syncs."
+msgstr "Removing keywords only affects future syncs."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Retention period"
+msgstr "Retention period"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgctxt "retention period input placeholder"
+msgid "unlimited"
+msgstr "unlimited"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Set the number of days to retain Gong transcripts."
+msgstr "Set the number of days to retain Gong transcripts."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Leave empty to disable retention (no limit)."
+msgstr "Leave empty to disable retention (no limit)."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Outdated transcripts will be deleted on a daily basis."
+msgstr "Outdated transcripts will be deleted on a daily basis."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Enable trackers (keyword and smart)"
+msgstr "Enable trackers (keyword and smart)"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "If activated, Dust will sync the list of keyword and smart trackers associated to each call transcript."
+msgstr "If activated, Dust will sync the list of keyword and smart trackers associated to each call transcript."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Only new transcripts will be affected, please contact us at support@dust.tt if you need to update the existing transcripts."
+msgstr "Only new transcripts will be affected, please contact us at support@dust.tt if you need to update the existing transcripts."
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "Sync account metadata"
+msgstr "Sync account metadata"
+
+#: front/components/data_source/gong/GongOptionComponent.tsx
+msgid "If activated, Dust will sync the account names from CRM context associated to each call transcript."
+msgstr "If activated, Dust will sync the account names from CRM context associated to each call transcript."

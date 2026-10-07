@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import type { PodTaskType } from "@app/types/project_task";
-import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
+import type { SpaceUserType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -23,17 +23,15 @@ import {
   Trash01,
   User01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
-
-const NO_ASSIGNEE_LABEL_NEEDLE = normalizePodTaskSearchNeedle(
-  POD_TASK_NO_ASSIGNEE_LABEL
-);
 
 interface TaskOverflowMenuProps {
   task: PodTaskType;
 }
 
 export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
+  const { t } = useLingui();
   const {
     viewerUserId,
     podMembers,
@@ -64,10 +62,18 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
     });
   }, [reassignSearchNeedle, podMembers, membersWithActiveTaskIds]);
 
+  const formatMemberLabel = (member: SpaceUserType) => {
+    const memberName = member.fullName;
+    return viewerUserId === member.sId ? t`${memberName} (you)` : memberName;
+  };
+
+  const noAssigneeLabel = t`No assignee`;
   const showNoAssigneeReassignOption =
     task.user !== null &&
     (reassignSearchNeedle === "" ||
-      NO_ASSIGNEE_LABEL_NEEDLE.includes(reassignSearchNeedle));
+      normalizePodTaskSearchNeedle(noAssigneeLabel).includes(
+        reassignSearchNeedle
+      ));
 
   return (
     <DropdownMenu
@@ -79,7 +85,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
     >
       <DropdownMenuTrigger asChild>
         <Button
-          aria-label="Task actions"
+          aria-label={t`Task actions`}
           icon={DotsHorizontal}
           size="xs"
           variant="ghost"
@@ -99,7 +105,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
             }}
           >
             <DropdownMenuSubTrigger
-              label="Reassign"
+              label={t`Reassign`}
               icon={User01}
               disabled={podMembers.length === 0 && task.user === null}
             />
@@ -112,7 +118,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                 <DropdownMenuSearchbar
                   autoFocus
                   name={`reassign-task-${task.sId}`}
-                  placeholder="Search members"
+                  placeholder={t`Search members`}
                   value={reassignSearch}
                   onChange={setReassignSearch}
                 />
@@ -125,7 +131,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                         <>
                           <DropdownMenuItem
                             key={`reassign-task-${task.sId}-none`}
-                            label={POD_TASK_NO_ASSIGNEE_LABEL}
+                            label={noAssigneeLabel}
                             onClick={() => {
                               void patchTaskItem(task.sId, {
                                 assigneeUserId: null,
@@ -140,7 +146,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                       {filteredReassignMembers.map((member) => (
                         <DropdownMenuItem
                           key={`reassign-task-${task.sId}-${member.sId}`}
-                          label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                          label={formatMemberLabel(member)}
                           disabled={member.sId === task.user?.sId}
                           icon={() => (
                             <Avatar
@@ -162,7 +168,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                     </>
                   ) : (
                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                      No members found
+                      <Trans>No members found</Trans>
                     </div>
                   )}
                 </div>
@@ -171,7 +177,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
           </DropdownMenuSub>
         )}
         <DropdownMenuItem
-          label="Delete task"
+          label={t`Delete task`}
           icon={Trash01}
           variant="warning"
           onClick={() => {

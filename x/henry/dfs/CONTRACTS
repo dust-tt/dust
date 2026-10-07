@@ -1,0 +1,9 @@
+@cc [owner:fontanierh,label:security] tenant-and-principal-from-session
+The tenant key prefix MUST come only from the server's configuration, and the acting principal only
+from the token authenticated by the connection's `Hello`. No request field may select or override
+either; a request naming an object outside the session's reach fails with `EACCES` or `ENOENT`.
+
+@cc [owner:fontanierh,label:architecture] store-trait-boundary
+Only `dfs-fdb` may depend on the FoundationDB SDK. `dfs-core` and `dfs-server` reach storage only
+through the `dfs-store` `Store`/`Txn` traits, so every filesystem operation stays testable against
+the conflict-checking in-memory store.

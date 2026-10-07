@@ -10,6 +10,7 @@ import {
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
@@ -19,9 +20,6 @@ import {
 } from "@tiptap/y-tiptap";
 import * as Y from "yjs";
 import { z } from "zod";
-
-/** The Yjs fragment holding the editor's content; the editor binds to the same name. */
-export const BODY_FRAGMENT_NAME = "body";
 
 /** What the editor content does not carry: front matter and anchor order. */
 export const ENVELOPE_MAP_NAME = "envelope";

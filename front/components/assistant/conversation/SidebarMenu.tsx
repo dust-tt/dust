@@ -105,6 +105,9 @@ import {
   Zap,
   ZapOff,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   memo,
@@ -119,6 +122,18 @@ import {
 
 // To avoid overwhelming the user with unread pod conversations, we hide them if there are too many.
 const HIDE_UNREAD_POD_CONVERSATIONS_TRESHOLD = 16;
+
+const RELATIVE_DATE_BUCKET_LABELS: Record<
+  RelativeDateBucket,
+  MessageDescriptor
+> = {
+  Today: msg`Today`,
+  Yesterday: msg`Yesterday`,
+  "Last Week": msg`Last week`,
+  "Last Month": msg`Last month`,
+  "Last 12 Months": msg`Last 12 months`,
+  Older: msg`Older`,
+};
 
 interface AgentSidebarMenuProps {
   owner: WorkspaceType;
@@ -139,6 +154,7 @@ function SearchPodItem({
   isMember,
   activePodId: activePodId,
 }: SearchPodItemProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -156,7 +172,11 @@ function SearchPodItem({
       }}
       suffix={
         isArchived ? (
-          <Chip size="mini" color="primary" label="Archived" />
+          <Chip
+            size="mini"
+            color="primary"
+            label={t({ message: "Archived", context: "Pod status" })}
+          />
         ) : undefined
       }
     />
@@ -212,6 +232,7 @@ function SearchResults({
   selectedConversations,
   toggleConversationSelection,
 }: SearchResultsProps) {
+  const { t } = useLingui();
   const [podsSectionOpen, setPodsSectionOpen] = useState(true);
   const [conversationsSectionOpen, setConversationsSectionOpen] =
     useState(true);
@@ -274,7 +295,7 @@ function SearchResults({
     <div className="h-full overflow-y-auto">
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
-          label="Pods"
+          label={t`Pods`}
           type="collapse"
           open={podsSectionOpen}
           onOpenChange={setPodsSectionOpen}
@@ -283,7 +304,7 @@ function SearchResults({
               <Button
                 size="xs"
                 icon={Plus}
-                label="New"
+                label={t({ message: "New", context: "button label" })}
                 variant="ghost-secondary"
                 onClick={withTracking(
                   TRACKING_AREAS.NAVIGATION,
@@ -306,7 +327,7 @@ function SearchResults({
             </div>
           ) : allPods.length === 0 ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">
-              No results found
+              <Trans>No results found</Trans>
             </div>
           ) : (
             <>
@@ -324,7 +345,7 @@ function SearchResults({
                   <Button
                     variant="ghost-secondary"
                     size="xs"
-                    label={isLoadingMorePods ? "Loading..." : "Show more"}
+                    label={isLoadingMorePods ? t`Loading...` : t`Show more`}
                     onClick={handleShowMorePods}
                     disabled={isLoadingMorePods}
                   />
@@ -337,7 +358,7 @@ function SearchResults({
 
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
-          label="Conversations"
+          label={t`Conversations`}
           type="collapse"
           open={conversationsSectionOpen}
           onOpenChange={setConversationsSectionOpen}
@@ -349,7 +370,7 @@ function SearchResults({
                     size="xmini"
                     icon={DotsHorizontal}
                     variant="ghost"
-                    aria-label="Conversations options"
+                    aria-label={t`Conversations options`}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -357,12 +378,12 @@ function SearchResults({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
-                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuLabel label={t`Conversations`} />
                   <DropdownMenuItem
                     label={
                       hideTriggeredConversations
-                        ? "Show triggered"
-                        : "Hide triggered"
+                        ? t`Show triggered`
+                        : t`Hide triggered`
                     }
                     icon={hideTriggeredConversations ? Zap : ZapOff}
                     disabled={!hasTriggeredConversations}
@@ -377,7 +398,7 @@ function SearchResults({
         >
           {allConversations.length === 0 && !showConversationsLoading ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">
-              No results found
+              <Trans>No results found</Trans>
             </div>
           ) : (
             allConversations.map((conv) => (
@@ -398,7 +419,9 @@ function SearchResults({
                 variant="ghost-secondary"
                 size="xs"
                 label={
-                  isLoadingMorePrivateConversations ? "Loading..." : "Show more"
+                  isLoadingMorePrivateConversations
+                    ? t`Loading...`
+                    : t`Show more`
                 }
                 onClick={handleShowMorePrivateConversations}
                 disabled={isLoadingMorePrivateConversations}
@@ -421,6 +444,7 @@ export function AgentSidebarMenu({
   hideActions,
   hideInAppBanner,
 }: AgentSidebarMenuProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const activePodId = useActivePodId();
@@ -570,23 +594,29 @@ export function AgentSidebarMenu({
     if (successCount === total) {
       sendNotification({
         type: "success",
-        title: "Conversations successfully deleted",
-        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
+        title: t`Conversations successfully deleted`,
+        description: t`${plural(total, {
+          one: "# conversation has been deleted.",
+          other: "# conversations have been deleted.",
+        })}`,
       });
     } else if (successCount === 0) {
       sendNotification({
         type: "error",
-        title: "Failed to delete conversations",
-        description: `Could not delete the selected ${total > 1 ? "conversations" : "conversation"}.`,
+        title: t`Failed to delete conversations`,
+        description: t`${plural(total, {
+          one: "Could not delete the selected conversation.",
+          other: "Could not delete the selected conversations.",
+        })}`,
       });
     } else {
       sendNotification({
         type: "error",
-        title: "Some conversations couldn’t be deleted",
-        description: `Deleted ${successCount} of ${total} conversations.`,
+        title: t`Some conversations couldn’t be deleted`,
+        description: t`Deleted ${successCount} of ${total} conversations.`,
       });
     }
-  }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
+  }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect, t]);
 
   const availablePods = useMemo(
     () =>
@@ -630,25 +660,28 @@ export function AgentSidebarMenu({
     if (successCount === total) {
       sendNotification({
         type: "success",
-        title: "Conversations successfully deleted",
-        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
+        title: t`Conversations successfully deleted`,
+        description: t`${plural(total, {
+          one: "# conversation has been deleted.",
+          other: "# conversations have been deleted.",
+        })}`,
       });
     } else if (successCount === 0) {
       sendNotification({
         type: "error",
-        title: "Failed to delete conversations",
-        description: "Could not delete conversation history.",
+        title: t`Failed to delete conversations`,
+        description: t`Could not delete conversation history.`,
       });
     } else {
       sendNotification({
         type: "error",
-        title: "Some conversations couldn’t be deleted",
-        description: `Deleted ${successCount} of ${total} conversations.`,
+        title: t`Some conversations couldn’t be deleted`,
+        description: t`Deleted ${successCount} of ${total} conversations.`,
       });
     }
     setIsDeleting(false);
     setShowDeleteDialog(null);
-  }, [conversations, doDelete, sendNotification]);
+  }, [conversations, doDelete, sendNotification, t]);
 
   const { setShouldFocusInput } = useContext(InputBarContext);
 
@@ -725,7 +758,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
-          label="Starred"
+          label={t`Starred`}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -749,6 +782,7 @@ export function AgentSidebarMenu({
     moveConversationToPod,
     isStarredPodsSectionCollapsed,
     setStarredPodsSectionCollapsed,
+    t,
   ]);
 
   const podsSection = useMemo(() => {
@@ -769,7 +803,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
         <NavigationListCollapsibleSection
-          label="Pods"
+          label={t`Pods`}
           type="collapse"
           visibleItems={VISIBLE_PODS}
           overflowCount={hiddenOverflowCount}
@@ -782,7 +816,7 @@ export function AgentSidebarMenu({
                 <Button
                   size="xs"
                   icon={Plus}
-                  label="New"
+                  label={t({ message: "New", context: "button label" })}
                   variant="ghost-secondary"
                   onClick={withTracking(
                     TRACKING_AREAS.NAVIGATION,
@@ -813,7 +847,7 @@ export function AgentSidebarMenu({
             })
           ) : (
             <NavigationListItem
-              label="Create a Pod"
+              label={t`Create a Pod`}
               icon={Plus}
               onClick={withTracking(
                 TRACKING_AREAS.NAVIGATION,
@@ -835,6 +869,7 @@ export function AgentSidebarMenu({
     setPodsSectionCollapsed,
     isSummaryLoading,
     sidebarTitleFilter,
+    t,
   ]);
 
   const navItemsSection = !isMultiSelect && !hideActions && (
@@ -842,7 +877,7 @@ export function AgentSidebarMenu({
       <NavigationListItem
         href={getAgentBuilderRoute(owner.sId, "manage")}
         icon={Robot}
-        label="Agents"
+        label={t`Agents`}
         selected={router.asPath.startsWith(`/w/${owner.sId}/builder/agents`)}
         data-gtm-label="assistantManagementButton"
         data-gtm-location="sidebarMenu"
@@ -866,7 +901,7 @@ export function AgentSidebarMenu({
                   <Button
                     size="xs"
                     icon={Plus}
-                    label="New"
+                    label={t({ message: "New", context: "button label" })}
                     variant="ghost-secondary"
                     className="data-[state=open]:bg-hover"
                     disabled={noHealthyProviders}
@@ -896,7 +931,7 @@ export function AgentSidebarMenu({
       <NavigationListItem
         href={getSkillBuilderRoute(owner.sId, "manage")}
         icon={SKILL_ICON}
-        label="Skills"
+        label={t`Skills`}
         selected={router.asPath.startsWith(`/w/${owner.sId}/builder/skills`)}
         onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_skills", () =>
           setSidebarOpen(false)
@@ -918,7 +953,7 @@ export function AgentSidebarMenu({
                   <Button
                     size="xs"
                     icon={Plus}
-                    label="New"
+                    label={t({ message: "New", context: "button label" })}
                     variant="ghost-secondary"
                     className="data-[state=open]:bg-hover"
                     onClick={withTracking(
@@ -936,11 +971,11 @@ export function AgentSidebarMenu({
                   align="center"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <DropdownMenuLabel label="New skill" />
+                  <DropdownMenuLabel label={t`New skill`} />
                   <DropdownMenuItem
                     href={getCreateFromConversationRoute(owner.sId, "skill")}
                     icon={MessageChatCircle}
-                    label="From conversation"
+                    label={t`From conversation`}
                     onClick={withTracking(
                       TRACKING_AREAS.BUILDER,
                       "create_skill_from_conversation",
@@ -950,7 +985,7 @@ export function AgentSidebarMenu({
                   <DropdownMenuItem
                     href={getSkillBuilderRoute(owner.sId, "new")}
                     icon={SKILL_ICON}
-                    label="From scratch"
+                    label={t`From scratch`}
                     onClick={withTracking(
                       TRACKING_AREAS.BUILDER,
                       "create_skill",
@@ -959,7 +994,7 @@ export function AgentSidebarMenu({
                   />
                   <DropdownMenuItem
                     icon={FolderOpen}
-                    label="From existing"
+                    label={t`From existing`}
                     onClick={withTracking(
                       TRACKING_AREAS.BUILDER,
                       "import_skill",
@@ -1031,7 +1066,6 @@ export function AgentSidebarMenu({
         isDeleting={isDeleting}
         onClose={() => setShowDeleteDialog(null)}
         onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
@@ -1074,7 +1108,7 @@ export function AgentSidebarMenu({
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        label="Move to Pod"
+                        label={t`Move to Pod`}
                         icon={ArrowRight}
                         disabled={selectedConversations.length === 0}
                         isLoading={isMoving}
@@ -1086,7 +1120,7 @@ export function AgentSidebarMenu({
                       dropdownHeaders={
                         <DropdownMenuSearchbar
                           name="pod-search"
-                          placeholder="Search Pods"
+                          placeholder={t`Search Pods`}
                           value={podSearchText}
                           onChange={setPodSearchText}
                           autoFocus
@@ -1095,7 +1129,7 @@ export function AgentSidebarMenu({
                     >
                       <DropdownMenuItem
                         icon={Plus}
-                        label="New Pod"
+                        label={t`New Pod`}
                         onClick={withTracking(
                           TRACKING_AREAS.NAVIGATION,
                           "new_pod",
@@ -1107,7 +1141,7 @@ export function AgentSidebarMenu({
                         )}
                       />
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel label="Pods" />
+                      <DropdownMenuLabel label={t`Pods`} />
                       {availablePods.length > 0 ? (
                         availablePods.map((pod) => (
                           <DropdownMenuItem
@@ -1121,7 +1155,7 @@ export function AgentSidebarMenu({
                         ))
                       ) : (
                         <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
-                          {!!podSearchText ? "No matches" : "No Pods"}
+                          {!!podSearchText ? t`No matches` : t`No Pods`}
                         </div>
                       )}
                     </DropdownMenuContent>
@@ -1130,7 +1164,7 @@ export function AgentSidebarMenu({
                     variant={
                       selectedConversations.length === 0 ? "outline" : "warning"
                     }
-                    label="Delete"
+                    label={t`Delete`}
                     disabled={selectedConversations.length === 0}
                     onClick={() => setShowDeleteDialog("selection")}
                   />
@@ -1156,12 +1190,12 @@ export function AgentSidebarMenu({
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    label="New"
+                    label={t({ message: "New", context: "button label" })}
                     href={getConversationRoute(owner.sId)}
                     icon={MessagePlusCircle}
                     variant="highlight"
                     className="shrink-0"
-                    tooltip="Create a new conversation"
+                    tooltip={t`Create a new conversation`}
                     onClick={withTracking(
                       TRACKING_AREAS.NAVIGATION,
                       "new_conversation",
@@ -1175,7 +1209,7 @@ export function AgentSidebarMenu({
             <div className="min-h-0 flex-1 overflow-hidden">
               {isConversationsError && (
                 <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
-                  Error loading conversations
+                  <Trans>Error loading conversations</Trans>
                 </Label>
               )}
               {isSearchActive ? (
@@ -1258,6 +1292,7 @@ function UnreadConversationsSection({
   activeConversationId,
   owner,
 }: UnreadConversationsSectionProps) {
+  const { t } = useLingui();
   const conversationGroups = useMemo(
     () => groupUnreadConversations(conversations, pods),
     [conversations, pods]
@@ -1300,7 +1335,7 @@ function UnreadConversationsSection({
           <Button
             size="xmini"
             variant="ghost-secondary"
-            label="Mark all as read"
+            label={t`Mark all as read`}
             onClick={() =>
               void handleMarkAsRead(
                 "all",
@@ -1372,7 +1407,7 @@ function UnreadConversationsSection({
                           <Button
                             size="xmini"
                             variant="ghost-secondary"
-                            label="Mark as read"
+                            label={t`Mark as read`}
                             data-mark-read="pod"
                             onClick={() =>
                               void handleMarkAsRead(
@@ -1666,6 +1701,7 @@ function NavigationListWithInbox({
   loadMore,
   isLoadingMore,
 }: NavigationListWithInboxProps) {
+  const { t } = useLingui();
   // The Radix ScrollArea root never scrolls (overflow-hidden); the inner
   // viewport does. Keep it in state so InfiniteScroll re-binds once mounted.
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
@@ -1732,7 +1768,9 @@ function NavigationListWithInbox({
         <ConversationList
           key={dateLabel}
           conversations={conversationsByDate[dateLabel as RelativeDateBucket]}
-          dateLabel={dateLabel}
+          dateLabel={t(
+            RELATIVE_DATE_BUCKET_LABELS[dateLabel as RelativeDateBucket]
+          )}
           isFirstGroup={index === 0}
           isMultiSelect={isMultiSelect}
           selectedConversations={selectedConversations}
@@ -1785,7 +1823,10 @@ function NavigationListWithInbox({
             >
               <div className="overflow-hidden">
                 <UnreadConversationsSection
-                  label="Auto"
+                  label={t({
+                    message: "Auto",
+                    context: "sidebar section of triggered conversations",
+                  })}
                   conversations={triggeredConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
@@ -1809,7 +1850,7 @@ function NavigationListWithInbox({
             >
               <div className="overflow-hidden">
                 <UnreadConversationsSection
-                  label="Skill suggestions"
+                  label={t`Skill suggestions`}
                   conversations={skillSuggestionConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
@@ -1833,7 +1874,7 @@ function NavigationListWithInbox({
             >
               <div className="overflow-hidden">
                 <UnreadConversationsSection
-                  label="Inbox"
+                  label={t`Inbox`}
                   conversations={inboxConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
@@ -1852,7 +1893,7 @@ function NavigationListWithInbox({
         {podsSection}
         <NavigationList className="mx-sidebar-side-spacing">
           <NavigationListCollapsibleSection
-            label="Conversations"
+            label={t`Conversations`}
             type="collapse"
             open={!isConversationsSectionCollapsed}
             onOpenChange={(open) => setConversationsSectionCollapsed(!open)}
@@ -1864,7 +1905,7 @@ function NavigationListWithInbox({
                       size="xmini"
                       icon={DotsHorizontal}
                       variant="ghost"
-                      aria-label="Conversations options"
+                      aria-label={t`Conversations options`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1874,12 +1915,12 @@ function NavigationListWithInbox({
                   <DropdownMenuContent
                     onFocusOutside={(e) => e.preventDefault()}
                   >
-                    <DropdownMenuLabel label="Conversations" />
+                    <DropdownMenuLabel label={t`Conversations`} />
                     <DropdownMenuItem
                       label={
                         hideTriggeredConversations
-                          ? "Show triggered"
-                          : "Hide triggered"
+                          ? t`Show triggered`
+                          : t`Hide triggered`
                       }
                       icon={hideTriggeredConversations ? Zap : ZapOff}
                       disabled={!hasTriggeredConversations}
@@ -1890,13 +1931,13 @@ function NavigationListWithInbox({
                       }
                     />
                     <DropdownMenuItem
-                      label="Edit history"
+                      label={t`Edit history`}
                       icon={CheckDone01}
                       onClick={toggleMultiSelect}
                       disabled={conversations.length === 0}
                     />
                     <DropdownMenuItem
-                      label="Clear history"
+                      label={t`Clear history`}
                       variant="warning"
                       icon={Trash01}
                       onClick={() => setShowDeleteDialog("all")}

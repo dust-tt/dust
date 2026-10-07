@@ -225,7 +225,7 @@ export function DataSourceList({
       if (canSelectParent) {
         newTreeValue = addNodeToTree(newTreeValue, {
           path: currentPathStr,
-          name: navigationHistoryEntryTitle(currentEntry),
+          name: navigationHistoryEntryTitle(currentEntry, t),
           ...currentEntry,
         });
       } else {
@@ -242,7 +242,7 @@ export function DataSourceList({
 
           newTreeValue = addNodeToTree(newTreeValue, {
             path: pathToString(nodePath),
-            name: navigationHistoryEntryTitle(item.entry),
+            name: navigationHistoryEntryTitle(item.entry, t),
             ...item.entry,
           });
         }
@@ -273,7 +273,7 @@ export function DataSourceList({
 
         newTreeValue = removeNodeFromTree(newTreeValue, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(item.entry),
+          name: navigationHistoryEntryTitle(item.entry, t),
           ...item.entry,
         });
       }
@@ -286,7 +286,7 @@ export function DataSourceList({
         const currentEntry = navigationHistory[navigationHistory.length - 1];
         newTreeValue = removeNodeFromTree(newTreeValue, {
           path: currentPathStr,
-          name: navigationHistoryEntryTitle(currentEntry),
+          name: navigationHistoryEntryTitle(currentEntry, t),
           ...currentEntry,
         });
       }

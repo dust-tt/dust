@@ -47,7 +47,22 @@ import {
   Zap,
   ZapOff,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+const RELATIVE_DATE_BUCKET_LABELS: Record<
+  RelativeDateBucket,
+  MessageDescriptor
+> = {
+  Today: msg`Today`,
+  Yesterday: msg`Yesterday`,
+  "Last Week": msg`Last week`,
+  "Last Month": msg`Last month`,
+  "Last 12 Months": msg`Last 12 months`,
+  Older: msg`Older`,
+};
 
 interface PodConversationsTabProps {
   owner: WorkspaceType;
@@ -91,6 +106,7 @@ export function PodConversationsTab({
   onSubmit,
   onNavigateToTasks,
 }: PodConversationsTabProps) {
+  const { t } = useLingui();
   const { isEditor } = podInfo;
   const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
@@ -129,13 +145,13 @@ export function PodConversationsTab({
   const noConversationsForFilterMessage = useMemo(() => {
     switch (conversationFilter) {
       case "all":
-        return "No conversations found.";
+        return t`No conversations found.`;
       case "group":
-        return "No group conversations yet in this Pod.";
+        return t`No group conversations yet in this Pod.`;
       case "with_me":
-        return "You are not a participant in any conversation yet.";
+        return t`You are not a participant in any conversation yet.`;
     }
-  }, [conversationFilter]);
+  }, [conversationFilter, t]);
 
   const {
     conversations: searchResults,
@@ -174,10 +190,12 @@ export function PodConversationsTab({
     [owner.sId, router, setSearchText]
   );
 
-  const [greeting, setGreeting] = useState<string>("");
+  const [greetingMessage, setGreetingMessage] =
+    useState<MessageDescriptor | null>(null);
   useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
+    setGreetingMessage(getRandomGreetingForName(user.firstName));
   }, [user.firstName, podInfo.name]);
+  const greeting = greetingMessage ? t(greetingMessage) : "";
 
   const isFilteredEmpty = !isConversationsLoading && !isPodEmpty && !hasHistory;
   const isSingleMemberPod = podInfo.members.length === 1;
@@ -185,8 +203,8 @@ export function PodConversationsTab({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <DropzoneContainer
-        description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-        title="Attach files to the conversation"
+        description={t`Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here.`}
+        title={t`Attach files to the conversation`}
       >
         <div
           className={cn(
@@ -208,13 +226,17 @@ export function PodConversationsTab({
                 <span className="text-muted-foreground">- {greeting}</span>
               </h2>
               {podInfo.archivedAt && (
-                <Chip size="xs" color="warning" label="Archived" />
+                <Chip
+                  size="xs"
+                  color="warning"
+                  label={t({ message: "Archived", context: "Pod status" })}
+                />
               )}
             </div>
             {podInfo.archivedAt ? (
               <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
                 <EmptyCTA
-                  message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
+                  message={t`This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones.`}
                   action={null}
                 />
               </div>
@@ -270,20 +292,29 @@ export function PodConversationsTab({
                     >
                       <ButtonsSwitch
                         value="with_me"
-                        label="Mine"
-                        tooltip="Conversations where you have sent a message."
+                        label={t({
+                          message: "Mine",
+                          context: "conversation filter",
+                        })}
+                        tooltip={t`Conversations where you have sent a message.`}
                         onClick={() => onConversationFilterChange("with_me")}
                       />
                       <ButtonsSwitch
                         value="group"
-                        label="Group"
-                        tooltip="Conversations with more than one person"
+                        label={t({
+                          message: "Group",
+                          context: "conversation filter",
+                        })}
+                        tooltip={t`Conversations with more than one person`}
                         onClick={() => onConversationFilterChange("group")}
                       />
                       <ButtonsSwitch
                         value="all"
-                        label="All"
-                        tooltip="Every conversation in this Pod."
+                        label={t({
+                          message: "All",
+                          context: "conversation filter",
+                        })}
+                        tooltip={t`Every conversation in this Pod.`}
                         onClick={() => onConversationFilterChange("all")}
                       />
                     </ButtonsSwitchList>
@@ -294,8 +325,8 @@ export function PodConversationsTab({
                     icon={hideTriggeredConversations ? ZapOff : Zap}
                     tooltip={
                       hideTriggeredConversations
-                        ? "Show triggered"
-                        : "Hide triggered"
+                        ? t`Show triggered`
+                        : t`Hide triggered`
                     }
                     className="shrink-0"
                     onClick={() =>
@@ -308,7 +339,7 @@ export function PodConversationsTab({
                     name="conversation-search"
                     value={searchText}
                     onChange={setSearchText}
-                    placeholder={`Search...`}
+                    placeholder={t`Search...`}
                     open={isSearchPopoverOpen && searchText.trim().length > 0}
                     onOpenChange={setIsSearchPopoverOpen}
                     items={searchResults}
@@ -316,8 +347,8 @@ export function PodConversationsTab({
                     noResults={
                       searchText.trim().length > 0 && !isSearching
                         ? isSearchError
-                          ? "Failed to search conversations. Please try again."
-                          : "No conversations found."
+                          ? t`Failed to search conversations. Please try again.`
+                          : t`No conversations found.`
                         : ""
                     }
                     displayItemCount={true}
@@ -353,7 +384,7 @@ export function PodConversationsTab({
                     size="sm"
                     variant="outline"
                     icon={CheckDouble}
-                    label={isWidthConstrained ? undefined : "Mark all as read"}
+                    label={isWidthConstrained ? undefined : t`Mark all as read`}
                     className="shrink-0"
                     onClick={() => markAllAsRead(unreadConversationIds)}
                     isLoading={isMarkingAllAsRead}
@@ -389,7 +420,13 @@ export function PodConversationsTab({
 
                       return (
                         <div key={dateLabel}>
-                          <ListItemSection>{dateLabel}</ListItemSection>
+                          <ListItemSection>
+                            {t(
+                              RELATIVE_DATE_BUCKET_LABELS[
+                                dateLabel as RelativeDateBucket
+                              ]
+                            )}
+                          </ListItemSection>
                           <ListGroup className="border-b-0 border-t-0">
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)

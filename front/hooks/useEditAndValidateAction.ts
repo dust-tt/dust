@@ -1,19 +1,18 @@
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type {
   ActionApprovalStateType,
   AgentLoopBlockedToolExecution,
 } from "@app/lib/actions/mcp";
 import { useFetcher } from "@app/lib/swr/swr";
-import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
 export function useEditAndValidateAction({
   owner,
-  onError,
 }: {
   owner: LightWorkspaceType;
-  onError: (errorMessage: string) => void;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const [isEditingAndValidating, setIsEditingAndValidating] = useState(false);
 
@@ -52,17 +51,16 @@ export function useEditAndValidateAction({
 
         return { success: true };
       } catch (err) {
-        onError(
-          isAPIErrorResponse(err)
-            ? err.error.message
-            : "Failed to edit and approve action. Please try again."
-        );
+        sendApiErrorNotification({
+          title: "Failed to edit and approve action",
+          error: err,
+        });
         return { success: false };
       } finally {
         setIsEditingAndValidating(false);
       }
     },
-    [owner.sId, onError, fetcher]
+    [owner.sId, fetcher, sendApiErrorNotification]
   );
 
   return { editAndValidateAction, isEditingAndValidating };

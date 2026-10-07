@@ -20,6 +20,7 @@ import {
   Eye,
   Trash01,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { MouseEvent } from "react";
 import { useState } from "react";
 
@@ -40,6 +41,7 @@ export function AgentSearchActionsMenu({
   onSelect,
   onRefresh,
 }: AgentSearchActionsMenuProps) {
+  const { t } = useLingui();
   const tracking = useManageTracking();
   const router = useAppRouter();
   const { isAdmin, providersHealth } = useAuth();
@@ -71,18 +73,22 @@ export function AgentSearchActionsMenu({
 
   const menuItems: MenuItem[] = [];
   if (isCustomAgent && isAgentConfigurationLoading) {
-    menuItems.push({ kind: "item", label: "Loading actions…", disabled: true });
+    menuItems.push({
+      kind: "item",
+      label: t`Loading actions…`,
+      disabled: true,
+    });
   }
   if (
     isCustomAgent &&
     isAgentConfigurationError &&
     isAgentConfigurationValidating
   ) {
-    menuItems.push({ kind: "item", label: "Retrying…", disabled: true });
+    menuItems.push({ kind: "item", label: t`Retrying…`, disabled: true });
   } else if (isCustomAgent && isAgentConfigurationError) {
     menuItems.push({
       kind: "item",
-      label: "Could not load actions. Retry",
+      label: t`Could not load actions. Retry`,
       onClick: (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -93,7 +99,7 @@ export function AgentSearchActionsMenu({
   if (canEdit && !noHealthyProviders) {
     menuItems.push({
       kind: "item",
-      label: "Edit",
+      label: t({ message: "Edit", context: "verb, menu item" }),
       icon: Edit04,
       onClick: withoutPropagation(() => {
         trackManageItemAction(tracking, "edit", agentId);
@@ -104,7 +110,7 @@ export function AgentSearchActionsMenu({
   menuItems.push(
     {
       kind: "item",
-      label: "Copy agent ID",
+      label: t`Copy agent ID`,
       icon: Brackets,
       onClick: withoutPropagation(
         () => void navigator.clipboard.writeText(agentId)
@@ -112,7 +118,7 @@ export function AgentSearchActionsMenu({
     },
     {
       kind: "item",
-      label: "More info",
+      label: t`More info`,
       icon: Eye,
       onClick: withoutPropagation(() => onSelect(agentId)),
     }
@@ -124,7 +130,7 @@ export function AgentSearchActionsMenu({
   ) {
     menuItems.push({
       kind: "item",
-      label: "Duplicate (New)",
+      label: t`Duplicate (New)`,
       icon: Clipboard,
       onClick: withoutPropagation(() => {
         trackManageItemAction(tracking, "duplicate", agentId);
@@ -137,7 +143,7 @@ export function AgentSearchActionsMenu({
   if (canEdit) {
     menuItems.push({
       kind: "item",
-      label: "Archive",
+      label: t({ message: "Archive", context: "verb, menu item" }),
       icon: Trash01,
       variant: "warning",
       onClick: withoutPropagation(() => setIsArchiveDialogOpen(true)),

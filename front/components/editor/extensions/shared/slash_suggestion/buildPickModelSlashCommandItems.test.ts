@@ -3,6 +3,7 @@ import {
   getDefaultPickModelSlashCommandItemId,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { i18n } from "@app/lib/i18n/i18n";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionType,
@@ -28,7 +29,10 @@ import {
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
+
+const translate = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 const Icon = () => null;
 
@@ -67,6 +71,7 @@ describe("buildPickModelSlashCommandItems", () => {
       models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
       query: "",
       streams: null,
+      t: translate,
     });
 
     expect(items.map(rowText)).toEqual([
@@ -94,6 +99,7 @@ describe("buildPickModelSlashCommandItems", () => {
       models: [asSelectable(GPT_4_1_MODEL_CONFIG)],
       query: "",
       streams: null,
+      t: translate,
     });
 
     expect(
@@ -114,6 +120,7 @@ describe("buildPickModelSlashCommandItems", () => {
       models: [asSelectable(GEMINI_3_1_FLASH_LITE_MODEL_CONFIG)],
       query: "",
       streams: null,
+      t: translate,
     });
 
     const descriptions = items
@@ -136,6 +143,7 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query: "claude",
         streams: null,
+        t: translate,
       }).map((item) => item.data.selection.toSend?.modelId)
     ).toEqual(
       SONNET_5_EFFORT_LABELS.map(
@@ -156,6 +164,7 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
+        t: translate,
       }).map(rowText);
 
     // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna". Within a
@@ -190,6 +199,7 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
+        t: translate,
       }).map(rowText);
 
     const haikuHigh = `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} high`;
@@ -227,6 +237,7 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
+        t: translate,
       }).map(rowText);
 
     // Mistral Medium 3.5 only offers the none and high efforts.
@@ -262,6 +273,7 @@ describe("buildPickModelSlashCommandItems", () => {
         models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
         query,
         streams: null,
+        t: translate,
       }).map(rowText);
 
     const sonnet = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName;
@@ -286,6 +298,7 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
+        t: translate,
       }).map(rowText);
 
     const gpt5MiniRows = rowLabels(GPT_5_MINI_MODEL_CONFIG, [
@@ -336,6 +349,7 @@ describe("buildPickModelSlashCommandItems", () => {
           [AUTO_MODEL_ID]: highResolution,
           [AUTO_COMPLEX_MODEL_ID]: highResolution,
         },
+        t: translate,
       });
 
     // Every tier description ends with "high", none of it is searched.
@@ -358,6 +372,7 @@ describe("buildPickModelSlashCommandItems", () => {
       ],
       query: "",
       streams: null,
+      t: translate,
     });
 
     expect(
@@ -374,6 +389,7 @@ describe("buildPickModelSlashCommandItems", () => {
       models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
       query: "",
       streams: null,
+      t: translate,
     });
 
     expect(items.map(rowText)).toEqual([
@@ -396,6 +412,7 @@ describe("getDefaultPickModelSlashCommandItemId", () => {
       models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
       query,
       streams: null,
+      t: translate,
     });
 
   it("points at the first model's initial effort row", () => {

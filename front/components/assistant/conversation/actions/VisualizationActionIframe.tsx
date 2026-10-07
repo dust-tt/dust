@@ -56,6 +56,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import type { SetStateAction } from "react";
 import {
@@ -515,6 +516,7 @@ function useVisualizationDataHandler({
   }) => Promise<Result<unknown, SandboxFunctionCallError>>;
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { code } = visualization;
 
@@ -568,12 +570,11 @@ function useVisualizationDataHandler({
         data.identifier === visualization.identifier
       ) {
         sendNotification({
-          title: "Export Failed",
+          title: t`Export failed`,
           type: "error",
           description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             data.errorMessage ||
-            "An error occurred while exporting the content.",
+            t`An error occurred while exporting the content.`,
         });
         return;
       }
@@ -752,6 +753,7 @@ function useVisualizationDataHandler({
     vizIframeRef,
     resolveUserIdentity,
     sendNotification,
+    t,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   ]);
@@ -777,7 +779,9 @@ function CodeDrawer({
     >
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Code for this visualization</SheetTitle>
+          <SheetTitle>
+            <Trans>Code for this visualization</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <CodeBlock className="language-jsx">{code}</CodeBlock>
@@ -828,6 +832,7 @@ export const VisualizationActionIframe = forwardRef<
   props: VisualizationActionIframeProps,
   ref
 ) {
+  const { t } = useLingui();
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryClicked, setRetryClicked] = useState(false);
@@ -1230,14 +1235,16 @@ export const VisualizationActionIframe = forwardRef<
                   )}
                 >
                   <ContentMessage
-                    title="Visualization failed"
+                    title={t`Visualization failed`}
                     variant="warning"
                     icon={AlertCircle}
                     className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
-                      The visualization failed due to an error in the generated
-                      code.
+                      <Trans>
+                        The visualization failed due to an error in the
+                        generated code.
+                      </Trans>
                     </div>
 
                     {errorMessage && (
@@ -1249,7 +1256,7 @@ export const VisualizationActionIframe = forwardRef<
                     {canRetry && (
                       <Button
                         variant="outline"
-                        label="Ask agent to fix"
+                        label={t`Ask agent to fix`}
                         onClick={handleRetryClick}
                         disabled={retryClicked}
                       />
@@ -1265,14 +1272,19 @@ export const VisualizationActionIframe = forwardRef<
                       <div className="flex flex-col items-center gap-2">
                         <AlertCircle className="h-8 w-8" />
                         <p className="heading-xl leading-7 text-foreground">
-                          Visualization Error
+                          <Trans>Visualization error</Trans>
                         </p>
                       </div>
                       <p className="copy-sm leading-tight text-muted-foreground">
-                        This visualization encountered an error and cannot be
-                        displayed.
-                        <br /> Please contact the creator of this visualization
-                        for assistance.
+                        <Trans>
+                          This visualization encountered an error and cannot be
+                          displayed.
+                        </Trans>
+                        <br />
+                        <Trans>
+                          Please contact the creator of this visualization for
+                          assistance.
+                        </Trans>
                       </p>
                     </div>
                   </div>

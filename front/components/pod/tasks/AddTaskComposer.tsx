@@ -1,9 +1,5 @@
-import {
-  MANUAL_ADD_TASK_PLACEHOLDER,
-  NEW_MANUAL_TASK_MAX_CHARS,
-} from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
+import { NEW_MANUAL_TASK_MAX_CHARS } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { removeDiacritics } from "@app/lib/utils";
-import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceUserType } from "@app/types/user";
 import {
@@ -18,6 +14,7 @@ import {
   Input,
   User01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type AddTaskAssigneeChoice =
@@ -77,6 +74,7 @@ function TaskRowAssigneeMenu({
   onChoiceChange,
   disabled,
 }: TaskRowAssigneeMenuProps) {
+  const { t } = useLingui();
   const [search, setSearch] = useState("");
   const q = removeDiacritics(search.trim()).toLowerCase();
 
@@ -89,9 +87,8 @@ function TaskRowAssigneeMenu({
     );
   }, [q, members]);
 
-  const noAssigneeLabelNorm = removeDiacritics(
-    POD_TASK_NO_ASSIGNEE_LABEL
-  ).toLowerCase();
+  const noAssigneeLabel = t`No assignee`;
+  const noAssigneeLabelNorm = removeDiacritics(noAssigneeLabel).toLowerCase();
   const showNoAssigneeRow =
     members.length !== 1 && (q === "" || noAssigneeLabelNorm.includes(q));
 
@@ -99,11 +96,20 @@ function TaskRowAssigneeMenu({
   const selectedUser = effectiveMemberId
     ? members.find((m) => m.sId === effectiveMemberId)
     : null;
-  const tooltip = selectedUser
-    ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""}`
-    : choice.kind === "unassigned"
-      ? POD_TASK_NO_ASSIGNEE_LABEL
-      : "Choose assignee";
+  const formatMemberLabel = (member: SpaceUserType) => {
+    const memberName = member.fullName;
+    return viewerUserId === member.sId ? t`${memberName} (you)` : memberName;
+  };
+
+  let tooltip: string;
+  if (selectedUser) {
+    const assigneeLabel = formatMemberLabel(selectedUser);
+    tooltip = t`Assign to ${assigneeLabel}`;
+  } else if (choice.kind === "unassigned") {
+    tooltip = noAssigneeLabel;
+  } else {
+    tooltip = t`Choose assignee`;
+  }
 
   return (
     <DropdownMenu
@@ -139,7 +145,7 @@ function TaskRowAssigneeMenu({
         <DropdownMenuSearchbar
           autoFocus
           name="add-task-assignee-search"
-          placeholder="Search members"
+          placeholder={t`Search members`}
           value={search}
           onChange={setSearch}
         />
@@ -150,7 +156,7 @@ function TaskRowAssigneeMenu({
               {showNoAssigneeRow && (
                 <DropdownMenuCheckboxItem
                   key="add-task-no-assignee"
-                  label={POD_TASK_NO_ASSIGNEE_LABEL}
+                  label={noAssigneeLabel}
                   checked={choice.kind === "unassigned"}
                   onClick={() => onChoiceChange({ kind: "unassigned" })}
                 />
@@ -170,7 +176,7 @@ function TaskRowAssigneeMenu({
                       }
                     />
                   )}
-                  label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                  label={formatMemberLabel(member)}
                   checked={memberRowAssigneeChecked(
                     choice,
                     member.sId,
@@ -188,7 +194,7 @@ function TaskRowAssigneeMenu({
             </>
           ) : (
             <div className="px-3 py-2 text-sm text-muted-foreground">
-              No members found
+              <Trans>No members found</Trans>
             </div>
           )}
         </div>
@@ -213,6 +219,7 @@ export function AddTaskComposer({
   hideAssigneePicker = false,
   onAdd,
 }: AddTaskComposerProps) {
+  const { t } = useLingui();
   const [text, setText] = useState("");
   const [assigneeChoice, setAssigneeChoice] = useState<AddTaskAssigneeChoice>(
     () => ({ kind: "default" })
@@ -262,10 +269,10 @@ export function AddTaskComposer({
       <Input
         ref={inputRef}
         name="new-manual-project-task"
-        aria-label="New task"
+        aria-label={t`New task`}
         autoComplete="off"
         maxLength={NEW_MANUAL_TASK_MAX_CHARS}
-        placeholder={MANUAL_ADD_TASK_PLACEHOLDER}
+        placeholder={t`Add a task...`}
         value={text}
         readOnly={isAdding}
         aria-busy={isAdding}
@@ -286,7 +293,7 @@ export function AddTaskComposer({
       <Button
         size="sm"
         variant="highlight"
-        label="Add"
+        label={t`Add`}
         isLoading={isAdding}
         disabled={isAdding || !text.trim()}
         onClick={() => void handleSubmit()}

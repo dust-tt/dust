@@ -1,16 +1,20 @@
-import { EXTENSION_MCP_TOOLS_LABEL } from "@app/components/workspace/extension_mcp_tools_metadata";
-import {
-  DUST_MCP_SERVER_LABEL,
-  EMAIL_AGENTS_LABEL,
-  MESSAGING_APP_METADATA,
-  SLACK_PERSONAL_FOOTER_REMOVAL_LABEL,
-} from "@app/components/workspace/settings/settings_metadata";
+import type { MESSAGING_APP_METADATA } from "@app/components/workspace/settings/settings_metadata";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 const I = ADMIN_SECTION_IDS.integrations;
 const PAGE = "integrations" as const;
+
+const MESSAGING_APP_SEARCH_ITEMS: Record<
+  keyof typeof MESSAGING_APP_METADATA,
+  [MessageDescriptor, MessageDescriptor]
+> = {
+  slack_bot: [msg`Slack Bot`, msg`slack reconnect`],
+  microsoft_bot: [msg`Microsoft Teams Bot`, msg`teams`],
+};
 
 /** Search entries for Integrations (messaging, email, clients & tools). */
 export const INTEGRATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
@@ -18,18 +22,10 @@ export const INTEGRATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.messaging,
     [
-      ...Object.values(MESSAGING_APP_METADATA).map((app) => {
-        const keywords =
-          app.name === "Slack Bot"
-            ? "slack reconnect"
-            : app.name === "Microsoft Teams Bot"
-              ? "teams"
-              : "discord reconnect";
-        return [app.name, keywords] as [string, string];
-      }),
+      ...Object.values(MESSAGING_APP_SEARCH_ITEMS),
       [
-        SLACK_PERSONAL_FOOTER_REMOVAL_LABEL,
-        "remove footer user credentials sent via agent",
+        msg`"Sent via Agent" Slack footer`,
+        msg`remove footer user credentials sent via agent`,
       ],
     ],
     "messaging"
@@ -37,15 +33,15 @@ export const INTEGRATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     I.email,
-    [[EMAIL_AGENTS_LABEL, "reach agents by email AGENT_NAME@dust.team"]],
+    [[msg`Email agents`, msg`reach agents by email AGENT_NAME@dust.team`]],
     "email"
   ),
   ...adminSearchEntries(
     PAGE,
     I.clients,
     [
-      [DUST_MCP_SERVER_LABEL, "external mcp clients connect manage"],
-      [EXTENSION_MCP_TOOLS_LABEL, "list read browser tabs extension"],
+      [msg`MCP server`, msg`external mcp clients connect manage`],
+      [msg`Browser Extension Tools`, msg`list read browser tabs extension`],
     ],
     "clients"
   ),

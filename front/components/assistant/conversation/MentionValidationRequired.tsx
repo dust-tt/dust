@@ -17,6 +17,7 @@ import {
   InfoCircle,
   MessageChatSquare,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -35,6 +36,7 @@ export function MentionValidationRequired({
   conversation,
   message,
 }: MentionValidationRequiredProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const hasUserMemory = hasFeature("user_memory");
@@ -83,17 +85,18 @@ export function MentionValidationRequired({
   }
 
   const { status } = mention;
+  const mentionLabel = mention.label;
 
   let title: string;
   switch (status) {
     case "agent_restricted_by_space_usage":
-      title = `Run ${mention.label} in this Pod conversation?`;
+      title = t`Run ${mentionLabel} in this Pod conversation?`;
       break;
     case "pending_project_membership":
-      title = `Add ${mention.label} to this Pod?`;
+      title = t`Add ${mentionLabel} to this Pod?`;
       break;
     case "pending_conversation_access":
-      title = `Invite ${mention.label} to this conversation?`;
+      title = t`Invite ${mentionLabel} to this conversation?`;
       break;
     default:
       assertNever(status);
@@ -103,35 +106,40 @@ export function MentionValidationRequired({
   switch (status) {
     case "agent_restricted_by_space_usage":
       description = (
-        <>
-          <span className="font-semibold">{mention.label}</span> uses at least
+        <Trans>
+          <span className="font-semibold">{mentionLabel}</span> uses at least
           one private space. If you run it here, its outputs will be visible to
           Pod members who may not have access to those spaces.
-        </>
+        </Trans>
       );
       break;
     case "pending_project_membership":
-      description = isAgentMessageWithStreaming(message) ? (
-        <>
-          <span className="font-semibold">{message.configuration.name}</span>{" "}
-          mentioned <span className="font-semibold">{mention.label}</span>. Do
-          you want to add them to this Pod?
-        </>
-      ) : (
-        "They'll have access to all Pod conversations."
-      );
+      if (isAgentMessageWithStreaming(message)) {
+        const agentName = message.configuration.name;
+        description = (
+          <Trans>
+            <span className="font-semibold">{agentName}</span> mentioned{" "}
+            <span className="font-semibold">{mentionLabel}</span>. Do you want
+            to add them to this Pod?
+          </Trans>
+        );
+      } else {
+        description = t`They'll have access to all Pod conversations.`;
+      }
       break;
     case "pending_conversation_access":
-      description = isAgentMessageWithStreaming(message) ? (
-        <>
-          <span className="font-semibold">{message.configuration.name}</span>{" "}
-          mentioned <span className="font-semibold">{mention.label}</span>. Do
-          you want to invite them? They'll see the full history and be able to
-          reply.
-        </>
-      ) : (
-        "They'll see the full history and be able to reply."
-      );
+      if (isAgentMessageWithStreaming(message)) {
+        const agentName = message.configuration.name;
+        description = (
+          <Trans>
+            <span className="font-semibold">{agentName}</span> mentioned{" "}
+            <span className="font-semibold">{mentionLabel}</span>. Do you want
+            to invite them? They'll see the full history and be able to reply.
+          </Trans>
+        );
+      } else {
+        description = t`They'll see the full history and be able to reply.`;
+      }
       break;
     default:
       assertNever(status);
@@ -149,13 +157,13 @@ export function MentionValidationRequired({
   let approveLabel: string;
   switch (status) {
     case "agent_restricted_by_space_usage":
-      approveLabel = "Run agent";
+      approveLabel = t`Run agent`;
       break;
     case "pending_project_membership":
-      approveLabel = "Add to Pod";
+      approveLabel = t`Add to Pod`;
       break;
     case "pending_conversation_access":
-      approveLabel = "Invite";
+      approveLabel = t({ message: "Invite", context: "button label" });
       break;
     default:
       assertNever(status);
@@ -180,8 +188,10 @@ export function MentionValidationRequired({
               <span className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <InfoCircle className="h-4 w-4 shrink-0" />
                 <span>
-                  The content of your personal memory may be disclosed to
-                  invited users.
+                  <Trans>
+                    The content of your personal memory may be disclosed to
+                    invited users.
+                  </Trans>
                 </span>
               </span>
             )}
@@ -192,7 +202,7 @@ export function MentionValidationRequired({
             <Button
               variant="outline"
               size="sm"
-              label="Decline"
+              label={t`Decline`}
               disabled={isSubmitting}
               onClick={handleReject}
             />

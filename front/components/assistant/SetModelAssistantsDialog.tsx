@@ -19,7 +19,6 @@ import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -34,6 +33,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface SetModelAssistantsDialogProps {
@@ -47,6 +47,7 @@ export function SetModelAssistantsDialog({
   disabled,
   owner,
 }: SetModelAssistantsDialogProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [pending, setPending] = useState<SelectionDisplay | null>(null);
@@ -64,6 +65,11 @@ export function SetModelAssistantsDialog({
     });
 
   const batchUpdateAgentModel = useBatchUpdateAgentModel({ owner });
+
+  const agentCount = agentConfigurations.length;
+  const modelLabel = confirming
+    ? getModelWithReasoningEffortLabel(t, confirming)
+    : "";
 
   const updateModel = async () => {
     if (!confirming) {
@@ -125,7 +131,7 @@ export function SetModelAssistantsDialog({
             size="sm"
             variant="primary"
             isSelect
-            label="Set model"
+            label={t`Set model`}
             disabled={disabled}
           />
         </DropdownMenuTrigger>
@@ -148,7 +154,7 @@ export function SetModelAssistantsDialog({
             onSelectModel={onSelectModel}
             onChangeEffort={onChangeEffort}
             confirm={{
-              label: "Set model",
+              label: t`Set model`,
               disabled: !pending,
               onClick: () => {
                 setIsOpen(false);
@@ -169,23 +175,28 @@ export function SetModelAssistantsDialog({
         <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>
-              Set {agentConfigurations.length} agent
-              {pluralize(agentConfigurations.length)} to{" "}
-              {confirming && getModelWithReasoningEffortLabel(confirming)}?
+              <Plural
+                value={agentCount}
+                one={`Set # agent to ${modelLabel}?`}
+                other={`Set # agents to ${modelLabel}?`}
+              />
             </DialogTitle>
             <DialogDescription>
-              This will replace the current model and reasoning effort for every
-              selected agent. All other settings will remain unchanged.
+              <Trans>
+                This will replace the current model and reasoning effort for
+                every selected agent.
+              </Trans>{" "}
+              <Trans>All other settings will remain unchanged.</Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               disabled: isSaving,
             }}
             rightButtonProps={{
-              label: "Set model",
+              label: t`Set model`,
               variant: "primary",
               isLoading: isSaving,
               onClick: (event) => {

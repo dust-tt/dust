@@ -19,7 +19,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface SandboxImageCardProps {
@@ -141,7 +141,7 @@ export function SandboxTab({
   if (files.length === 0) {
     return (
       <div className="p-4 text-sm text-muted-foreground">
-        No files in the Computer yet.
+        <Trans>No files in the Computer yet.</Trans>
       </div>
     );
   }
@@ -152,7 +152,7 @@ export function SandboxTab({
         <div className="shrink-0 px-4 pt-4">
           <SearchInput
             name="sandbox-search"
-            placeholder="Search files..."
+            placeholder={t`Search files...`}
             value={search}
             onChange={setSearch}
           />

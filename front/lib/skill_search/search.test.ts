@@ -460,6 +460,7 @@ describe("custom skill search", () => {
       skills: [expected[0]],
       total: 3,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     });
   });
@@ -772,6 +773,7 @@ describe("custom skill search", () => {
         ),
         total: documents.length,
         hasMore: offset + pageDocuments.length < documents.length,
+        isFavoritesOnly: false,
         facets: {},
       });
       expect(mockSearch).toHaveBeenCalledOnce();

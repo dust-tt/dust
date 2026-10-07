@@ -13,6 +13,7 @@ import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Input, Label } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
@@ -51,6 +52,8 @@ export default function LLM({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
+
   const handleModelChange = (model: {
     provider_id: string;
     model_id: string;
@@ -137,10 +140,8 @@ export default function LLM({
   };
 
   const fewShotPresent =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (block.spec.few_shot_prompt && block.spec.few_shot_prompt.length > 0) ||
     (block.spec.few_shot_preprompt &&
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       block.spec.few_shot_preprompt.length > 0) ||
     (block.spec.few_shot_count && block.spec.few_shot_count > 0);
 
@@ -172,7 +173,9 @@ export default function LLM({
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
           <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-            <Label>Model</Label>
+            <Label>
+              <Trans>Model</Trans>
+            </Label>
             <ModelPicker
               owner={owner}
               readOnly={readOnly}
@@ -189,7 +192,9 @@ export default function LLM({
             />
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-            <Label>Temperature</Label>
+            <Label>
+              <Trans>Temperature</Trans>
+            </Label>
             <div className="flex flex-initial font-normal">
               <Input
                 type="text"
@@ -200,7 +205,9 @@ export default function LLM({
             </div>
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-            <div className="flex flex-initial">max tokens:</div>
+            <div className="flex flex-initial">
+              <Trans>max tokens:</Trans>
+            </div>
             <div className="flex flex-initial font-normal">
               <Input
                 type="text"
@@ -212,7 +219,9 @@ export default function LLM({
             </div>
           </div>
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-            <Label>Stop</Label>
+            <Label>
+              <Trans context="stop sequences, field label">Stop</Trans>
+            </Label>
             <div className="flex w-full font-normal">
               <div
                 className={classNames(
@@ -220,7 +229,6 @@ export default function LLM({
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {(block.spec.stop || ([] as string[])).map(
                     (stop: string, i: number) => (
                       <div
@@ -235,7 +243,10 @@ export default function LLM({
                 {readOnly ? null : (
                   <Input
                     type="text"
-                    placeholder="add"
+                    placeholder={t({
+                      message: "add",
+                      context: "stop sequence, input placeholder",
+                    })}
                     value={newStop}
                     onChange={(e) => setNewStop(e.target.value)}
                     readOnly={readOnly}
@@ -274,7 +285,7 @@ export default function LLM({
               <span>
                 <ChevronDownIcon className="mr-1 mt-0.5 h-4 w-4" />
               </span>
-              Advanced
+              <Trans>Advanced</Trans>
             </div>
           ) : (
             <div
@@ -284,7 +295,7 @@ export default function LLM({
               <span>
                 <ChevronRightIcon className="mr-1 mt-0.5 h-4 w-4" />
               </span>
-              Advanced
+              <Trans>Advanced</Trans>
             </div>
           )}
           {advancedExpanded ? (
@@ -372,7 +383,7 @@ export default function LLM({
               <div className="ml-6 flex flex-col">
                 <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
                   <div className="flex flex-initial items-center">
-                    introduction:
+                    <Trans>introduction:</Trans>
                   </div>
                   <div className="flex w-full font-normal">
                     <TextareaAutosize
@@ -394,7 +405,7 @@ export default function LLM({
 
                 <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
                   <div className="flex flex-initial items-center">
-                    examples:
+                    <Trans>examples:</Trans>
                   </div>
                   <div className="flex w-full font-normal">
                     <TextareaAutosize
@@ -415,7 +426,9 @@ export default function LLM({
                 </div>
 
                 <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
-                  <div className="flex flex-initial">count:</div>
+                  <div className="flex flex-initial">
+                    <Trans>count:</Trans>
+                  </div>
                   <div className="flex flex-initial font-normal">
                     <Input
                       type="text"
@@ -432,7 +445,9 @@ export default function LLM({
         ) : null}
 
         <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
-          <div className="flex flex-initial items-center">prompt:</div>
+          <div className="flex flex-initial items-center">
+            <Trans>prompt:</Trans>
+          </div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <SuspensedCodeEditor

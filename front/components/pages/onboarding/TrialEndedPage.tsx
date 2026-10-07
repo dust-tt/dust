@@ -10,6 +10,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAppRouter } from "@app/lib/platform";
 import type { BillingPeriod } from "@app/types/plan";
 import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useState } from "react";
 
 export function TrialEndedPage() {
@@ -43,7 +44,7 @@ export function TrialEndedPage() {
       <div className="mb-12 flex flex-col items-center">
         <DustLogo className="h-8 w-32" />
         <h1 className="mt-4 text-xl font-medium text-foreground">
-          Your free trial has ended
+          <Trans>Your free trial has ended</Trans>
         </h1>
       </div>
 
@@ -82,9 +83,11 @@ export function TrialEndedPage() {
           size="lg"
           className="text-center text-sm"
         >
-          Without a subscription, your agents and connections will be paused.{" "}
+          <Trans>
+            Without a subscription, your agents and connections will be paused.
+          </Trans>{" "}
           <span className="font-semibold">
-            We'll keep your data safe for 30 days.
+            <Trans>We'll keep your data safe for 30 days.</Trans>
           </span>
         </ContentMessage>
       </div>

@@ -20,6 +20,7 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 import Block from "./Block";
@@ -55,23 +56,21 @@ export default function DataSource({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
   const [newTagsIn, setNewTagsIn] = useState("");
   const [newTagsNot, setNewTagsNot] = useState("");
 
   const handleAddTagsIn = (tag: string) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.in) {
       b.config.filter.tags.in = [];
     }
@@ -82,18 +81,15 @@ export default function DataSource({
 
   const handleRemoveTagsIn = (index?: number) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.in) {
       b.config.filter.tags.in = [];
     }
@@ -116,18 +112,15 @@ export default function DataSource({
 
   const handleAddTagsNot = (tag: string) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.not) {
       b.config.filter.tags.not = [];
     }
@@ -138,18 +131,15 @@ export default function DataSource({
 
   const handleRemoveTagsNot = (index?: number) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter) {
       b.config.filter = {};
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags) {
       b.config.filter.tags = {
         in: null,
         not: null,
       };
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.filter.tags.not) {
       b.config.filter.tags.not = [];
     }
@@ -225,11 +215,12 @@ export default function DataSource({
       <div className="flex w-full flex-col gap-2">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center space-x-2">
-            <Label>Data Source</Label>
+            <Label>
+              <Trans>Data source</Trans>
+            </Label>
             <DataSourcePicker
               owner={owner}
               readOnly={readOnly}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               currentDataSources={block.config.data_sources || []}
               space={app.space}
               onDataSourcesUpdate={(dataSources) => {
@@ -249,10 +240,11 @@ export default function DataSource({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Label>Full Text</Label>
+            <Label>
+              <Trans>Full text</Trans>
+            </Label>
             <div className="flex flex-initial font-normal">
               <Checkbox
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 checked={block.spec.full_text || false}
                 onCheckedChange={(checked) => handleFullTextChange(!!checked)}
                 disabled={readOnly}
@@ -262,7 +254,9 @@ export default function DataSource({
         </div>
 
         <div className="flex flex-col space-y-1">
-          <Label>Query</Label>
+          <Label>
+            <Trans>Query</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <SuspensedCodeEditor
@@ -287,7 +281,7 @@ export default function DataSource({
 
         <div className="w-full">
           <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger label="Filters" />
+            <CollapsibleTrigger label={t`Filters`} />
             <CollapsibleContent>
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
@@ -317,7 +311,7 @@ export default function DataSource({
                         {!readOnly && (
                           <Input
                             type="text"
-                            placeholder="add tag"
+                            placeholder={t`add tag`}
                             value={newTagsIn}
                             onChange={(e) => setNewTagsIn(e.target.value)}
                             readOnly={readOnly}
@@ -346,7 +340,6 @@ export default function DataSource({
                           />
                         )}
                         <div className="flex flex-row gap-1">
-                          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                           {(block.config.filter?.tags?.in || []).map(
                             (tag: string, i: number) => (
                               <Chip
@@ -368,7 +361,7 @@ export default function DataSource({
                         {!readOnly && (
                           <Input
                             type="text"
-                            placeholder="add tag"
+                            placeholder={t`add tag`}
                             value={newTagsNot}
                             onChange={(e) => setNewTagsNot(e.target.value)}
                             readOnly={readOnly}
@@ -398,7 +391,6 @@ export default function DataSource({
                         )}
                         <div className="flex flex-row items-center">
                           <div className="flex flex-row gap-1">
-                            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                             {(block.config.filter?.tags?.not || []).map(
                               (tag: string, i: number) => (
                                 <Chip

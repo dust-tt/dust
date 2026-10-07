@@ -87,7 +87,6 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(errorData.error?.message || "Failed to execute query");
       }
 

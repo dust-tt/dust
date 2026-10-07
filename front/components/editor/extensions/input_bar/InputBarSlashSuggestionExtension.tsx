@@ -12,7 +12,9 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import { i18n } from "@app/lib/i18n/i18n";
 import type { WorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { RefObject } from "react";
 
@@ -30,6 +32,7 @@ type InputBarSlashSuggestionExtensionOptions = InputBarSlashMenuRefs & {
   enabledRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   owner?: WorkspaceType;
+  t: (descriptor: MessageDescriptor) => string;
 };
 
 export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
@@ -61,6 +64,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     slashCommandsRef: { current: [] },
     slashMenuModeRef: { current: "commands" },
     spaceIdRef: { current: null },
+    t: (descriptor) => i18n._(descriptor),
   },
   allow: ({ editor, state, range, isActive, options, storage }) =>
     Boolean(options.owner) &&
@@ -121,7 +125,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   onDropdownExit: ({ storage }) => {
     clearSlashSubMenuStack(storage);
   },
-  queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
+  queryPlaceholder: (options) => options.t(SLASH_MENU_QUERY_PLACEHOLDER),
   queryPlaceholderClassName: SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
   triggerClassName: SLASH_MENU_TRIGGER_CLASS_NAME,
   preventEscapeDefault: true,

@@ -5,6 +5,7 @@ import { useFileMetadata } from "@app/lib/swr/files";
 import { stripFileExtension } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, cn, Image01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 // "high" is retained for historical actions generated before the 4K tier was
 // removed from the agent-facing tool; the write path is now capped at "medium".
@@ -20,13 +21,14 @@ interface ReferenceImageChipProps {
 }
 
 function ReferenceImageChip({ fileId, owner }: ReferenceImageChipProps) {
+  const { t } = useLingui();
   const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
     fileId,
     owner,
   });
 
   const label = isFileMetadataLoading
-    ? "Loading..."
+    ? t`Loading...`
     : (fileMetadata?.fileName ?? fileId);
 
   return <Chip size="xs" color="highlight" label={label} />;
@@ -37,15 +39,15 @@ export function MCPImageGenerationActionDetails({
   toolParams,
   owner,
 }: ToolExecutionDetailsProps) {
+  const { t } = useLingui();
+  const actionName =
+    displayContext === "conversation" ? t`Generating image` : t`Generate image`;
+
   if (!isGenerateImageInputType(toolParams)) {
     return (
       <ActionDetailsWrapper
         displayContext={displayContext}
-        actionName={
-          displayContext === "conversation"
-            ? "Generating image"
-            : "Generate image"
-        }
+        actionName={actionName}
         visual={Image01}
       />
     );
@@ -53,15 +55,12 @@ export function MCPImageGenerationActionDetails({
 
   const { prompt, outputName, aspectRatio, referenceImages, quality } =
     toolParams;
+  const qualityLabel = quality ? QUALITY_LABELS[quality] : null;
 
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
-      actionName={
-        displayContext === "conversation"
-          ? "Generating image"
-          : "Generate image"
-      }
+      actionName={actionName}
       visual={Image01}
     >
       <div
@@ -84,9 +83,7 @@ export function MCPImageGenerationActionDetails({
             />
           )}
           {aspectRatio && <Chip size="xs" label={aspectRatio} />}
-          {quality && (
-            <Chip size="xs" label={`${QUALITY_LABELS[quality]} quality`} />
-          )}
+          {quality && <Chip size="xs" label={t`${qualityLabel} quality`} />}
         </div>
         <p
           className={cn(

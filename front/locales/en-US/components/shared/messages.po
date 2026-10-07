@@ -1,0 +1,223 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/shared/BecomeEditorButton.tsx
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "Becoming an editor..."
+msgstr "Becoming an editor..."
+
+#: front/components/shared/BecomeEditorButton.tsx
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "Become an editor"
+msgstr "Become an editor"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You are not an editor of this agent"
+msgstr "You are not an editor of this agent"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You can view this agent as a workspace admin. Become an editor to save changes."
+msgstr "You can view this agent as a workspace admin. Become an editor to save changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You are not an editor of this skill"
+msgstr "You are not an editor of this skill"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "You can view this skill as a workspace admin. Become an editor to save changes."
+msgstr "You can view this skill as a workspace admin. Become an editor to save changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "We could not load the agent editors. Retry before making changes."
+msgstr "We could not load the agent editors. Retry before making changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "We could not load the skill editors. Retry before making changes."
+msgstr "We could not load the skill editors. Retry before making changes."
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "Unable to verify editor access"
+msgstr "Unable to verify editor access"
+
+#: front/components/shared/BuilderEditorGateMessage.tsx
+msgid "Retry"
+msgstr "Retry"
+
+#: front/components/shared/BulkSelectionBar.tsx
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount, plural, one {# selected} other {# selected}}"
+
+#: front/components/shared/BulkSelectionBar.tsx
+msgctxt "clear the selection"
+msgid "Clear all"
+msgstr "Clear all"
+
+#: front/components/shared/RegionalFlag.tsx
+msgctxt "European Union"
+msgid "EU"
+msgstr "EU"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "This will remove the following elements from the agent:"
+msgstr "This will remove the following elements from the agent:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "This will remove the following elements from the skill:"
+msgstr "This will remove the following elements from the skill:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this Pod are used in the agent:"
+msgstr "The following elements from this Pod are used in the agent:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this Pod are used in the skill:"
+msgstr "The following elements from this Pod are used in the skill:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this space are used in the agent:"
+msgstr "The following elements from this space are used in the agent:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "The following elements from this space are used in the skill:"
+msgstr "The following elements from this space are used in the skill:"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Remove {spaceName} Pod"
+msgstr "Remove {spaceName} Pod"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Remove {spaceName} space"
+msgstr "Remove {spaceName} space"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "To remove this Pod, first update your instructions to remove the knowledge references."
+msgstr "To remove this Pod, first update your instructions to remove the knowledge references."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "To remove this space, first update your instructions to remove the knowledge references."
+msgstr "To remove this space, first update your instructions to remove the knowledge references."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "OK"
+msgstr "OK"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "{spaceName} can't be removed"
+msgstr "{spaceName} can't be removed"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "This space can't be removed from the skill because the skill uses knowledge or capabilities that belong to it."
+msgstr "This space can't be removed from the skill because the skill uses knowledge or capabilities that belong to it."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Update the skill to stop relying on these items, then remove the space."
+msgstr "Update the skill to stop relying on these items, then remove the space."
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Close"
+msgstr "Close"
+
+#: front/components/shared/RemoveSpaceDialog.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Data and access"
+msgstr "Data and access"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the agent."
+msgstr "Adding spaces or pods will make the data from each of them available to the agent."
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the skill."
+msgstr "Adding spaces or pods will make the data from each of them available to the skill."
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Search spaces and Pods"
+msgstr "Search spaces and Pods"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Spaces"
+msgstr "Spaces"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Used by other resources"
+msgstr "Used by other resources"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "No results found for your search"
+msgstr "No results found for your search"
+
+#: front/components/shared/SpaceSelectionSheet.tsx
+msgid "No spaces and Pods available"
+msgstr "No spaces and Pods available"
+
+#: front/components/shared/SpacesContext.tsx
+msgid "Failed to load spaces"
+msgstr "Failed to load spaces"
+
+#: front/components/shared/SpacesContext.tsx
+msgid "Unable to fetch workspace spaces. Please try again."
+msgstr "Unable to fetch workspace spaces. Please try again."
+
+#: front/components/shared/SuggestedChangeRow.tsx
+msgctxt "suggested change"
+msgid "Add"
+msgstr "Add"
+
+#: front/components/shared/SuggestedChangeRow.tsx
+msgctxt "suggested change"
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/shared/SuggestedEditors.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
+#: front/components/shared/SuggestedEditors.tsx
+msgid "Editors"
+msgstr "Editors"
+
+#: front/components/shared/SuggestionNewInstructionsBlock.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
+#: front/components/shared/getSuggestionStateChip.ts
+msgctxt "suggestion state"
+msgid "Accepted"
+msgstr "Accepted"
+
+#: front/components/shared/getSuggestionStateChip.ts
+msgctxt "suggestion state"
+msgid "Declined"
+msgstr "Declined"
+
+#: front/components/shared/getSuggestionStateChip.ts
+msgctxt "suggestion state"
+msgid "Outdated"
+msgstr "Outdated"

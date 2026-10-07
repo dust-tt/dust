@@ -388,6 +388,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         })),
         total: 3,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {},
       });
       for (const hit of body.skills) {
@@ -498,6 +499,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      isFavoritesOnly: false,
       facets: {},
     });
   });

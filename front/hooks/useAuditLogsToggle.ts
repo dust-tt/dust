@@ -1,5 +1,6 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import { areAuditLogsEnabled } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -11,7 +12,7 @@ interface UseAuditLogsToggleProps {
 
 export function useAuditLogsToggle({ owner }: UseAuditLogsToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
   const isEnabled = areAuditLogsEnabled(owner);
 
@@ -29,19 +30,10 @@ export function useAuditLogsToggle({ owner }: UseAuditLogsToggleProps) {
       });
 
       if (!res.ok) {
-        let description = "Failed to update audit logs setting";
-        try {
-          const body = await res.json();
-          if (body?.error?.message) {
-            description = body.error.message;
-          }
-        } catch {
-          // JSON parse failure — keep fallback
-        }
-        sendNotification({
-          type: "error",
+        const errorData = await getErrorFromResponse(res);
+        sendApiErrorNotification({
           title: "Failed to update audit logs setting",
-          description,
+          error: errorData,
         });
         return;
       }

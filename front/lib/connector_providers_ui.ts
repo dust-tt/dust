@@ -32,6 +32,8 @@ import {
   SnowflakeLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import type React from "react";
 import type { ComponentType } from "react";
 
@@ -62,7 +64,7 @@ export interface ConnectorOauthExtraConfigProps {
 type ConnectorPermissionsConfigurable =
   | {
       isPermissionsConfigurableBlocked: true;
-      permissionsDisabledPlaceholder: string;
+      permissionsDisabledPlaceholder: MessageDescriptor;
     }
   | {
       isPermissionsConfigurableBlocked?: never;
@@ -76,14 +78,14 @@ type ConnectorProviderUIDetails = {
   optionsComponent?: ComponentType<ConnectorOptionsProps>;
   advancedOptionsComponent?: ComponentType<ConnectorAdvancedOptionsProps>;
   description: string;
-  mismatchError: string;
-  limitations: string | null;
+  mismatchError: MessageDescriptor;
+  limitations: MessageDescriptor | null;
   oauthExtraConfigComponent?: (
     props: ConnectorOauthExtraConfigProps
   ) => React.JSX.Element;
   guideLink: string | null;
-  selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
-  emptyNodeLabel?: string;
+  selectLabel?: MessageDescriptor; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
+  emptyNodeLabel?: MessageDescriptor;
   isNested: boolean;
   isTitleFilterEnabled?: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
@@ -97,7 +99,7 @@ type ConnectorProviderUIDetails = {
 // TODO(slack 2025-06-19): Remove this function once the new app is published.
 export function getConnectorPermissionsConfigurableBlocked(
   provider?: ConnectorProvider | null
-): { blocked: boolean; placeholder?: string } {
+): { blocked: boolean; placeholder?: MessageDescriptor } {
   if (!provider) {
     return { blocked: false };
   }
@@ -135,10 +137,9 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   confluence: {
     ...CONNECTOR_METADATA.confluence,
     hide: false,
-    limitations:
-      "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
-    mismatchError: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
-    selectLabel: "Select pages",
+    limitations: msg`Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.`,
+    mismatchError: msg`You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
+    selectLabel: msg`Select pages`,
     getLogoComponent: () => {
       return ConfluenceLogo;
     },
@@ -151,9 +152,9 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   notion: {
     ...CONNECTOR_METADATA.notion,
     hide: false,
-    limitations: "External files and content behind links are not indexed.",
-    mismatchError: `You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
-    selectLabel: "Synchronized content",
+    limitations: msg`External files and content behind links are not indexed.`,
+    mismatchError: msg`You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
+    selectLabel: msg`Synchronized content`,
     getLogoComponent: () => {
       return NotionLogo;
     },
@@ -166,15 +167,14 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   google_drive: {
     ...CONNECTOR_METADATA.google_drive,
     hide: false,
-    limitations:
-      "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.",
-    mismatchError: `You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
-    selectLabel: "Select folders and files",
+    limitations: msg`Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.`,
+    mismatchError: msg`You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
+    selectLabel: msg`Select folders and files`,
     getLogoComponent: () => {
       return DriveLogo;
     },
     optionsComponent: createConnectorOptionsPdfEnabled(
-      "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+      msg`When enabled, PDF documents from your Google Drive will be synced and processed by Dust.`
     ),
     isNested: true,
     permissions: {
@@ -186,9 +186,9 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.slack,
     // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
     hide: true,
-    limitations: "External files and content behind links are not indexed.",
-    mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
-    selectLabel: "Select channels",
+    limitations: msg`External files and content behind links are not indexed.`,
+    mismatchError: msg`You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
+    selectLabel: msg`Select channels`,
     getLogoComponent: () => {
       return SlackLogo;
     },
@@ -205,12 +205,12 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     // set to N/A
     hide: true,
     isPermissionsConfigurableBlocked: true,
-    permissionsDisabledPlaceholder: "N/A",
+    permissionsDisabledPlaceholder: msg`N/A`,
     description: "N/A",
-    limitations: "N/A",
-    mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
+    limitations: msg`N/A`,
+    mismatchError: msg`You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
     guideLink: "https://docs.dust.tt/docs/slack-connection",
-    selectLabel: "N/A",
+    selectLabel: msg`N/A`,
     getLogoComponent: () => {
       return SlackLogo;
     },
@@ -225,10 +225,9 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   github: {
     ...CONNECTOR_METADATA.github,
     hide: false,
-    limitations:
-      "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories.",
-    mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
-    selectLabel: "Authorized content",
+    limitations: msg`Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories.`,
+    mismatchError: msg`You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
+    selectLabel: msg`Authorized content`,
     getLogoComponent: () => {
       return GithubLogo;
     },
@@ -242,10 +241,9 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   intercom: {
     ...CONNECTOR_METADATA.intercom,
     hide: false,
-    limitations:
-      "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
-    mismatchError: `You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
-    selectLabel: "Select pages",
+    limitations: msg`Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.`,
+    mismatchError: msg`You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
+    selectLabel: msg`Select pages`,
     getLogoComponent: () => {
       return IntercomLogo;
     },
@@ -259,16 +257,15 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   microsoft: {
     ...CONNECTOR_METADATA.microsoft,
     hide: false,
-    limitations:
-      "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced.",
-    mismatchError: `You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
-    selectLabel: "Select folders and files",
-    emptyNodeLabel: "Select the folder to enable file synchronization.",
+    limitations: msg`Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced.`,
+    mismatchError: msg`You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
+    selectLabel: msg`Select folders and files`,
+    emptyNodeLabel: msg`Select the folder to enable file synchronization.`,
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
     optionsComponent: createConnectorOptionsPdfEnabled(
-      "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+      msg`When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust.`
     ),
     advancedOptionsComponent: SensitivityLabelsConfig,
     isNested: true,
@@ -283,10 +280,10 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     hide: true,
     description:
       "Enable your Microsoft Teams bot integration to interact with Dust directly from Teams.",
-    limitations: "Bot must be enabled in organization settings.",
-    mismatchError: `You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
+    limitations: msg`Bot must be enabled in organization settings.`,
+    mismatchError: msg`You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
     guideLink: "https://docs.dust.tt/docs/dust-in-teams",
-    selectLabel: "Bot configuration",
+    selectLabel: msg`Bot configuration`,
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
@@ -302,7 +299,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.webcrawler,
     hide: false,
     limitations: null,
-    mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
+    mismatchError: msg`You cannot change the URL. Please add a new Public URL instead.`,
     getLogoComponent: () => {
       return Globe01;
     },
@@ -316,12 +313,12 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.snowflake,
     hide: false,
     limitations: null,
-    mismatchError: `You cannot change the Snowflake account. Please add a new Snowflake connection instead.`,
+    mismatchError: msg`You cannot change the Snowflake account. Please add a new Snowflake connection instead.`,
     getLogoComponent: () => {
       return SnowflakeLogo;
     },
     isNested: true,
-    selectLabel: "Select tables",
+    selectLabel: msg`Select tables`,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -330,9 +327,8 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   zendesk: {
     ...CONNECTOR_METADATA.zendesk,
     hide: false,
-    limitations:
-      "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
-    mismatchError: `You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
+    limitations: msg`Dust will index the content accessible to the authorized account only. Attachments are not indexed.`,
+    mismatchError: msg`You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
     getLogoComponent: () => {
       return ZendeskLogo;
     },
@@ -348,13 +344,13 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.bigquery,
     hide: false,
     limitations: null,
-    mismatchError: `You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
+    mismatchError: msg`You cannot change the BigQuery project. Please add a new BigQuery connection instead.`,
     getLogoComponent: () => {
       return BigQueryLogo;
     },
     optionsComponent: BigQueryOptionsView,
     isNested: true,
-    selectLabel: "Select tables",
+    selectLabel: msg`Select tables`,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -364,7 +360,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.salesforce,
     hide: true,
     limitations: null,
-    mismatchError: `You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead.`,
+    mismatchError: msg`You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead.`,
     getLogoComponent: () => {
       return SalesforceLogo;
     },
@@ -388,17 +384,14 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
       selected: "read",
       unselected: "none",
     },
-    limitations:
-      "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, " +
-      "except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to " +
-      "participants from that profile.",
-    mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
+    limitations: msg`OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to participants from that profile.`,
+    mismatchError: msg`You cannot change the Gong account. Please add a new Gong connection instead.`,
   },
   dust_project: {
     hide: true,
     description: "Use Dust Pod as a data source.",
     limitations: null,
-    mismatchError: `You cannot change the Dust Pod. Please add a new Dust Pod connection instead.`,
+    mismatchError: msg`You cannot change the Dust Pod. Please add a new Dust Pod connection instead.`,
     guideLink: null,
     getLogoComponent: () => {
       return DustLogoSquare;

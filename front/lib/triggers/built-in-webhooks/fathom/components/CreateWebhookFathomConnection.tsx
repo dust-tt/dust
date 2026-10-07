@@ -1,29 +1,31 @@
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { CREATABLE_RECORDING_TYPE_OPTIONS } from "@app/lib/triggers/built-in-webhooks/fathom/constants";
 import { CheckBoxWithTextAndDescription, Label, Page } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { TriggeredFor } from "fathom-typescript/sdk/models/shared";
 import { useEffect, useState } from "react";
 
 const CONTENT_OPTIONS = {
   transcript: {
     key: "include_transcript",
-    label: "Include Transcript",
-    description: "Include meeting transcript with speaker attribution",
+    label: msg`Include transcript`,
+    description: msg`Include meeting transcript with speaker attribution`,
   },
   summary: {
     key: "include_summary",
-    label: "Include Summary",
-    description: "Include AI-generated meeting summary",
+    label: msg`Include summary`,
+    description: msg`Include AI-generated meeting summary`,
   },
   actionItems: {
     key: "include_action_items",
-    label: "Include Action Items",
-    description: "Include extracted action items",
+    label: msg`Include action items`,
+    description: msg`Include extracted action items`,
   },
   crm: {
     key: "include_crm_matches",
-    label: "Include CRM Matches",
-    description: "Include linked CRM contacts and companies",
+    label: msg`Include CRM matches`,
+    description: msg`Include linked CRM contacts and companies`,
   },
 } as const;
 
@@ -32,6 +34,7 @@ export function CreateWebhookFathomConnection({
   onReadyToSubmitChange,
   connectionId,
 }: WebhookCreateFormComponentProps) {
+  const { t } = useLingui();
   const [selectedRecordingTypes, setSelectedRecordingTypes] = useState<
     TriggeredFor[]
   >(["shared_external_recordings", "shared_team_recordings"]);
@@ -91,25 +94,31 @@ export function CreateWebhookFathomConnection({
   return (
     <div className="space-y-6">
       <div>
-        <Page.H variant="h6">Configure Fathom Webhook</Page.H>
+        <Page.H variant="h6">
+          <Trans>Configure Fathom webhook</Trans>
+        </Page.H>
         <p className="text-element-700 mt-2 text-sm">
-          Select which recordings should trigger webhooks and what content to
-          include.
+          <Trans>
+            Select which recordings should trigger webhooks and what content to
+            include.
+          </Trans>
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <Label className="mb-2">Recording Types</Label>
+          <Label className="mb-2">
+            <Trans>Recording types</Trans>
+          </Label>
           <p className="text-element-600 mb-3 text-xs">
-            Select at least one type of recording to receive
+            <Trans>Select at least one type of recording to receive</Trans>
           </p>
           <div className="space-y-2">
             {CREATABLE_RECORDING_TYPE_OPTIONS.map((option) => (
               <CheckBoxWithTextAndDescription
                 key={option.value}
-                text={option.label}
-                description={option.description}
+                text={t(option.label)}
+                description={t(option.description)}
                 checked={selectedRecordingTypes.includes(option.value)}
                 onCheckedChange={() => handleRecordingTypeToggle(option.value)}
               />
@@ -118,36 +127,38 @@ export function CreateWebhookFathomConnection({
         </div>
 
         <div>
-          <Label className="mb-2">Content Options</Label>
+          <Label className="mb-2">
+            <Trans>Content options</Trans>
+          </Label>
           <p className="text-element-600 mb-3 text-xs">
-            Select at least one type of content to include
+            <Trans>Select at least one type of content to include</Trans>
           </p>
           <div className="space-y-2">
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS.transcript.label}
-              description={CONTENT_OPTIONS.transcript.description}
+              text={t(CONTENT_OPTIONS.transcript.label)}
+              description={t(CONTENT_OPTIONS.transcript.description)}
               checked={includeTranscript}
               onCheckedChange={(checked) =>
                 setIncludeTranscript(checked === true)
               }
             />
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS.summary.label}
-              description={CONTENT_OPTIONS.summary.description}
+              text={t(CONTENT_OPTIONS.summary.label)}
+              description={t(CONTENT_OPTIONS.summary.description)}
               checked={includeSummary}
               onCheckedChange={(checked) => setIncludeSummary(checked === true)}
             />
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS.actionItems.label}
-              description={CONTENT_OPTIONS.actionItems.description}
+              text={t(CONTENT_OPTIONS.actionItems.label)}
+              description={t(CONTENT_OPTIONS.actionItems.description)}
               checked={includeActionItems}
               onCheckedChange={(checked) =>
                 setIncludeActionItems(checked === true)
               }
             />
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS.crm.label}
-              description={CONTENT_OPTIONS.crm.description}
+              text={t(CONTENT_OPTIONS.crm.label)}
+              description={t(CONTENT_OPTIONS.crm.description)}
               checked={includeCrmMatches}
               onCheckedChange={(checked) =>
                 setIncludeCrmMatches(checked === true)

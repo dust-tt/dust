@@ -17,8 +17,8 @@ export async function updateWebsite(
   );
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error.message);
+    // Throw the API error response as is, for callers to display it through `formatError`.
+    throw await res.json();
   }
   return res.json();
 }
@@ -43,8 +43,8 @@ export async function createWebsite(
   );
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error.message);
+    // Throw the API error response as is, for callers to display it through `formatError`.
+    throw await res.json();
   }
   return res.json();
 }

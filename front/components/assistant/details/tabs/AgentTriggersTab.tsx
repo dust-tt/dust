@@ -25,6 +25,7 @@ import {
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 function getTriggerIcon(trigger: TriggerType) {
@@ -51,6 +52,7 @@ export function AgentTriggersTab({
   onEditTrigger,
   onAddTrigger,
 }: AgentTriggersTabProps) {
+  const { t } = useLingui();
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
@@ -76,17 +78,18 @@ export function AgentTriggersTab({
     setIsDeleting(false);
     setTriggerToDelete(null);
 
+    const triggerName = triggerToDelete.name;
     if (success) {
       sendNotification({
         type: "success",
-        title: "Trigger deleted",
-        description: `The trigger "${triggerToDelete.name}" has been deleted.`,
+        title: t`Trigger deleted`,
+        description: t`The trigger "${triggerName}" has been deleted.`,
       });
     } else {
       sendNotification({
         type: "error",
-        title: "Failed to delete trigger",
-        description: "An error occurred while deleting the trigger.",
+        title: t`Failed to delete trigger`,
+        description: t`An error occurred while deleting the trigger.`,
       });
     }
   };
@@ -95,16 +98,20 @@ export function AgentTriggersTab({
   // We might reconsider it, and display a "My triggers" section,
   // and a "How others automate this" section in the future.
   const filteredTriggers = useMemo(
-    () => triggers.filter((t) => t.isEditor),
+    () => triggers.filter((trigger) => trigger.isEditor),
     [triggers]
   );
+
+  const triggerToDeleteName = triggerToDelete?.name;
 
   return (
     <>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold">My triggers</h3>
+        <h3 className="text-sm font-semibold">
+          <Trans>My triggers</Trans>
+        </h3>
         <Button
-          label="Add trigger"
+          label={t`Add trigger`}
           icon={Plus}
           variant="outline"
           size="sm"
@@ -118,7 +125,7 @@ export function AgentTriggersTab({
         </div>
       ) : filteredTriggers.length === 0 ? (
         <div className="text-muted-foreground text-sm">
-          You have no triggers set up for this agent yet.
+          <Trans>You have no triggers set up for this agent yet.</Trans>
         </div>
       ) : (
         <CardGrid>
@@ -155,10 +162,14 @@ export function AgentTriggersTab({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete trigger</DialogTitle>
+            <DialogTitle>
+              <Trans>Delete trigger</Trans>
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the trigger "
-              {triggerToDelete?.name}"?
+              <Trans>
+                Are you sure you want to delete the trigger "
+                {triggerToDeleteName}"?
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           {isDeleting ? (
@@ -168,15 +179,17 @@ export function AgentTriggersTab({
           ) : (
             <>
               <DialogContainer>
-                <b>This action cannot be undone.</b>
+                <b>
+                  <Trans>This action cannot be undone.</Trans>
+                </b>
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
-                  label: "Cancel",
+                  label: t`Cancel`,
                   variant: "outline",
                 }}
                 rightButtonProps={{
-                  label: "Delete",
+                  label: t`Delete`,
                   variant: "warning",
                   onClick: handleDeleteTrigger,
                 }}

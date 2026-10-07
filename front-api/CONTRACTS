@@ -212,7 +212,8 @@ import { CoreAPI } from "@app/types/core/core_api";                // front
 Both aliases are configured in `tsconfig.json` and `vite.config.mjs`.
 Relative imports (`./sibling`, `../parent`) are still fine for files
 adjacent in the tree, but anything reaching across more than one segment
-should use the alias.
+should use the alias. `vite.config.mjs` is the exception: Vite loads it
+before the aliases exist, so it imports `front/` files with relative paths.
 
 @cc [label:api] requests-through-hono-context
 Middleware and handlers read what they need from Hono's `Context` directly

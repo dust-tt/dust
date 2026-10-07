@@ -14,6 +14,7 @@ import type {
 } from "@app/types/resources_icon_names";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { WebhookPresetMetadata } from "@app/types/triggers/webhooks_source_preset";
+import type { MessageDescriptor } from "@lingui/core";
 import type React from "react";
 
 // Full presets including icon and React components. Only import this from UI
@@ -26,7 +27,11 @@ export const CLIENT_SIDE_WEBHOOK_PRESETS = {
   zendesk: ZENDESK_CLIENT_SIDE_WEBHOOK_PRESET,
 } satisfies Record<WebhookProvider, ClientSideWebhookPreset>;
 
-export type ClientSideWebhookPreset = WebhookPresetMetadata & {
+export type ClientSideWebhookPreset = Omit<
+  WebhookPresetMetadata,
+  "description"
+> & {
+  description: MessageDescriptor;
   icon: InternalAllowedIconType | CustomResourceIconType;
 
   // React components to render the webhook details and creation form.

@@ -3,7 +3,6 @@ import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_
 import type { PodTasksCreateTasksInput } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { PodTaskSourceType } from "@app/types/project_task";
-import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   BookOpen01,
@@ -19,6 +18,9 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
 
@@ -48,24 +50,26 @@ function formatAssigneeLabel({
   currentUserId,
   memberDisplayById,
   isMembersLoading,
+  t,
 }: {
   userId: string | null | undefined;
   currentUserId: string;
   memberDisplayById: Record<string, { fullName: string }>;
   isMembersLoading: boolean;
+  t: (descriptor: MessageDescriptor) => string;
 }): string {
   if (userId === null || userId === undefined) {
-    return POD_TASK_NO_ASSIGNEE_LABEL;
+    return t(msg`No assignee`);
   }
   if (userId === currentUserId) {
-    return "You";
+    return t(msg`You`);
   }
   const member = memberDisplayById[userId];
   if (member) {
     return member.fullName;
   }
   if (isMembersLoading) {
-    return "Loading…";
+    return t(msg`Loading…`);
   }
   return userId;
 }
@@ -76,6 +80,7 @@ export function PodTasksCreateValidationDetails({
   user,
   conversationId,
 }: PodTasksCreateValidationDetailsProps) {
+  const { t } = useLingui();
   const { podLabel, isPodLabelLoading } = usePodLabel({
     owner,
     dustPodUri: input.dustPod?.uri,
@@ -96,32 +101,37 @@ export function PodTasksCreateValidationDetails({
 
   const taskCount = input.tasks.length;
   const doneCount = input.tasks.filter((task) => task.doneRationale).length;
+  const podName = isPodLabelLoading ? t`Loading…` : podLabel;
 
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
         {input.creatorType === "user" ? (
-          <>
+          <Trans>
             Review the{" "}
             <span className="font-medium text-foreground">{taskCount}</span>{" "}
-            task{taskCount === 1 ? "" : "s"} below before adding them to{" "}
-            <span className="font-medium text-foreground">
-              {isPodLabelLoading ? "Loading…" : podLabel}
-            </span>
-            .
-          </>
+            <Plural value={taskCount} one="task" other="tasks" /> below before
+            adding them to{" "}
+            <span className="font-medium text-foreground">{podName}</span>.
+          </Trans>
         ) : (
-          <>
+          <Trans>
             The agent wants to create{" "}
             <span className="font-medium text-foreground">{taskCount}</span>{" "}
-            task{taskCount === 1 ? "" : "s"} in{" "}
-            <span className="font-medium text-foreground">
-              {isPodLabelLoading ? "Loading…" : podLabel}
-            </span>
-            .
+            <Plural value={taskCount} one="task" other="tasks" /> in{" "}
+            <span className="font-medium text-foreground">{podName}</span>.
+          </Trans>
+        )}
+        {doneCount > 0 && (
+          <>
+            {" "}
+            <Plural
+              value={doneCount}
+              one="# will be marked as done immediately."
+              other="# will be marked as done immediately."
+            />
           </>
         )}
-        {doneCount > 0 && <> {doneCount} will be marked as done immediately.</>}
       </p>
 
       <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
@@ -131,6 +141,7 @@ export function PodTasksCreateValidationDetails({
             currentUserId: user.sId,
             memberDisplayById: membersById,
             isMembersLoading,
+            t,
           });
           const isDone = Boolean(task.doneRationale);
 
@@ -147,10 +158,16 @@ export function PodTasksCreateValidationDetails({
                   <p className="min-w-0 flex-1 break-words text-sm leading-5 text-foreground">
                     {task.text}
                   </p>
-                  {isDone && <Chip size="xs" color="success" label="Done" />}
+                  {isDone && (
+                    <Chip
+                      size="xs"
+                      color="success"
+                      label={t({ message: "Done", context: "task status" })}
+                    />
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Assignee: {assigneeLabel}
+                  <Trans>Assignee: {assigneeLabel}</Trans>
                 </p>
                 {task.doneRationale && (
                   <p className="text-xs italic text-muted-foreground">

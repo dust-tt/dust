@@ -24,6 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 import Block from "./Block";
@@ -59,6 +60,7 @@ export default function Input({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const { dataset, isDatasetLoading, isDatasetError } = useDataset(
     owner,
@@ -96,9 +98,10 @@ export default function Input({
         }
       );
       if (res.ok) {
+        const datasetName = block.config.dataset;
         sendNotification({
-          title: `Dataset updated`,
-          description: `The data of ${block.config.dataset} was successfully updated.`,
+          title: t`Dataset updated`,
+          description: t`The data of ${datasetName} was successfully updated.`,
           type: "success",
         });
       }
@@ -128,7 +131,9 @@ export default function Input({
           <div>
             {!((!block.config || !block.config.dataset) && readOnly) ? (
               <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-foreground">
-                <Label>Dataset</Label>
+                <Label>
+                  <Trans>Dataset</Trans>
+                </Label>
                 <DatasetPicker
                   owner={owner}
                   app={app}
@@ -141,7 +146,7 @@ export default function Input({
                     variant="outline"
                     onClick={() => setIsDatasetModalOpen(true)}
                     icon={readOnly ? Eye : Edit04}
-                    label={readOnly ? "View" : "Edit"}
+                    label={readOnly ? t`View` : t`Edit`}
                     size="xs"
                   />
                 ) : null}
@@ -168,7 +173,7 @@ export default function Input({
                           window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
                         }}
                         icon={Edit04}
-                        label="Edit schema"
+                        label={t`Edit schema`}
                       />
                     )}
                     <DatasetView
@@ -191,11 +196,11 @@ export default function Input({
                   </SheetContainer>
                   <SheetFooter
                     leftButtonProps={{
-                      label: "Cancel",
+                      label: t`Cancel`,
                       variant: "outline",
                     }}
                     rightButtonProps={{
-                      label: "Save",
+                      label: t`Save`,
                       onClick: onDatasetDataModalSave,
                       disabled: !datasetModalData,
                     }}

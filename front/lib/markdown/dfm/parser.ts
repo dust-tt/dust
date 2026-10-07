@@ -138,6 +138,23 @@ export function codeRanges(text: string): Range[] {
   return ranges;
 }
 
+/** The top-level code blocks of `text` whose language is `language`, in order. */
+export function topLevelCodeBlocks(
+  text: string,
+  language: string
+): (Range & { value: string })[] {
+  return fromMarkdown(text).children.flatMap((node) => {
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    return node.type === "code" &&
+      node.lang === language &&
+      start !== undefined &&
+      end !== undefined
+      ? [{ start, end, value: node.value }]
+      : [];
+  });
+}
+
 /**
  * True when a line at column 0 appended after `text` would land inside an unclosed code fence,
  * as the serializer's next block would. The parser answers: the fence is open when the last

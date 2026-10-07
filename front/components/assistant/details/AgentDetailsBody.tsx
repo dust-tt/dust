@@ -60,6 +60,9 @@ import {
   Users01,
   XClose,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 
 function triggerTypeToBuilderType(
@@ -99,33 +102,32 @@ function triggerTypeToBuilderType(
   }
 }
 
+const EMAIL_AGENTS_DOCS_URL =
+  "https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents";
+
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
   {
-    shortLabel: string;
-    label: string;
+    label: MessageDescriptor;
     color: "success" | "info" | "highlight" | "primary";
     icon?: typeof Users01 | undefined;
-    text: string;
+    text: MessageDescriptor;
   }
 > = {
   global: {
-    shortLabel: "Default",
-    label: "Default Agent",
+    label: msg`Default agent`,
     color: "primary",
-    text: "Default agents provided by Dust.",
+    text: msg`Default agents provided by Dust.`,
   },
   hidden: {
-    shortLabel: "Not published",
-    label: "Not published",
+    label: msg`Not published`,
     color: "primary",
-    text: "Hidden agents.",
+    text: msg`Hidden agents.`,
   },
   visible: {
-    shortLabel: "Published",
-    label: "Published",
+    label: msg`Published`,
     color: "success",
-    text: "Visible agents.",
+    text: msg`Visible agents.`,
   },
 } as const;
 
@@ -142,6 +144,7 @@ export function AgentDetailsBody({
   user,
   isInSidePanel = false,
 }: AgentDetailsBodyProps) {
+  const { t } = useLingui();
   const [selectedTab, setSelectedTab] = useState<
     "info" | "insights" | "editors" | "agent_memory" | "triggers"
   >("info");
@@ -241,6 +244,8 @@ export function AgentDetailsBody({
 
   const editedSections = useEditedAgentSections();
 
+  const agentEmail = `${agentConfiguration?.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
     const editedDate =
@@ -256,7 +261,7 @@ export function AgentDetailsBody({
         <div className="relative flex items-center justify-center">
           <div className="relative flex flex-col items-center gap-2">
             <Avatar
-              name="Agent avatar"
+              name={t`Agent avatar`}
               visual={agentConfiguration?.pictureUrl}
               size="xl"
             />
@@ -266,7 +271,7 @@ export function AgentDetailsBody({
                   size="mini"
                   color={SCOPE_INFO[agentConfiguration.scope].color}
                   icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
-                  label={SCOPE_INFO[agentConfiguration.scope].label}
+                  label={t(SCOPE_INFO[agentConfiguration.scope].label)}
                   className="shadow-sm"
                 />
                 {editedSections.has("scope") && <EditedDot />}
@@ -285,8 +290,13 @@ export function AgentDetailsBody({
           </div>
           {editedDate && (
             <p className="text-sm text-muted-foreground">
-              Last edited: {editedDate}
-              {lastAuthor && ` by ${lastAuthor}`}
+              {lastAuthor ? (
+                <Trans>
+                  Last edited: {editedDate} by {lastAuthor}
+                </Trans>
+              ) : (
+                <Trans>Last edited: {editedDate}</Trans>
+              )}
             </p>
           )}
         </div>
@@ -302,17 +312,19 @@ export function AgentDetailsBody({
         {agentConfiguration?.status === "archived" && (
           <>
             <ContentMessage
-              title="This agent has been archived."
+              title={t`This agent has been archived.`}
               variant="warning"
               icon={InfoCircle}
               size="sm"
             >
-              It is no longer active and cannot be used.
+              <Trans context="archived agent">
+                It is no longer active and cannot be used.
+              </Trans>
               <br />
               <div className="mt-2">
                 <Button
                   variant="outline"
-                  label="Restore"
+                  label={t`Restore`}
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}
@@ -359,7 +371,6 @@ export function AgentDetailsBody({
             )}
             hideButton={isInSidePanel}
           >
-            {/* eslint-disable-next-line react-hooks/static-components */}
             <DescriptionSection />
           </SheetHeader>
           <SheetContainer className="pb-4">
@@ -371,14 +382,14 @@ export function AgentDetailsBody({
                 <TabsList border={false}>
                   <TabsTrigger
                     value="info"
-                    label="Info"
+                    label={t`Info`}
                     icon={InfoCircle}
                     onClick={() => setSelectedTab("info")}
                   />
                   {showInsightsTabs && (
                     <TabsTrigger
                       value="insights"
-                      label="Insights"
+                      label={t`Insights`}
                       icon={BarChart01}
                       onClick={() => setSelectedTab("insights")}
                     />
@@ -386,7 +397,7 @@ export function AgentDetailsBody({
                   {showTriggersTabs && (
                     <TabsTrigger
                       value="triggers"
-                      label="Triggers"
+                      label={t`Triggers`}
                       icon={Bell01}
                       onClick={() => setSelectedTab("triggers")}
                     />
@@ -394,7 +405,7 @@ export function AgentDetailsBody({
                   {showEditorsTabs && (
                     <TabsTrigger
                       value="editors"
-                      label="Editors"
+                      label={t`Editors`}
                       icon={Users01}
                       iconRight={
                         editedSections.has("editors") ? (
@@ -407,7 +418,7 @@ export function AgentDetailsBody({
                   {showAgentMemory && (
                     <TabsTrigger
                       value="agent_memory"
-                      label="Memory"
+                      label={t`Memory`}
                       icon={Brain}
                       onClick={() => setSelectedTab("agent_memory")}
                     />
@@ -468,8 +479,8 @@ export function AgentDetailsBody({
             )}
             {isAgentConfigurationError?.error.type ===
               "agent_configuration_not_found" && (
-              <ContentMessage title="Not Available" icon={Lock01} size="md">
-                This agent is not available.
+              <ContentMessage title={t`Not available`} icon={Lock01} size="md">
+                <Trans>This agent is not available.</Trans>
               </ContentMessage>
             )}
           </SheetContainer>
@@ -489,14 +500,14 @@ export function AgentDetailsBody({
                   className="py-1"
                 >
                   <Markdown
-                    content={`Email this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Forward an email with your instructions and [get its reply](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents) in your inbox.`}
+                    content={t`Email this agent at \`${agentEmail}\`. Forward an email with your instructions and [get its reply](${EMAIL_AGENTS_DOCS_URL}) in your inbox.`}
                     forcedTextSize="text-xs"
                     optimizeForStreaming={false}
                   />
                   <ContentMessageAction
                     variant="ghost"
                     icon={XClose}
-                    tooltip="Dismiss email tip for all agents"
+                    tooltip={t`Dismiss email tip for all agents`}
                     onClick={dismissFooter}
                     isLoading={isDismissing}
                   />
@@ -524,6 +535,7 @@ function TriggerEditView({
   webhookSourceViews,
   onClose,
 }: TriggerEditViewProps) {
+  const { t } = useLingui();
   const {
     form,
     currentPageId,
@@ -592,7 +604,7 @@ function TriggerEditView({
       {!isOnSelectionPage && (
         <div className="flex flex-none justify-end gap-2 border-t border-border p-3">
           <Button
-            label="Cancel"
+            label={t`Cancel`}
             variant="outline"
             onClick={() => {
               handleCancel();
@@ -600,7 +612,7 @@ function TriggerEditView({
             }}
           />
           <Button
-            label="Save"
+            label={t`Save`}
             variant="primary"
             disabled={!canUseSelectedExecutionMode}
             onClick={form.handleSubmit(handleFormSubmit)}

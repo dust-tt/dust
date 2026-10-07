@@ -105,14 +105,14 @@ export type RunningSandboxDeltaReason = "create" | "wake" | "pause" | "kill";
 
 /**
  * @cc [owner:jdfiquet,label:backend] running-gauge-not-workspace-tagged
- * `sandbox.lifecycle.running` is tagged by region and sandbox_type
+ * `sandbox.lifecycle.running_delta` is tagged by region and sandbox_type
  * (conversation|frame) only. It is never tagged by workspace_id: that
  * cardinality blows past Datadog custom-metric limits. Per-workspace
  * drill-down is the log line this helper emits alongside the delta.
  */
 /**
  * @cc [owner:jdfiquet,label:backend] running-gauge-delta-pairing
- * +1 on provider create or wake (the sandbox is now running). -1 on pause
+ * Emit DogStatsD counter deltas: +1 on provider create or wake, -1 on pause
  * (sleep or approval pause) and on kill of a still-running sandbox. Killing
  * a sandbox that is already paused must not decrement again.
  */
@@ -131,7 +131,7 @@ export function recordRunningSandboxDelta({
   providerId: string;
   workspaceId: string;
 }): void {
-  statsDMetrics.gaugeDelta("sandbox.lifecycle.running", delta, [
+  statsDMetrics.increment("sandbox.lifecycle.running_delta", delta, [
     regionTag(),
     `sandbox_type:${sandboxType}`,
   ]);

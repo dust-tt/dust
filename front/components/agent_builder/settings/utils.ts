@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { BuilderSuggestionsType } from "@app/types/api/assistant";
 import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -31,12 +32,12 @@ export async function getNameSuggestions({
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
+      if (isAPIErrorResponse(errorData)) {
+        return new Err(errorData.error);
+      }
       return new Err({
         type: "internal_server_error",
-        message:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          errorData.error?.message ||
-          `HTTP ${res.status}: Failed to get name suggestions`,
+        message: `HTTP ${res.status}: Failed to get name suggestions`,
       });
     }
 
@@ -79,12 +80,12 @@ export async function getDescriptionSuggestion({
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
+      if (isAPIErrorResponse(errorData)) {
+        return new Err(errorData.error);
+      }
       return new Err({
         type: "internal_server_error",
-        message:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          errorData.error?.message ||
-          `HTTP ${res.status}: Failed to get description suggestion`,
+        message: `HTTP ${res.status}: Failed to get description suggestion`,
       });
     }
 
@@ -112,8 +113,10 @@ export async function fetchWithErr<T>(
       let errorMessage;
       try {
         const errorData = JSON.parse(errorText);
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        errorMessage = errorData.error?.message || errorData.error || errorText;
+        if (isAPIErrorResponse(errorData)) {
+          return new Err(errorData.error);
+        }
+        errorMessage = errorData.error || errorText;
       } catch {
         errorMessage = errorText;
       }

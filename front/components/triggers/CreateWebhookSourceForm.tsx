@@ -25,43 +25,39 @@ import {
   TextArea,
   XClose,
 } from "@dust-tt/sparkle";
-import { plural } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useMemo } from "react";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-export function useCreateWebhookSourceSchema() {
-  const { t } = useLingui();
-
-  return useMemo(
-    () =>
-      WebhookSourcesSchema.extend({
-        name: z.string().min(1, t`Name is required`),
-        autoGenerate: z.boolean().default(true),
-      })
-        .refine(
-          ({ provider, subscribedEvents }) =>
-            !provider || subscribedEvents.length > 0,
-          {
-            message: t`Subscribed events must not be empty.`,
-            path: ["subscribedEvents"],
-          }
-        )
-        .refine(
-          (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
-          {
-            message: t`Secret is required`,
-            path: ["secret"],
-          }
-        ),
-    [t]
-  );
+export function getCreateWebhookSourceSchema(
+  t: (descriptor: MessageDescriptor) => string
+) {
+  return WebhookSourcesSchema.extend({
+    name: z.string().min(1, t(msg`Name is required`)),
+    autoGenerate: z.boolean().default(true),
+  })
+    .refine(
+      ({ provider, subscribedEvents }) =>
+        !provider || subscribedEvents.length > 0,
+      {
+        message: t(msg`Subscribed events must not be empty.`),
+        path: ["subscribedEvents"],
+      }
+    )
+    .refine(
+      (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
+      {
+        message: t(msg`Secret is required`),
+        path: ["secret"],
+      }
+    );
 }
 
 export type CreateWebhookSourceFormData = z.infer<
-  ReturnType<typeof useCreateWebhookSourceSchema>
+  ReturnType<typeof getCreateWebhookSourceSchema>
 >;
 
 export type RemoteProviderData = Record<string, unknown>;

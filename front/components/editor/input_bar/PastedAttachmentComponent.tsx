@@ -1,4 +1,5 @@
 import { AttachmentChip, DoubleQuotes } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { NodeViewWrapper } from "@tiptap/react";
 
 interface PastedAttachmentComponentProps {
@@ -14,6 +15,7 @@ export function PastedAttachmentComponent({
   node,
   extension,
 }: PastedAttachmentComponentProps) {
+  const { t } = useLingui();
   const { title, fileId, textContent } = node.attrs;
   const { onInlineText } = extension.options;
 
@@ -23,7 +25,10 @@ export function PastedAttachmentComponent({
     }
   };
 
-  const displayTitle = `${title ?? "Pasted Attachment"} (click to inline)`;
+  const displayTitle =
+    title !== undefined && title !== null
+      ? t`${title} (click to inline)`
+      : t`Pasted attachment (click to inline)`;
   return (
     <NodeViewWrapper className="inline-flex align-middle">
       <div

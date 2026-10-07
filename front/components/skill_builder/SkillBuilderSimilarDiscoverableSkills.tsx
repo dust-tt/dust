@@ -2,7 +2,7 @@ import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkill
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
+import { useSimilarSkills } from "@app/lib/swr/skill_configurations";
 import type {
   SkillAvailability,
   SkillWithoutInstructionsAndToolsType,
@@ -23,7 +23,6 @@ export function SkillBuilderSimilarDiscoverableSkills() {
   const { owner, skillId } = useSkillBuilderContext();
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
-  const { skills } = useSkills({ owner });
 
   const availability = useWatch<SkillBuilderFormData, "availability">({
     name: "availability",
@@ -51,14 +50,11 @@ export function SkillBuilderSimilarDiscoverableSkills() {
       if (!signal.aborted) {
         setIsLoading(false);
         if (result.isOk()) {
-          const similarSkillIds = new Set(result.value);
-          setSimilarSkills(
-            skills.filter((skill) => similarSkillIds.has(skill.sId))
-          );
+          setSimilarSkills(result.value);
         }
       }
     },
-    [getSimilarSkills, skillId, skills]
+    [getSimilarSkills, skillId]
   );
 
   const triggerSimilarSkillsFetch = useDebounceWithAbort(fetchSimilarSkills, {

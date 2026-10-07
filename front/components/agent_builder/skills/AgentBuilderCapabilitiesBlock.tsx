@@ -17,7 +17,6 @@ import type {
 } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
@@ -41,7 +40,6 @@ import {
   EmptyCTA,
   Hoverable,
   ShapesPlus,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useRef, useState } from "react";
@@ -132,14 +130,12 @@ export function AgentBuilderCapabilitiesBlock({
     mcpServerViewsWithoutKnowledge,
     mcpServerViews,
   } = useMCPServerViewsContext();
-  const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
   const { alreadyAddedSkillIds } = useSkillsAndActionsState(
     skillFields,
     actionFields,
     mcpServerViews,
-    allSkills,
     spaces
   );
 
@@ -332,11 +328,7 @@ export function AgentBuilderCapabilitiesBlock({
       }
     >
       <div className="flex-1">
-        {isSkillsLoading ? (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ) : hasCapabilitiesConfigured ? (
+        {hasCapabilitiesConfigured ? (
           <CardGrid>
             {skillFields.map((field, index) => (
               <SkillCard

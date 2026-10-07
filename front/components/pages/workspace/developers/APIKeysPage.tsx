@@ -9,7 +9,10 @@ import { EditKeyCreditCapDialog } from "@app/components/workspace/api-keys/EditK
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
@@ -27,7 +30,6 @@ import type { WorkspaceType } from "@app/types/user";
 import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -147,6 +149,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
     owner,
   });
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
@@ -188,10 +191,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           return;
         }
         const errorResponse = await response.json();
-        sendNotification({
+        sendApiErrorNotification({
           title: t`Error creating API key`,
-          description: get(errorResponse, "error.message", t`Unknown error`),
-          type: "error",
+          error: errorResponse,
         });
       }
     );
@@ -232,10 +234,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
         setEditCapKey(null);
       } else {
         const errorResponse = await response.json();
-        sendNotification({
+        sendApiErrorNotification({
           title: t`Error updating monthly cap`,
-          description: get(errorResponse, "error.message", t`Unknown error`),
-          type: "error",
+          error: errorResponse,
         });
       }
     });
@@ -266,10 +267,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
         setEditCapKey(null);
       } else {
         const errorResponse = await response.json();
-        sendNotification({
+        sendApiErrorNotification({
           title: t`Error updating credit cap`,
-          description: get(errorResponse, "error.message", t`Unknown error`),
-          type: "error",
+          error: errorResponse,
         });
       }
     });

@@ -1,3 +1,4 @@
+import { MODELS_TIER_DISPLAY_NAMES } from "@app/components/model_picker/modelPickerUtils";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ModelTierExplainerTier } from "@app/lib/client/model_tiers_explainer";
 import { getModelTierExplainer } from "@app/lib/client/model_tiers_explainer";
@@ -62,7 +63,7 @@ function TierCard({ tier }: TierCardProps) {
   const { t } = useLingui();
   const { priceClassName } = TIER_PRESENTATION[tier.name];
   const costLabel = t(TIER_PRESENTATION[tier.name].costLabel);
-  const tierName = tier.displayName;
+  const tierName = t(MODELS_TIER_DISPLAY_NAMES[tier.name]);
 
   return (
     <Collapsible>
@@ -81,7 +82,7 @@ function TierCard({ tier }: TierCardProps) {
             </span>
             <div className="flex flex-1 flex-col gap-0.5">
               <span className="heading-sm text-foreground dark:text-foreground-night">
-                {tier.displayName}
+                {tierName}
               </span>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {tier.description}

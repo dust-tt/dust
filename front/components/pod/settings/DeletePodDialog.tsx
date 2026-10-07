@@ -17,6 +17,7 @@ import {
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ChangeEvent } from "react";
 import { useCallback, useState } from "react";
 
@@ -26,6 +27,8 @@ interface DeletePodDialogProps {
 }
 
 export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
+  const { t } = useLingui();
+  const podName = pod.name;
   const router = useAppRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -55,12 +58,12 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
     >
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-start">
-          <Button icon={Trash01} variant="warning" label="Delete Pod" />
+          <Button icon={Trash01} variant="warning" label={t`Delete Pod`} />
         </div>
       </DialogTrigger>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>{`Delete ${pod.name}?`}</DialogTitle>
+          <DialogTitle>{t`Delete ${podName}?`}</DialogTitle>
         </DialogHeader>
         {isDeleting ? (
           <div className="flex justify-center py-8">
@@ -70,8 +73,10 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
           <>
             <DialogContainer className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Type <strong>delete</strong> below to confirm. This permanently
-                removes all Pod content and cannot be undone.
+                <Trans>
+                  Type <strong>delete</strong> below to confirm. This
+                  permanently removes all Pod content and cannot be undone.
+                </Trans>
               </p>
               <Input
                 name="delete-confirm"
@@ -79,17 +84,17 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   setConfirmText(e.target.value)
                 }
-                placeholder="Type delete to confirm"
+                placeholder={t`Type delete to confirm`}
                 containerClassName="w-full"
               />
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
-                label: "Cancel",
+                label: t`Cancel`,
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete permanently",
+                label: t`Delete permanently`,
                 variant: "warning",
                 disabled: confirmText.trim().toLowerCase() !== "delete",
                 onClick: async () => {

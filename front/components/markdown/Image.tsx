@@ -9,6 +9,7 @@ import {
 import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Citation, CitationImage } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { visit } from "unist-util-visit";
 
 interface ImgProps {
@@ -17,6 +18,7 @@ interface ImgProps {
   owner: LightWorkspaceType;
 }
 function Img({ src, alt, owner }: ImgProps) {
+  const { t } = useLingui();
   const matches = src?.match(FILE_ID_REGEX);
   const fileId = matches?.length === 1 ? matches[0] : null;
 
@@ -43,7 +45,7 @@ function Img({ src, alt, owner }: ImgProps) {
         <CitationImage
           imgSrc={viewURL.toString()}
           downloadUrl={downloadURL.toString()}
-          title={alt || "Loading..."}
+          title={alt || t`Loading...`}
           isLoading={true}
         />
       </Citation>
@@ -70,7 +72,6 @@ function Img({ src, alt, owner }: ImgProps) {
 export function imgDirective() {
   return (tree: any) => {
     visit(tree, ["image"], (node) => {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const data = node.data || (node.data = {});
       data.hName = "dustimg";
       data.hProperties = {

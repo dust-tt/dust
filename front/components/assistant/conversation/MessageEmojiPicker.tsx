@@ -8,6 +8,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface MessageEmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
@@ -20,6 +21,7 @@ export function MessageEmojiPicker({
   onOpenChange,
   className,
 }: MessageEmojiPickerProps) {
+  const { t } = useLingui();
   const handleSelect = (emoji: string) => {
     onEmojiSelect(emoji);
   };
@@ -30,7 +32,7 @@ export function MessageEmojiPicker({
       <PopoverTrigger asChild>
         <Button
           key="emoji-picker-button"
-          tooltip="Add reaction"
+          tooltip={t`Add reaction`}
           variant="outline"
           size="xmini"
           icon={FaceSmile}

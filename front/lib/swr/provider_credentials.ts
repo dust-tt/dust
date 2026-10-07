@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetProviderCredentialsResponseBody,
@@ -56,6 +59,7 @@ export function useSaveProviderCredential({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
   const [isSaving, setIsSaving] = useState(false);
@@ -81,10 +85,9 @@ export function useSaveProviderCredential({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to save API key",
-            description: error.message,
+            error,
           });
           return null;
         }
@@ -113,7 +116,7 @@ export function useSaveProviderCredential({
         setIsSaving(false);
       }
     },
-    [owner.sId, sendNotification, mutate]
+    [owner.sId, sendNotification, mutate, sendApiErrorNotification]
   );
 
   return { saveProviderCredential, isSaving };
@@ -124,6 +127,7 @@ export function useDeleteProviderCredential({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -143,10 +147,9 @@ export function useDeleteProviderCredential({
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to remove API key",
-            description: error.message,
+            error,
           });
           return false;
         }
@@ -172,7 +175,7 @@ export function useDeleteProviderCredential({
         setIsDeleting(false);
       }
     },
-    [owner.sId, sendNotification, mutate]
+    [owner.sId, sendNotification, mutate, sendApiErrorNotification]
   );
 
   return { deleteProviderCredential, isDeleting };

@@ -9,8 +9,8 @@ import {
   isModelHostedInRegion,
   isModelLocked,
   isTierResolvedModelHostedInRegion,
-  PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
+import { i18n } from "@app/lib/i18n/i18n";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -237,19 +237,22 @@ describe("modelPickerUtils premium gating", () => {
   describe("getEffortStopTooltip", () => {
     it("explains why an effort is unselectable", () => {
       expect(
-        getEffortStopTooltip({
+        getEffortStopTooltip((descriptor) => i18n._(descriptor), {
           effort: "low",
           unavailabilityReason: null,
         })
       ).toBeNull();
       expect(
-        getEffortStopTooltip({
+        getEffortStopTooltip((descriptor) => i18n._(descriptor), {
           effort: "high",
           unavailabilityReason: "premium",
         })
-      ).toBe(PREMIUM_MODEL_LOCKED_TOOLTIP);
+      ).toBe(
+        "This option isn't available on your workspace's current plan. " +
+          "Contact your administrator to upgrade."
+      );
       expect(
-        getEffortStopTooltip({
+        getEffortStopTooltip((descriptor) => i18n._(descriptor), {
           effort: "medium",
           unavailabilityReason: "model_tier",
         })

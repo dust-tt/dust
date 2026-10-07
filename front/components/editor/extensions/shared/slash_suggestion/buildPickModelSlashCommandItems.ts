@@ -7,10 +7,10 @@ import {
   buildTierSelection,
   getEffortStops,
   getInitialEffort,
-  getReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
   isModelLocked,
+  LOWERCASE_REASONING_EFFORT_LABELS,
   MODEL_TIERS,
 } from "@app/components/model_picker/modelPickerUtils";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -25,7 +25,10 @@ import {
 } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import type { MessageDescriptor } from "@lingui/core";
 import type { ComponentType } from "react";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 // Match the model picker's effort slider: one row per selectable stop, or a
 // single `none` row for non-reasoning models that have no slider stops.
@@ -200,10 +203,12 @@ function buildTierSlashCommandItems({
   lockPremiumEfforts,
   streamModels,
   streams,
+  t,
 }: {
   lockPremiumEfforts: boolean;
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
+  t: Translate;
 }): SelectModelSlashCommand[] {
   const items: SelectModelSlashCommand[] = [];
 
@@ -220,10 +225,10 @@ function buildTierSlashCommandItems({
     items.push({
       action: SELECT_MODEL_SLASH_COMMAND_ACTION,
       data: { selection },
-      description: getTierResolvedModelLabel(tier.id, streams),
+      description: getTierResolvedModelLabel(t, tier.id, streams),
       icon: MODEL_TIER_ICON[tier.id],
       id: `tier-${tier.id}`,
-      label: tier.name,
+      label: t(tier.name),
     });
   }
 
@@ -249,12 +254,14 @@ export function buildPickModelSlashCommandItems({
   models,
   query,
   streams,
+  t,
 }: {
   getModelIcon: (model: EnabledModelConfigurationType) => ComponentType;
   lockPremiumEfforts: boolean;
   models: EnabledModelConfigurationType[];
   query: string;
   streams: ModelStreamResolutionsType | null;
+  t: Translate;
 }): SelectModelSlashCommand[] {
   const selectableModels = models.filter(
     (model) => !isModelStreamId(model.modelId) && model.isSelectable
@@ -266,6 +273,7 @@ export function buildPickModelSlashCommandItems({
       lockPremiumEfforts,
       streamModels,
       streams,
+      t,
     }),
   ];
 
@@ -280,14 +288,17 @@ export function buildPickModelSlashCommandItems({
         display: { kind: "model", model, effort },
         toSend: buildModelSelection(model, effort),
       };
-      const effortLabel = getReasoningEffortLabel(effort)?.toLowerCase();
+      const effortLabel =
+        effort !== "none" || efforts.length > 1
+          ? t(LOWERCASE_REASONING_EFFORT_LABELS[effort])
+          : undefined;
 
       items.push({
         action: SELECT_MODEL_SLASH_COMMAND_ACTION,
         data: { selection },
         description: getModelMakerDisplayName(getModelMaker(model)),
         // A model that cannot reason has a single row, left without a chip.
-        endChipLabel: effortLabel ?? (efforts.length > 1 ? "none" : undefined),
+        endChipLabel: effortLabel,
         icon,
         id: `${model.providerId}/${model.modelId}/${effort}`,
         label: model.displayName,

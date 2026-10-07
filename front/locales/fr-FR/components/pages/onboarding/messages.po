@@ -1,0 +1,755 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Please enter a promotion code"
+msgstr "Veuillez saisir un code promo"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Pro seat"
+msgstr "Siège Pro"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Max seat"
+msgstr "Siège Max"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "{couponAmount} valid for {couponDurationMonths, plural, one {# month} other {# months}}"
+msgstr "{couponAmount} valable {couponDurationMonths, plural, one {# mois} other {# mois}}"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "billed annually"
+msgstr "facturé annuellement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "billed monthly"
+msgstr "facturé mensuellement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Price per seat"
+msgstr "Prix par siège"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Number of seats"
+msgstr "Nombre de sièges"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Subtotal"
+msgstr "Sous-total"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Enter promotion code"
+msgstr "Saisir un code promo"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Applying…"
+msgstr "Application…"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Apply"
+msgstr "Appliquer"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Add promotion code"
+msgstr "Ajouter un code promo"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Taxes"
+msgstr "Taxes"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Total due with taxes"
+msgstr "Total dû TTC"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Total due excl. taxes"
+msgstr "Total dû HT"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Your country selection determines the applicable taxes and billing currency."
+msgstr "Le pays sélectionné détermine les taxes applicables et la devise de facturation."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "You're all set!"
+msgstr "Tout est prêt !"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Your <0>{planName}</0> seat is ready with <1>{monthlyCredits}</1> credits a month. Let's build something."
+msgstr "Votre siège <0>{planName}</0> est prêt avec <1>{monthlyCredits}</1> crédits par mois. À vous de jouer."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "View receipt"
+msgstr "Voir le reçu"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Start building"
+msgstr "Commencer"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Couldn't load payment details"
+msgstr "Impossible de charger les informations de paiement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Your payment was not processed and you have not been charged. Please try again."
+msgstr "Votre paiement n’a pas été traité et vous n’avez pas été débité. Veuillez réessayer."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "If the issue persists, contact us at <0>support@dust.tt</0>."
+msgstr "Si le problème persiste, contactez-nous à <0>support@dust.tt</0>."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Select payment method"
+msgstr "Sélectionner un moyen de paiement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Your available payment method is shown below"
+msgstr "Votre moyen de paiement disponible est affiché ci-dessous"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Confirm payment"
+msgstr "Confirmer le paiement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Something went wrong with your subscription"
+msgstr "Un problème est survenu avec votre abonnement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Your subscription could not be activated. You have not been charged. Please try again."
+msgstr "Votre abonnement n’a pas pu être activé. Vous n’avez pas été débité. Veuillez réessayer."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Coupon no longer valid"
+msgstr "Coupon non valide"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "This coupon is no longer valid. You have not been charged. Please try again with a different code."
+msgstr "Ce coupon n’est plus valide. Vous n’avez pas été débité. Veuillez réessayer avec un autre code."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Payment failed"
+msgstr "Échec du paiement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Your payment could not be processed and you have not been charged. Please try again."
+msgstr "Votre paiement n’a pas pu être traité et vous n’avez pas été débité. Veuillez réessayer."
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Setting up your subscription"
+msgstr "Configuration de votre abonnement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Processing payment"
+msgstr "Traitement du paiement"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Activating your workspace"
+msgstr "Activation de votre workspace"
+
+#: front/components/pages/onboarding/CheckoutPage.tsx
+msgid "Try again"
+msgstr "Réessayer"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgctxt "workspace role"
+msgid "admin"
+msgstr "administrateur"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgctxt "workspace role"
+msgid "manager"
+msgstr "manager"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgctxt "workspace role"
+msgid "user"
+msgstr "utilisateur"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Joining Dust"
+msgstr "Rejoindre Dust"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "Hello {firstName}!"
+msgstr "Bonjour {firstName} !"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgid "We couldn't find any pending invitations for {email}. Please contact your workspace admin or try another email address."
+msgstr "Nous n’avons trouvé aucune invitation en attente pour {email}. Veuillez contacter l’administrateur de votre workspace ou essayer une autre adresse e-mail."
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgid "We couldn't find any pending invitations for your account. Please contact your workspace admin or try another email address."
+msgstr "Nous n’avons trouvé aucune invitation en attente pour votre compte. Veuillez contacter l’administrateur de votre workspace ou essayer une autre adresse e-mail."
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgid "Choose the workspace you would like to join:"
+msgstr "Choisissez le workspace que vous souhaitez rejoindre :"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgid "Role: {role}"
+msgstr "Rôle : {role}"
+
+#: front/components/pages/onboarding/InviteChoosePage.tsx
+msgid "Join"
+msgstr "Rejoindre"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Something went wrong"
+msgstr "Une erreur s’est produite"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "We couldn't load the invitation. Please try again."
+msgstr "Impossible de charger l’invitation. Veuillez réessayer."
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Retry"
+msgstr "Réessayer"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Hello there!"
+msgstr "Bonjour !"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Welcome aboard!"
+msgstr "Bienvenue à bord !"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Please log in or sign up with your company email to access this conversation."
+msgstr "Veuillez vous connecter ou vous inscrire avec votre e-mail professionnel pour accéder à cette conversation."
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "You've been invited to join <0>{workspaceName}'s workspace on Dust</0>."
+msgstr "Vous avez été invité à rejoindre <0>le workspace {workspaceName} sur Dust</0>."
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Dust is a platform giving you access to the best AI agents. It's easy to use and it's a great place for teams to collaborate. Learn more about Dust on <0>our website</0>."
+msgstr "Dust est une plateforme qui vous donne accès aux meilleurs agents IA. Elle est simple à utiliser et idéale pour collaborer en équipe. Découvrez-en plus sur Dust sur <0>notre site web</0>."
+
+#: front/components/pages/onboarding/JoinPage.tsx
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Sign in"
+msgstr "Se connecter"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "Sign up"
+msgstr "S’inscrire"
+
+#: front/components/pages/onboarding/JoinPage.tsx
+msgid "By signing up, you accept Dust's <0>terms and conditions</0>."
+msgstr "En vous inscrivant, vous acceptez les <0>conditions générales</0> de Dust."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "We couldn't log you in."
+msgstr "Nous n’avons pas pu vous connecter."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "The domain {emailDomain} attached to your email address is not authorized to join this workspace."
+msgstr "Le domaine {emailDomain} associé à votre adresse e-mail n’est pas autorisé à rejoindre ce workspace."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "The domain attached to your email address is not authorized to join this workspace."
+msgstr "Le domaine associé à votre adresse e-mail n’est pas autorisé à rejoindre ce workspace."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Please contact your workspace admin to get access or contact us at support@dust.tt for assistance."
+msgstr "Veuillez contacter l’administrateur de votre workspace pour obtenir l’accès, ou contactez-nous à support@dust.tt pour obtenir de l’aide."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Oops! Looks like you're not authorized to access this application yet."
+msgstr "Oups ! Il semble que vous ne soyez pas encore autorisé à accéder à cette application."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "To gain access, please ask your workspace administrator to add you or your domain."
+msgstr "Pour obtenir l’accès, demandez à l’administrateur de votre workspace de vous ajouter, vous ou votre domaine."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Need more help? Email us at support@dust.tt."
+msgstr "Besoin d’aide ? Écrivez-nous à support@dust.tt."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Unfortunately, we cannot provide access to Dust at this time."
+msgstr "Malheureusement, nous ne pouvons pas vous donner accès à Dust pour le moment."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Have a nice day."
+msgstr "Bonne journée."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Keep an eye<0/>on your inbox!"
+msgstr "Surveillez<0/>votre boîte de réception !"
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "For your security, we need to verify your email address."
+msgstr "Pour votre sécurité, nous devons vérifier votre adresse e-mail."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Check your inbox for a verification email."
+msgstr "Consultez votre boîte de réception pour trouver l’e-mail de vérification."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Not seeing it?"
+msgstr "Vous ne le voyez pas ?"
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Check your spam folder."
+msgstr "Vérifiez votre dossier de spams."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "The invitation is no longer valid."
+msgstr "L’invitation n’est plus valide."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "To gain access, please ask your workspace administrator to add you."
+msgstr "Pour obtenir l’accès, demandez à l’administrateur de votre workspace de vous ajouter."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "It looks like there's a mismatch between the invitation and the email address provided."
+msgstr "L’invitation ne correspond pas à l’adresse e-mail fournie."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Please verify your email or contact your workspace administrator for assistance."
+msgstr "Veuillez vérifier votre e-mail ou contacter l’administrateur de votre workspace pour obtenir de l’aide."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Your access to the workspace has expired!"
+msgstr "Votre accès au workspace a expiré !"
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Contact your workspace administrator to update your role."
+msgstr "Contactez l’administrateur de votre workspace pour mettre à jour votre rôle."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Please contact us at support@dust.tt for assistance."
+msgstr "Veuillez nous contacter à support@dust.tt pour obtenir de l’aide."
+
+#: front/components/pages/onboarding/LoginErrorPage.tsx
+msgid "Back to homepage"
+msgstr "Retour à l’accueil"
+
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "Sign out"
+msgstr "Se déconnecter"
+
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "{companyName} already has a Dust workspace."
+msgstr "{companyName} a déjà un workspace Dust."
+
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "To join the existing workspace of your company,<0> please request an invitation from your <1/>colleagues,</0> then use the link provided in the invitation email to access the workspace."
+msgstr "Pour rejoindre le workspace existant de votre entreprise,<0> demandez une invitation à vos <1/>collègues,</0> puis utilisez le lien fourni dans l’e-mail d’invitation pour accéder au workspace."
+
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "You no longer have access to {workspaceName}'s Dust workspace."
+msgstr "Vous n’avez plus accès au workspace Dust {workspaceName}."
+
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "You may have been removed from the workspace or the workspace may have reached its maximum number of users."
+msgstr "Vous avez peut-être été retiré du workspace, ou le workspace a atteint son nombre maximal d’utilisateurs."
+
+#: front/components/pages/onboarding/NoWorkspacePage.tsx
+msgid "Please <0>contact the administrator in {workspaceName}</0> for more information or to add you again."
+msgstr "Veuillez <0>contacter l’administrateur de {workspaceName}</0> pour en savoir plus ou pour être ajouté à nouveau."
+
+#: front/components/pages/onboarding/PaymentProcessingPage.tsx
+msgid "Payment processing timed out."
+msgstr "Le traitement du paiement a expiré."
+
+#: front/components/pages/onboarding/PaymentProcessingPage.tsx
+msgid "Payment processing"
+msgstr "Traitement du paiement"
+
+#: front/components/pages/onboarding/PaymentProcessingPage.tsx
+msgid "Something went wrong while setting up your subscription: {error}"
+msgstr "Une erreur s’est produite lors de la configuration de votre abonnement : {error}"
+
+#: front/components/pages/onboarding/PaymentProcessingPage.tsx
+msgid "Back to subscribe"
+msgstr "Retour à l’abonnement"
+
+#: front/components/pages/onboarding/PaymentProcessingPage.tsx
+msgid "Processing"
+msgstr "Traitement en cours"
+
+#: front/components/pages/onboarding/SelectSubscriptionPage.tsx
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Choose your plan"
+msgstr "Choisissez votre forfait"
+
+#: front/components/pages/onboarding/SelectSubscriptionPage.tsx
+msgid "Choose how you want to start"
+msgstr "Choisissez comment commencer"
+
+#: front/components/pages/onboarding/SelectSubscriptionPage.tsx
+msgid "Free to begin. Upgrade anytime."
+msgstr "Gratuit pour commencer. Passez à un forfait supérieur à tout moment."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Workspace locked"
+msgstr "Workspace verrouillé"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "The subscription for this workspace is not active."
+msgstr "L’abonnement de ce workspace n’est pas actif."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "To unlock premium features, your workspace needs to be upgraded by an admin."
+msgstr "Pour débloquer les fonctionnalités premium, un administrateur doit mettre à niveau votre workspace."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Choose your plan to continue"
+msgstr "Choisissez votre forfait pour continuer"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You can change it anytime from the admin page."
+msgstr "Vous pouvez le modifier à tout moment depuis la page d’administration."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Subscribe to a paid plan"
+msgstr "Souscrire un forfait payant"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Start your subscription"
+msgstr "Démarrer votre abonnement"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Resume your subscription"
+msgstr "Reprendre votre abonnement"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Start your subscription with yearly billing"
+msgstr "Démarrer votre abonnement avec facturation annuelle"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Start your subscription with monthly billing"
+msgstr "Démarrer votre abonnement avec facturation mensuelle"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Subscribe with yearly billing"
+msgstr "S’abonner avec facturation annuelle"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Subscribe with monthly billing"
+msgstr "S’abonner avec facturation mensuelle"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Resume with yearly billing"
+msgstr "Reprendre avec facturation annuelle"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Resume with monthly billing"
+msgstr "Reprendre avec facturation mensuelle"
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You're currently on a free trial."
+msgstr "Vous bénéficiez actuellement d’un essai gratuit."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "To continue using Dust after your trial ends, subscribe to a paid plan. Select your preferred billing option to get started."
+msgstr "Pour continuer à utiliser Dust après la fin de votre essai, souscrivez un forfait payant. Sélectionnez votre option de facturation pour commencer."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Welcome back! You can reactivate your subscription anytime."
+msgstr "Bon retour parmi nous ! Vous pouvez réactiver votre abonnement à tout moment."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Please note that if your previous contract expired over 15 days ago, previously stored data will no longer be available. This is to ensure privacy and security of your information."
+msgstr "Notez que si votre précédent contrat a expiré il y a plus de 15 jours, les données stockées auparavant ne seront plus disponibles. Cela garantit la confidentialité et la sécurité de vos informations."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "Subscribe to the Pro plan."
+msgstr "Abonnez-vous au forfait Pro."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You'll be charged immediately. You can cancel at any time."
+msgstr "Vous serez débité immédiatement. Vous pouvez résilier à tout moment."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You've selected monthly billing."
+msgstr "Vous avez choisi la facturation mensuelle."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You'll pay on a month-to-month basis. You can cancel at any time before the end of your monthly billing cycle."
+msgstr "Vous payez mois par mois. Vous pouvez résilier à tout moment avant la fin de votre cycle de facturation mensuel."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You've selected yearly billing."
+msgstr "Vous avez choisi la facturation annuelle."
+
+#: front/components/pages/onboarding/SubscribePage.tsx
+msgid "You'll pay for a year upfront and enjoy savings compared to the monthly plan. You can cancel at any time before the end of your annual billing cycle."
+msgstr "Vous payez une année d’avance et économisez par rapport au forfait mensuel. Vous pouvez résilier à tout moment avant la fin de votre cycle de facturation annuel."
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Monthly"
+msgstr "Mensuel"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Yearly"
+msgstr "Annuel"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Save 20%"
+msgstr "20 % d’économie"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "credits"
+msgstr "crédits"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "One-time · never expires"
+msgstr "Une seule fois · n’expire jamais"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Credits never reset"
+msgstr "Les crédits ne sont jamais réinitialisés"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Full access to every Dust feature"
+msgstr "Accès complet à toutes les fonctionnalités de Dust"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "One-time phone verification required"
+msgstr "Vérification unique du téléphone requise"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Start Free"
+msgstr "Commencer avec Free"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "{seatPrice}/seat/mo · billed yearly"
+msgstr "{seatPrice}/siège/mois · facturé annuellement"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "{seatPrice}/seat/mo · billed monthly"
+msgstr "{seatPrice}/siège/mois · facturé mensuellement"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Refills every month"
+msgstr "Rechargés chaque mois"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "credits/mo"
+msgstr "crédits/mois"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Subscribe to Pro"
+msgstr "S’abonner à Pro"
+
+#: front/components/pages/onboarding/SubscriptionPlans.tsx
+msgid "Subscribe to Max"
+msgstr "S’abonner à Max"
+
+#: front/components/pages/onboarding/TrialEndedPage.tsx
+msgid "Your free trial has ended"
+msgstr "Votre essai gratuit est terminé"
+
+#: front/components/pages/onboarding/TrialEndedPage.tsx
+msgid "Without a subscription, your agents and connections will be paused."
+msgstr "Sans abonnement, vos agents et vos connexions seront mis en pause."
+
+#: front/components/pages/onboarding/TrialEndedPage.tsx
+msgid "We'll keep your data safe for 30 days."
+msgstr "Nous conservons vos données en sécurité pendant 30 jours."
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Free 14-day trial"
+msgstr "Essai gratuit de 14 jours"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Advanced models (GPT-5, Claude..)"
+msgstr "Modèles avancés (GPT-5, Claude…)"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Custom agents which can execute actions"
+msgstr "Agents personnalisés capables d’exécuter des actions"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Connections (GitHub, Google Drive, Notion, Slack...)"
+msgstr "Connexions (GitHub, Google Drive, Notion, Slack…)"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgstr "Intégrations natives (Zendesk, Slack, extension Chrome)"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "100 free messages"
+msgstr "100 messages gratuits"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Up to 5 users"
+msgstr "Jusqu’à 5 utilisateurs"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "300 AI credits per user (lifetime)"
+msgstr "300 crédits IA par utilisateur (à vie)"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "No credit card required · No time limit"
+msgstr "Aucune carte bancaire requise · Sans limite de durée"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Get started for free"
+msgstr "Commencez gratuitement"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Start for free"
+msgstr "Commencer gratuitement"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Subscribe now"
+msgstr "S’abonner maintenant"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Start your free trial"
+msgstr "Démarrez votre essai gratuit"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "No credit card required"
+msgstr "Aucune carte bancaire requise"
+
+#: front/components/pages/onboarding/TrialPage.tsx
+msgid "Start free trial"
+msgstr "Démarrer l’essai gratuit"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Please enter your phone number."
+msgstr "Veuillez saisir votre numéro de téléphone."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Please enter a valid phone number."
+msgstr "Veuillez saisir un numéro de téléphone valide."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Unexpected error. Please try again."
+msgstr "Erreur inattendue. Veuillez réessayer."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Captcha verification failed. Please try again."
+msgstr "La vérification captcha a échoué. Veuillez réessayer."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Too many verification attempts. Please try again in {waitMinutes, plural, one {# minute} other {# minutes}}."
+msgstr "Trop de tentatives de vérification. Veuillez réessayer dans {waitMinutes, plural, one {# minute} other {# minutes}}."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Failed to send code"
+msgstr "Impossible d’envoyer le code"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Please enter the full 6-digit code."
+msgstr "Veuillez saisir le code complet à 6 chiffres."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Invalid code"
+msgstr "Code invalide"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Network error. Please try again."
+msgstr "Erreur réseau. Veuillez réessayer."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Captcha could not load. Please refresh and try again."
+msgstr "Le captcha n’a pas pu se charger. Veuillez actualiser la page et réessayer."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Verify your phone"
+msgstr "Vérifiez votre téléphone"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "We verify your number once to keep free credits fair. We won't text you otherwise."
+msgstr "Nous vérifions votre numéro une seule fois pour garantir un usage équitable des crédits gratuits. Nous ne vous enverrons pas d’autres SMS."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Phone number"
+msgstr "Numéro de téléphone"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "To start your free trial, we need to verify your account with an SMS code."
+msgstr "Pour démarrer votre essai gratuit, nous devons vérifier votre compte avec un code SMS."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Your number will only be used for this verification."
+msgstr "Votre numéro sera utilisé uniquement pour cette vérification."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Sending..."
+msgstr "Envoi…"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Send code"
+msgstr "Envoyer le code"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Enter verification code"
+msgstr "Saisissez le code de vérification"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "A verification code has been sent to <0>{maskedPhone}</0>"
+msgstr "Un code de vérification a été envoyé au <0>{maskedPhone}</0>"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Back"
+msgstr "Retour"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Resend code ({resendCooldown}s)"
+msgstr "Renvoyer le code ({resendCooldown} s)"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Resend code"
+msgstr "Renvoyer le code"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Verifying..."
+msgstr "Vérification…"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Verify now"
+msgstr "Vérifier"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Verify you're human"
+msgstr "Vérifiez que vous êtes humain"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "A quick check before we send your verification code."
+msgstr "Une vérification rapide avant l’envoi de votre code."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Your phone number has already been verified."
+msgstr "Votre numéro de téléphone a déjà été vérifié."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Click below to activate your free subscription."
+msgstr "Cliquez ci-dessous pour activer votre abonnement gratuit."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Activating..."
+msgstr "Activation…"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "Activate trial"
+msgstr "Activer l’essai"
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "You're in. Welcome to Dust."
+msgstr "C’est parti. Bienvenue sur Dust."
+
+#: front/components/pages/onboarding/VerifyPage.tsx
+msgid "You've got <0>{formattedCredits} credits</0> to explore, they never expire, so take your time. Let's put them to work."
+msgstr "Vous disposez de <0>{formattedCredits} crédits</0> pour explorer. Ils n’expirent jamais, prenez votre temps. Mettons-les à profit."

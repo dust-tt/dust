@@ -6,7 +6,7 @@ import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { SupportedLocale } from "@app/types/locale";
 import { Trans } from "@lingui/react/macro";
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   hasLocalisation: false,
@@ -47,6 +47,10 @@ function renderUserLocaleSync(onReady?: () => void) {
 }
 
 describe("UserLocaleSync", () => {
+  beforeAll(async () => {
+    await loadCatalog("fr-FR");
+  });
+
   beforeEach(() => {
     document.documentElement.lang = "en";
     setFormatLocale(undefined);

@@ -12,6 +12,7 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Label } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 import Block from "./Block";
 
@@ -74,7 +75,9 @@ export default function Code({
     >
       <div className="flex w-full flex-col pt-2">
         <div className="flex flex-col gap-2 text-sm">
-          <Label>Code</Label>
+          <Label>
+            <Trans>Code</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
               <SuspensedCodeEditor

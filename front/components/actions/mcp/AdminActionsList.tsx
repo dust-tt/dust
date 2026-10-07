@@ -49,6 +49,7 @@ import {
   TextCellSkeleton,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -104,6 +105,7 @@ function AdminActionSkeletonCell({
 }
 
 const NameCell = ({ row }: { row: RowData }) => {
+  const { t } = useLingui();
   const { mcpServer, mcpServerView, isConnected, hasSyncError } = row;
 
   return (
@@ -130,7 +132,7 @@ const NameCell = ({ row }: { row: RowData }) => {
 
         {mcpServerView && hasSyncError && (
           <Tooltip
-            label="Synchronization needs attention. Open the tool to refresh authentication."
+            label={t`Synchronization needs attention. Open the tool to refresh authentication.`}
             tooltipTriggerAsChild
             trigger={
               <span className="inline-flex shrink-0">
@@ -142,7 +144,7 @@ const NameCell = ({ row }: { row: RowData }) => {
 
         {mcpServerView && !isConnected && mcpServer.authorization && (
           <Chip color="warning" size="xs">
-            Disconnected
+            <Trans>Disconnected</Trans>
           </Chip>
         )}
       </div>
@@ -165,6 +167,7 @@ export const AdminActionsList = ({
   systemSpace,
   setMcpServerToShow,
 }: AdminActionsListProps) => {
+  const { t } = useLingui();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAddToolsOpen, setIsAddToolsOpen] = useState(false);
   const [internalMCPServerToCreate, setInternalMCPServerToCreate] = useState<
@@ -261,9 +264,9 @@ export const AdminActionsList = ({
 
           const account =
             mcpServerView?.oAuthUseCase === "personal_actions"
-              ? "Personal"
+              ? t`Personal`
               : mcpServerView?.oAuthUseCase === "platform_actions"
-                ? "Shared"
+                ? t`Shared`
                 : "";
 
           return {
@@ -299,6 +302,7 @@ export const AdminActionsList = ({
       setMcpServerToShow,
       spaces,
       systemSpace?.sId,
+      t,
       usage,
     ]
   );
@@ -309,7 +313,7 @@ export const AdminActionsList = ({
       {
         id: "name",
         accessorKey: "name",
-        header: "Name",
+        header: t`Name`,
         cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
@@ -345,7 +349,11 @@ export const AdminActionsList = ({
       },
       {
         id: "usedBy",
-        header: () => <div className="flex w-full justify-center">Used by</div>,
+        header: () => (
+          <div className="flex w-full justify-center">
+            <Trans>Used by</Trans>
+          </div>
+        ),
         accessorFn: (row: RowData) => row.usage?.count ?? 0,
         cell: (info) => (
           <div className="flex h-12 w-full items-center justify-center">
@@ -363,7 +371,7 @@ export const AdminActionsList = ({
       {
         id: "access",
         accessorKey: "spaces",
-        header: "Availability",
+        header: t`Availability`,
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
 
@@ -371,7 +379,7 @@ export const AdminActionsList = ({
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
                 {globalSpace
-                  ? "Workspace"
+                  ? t`Workspace`
                   : info
                       .getValue()
                       .filter((s) => s.kind === "regular")
@@ -394,7 +402,7 @@ export const AdminActionsList = ({
       {
         id: "account",
         accessorKey: "account",
-        header: "Account",
+        header: t`Account`,
         cell: (info: CellContext<RowData, string>) => {
           const account = info.getValue();
 
@@ -416,7 +424,10 @@ export const AdminActionsList = ({
       {
         id: "by",
         accessorKey: "mcpServerView.editedByUser",
-        header: "By",
+        header: t({
+          message: "By",
+          context: "column header, author of the last edit",
+        }),
         cell: (info) => {
           const editedByUser = info.row.original.mcpServerView?.editedByUser;
 
@@ -435,7 +446,7 @@ export const AdminActionsList = ({
       {
         id: "lastUpdated",
         accessorKey: "mcpServerView.editedByUser.editedAt",
-        header: "Last updated",
+        header: t`Last updated`,
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
             tooltip={
@@ -457,7 +468,7 @@ export const AdminActionsList = ({
     );
 
     return columns;
-  }, []);
+  }, [t]);
 
   return (
     <>
@@ -509,7 +520,7 @@ export const AdminActionsList = ({
       {!showLoader &&
         (rows.length === 0 ? (
           <EmptyCTA
-            message="You don’t have any tools yet."
+            message={t`You don’t have any tools yet.`}
             action={
               <AddToolsButton
                 variant="outline"

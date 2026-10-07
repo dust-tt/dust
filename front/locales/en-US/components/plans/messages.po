@@ -1,0 +1,182 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "From 1 user"
+msgstr "From 1 user"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Multiple private spaces"
+msgstr "Multiple private spaces"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Flexible payment options (SEPA, Credit Card)"
+msgstr "Flexible payment options (SEPA, Credit Card)"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "US / EU data hosting"
+msgstr "US / EU data hosting"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Advanced models (GPT-5, Claude, Gemini, Mistral…)"
+msgstr "Advanced models (GPT-5, Claude, Gemini, Mistral…)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Custom agents which can execute actions"
+msgstr "Custom agents which can execute actions"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Connections (GitHub, Google Drive, Notion, Slack, ...)"
+msgstr "Connections (GitHub, Google Drive, Notion, Slack, ...)"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgstr "Native integrations (Zendesk, Slack, Chrome Extension)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Privacy and Data Security (SOC2, Zero Data Retention)"
+msgstr "Privacy and Data Security (SOC2, Zero Data Retention)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Unlimited messages (<0>Fair use limits apply*</0>)"
+msgstr "Unlimited messages (<0>Fair use limits apply*</0>)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Free credits for programmatic usage (API, GSheet, Zapier,...) (<0>Learn more</0>)"
+msgstr "Free credits for programmatic usage (API, GSheet, Zapier,...) (<0>Learn more</0>)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Fixed price on additional programmatic usage"
+msgstr "Fixed price on additional programmatic usage"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Up to 1GB/user of data sources"
+msgstr "Up to 1GB/user of data sources"
+
+#: front/components/plans/PlansTables.tsx
+msgid "One private space"
+msgstr "One private space"
+
+#: front/components/plans/PlansTables.tsx
+msgid "/ month / user, excl. tax."
+msgstr "/ month / user, excl. tax."
+
+#: front/components/plans/PlansTables.tsx
+msgid "Start now, 14 days free"
+msgstr "Start now, 14 days free"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Start now"
+msgstr "Start now"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Enterprise (Seat-based)"
+msgstr "Enterprise (Seat-based)"
+
+#: front/components/plans/ProPlansTable.tsx
+msgid "Monthly Billing"
+msgstr "Monthly Billing"
+
+#: front/components/plans/ProPlansTable.tsx
+msgid "Yearly Billing"
+msgstr "Yearly Billing"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more"
+msgstr "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Data connections: Slack, Notion, Google Drive, GitHub, and more"
+msgstr "Data connections: Slack, Notion, Google Drive, GitHub, and more"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Email support: Get help when you need it"
+msgstr "Email support: Get help when you need it"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Free credits for programmatic usage (API, GSheet, Zapier)"
+msgstr "Free credits for programmatic usage (API, GSheet, Zapier)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)"
+msgstr "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced connections (Salesforce, etc)"
+msgstr "Advanced connections (Salesforce, etc)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Everything in Pro"
+msgstr "Everything in Pro"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced security and controls"
+msgstr "Advanced security and controls"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Larger storage and file size limits"
+msgstr "Larger storage and file size limits"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Access to programmatic usage"
+msgstr "Access to programmatic usage"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "User provisioning (SCIM)"
+msgstr "User provisioning (SCIM)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Flexible billing options (SEPA, Credit Card)"
+msgstr "Flexible billing options (SEPA, Credit Card)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Priority access to new features"
+msgstr "Priority access to new features"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Priority support"
+msgstr "Priority support"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Dedicated Customer Success"
+msgstr "Dedicated Customer Success"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "per user"
+msgstr "per user"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Subscribe to Enterprise (Seat-based)"
+msgstr "Subscribe to Enterprise (Seat-based)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Subscribe to Pro"
+msgstr "Subscribe to Pro"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Custom"
+msgstr "Custom"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "based on active users"
+msgstr "based on active users"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Contact sales"
+msgstr "Contact sales"

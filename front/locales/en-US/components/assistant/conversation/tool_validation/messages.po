@@ -1,0 +1,224 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "Yes"
+msgstr "Yes"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "No"
+msgstr "No"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "New title"
+msgstr "New title"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "Workplace type"
+msgstr "Workplace type"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "This will update the job posting on Ashby. Changes are applied immediately and visible to candidates."
+msgstr "This will update the job posting on Ashby. Changes are applied immediately and visible to candidates."
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "View on Ashby"
+msgstr "View on Ashby"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "New description"
+msgstr "New description"
+
+#: front/components/assistant/conversation/tool_validation/AshbyValidationDetails.tsx
+msgid "The referral will be credited to <0>{userEmail}</0>."
+msgstr "The referral will be credited to <0>{userEmail}</0>."
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgctxt "pod access"
+msgid "Open"
+msgstr "Open"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgctxt "pod access"
+msgid "Restricted"
+msgstr "Restricted"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgid "Unpinned"
+msgstr "Unpinned"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgid "No change"
+msgstr "No change"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgid "Title"
+msgstr "Title"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Description"
+msgstr "Description"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgid "Access"
+msgstr "Access"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgid "Pinned frame"
+msgstr "Pinned frame"
+
+#: front/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails.tsx
+msgid "The agent wants to update information for <0>{podName}</0>."
+msgstr "The agent wants to update information for <0>{podName}</0>."
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "You"
+msgstr "You"
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "Editor"
+msgstr "Editor"
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "Member"
+msgstr "Member"
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "Will add"
+msgstr "Will add"
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "Will remove"
+msgstr "Will remove"
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "The agent wants to add {addCount, plural, one {# user} other {# users}} and remove {removeCount, plural, one {# user} other {# users}} in <0>{podName}</0>."
+msgstr "The agent wants to add {addCount, plural, one {# user} other {# users}} and remove {removeCount, plural, one {# user} other {# users}} in <0>{podName}</0>."
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "The agent wants to add {addCount, plural, one {# user} other {# users}} in <0>{podName}</0>."
+msgstr "The agent wants to add {addCount, plural, one {# user} other {# users}} in <0>{podName}</0>."
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "The agent wants to remove {removeCount, plural, one {# user} other {# users}} in <0>{podName}</0>."
+msgstr "The agent wants to remove {removeCount, plural, one {# user} other {# users}} in <0>{podName}</0>."
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "The agent wants to update members in <0>{podName}</0>."
+msgstr "The agent wants to update members in <0>{podName}</0>."
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "Users to add"
+msgstr "Users to add"
+
+#: front/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails.tsx
+msgid "Users to remove"
+msgstr "Users to remove"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "No assignee"
+msgstr "No assignee"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+msgid "Review the <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} below before adding them to <1>{podName}</1>."
+msgstr "Review the <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} below before adding them to <1>{podName}</1>."
+
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+msgid "The agent wants to create <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
+msgstr "The agent wants to create <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
+
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+msgid "{doneCount, plural, one {# will be marked as done immediately.} other {# will be marked as done immediately.}}"
+msgstr "{doneCount, plural, one {# will be marked as done immediately.} other {# will be marked as done immediately.}}"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgctxt "task status"
+msgid "Done"
+msgstr "Done"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
+msgid "Assignee: {assigneeLabel}"
+msgstr "Assignee: {assigneeLabel}"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgctxt "task status"
+msgid "Open"
+msgstr "Open"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "In progress"
+msgstr "In progress"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Assignee"
+msgstr "Assignee"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Unassign"
+msgstr "Unassign"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgctxt "marked done by"
+msgid "you"
+msgstr "you"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgctxt "marked done by"
+msgid "agent"
+msgstr "agent"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Marked done by"
+msgstr "Marked done by"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Done rationale"
+msgstr "Done rationale"
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "No visible changes detected."
+msgstr "No visible changes detected."
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "Could not load the current task details."
+msgstr "Could not load the current task details."
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "The agent wants to update <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
+msgstr "The agent wants to update <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
+
+#: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
+msgid "{doneCount, plural, one {# will be marked as done.} other {# will be marked as done.}}"
+msgstr "{doneCount, plural, one {# will be marked as done.} other {# will be marked as done.}}"
+
+#: front/components/assistant/conversation/tool_validation/usePodLabel.ts
+msgid "this Pod"
+msgstr "this Pod"

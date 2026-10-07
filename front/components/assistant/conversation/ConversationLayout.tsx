@@ -27,6 +27,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useMemo } from "react";
 
@@ -59,6 +60,7 @@ const ConversationLayoutContent = ({
   user,
   isAdmin,
 }: ConversationLayoutContentProps) => {
+  const { t } = useLingui();
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const { conversation, conversationError } = useConversation({
@@ -86,9 +88,12 @@ const ConversationLayoutContent = ({
     // Focus back on input bar
   };
 
+  const conversationTitle = conversation
+    ? getConversationDisplayTitle(conversation)
+    : "";
   const pageTitle = conversation
-    ? `Dust - ${getConversationDisplayTitle(conversation)}`
-    : "Dust - New Conversation";
+    ? t`Dust - ${conversationTitle}`
+    : t`Dust - New conversation`;
 
   useSetHasTitle(!!activeConversationId);
   useSetPageTitle(pageTitle);
@@ -131,12 +136,14 @@ interface ConversationInnerLayoutProps {
 }
 
 function UncaughtConversationErrorFallback() {
+  const { t } = useLingui();
+
   return (
     <ErrorDisplay
-      title="Something unexpected happened"
+      title={t`Something unexpected happened`}
       message={[
-        "Try refreshing the page to continue your conversation.",
-        "Still having trouble? Reach out at support@dust.tt",
+        t`Try refreshing the page to continue your conversation.`,
+        t`Still having trouble? Reach out at support@dust.tt`,
       ]}
     />
   );

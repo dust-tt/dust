@@ -7,9 +7,13 @@ import {
 import {
   clearFilterCategory,
   getFilterSummaries,
+  selectAllFilterOptions,
 } from "@app/components/shared/filter_panel/filterState";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
-import { getSearchFilterCategorySingularLabels } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterCategorySingularLabels,
+  getSearchFilterPresets,
+} from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -434,7 +438,7 @@ export function ManageSkillsPage({
         ) : (
           searchInput
         )}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <ButtonsSwitchList
               value={selectedTab}
@@ -480,6 +484,16 @@ export function ManageSkillsPage({
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
+            }
+            presets={getSearchFilterPresets({
+              categories: SKILL_FILTER_CATEGORIES,
+              currentUser: user,
+              t,
+            })}
+            onApplyPreset={(preset) =>
+              setFilter(
+                selectAllFilterOptions(filter, preset.category, preset.options)
+              )
             }
             extraChips={
               permissionFilteringOverride === undefined &&

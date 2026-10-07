@@ -1,25 +1,28 @@
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+
 // All recording types, including legacy ones. Used for labels and validation
 // to support existing webhooks.
 const RECORDING_TYPE_OPTIONS = [
   {
     value: "my_recordings",
-    label: "My Recordings",
-    description: "Recordings you created",
+    label: msg`My recordings`,
+    description: msg`Recordings you created`,
   },
   {
     value: "shared_external_recordings",
-    label: "Shared External Recordings",
-    description: "Recordings shared with you from outside your team",
+    label: msg`Shared external recordings`,
+    description: msg`Recordings shared with you from outside your team`,
   },
   {
     value: "my_shared_with_team_recordings",
-    label: "My Shared with Team Recordings",
-    description: "Your recordings shared with your team",
+    label: msg`My shared with team recordings`,
+    description: msg`Your recordings shared with your team`,
   },
   {
     value: "shared_team_recordings",
-    label: "Shared Team Recordings",
-    description: "Recordings from your team members",
+    label: msg`Shared team recordings`,
+    description: msg`Recordings from your team members`,
   },
 ] as const;
 
@@ -30,11 +33,11 @@ export const CREATABLE_RECORDING_TYPE_OPTIONS = RECORDING_TYPE_OPTIONS.filter(
     option.value !== "my_shared_with_team_recordings"
 );
 
-export const RECORDING_TYPE_LABELS: Record<string, string> =
+export const RECORDING_TYPE_LABELS: Record<string, MessageDescriptor> =
   RECORDING_TYPE_OPTIONS.reduce(
     (acc, option) => {
       acc[option.value] = option.label;
       return acc;
     },
-    {} as Record<string, string>
+    {} as Record<string, MessageDescriptor>
   );

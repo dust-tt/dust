@@ -1,12 +1,15 @@
 ---
 name: dust-translate
-description: Translate or fix Dust product UI translations in the Lingui catalogs (`front/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
+description: Translate or fix Dust product UI translations in the Lingui catalogs (`front/locales/*/**/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
 ---
 
 # Translating the product UI
 
-Catalogs are gettext `.po` files in `front/locales/{locale}/messages.po`, one per entry of
-`CATALOG_LOCALES` in `front/types/locale.ts`. `en-US` is the source locale: its catalog is generated
+Catalogs are gettext `.po` files in `front/locales/{locale}/<source directory>/messages.po`: every
+source directory using Lingui has one per entry of `CATALOG_LOCALES` in `front/types/locale.ts`. A
+message used in several directories appears in each of their catalogs; translate it the same way
+everywhere (`npm run i18n:check` fails otherwise). When the meanings differ, give the messages a
+Lingui `context` in the code instead (see the `dust-i18n` skill). `en-US` is the source locale: its catalog is generated
 and never translated by hand. Every other catalog must have a non-empty `msgstr` for every message.
 
 Some supported locales reuse another locale's catalog (`CATALOG_LOCALE_BY_LOCALE`): `en-GB` renders

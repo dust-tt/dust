@@ -3,6 +3,8 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { Minimize01, UploadCloud02 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import type React from "react";
 import type { RefObject } from "react";
 
@@ -66,24 +68,24 @@ export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
 // Static command offered by the input bar `/` dropdown, as opposed to workspace capabilities
 // (skills and tools) which are fetched.
 export interface InputBarSlashCommand {
-  description: string;
+  description: MessageDescriptor;
   icon: React.ComponentType;
   id: InputBarRunCommandId;
-  label: string;
+  label: MessageDescriptor;
 }
 
 export const INPUT_BAR_SLASH_COMMANDS: InputBarSlashCommand[] = [
   {
-    description: "Upload a file from your device",
+    description: msg`Upload a file from your device`,
     icon: UploadCloud02,
     id: "upload-file",
-    label: "Upload file",
+    label: msg`Upload file`,
   },
   {
-    description: "Free up context by summarizing conversation",
+    description: msg`Free up context by summarizing the conversation`,
     icon: Minimize01,
     id: "compact",
-    label: "Compact",
+    label: msg`Compact`,
   },
 ];
 

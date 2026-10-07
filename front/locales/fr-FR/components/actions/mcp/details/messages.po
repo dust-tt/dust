@@ -1,0 +1,580 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:57+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/actions/mcp/details/ChildAgentActivityTimeline.tsx
+#: front/components/actions/mcp/details/MCPTablesQueryActionDetails.tsx
+msgid "Error"
+msgstr "Erreur"
+
+#: front/components/actions/mcp/details/ChildAgentActivityTimeline.tsx
+msgid "Done"
+msgstr "Terminé"
+
+#: front/components/actions/mcp/details/ChildAgentActivityTimeline.tsx
+msgid "Thinking…"
+msgstr "Réflexion…"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Running a tool"
+msgstr "Exécution d’un outil"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Run a tool"
+msgstr "Exécution d’un outil"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Running a tool: {toolName}"
+msgstr "Exécution d’un outil : {toolName}"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Run a tool: {toolName}"
+msgstr "Exécution d’un outil : {toolName}"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Tool execution rejected or skipped by the user."
+msgstr "Exécution de l’outil refusée ou ignorée par l’utilisateur."
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Searching data"
+msgstr "Recherche dans les données"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Search data"
+msgstr "Recherche dans les données"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Browsing data sources"
+msgstr "Parcours des sources de données"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Browse data sources"
+msgstr "Parcours des sources de données"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Including data"
+msgstr "Inclusion de données"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Include data"
+msgstr "Inclusion de données"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Searching the web"
+msgstr "Recherche sur le web"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Web search"
+msgstr "Recherche web"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Inputs"
+msgstr "Entrées"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "Output"
+msgstr "Sortie"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Generated files"
+msgstr "Fichiers générés"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Loading…"
+msgstr "Chargement…"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "Unknown skill"
+msgstr "Compétence inconnue"
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "The tool was called with no specified inputs."
+msgstr "L’outil a été appelé sans entrée spécifiée."
+
+#: front/components/actions/mcp/details/MCPActionDetails.tsx
+msgid "The tool completed with no output."
+msgstr "L’outil s’est terminé sans sortie."
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Retrieve agent memory"
+msgstr "Récupération de la mémoire de l’agent"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Saved memories"
+msgstr "Mémoires enregistrées"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "No memory was retrieved."
+msgstr "Aucune mémoire n’a été récupérée."
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Record agent memory"
+msgstr "Enregistrement dans la mémoire de l’agent"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "{entryCount, plural, one {Recorded memory} other {Recorded memories}}"
+msgstr "{entryCount, plural, one {Mémoire enregistrée} other {Mémoires enregistrées}}"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "No entries were recorded."
+msgstr "Aucune entrée n’a été enregistrée."
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Compact agent memory"
+msgstr "Compactage de la mémoire de l’agent"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Edit agent memory"
+msgstr "Modification de la mémoire de l’agent"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Compacted memories"
+msgstr "Mémoires compactées"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Edited memories"
+msgstr "Mémoires modifiées"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "No memories remaining."
+msgstr "Aucune mémoire restante."
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Erase agent memory"
+msgstr "Effacement de la mémoire de l’agent"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "No memory entries were erased."
+msgstr "Aucune entrée de mémoire n’a été effacée."
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "{erasedCount, plural, one {Erased # memory.} other {Erased # memories.}}"
+msgstr "{erasedCount, plural, one {# mémoire effacée.} other {# mémoires effacées.}}"
+
+#: front/components/actions/mcp/details/MCPAgentMemoryActionDetails.tsx
+msgid "Remaining memories"
+msgstr "Mémoires restantes"
+
+#: front/components/actions/mcp/details/MCPAskUserQuestionActionDetails.tsx
+msgid "Asking a question"
+msgstr "Pose d’une question"
+
+#: front/components/actions/mcp/details/MCPAskUserQuestionActionDetails.tsx
+msgid "Asked a question"
+msgstr "Question posée"
+
+#: front/components/actions/mcp/details/MCPAskUserQuestionActionDetails.tsx
+msgid "User declined to answer"
+msgstr "L’utilisateur a refusé de répondre"
+
+#: front/components/actions/mcp/details/MCPBrowseActionDetails.tsx
+msgid "Error {responseCode}: {errorMessage}"
+msgstr "Erreur {responseCode} : {errorMessage}"
+
+#: front/components/actions/mcp/details/MCPBrowseActionDetails.tsx
+msgid "Error {responseCode}"
+msgstr "Erreur {responseCode}"
+
+#: front/components/actions/mcp/details/MCPBrowseActionDetails.tsx
+msgid "Browsing the web"
+msgstr "Navigation sur le web"
+
+#: front/components/actions/mcp/details/MCPBrowseActionDetails.tsx
+msgid "Web navigation"
+msgstr "Navigation web"
+
+#: front/components/actions/mcp/details/MCPBrowseActionDetails.tsx
+msgid "Files"
+msgstr "Fichiers"
+
+#: front/components/actions/mcp/details/MCPConversationFilesActionDetails.tsx
+msgid "Reading conversation file"
+msgstr "Lecture d’un fichier de la conversation"
+
+#: front/components/actions/mcp/details/MCPConversationFilesActionDetails.tsx
+msgid "Read conversation file"
+msgstr "Lecture d’un fichier de la conversation"
+
+#: front/components/actions/mcp/details/MCPConversationFilesActionDetails.tsx
+msgid "... ({remainingLineCount, plural, one {# more line} other {# more lines}})"
+msgstr "... ({remainingLineCount, plural, one {# ligne de plus} other {# lignes de plus}})"
+
+#: front/components/actions/mcp/details/MCPConversationFilesActionDetails.tsx
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "Preview"
+msgstr "Aperçu"
+
+#: front/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails.tsx
+msgid "Retrieving file content"
+msgstr "Récupération du contenu du fichier"
+
+#: front/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails.tsx
+msgid "Retrieve file content"
+msgstr "Récupération du contenu du fichier"
+
+#: front/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails.tsx
+msgid "Locating item"
+msgstr "Localisation de l’élément"
+
+#: front/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails.tsx
+msgid "Locate item"
+msgstr "Localisation de l’élément"
+
+#: front/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails.tsx
+msgid "Location"
+msgstr "Emplacement"
+
+#: front/components/actions/mcp/details/MCPDataWarehousesBrowseDetails.tsx
+msgid "Browsing data warehouses"
+msgstr "Parcours des entrepôts de données"
+
+#: front/components/actions/mcp/details/MCPDataWarehousesBrowseDetails.tsx
+msgid "Browse data warehouses"
+msgstr "Parcours des entrepôts de données"
+
+#: front/components/actions/mcp/details/MCPDataWarehousesBrowseDetails.tsx
+msgid "Browsing:"
+msgstr "Parcours :"
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "Extracting data"
+msgstr "Extraction de données"
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "Extract data"
+msgstr "Extraction de données"
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+#: front/components/actions/mcp/details/MCPTablesQueryActionDetails.tsx
+#: front/components/actions/mcp/details/MCPToolOutputDetails.tsx
+msgid "Query"
+msgstr "Requête"
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "Schema"
+msgstr "Schéma"
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+#: front/components/actions/mcp/details/MCPTablesQueryActionDetails.tsx
+#: front/components/actions/mcp/details/MCPToolOutputDetails.tsx
+msgid "Results"
+msgstr "Résultats"
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "Extracted from documents {timeFrameAsString}."
+msgstr "Extrait des documents {timeFrameAsString}."
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "Extracted from documents over all time."
+msgstr "Extrait des documents sur toute la période."
+
+#: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
+msgid "No data was extracted."
+msgstr "Aucune donnée n’a été extraite."
+
+#: front/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails.tsx
+msgid "Getting database schema"
+msgstr "Récupération du schéma de la base de données"
+
+#: front/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails.tsx
+msgid "Get database schema"
+msgstr "Récupération du schéma de la base de données"
+
+#: front/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails.tsx
+msgid "Database schema"
+msgstr "Schéma de la base de données"
+
+#: front/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails.tsx
+msgid "Sample data"
+msgstr "Exemples de données"
+
+#: front/components/actions/mcp/details/MCPImageGenerationActionDetails.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/actions/mcp/details/MCPImageGenerationActionDetails.tsx
+msgid "Generating image"
+msgstr "Génération d’une image"
+
+#: front/components/actions/mcp/details/MCPImageGenerationActionDetails.tsx
+msgid "Generate image"
+msgstr "Génération d’une image"
+
+#: front/components/actions/mcp/details/MCPImageGenerationActionDetails.tsx
+msgid "{qualityLabel} quality"
+msgstr "Qualité {qualityLabel}"
+
+#: front/components/actions/mcp/details/MCPListToolsActionDetails.tsx
+msgid "Listing tools"
+msgstr "Liste des outils"
+
+#: front/components/actions/mcp/details/MCPListToolsActionDetails.tsx
+msgid "List tools"
+msgstr "Liste des outils"
+
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+msgid "Running @{agentName}"
+msgstr "Exécution de @{agentName}"
+
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+msgid "Run @{agentName}"
+msgstr "Exécution de @{agentName}"
+
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+msgid "Added tools"
+msgstr "Outils ajoutés"
+
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+msgid "Handoff"
+msgstr "Transfert"
+
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+msgid "{agentName}'s answer"
+msgstr "Réponse de {agentName}"
+
+#: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
+msgid "View full conversation"
+msgstr "Voir toute la conversation"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "exit code"
+msgstr "code de sortie"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "network proxy logs"
+msgstr "journaux du proxy réseau"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "Executing command"
+msgstr "Exécution de la commande"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "Execute command"
+msgstr "Exécution de la commande"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "exit code: {exitCode}"
+msgstr "code de sortie : {exitCode}"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "{label} · {lineCount, plural, one {# line} other {# lines}}"
+msgstr "{label} · {lineCount, plural, one {# ligne} other {# lignes}}"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "Waiting for output…"
+msgstr "En attente de la sortie…"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "No output"
+msgstr "Aucune sortie"
+
+#: front/components/actions/mcp/details/MCPSandboxActionDetails.tsx
+msgid "Command"
+msgstr "Commande"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Requesting access to {domain}"
+msgstr "Demande d’accès à {domain}"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Request access to {domain}"
+msgstr "Demande d’accès à {domain}"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Requesting access to domain"
+msgstr "Demande d’accès au domaine"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Request access to domain"
+msgstr "Demande d’accès au domaine"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Pending user approval…"
+msgstr "En attente de l’approbation de l’utilisateur…"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Added to Computer allowlist"
+msgstr "Ajouté à la liste d’autorisation de Computer"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Already allowed"
+msgstr "Déjà autorisé"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Not added"
+msgstr "Non ajouté"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Domain:"
+msgstr "Domaine :"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Reason:"
+msgstr "Motif :"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Status:"
+msgstr "Statut :"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Domain"
+msgstr "Domaine"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Reason"
+msgstr "Motif"
+
+#: front/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails.tsx
+msgid "Status"
+msgstr "Statut"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Enabling skill: {skillName}"
+msgstr "Activation de la compétence : {skillName}"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Enable skill: {skillName}"
+msgstr "Activation de la compétence : {skillName}"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Enabling skill"
+msgstr "Activation de la compétence"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Enable skill"
+msgstr "Activation de la compétence"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Edit skill"
+msgstr "Modifier la compétence"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "View skill"
+msgstr "Voir la compétence"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Skill details"
+msgstr "Détails de la compétence"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Loading skill details..."
+msgstr "Chargement des détails de la compétence…"
+
+#: front/components/actions/mcp/details/MCPSkillEnableActionDetails.tsx
+msgid "Could not load the skill details."
+msgstr "Impossible de charger les détails de la compétence."
+
+#: front/components/actions/mcp/details/MCPTablesQueryActionDetails.tsx
+msgid "Querying tables"
+msgstr "Interrogation des tables"
+
+#: front/components/actions/mcp/details/MCPTablesQueryActionDetails.tsx
+msgid "Query tables"
+msgstr "Interrogation des tables"
+
+#: front/components/actions/mcp/details/MCPTablesQueryActionDetails.tsx
+#: front/components/actions/mcp/details/MCPToolOutputDetails.tsx
+msgid "Reasoning"
+msgstr "Raisonnement"
+
+#: front/components/actions/mcp/details/MCPToolOutputDetails.tsx
+msgid "No query provided"
+msgstr "Aucune requête fournie"
+
+#: front/components/actions/mcp/details/MCPToolsetsEnableActionDetails.tsx
+msgid "Enable {toolName} tool"
+msgstr "Activation de l’outil {toolName}"
+
+#: front/components/actions/mcp/details/MCPToolsetsEnableActionDetails.tsx
+msgid "Enable tool"
+msgstr "Activation de l’outil"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "over the last {duration, plural, one {hour} other {# hours}}"
+msgstr "{duration, plural, one {au cours de la dernière heure} other {au cours des # dernières heures}}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "over the last {duration, plural, one {day} other {# days}}"
+msgstr "{duration, plural, one {au cours du dernier jour} other {au cours des # derniers jours}}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "over the last {duration, plural, one {week} other {# weeks}}"
+msgstr "{duration, plural, one {au cours de la dernière semaine} other {au cours des # dernières semaines}}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "over the last {duration, plural, one {month} other {# months}}"
+msgstr "{duration, plural, one {au cours du dernier mois} other {au cours des # derniers mois}}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "over the last {duration, plural, one {year} other {# years}}"
+msgstr "{duration, plural, one {au cours de la dernière année} other {au cours des # dernières années}}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "across all time periods"
+msgstr "sur toutes les périodes"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "with labels {tagsInList}"
+msgstr "avec les libellés {tagsInList}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "excluding labels {tagsNotList}"
+msgstr "en excluant les libellés {tagsNotList}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "({mimeTypesList} files)"
+msgstr "(fichiers {mimeTypesList})"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "next page"
+msgstr "page suivante"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Searching \"{query}\" {timeFrameAsString}{tagsAsString}."
+msgstr "Recherche de « {query} » {timeFrameAsString}{tagsAsString}."
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Searching {timeFrameAsString}{tagsAsString}."
+msgstr "Recherche {timeFrameAsString}{tagsAsString}."
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Searching for \"{query}\" under {rootNodeId}"
+msgstr "Recherche de « {query} » sous {rootNodeId}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Searching for \"{query}\" across the entire data sources"
+msgstr "Recherche de « {query} » dans toutes les sources de données"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Searching for all content under {rootNodeId}"
+msgstr "Recherche de tout le contenu sous {rootNodeId}"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Searching for all content across the entire data sources"
+msgstr "Recherche de tout le contenu dans toutes les sources de données"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Listing content within node \"{nodeId}\""
+msgstr "Liste du contenu du nœud « {nodeId} »"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Listing content at the root level"
+msgstr "Liste du contenu à la racine"
+
+#: front/components/actions/mcp/details/input_rendering.ts
+msgid "Requested to include documents {timeFrameAsString}"
+msgstr "Demande d’inclusion des documents {timeFrameAsString}"

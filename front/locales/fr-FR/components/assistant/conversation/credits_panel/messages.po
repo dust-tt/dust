@@ -1,0 +1,78 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "Context and reasoning"
+msgstr "Contexte et raisonnement"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "Agents use credits to process the conversation history and context. Longer conversations consume more credits."
+msgstr "Les agents utilisent des crédits pour traiter l’historique et le contexte de la conversation. Plus une conversation est longue, plus elle consomme de crédits."
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "Other tools"
+msgstr "Autres outils"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "Collapse credit details for {agentName}"
+msgstr "Masquer le détail des crédits de {agentName}"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "Expand credit details for {agentName}"
+msgstr "Afficher le détail des crédits de {agentName}"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "Total credits consumed"
+msgstr "Total des crédits consommés"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "{billedCredits, plural, one {credit} other {credits}}"
+msgstr "{billedCredits, plural, one {crédit} other {crédits}}"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "By tools"
+msgstr "Par outil"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "By models"
+msgstr "Par modèle"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
+msgid "By agents"
+msgstr "Par agent"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
+msgid "Credit usage"
+msgstr "Consommation de crédits"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
+msgid "Credit usage couldn’t be loaded."
+msgstr "Impossible de charger l’utilisation des crédits."
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
+msgid "No usage yet"
+msgstr "Aucune utilisation pour l’instant"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
+msgid "Updates once a message is fully processed."
+msgstr "Mise à jour une fois le message entièrement traité."
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
+msgid "Total used"
+msgstr "Total utilisé"
+
+#: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
+msgid "The detailed breakdown isn’t available for this conversation."
+msgstr "Le détail n’est pas disponible pour cette conversation."

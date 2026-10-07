@@ -20,9 +20,13 @@ import {
 import {
   clearFilterCategory,
   getFilterSummaries,
+  selectAllFilterOptions,
 } from "@app/components/shared/filter_panel/filterState";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
-import { getSearchFilterCategorySingularLabels } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterCategorySingularLabels,
+  getSearchFilterPresets,
+} from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
   useSetContentWidth,
@@ -41,6 +45,7 @@ import type {
   AgentSearchSortOrder,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
+import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   ButtonsSwitch,
@@ -345,10 +350,6 @@ export function ManageAgentsPage({
         ? category !== "access" && category !== "usage"
         : category === "model")
   );
-  const getVisibleFilter = (filter: AgentFilter): AgentFilter =>
-    Object.fromEntries(
-      filterCategories.map((category) => [category, filter[category]])
-    );
   const unresolvedVisibleCategories = unresolvedCategories.filter((category) =>
     filterCategories.includes(category)
   );
@@ -380,7 +381,12 @@ export function ManageAgentsPage({
       searchType: "name",
       limit: 0,
       filters: toAgentSearchFilters(
-        getVisibleFilter(pendingFilter),
+        Object.fromEntries(
+          filterCategories.map((category) => [
+            category,
+            pendingFilter[category],
+          ])
+        ),
         activeTab.filters
       ),
       permissionFiltering: getPermissionFiltering(activeTab.id),
@@ -390,7 +396,9 @@ export function ManageAgentsPage({
       disabled: unresolvedVisibleCategories.length === 0,
     });
   const filter = resolveFilter(selectionFacets);
-  const visibleFilter = getVisibleFilter(filter);
+  const visibleFilter: AgentFilter = Object.fromEntries(
+    filterCategories.map((category) => [category, filter[category]])
+  );
 
   const searchInput = (
     <div className="w-full md:w-1/2">
@@ -444,7 +452,7 @@ export function ManageAgentsPage({
         ) : (
           searchInput
         )}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <ButtonsSwitchList
               value={selectedTab}
@@ -456,7 +464,11 @@ export function ManageAgentsPage({
               }}
             >
               {AGENT_SEARCH_TABS.map((tab) => (
-                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+                <ButtonsSwitch
+                  key={tab.id}
+                  value={tab.id}
+                  label={isString(tab.label) ? tab.label : t(tab.label)}
+                />
               ))}
             </ButtonsSwitchList>
             <AgentFilterPanel
@@ -468,7 +480,15 @@ export function ManageAgentsPage({
               permissionFiltering={getPermissionFiltering(activeTab.id)}
               filter={visibleFilter}
               onFilterChange={(nextFilter) =>
-                setFilter({ ...filter, ...getVisibleFilter(nextFilter) })
+                setFilter({
+                  ...filter,
+                  ...Object.fromEntries(
+                    filterCategories.map((category) => [
+                      category,
+                      nextFilter[category],
+                    ])
+                  ),
+                })
               }
               hiddenAgents={
                 canShowHiddenAgents
@@ -490,6 +510,16 @@ export function ManageAgentsPage({
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
             }
+            presets={getSearchFilterPresets({
+              categories: filterCategories,
+              currentUser: user,
+              t,
+            })}
+            onApplyPreset={(preset) =>
+              setFilter(
+                selectAllFilterOptions(filter, preset.category, preset.options)
+              )
+            }
             extraChips={
               canShowHiddenAgents && showHiddenAgents
                 ? [
@@ -506,7 +536,12 @@ export function ManageAgentsPage({
                 : []
             }
             onClearAll={() => {
-              setFilter({ ...filter, ...getVisibleFilter({}) });
+              setFilter({
+                ...filter,
+                ...Object.fromEntries(
+                  filterCategories.map((category) => [category, undefined])
+                ),
+              });
               setShowHiddenAgents(false);
             }}
           />

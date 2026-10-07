@@ -1,0 +1,605 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/Confirm.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/Confirm.tsx
+msgid "OK"
+msgstr "OK"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Deselecting partial selection unavailable."
+msgstr "Impossible de désélectionner une sélection partielle."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet"
+msgstr "Désélectionnez manuellement chaque élément à retirer. Certains éléments ne sont pas encore entièrement synchronisés"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Connected service's API limit reached. Please retry shortly."
+msgstr "Limite d’API du service connecté atteinte. Réessayez dans un instant."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection."
+msgstr "Impossible de récupérer les permissions, car l’autorisation a été révoquée. Autorisez à nouveau la connexion."
+
+#: front/components/ContentNodeTree.tsx
+msgid "The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account."
+msgstr "Le compte connecté n’a pas les permissions suffisantes. Autorisez à nouveau la connexion avec un compte administrateur."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed."
+msgstr "Impossible de récupérer les permissions en raison d’une erreur inattendue. La ressource a peut-être été supprimée, déplacée, ou ses permissions de partage ont changé."
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/DataSourceViewPermissionTree.tsx
+msgid "No documents"
+msgstr "Aucun document"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Failed to select all"
+msgstr "Impossible de tout sélectionner"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Could not load folders to select. Please try again."
+msgstr "Impossible de charger les dossiers à sélectionner. Réessayez."
+
+#: front/components/ContentNodeTree.tsx
+msgid "Some locations could not be selected"
+msgstr "Certains emplacements n’ont pas pu être sélectionnés"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Selected accessible folders, but skipped {skippedCount, plural, one {# inaccessible location} other {# inaccessible locations}}."
+msgstr "Les dossiers accessibles ont été sélectionnés, mais {skippedCount, plural, one {# emplacement inaccessible a été ignoré} other {# emplacements inaccessibles ont été ignorés}}."
+
+#: front/components/ContentNodeTree.tsx
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Search"
+msgstr "Rechercher"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Loading..."
+msgstr "Chargement…"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Unselect all"
+msgstr "Tout désélectionner"
+
+#: front/components/ContentNodeTree.tsx
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "PDF preview is not available for this document."
+msgstr "L’aperçu PDF n’est pas disponible pour ce document."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "This document has no raw content available"
+msgstr "Ce document n’a aucun contenu brut disponible"
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "If the document is a spreadsheet, this is expected."
+msgstr "C’est normal si le document est un tableur."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Spreadsheets do not expose raw contents."
+msgstr "Les tableurs n’exposent pas de contenu brut."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "They are made available in Dust via the `Table Query` action in assistants."
+msgstr "Ils sont accessibles dans Dust via l’action `Table Query` des assistants."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Otherwise, this is unexpected."
+msgstr "Sinon, ce n’est pas normal."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Please contact support@dust.tt for assistance on synchronizing the document."
+msgstr "Contactez support@dust.tt pour obtenir de l’aide sur la synchronisation du document."
+
+#: front/components/DataSourceViewDocumentModal.tsx
+msgid "Content of the document:"
+msgstr "Contenu du document :"
+
+#: front/components/DataSourceViewPermissionTree.tsx
+msgid "No tables"
+msgstr "Aucune table"
+
+#: front/components/DataSourceViewPermissionTree.tsx
+msgid "No data"
+msgstr "Aucune donnée"
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits per day**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par jour**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits per week**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par semaine**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits per month**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par mois**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{credits} credits**."
+msgstr "Avec votre forfait actuel, cela représente **{credits} crédits**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{messages, plural, one {# message per day} other {# messages per day}}**."
+msgstr "Avec votre forfait actuel, cela représente **{messages, plural, one {# message par jour} other {# messages par jour}}**."
+
+#: front/components/FairUsageModal.tsx
+msgid "On your current plan, that is **{messages, plural, one {# message} other {# messages}}**."
+msgstr "Avec votre forfait actuel, cela représente **{messages, plural, one {# message} other {# messages}}**."
+
+#: front/components/FairUsageModal.tsx
+msgid "The exact limit depends on your plan."
+msgstr "La limite exacte dépend de votre forfait."
+
+#: front/components/FairUsageModal.tsx
+msgid "Fair use principles for user seats"
+msgstr "Principes d’utilisation équitable des sièges utilisateur"
+
+#: front/components/FairUsageModal.tsx
+msgid "Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately)."
+msgstr "Chaque siège utilisateur Dust est lié à une personne précise et doit être utilisé par elle seule, pour saisir et envoyer des messages manuellement (par opposition aux envois automatisés, comme les scripts ou les appels d’API, qui sont traités séparément)."
+
+#: front/components/FairUsageModal.tsx
+msgid "To prevent abuse, a \"fair use\" limit applies to each user seat."
+msgstr "Pour éviter les abus, une limite d’« utilisation équitable » s’applique à chaque siège utilisateur."
+
+#: front/components/FairUsageModal.tsx
+msgid "This limit should be understood as a way to prevent abuse, not as an allowed quota."
+msgstr "Cette limite sert à prévenir les abus et ne doit pas être considérée comme un quota autorisé."
+
+#: front/components/FairUsageModal.tsx
+msgid "In particular, it is considered unfair to share a single seat between multiple people."
+msgstr "En particulier, partager un même siège entre plusieurs personnes est considéré comme une utilisation non équitable."
+
+#: front/components/FairUsageModal.tsx
+msgid "Can messages be sent programmatically with Dust?"
+msgstr "Peut-on envoyer des messages via l’API avec Dust ?"
+
+#: front/components/FairUsageModal.tsx
+msgid "Yes, and this usage is encouraged."
+msgstr "Oui, et cet usage est encouragé."
+
+#: front/components/FairUsageModal.tsx
+msgid "However, such messages are not covered by individual user seats and fair use limits, and are billed separately."
+msgstr "Cependant, ces messages ne relèvent pas des sièges utilisateur individuels ni des limites d’utilisation équitable, et sont facturés séparément."
+
+#: front/components/FairUsageModal.tsx
+msgid "Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust]({PROGRAMMATIC_USAGE_URL})."
+msgstr "Les forfaits Dust incluent déjà des crédits mensuels pour l’utilisation via l’API, et vous pouvez en acheter davantage si besoin. Voir [Utilisation via l’API chez Dust]({PROGRAMMATIC_USAGE_URL})."
+
+#: front/components/FairUsageModal.tsx
+msgid "Dust's fair use policy"
+msgstr "Politique d’utilisation équitable de Dust"
+
+#: front/components/NodePathTooltip.tsx
+msgid "Folders"
+msgstr "Dossiers"
+
+#: front/components/UserAnalyticsPopover.tsx
+#: front/components/UserMenu.tsx
+msgid "Analytics"
+msgstr "Statistiques"
+
+#: front/components/UserAnalyticsPopover.tsx
+msgid "Close analytics"
+msgstr "Fermer les statistiques"
+
+#: front/components/UserAnalyticsPopover.tsx
+msgid "Explore"
+msgstr "Explorer"
+
+#: front/components/UserMenu.tsx
+msgid "Success !"
+msgstr "Succès !"
+
+#: front/components/UserMenu.tsx
+msgid "Role updated to {role} (reloading...)"
+msgstr "Rôle changé en {role} (rechargement…)"
+
+#: front/components/UserMenu.tsx
+msgid "Error !"
+msgstr "Erreur !"
+
+#: front/components/UserMenu.tsx
+msgid "Onboarding conversation created (redirecting...)"
+msgstr "Conversation de prise en main créée (redirection…)"
+
+#: front/components/UserMenu.tsx
+msgid "Open user menu"
+msgstr "Ouvrir le menu utilisateur"
+
+#: front/components/UserMenu.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/UserMenu.tsx
+msgid "Help"
+msgstr "Aide"
+
+#: front/components/UserMenu.tsx
+msgid "Learn about Dust"
+msgstr "Découvrir Dust"
+
+#: front/components/UserMenu.tsx
+msgid "Guides & Documentation"
+msgstr "Guides et documentation"
+
+#: front/components/UserMenu.tsx
+msgid "Join the Slack Community"
+msgstr "Rejoindre la communauté Slack"
+
+#: front/components/UserMenu.tsx
+msgid "Ask questions"
+msgstr "Poser des questions"
+
+#: front/components/UserMenu.tsx
+msgid "Ask @help"
+msgstr "Demander à @help"
+
+#: front/components/UserMenu.tsx
+msgid "How do I invite new users?"
+msgstr "Comment inviter de nouveaux utilisateurs ?"
+
+#: front/components/UserMenu.tsx
+msgid "How do I use agents in Slack workflow?"
+msgstr "Comment utiliser les agents dans un workflow Slack ?"
+
+#: front/components/UserMenu.tsx
+msgid "How do I manage billing?"
+msgstr "Comment gérer la facturation ?"
+
+#: front/components/UserMenu.tsx
+msgid "Firefox extension"
+msgstr "Extension Firefox"
+
+#: front/components/UserMenu.tsx
+msgid "Chrome extension"
+msgstr "Extension Chrome"
+
+#: front/components/UserMenu.tsx
+msgid "Changelog"
+msgstr "Nouveautés"
+
+#: front/components/UserMenu.tsx
+msgid "Account"
+msgstr "Compte"
+
+#: front/components/UserMenu.tsx
+msgid "Personal Settings"
+msgstr "Paramètres personnels"
+
+#: front/components/UserMenu.tsx
+msgid "Tools"
+msgstr "Outils"
+
+#: front/components/UserMenu.tsx
+msgid "Automations"
+msgstr "Automatisations"
+
+#: front/components/UserMenu.tsx
+msgid "Sign out"
+msgstr "Se déconnecter"
+
+#: front/components/UserMenu.tsx
+msgid "Dev Tools"
+msgstr "Outils de dev"
+
+#: front/components/UserMenu.tsx
+msgid "Debug conversation"
+msgstr "Déboguer la conversation"
+
+#: front/components/UserMenu.tsx
+msgid "Become Admin"
+msgstr "Devenir administrateur"
+
+#: front/components/UserMenu.tsx
+msgid "Become Manager"
+msgstr "Devenir manager"
+
+#: front/components/UserMenu.tsx
+msgid "Become User"
+msgstr "Devenir utilisateur"
+
+#: front/components/UserMenu.tsx
+msgid "Disable Privacy Mask"
+msgstr "Désactiver le masque de confidentialité"
+
+#: front/components/UserMenu.tsx
+msgid "Enable Privacy Mask"
+msgstr "Activer le masque de confidentialité"
+
+#: front/components/UserMenu.tsx
+msgid "Disable Dev Console"
+msgstr "Désactiver la console de dev"
+
+#: front/components/UserMenu.tsx
+msgid "Enable Dev Console"
+msgstr "Activer la console de dev"
+
+#: front/components/UserMenu.tsx
+msgid "Send onboarding conversation"
+msgstr "Envoyer la conversation de prise en main"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "First name is required."
+msgstr "Le prénom est obligatoire."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Last name is required."
+msgstr "Le nom est obligatoire."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Personal Information"
+msgstr "Informations personnelles"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "How you appear to other members of the workspace"
+msgstr "Comment les autres membres du workspace vous voient"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Profile picture"
+msgstr "Photo de profil"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Managed by your identity provider"
+msgstr "Géré par votre fournisseur d’identité"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Shown next to your messages"
+msgstr "Affichée à côté de vos messages"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "First name"
+msgstr "Prénom"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Last name"
+msgstr "Nom"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Email"
+msgstr "E-mail"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Used to sign in and receive notifications"
+msgstr "Utilisé pour vous connecter et recevoir les notifications"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "theme"
+msgid "Light"
+msgstr "Clair"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "theme"
+msgid "Dark"
+msgstr "Sombre"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "theme"
+msgid "Auto"
+msgstr "Auto"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Cmd + Enter (⌘ + ↵)"
+msgstr "Cmd + Entrée (⌘ + ↵)"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Ctrl + Enter"
+msgstr "Ctrl + Entrée"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Cmd + Enter"
+msgstr "Cmd + Entrée"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Could not save the conversation font"
+msgstr "Impossible d’enregistrer la police des conversations"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "It applies on this device, but could not be saved to your account."
+msgstr "Elle s’applique sur cet appareil, mais n’a pas pu être enregistrée dans votre compte."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Customization"
+msgstr "Personnalisation"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Adjust how Dust looks and behaves for you."
+msgstr "Adaptez l’apparence et le comportement de Dust."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Language"
+msgstr "Langue"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Language used by Dust for you, across all your workspaces"
+msgstr "Langue de Dust pour vous, dans tous vos workspaces"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Theme"
+msgstr "Thème"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Choose how Dust looks on this device"
+msgstr "Choisissez l’apparence de Dust sur cet appareil"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Conversation font"
+msgstr "Police des conversations"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Font used for agent answers in conversations"
+msgstr "Police utilisée pour les réponses des agents dans les conversations"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Send message"
+msgstr "Envoyer le message"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Keyboard shortcut to send a message"
+msgstr "Raccourci clavier pour envoyer un message"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Enter (↵)"
+msgstr "Entrée (↵)"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "keyboard key"
+msgid "Enter"
+msgstr "Entrée"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Show your agents on the home page"
+msgstr "Afficher vos agents sur la page d’accueil"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Access your favorite and most-used agents, or search for one from the home page."
+msgstr "Accédez à vos agents favoris et les plus utilisés, ou recherchez-en un depuis la page d’accueil."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Notification preferences saved"
+msgstr "Préférences de notification enregistrées"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Notifications"
+msgstr "Notifications"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Control how and when Dust notifies you"
+msgstr "Choisissez comment et quand Dust vous notifie"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Inbox notifications"
+msgstr "Notifications de la boîte de réception"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Sound alerts for items that need your attention"
+msgstr "Alertes sonores pour les éléments qui demandent votre attention"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "We couldn't load your notification settings. Please try again later."
+msgstr "Impossible de charger vos paramètres de notification. Veuillez réessayer plus tard."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Other channels"
+msgstr "Autres canaux"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Choose where else to receive notifications"
+msgstr "Choisissez où recevoir aussi les notifications"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Invitations"
+msgstr "Invitations"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Workspaces you've been invited to join"
+msgstr "Les workspaces que vous êtes invité à rejoindre"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Memory"
+msgstr "Mémoire"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Enable Memory"
+msgstr "Activer la mémoire"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Dust builds a personal memory from your conversations and uses it to tailor future responses."
+msgstr "Dust constitue une mémoire personnelle à partir de vos conversations et l’utilise pour adapter ses prochaines réponses."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."
+msgstr "Le contenu de votre mémoire enregistrée peut apparaître dans les réponses envoyées vers Slack et d’autres intégrations externes."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "About you"
+msgstr "À propos de vous"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Data source API"
+msgstr "API des sources de données"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Space ID:"
+msgstr "ID de l’espace :"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Data source ID:"
+msgstr "ID de la source de données :"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Upsert document"
+msgstr "Ajouter ou mettre à jour un document"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Use the following cURL command to upsert a document to folder <0>{dataSourceName}</0>:"
+msgstr "Utilisez la commande cURL suivante pour ajouter ou mettre à jour un document dans le dossier <0>{dataSourceName}</0> :"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Copied!"
+msgstr "Copié !"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Copy"
+msgstr "Copier"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Use the following cURL command to search in folder <0>{dataSourceName}</0>:"
+msgstr "Utilisez la commande cURL suivante pour rechercher dans le dossier <0>{dataSourceName}</0> :"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "API keys"
+msgstr "Clés API"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Manage workspace API keys"
+msgstr "Gérer les clés API du workspace"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "API keys are managed by workspace admins."
+msgstr "Les clés API sont gérées par les administrateurs du workspace."
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Handle API keys with care as they provide access to your company data."
+msgstr "Manipulez les clés API avec précaution : elles donnent accès aux données de votre entreprise."
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "Documentation"
+msgstr "Documentation"
+
+#: front/components/ViewFolderAPIModal.tsx
+msgid "For a detailed documentation of the Data source API, please refer to the <0>API reference</0>"
+msgstr "Pour une documentation détaillée de l’API des sources de données, consultez la <0>référence de l’API</0>"
+
+#: front/components/WorkspacePicker.tsx
+msgid "Workspace:"
+msgstr "Workspace :"
+
+#: front/components/WorkspacePicker.tsx
+msgid "Select workspace"
+msgstr "Sélectionner un workspace"

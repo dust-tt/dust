@@ -10,6 +10,7 @@ import {
 import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 interface PodLayoutProps {
@@ -44,12 +45,14 @@ export function PodLayout({ children, owner }: PodLayoutProps) {
 }
 
 function UncaughtPodErrorFallback() {
+  const { t } = useLingui();
+
   return (
     <ErrorDisplay
-      title="Something unexpected happened"
+      title={t`Something unexpected happened`}
       message={[
-        "Try refreshing the page to continue.",
-        "Still having trouble? Reach out at support@dust.tt",
+        t`Try refreshing the page to continue.`,
+        t`Still having trouble? Reach out at support@dust.tt`,
       ]}
     />
   );

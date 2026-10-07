@@ -1,5 +1,5 @@
+import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
-import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AgentSurfaceRouterLayout } from "@spa/app/layouts/AgentSurfaceRouterLayout";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
@@ -48,6 +48,12 @@ function PokeRedirect() {
   return null;
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] workspace-not-found-under-workspace-page
+ * A path under `/w/:wId` that matches no other route MUST render the 404 page nested under
+ * `WorkspacePage` and `AppContentRouterLayout`, not the global catch-all, so that it is shown in
+ * the user locale with the app navigation.
+ */
 export const routes: RouteObject[] = [
   {
     element: <RootRouterLayout />,
@@ -77,6 +83,7 @@ export const routes: RouteObject[] = [
               ...appsRoutes,
               ...builderContentRoutes,
               ...spacesRedirectRoutes,
+              { path: "*", element: <Custom404 /> },
             ],
           },
 

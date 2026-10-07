@@ -35,6 +35,7 @@ import {
   UserSquare,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
@@ -116,6 +117,7 @@ export function PodMenu({
   onPhaseChange,
   triggerPosition,
 }: PodMenuProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -167,8 +169,8 @@ export function PodMenu({
 
   const copyPodLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink ?? "");
-    sendNotification({ type: "success", title: "Link copied !" });
-  }, [shareLink, sendNotification]);
+    sendNotification({ type: "success", title: t`Link copied` });
+  }, [shareLink, sendNotification, t]);
 
   const handleArchiveSuccess = useCallback(() => {
     if (isPodDisplayed) {
@@ -245,15 +247,15 @@ export function PodMenu({
           onCloseAutoFocus={() => onPhaseChange("closed")}
           onFocusOutside={(e) => e.preventDefault()}
         >
-          <DropdownMenuLabel label="My settings" />
+          <DropdownMenuLabel label={t`My settings`} />
           <DropdownMenuItem
-            label={isStarred ? "Remove from starred" : "Add to starred"}
+            label={isStarred ? t`Remove from starred` : t`Add to starred`}
             icon={Star01}
             onClick={() => void starPod(!isStarred)}
           />
           {canLeave && (
             <DropdownMenuItem
-              label="Leave"
+              label={t`Leave`}
               onClick={openLeaveDialog}
               icon={XClose}
             />
@@ -264,10 +266,10 @@ export function PodMenu({
             shouldWaitBeforeFetching={shouldWaitBeforeFetching}
           />
           <DropdownMenuSeparator />
-          <DropdownMenuLabel label="Pod" />
+          <DropdownMenuLabel label={t`Pod`} />
           {canRename && (
             <DropdownMenuItem
-              label="Rename"
+              label={t`Rename`}
               onClick={() => setShowRenameDialog(true)}
               icon={Edit04}
             />
@@ -276,7 +278,7 @@ export function PodMenu({
             <DropdownMenuSubTrigger
               icon={UserSquare}
               disabled={!podInfo?.members?.length}
-              label="Member list"
+              label={t`Member list`}
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
@@ -302,7 +304,7 @@ export function PodMenu({
           </DropdownMenuSub>
           {canAdministratePod && (
             <DropdownMenuItem
-              label="Archive"
+              label={t`Archive`}
               onClick={archivePod}
               icon={EyeOff}
               variant="warning"
@@ -311,9 +313,9 @@ export function PodMenu({
           {shareLink && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel label="Share" />
+              <DropdownMenuLabel label={t`Share`} />
               <DropdownMenuItem
-                label="Copy link"
+                label={t`Copy link`}
                 onClick={copyPodLink}
                 icon={Link01}
               />

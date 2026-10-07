@@ -5,12 +5,14 @@ import {
   isEditableToolValidationSupported,
 } from "@app/components/assistant/conversation/editable_tool_validation/EditableToolValidation";
 import type { ValidationRequiredToolExecution } from "@app/components/assistant/conversation/editable_tool_validation/types";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLingui } from "@lingui/react/macro";
+import { useEffect, useMemo, useRef } from "react";
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -25,9 +27,10 @@ export function MCPToolValidationRequired({
   blockedAction,
   conversationId,
 }: MCPToolValidationRequiredProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   const {
     getBlockedActions,
@@ -38,10 +41,7 @@ export function MCPToolValidationRequired({
     isToolApprovedForConversation,
     approveToolForConversation,
   } = useBlockedActionsContext();
-  const { validateAction, isValidating } = useValidateAction({
-    owner,
-    onError: setErrorMessage,
-  });
+  const { validateAction, isValidating } = useValidateAction({ owner });
 
   const canCurrentUserRespond = useMemo(
     () =>
@@ -64,7 +64,6 @@ export function MCPToolValidationRequired({
   const handleValidationStart = () => {
     // Stop pulsing immediately when the user takes an action.
     stopPulsingAction(blockedAction.actionId);
-    setErrorMessage(null);
   };
 
   const handleValidation = async (
@@ -81,7 +80,10 @@ export function MCPToolValidationRequired({
     });
 
     if (!result.success) {
-      setErrorMessage("Failed to assess action approval. Please try again.");
+      sendApiErrorNotification({
+        title: t`Failed to assess action approval`,
+        error: result.error,
+      });
       return false;
     }
     removeCompletedAction(blockedAction.actionId);
@@ -161,24 +163,14 @@ export function MCPToolValidationRequired({
 
   if (shouldUseEditableToolValidation) {
     return (
-      <>
-        <EditableToolValidation
-          blockedAction={blockedAction}
-          owner={owner}
-          isPulsing={isPulsing}
-          isValidating={isValidating}
-          onActionCompleted={() =>
-            removeCompletedAction(blockedAction.actionId)
-          }
-          onError={setErrorMessage}
-          onValidationStart={handleValidationStart}
-        />
-        {errorMessage && (
-          <div className="mt-2 text-sm font-medium text-warning-800">
-            {errorMessage}
-          </div>
-        )}
-      </>
+      <EditableToolValidation
+        blockedAction={blockedAction}
+        owner={owner}
+        isPulsing={isPulsing}
+        isValidating={isValidating}
+        onActionCompleted={() => removeCompletedAction(blockedAction.actionId)}
+        onValidationStart={handleValidationStart}
+      />
     );
   }
 
@@ -190,7 +182,6 @@ export function MCPToolValidationRequired({
       currentUser={user}
       owner={owner}
       conversationId={conversationId}
-      errorMessage={errorMessage}
       isValidating={isValidating}
       isPulsing={isPulsing}
       onValidate={handleValidation}

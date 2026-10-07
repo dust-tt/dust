@@ -13,7 +13,6 @@ import InputBarContainer from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarUsageBanner } from "@app/components/assistant/conversation/input_bar/InputBarUsageBanner";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { compareStrings } from "@app/lib/i18n/format";
@@ -40,6 +39,8 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import uniqWith from "lodash/uniqWith";
@@ -55,7 +56,7 @@ import React, {
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 // Placeholder shown when a submitted message would be queued.
-const INPUT_BAR_QUEUE_PLACEHOLDER = "Add a follow-up...";
+const INPUT_BAR_QUEUE_PLACEHOLDER = msg`Add a follow-up...`;
 
 type SelectedSpacesState = {
   key: string;
@@ -138,6 +139,7 @@ export const InputBar = React.memo(function InputBar({
   onOverlayOpenChange,
   onVoiceActiveChange,
 }: InputBarProps) {
+  const { t } = useLingui();
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
   const { featureFlags } = useFeatureFlags();
@@ -213,7 +215,7 @@ export const InputBar = React.memo(function InputBar({
       (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
     )?.agentId;
     if (activeBlockingId) {
-      return RUNNING_AGENT_SWITCH_BLOCK_MESSAGE;
+      return t`Wait for current active agent to finish before calling another agent.`;
     }
 
     // Check messages with a pending blocked action from a different agent.
@@ -225,10 +227,12 @@ export const InputBar = React.memo(function InputBar({
         getFirstBlockedActionForMessage(m.messageId)
     );
     if (blockedActionMessage) {
-      const name =
-        agentConfigurations.find((a) => a.sId === blockedActionMessage.agentId)
-          ?.name ?? "another agent";
-      return `Resolve the pending action from @${name} before switching agents`;
+      const name = agentConfigurations.find(
+        (a) => a.sId === blockedActionMessage.agentId
+      )?.name;
+      return name
+        ? t`Resolve the pending action from @${name} before switching agents`
+        : t`Resolve the pending action from another agent before switching agents`;
     }
 
     return null;
@@ -239,6 +243,7 @@ export const InputBar = React.memo(function InputBar({
     getFirstBlockedActionForMessage,
     conversation?.sId,
     agentConfigurations,
+    t,
   ]);
 
   const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
@@ -698,7 +703,7 @@ export const InputBar = React.memo(function InputBar({
             disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             placeholder={
-              willQueueMessage ? INPUT_BAR_QUEUE_PLACEHOLDER : placeholder
+              willQueueMessage ? t(INPUT_BAR_QUEUE_PLACEHOLDER) : placeholder
             }
             animatePlaceholder={willQueueMessage}
             onShake={handleShake}

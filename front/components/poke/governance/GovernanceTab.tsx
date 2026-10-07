@@ -41,6 +41,7 @@ import {
 import type { AuditAction } from "@app/lib/api/audit/workos_audit";
 import { isDustMcpServerEnabled } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import type { PokeMessagingApp } from "@app/lib/api/poke/messaging_apps";
+import { i18n } from "@app/lib/i18n/i18n";
 import {
   areAuditLogsEnabled,
   areEmailAgentsAllowed,
@@ -175,8 +176,8 @@ function buildPermissionRows(
 
     return {
       key,
-      label: metadata?.label ?? key,
-      description: metadata?.description ?? "",
+      label: metadata ? i18n._(metadata.label) : key,
+      description: metadata ? i18n._(metadata.description) : "",
       value: scopeChip(permission.configuration.scope),
       auditAction: "workspace.governance_permission_updated",
       groupIds:

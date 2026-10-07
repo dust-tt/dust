@@ -1,6 +1,7 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import type { LightWorkspaceType } from "@app/types/user";
 import { MarkdownContentContext } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
 
@@ -28,11 +29,10 @@ export function VisualizationBlock({
 
   const visualizationRenderer = useMemo(() => {
     return (
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       customRenderer?.visualization ||
       (() => (
         <div className="pb-2 pt-4 font-medium text-warning">
-          Visualization not available
+          <Trans>Visualization not available</Trans>
         </div>
       ))
     );
@@ -91,7 +91,6 @@ export function visualizationDirective() {
   return (tree: any) => {
     visit(tree, ["containerDirective"], (node) => {
       if (node.name === "visualization") {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "visualization";
         data.hProperties = {

@@ -1,6 +1,7 @@
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+import { msg } from "@lingui/core/macro";
 
 const A = ADMIN_SECTION_IDS.analytics;
 const PAGE = "analytics" as const;
@@ -11,14 +12,14 @@ export const ANALYTICS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     A.consumption,
     [
-      ["Analytics", "consumption usage breakdown"],
-      ["Consumption overview", "credits used period"],
-      ["Consumption chart", "trend graph"],
-      ["Attribution table", "agents members groups skills"],
-      ["Usage filters", "filter dimension scope"],
+      [msg`Analytics`, msg`consumption usage breakdown`],
+      [msg`Consumption overview`, msg`credits used period`],
+      [msg`Consumption chart`, msg`trend graph`],
+      [msg`Attribution table`, msg`agents members groups skills`],
+      [msg`Usage filters`, msg`filter dimension scope`],
       [
-        "Self-improving skills consumption",
-        "self improving skills consumption current period spend",
+        msg`Self-improving skills consumption`,
+        msg`self improving skills consumption current period spend`,
       ],
     ],
     "consumption"
@@ -27,8 +28,8 @@ export const ANALYTICS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     A.export,
     [
-      ["Export analytics", "download csv export usage data raw"],
-      ["Export usage data", "csv download raw data"],
+      [msg`Export analytics`, msg`download csv export usage data raw`],
+      [msg`Export usage data`, msg`csv download raw data`],
     ],
     "export"
   ),

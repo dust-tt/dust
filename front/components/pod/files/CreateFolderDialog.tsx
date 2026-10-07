@@ -9,6 +9,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface CreateFolderDialogProps {
@@ -28,6 +29,7 @@ export function CreateFolderDialog({
   parentRelativePath,
   podId,
 }: CreateFolderDialogProps) {
+  const { t } = useLingui();
   const [folderName, setFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,12 +75,14 @@ export function CreateFolderDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New folder</DialogTitle>
+          <DialogTitle>
+            <Trans>New folder</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <Input
             ref={inputRef}
-            placeholder="Folder name"
+            placeholder={t`Folder name`}
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
             onKeyDown={(e) => {
@@ -91,14 +95,14 @@ export function CreateFolderDialog({
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{
-            label: "Create",
+            label: t`Create`,
             variant: "primary",
             onClick: handleCreate,
             disabled: !folderName.trim() || isCreating,
             isLoading: isCreating,
           }}
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             disabled: isCreating,
           }}

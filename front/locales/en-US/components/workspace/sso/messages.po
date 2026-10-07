@@ -1,0 +1,196 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "De-activate Auto-join"
+msgstr "De-activate Auto-join"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Activate Auto-join"
+msgstr "Activate Auto-join"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "De-activate"
+msgstr "De-activate"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Activate"
+msgstr "Activate"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "New members will need to be invited in order to gain access to your Dust Workspace."
+msgstr "New members will need to be invited in order to gain access to your Dust Workspace."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Anyone with a <0>{domainList}</0> email will have access to your Dust Workspace."
+msgstr "Anyone with a <0>{domainList}</0> email will have access to your Dust Workspace."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Update failed"
+msgstr "Update failed"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Failed to enable auto-add for whitelisted domain."
+msgstr "Failed to enable auto-add for whitelisted domain."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+#: front/components/workspace/sso/Toggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Free plan"
+msgstr "Free plan"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+msgstr "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Auto-join Workspace"
+msgstr "Auto-join Workspace"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "{domainCount, plural, one {Allow your team members to access your Dust workspace when they authenticate with {domainList} account.} other {Allow your team members to access your Dust workspace when they authenticate with {domainList} accounts.}}"
+msgstr "{domainCount, plural, one {Allow your team members to access your Dust workspace when they authenticate with {domainList} account.} other {Allow your team members to access your Dust workspace when they authenticate with {domainList} accounts.}}"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Allow your team members to access your Dust workspace when they authenticate with verified accounts."
+msgstr "Allow your team members to access your Dust workspace when they authenticate with verified accounts."
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Configure"
+msgstr "Configure"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Enable Auto-join"
+msgstr "Enable Auto-join"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Auto-join is not available when SSO is enforced"
+msgstr "Auto-join is not available when SSO is enforced"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Add a domain to enable Auto-join"
+msgstr "Add a domain to enable Auto-join"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Verify a domain to enable Auto-join"
+msgstr "Verify a domain to enable Auto-join"
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Failed to update auto-join settings."
+msgstr "Failed to update auto-join settings."
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Configure Auto-join"
+msgstr "Configure Auto-join"
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Select which domains should allow users to automatically join your workspace when they sign up with a matching email address."
+msgstr "Select which domains should allow users to automatically join your workspace when they sign up with a matching email address."
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Saving..."
+msgstr "Saving..."
+
+#: front/components/workspace/sso/MultiDomainAutoJoinModal.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Enable Single Sign On Enforcement"
+msgstr "Enable Single Sign On Enforcement"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "By enforcing SSO, access through social media logins will be discontinued. Instead, you'll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
+msgstr "By enforcing SSO, access through social media logins will be discontinued. Instead, you'll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Enforce Single Sign On"
+msgstr "Enforce Single Sign On"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Disable Single Sign On Enforcement"
+msgstr "Disable Single Sign On Enforcement"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "By disabling SSO enforcement, users will have the flexibility to login with social media."
+msgstr "By disabling SSO enforcement, users will have the flexibility to login with social media."
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Disable Single Sign-On Enforcement"
+msgstr "Disable Single Sign-On Enforcement"
+
+#: front/components/workspace/sso/Toggle.tsx
+msgid "Failed to enforce sso on workspace."
+msgstr "Failed to enforce sso on workspace."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Authentication and access"
+msgstr "Authentication and access"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Single Sign-On (SSO)"
+msgstr "Single Sign-On (SSO)"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Enabled"
+msgstr "Enabled"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Manage your enterprise Identity Provider (IdP) settings and user provisioning via WorkOS."
+msgstr "Manage your enterprise Identity Provider (IdP) settings and user provisioning via WorkOS."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Configure SSO"
+msgstr "Configure SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "De-activate SSO"
+msgstr "De-activate SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Activate SSO"
+msgstr "Activate SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Add a domain to enable SSO"
+msgstr "Add a domain to enable SSO"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Enforce SSO login"
+msgstr "Enforce SSO login"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "When SSO is enforced, users will no longer be able to use social logins and will be redirected to the SSO portal."
+msgstr "When SSO is enforced, users will no longer be able to use social logins and will be redirected to the SSO portal."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
+msgstr "You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Disable {connectionType} Single Sign On"
+msgstr "Disable {connectionType} Single Sign On"
+
+#: front/components/workspace/sso/WorkOSSSOConnection.tsx
+msgid "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."
+msgstr "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."

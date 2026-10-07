@@ -15,7 +15,9 @@ import { validate } from "@front-api/middlewares/validator";
 import { deleteCookie, getCookie } from "hono/cookie";
 import { z } from "zod";
 
-export type GetOauthFinalizeResponseBody = { connection: OAuthConnectionType };
+export type GetOauthFinalizeResponseBody =
+  | { connection: OAuthConnectionType }
+  | { authorize_url: string };
 
 const ParamsSchema = z.object({
   provider: z.string(),
@@ -95,6 +97,12 @@ app.get(
       });
     }
 
+    // Keep the nonce cookie across a continue-authorize redirect; the user
+    // will hit finalize again after GitHub user OAuth and still needs the bind.
+    if (cRes.value.type === "continue_authorize") {
+      return ctx.json({ authorize_url: cRes.value.authorizeUrl });
+    }
+
     // Consume the nonce cookie so a stolen callback URL cannot be replayed
     // from another browser that somehow obtained the same Dust session.
     if (connectionId) {
@@ -105,7 +113,7 @@ app.get(
       );
     }
 
-    return ctx.json({ connection: cRes.value });
+    return ctx.json({ connection: cRes.value.connection });
   }
 );
 

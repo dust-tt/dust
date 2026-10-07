@@ -132,7 +132,6 @@ export function DatasetsPage() {
                               "text-s flex items-center"
                             )}
                           >
-                            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                             {d.description ? d.description : t`No description`}
                           </p>
                         </div>

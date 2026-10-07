@@ -1,5 +1,8 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useCheckPodName } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -15,6 +18,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type EditPodTitleDialogProps = {
@@ -32,6 +36,7 @@ export const EditPodTitleDialog = ({
   podId,
   currentTitle,
 }: EditPodTitleDialogProps) => {
+  const { t } = useLingui();
   const [title, setTitle] = useState<string>(currentTitle);
   const {
     isNameAvailable,
@@ -44,6 +49,7 @@ export const EditPodTitleDialog = ({
   const nameNotAvailable =
     title.trim().length > 0 && !isCheckingName && !isNameAvailable;
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -82,10 +88,9 @@ export const EditPodTitleDialog = ({
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to edit title",
-        description: errorData.message,
+      sendApiErrorNotification({
+        title: t`Failed to edit title`,
+        error: errorData,
       });
       return;
     }
@@ -93,7 +98,7 @@ export const EditPodTitleDialog = ({
     void mutateSpaceInfo();
     void mutatePodConversationsSummary();
 
-    sendNotification({ type: "success", title: "Title edited" });
+    sendNotification({ type: "success", title: t`Title edited` });
     onClose();
   }, [
     title,
@@ -102,20 +107,24 @@ export const EditPodTitleDialog = ({
     podId,
     mutateSpaceInfo,
     mutatePodConversationsSummary,
+    sendApiErrorNotification,
     sendNotification,
     onClose,
+    t,
   ]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Pod name</DialogTitle>
+          <DialogTitle>
+            <Trans>Edit Pod name</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <Input
             ref={inputRef}
-            placeholder="Enter new name..."
+            placeholder={t`Enter new name...`}
             value={title}
             maxLength={MAX_POD_NAME_LENGTH}
             onChange={(e) => {
@@ -131,19 +140,19 @@ export const EditPodTitleDialog = ({
           />
           {nameNotAvailable && (
             <div className="text-xs text-warning-500">
-              A Pod or space with this name already exists.
+              <Trans>A Pod or space with this name already exists.</Trans>
             </div>
           )}
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: editTitle,
             disabled: nameNotAvailable || isCheckingName,
           }}
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
           }}
         />

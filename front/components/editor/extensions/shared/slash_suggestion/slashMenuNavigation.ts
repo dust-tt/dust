@@ -1,6 +1,7 @@
 import { isPickModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { isInsertKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { msg } from "@lingui/core/macro";
 import type { Editor, Range } from "@tiptap/core";
 
 export const ATTACH_CONTEXT_SUB_MENU_ID = "attach-context";
@@ -126,7 +127,7 @@ export function getActiveSlashSubMenuFrame(
   return storage.menuStack[storage.menuStack.length - 1] ?? null;
 }
 
-export const SLASH_MENU_QUERY_PLACEHOLDER = "Type to search";
+export const SLASH_MENU_QUERY_PLACEHOLDER = msg`Type to search`;
 
 // The "/" trigger and the "Type to search" ghost text are two adjacent spans; these classes draw
 // them as a single chip (left half on the trigger, right half on the placeholder).

@@ -34,7 +34,6 @@ import {
   isRichAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   ContentMessageAction,
   ContentMessageInline,
@@ -43,6 +42,7 @@ import {
   MOTION_DURATIONS,
   MOTION_EASINGS,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import {
   useVirtuosoLocation,
   useVirtuosoMethods,
@@ -92,6 +92,7 @@ interface AgentInputBarProps {
 }
 
 export const AgentInputBar = ({ context }: AgentInputBarProps) => {
+  const { t } = useLingui();
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const [pendingAction, setPendingAction] = useState<
     "stop" | "interrupt" | null
@@ -168,14 +169,14 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     (message) => isCompactionMessage(message) && message.status === "created"
   );
   const compactionBlockMessage = isCompactionInProgress
-    ? "Wait for compaction to finish."
+    ? t`Wait for compaction to finish.`
     : contextUsagePercentage >=
         CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
-      ? "Context is full, compact to continue."
+      ? t`Context is full, compact to continue.`
       : null;
   const forkBlockMessage =
     context.conversation?.forkingData?.forkedFrom?.fileCopyStatus === "pending"
-      ? "Wait for the branch to finish preparing."
+      ? t`Wait for the branch to finish preparing.`
       : null;
   const showContextUsageBanner =
     contextUsage &&
@@ -191,7 +192,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const isActiveWakeUpOwner = activeWakeUp?.user.sId === context.user.sId;
   const wakeUpBlockMessage =
     activeWakeUp && !isActiveWakeUpOwner
-      ? `You cannot send a message to an agent awaiting a wake-up set by another user`
+      ? t`You cannot send a message to an agent awaiting a wake-up set by another user`
       : null;
 
   const autoMentions = useMemo(() => {
@@ -329,6 +330,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   const blockedActionItems = getBlockedActionItems(context.user.sId);
   const blockedActions = blockedActionItems.map((item) => item.blockedAction);
+  const blockedActionCount = blockedActions.length;
   const userAnswerRequiredItem = blockedActionItems.find(
     (item) => item.blockedAction.status === "blocked_user_answer_required"
   );
@@ -445,15 +447,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   const getStopButtonLabel = () => {
     if (pendingAction === "interrupt") {
-      return "Skipping…";
+      return t`Skipping…`;
     }
     if (pendingAction === "stop") {
-      return "Stopping…";
+      return t`Stopping…`;
     }
     if (hasPendingMessages) {
-      return "Skip";
+      return t`Skip`;
     }
-    return generatingMessages.length > 1 ? "Stop all" : "Stop";
+    return generatingMessages.length > 1 ? t`Stop all` : t`Stop`;
   };
 
   const getConversationMessageIds = () =>
@@ -548,7 +550,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     return (
       <div className="mx-auto flex w-full flex-col py-4 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1">
         <EmptyCTA
-          message="This conversation belongs to an archived Pod. No new messages can be sent."
+          message={t`This conversation belongs to an archived Pod. No new messages can be sent.`}
           action={null}
         />
       </div>
@@ -579,15 +581,29 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >
-          <span className="font-bold">
-            {blockedActions.length} manual action
-            {pluralize(blockedActions.length)}
-          </span>{" "}
-          required
+          <Plural
+            value={blockedActionCount}
+            one={
+              <Trans>
+                <span className="font-bold">
+                  {blockedActionCount} manual action
+                </span>{" "}
+                required
+              </Trans>
+            }
+            other={
+              <Trans>
+                <span className="font-bold">
+                  {blockedActionCount} manual actions
+                </span>{" "}
+                required
+              </Trans>
+            }
+          />
           {/* If there are pending validations, we show a button allowing to cycle through the blocked actions messages. */}
           {hasPendingValidations(context.user.sId) && (
             <ContentMessageAction
-              label="Review"
+              label={t`Review`}
               variant="outline"
               size="xs"
               onClick={() => {
@@ -621,7 +637,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >
-          Preparing branch… You can draft a message while its files are copied.
+          <Trans>
+            Preparing branch… You can draft a message while its files are
+            copied.
+          </Trans>
         </ContentMessageInline>
       )}
       {showContextUsageBanner && (

@@ -1,0 +1,275 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+msgid "API Key Created"
+msgstr "Clé API créée"
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+msgid "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API."
+msgstr "Votre clé API ne restera visible que 10 minutes. Vous pouvez l’utiliser pour vous authentifier auprès de l’API Dust."
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Name"
+msgstr "Nom"
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+msgid "Copy to clipboard"
+msgstr "Copier dans le presse-papiers"
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+msgid "Domain"
+msgstr "Domaine"
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+msgid "Workspace ID"
+msgstr "ID du workspace"
+
+#: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
+msgid "API Key"
+msgstr "Clé API"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Active"
+msgstr "Actif"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Capped"
+msgstr "Plafonnée"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Revoked"
+msgstr "Révoqué"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Read-only"
+msgstr "Lecture seule"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Read & write"
+msgstr "Lecture et écriture"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Admin"
+msgstr "Administration"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "No access"
+msgstr "Aucun accès"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Unknown"
+msgstr "Inconnu"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "No spaces"
+msgstr "Aucun espace"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Spaces: {spaceList}"
+msgstr "Espaces : {spaceList}"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "{creditsLabel}/unlimited"
+msgstr "{creditsLabel}/illimité"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Unlimited"
+msgstr "Illimité"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Never"
+msgstr "Jamais"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Unknown creator"
+msgstr "Créateur inconnu"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Edit monthly cap"
+msgstr "Modifier le plafond mensuel"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Unnamed"
+msgstr "Sans nom"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Scope"
+msgstr "Périmètre"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Key"
+msgstr "Clé"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Spaces"
+msgstr "Espaces"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Credits"
+msgstr "Crédits"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Credits cap"
+msgstr "Plafond de crédits"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Monthly cap"
+msgstr "Plafond mensuel"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Last used"
+msgstr "Dernière utilisation"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Status"
+msgstr "Statut"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Revoke API key"
+msgstr "Révoquer la clé API"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Search API Key"
+msgstr "Rechercher une clé API"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Filters"
+msgstr "Filtres"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Failed to load API keys."
+msgstr "Impossible de charger les clés API."
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Create an API key to start using Dust programmatically."
+msgstr "Créez une clé API pour commencer à utiliser Dust via l’API."
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "No API keys match these filters."
+msgstr "Aucune clé API ne correspond à ces filtres."
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "{filteredKeyCount, plural, one {# API key} other {# API keys}}"
+msgstr "{filteredKeyCount, plural, one {# clé API} other {# clés API}}"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Page {pageNumber} of {pageCount}"
+msgstr "Page {pageNumber} sur {pageCount}"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Previous page"
+msgstr "Page précédente"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Next page"
+msgstr "Page suivante"
+
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+msgid "Edit Monthly Cap - {keyName}"
+msgstr "Modifier le plafond mensuel - {keyName}"
+
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Monthly cap (USD)"
+msgstr "Plafond mensuel (USD)"
+
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Leave empty for unlimited"
+msgstr "Laisser vide pour illimité"
+
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: front/components/workspace/api-keys/EditKeyCapDialog.tsx
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+msgid "Edit credit cap - {keyName}"
+msgstr "Modifier le plafond de crédits - {keyName}"
+
+#: front/components/workspace/api-keys/EditKeyCreditCapDialog.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Monthly credit cap"
+msgstr "Plafond mensuel de crédits"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "API key name is required"
+msgstr "Le nom de la clé API est obligatoire"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Create API Key"
+msgstr "Créer une clé API"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "New API Key"
+msgstr "Nouvelle clé API"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "API Key Name"
+msgstr "Nom de la clé API"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Type an API key name"
+msgstr "Saisissez un nom pour la clé API"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "The key can read everything workspace members can, including open spaces and Company Data. Selecting a space grants the key read and write access to it, such as uploading files."
+msgstr "La clé peut lire tout ce que les membres du workspace peuvent lire, y compris les espaces ouverts et les données de l’entreprise. Sélectionner un espace donne à la clé un accès en lecture et en écriture à cet espace, par exemple pour importer des fichiers."
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Add Spaces"
+msgstr "Ajouter des espaces"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Search spaces"
+msgstr "Rechercher des espaces"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "No spaces found"
+msgstr "Aucun espace trouvé"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Access scope"
+msgstr "Périmètre de l’accès"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Can create conversations, read agents and data sources."
+msgstr "Peut créer des conversations, lire les agents et les sources de données."
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Create and modify resources plus workspace administration (members, analytics export)"
+msgstr "Créer et modifier des ressources, et administrer le workspace (membres, export des statistiques)"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Create"
+msgstr "Créer"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Monthly cap must be a positive number"
+msgstr "Le plafond mensuel doit être un nombre positif"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Credit cap must be a whole number of credits (min 1)"
+msgstr "Le plafond de crédits doit être un nombre entier de crédits (minimum 1)"

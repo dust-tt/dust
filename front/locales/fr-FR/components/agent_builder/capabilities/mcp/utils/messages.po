@@ -1,0 +1,74 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/capabilities/mcp/utils/formValidation.ts
+msgid "Tool \"{toolName}\" has invalid configuration. Please reconfigure it."
+msgstr "La configuration de l’outil « {toolName} » n’est pas valide. Veuillez le reconfigurer."
+
+#: front/components/agent_builder/capabilities/mcp/utils/infoPageUtils.ts
+msgid "Tool information"
+msgstr "Informations sur l’outil"
+
+#: front/components/agent_builder/capabilities/mcp/utils/infoPageUtils.ts
+msgid "No description available"
+msgstr "Aucune description disponible"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Child agent selection is required"
+msgstr "La sélection d’un agent enfant est obligatoire"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select a valid child agent"
+msgstr "Veuillez sélectionner un agent enfant valide"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select a Dust app"
+msgstr "Veuillez sélectionner une app Dust"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Selected Dust app is not valid"
+msgstr "L’app Dust sélectionnée n’est pas valide"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "The name cannot be empty."
+msgstr "Le nom ne peut pas être vide."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
+msgstr "Le nom ne peut contenir que des lettres minuscules, des chiffres et des tirets bas (sans espaces)."
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Description is required"
+msgstr "La description est obligatoire"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Description too long"
+msgstr "Description trop longue"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Secret selection is required"
+msgstr "La sélection d’un secret est obligatoire"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select a valid secret"
+msgstr "Veuillez sélectionner un secret valide"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Please select one Pod"
+msgstr "Veuillez sélectionner un Pod"
+
+#: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
+msgid "Selected Pod is not valid"
+msgstr "Le Pod sélectionné n’est pas valide"

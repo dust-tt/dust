@@ -30,6 +30,8 @@ import {
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 
@@ -184,6 +186,7 @@ export function MultiPodNetworkSection({
   selectedPods,
   includeWorkspace,
 }: MultiPodNetworkSectionProps) {
+  const { t } = useLingui();
   const {
     podPolicies,
     isPodPoliciesLoading,
@@ -262,11 +265,34 @@ export function MultiPodNetworkSection({
     includeWorkspace
       ? workspaceDomains.has(domain)
       : selectedPods.every((pod) => podOwnById.get(pod.sId)?.has(domain));
-  const addTargetLabel = includeWorkspace
-    ? "the Workspace, inherited by all Pods,"
-    : `the ${selectedPods.length} selected ${
-        selectedPods.length === 1 ? "Pod" : "Pods"
-      }`;
+  const podCount = selectedPods.length;
+  const addDomainMessage = (domain: string) =>
+    includeWorkspace
+      ? t`Will be added to the Workspace, inherited by all Pods, as ${domain}.`
+      : t`Will be added to the ${plural(podCount, { one: "# selected Pod", other: "# selected Pods" })} as ${domain}.`;
+
+  const approveRequestTooltip = (request: PendingRequest) => {
+    const { domain } = request;
+    if (request.scopeKind === "workspace") {
+      return t`Add ${domain} to the Workspace`;
+    }
+    const podName = request.pod.name;
+    return t`Add ${domain} to ${podName}`;
+  };
+
+  const rejectRequestTooltip = (request: PendingRequest) => {
+    const { domain } = request;
+    if (request.scopeKind === "workspace") {
+      return t`Reject ${domain} for the Workspace`;
+    }
+    const podName = request.pod.name;
+    return t`Reject ${domain} for ${podName}`;
+  };
+
+  const removeDomainTooltip = ({ domain, removableScopeCount }: DomainRow) =>
+    removableScopeCount === 0
+      ? t`Inherited from the Workspace — select the Workspace to remove it.`
+      : t`Remove ${domain}`;
 
   // Refresh the affected reads after every mutation attempt: a bulk write can
   // return a partial success (some scopes changed, others failed), so gating
@@ -355,6 +381,10 @@ export function MultiPodNetworkSection({
     !isPodPoliciesError &&
     !isWorkspaceEgressPolicyError;
 
+  const removeTargetDomain = removeTarget?.domain;
+  const removeTargetPodNames =
+    removeTarget?.ownedByPods.map((pod) => pod.name).join(", ") ?? "";
+
   const renderRows = () => {
     if (isPodPoliciesLoading || isWorkspaceEgressPolicyLoading) {
       return <Spinner />;
@@ -365,16 +395,18 @@ export function MultiPodNetworkSection({
           variant="warning"
           icon={InfoCircle}
           size="lg"
-          title="Failed to load"
+          title={t`Failed to load`}
         >
-          Network settings could not be loaded.
+          <Trans>Network settings could not be loaded.</Trans>
         </ContentMessage>
       );
     }
     if (domainRows.length === 0 && pendingRequests.length === 0) {
       return (
         <ContentMessage variant="outline" size="lg">
-          No domains are currently allowed in the selected scopes.
+          <Trans>
+            No domains are currently allowed in the selected scopes.
+          </Trans>
         </ContentMessage>
       );
     }
@@ -384,13 +416,13 @@ export function MultiPodNetworkSection({
         {pendingRequests.map((request) => (
           <div key={request.key} className="flex items-center gap-3 py-3">
             <DomainBadge domain={request.domain}>
-              <Chip size="xs" color="warning" label="Pending approval" />
+              <Chip size="xs" color="warning" label={t`Pending approval`} />
               {showScopeBadges ? (
                 request.scopeKind === "workspace" ? (
                   <Chip
                     size="xs"
                     color="highlight"
-                    label="Workspace"
+                    label={t`Workspace`}
                     icon={Building04}
                   />
                 ) : (
@@ -406,8 +438,8 @@ export function MultiPodNetworkSection({
             <Button
               variant="highlight"
               size="mini"
-              label="Approve"
-              tooltip={`Add ${request.domain} to ${request.scopeName}`}
+              label={t`Approve`}
+              tooltip={approveRequestTooltip(request)}
               disabled={isRequestBusy}
               onClick={() => {
                 void handleApproveRequest(request);
@@ -418,7 +450,7 @@ export function MultiPodNetworkSection({
               variant="ghost"
               size="mini"
               icon={XClose}
-              tooltip={`Reject ${request.domain} for ${request.scopeName}`}
+              tooltip={rejectRequestTooltip(request)}
               disabled={isRequestBusy}
               onClick={() => {
                 void handleRejectRequest(request);
@@ -434,7 +466,7 @@ export function MultiPodNetworkSection({
                 <Chip
                   size="xs"
                   color="highlight"
-                  label="Workspace"
+                  label={t`Workspace`}
                   icon={Building04}
                 />
               ) : null}
@@ -452,11 +484,7 @@ export function MultiPodNetworkSection({
               variant="warning"
               size="mini"
               icon={Trash01}
-              tooltip={
-                row.removableScopeCount === 0
-                  ? "Inherited from the Workspace — select the Workspace to remove it."
-                  : `Remove ${row.domain}`
-              }
+              tooltip={removeDomainTooltip(row)}
               disabled={row.removableScopeCount === 0 || isRequestBusy}
               onClick={() => requestRemoveDomain(row)}
               className="shrink-0"
@@ -479,27 +507,33 @@ export function MultiPodNetworkSection({
       >
         <DialogContent size="md" isAlertDialog>
           <DialogHeader hideButton>
-            <DialogTitle>Remove Workspace domain</DialogTitle>
+            <DialogTitle>
+              <Trans>Remove Workspace domain</Trans>
+            </DialogTitle>
             <DialogDescription>
-              {removeTarget?.domain} is a Workspace domain, inherited by every
-              Pod and running Computer. Removing it here drops it from the
-              Workspace
-              {removeTarget && removeTarget.ownedByPods.length > 0
-                ? ` and ${removeTarget.ownedByPods
-                    .map((pod) => pod.name)
-                    .join(", ")}`
-                : ""}
-              . This cannot be undone.
+              {removeTargetPodNames.length > 0 ? (
+                <Trans>
+                  {removeTargetDomain} is a Workspace domain, inherited by every
+                  Pod and running Computer. Removing it here drops it from the
+                  Workspace and {removeTargetPodNames}. This cannot be undone.
+                </Trans>
+              ) : (
+                <Trans>
+                  {removeTargetDomain} is a Workspace domain, inherited by every
+                  Pod and running Computer. Removing it here drops it from the
+                  Workspace. This cannot be undone.
+                </Trans>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               disabled: isRequestBusy,
             }}
             rightButtonProps={{
-              label: "Remove",
+              label: t`Remove`,
               variant: "warning",
               disabled: isRequestBusy,
               onClick: (event: MouseEvent) => {
@@ -513,23 +547,21 @@ export function MultiPodNetworkSection({
 
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
-          title="Allowed domains"
-          description="Domains allowed across the selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod."
+          title={t`Allowed domains`}
+          description={t`Domains allowed across the selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod.`}
         />
         {readsReady ? (
           <DomainInputForm
             isUpdating={isRequestBusy}
-            submitLabel="Add domain"
+            submitLabel={t`Add domain`}
             duplicateMessage={(domain) =>
               isDuplicate(domain)
                 ? includeWorkspace
-                  ? "This domain is already allowed workspace-wide."
-                  : "This domain is already allowed in every selected Pod."
+                  ? t`This domain is already allowed workspace-wide.`
+                  : t`This domain is already allowed in every selected Pod.`
                 : null
             }
-            validMessage={(domain) =>
-              `Will be added to ${addTargetLabel} as ${domain}.`
-            }
+            validMessage={addDomainMessage}
             onSubmit={handleAddDomain}
           />
         ) : null}

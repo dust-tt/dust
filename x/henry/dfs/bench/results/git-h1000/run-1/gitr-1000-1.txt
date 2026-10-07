@@ -1,0 +1,4 @@
+native clone   43.48s  status first  0.489s  warm  0.021s
+dfs    clone   70.37s  status first 11.264s  warm  7.344s
+dfs status after remount 6.227s
+Validated 15297 work-tree files; report: /tmp/gitr-1000-1

@@ -1,5 +1,5 @@
 import { useConversations } from "@app/hooks/conversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
@@ -7,7 +7,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
 export function useDeleteConversation(owner: LightWorkspaceType) {
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
@@ -32,10 +32,9 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
 
-        sendNotification({
+        sendApiErrorNotification({
           title: "Error deleting conversation.",
-          description: errorData.message,
-          type: "error",
+          error: errorData,
         });
         return false;
       }
@@ -47,6 +46,6 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
 
       return true;
     },
-    [owner.sId, mutateConversations, sendNotification]
+    [owner.sId, mutateConversations, sendApiErrorNotification]
   );
 }

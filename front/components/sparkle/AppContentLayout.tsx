@@ -86,7 +86,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
   const isFullScreen = fullScreenHash === "true";
 
   const hasTitleBar = !!title || hasTitle;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   useDocumentTitle(pageTitle || `Dust - ${owner.name}`);
   useAppKeyboardShortcuts(owner);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =

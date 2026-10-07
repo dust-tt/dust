@@ -14,7 +14,10 @@ import type {
 } from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import {
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
@@ -46,6 +49,7 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
@@ -70,7 +74,9 @@ export function ConnectMCPServerDialog({
   initialUseCase = null,
   lockUseCase = false,
 }: ConnectMCPServerDialogProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const cellContext = useCellContext();
 
   const defaultValues = useMemo(
@@ -119,8 +125,8 @@ export function ConnectMCPServerDialog({
     if (mcpServerView.server) {
       return getMcpServerViewDisplayName(mcpServerView);
     }
-    return "MCP Server";
-  }, [mcpServerView]);
+    return t`MCP server`;
+  }, [mcpServerView, t]);
 
   const toolIcon: InternalAllowedIconType | CustomResourceIconType =
     useMemo(() => {
@@ -176,10 +182,9 @@ export function ConnectMCPServerDialog({
               setAuthorization(mcpServerView.server.authorization);
               setRemoteMCPServerOAuthDiscoveryDone(true);
             } else {
-              sendNotification({
-                type: "error",
-                title: "Failed to discover OAuth metadata for MCP server",
-                description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
+              sendApiErrorNotification({
+                title: t`Failed to discover OAuth metadata for MCP server`,
+                error: discoverOAuthMetadataRes.error,
               });
             }
           }
@@ -198,7 +203,8 @@ export function ConnectMCPServerDialog({
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadataForServer,
     form,
-    sendNotification,
+    sendApiErrorNotification,
+    t,
   ]);
 
   const resetState = () => {
@@ -253,9 +259,10 @@ export function ConnectMCPServerDialog({
     });
 
     if (submitRes.isErr()) {
+      const providerName = OAUTH_PROVIDER_NAMES[authorization.provider];
       sendNotification({
         type: "error",
-        title: `Failed to connect ${OAUTH_PROVIDER_NAMES[authorization.provider]}`,
+        title: t`Failed to connect ${providerName}`,
         description: submitRes.error.message,
       });
       setIsLoading(false);
@@ -304,8 +311,8 @@ export function ConnectMCPServerDialog({
       if (!formHandle) {
         sendNotification({
           type: "error",
-          title: "Cannot submit credentials",
-          description: "The credentials form is not ready. Please retry.",
+          title: t`Cannot submit credentials`,
+          description: t`The credentials form is not ready. Please retry.`,
         });
         datadogLogger.error(
           {
@@ -371,7 +378,7 @@ export function ConnectMCPServerDialog({
       const e = normalizeError(err);
       sendNotification({
         type: "error",
-        title: "Failed to connect the tool",
+        title: t`Failed to connect the tool`,
         description: e.message,
       });
       datadogLogger.error(
@@ -406,7 +413,7 @@ export function ConnectMCPServerDialog({
         <FormProvider form={form} asForm={false}>
           <DialogHeader>
             <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>
-              Connect {toolName}
+              <Trans>Connect {toolName}</Trans>
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto px-5 py-4">
@@ -424,7 +431,7 @@ export function ConnectMCPServerDialog({
           </div>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "ghost",
               onClick: resetState,
             }}
@@ -432,7 +439,7 @@ export function ConnectMCPServerDialog({
               authorization
                 ? {
                     isLoading: isLoading,
-                    label: hasStaticForm ? "Connect" : "Setup connection",
+                    label: hasStaticForm ? t`Connect` : t`Setup connection`,
                     variant: "primary",
                     onClick: handleRightButtonClick,
                     disabled: !isFormValid || isLoading,

@@ -21,6 +21,7 @@ import {
   Label,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 import Block from "./Block";
@@ -75,6 +76,8 @@ export default function Chat({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const { t } = useLingui();
+
   const handleModelChange = (model: {
     provider_id: string;
     model_id: string;
@@ -148,7 +151,6 @@ export default function Chat({
       const parsed = responseFormat.trim()
         ? JSON.parse(responseFormat)
         : undefined;
-      // eslint-disable-next-line no-unused-expressions
       parsed
         ? (b.config.response_format = parsed)
         : delete b.config.response_format;
@@ -241,7 +243,9 @@ export default function Chat({
       <div className="flex w-full flex-col gap-2">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center space-x-2">
-            <Label className="whitespace-nowrap">Model</Label>
+            <Label className="whitespace-nowrap">
+              <Trans>Model</Trans>
+            </Label>
             <ModelPicker
               owner={owner}
               readOnly={readOnly}
@@ -261,7 +265,9 @@ export default function Chat({
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Label className="whitespace-nowrap">Temperature</Label>
+            <Label className="whitespace-nowrap">
+              <Trans>Temperature</Trans>
+            </Label>
             <Input
               readOnly={readOnly}
               value={temperature}
@@ -269,17 +275,20 @@ export default function Chat({
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Label className="whitespace-nowrap">Max tokens</Label>
+            <Label className="whitespace-nowrap">
+              <Trans>Max tokens</Trans>
+            </Label>
             <Input
               spellCheck={false}
               readOnly={readOnly}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               value={block.spec.max_tokens || ""}
               onChange={(e) => handleMaxTokensChange(e.target.value)}
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Label className="whitespace-nowrap">Stop</Label>
+            <Label className="whitespace-nowrap">
+              <Trans context="stop sequences, field label">Stop</Trans>
+            </Label>
             <div className="flex w-full font-normal">
               <div
                 className={classNames(
@@ -287,7 +296,6 @@ export default function Chat({
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {(block.spec.stop || ([] as string[])).map(
                     (stop: string, i: number) => (
                       <div
@@ -308,7 +316,7 @@ export default function Chat({
                 {readOnly ? null : (
                   <Input
                     type="text"
-                    placeholder="add stop"
+                    placeholder={t`add stop`}
                     value={newStop}
                     onChange={(e) => setNewStop(e.target.value)}
                     readOnly={readOnly}
@@ -339,7 +347,7 @@ export default function Chat({
         </div>
         <div>
           <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger label="Advanced" />
+            <CollapsibleTrigger label={t`Advanced`} />
             <CollapsibleContent>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -401,7 +409,9 @@ export default function Chat({
 
                 {isModelSupportsResponseFormat ? (
                   <div className="flex flex-col gap-2 text-sm">
-                    <Label>Structured Response Format</Label>
+                    <Label>
+                      <Trans>Structured response format</Trans>
+                    </Label>
                     <div className="flex w-full font-normal">
                       <div className="w-full leading-5">
                         <SuspensedCodeEditor
@@ -438,7 +448,9 @@ export default function Chat({
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
-          <Label>Instructions</Label>
+          <Label>
+            <Trans>Instructions</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <SuspensedCodeEditor
@@ -462,7 +474,9 @@ export default function Chat({
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
-          <Label>Messages</Label>
+          <Label>
+            <Trans>Messages</Trans>
+          </Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
               <SuspensedCodeEditor
@@ -486,7 +500,7 @@ export default function Chat({
         </div>
         <div>
           <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger label="Functions" />
+            <CollapsibleTrigger label={t`Functions`} />
             <CollapsibleContent>
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex w-full font-normal">

@@ -57,6 +57,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -120,6 +121,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
 }
 
 export function PoolUsagePage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   usePokePageMetadata({ name: owner.name, subtitle: "Credits Usage" });
 
@@ -293,7 +295,9 @@ export function PoolUsagePage() {
         <Button
           variant="outline"
           label={
-            seatTypeFilter ? seatTypeDisplayName(seatTypeFilter) : "All seats"
+            seatTypeFilter
+              ? seatTypeDisplayName(seatTypeFilter, t)
+              : "All seats"
           }
           size="sm"
           isSelect
@@ -307,7 +311,7 @@ export function PoolUsagePage() {
         {SEAT_FILTER_OPTIONS.map((seatType) => (
           <DropdownMenuItem
             key={seatType}
-            label={seatTypeDisplayName(seatType)}
+            label={seatTypeDisplayName(seatType, t)}
             icon={
               <Icon
                 visual={SEAT_TYPE_ICONS[seatType]}

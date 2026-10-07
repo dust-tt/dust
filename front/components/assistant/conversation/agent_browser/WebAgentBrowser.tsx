@@ -17,6 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import type { WebAgentBrowserProps } from "./shared";
 import {
@@ -46,6 +47,7 @@ export function WebAgentBrowser({
   sortType,
   setSortType,
 }: WebAgentBrowserProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const { hasPermission } = useWorkspacePermissions();
@@ -55,13 +57,13 @@ export function WebAgentBrowser({
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {
       case "popularity":
-        return "By popularity";
+        return t`By popularity`;
       case "alphabetical":
-        return "Alphabetical";
+        return t`Alphabetical`;
       case "updated":
-        return "Recently updated";
+        return t`Recently updated`;
     }
-  }, [sortType]);
+  }, [sortType, t]);
 
   const handleTagClick = useTagClick(
     setSelectedTab,
@@ -115,7 +117,7 @@ export function WebAgentBrowser({
                   disabled={agentsByTab[tab.id].length === 0}
                   key={tab.id}
                   value={tab.id}
-                  label={tab.label}
+                  label={t(tab.label)}
                 />
               ))}
               <div className="ml-auto"></div>
@@ -130,15 +132,15 @@ export function WebAgentBrowser({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    label="By popularity"
+                    label={t`By popularity`}
                     onClick={() => setSortType("popularity")}
                   />
                   <DropdownMenuItem
-                    label="Alphabetical"
+                    label={t`Alphabetical`}
                     onClick={() => setSortType("alphabetical")}
                   />
                   <DropdownMenuItem
-                    label="Recently updated"
+                    label={t`Recently updated`}
                     onClick={() => setSortType("updated")}
                   />
                 </DropdownMenuContent>

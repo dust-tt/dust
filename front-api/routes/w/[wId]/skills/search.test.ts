@@ -58,6 +58,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           skills: [],
           total: 0,
           hasMore: false,
+          isFavoritesOnly: false,
           facets: {
             childSkills: [
               { value: unpublished.sId, count: 3 },
@@ -81,25 +82,79 @@ describe("POST /api/w/:wId/skills/search", () => {
     }
   );
 
-  it("forwards the suggestion defaults and excluded skill to search", async () => {
-    const { workspace } = await setup();
-    searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
-    );
+  it.each(["favorites_only", "favorites_or_all", "all"] as const)(
+    "forwards selection mode %s and reports the selected result",
+    async (selectionMode) => {
+      const { workspace } = await setup();
+      searchSkills.mockResolvedValue(
+        new Ok({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          isFavoritesOnly: selectionMode === "favorites_only",
+          facets: {},
+        })
+      );
 
-    const response = await searchRequest(workspace.sId, {
-      defaultToFavorites: true,
-      excludeSkillId: "current-skill",
-    });
-
-    expect(response.status).toBe(200);
-    expect(searchSkills).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        defaultToFavorites: true,
+      const response = await searchRequest(workspace.sId, {
+        selectionMode,
         excludeSkillId: "current-skill",
-      })
-    );
+      });
+
+      expect(response.status).toBe(200);
+      expect(searchSkills).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          selectionMode,
+          excludeSkillId: "current-skill",
+        })
+      );
+      expect((await response.json()).isFavoritesOnly).toBe(
+        selectionMode === "favorites_only"
+      );
+    }
+  );
+
+  it.each([
+    { query: "", expected: "favorites_or_all" },
+    { query: "   ", expected: "favorites_or_all" },
+    { query: "research", expected: "favorites_or_all" },
+    { query: "", selectionMode: "all", expected: "all" },
+  ])(
+    "accepts the legacy blank-query favorite option: %j",
+    async ({ query, selectionMode, expected }) => {
+      const { workspace } = await setup();
+      searchSkills.mockResolvedValue(
+        new Ok({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          isFavoritesOnly: false,
+          facets: {},
+        })
+      );
+
+      const response = await searchRequest(workspace.sId, {
+        query,
+        defaultToFavorites: true,
+        selectionMode,
+      });
+
+      expect(response.status).toBe(200);
+      expect(searchSkills).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ selectionMode: expected })
+      );
+    }
+  );
+
+  it("rejects unknown selection modes", async () => {
+    const { workspace } = await setup();
+    const response = await searchRequest(workspace.sId, {
+      selectionMode: "invalid",
+    });
+    expect(response.status).toBe(400);
+    expect(searchSkills).not.toHaveBeenCalled();
   });
 
   it.each(["user", "admin"] as const)(
@@ -108,7 +163,13 @@ describe("POST /api/w/:wId/skills/search", () => {
       const { workspace } = await createPrivateApiMockRequest({ role });
 
       searchSkills.mockResolvedValue(
-        new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+        new Ok({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          isFavoritesOnly: false,
+          facets: {},
+        })
       );
       const response = await searchRequest(workspace.sId);
 
@@ -142,6 +203,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           ],
           total: 1,
           hasMore: false,
+          isFavoritesOnly: false,
           facets: {},
         })
       );
@@ -160,7 +222,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         facets: undefined,
         sortBy: undefined,
         sortOrder: undefined,
-        defaultToFavorites: undefined,
+        selectionMode: "all",
         excludeSkillId: undefined,
         filters: {
           status: undefined,
@@ -177,6 +239,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       expect(await response.json()).toEqual({
         total: 1,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {},
         skills: [
           {
@@ -209,7 +272,13 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("passes offset through and returns total", async () => {
     const { workspace } = await setup();
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 130, hasMore: true, facets: {} })
+      new Ok({
+        skills: [],
+        total: 130,
+        hasMore: true,
+        isFavoritesOnly: false,
+        facets: {},
+      })
     );
     const response = await searchRequest(workspace.sId, {
       query: "research",
@@ -226,7 +295,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
-      defaultToFavorites: undefined,
+      selectionMode: "all",
       excludeSkillId: undefined,
       filters: {
         status: undefined,
@@ -245,6 +314,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       skills: [],
       total: 130,
       hasMore: true,
+      isFavoritesOnly: false,
       facets: {},
     });
   });
@@ -254,7 +324,13 @@ describe("POST /api/w/:wId/skills/search", () => {
     async (searchType) => {
       const { workspace } = await setup();
       searchSkills.mockResolvedValue(
-        new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+        new Ok({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          isFavoritesOnly: false,
+          facets: {},
+        })
       );
       const response = await searchRequest(workspace.sId, {
         query: "Write",
@@ -306,6 +382,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         skills: [],
         total: 0,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {
           availability: [
             { value: "workspace_users", count: 2 },
@@ -381,6 +458,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         skills: [],
         total: 0,
         hasMore: false,
+        isFavoritesOnly: false,
         facets: {
           mcpServerViews: [
             { value: view.sId, count: 2 },
@@ -436,7 +514,13 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("allows admins to opt into redacted search", async () => {
     const { workspace } = await setup("admin");
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+      new Ok({
+        skills: [],
+        total: 0,
+        hasMore: false,
+        isFavoritesOnly: false,
+        facets: {},
+      })
     );
     const response = await searchRequest(workspace.sId, {
       permissionFiltering: "redact_unreadable",
@@ -451,7 +535,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
-      defaultToFavorites: undefined,
+      selectionMode: "all",
       excludeSkillId: undefined,
       filters: {
         status: undefined,
@@ -472,7 +556,13 @@ describe("POST /api/w/:wId/skills/search", () => {
     async (codeDefinedOnly) => {
       const { workspace } = await setup();
       searchSkills.mockResolvedValue(
-        new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+        new Ok({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          isFavoritesOnly: false,
+          facets: {},
+        })
       );
       const response = await searchRequest(workspace.sId, {
         status: ["active", "archived"],

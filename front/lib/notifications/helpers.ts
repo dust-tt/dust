@@ -42,8 +42,6 @@ import {
   decodeHtmlEntities,
   stripMarkdown,
 } from "@app/types/shared/utils/markdown";
-import type { I18n } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 
 // When isNewProjectConversation is true, messageId is not required (the first
@@ -371,7 +369,7 @@ const unreadSummarySpecification: AgentActionSpecification = {
   },
 };
 
-const generateUnreadMessagesSummary = async ({
+export const generateUnreadMessagesSummary = async ({
   subscriberId,
   payload,
 }: {
@@ -516,50 +514,4 @@ const generateUnreadMessagesSummary = async ({
   return new Err(
     new DustError("generation_failed", "No conversation summary generated")
   );
-};
-
-export const getEmailSummary = async ({
-  i18n,
-  details,
-  subscriberId,
-  payload,
-}: {
-  i18n: I18n;
-  details: ConversationDetailsType;
-  subscriberId: string;
-  payload: ConversationDetailsPayload;
-}): Promise<string | null> => {
-  if (details.hasConversationRetentionPolicy) {
-    return i18n._(
-      msg`Summary not generated due to data retention policy on conversations in this workspace.`
-    );
-  }
-
-  if (details.hasAgentRetentionPolicies) {
-    return i18n._(
-      msg`Summary not generated due to data retention policy on agents in this conversation.`
-    );
-  }
-
-  // Generate summary of unread messages
-  const summaryResult = await generateUnreadMessagesSummary({
-    subscriberId,
-    payload,
-  });
-
-  if (summaryResult.isErr()) {
-    switch (summaryResult.error.code) {
-      case "generation_failed":
-      case "conversation_not_found":
-      case "no_unread_messages_found":
-      case "internal_error":
-      case "no_whitelisted_model_found":
-      case "user_not_found":
-        break;
-      default:
-        assertNever(summaryResult.error.code);
-    }
-    return null;
-  }
-  return summaryResult.value;
 };

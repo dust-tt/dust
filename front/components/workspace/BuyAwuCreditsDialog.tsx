@@ -3,6 +3,7 @@ import {
   formatBrandName,
 } from "@app/components/checkout/PaymentMethodRow";
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
 import { formatCredits } from "@app/lib/client/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
@@ -134,6 +135,7 @@ function UseCouponTab({
   onSuccess,
 }: UseCouponTabProps) {
   const { t } = useLingui();
+  const formatErrorDescription = useFormatErrorDescription();
   const [couponInput, setCouponInput] = useState<string>("");
   const [checkedCoupon, setCheckedCoupon] = useState<CouponType | null>(null);
   const [couponState, setCouponState] = useState<CouponState>("idle");
@@ -160,7 +162,7 @@ function UseCouponTab({
       if (!result.ok) {
         setCheckedCoupon(null);
         setCouponState("idle");
-        setCouponError(result.message);
+        setCouponError(formatErrorDescription(result.error));
         return;
       }
       setCheckedCoupon(result.coupon);
@@ -168,7 +170,7 @@ function UseCouponTab({
     } finally {
       setIsCheckingCoupon(false);
     }
-  }, [couponInput, validateCoupon]);
+  }, [couponInput, validateCoupon, formatErrorDescription]);
 
   // "Apply" button: actually redeem the checked coupon and grant the credits.
   const handleRedeemCoupon = useCallback(async () => {
@@ -183,13 +185,13 @@ function UseCouponTab({
         onSuccess?.();
         break;
       case "error":
-        setCouponError(result.message);
+        setCouponError(formatErrorDescription(result.error));
         setCouponState("error");
         break;
       default:
         assertNeverAndIgnore(result);
     }
-  }, [checkedCoupon, redeemPoolTopupCoupon, onSuccess]);
+  }, [checkedCoupon, redeemPoolTopupCoupon, onSuccess, formatErrorDescription]);
 
   const resetCouponInput = useCallback(() => {
     setCheckedCoupon(null);
@@ -406,6 +408,7 @@ export function BuyAwuCreditsDialog({
   currentTotalPoolCredits,
 }: BuyAwuCreditsDialogProps) {
   const { t } = useLingui();
+  const formatErrorDescription = useFormatErrorDescription();
   const [amountInput, setAmountInput] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedNonRefundable, setAcceptedNonRefundable] = useState(false);
@@ -541,7 +544,7 @@ export function BuyAwuCreditsDialog({
         void mutateAwuPurchaseStatus();
         break;
       case "error":
-        setErrorMessage(result.message);
+        setErrorMessage(formatErrorDescription(result.error));
         setPurchaseState("error");
         break;
       default:

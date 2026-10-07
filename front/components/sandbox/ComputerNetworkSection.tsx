@@ -1,10 +1,10 @@
-import { COMPUTER_NETWORK_SECTION_LABEL } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useEgressPolicyPods } from "@app/lib/swr/sandbox";
 import { ContentMessage, InfoCircle } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 interface ComputerNetworkSectionProps {
@@ -16,6 +16,7 @@ interface ComputerNetworkSectionProps {
 export function ComputerNetworkSection({
   canAdministrateComputer,
 }: ComputerNetworkSectionProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const [selection, setSelection] = useState<SandboxScopeSelection>({
     includeWorkspace: true,
@@ -46,7 +47,7 @@ export function ComputerNetworkSection({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="heading-xl text-foreground">
-          {COMPUTER_NETWORK_SECTION_LABEL}
+          <Trans>Network</Trans>
         </div>
         <div className="shrink-0">
           <SandboxScopeSelector
@@ -63,7 +64,7 @@ export function ComputerNetworkSection({
           variant="info"
           icon={InfoCircle}
           size="lg"
-          title="Select the Workspace or one or more Pods to view and edit network access."
+          title={t`Select the Workspace or one or more Pods to view and edit network access.`}
         />
       ) : (
         <MultiPodNetworkSection

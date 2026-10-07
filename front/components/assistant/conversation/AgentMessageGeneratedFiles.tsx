@@ -17,6 +17,8 @@ import {
   cn,
   Icon,
 } from "@dust-tt/sparkle";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const FILE_TIME_OPTIONS = {
@@ -29,11 +31,11 @@ function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
 ) {
   if (file.contentType === frameSlideshowContentType) {
-    return "Presentation";
+    return msg`Presentation`;
   }
 
   if (isFrameContentType(file.contentType)) {
-    return "Frames";
+    return msg`Frames`;
   }
 
   return null;
@@ -52,6 +54,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
   variant = "list",
   collapsible = false,
 }: AgentMessageInteractiveContentGeneratedFilesProps) {
+  const { t } = useLingui();
   const { openPanel } = useConversationSidePanelContext();
   const [isCollapsed, setIsCollapsed] = useState(collapsible);
 
@@ -76,7 +79,13 @@ export function AgentMessageInteractiveContentGeneratedFiles({
           onClick?.();
         };
 
-        const description = getDescriptionForContentType(file);
+        const descriptionDescriptor = getDescriptionForContentType(file);
+        const description = descriptionDescriptor
+          ? t(descriptionDescriptor)
+          : null;
+        const updatedDate = file.updatedAt
+          ? formatCalendarDate(file.updatedAt)
+          : null;
 
         return (
           <Citation
@@ -95,7 +104,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                     {file.updatedAt && file.updatedAt !== file.createdAt ? (
                       <>
                         <span>
-                          Updated {formatCalendarDate(file.updatedAt)}
+                          <Trans>Updated {updatedDate}</Trans>
                         </span>
                         <span className="mx-1">{"\u00B7"}</span>
                         <time>
@@ -138,7 +147,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
         className="self-start text-muted-foreground hover:text-foreground transition-colors duration-200 flex gap-1 items-center"
         onClick={() => setIsCollapsed((c) => !c)}
       >
-        Frames
+        <Trans>Frames</Trans>
         <span
           className={cn(
             "transition-transform duration-200 ease-out",

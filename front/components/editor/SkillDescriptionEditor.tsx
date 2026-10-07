@@ -2,6 +2,7 @@ import { EditorContent } from "@app/components/editor/EditorContent";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { cn } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor, Extensions } from "@tiptap/react";
@@ -9,7 +10,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef } from "react";
 
-function buildSkillDescriptionExtensions(): Extensions {
+function buildSkillDescriptionExtensions(placeholder: string): Extensions {
   return [
     StarterKit.configure({
       blockquote: false,
@@ -24,8 +25,7 @@ function buildSkillDescriptionExtensions(): Extensions {
     }),
     AgentInstructionDiffExtension,
     Placeholder.configure({
-      placeholder:
-        "When should this skill be used? What is this skill good for?",
+      placeholder,
       emptyNodeClass:
         "first:before:text-muted-foreground first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
@@ -45,7 +45,12 @@ export function useSkillDescriptionEditor({
   onUpdate,
   onBlur,
 }: UseSkillDescriptionEditorProps) {
-  const extensions = useMemo(() => buildSkillDescriptionExtensions(), []);
+  const { t } = useLingui();
+  const placeholder = t`When should this skill be used? What is this skill good for?`;
+  const extensions = useMemo(
+    () => buildSkillDescriptionExtensions(placeholder),
+    [placeholder]
+  );
 
   const initialContentSetRef = useRef(false);
 

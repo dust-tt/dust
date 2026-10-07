@@ -8,9 +8,11 @@ import type {
 } from "@app/types/oauth/lib";
 import { isOAuthProvider, isOAuthUseCase } from "@app/types/oauth/lib";
 import { Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 export function OAuthSetupRedirectPage() {
+  const { t } = useLingui();
   const wId = usePathParam("wId");
   const providerParam = usePathParam("provider");
   const useCaseParam = useSearchParam("useCase");
@@ -69,16 +71,16 @@ export function OAuthSetupRedirectPage() {
       <div className="flex h-64 items-center justify-center">
         <p className="text-element-700">
           {!provider
-            ? "Invalid OAuth provider."
+            ? t`Invalid OAuth provider.`
             : !useCase
-              ? "Invalid OAuth use case."
+              ? t`Invalid OAuth use case.`
               : // Only `mcp_server_connection_not_found` messages are written for end users;
                 // other API errors can carry raw upstream details.
                 isAPIErrorResponse(isOAuthSetupError) &&
                   isOAuthSetupError.error.type ===
                     "mcp_server_connection_not_found"
                 ? isOAuthSetupError.error.message
-                : "Failed to initialize OAuth connection."}
+                : t`Failed to initialize OAuth connection.`}
         </p>
       </div>
     );

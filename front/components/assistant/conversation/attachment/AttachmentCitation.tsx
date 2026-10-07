@@ -9,6 +9,7 @@ import { isAudioContentType } from "@app/components/assistant/conversation/attac
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { isFrameContentType } from "@app/types/files";
 import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
@@ -21,6 +22,7 @@ export function AttachmentCitation({
   size = "md",
   variant = "card",
 }: AttachmentCitationProps) {
+  const { t } = useLingui();
   const { openFramePreview } = useFilePreviewContext();
 
   const isLoading =
@@ -48,14 +50,14 @@ export function AttachmentCitation({
 
   const getLoadingLabel = (): string | undefined => {
     if (isTransferringBytes) {
-      return `Uploading… ${uploadProgress}%`;
+      return t`Uploading… ${uploadProgress}%`;
     }
     if (isTranscribingAudio && transcriptionProgress !== null) {
-      return `Transcribing… ${transcriptionProgress}%`;
+      return t`Transcribing… ${transcriptionProgress}%`;
     }
     // Bytes are in but the request is still open: the server is extracting/converting the file.
     if (isLoading && uploadProgress === 100) {
-      return "Processing…";
+      return t`Processing…`;
     }
     return undefined;
   };

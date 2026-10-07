@@ -76,22 +76,6 @@ export const statsDMetrics = {
     getStatsDClient().gauge(name, value, withHostPolicy(tags, includeHostTag));
   },
 
-  // Incrementing gauge: Datadog sums per-host series, so keep the host tag.
-  // Create/wake and pause/kill of a given sandbox may land on different nodes;
-  // hostless +1/-1 on the same series can collide on flush.
-  gaugeDelta(
-    name: string,
-    value: number,
-    tags: string[] = [],
-    { includeHostTag = true }: MetricOptions = {}
-  ): void {
-    getStatsDClient().gaugeDelta(
-      name,
-      value,
-      withHostPolicy(tags, includeHostTag)
-    );
-  },
-
   distribution(
     name: string,
     value: number,

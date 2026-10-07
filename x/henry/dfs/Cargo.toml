@@ -1,0 +1,33 @@
+[workspace]
+members = ["store", "fdb", "proto", "core", "server", "mount"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+anyhow = "1"
+bytes = "1"
+clap = { version = "4", features = ["derive", "env"] }
+futures = "0.3"
+parking_lot = "0.12"
+postcard = { version = "1", default-features = false, features = ["use-std"] }
+rand = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+
+[profile.release]
+debug = 1

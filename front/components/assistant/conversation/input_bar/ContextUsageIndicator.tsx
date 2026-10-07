@@ -11,6 +11,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
@@ -75,6 +76,7 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
+  const { t } = useLingui();
   const { contextUsage, contextUsagePercentage, isContextUsageLoading } =
     useConversationContextUsage({
       conversationId,
@@ -115,22 +117,24 @@ export function ContextUsageIndicator({
         <PopoverContent side="top" className="w-auto p-3">
           <div className="flex flex-col items-start gap-3">
             <span className="text-sm text-muted-foreground">
-              {contextUsagePercentage}% of context used.{" "}
-              <LinkWrapper
-                href={COMPACTION_GUIDE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-0.5 text-sm underline"
-              >
-                Learn more
-              </LinkWrapper>
+              <Trans>
+                {contextUsagePercentage}% of context used.{" "}
+                <LinkWrapper
+                  href={COMPACTION_GUIDE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-0.5 text-sm underline"
+                >
+                  Learn more
+                </LinkWrapper>
+              </Trans>
             </span>
             {contextUsagePercentage >
               CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
               <Button
                 variant="outline"
                 size="xs"
-                label={isCompacting ? "Compacting" : "Compact now"}
+                label={isCompacting ? t`Compacting` : t`Compact now`}
                 onClick={() => {
                   if (contextUsage?.model) {
                     void compact(contextUsage.model);

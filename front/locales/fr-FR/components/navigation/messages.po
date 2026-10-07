@@ -1,0 +1,242 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search"
+msgstr "Rechercher"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Check our <0>status page</0> for updates."
+msgstr "Consultez notre <0>page de statut</0> pour suivre la situation."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace is not operational"
+msgstr "Votre workspace n’est pas opérationnel"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Model providers"
+msgstr "Fournisseurs de modèles"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Contact your workspace admin."
+msgstr "Contactez l’administrateur de votre workspace."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "No provider credentials configured. Please set up at least one model provider."
+msgstr "Aucun identifiant de fournisseur configuré. Veuillez configurer au moins un fournisseur de modèles."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Please set up your OpenAI credentials."
+msgstr "Veuillez configurer vos identifiants OpenAI."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "The following model providers have invalid credentials: {invalidProviderNames}."
+msgstr "Les fournisseurs de modèles suivants ont des identifiants non valides : {invalidProviderNames}."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your payment has failed!"
+msgstr "Votre paiement a échoué !"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Please make sure to update your payment method in the Admin section to maintain access to your workspace. We will retry in a few days."
+msgstr "Veuillez mettre à jour votre moyen de paiement dans la section Administration pour conserver l’accès à votre workspace. Nous réessaierons dans quelques jours."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "After 3 attempts, your workspace will be downgraded to the free plan. Connections will be deleted and members will be revoked. Details <0>here</0>."
+msgstr "Après 3 tentatives, votre workspace passera au forfait gratuit. Les connexions seront supprimées et l’accès des membres sera révoqué. Détails <0>ici</0>."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Manage credits"
+msgstr "Gérer les crédits"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace is out of credits"
+msgstr "Votre workspace n’a plus de crédits"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace has used all its credits"
+msgstr "Votre workspace a utilisé tous ses crédits"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace has run out of credits. Agents are blocked until you top up."
+msgstr "Votre workspace n’a plus de crédits. Les agents sont bloqués jusqu’à votre prochaine recharge."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges."
+msgstr "Votre workspace a utilisé tous ses crédits inclus et est désormais facturé à l’usage. Rechargez-le pour éviter des frais de dépassement."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Programmatic API cap reached"
+msgstr "Plafond de l’API atteint"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Programmatic API cap at 80%"
+msgstr "Plafond de l’API à 80 %"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
+msgstr "Votre workspace a épuisé son plafond mensuel de crédits API. Les appels à l’API sont bloqués jusqu’au prochain cycle de facturation ou au relèvement du plafond."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions."
+msgstr "Votre workspace a utilisé 80 % de son plafond mensuel de crédits API. Pensez à relever le plafond pour éviter les interruptions."
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Manage usage"
+msgstr "Gérer l’utilisation"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your credit balance is running low"
+msgstr "Votre solde de crédits est bas"
+
+#: front/components/navigation/AppStatusBanner.tsx
+msgid "Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits."
+msgstr "Le solde de crédits de votre workspace est passé sous le seuil que vous avez défini. Rechargez-le pour ne pas manquer de crédits."
+
+#: front/components/navigation/Navigation.tsx
+msgid "Open navigation"
+msgstr "Ouvrir la navigation"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "Heads up, your trial has ended"
+msgstr "Attention, votre essai est terminé"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "{daysRemaining, plural, one {Heads up, your trial ends in # day} other {Heads up, your trial ends in # days}}"
+msgstr "{daysRemaining, plural, one {Attention, votre essai se termine dans # jour} other {Attention, votre essai se termine dans # jours}}"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "When your trial wraps up, your connections and team member access will be removed. Subscribe now to keep everything."
+msgstr "À la fin de votre essai, vos connexions et l’accès des membres de l’équipe seront supprimés. Abonnez-vous dès maintenant pour tout conserver."
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "Your current subscription period has ended"
+msgstr "Votre période d’abonnement actuelle est terminée"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "{daysRemaining, plural, one {Your current subscription period ends in # day} other {Your current subscription period ends in # days}}"
+msgstr "{daysRemaining, plural, one {Votre période d’abonnement actuelle se termine dans # jour} other {Votre période d’abonnement actuelle se termine dans # jours}}"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "Please reach out to your account manager to ensure continuity."
+msgstr "Contactez votre responsable de compte pour assurer la continuité du service."
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "Heads up, your subscription has ended"
+msgstr "Attention, votre abonnement est terminé"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "{daysRemaining, plural, one {Heads up, your subscription ends in # day} other {Heads up, your subscription ends in # days}}"
+msgstr "{daysRemaining, plural, one {Attention, votre abonnement se termine dans # jour} other {Attention, votre abonnement se termine dans # jours}}"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "When your subscription wraps up, your connections and team member access will be removed. Subscribe now to keep everything."
+msgstr "À la fin de votre abonnement, vos connexions et l’accès des membres de l’équipe seront supprimés. Abonnez-vous dès maintenant pour tout conserver."
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "Subscribe to Dust"
+msgstr "S’abonner à Dust"
+
+#: front/components/navigation/TrialBanner.tsx
+msgid "Resume subscription"
+msgstr "Reprendre l’abonnement"
+
+#: front/components/navigation/config.ts
+msgid "Work"
+msgstr "Travail"
+
+#: front/components/navigation/config.ts
+msgid "Spaces"
+msgstr "Espaces"
+
+#: front/components/navigation/config.ts
+msgid "Admin"
+msgstr "Administration"
+
+#: front/components/navigation/config.ts
+msgid "Organization"
+msgstr "Organisation"
+
+#: front/components/navigation/config.ts
+msgid "Members"
+msgstr "Membres"
+
+#: front/components/navigation/config.ts
+msgid "Security"
+msgstr "Sécurité"
+
+#: front/components/navigation/config.ts
+msgid "Governance"
+msgstr "Gouvernance"
+
+#: front/components/navigation/config.ts
+msgid "Branding"
+msgstr "Image de marque"
+
+#: front/components/navigation/config.ts
+msgid "Spend"
+msgstr "Dépenses"
+
+#: front/components/navigation/config.ts
+msgid "Credits"
+msgstr "Crédits"
+
+#: front/components/navigation/config.ts
+msgid "Billing"
+msgstr "Facturation"
+
+#: front/components/navigation/config.ts
+msgid "Subscription"
+msgstr "Abonnement"
+
+#: front/components/navigation/config.ts
+msgid "Analytics"
+msgstr "Statistiques"
+
+#: front/components/navigation/config.ts
+msgid "Platform"
+msgstr "Plateforme"
+
+#: front/components/navigation/config.ts
+msgid "Models"
+msgstr "Modèles"
+
+#: front/components/navigation/config.ts
+msgid "Integrations"
+msgstr "Intégrations"
+
+#: front/components/navigation/config.ts
+msgid "Automations"
+msgstr "Automatisations"
+
+#: front/components/navigation/config.ts
+msgid "Developers"
+msgstr "Développeurs"
+
+#: front/components/navigation/config.ts
+msgid "Specification"
+msgstr "Spécification"
+
+#: front/components/navigation/config.ts
+msgid "Datasets"
+msgstr "Jeux de données"
+
+#: front/components/navigation/config.ts
+msgid "Logs"
+msgstr "Journaux"
+
+#: front/components/navigation/config.ts
+msgid "Settings"
+msgstr "Paramètres"

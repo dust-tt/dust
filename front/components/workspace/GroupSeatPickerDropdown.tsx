@@ -61,10 +61,10 @@ export function GroupSeatPickerDropdown({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const label = grantedSeatType
-    ? seatTypeDisplayName(grantedSeatType)
+    ? seatTypeDisplayName(grantedSeatType, t)
     : t`No seat`;
 
-  const reviewSeatName = reviewSeat ? seatTypeDisplayName(reviewSeat) : null;
+  const reviewSeatName = reviewSeat ? seatTypeDisplayName(reviewSeat, t) : null;
 
   const handleSelect = async (
     value: GroupGrantableSeatType | typeof NO_SEAT
@@ -78,7 +78,7 @@ export function GroupSeatPickerDropdown({
       }
       // Clearing the mapping downgrades members (deferred to period end), so
       // confirm and show how many are affected before applying.
-      const seatName = seatTypeDisplayName(grantedSeatType);
+      const seatName = seatTypeDisplayName(grantedSeatType, t);
       const confirmed = await confirm({
         title: t`Remove group seat`,
         message: t`Members of ${groupName} will lose their ${seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${plural(
@@ -130,7 +130,7 @@ export function GroupSeatPickerDropdown({
           {grantableSeatTypes.map((seatType) => (
             <DropdownMenuCheckboxItem
               key={seatType}
-              label={seatTypeDisplayName(seatType)}
+              label={seatTypeDisplayName(seatType, t)}
               checked={grantedSeatType === seatType}
               onCheckedChange={(checked) => {
                 if (checked) {

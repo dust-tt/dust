@@ -187,6 +187,10 @@ const CASES = [
   ["noStringConcatInJsx", "b.tsx", `const a = <p title={name + \`!\`} />;`, 1],
   ["noStringConcatInJsx", "c.tsx", `const s = "Hi " + name;`, 0],
   ["noStringConcatInJsx", "d.tsx", `const a = <p>{a + b}</p>;`, 0],
+  ["noRawErrorMessageInUi", "a.ts", "f(err.error.message);", 1],
+  ["noRawErrorMessageInUi", "b.ts", "f(res.error?.message);", 1],
+  ["noRawErrorMessageInUi", "c.ts", "f(fieldState.error.message);", 0],
+  ["noRawErrorMessageInUi", "d.ts", "f(err.message);", 0],
   [
     "tooLongIndexName",
     "a.ts",

@@ -1,3 +1,4 @@
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetNotionWebhookConfigResponseBody } from "@app/types/api/data_sources/managed_notion";
 import type { DataSourceType } from "@app/types/data_source";
@@ -38,9 +39,10 @@ export function SetupNotionPrivateIntegrationModal({
   sendNotification,
 }: SetupNotionPrivateIntegrationModalProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
+  const setupErrorTitle = t`Failed to setup private integration`;
   const [integrationToken, setIntegrationToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [webhookConfig, setWebhookConfig] =
     useState<GetNotionWebhookConfigResponseBody | null>(null);
   const [isLoadingWebhookConfig, setIsLoadingWebhookConfig] = useState(false);
@@ -82,7 +84,6 @@ export function SetupNotionPrivateIntegrationModal({
 
   const handleSave = async () => {
     setIsLoading(true);
-    setError(null);
 
     try {
       const response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
@@ -99,9 +100,11 @@ export function SetupNotionPrivateIntegrationModal({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        throw new Error(error.error?.message || t`Failed to create credential`);
+        sendApiErrorNotification({
+          title: setupErrorTitle,
+          error: await response.json(),
+        });
+        return;
       }
 
       const data = await response.json();
@@ -122,11 +125,11 @@ export function SetupNotionPrivateIntegrationModal({
       );
 
       if (!configRes.ok) {
-        const error = await configRes.json();
-        throw new Error(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          error.error?.message || t`Failed to set connector configuration`
-        );
+        sendApiErrorNotification({
+          title: setupErrorTitle,
+          error: await configRes.json(),
+        });
+        return;
       }
 
       sendNotification({
@@ -137,12 +140,7 @@ export function SetupNotionPrivateIntegrationModal({
 
       onSuccess(credentialId);
     } catch (err) {
-      sendNotification({
-        type: "error",
-        title: t`Failed to setup private integration`,
-        description: err instanceof Error ? err.message : t`An error occurred`,
-      });
-      setError(err instanceof Error ? err.message : t`An error occurred`);
+      sendApiErrorNotification({ title: setupErrorTitle, error: err });
     } finally {
       setIsLoading(false);
     }
@@ -173,11 +171,7 @@ export function SetupNotionPrivateIntegrationModal({
                   type="text"
                   name="notion-integration-token"
                   value={integrationToken}
-                  onChange={(e) => {
-                    setIntegrationToken(e.target.value);
-                    setError(null);
-                  }}
-                  isError={!!error}
+                  onChange={(e) => setIntegrationToken(e.target.value)}
                   autoComplete="off"
                   autoCorrect="off"
                   autoCapitalize="off"
@@ -185,9 +179,6 @@ export function SetupNotionPrivateIntegrationModal({
                   data-lpignore="true"
                   data-form-type="other"
                 />
-                {error && (
-                  <p className="text-error-500 mt-2 text-sm">{error}</p>
-                )}
               </div>
 
               {webhookConfig && (

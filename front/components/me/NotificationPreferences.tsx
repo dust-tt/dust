@@ -1,5 +1,5 @@
 import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConversationNotificationPreferences } from "@app/lib/swr/notifications";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
@@ -18,7 +18,6 @@ import {
   NOTIFICATION_CONDITION_OPTIONS,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -83,7 +82,7 @@ export function useNotificationPreferencesForm({
   disabled: boolean;
 }) {
   const { t } = useLingui();
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { hasFeature } = useFeatureFlags();
 
   const hasSlackNotificationsFeature = hasFeature(
@@ -174,10 +173,9 @@ export function useNotificationPreferencesForm({
         form.reset(data);
         succeeded = true;
       } catch (error) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Error updating notification preferences`,
-          description: normalizeError(error).message,
+          error,
         });
       }
     })();

@@ -1,11 +1,13 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/types/api/apps";
 import { APP_NAME_REGEXP } from "@app/types/app";
-import type { APIError } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -37,6 +39,7 @@ export const SpaceCreateAppModal = ({
   space,
 }: SpaceCreateAppModalProps) => {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 
@@ -95,13 +98,8 @@ export const SpaceCreateAppModal = ({
           description: t`App was successfully created.`,
         });
       } else {
-        const err: { error: APIError } = await res.json();
-        const errorMessage = err.error.message;
-        sendNotification({
-          title: t`Error saving app`,
-          type: "error",
-          description: t`Error: ${errorMessage}`,
-        });
+        const err: unknown = await res.json();
+        sendApiErrorNotification({ title: t`Error saving app`, error: err });
       }
     }
   };

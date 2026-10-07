@@ -1,5 +1,8 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
@@ -34,6 +37,7 @@ export function useBranchConversation({
   onConversationBranched?: () => Promise<void> | void;
 }) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -67,10 +71,9 @@ export function useBranchConversation({
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
 
-          sendNotification({
-            type: "error",
+          sendApiErrorNotification({
             title: "Failed to branch conversation",
-            description: errorData.message,
+            error: errorData,
           });
 
           return false;
@@ -151,6 +154,7 @@ export function useBranchConversation({
       onConversationBranched,
       owner.sId,
       router,
+      sendApiErrorNotification,
       sendNotification,
     ]
   );

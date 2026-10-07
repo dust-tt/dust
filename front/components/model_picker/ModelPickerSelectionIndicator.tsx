@@ -1,4 +1,5 @@
 import { Check, Icon, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface ModelPickerSelectionIndicatorProps {
   // Passed only when the selection can be reverted (i.e. it differs from the
@@ -14,6 +15,8 @@ export function ModelPickerSelectionIndicator({
   onRevert,
   size = "sm",
 }: ModelPickerSelectionIndicatorProps) {
+  const { t } = useLingui();
+
   if (!onRevert) {
     return <Icon visual={Check} size={size} className="text-foreground" />;
   }
@@ -21,7 +24,7 @@ export function ModelPickerSelectionIndicator({
   return (
     <button
       type="button"
-      aria-label="Revert to default"
+      aria-label={t`Revert to default`}
       className="group/indicator flex items-center justify-center text-foreground"
       onClick={(e) => {
         e.stopPropagation();

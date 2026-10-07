@@ -47,7 +47,7 @@ export async function saveDataClassificationLabels({
   owner: LightWorkspaceType;
   allowedLabels: MicrosoftAllowedLabel[];
   source: SensitivityLabelSource;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; error?: unknown }> {
   const body: Record<string, unknown> = { allowedLabels };
   if (source.dataSourceId !== undefined) {
     body.dataSourceId = source.dataSourceId;
@@ -66,12 +66,7 @@ export async function saveDataClassificationLabels({
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    return {
-      success: false,
-      error:
-        errorData?.error?.message ??
-        "Failed to save data classification labels.",
-    };
+    return { success: false, error: errorData };
   }
 
   return { success: true };

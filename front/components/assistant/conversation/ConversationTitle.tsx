@@ -33,6 +33,7 @@ import {
   GitBranch01,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const BREADCRUMB_MIDDLE_TRUNCATE_LENGTH = 35;
@@ -40,6 +41,7 @@ const DESKTOP_TITLE_TRUNCATE_LENGTH = 120;
 const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
+  const { t } = useLingui();
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
   const { currentPanel, isPanelClosing, togglePanel } =
@@ -95,7 +97,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   if (!isLoading) {
     breadcrumbItems.push({
-      label: currentTitle || "New Conversation",
+      label: currentTitle || t`New conversation`,
       onClick: () => setShowRenameDialog(true),
     });
   }
@@ -105,8 +107,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       return null;
     }
 
-    const chipLabel = getParentConversationTitleLabel(forkedFrom);
-    const tooltipLabel = `Branched from '${chipLabel}'`;
+    const chipLabel = getParentConversationTitleLabel(forkedFrom, t);
+    const tooltipLabel = t`Branched from “${chipLabel}”`;
 
     return (
       <div className="flex h-9 shrink-0 items-center">
@@ -178,16 +180,16 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         />
         <div className="flex items-center gap-2">
           <FilterChip
-            label={isMobile ? undefined : "Credit usage"}
-            tooltip={isMobile ? "Credit usage" : undefined}
+            label={isMobile ? undefined : t`Credit usage`}
+            tooltip={isMobile ? t`Credit usage` : undefined}
             icon={CoinsStacked01}
             variant="secondary"
             isSelected={isPanelSelected(CREDITS_SIDE_PANEL_TYPE)}
             onClick={() => togglePanel({ type: CREDITS_SIDE_PANEL_TYPE })}
           />
           <FilterChip
-            label={isMobile ? undefined : "Files"}
-            tooltip={isMobile ? "Files" : undefined}
+            label={isMobile ? undefined : t`Files`}
+            tooltip={isMobile ? t`Files` : undefined}
             icon={Folder}
             variant="secondary"
             isSelected={isPanelSelected(FILES_SIDE_PANEL_TYPE)}
@@ -207,7 +209,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                 size="sm"
                 variant="ghost"
                 icon={DotsHorizontal}
-                aria-label="Conversation menu"
+                aria-label={t`Conversation menu`}
                 isLoading={isPendingAction}
                 disabled={
                   activeConversationId === null ||

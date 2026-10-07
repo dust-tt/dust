@@ -22,6 +22,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Chip, CodeBlock, cn, Markdown, Page } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -34,6 +35,7 @@ export function AgentInfoTab({
   previewedCapabilities: PreviewedAgentCapabilities | null;
   owner: WorkspaceType;
 }) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const editedSections = useEditedAgentSections();
   const previewSuggestions = useAgentSuggestionPreview();
@@ -75,7 +77,9 @@ export function AgentInfoTab({
               <Chip key={tag.sId} color="info" label={tag.name} size="xs" />
             ))
           ) : (
-            <span className="text-sm text-muted-foreground">No tags</span>
+            <span className="text-sm text-muted-foreground">
+              <Trans>No tags</Trans>
+            </span>
           )}
         </div>
       )}
@@ -100,7 +104,7 @@ export function AgentInfoTab({
       {displayInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <DetailsSectionHeading
-            label="Instructions"
+            label={t`Instructions`}
             isEdited={editedSections.has("instructions")}
           />
           <div
@@ -147,7 +151,9 @@ export function AgentInfoTab({
       {model && (
         <div className="relative flex flex-col gap-5">
           {editedSections.has("model") && <EditedSectionBar />}
-          <div className="heading-lg text-foreground">Model</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Model</Trans>
+          </div>
           <div className="flex flex-row items-center gap-2">
             <Avatar
               icon={getModelProviderLogo(model.providerId, isDark)}
@@ -164,14 +170,16 @@ export function AgentInfoTab({
       {displayStructuredOutput && (
         <div className="relative flex flex-col gap-3">
           {editedSections.has("structured_output") && <EditedSectionBar />}
-          <div className="heading-lg text-foreground">Structured output</div>
+          <div className="heading-lg text-foreground">
+            <Trans>Structured output</Trans>
+          </div>
           {responseFormat ? (
             <CodeBlock className="language-json" wrapLongLines>
               {formatResponseFormat(responseFormat)}
             </CodeBlock>
           ) : (
             <span className="text-sm text-muted-foreground">
-              No structured output
+              <Trans>No structured output</Trans>
             </span>
           )}
         </div>

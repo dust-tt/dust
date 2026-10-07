@@ -5,6 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -32,21 +33,25 @@ export function SnowflakeSetupInstructions({
             ) : (
               <ChevronRightIcon className="h-4 w-4 shrink-0" />
             )}
-            <span>Snowflake Custom OAuth Setup Guide</span>
+            <span>
+              <Trans>Snowflake custom OAuth setup guide</Trans>
+            </span>
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-3 space-y-4 rounded-lg border border-border bg-background p-4 text-sm">
             <p className="text-muted-foreground">
-              Before connecting, you need to create a Custom OAuth Security
-              Integration in your Snowflake account. Run the following SQL
-              commands as an <strong>ACCOUNTADMIN</strong>:
+              <Trans>
+                Before connecting, you need to create a Custom OAuth Security
+                Integration in your Snowflake account. Run the following SQL
+                commands as an <strong>ACCOUNTADMIN</strong>:
+              </Trans>
             </p>
 
             <div className="space-y-3">
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  1. Create the OAuth Security Integration:
+                  <Trans>1. Create the OAuth Security Integration:</Trans>
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {`CREATE SECURITY INTEGRATION dust_oauth
@@ -62,25 +67,31 @@ export function SnowflakeSetupInstructions({
 
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  2. Get the Client ID and Client Secret:
+                  <Trans>2. Get the Client ID and Client Secret:</Trans>
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {`SELECT SYSTEM$SHOW_OAUTH_CLIENT_SECRETS('DUST_OAUTH');`}
                 </pre>
                 <p className="mt-2 text-muted-foreground">
-                  This returns a JSON object with{" "}
-                  <code className="rounded bg-muted px-1">OAUTH_CLIENT_ID</code>{" "}
-                  and{" "}
-                  <code className="rounded bg-muted px-1">
-                    OAUTH_CLIENT_SECRET
-                  </code>
-                  . Copy these values into the form below.
+                  <Trans>
+                    This returns a JSON object with{" "}
+                    <code className="rounded bg-muted px-1">
+                      OAUTH_CLIENT_ID
+                    </code>{" "}
+                    and{" "}
+                    <code className="rounded bg-muted px-1">
+                      OAUTH_CLIENT_SECRET
+                    </code>
+                    . Copy these values into the form below.
+                  </Trans>
                 </p>
               </div>
 
               <div>
                 <p className="mb-2 font-medium text-foreground">
-                  3. (Optional) Grant the integration to specific roles:
+                  <Trans>
+                    3. (Optional) Grant the integration to specific roles:
+                  </Trans>
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {`GRANT USAGE ON INTEGRATION dust_oauth TO ROLE <role_name>;`}
@@ -89,11 +100,19 @@ export function SnowflakeSetupInstructions({
             </div>
 
             <p className="text-muted-foreground">
-              <strong>Note:</strong> The warehouse you specify below will be
-              used for all users.
-              {useCase === "platform_actions"
-                ? " The role will also be shared across all users."
-                : " The default role can be overridden by individual users during their personal authentication."}
+              {useCase === "platform_actions" ? (
+                <Trans>
+                  <strong>Note:</strong> The warehouse you specify below will be
+                  used for all users. The role will also be shared across all
+                  users.
+                </Trans>
+              ) : (
+                <Trans>
+                  <strong>Note:</strong> The warehouse you specify below will be
+                  used for all users. The default role can be overridden by
+                  individual users during their personal authentication.
+                </Trans>
+              )}
             </p>
           </div>
         </CollapsibleContent>

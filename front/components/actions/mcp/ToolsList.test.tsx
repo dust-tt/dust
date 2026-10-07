@@ -8,6 +8,7 @@ import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLingui } from "@lingui/react/macro";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { UseFormReturn } from "react-hook-form";
 import { FormProvider, useForm } from "react-hook-form";
@@ -148,6 +149,7 @@ function renderToolsList({
   let form!: UseFormReturn<MCPServerFormValues>;
 
   function Harness({ currentView }: { currentView: typeof mcpServerView }) {
+    const { t } = useLingui();
     const defaults = getMCPServerFormDefaults(currentView);
     const currentForm = useForm<MCPServerFormValues>({
       values: defaults,
@@ -157,7 +159,7 @@ function renderToolsList({
         keepDirtyValues,
       },
       resolver: zodResolver(
-        getMCPServerFormSchema(currentView, { existingViewNames: [] })
+        getMCPServerFormSchema(currentView, t, { existingViewNames: [] })
       ),
     });
 

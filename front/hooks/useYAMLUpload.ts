@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -18,6 +21,7 @@ interface UseYAMLUploadOptions {
 export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadYAMLFile = useCallback(
@@ -61,13 +65,9 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
             "Failed to create agent from YAML file."
         );
 
-        sendNotification({
+        sendApiErrorNotification({
           title: "Agent creation failed",
-          description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            errorData.error?.message ||
-            "An error occurred while creating the agent from YAML",
-          type: "error",
+          error: errorData,
         });
         setIsUploading(false);
         return;
@@ -115,7 +115,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(false);
     },
-    [owner.sId, router, sendNotification]
+    [owner.sId, router, sendApiErrorNotification, sendNotification]
   );
 
   const triggerYAMLUpload = useCallback(() => {

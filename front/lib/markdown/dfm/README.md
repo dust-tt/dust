@@ -81,9 +81,27 @@ at that place, or moves a verified one; a message without a valid `sig`, such as
 a sandbox or by a plain file edit, is unverified. The codec carries the attribute and never checks it, so nothing here proves who
 wrote a message. `tests/fixtures/signed_comments.md` shows one.
 
+A message may suggest a change, as on GitHub: a fenced code block whose language is
+`suggestion` holds the Markdown that would replace the commented text, and an empty block
+suggests deleting it. Code fences already keep their lines out of the annotations grammar, so a
+suggestion is ordinary message text to the codec, signed like the rest of the body.
+A message may hold several, such as alternatives; `readMessageSuggestions` reads them in order
+with the text around them. `tests/fixtures/suggested_change.md` shows one.
+
+````md
+::message{author=agent:dust name="@dust" at=2026-10-05T09:13:02.500Z}
+
+The last fix lands Thursday night.
+
+```suggestion
+Ship on **Friday**.
+```
+````
+
 **How an agent reads it.** Text first: the body reads as Markdown with a few directives. To
 find what a comment is about, follow the id from `::comment` to the anchors. To answer a
-comment, append a `::message` line and a body to its thread. To comment on new text, wrap the
+comment, append a `::message` line and a body to its thread; to propose new wording for the
+commented text, put it in a `suggestion` block in that body. To comment on new text, wrap the
 span in anchors and add a thread, or call `anchorComment` with the quoted words and let the
 codec place the anchors.
 
@@ -114,7 +132,7 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 Every function above returns a `Result` from `@app/types/shared/result`; `dfmCommentSchema` is
 a schema, not a function. The editor's Markdown parser and serializer read and write anchors one
 at a time, with the first three helpers below, which keep the directive's spelling in this
-module; the last one is shared by message signing:
+module; the next one is shared by message signing, and the last two by suggestions:
 
 | Function | Purpose |
 | --- | --- |
@@ -122,6 +140,8 @@ module; the last one is shared by message signing:
 | `findAnchorDirective(source)` | Index of the first anchor directive syntax in `source`, or -1. |
 | `anchorDirective(kind, id)` | The directive text for one end of an anchor pair. |
 | `messageSignaturePayload({ workspaceId, filePath, commentId, position, previous, message })` | The exact string a message signature covers, for the server that signs and the browser that checks. |
+| `readMessageSuggestions(body)` | The message's text and suggested replacements, in order, null without a suggestion, or a located error out of the input bounds. |
+| `suggestionBlock(markdown)` | The fenced block suggesting `markdown`, with a fence longer than any backtick run in it, or a located error out of the input bounds. |
 
 Nothing here touches the network, the database or React: the module runs on the server and in
 the browser, next to the `:preview_file` directive codec in `lib/markdown/file_preview.ts`.
@@ -132,11 +152,12 @@ the browser, next to the `:preview_file` directive codec in `lib/markdown/file_p
 | --- | --- |
 | `types.ts` | The public types. |
 | `grammar.ts` | What every directive shares: the file fences and tokens, the directive-line pattern, the `{key=value}` tokenizer and validator. |
-| `parser.ts` | What the codec asks a real Markdown parser: where code is, whether a fence is open, the block structure. |
+| `parser.ts` | What the codec asks a real Markdown parser: where code is, whether a fence is open, the block structure, the top-level code blocks in a language. |
 | `anchors.ts` | The `:comment-start` / `:comment-end` directives: pattern, schema, builder, and scanning and pairing them in the body. |
 | `annotations.ts` | The `::comment` and `::message` directives: value rules, schemas, builders, and parsing, validating and serializing the block. |
 | `operations.ts` | Editing operations on a body, such as `anchorComment`. New operations go here. |
 | `signatures.ts` | What a message signature covers. Signing and checking live with their callers. |
+| `suggestions.ts` | The `suggestion` blocks in a message body: reading them and writing one. |
 | `document.ts` | The whole-file layout: front matter, body, block. Each parse rule has its mirror in the serializer's validation. |
 | `index.ts` | The public surface. |
 

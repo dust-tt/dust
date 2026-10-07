@@ -4,13 +4,36 @@ import {
   isOperationExpression,
   parseMatcherExpression,
 } from "@app/lib/matcher";
-import { OperationDisplayNames } from "@app/lib/matcher/types";
 import { Chip, ContentMessage, cn } from "@dust-tt/sparkle";
-import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+
+const OPERATION_LABELS: Record<
+  Operation | LogicalOp,
+  MessageDescriptor | string
+> = {
+  "starts-with": msg({ message: "Starts with", context: "filter operator" }),
+  contains: msg({ message: "Contains", context: "filter operator" }),
+  has: msg({ message: "Has", context: "filter operator" }),
+  "has-all": msg({ message: "Has all", context: "filter operator" }),
+  "has-any": msg({ message: "Has any", context: "filter operator" }),
+  eq: "=",
+  gt: ">",
+  gte: "≥",
+  lt: "<",
+  lte: "≤",
+  exists: msg({ message: "Exists", context: "filter operator" }),
+  and: msg({ message: "And", context: "filter operator" }),
+  or: msg({ message: "Or", context: "filter operator" }),
+  not: msg({ message: "Not", context: "filter operator" }),
+};
 
 interface TriggerFilterRendererProps {
   data: string | undefined;
 }
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 interface OperationChipOptions {
   name: string;
@@ -18,7 +41,8 @@ interface OperationChipOptions {
 }
 
 function getOperationChipOptions(
-  op: LogicalOp | Operation
+  op: LogicalOp | Operation,
+  t: Translate
 ): OperationChipOptions {
   let color: "success" | "info" | "warning" | "primary";
   switch (op) {
@@ -34,7 +58,8 @@ function getOperationChipOptions(
     default:
       color = "primary";
   }
-  return { name: OperationDisplayNames[op].toUpperCase(), color };
+  const label = OPERATION_LABELS[op];
+  return { name: typeof label === "string" ? label : t(label), color };
 }
 
 interface OperationChipProps {
@@ -43,7 +68,8 @@ interface OperationChipProps {
 }
 
 function OperationChip({ op, className }: OperationChipProps) {
-  const { color, name } = getOperationChipOptions(op);
+  const { t } = useLingui();
+  const { color, name } = getOperationChipOptions(op, t);
   return (
     <Chip className={cn(className)} color={color} size="xs">
       {name}

@@ -1,0 +1,958 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Failed to enable connection ({provider})"
+msgstr "Failed to enable connection ({provider})"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "{planName} plan"
+msgstr "{planName} plan"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Unlock this managed data source by upgrading your plan."
+msgstr "Unlock this managed data source by upgrading your plan."
+
+#: front/components/spaces/AddConnectionMenu.tsx
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+#: front/components/spaces/SpaceCreateAppModal.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Validate"
+msgstr "Validate"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Coming soon!"
+msgstr "Coming soon!"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Please email us at support@dust.tt for early access."
+msgstr "Please email us at support@dust.tt for early access."
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Contact us"
+msgstr "Contact us"
+
+#: front/components/spaces/AddConnectionMenu.tsx
+msgid "Add connections"
+msgstr "Add connections"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "You can only enter up to 10 URLs"
+msgstr "You can only enter up to 10 URLs"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "You must enter at least one URL"
+msgstr "You must enter at least one URL"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Invalid Notion URL format: {invalidUrl}"
+msgstr "Invalid Notion URL format: {invalidUrl}"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "One or more URLs were synced less than 20 minutes ago"
+msgstr "One or more URLs were synced less than 20 minutes ago"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Time"
+msgstr "Time"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "URL"
+msgstr "URL"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Error"
+msgstr "Error"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Invalid URL"
+msgstr "Invalid URL"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Please enter a URL to check"
+msgstr "Please enter a URL to check"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Please enter a valid Notion URL"
+msgstr "Please enter a valid Notion URL"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Error checking URL status"
+msgstr "Error checking URL status"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "An unexpected error occurred while checking the URL status"
+msgstr "An unexpected error occurred while checking the URL status"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Error syncing Notion URLs"
+msgstr "Error syncing Notion URLs"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "An unexpected error occurred while syncing Notion URLs."
+msgstr "An unexpected error occurred while syncing Notion URLs."
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Sync started"
+msgstr "Sync started"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "The Notion URLs should be deleted shortly."
+msgstr "The Notion URLs should be deleted shortly."
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "The Notion URLs should be synced shortly."
+msgstr "The Notion URLs should be synced shortly."
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "{totalCount, plural, one {Synced {successCount} of # URL} other {Synced {successCount} of # URLs}}"
+msgstr "{totalCount, plural, one {Synced {successCount} of # URL} other {Synced {successCount} of # URLs}}"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Some URLs were not deleted due to errors."
+msgstr "Some URLs were not deleted due to errors."
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Some URLs were not synced due to errors."
+msgstr "Some URLs were not synced due to errors."
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "An unexpected error occurred while deleting Notion URLs."
+msgstr "An unexpected error occurred while deleting Notion URLs."
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Advanced Notion management"
+msgstr "Advanced Notion management"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Check Notion URL status"
+msgstr "Check Notion URL status"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Check if a URL exists in Notion and whether it's synced to Dust"
+msgstr "Check if a URL exists in Notion and whether it's synced to Dust"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Check status"
+msgstr "Check status"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Notion:"
+msgstr "Notion:"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Exists ({notionType})"
+msgstr "Exists ({notionType})"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Not found"
+msgstr "Not found"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Dust:"
+msgstr "Dust:"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Synced"
+msgstr "Synced"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "(last sync: {lastSyncDate})"
+msgstr "(last sync: {lastSyncDate})"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Not synced"
+msgstr "Not synced"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Location:"
+msgstr "Location:"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Manual URL sync"
+msgstr "Manual URL sync"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Enter up to 10 Notion URLs to sync (one per line)"
+msgstr "Enter up to 10 Notion URLs to sync (one per line)"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Sync URLs"
+msgstr "Sync URLs"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Delete URLs"
+msgstr "Delete URLs"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "Recent operations"
+msgstr "Recent operations"
+
+#: front/components/spaces/AdvancedNotionManagement.tsx
+msgid "An <0/> icon indicates operation successfully started, but URLs may take up to 20 minutes to sync fully."
+msgstr "An <0/> icon indicates operation successfully started, but URLs may take up to 20 minutes to sync fully."
+
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+msgid "Delete space"
+msgstr "Delete space"
+
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+msgid "Deleting {spaceName}"
+msgstr "Deleting {spaceName}"
+
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+msgid "{agentCount, plural, one {# agent uses tools that depend on this space and will be impacted by its deletion} other {# agents use tools that depend on this space and will be impacted by its deletion}}"
+msgstr "{agentCount, plural, one {# agent uses tools that depend on this space and will be impacted by its deletion} other {# agents use tools that depend on this space and will be impacted by its deletion}}"
+
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+msgid "{skillCount, plural, one {# skill depends on this space and will be impacted by its deletion} other {# skills depend on this space and will be impacted by its deletion}}"
+msgstr "{skillCount, plural, one {# skill depends on this space and will be impacted by its deletion} other {# skills depend on this space and will be impacted by its deletion}}"
+
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+msgid "Are you sure you want to permanently delete space {spaceName}? This action cannot be undone."
+msgstr "Are you sure you want to permanently delete space {spaceName}? This action cannot be undone."
+
+#: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
+#: front/components/spaces/ContentActions.tsx
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "Data sync in progress..."
+msgstr "Data sync in progress..."
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "Once synchronized, table will appear under <0>\"Connection Admin\"</0> and can be added to:"
+msgstr "Once synchronized, table will appear under <0>\"Connection Admin\"</0> and can be added to:"
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "Once synchronized, data will appear under <0>\"Connection Admin\"</0> and can be added to:"
+msgstr "Once synchronized, data will appear under <0>\"Connection Admin\"</0> and can be added to:"
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "An <0>Open Space</0> for company-wide access"
+msgstr "An <0>Open Space</0> for company-wide access"
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "A <0>Restricted Space</0> for custom access"
+msgstr "A <0>Restricted Space</0> for custom access"
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "Data management"
+msgstr "Data management"
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+msgid "See <0>documentation</0> for more information."
+msgstr "See <0>documentation</0> for more information."
+
+#: front/components/spaces/ConnectorDataUpdatedModal.tsx
+#: front/components/spaces/SpaceLayout.tsx
+#: front/components/spaces/SpaceSelector.tsx
+msgid "Ok"
+msgstr "Ok"
+
+#: front/components/spaces/ContentActions.tsx
+msgctxt "menu item, edit a document or table"
+msgid "Edit"
+msgstr "Edit"
+
+#: front/components/spaces/ContentActions.tsx
+msgid "Add to space"
+msgstr "Add to space"
+
+#: front/components/spaces/ContentActions.tsx
+msgid "Copy data source ID"
+msgstr "Copy data source ID"
+
+#: front/components/spaces/ContentActions.tsx
+msgid "View associated URL"
+msgstr "View associated URL"
+
+#: front/components/spaces/ContentActions.tsx
+msgid "View in {dataSourceName}"
+msgstr "View in {dataSourceName}"
+
+#: front/components/spaces/ContentActions.tsx
+msgid "View raw content"
+msgstr "View raw content"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Members are the people picked below, plus everyone in the groups given access to the space."
+msgstr "Members are the people picked below, plus everyone in the groups given access to the space."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Security notice"
+msgstr "Security notice"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?"
+msgstr "You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Proceed"
+msgstr "Proceed"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "Space settings - {spaceName}"
+msgstr "Space settings - {spaceName}"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Space settings"
+msgstr "Space settings"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "Access settings unavailable"
+msgstr "Access settings unavailable"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "Failed to load group members, please reload the page."
+msgstr "Failed to load group members, please reload the page."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Restricted access is active."
+msgstr "Restricted access is active."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Members can read the content of the space and write data into it (upload files, delete documents...)."
+msgstr "Members can read the content of the space and write data into it (upload files, delete documents...)."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Restricted access is disabled. The space is open."
+msgstr "Restricted access is disabled. The space is open."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Anyone in the workspace can read the data from this space."
+msgstr "Anyone in the workspace can read the data from this space."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Members of the space can also write data (upload files, delete documents...)."
+msgstr "Members of the space can also write data (upload files, delete documents...)."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "Saving..."
+msgstr "Saving..."
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+#: front/components/spaces/SpaceCreateAppModal.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Create"
+msgstr "Create"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/SpaceCategoriesList.tsx
+#: front/components/spaces/SpaceCreateAppModal.tsx
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Space's name"
+msgstr "Space's name"
+
+#: front/components/spaces/CreateOrEditSpaceModal.tsx
+msgid "Space name must be unique"
+msgstr "Space name must be unique"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Data sources in use"
+msgstr "Data sources in use"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Delete anyway"
+msgstr "Delete anyway"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Warning"
+msgstr "Warning"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Deleting these data sources will affect the agents using them. These agents will no longer have access to this data and may not work as expected."
+msgstr "Deleting these data sources will affect the agents using them. These agents will no longer have access to this data and may not work as expected."
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "The following data sources are currently in use:"
+msgstr "The following data sources are currently in use:"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "(used by {usageCount, plural, one {# agent} other {# agents}})"
+msgstr "(used by {usageCount, plural, one {# agent} other {# agents}})"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Are you sure you want to remove them?"
+msgstr "Are you sure you want to remove them?"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Error adding data to space"
+msgstr "Error adding data to space"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Data successfully updated"
+msgstr "Data successfully updated"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "All data sources were successfully updated in the space."
+msgstr "All data sources were successfully updated in the space."
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Edit data from {dataSourceName}"
+msgstr "Edit data from {dataSourceName}"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Add data from {dataSourceName}"
+msgstr "Add data from {dataSourceName}"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Edit data from connections"
+msgstr "Edit data from connections"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Add data from connections"
+msgstr "Add data from connections"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "No connection set up"
+msgstr "No connection set up"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "You have no connection set up."
+msgstr "You have no connection set up."
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Close"
+msgstr "Close"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+msgid "Go to connections management"
+msgstr "Go to connections management"
+
+#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "Editing spaces is temporarily disabled and will be re-enabled shortly."
+msgstr "Editing spaces is temporarily disabled and will be re-enabled shortly."
+
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "Add folder"
+msgstr "Add folder"
+
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "Add website"
+msgstr "Add website"
+
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "You need write access to add a folder in the Company data space."
+msgstr "You need write access to add a folder in the Company data space."
+
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "You need write access to add a website in the Company data space."
+msgstr "You need write access to add a website in the Company data space."
+
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "Only members of the space can add a folder."
+msgstr "Only members of the space can add a folder."
+
+#: front/components/spaces/EditSpaceStaticDatasourcesViews.tsx
+msgid "Only members of the space can add a website."
+msgstr "Only members of the space can add a website."
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "You need write access to add data in the {GLOBAL_SPACE_NAME} space."
+msgstr "You need write access to add data in the {GLOBAL_SPACE_NAME} space."
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "Only members of the space can add data."
+msgstr "Only members of the space can add data."
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "You need write access to edit a folder in the {GLOBAL_SPACE_NAME} space."
+msgstr "You need write access to edit a folder in the {GLOBAL_SPACE_NAME} space."
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "Only members of the space can edit a folder."
+msgstr "Only members of the space can edit a folder."
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Add data"
+msgstr "Add data"
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "Create a document"
+msgstr "Create a document"
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "Create a table"
+msgstr "Create a table"
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+msgid "Upload files"
+msgstr "Upload files"
+
+#: front/components/spaces/FoldersHeaderMenu.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Edit folder"
+msgstr "Edit folder"
+
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "Access"
+msgstr "Access"
+
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "{spaceName} is the space where you upload and connect the data the whole company has access to, so anyone in the workspace can read this data."
+msgstr "{spaceName} is the space where you upload and connect the data the whole company has access to, so anyone in the workspace can read this data."
+
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "Only admins, managers and the people and groups selected here can modify the data (upload files, delete documents, connect data sources...)."
+msgstr "Only admins, managers and the people and groups selected here can modify the data (upload files, delete documents, connect data sources...)."
+
+#: front/components/spaces/GlobalSpaceSettingsModal.tsx
+msgid "They are the people picked below, plus everyone in the groups given access to the space."
+msgstr "They are the people picked below, plus everyone in the groups given access to the space."
+
+#: front/components/spaces/RequestedSpacesSection.tsx
+msgid "Spaces and pods"
+msgstr "Spaces and pods"
+
+#: front/components/spaces/RestrictedAccessBody.tsx
+msgid "Members"
+msgstr "Members"
+
+#: front/components/spaces/RestrictedAccessBody.tsx
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/spaces/RestrictedAccessHeader.tsx
+msgid "Restricted access"
+msgstr "Restricted access"
+
+#: front/components/spaces/SpaceActionsList.tsx
+msgid "Remove tools from space"
+msgstr "Remove tools from space"
+
+#: front/components/spaces/SpaceAppsList.tsx
+msgid "New app"
+msgstr "New app"
+
+#: front/components/spaces/SpaceAppsList.tsx
+msgid "Create app"
+msgstr "Create app"
+
+#: front/components/spaces/SpaceBreadcrumb.tsx
+msgid "Connections admin"
+msgstr "Connections admin"
+
+#: front/components/spaces/SpaceBreadcrumb.tsx
+#: front/components/spaces/SpaceCategoriesList.tsx
+#: front/components/spaces/SpaceSideBarMenu.tsx
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/spaces/SpaceBreadcrumb.tsx
+#: front/components/spaces/SpaceSideBarMenu.tsx
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Triggers"
+msgstr "Triggers"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Used by"
+msgstr "Used by"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Connected data"
+msgstr "Connected data"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Upload data"
+msgstr "Upload data"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Scrape a website"
+msgstr "Scrape a website"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Create a Dust App"
+msgstr "Create a Dust App"
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters."
+msgstr "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters."
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "Name must be less or equal to 64 characters."
+msgstr "Name must be less or equal to 64 characters."
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "An app with this name already exists."
+msgstr "An app with this name already exists."
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "Successfully created app"
+msgstr "Successfully created app"
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "App was successfully created."
+msgstr "App was successfully created."
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "Error saving app"
+msgstr "Error saving app"
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "Create a new app"
+msgstr "Create a new app"
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "Must be unique and only use alphanumeric, - or _ characters."
+msgstr "Must be unique and only use alphanumeric, - or _ characters."
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/SpaceTriggersList.tsx
+msgid "Description"
+msgstr "Description"
+
+#: front/components/spaces/SpaceCreateAppModal.tsx
+msgid "This description guides agents in understanding how to use your app effectively and determines its relevance in responding to user inquiries."
+msgstr "This description guides agents in understanding how to use your app effectively and determines its relevance in responding to user inquiries."
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Available to"
+msgstr "Available to"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceTriggersList.tsx
+msgid "Last updated"
+msgstr "Last updated"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Error while adding data to space"
+msgstr "Error while adding data to space"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Data added to space"
+msgstr "Data added to space"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "An unknown error {errorMessage} occurred while adding data to space."
+msgstr "An unknown error {errorMessage} occurred while adding data to space."
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Manage data"
+msgstr "Manage data"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "No content"
+msgstr "No content"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgctxt "content type filter"
+msgid "Document"
+msgstr "Document"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgctxt "content type filter"
+msgid "Table"
+msgstr "Table"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Documents"
+msgstr "Documents"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Tables"
+msgstr "Tables"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgctxt "all content types"
+msgid "All"
+msgstr "All"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Connection ready. Select the data to sync."
+msgstr "Connection ready. Select the data to sync."
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Drag and drop your files here."
+msgstr "Drag and drop your files here."
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+msgid "Add files"
+msgstr "Add files"
+
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Name is required."
+msgstr "Name is required."
+
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Name is invalid, must be multiple characters with no space."
+msgstr "Name is invalid, must be multiple characters with no space."
+
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Create folder"
+msgstr "Create folder"
+
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Folder name must be unique"
+msgstr "Folder name must be unique"
+
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Folder description"
+msgstr "Folder description"
+
+#: front/components/spaces/SpaceFolderModal.tsx
+msgid "Delete folder"
+msgstr "Delete folder"
+
+#: front/components/spaces/SpaceLayout.tsx
+msgid "You are not a member of this space."
+msgstr "You are not a member of this space."
+
+#: front/components/spaces/SpaceLayout.tsx
+msgid "You can't create more spaces."
+msgstr "You can't create more spaces."
+
+#: front/components/spaces/SpaceLayout.tsx
+msgid "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
+msgstr "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
+
+#: front/components/spaces/SpaceLayout.tsx
+msgid "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."
+msgstr "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."
+
+#: front/components/spaces/SpaceManagedActionsViewsModal.tsx
+msgid "Add tools"
+msgstr "Add tools"
+
+#: front/components/spaces/SpaceManagedActionsViewsModal.tsx
+msgid "Search tools..."
+msgstr "Search tools..."
+
+#: front/components/spaces/SpaceManagedActionsViewsModal.tsx
+msgid "No more tools to add"
+msgstr "No more tools to add"
+
+#: front/components/spaces/SpaceManagedDatasourcesViewsModal.tsx
+msgid "Add connected data to space \"{spaceName}\""
+msgstr "Add connected data to space \"{spaceName}\""
+
+#: front/components/spaces/SpacePageHeaders.tsx
+msgid "Here you can authorize Connections and control what data Dust can access. Once connected, data can be distributed to Open Spaces (accessible to all workspace members) or Restricted Spaces (limited access)."
+msgstr "Here you can authorize Connections and control what data Dust can access. Once connected, data can be distributed to Open Spaces (accessible to all workspace members) or Restricted Spaces (limited access)."
+
+#: front/components/spaces/SpacePageHeaders.tsx
+msgid "Need help? Check out our <0>guide</0>."
+msgstr "Need help? Check out our <0>guide</0>."
+
+#: front/components/spaces/SpacePageHeaders.tsx
+msgid "Here you can add new trigger sources to your workspace. Once created, those sources can be used in the Agent Builder to trigger Agents."
+msgstr "Here you can add new trigger sources to your workspace. Once created, those sources can be used in the Agent Builder to trigger Agents."
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Managed by"
+msgstr "Managed by"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Last sync"
+msgstr "Last sync"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgctxt "last sync status"
+msgid "Never"
+msgstr "Never"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Retry in a few minutes"
+msgstr "Retry in a few minutes"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Connecting..."
+msgstr "Connecting..."
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Connect"
+msgstr "Connect"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Manage"
+msgstr "Manage"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgctxt "button label, view a connection"
+msgid "View"
+msgstr "View"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgctxt "menu item, edit a folder or website"
+msgid "Edit"
+msgstr "Edit"
+
+#: front/components/spaces/SpaceResourcesList.tsx
+msgid "Use from API"
+msgstr "Use from API"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in Connections"
+msgstr "Search in Connections"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in Folders"
+msgstr "Search in Folders"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in Websites"
+msgstr "Search in Websites"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in Apps"
+msgstr "Search in Apps"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in Tools"
+msgstr "Search in Tools"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in Triggers"
+msgstr "Search in Triggers"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in {dataSourceName}"
+msgstr "Search in {dataSourceName}"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "Search in {spaceName}"
+msgstr "Search in {spaceName}"
+
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "{searchHitCount, plural, one {Showing {resultsCount} of # result} other {Showing {resultsCount} of # results}}"
+msgstr "{searchHitCount, plural, one {Showing {resultsCount} of # result} other {Showing {resultsCount} of # results}}"
+
+#: front/components/spaces/SpaceSelector.tsx
+msgid "Changing source selection"
+msgstr "Changing source selection"
+
+#: front/components/spaces/SpaceSelector.tsx
+msgid "An agent can access one source of data only. The other tools are using a different source."
+msgstr "An agent can access one source of data only. The other tools are using a different source."
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "Open spaces"
+msgstr "Open spaces"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "Restricted spaces"
+msgstr "Restricted spaces"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgctxt "button label, creates a space"
+msgid "New"
+msgstr "New"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "Connections"
+msgstr "Connections"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "{hiddenNodesCount, plural, one {and # item} other {and # items}}"
+msgstr "{hiddenNodesCount, plural, one {and # item} other {and # items}}"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "{hiddenNodesCount, plural, one {and #+ item} other {and #+ items}}"
+msgstr "{hiddenNodesCount, plural, one {and #+ item} other {and #+ items}}"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "{hiddenNodesCount, plural, one {# item} other {# items}}"
+msgstr "{hiddenNodesCount, plural, one {# item} other {# items}}"
+
+#: front/components/spaces/SpaceSideBarMenu.tsx
+msgid "{hiddenNodesCount, plural, one {#+ item} other {#+ items}}"
+msgstr "{hiddenNodesCount, plural, one {#+ item} other {#+ items}}"
+
+#: front/components/spaces/SpaceTriggersList.tsx
+msgid "You don’t have any triggers yet."
+msgstr "You don’t have any triggers yet."
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "Used by {agentCount, plural, one {# agent} other {# agents}} and {skillCount, plural, one {# skill} other {# skills}}"
+msgstr "Used by {agentCount, plural, one {# agent} other {# agents}} and {skillCount, plural, one {# skill} other {# skills}}"
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "{skillCount, plural, one {Used by # skill} other {Used by # skills}}"
+msgstr "{skillCount, plural, one {Used by # skill} other {Used by # skills}}"
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "{agentCount, plural, one {Used by # agent} other {Used by # agents}}"
+msgstr "{agentCount, plural, one {Used by # agent} other {Used by # agents}}"
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "Search agents and skills"
+msgstr "Search agents and skills"
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "Search agents"
+msgstr "Search agents"
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "No matches found"
+msgstr "No matches found"
+
+#: front/components/spaces/UsedByButton.tsx
+msgid "No agents found"
+msgstr "No agents found"
+
+#: front/components/spaces/WebsitesHeaderMenu.tsx
+msgid "Edit website"
+msgstr "Edit website"
+
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Folders"
+msgstr "Folders"
+
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Websites"
+msgstr "Websites"
+
+#: front/components/spaces/spaceCategoryLabels.ts
+msgid "Apps"
+msgstr "Apps"

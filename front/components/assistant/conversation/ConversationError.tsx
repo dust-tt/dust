@@ -8,6 +8,7 @@ import {
   LinkWrapper,
   LogIn01,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
 
 interface ConversationErrorProps {
@@ -34,32 +35,38 @@ export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
 }
 
 function ConversationAccessRestricted() {
+  const { t } = useLingui();
+
   return (
     <ErrorDisplay
       icon={AlertCircle}
-      title="You don't have access to this page"
-      message={["This conversation may include restricted data."]}
+      title={t`You don't have access to this page`}
+      message={[t`This conversation may include restricted data.`]}
     />
   );
 }
 
 function ConversationNotFound() {
+  const { t } = useLingui();
+
   return (
     <ErrorDisplay
       icon={AlertCircle}
-      title="Conversation Not Found"
-      message="This conversation may have been deleted or moved."
+      title={t`Conversation not found`}
+      message={t`This conversation may have been deleted or moved.`}
     />
   );
 }
 
 function ConversationGenericError() {
+  const { t } = useLingui();
+
   return (
     <ErrorDisplay
-      title="Error Loading Conversation"
+      title={t`Error loading conversation`}
       message={[
-        "Something went wrong while loading the conversation.",
-        "Please try again later.",
+        t`Something went wrong while loading the conversation.`,
+        t`Please try again later.`,
       ]}
     />
   );
@@ -74,6 +81,8 @@ interface ErrorDisplayProps {
 }
 
 export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-3">
       {icon && <Icon visual={icon} className="text-info-400" size="lg" />}
@@ -86,7 +95,7 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
         )}
       </div>
       <LinkWrapper href="/">
-        <Button variant="outline" label="Back to homepage" icon={LogIn01} />
+        <Button variant="outline" label={t`Back to homepage`} icon={LogIn01} />
       </LinkWrapper>
     </div>
   );

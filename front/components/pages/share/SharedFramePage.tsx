@@ -12,6 +12,7 @@ import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 import { LogIn01, Spinner } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useMemo, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -31,6 +32,7 @@ function buildLoginUrl() {
  * resolving the viewer's saved theme or system preference.
  */
 export function SharedFramePage() {
+  const { t } = useLingui();
   const token = usePathParam("token");
   const posthog = usePostHog();
 
@@ -91,7 +93,7 @@ export function SharedFramePage() {
   const humanFriendlyTitle = shareMetadata?.title ?? "";
 
   useDocumentTitle(
-    humanFriendlyTitle ? `${humanFriendlyTitle} - Powered by Dust` : "Dust"
+    humanFriendlyTitle ? t`${humanFriendlyTitle} - Powered by Dust` : "Dust"
   );
 
   // Set favicon and meta tags for sharing/SEO.
@@ -100,7 +102,8 @@ export function SharedFramePage() {
       return;
     }
 
-    const description = `Discover what ${shareMetadata.workspaceName} built with AI. Explore now.`;
+    const workspaceName = shareMetadata.workspaceName;
+    const description = t`Discover what ${workspaceName} built with AI. Explore now.`;
     const faviconPath = shareMetadata.faviconUrl ?? getFaviconPath();
     const elements: HTMLElement[] = [];
 
@@ -148,7 +151,7 @@ export function SharedFramePage() {
     addMeta({ property: "og:url", content: shareMetadata.shareUrl });
     addMeta({
       property: "og:image:alt",
-      content: `Preview of ${humanFriendlyTitle} created by ${shareMetadata.workspaceName}`,
+      content: t`Preview of ${humanFriendlyTitle} created by ${workspaceName}`,
     });
 
     addLink({ rel: "icon", type: "image/png", href: faviconPath });
@@ -158,7 +161,7 @@ export function SharedFramePage() {
         el.remove();
       }
     };
-  }, [shareMetadata, humanFriendlyTitle]);
+  }, [shareMetadata, humanFriendlyTitle, t]);
 
   const handleVerified = () => {
     setIsVerified(true);
@@ -182,10 +185,10 @@ export function SharedFramePage() {
       <Custom404 />
     ) : (
       <CustomErrorPage
-        title="404: Page not found"
-        description="If you have access to this page, sign in to open it."
+        title={t`404: Page not found`}
+        description={t`If you have access to this page, sign in to open it.`}
         href={buildLoginUrl()}
-        label="Sign in"
+        label={t`Sign in`}
         icon={LogIn01}
       />
     );
@@ -210,10 +213,10 @@ export function SharedFramePage() {
     if (!hasSession || userError || !user) {
       return (
         <CustomErrorPage
-          title="Sign in to open this Frame"
-          description="Sign in with an account that has access. We’ll bring you back here."
+          title={t`Sign in to open this Frame`}
+          description={t`Sign in with an account that has access. We’ll bring you back here.`}
           href={buildLoginUrl()}
-          label="Sign in"
+          label={t`Sign in`}
           icon={LogIn01}
         />
       );

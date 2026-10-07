@@ -2,7 +2,9 @@ import {
   anchorComment,
   extractAnchors,
   parseDfm,
+  readMessageSuggestions,
   serializeDfm,
+  suggestionBlock,
 } from "@app/lib/markdown/dfm";
 import { INPUT_LIMITS } from "@app/lib/markdown/dfm/parser";
 import {
@@ -101,7 +103,21 @@ describe("dfm-bounded-input", () => {
       expectError(serializeDfm(withMessage({ body: text })), message);
       expect(parsed(text)).toBe(false);
     });
+
+    it("is refused by readMessageSuggestions", () => {
+      expectError(readMessageSuggestions(text), message);
+      expect(parsed(text)).toBe(false);
+    });
   });
+
+  // Wrapped in a block, a byte order mark no longer opens the text and reads as content.
+  it.each(OUT_OF_BOUNDS.filter(([name]) => !name.includes("byte order mark")))(
+    "refuses a suggestion block over the %s bound",
+    (_, text, message) => {
+      expectError(suggestionBlock(text), message);
+      expect(parsed(text)).toBe(false);
+    }
+  );
 
   it("locates a bound in the body on its source line", () => {
     expectError(parseDfm(`---\na: b\n---\n\n${DEEP}`), "nests deeper than", 5);

@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 09:56+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "An email from Dust about {workspaceName}"
+msgstr "Un e-mail de Dust à propos de {workspaceName}"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Dust logo"
+msgstr "Logo Dust"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "This is an automated email. Please do not reply."
+msgstr "Cet e-mail est automatique. Merci de ne pas y répondre."
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "You can manage your notification preferences from <0>your workspace</0>."
+msgstr "Vous pouvez gérer vos préférences de notification depuis <0>votre workspace</0>."
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Hi {name},"
+msgstr "Bonjour {name},"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Hi there,"
+msgstr "Bonjour,"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgid "{feedbackCount, plural, one {You received # feedback on your agents today:} other {You received # feedbacks on your agents today:}}"
+msgstr "{feedbackCount, plural, one {Vous avez reçu # retour sur vos agents aujourd’hui :} many {Vous avez reçu # retours sur vos agents aujourd’hui :} other {Vous avez reçu # retours sur vos agents aujourd’hui :}}"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgid "👍 {positiveCount} positive • 👎 {negativeCount} negative"
+msgstr "👍 Positifs : {positiveCount} • 👎 Négatifs : {negativeCount}"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgctxt "feedback author"
+msgid "by {userName} in <0>{conversationTitle}</0>"
+msgstr "par {userName} dans <0>{conversationTitle}</0>"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgctxt "feedback author"
+msgid "by {userName}"
+msgstr "par {userName}"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgctxt "quoted feedback"
+msgid "\"{feedbackContent}\""
+msgstr "« {feedbackContent} »"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{mentionCount, plural, one {You have been mentioned in the following conversation:} other {You have been mentioned in the following conversations:}}"
+msgstr "{mentionCount, plural, one {Vous avez été mentionné dans la conversation suivante :} many {Vous avez été mentionné dans les conversations suivantes :} other {Vous avez été mentionné dans les conversations suivantes :}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{unreadCount, plural, one {You have unread message(s) in the following conversation:} other {You have unread message(s) in the following conversations:}}"
+msgstr "{unreadCount, plural, one {Vous avez des messages non lus dans la conversation suivante :} many {Vous avez des messages non lus dans les conversations suivantes :} other {Vous avez des messages non lus dans les conversations suivantes :}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{newProjectConversationCount, plural, one {There's a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
+msgstr "{newProjectConversationCount, plural, one {Il y a une nouvelle conversation dans {singleProjectName} :} many {Il y a # nouvelles conversations dans {singleProjectName} :} other {Il y a # nouvelles conversations dans {singleProjectName} :}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{newProjectConversationCount, plural, one {There is # new conversation in your Pods:} other {There are # new conversations in your Pods:}}"
+msgstr "{newProjectConversationCount, plural, one {Il y a # nouvelle conversation dans vos Pods :} many {Il y a # nouvelles conversations dans vos Pods :} other {Il y a # nouvelles conversations dans vos Pods :}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "Someone"
+msgstr "Quelqu’un"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{createdBy} started \"{conversationTitle}\""
+msgstr "{createdBy} a lancé « {conversationTitle} »"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{createdBy} started \"{conversationTitle}\" in {projectName}"
+msgstr "{createdBy} a lancé « {conversationTitle} » dans {projectName}"

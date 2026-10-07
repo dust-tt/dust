@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -195,7 +198,6 @@ export function useConnectorConfig({
   const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled: disabled || !dataSource,
   });
 
@@ -223,7 +225,6 @@ export function useOAuthMetadata({
   const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/oauth-metadata`;
 
   const { data, error } = useSWRWithDefaults(url, metadataFetcher, {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled: disabled || !dataSource,
   });
 
@@ -243,6 +244,7 @@ export function useToggleChatBot({
   owner: LightWorkspaceType;
   botName: string;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const { mutateConfig } = useConnectorConfig({
@@ -295,10 +297,9 @@ export function useToggleChatBot({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: `Failed to Enable ${botName}`,
-        description: errorData.message,
+        error: errorData,
       });
       return null;
     }
@@ -314,6 +315,7 @@ export function useTogglePdfEnabled({
   dataSource: DataSourceType | null;
   owner: LightWorkspaceType;
 }) {
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -371,10 +373,9 @@ export function useTogglePdfEnabled({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: "Failed to update PDF sync setting",
-        description: errorData.message,
+        error: errorData,
       });
       setIsLoading(false);
       return null;

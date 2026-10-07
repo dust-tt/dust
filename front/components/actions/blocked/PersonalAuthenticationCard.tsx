@@ -14,6 +14,7 @@ import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Avatar, Button, Card, Check, Key01, XClose } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useRef, useState } from "react";
 
 export type PersonalAuthResolutionOutcome = "completed" | "denied";
@@ -42,6 +43,7 @@ export function PersonalAuthenticationCard({
   isResolving,
   onResolve,
 }: PersonalAuthenticationCardProps) {
+  const { t } = useLingui();
   const { server: mcpServer } = useMCPServer({
     owner,
     serverId: mcpServerId,
@@ -68,6 +70,8 @@ export function PersonalAuthenticationCard({
     mcpServer && mcpServer.name
       ? getMcpServerDisplayName(mcpServer)
       : undefined;
+
+  const triggeringUserName = triggeringUser?.fullName;
 
   const canCurrentUserRespond = useMemo(
     () =>
@@ -132,14 +136,20 @@ export function PersonalAuthenticationCard({
     >
       <div className="flex items-center gap-2">
         <Avatar icon={icon} size="sm" />
-        <div className="heading-base min-w-0">Connect account</div>
+        <div className="heading-base min-w-0">
+          <Trans>Connect account</Trans>
+        </div>
       </div>
 
       <div className="text-base text-muted-foreground">
-        {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
+        {serverDisplayName
+          ? t`Dust needs access to ${serverDisplayName} to complete this action.`
+          : t`Dust needs access to this service to complete this action.`}
       </div>
       <div className="text-base text-muted-foreground">
-        {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
+        {serverDisplayName
+          ? t`Once connected, ${serverDisplayName} will remain connected for future requests.`
+          : t`Once connected, this service will remain connected for future requests.`}
       </div>
       {canCurrentUserRespond ? (
         <>
@@ -164,11 +174,13 @@ export function PersonalAuthenticationCard({
         </>
       ) : (
         <div className="text-sm text-muted-foreground">
-          Waiting for{" "}
-          <span className="font-semibold text-foreground">
-            {triggeringUser?.fullName}
-          </span>{" "}
-          to connect their account.
+          <Trans>
+            Waiting for{" "}
+            <span className="font-semibold text-foreground">
+              {triggeringUserName}
+            </span>{" "}
+            to connect their account.
+          </Trans>
         </div>
       )}
 
@@ -176,7 +188,7 @@ export function PersonalAuthenticationCard({
         <div className="flex justify-end gap-3">
           <Button
             variant="outline"
-            label="Decline"
+            label={t`Decline`}
             icon={XClose}
             // Not gated on `isConnecting`: the user must always be able to abandon
             // a connection attempt, even if it is (or appears) stuck.
@@ -185,7 +197,11 @@ export function PersonalAuthenticationCard({
           />
           <Button
             variant="highlight"
-            label={`Connect ${serverDisplayName ?? "account"}`}
+            label={
+              serverDisplayName
+                ? t`Connect ${serverDisplayName}`
+                : t`Connect account`
+            }
             icon={Check}
             disabled={
               isConnecting ||

@@ -9,41 +9,49 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
+
+interface DeleteTagDialogProps {
+  owner: WorkspaceType;
+  tag: TagType;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
 
 export const DeleteTagDialog = ({
   owner,
   tag,
   open,
   setOpen,
-}: {
-  owner: WorkspaceType;
-  tag: TagType;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}) => {
+}: DeleteTagDialogProps) => {
+  const { t } = useLingui();
   const { deleteTag } = useDeleteTag({ owner });
   const onDeleteTag = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await deleteTag(tag.sId);
   };
 
+  const tagName = tag.name;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Are you absolutely sure?</DialogTitle>
+          <DialogTitle>
+            <Trans>Are you absolutely sure?</Trans>
+          </DialogTitle>
         </DialogHeader>
 
         <DialogContainer>
-          This action cannot be undone.
+          <Trans>This action cannot be undone.</Trans>
           <br />
-          This will delete the tag "{tag.name}" permanently.
+          <Trans>This will delete the tag "{tagName}" permanently.</Trans>
         </DialogContainer>
 
         <DialogFooter
-          leftButtonProps={{ label: "Cancel", variant: "outline" }}
+          leftButtonProps={{ label: t`Cancel`, variant: "outline" }}
           rightButtonProps={{
-            label: "Delete tag",
+            label: t`Delete tag`,
             variant: "warning",
             onClick: onDeleteTag,
           }}

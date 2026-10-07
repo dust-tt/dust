@@ -3,6 +3,7 @@ import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext
 import { PodTaskUserSection } from "@app/components/pod/tasks/PodTaskUserSection";
 import { POD_TASK_UNASSIGNED_GROUP_KEY } from "@app/types/project_task";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 export function PodTasksPanelMain() {
   const {
@@ -39,11 +40,13 @@ export function PodTasksPanelMain() {
 
           {filteredTasks.length === 0 && (
             <p className="text-base italic text-faint">
-              {hasActiveLocalSearch && assigneeScopedTasks.length > 0
-                ? "No tasks match your filter."
-                : isTasksError
-                  ? "Error loading tasks."
-                  : "You're all caught up!"}
+              {hasActiveLocalSearch && assigneeScopedTasks.length > 0 ? (
+                <Trans>No tasks match your filter.</Trans>
+              ) : isTasksError ? (
+                <Trans>Error loading tasks.</Trans>
+              ) : (
+                <Trans>You're all caught up!</Trans>
+              )}
             </p>
           )}
         </>
