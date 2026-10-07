@@ -520,8 +520,10 @@ export interface MarkdownCommentsCheck {
  * validated: what they bring can only read as unverified, since signatures bind the file and the
  * thread order. The exceptions are `documents.add_comment` and `documents.reply_to_comment`,
  * which add a message the server itself signs for the running agent
- * (`dfm-comment-signing-by-agent`), and `documents.edit_document`, which only changes the body
- * and leaves every comment thread as stored (`dfm-agent-document-edit`).
+ * (`dfm-comment-signing-by-agent`), `documents.edit_document`, which only changes the body
+ * and leaves every comment thread as stored (`dfm-agent-document-edit`), and
+ * `documents.set_document_theme`, which only changes the front matter
+ * (`dfm-agent-document-theme`).
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,

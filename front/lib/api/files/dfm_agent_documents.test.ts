@@ -3,6 +3,7 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   editAgentDocument,
   readAgentDocument,
+  setAgentDocumentTheme,
 } from "@app/lib/api/files/dfm_agent_documents";
 import {
   readCanonicalFileContent,
@@ -263,5 +264,57 @@ describe("editAgentDocument", () => {
     const result = await edit("Ship it", "Ship");
     expect(result.isErr() && result.error.code).toBe("conflict");
     expect(writeCanonicalFileContent).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("setAgentDocumentTheme", () => {
+  let auth: Authenticator;
+  let dustFs: DustFileSystem;
+
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    auth = (await createResourceTest({})).authenticator;
+    const fileSystem = await DustFileSystem.forConversations(auth, []);
+    if (fileSystem.isErr()) {
+      throw fileSystem.error;
+    }
+    dustFs = fileSystem.value;
+  });
+
+  it("writes the theme in the front matter and keeps the body and threads", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await setAgentDocumentTheme(auth, dustFs, {
+      scopedPath: PATH,
+      theme: "memo",
+    });
+    expect(result.isOk()).toBe(true);
+
+    const { content, revision } = written(0);
+    expect(revision).toBe("7");
+    const before = parseDfm(SOURCE);
+    const after = parseDfm(content);
+    if (before.isErr() || after.isErr()) {
+      throw new Error("Unparsable document.");
+    }
+    expect(after.value.frontMatter).toBe("title: Spec\ntheme: memo");
+    expect(after.value.body).toBe(before.value.body);
+    expect(after.value.comments).toEqual(before.value.comments);
+  });
+
+  it("refuses front matter whose theme key it cannot rewrite, without writing", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(
+      stored("---\ntheme: memo\ntheme: report\n---\n\n# Spec\n", "7")
+    );
+
+    const result = await setAgentDocumentTheme(auth, dustFs, {
+      scopedPath: PATH,
+      theme: "memo",
+    });
+    expect(result.isErr() && result.error.code).toBe("theme_not_rewritable");
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 });

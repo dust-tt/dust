@@ -5,6 +5,8 @@ import {
   writeDocumentChange,
 } from "@app/lib/api/files/dfm_stored_documents";
 import type { Authenticator } from "@app/lib/auth";
+import type { DocumentTheme } from "@app/lib/editor/document_themes";
+import { withDocumentTheme } from "@app/lib/editor/document_themes";
 import { extractAnchors } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,7 +15,8 @@ export type DfmAgentDocumentErrorCode =
   | "string_not_found"
   | "outside_body"
   | "unexpected_count"
-  | "anchors_changed";
+  | "anchors_changed"
+  | "theme_not_rewritable";
 
 export class DfmAgentDocumentError extends Error {
   constructor(
@@ -214,4 +217,35 @@ export async function editAgentDocument(
       });
     }
   );
+}
+
+/**
+ * @cc [owner:tdraier,label:product] dfm-agent-document-theme
+ * Setting the theme MUST change only the front matter, as `withDocumentTheme` rewrites it,
+ * leaving the body and the comment threads unchanged, and MUST be written through
+ * `writeDocumentChange`. Front matter `withDocumentTheme` refuses MUST be refused with
+ * `theme_not_rewritable`.
+ */
+export async function setAgentDocumentTheme(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  { scopedPath, theme }: { scopedPath: string; theme: DocumentTheme }
+): Promise<Result<void, DfmAgentDocumentError | DfmStoredDocumentError>> {
+  // TODO(YJS): when a live session holds this document, change the front matter through the
+  // collab service, as `editAgentDocument` will for the body.
+  return writeDocumentChange(auth, dustFs, scopedPath, async ({ document }) => {
+    const frontMatter = withDocumentTheme(document.frontMatter, theme);
+    if (frontMatter.isErr()) {
+      return new Err(
+        new DfmAgentDocumentError(
+          "theme_not_rewritable",
+          `${frontMatter.error} Fix the front matter's \`theme\` key first.`
+        )
+      );
+    }
+    return new Ok({
+      document: { ...document, frontMatter: frontMatter.value },
+      value: undefined,
+    });
+  });
 }

@@ -14,6 +14,7 @@ import {
 import {
   editAgentDocument,
   readAgentDocument,
+  setAgentDocumentTheme,
 } from "@app/lib/api/files/dfm_agent_documents";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -176,6 +177,38 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
         type: "text",
         text: `Updated \`${path}\`: made ${replacements} replacement${pluralize(replacements)}.`,
       },
+    ]);
+  },
+  set_document_theme: async ({ path, theme }, { auth, runContext }) => {
+    if (!isAgentLoopRunContext(runContext)) {
+      return new Err(
+        new MCPError("No conversation context available.", { tracked: false })
+      );
+    }
+
+    const dustFs = await getDustFileSystemForAgentLoop(
+      auth,
+      runContext.conversation,
+      [path]
+    );
+    if (dustFs.isErr()) {
+      return dustFs;
+    }
+
+    const set = await setAgentDocumentTheme(auth, dustFs.value, {
+      scopedPath: path,
+      theme,
+    });
+    if (set.isErr()) {
+      return new Err(
+        new MCPError(set.error.message, {
+          tracked: set.error.code === "storage_failed",
+        })
+      );
+    }
+
+    return new Ok([
+      { type: "text", text: `Set the theme of \`${path}\` to \`${theme}\`.` },
     ]);
   },
 };
