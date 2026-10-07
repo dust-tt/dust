@@ -59,9 +59,6 @@
     "@google-cloud/storage-transfer": {
       "google-gax": "^4.6.1"
     },
-    "@lingui/vite-plugin": {
-      "@babel/core": "^7.29.0"
-    },
     "@elastic/transport": {
       "undici": "^6.29.0"
     }
