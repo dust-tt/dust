@@ -19,62 +19,63 @@ const textOf = (content: JSONContent[] | undefined) =>
  * refuses as out of bounds MUST still be written as one fenced block, without throwing, and the
  * codec's own bounds check then refuses the message.
  */
-const CommentCodeBlock = CodeBlock.extend({
-  renderHTML({ node, HTMLAttributes }) {
-    if (node.attrs.language !== SUGGESTION_LANGUAGE) {
+const commentCodeBlock = (suggestionLabel: string) =>
+  CodeBlock.extend({
+    renderHTML({ node, HTMLAttributes }) {
+      if (node.attrs.language !== SUGGESTION_LANGUAGE) {
+        return [
+          "pre",
+          {
+            ...HTMLAttributes,
+            class:
+              "my-1 overflow-x-auto rounded-md border border-border bg-muted-background px-2 py-1 font-mono text-xs",
+          },
+          ["code", 0],
+        ];
+      }
       return [
-        "pre",
-        {
-          ...HTMLAttributes,
-          class:
-            "my-1 overflow-x-auto rounded-md border border-border bg-muted-background px-2 py-1 font-mono text-xs",
-        },
-        ["code", 0],
-      ];
-    }
-    return [
-      "div",
-      {
-        "data-comment-suggestion": "",
-        class:
-          "my-1 flex flex-col overflow-hidden rounded-lg border border-border",
-      },
-      [
         "div",
         {
-          contenteditable: "false",
+          "data-comment-suggestion": "",
           class:
-            "select-none border-b border-border bg-muted-background px-2 py-1 text-xs font-medium text-muted-foreground",
+            "my-1 flex flex-col overflow-hidden rounded-lg border border-border",
         },
-        "Suggested change",
-      ],
-      [
-        "pre",
-        {
-          class:
-            "whitespace-pre-wrap bg-success-100/60 px-2 py-1 font-sans wrap-anywhere dark:bg-success-500/20 [&>code]:font-sans",
-        },
-        ["code", 0],
-      ],
-    ];
-  },
-  renderMarkdown: (node) => {
-    const text = textOf(node.content);
-    const language = node.attrs?.language ?? "";
-    if (language === SUGGESTION_LANGUAGE) {
-      const block = suggestionBlock(text);
-      if (block.isOk()) {
-        return block.value;
+        [
+          "div",
+          {
+            contenteditable: "false",
+            class:
+              "select-none border-b border-border bg-muted-background px-2 py-1 text-xs font-medium text-muted-foreground",
+          },
+          suggestionLabel,
+        ],
+        [
+          "pre",
+          {
+            class:
+              "whitespace-pre-wrap bg-success-100/60 px-2 py-1 font-sans wrap-anywhere dark:bg-success-500/20 [&>code]:font-sans",
+          },
+          ["code", 0],
+        ],
+      ];
+    },
+    renderMarkdown: (node) => {
+      const text = textOf(node.content);
+      const language = node.attrs?.language ?? "";
+      if (language === SUGGESTION_LANGUAGE) {
+        const block = suggestionBlock(text);
+        if (block.isOk()) {
+          return block.value;
+        }
       }
-    }
-    let longestRun = 0;
-    for (const run of text.match(/`+/g) ?? []) {
-      longestRun = Math.max(longestRun, run.length);
-    }
-    const fence = "`".repeat(Math.max(3, longestRun + 1));
-    return `${fence}${language}\n${text}\n${fence}`;
-  },
-});
+      let longestRun = 0;
+      for (const run of text.match(/`+/g) ?? []) {
+        longestRun = Math.max(longestRun, run.length);
+      }
+      const fence = "`".repeat(Math.max(3, longestRun + 1));
+      return `${fence}${language}\n${text}\n${fence}`;
+    },
+  });
 
 // A backslash break leaves no trailing spaces in the message body, which signs as written.
 const CommentHardBreak = HardBreak.extend({
@@ -135,11 +136,14 @@ const CommentKeymap = Extension.create<CommentKeymapOptions>({
 
 interface CommentInputExtensionsParams extends CommentKeymapOptions {
   placeholder: string;
+  /** The translated header of a suggestion block. */
+  suggestionLabel: string;
   hostExtensions: Extensions;
 }
 
 export const commentInputExtensions = ({
   placeholder,
+  suggestionLabel,
   hostExtensions,
   onSubmit,
 }: CommentInputExtensionsParams): Extensions => [
@@ -164,7 +168,7 @@ export const commentInputExtensions = ({
       },
     },
   }),
-  CommentCodeBlock,
+  commentCodeBlock(suggestionLabel),
   CommentHardBreak,
   Markdown,
   Placeholder.configure({ placeholder }),

@@ -15,6 +15,7 @@ describe("commentInputExtensions", () => {
     editor = new Editor({
       extensions: commentInputExtensions({
         placeholder: "Comment",
+        suggestionLabel: "Suggested change",
         hostExtensions: [MentionExtension],
         onSubmit: { current: onSubmit },
       }),
