@@ -20,6 +20,9 @@ impl From<SqliteWorkerError> for QueryDatabaseError {
     fn from(e: SqliteWorkerError) -> Self {
         match &e {
             SqliteWorkerError::TooManyResultRows => QueryDatabaseError::TooManyResultRows,
+            SqliteWorkerError::ResultTooLarge(msg) => {
+                QueryDatabaseError::ResultTooLarge(msg.clone())
+            }
             SqliteWorkerError::QueryExecutionError(msg) => {
                 QueryDatabaseError::ExecutionError(msg.clone(), None)
             }

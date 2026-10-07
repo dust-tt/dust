@@ -155,6 +155,9 @@ pub async fn databases_query_run(
                         "The query returned too many rows",
                         None,
                     ),
+                    Err(QueryDatabaseError::ResultTooLarge(s)) => {
+                        error_response(StatusCode::BAD_REQUEST, "result_too_large", &s, None)
+                    }
                     Err(QueryDatabaseError::ExecutionError(s, _)) => {
                         error_response(StatusCode::BAD_REQUEST, "query_execution_error", &s, None)
                     }
