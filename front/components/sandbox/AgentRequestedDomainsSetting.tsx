@@ -1,3 +1,4 @@
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useUpdateWorkspaceSandboxAgentEgressRequests } from "@app/lib/swr/sandbox";
 import {
@@ -7,10 +8,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
+import { AdminSectionAnchor } from "../layouts/AdminSectionAnchor";
 
 // Workspace-wide toggle for whether agents can request additional domains
 // during a conversation (add_egress_domain). Shown on its own so it stays
@@ -82,29 +85,34 @@ export function AgentRequestedDomainsSetting() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between gap-4 border-y border-border py-4">
-        <div className="flex min-w-0 flex-col">
-          <div className="heading-xl text-foreground">
-            <Trans>Agent-requested domains</Trans>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <Trans>
-              Applies to every Computer in this workspace, across all Pods.
-              Allow agents to ask for additional domains, one approval per
-              domain, during the conversation. When disabled, agents cannot
-              request new domains and rely only on the allowed domains
-              configured per scope below.
-            </Trans>
-          </div>
+      <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.agentDomains}>
+        <div className="heading-base text-foreground">
+          <Trans>Agent-requested domains</Trans>
         </div>
-        <SliderToggle
-          selected={allowAgentEgressRequests}
-          onClick={() => {
-            void handleToggle();
-          }}
-          disabled={isUpdatingWorkspaceSandboxAgentEgressRequests}
-        />
-      </div>
+        <SettingsList>
+          <SettingsList.Row
+            title={<Trans>Agent-requested domains</Trans>}
+            description={
+              <Trans>
+                Applies to every Computer in this workspace, across all Pods.
+                Allow agents to ask for additional domains, one approval per
+                domain, during the conversation. When disabled, agents cannot
+                request new domains and rely only on the allowed domains
+                configured per scope below.
+              </Trans>
+            }
+            action={
+              <SliderToggle
+                selected={allowAgentEgressRequests}
+                onClick={() => {
+                  void handleToggle();
+                }}
+                disabled={isUpdatingWorkspaceSandboxAgentEgressRequests}
+              />
+            }
+          />
+        </SettingsList>
+      </AdminSectionAnchor>
     </>
   );
 }
