@@ -80,7 +80,7 @@ async function collectResponseIdEvent(
 }
 
 describe("AnthropicStream thinking-binding observability", () => {
-  it("sends the thinking-binding beta to models with preserved thinking", async () => {
+  it("sends the thinking-binding beta by default", async () => {
     const payload = await createSonnetFiveDotFive().buildRequestPayload(
       EMPTY_PAYLOAD,
       AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream.configSchema.parse(
@@ -92,11 +92,13 @@ describe("AnthropicStream thinking-binding observability", () => {
     expect(payload.thinking).not.toHaveProperty("block_binding");
   });
 
-  it("does not send the thinking-binding beta to models without preserved thinking", async () => {
-    const endpoint = new AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream({
+  it("sends no betas when an endpoint overrides them away", async () => {
+    class WithoutBetas extends AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream {
+      protected readonly betas: readonly string[] = [];
+    }
+    const payload = await new WithoutBetas({
       ANTHROPIC_API_KEY: "test-key",
-    });
-    const payload = await endpoint.buildRequestPayload(
+    }).buildRequestPayload(
       EMPTY_PAYLOAD,
       AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream.configSchema.parse(
         {}

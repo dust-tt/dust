@@ -20,12 +20,6 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import { ANTHROPIC_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
-import type { Model } from "@app/lib/model_constructors/types/models";
-import {
-  CLAUDE_FABLE_5_1,
-  CLAUDE_OPUS_5_5,
-  CLAUDE_SONNET_5_5,
-} from "@app/lib/model_constructors/types/models";
 import type {
   ModelResponseEvent,
   ResponseIdEvent,
@@ -38,15 +32,10 @@ import type { InputTransformation } from "@app/lib/model_constructors/utils/inpu
 const CACHE_DIAGNOSTICS_BETA_HEADER = "cache-diagnosis-2026-04-07";
 
 // Reports, in `input_transformations`, the thinking blocks the preserved-thinking
-// checks dropped or flagged. Scoped to the models that run the prefix check.
+// checks dropped or flagged.
 // https://platform.claude.com/docs/en/build-with-claude/preserved-thinking
 export const THINKING_BINDING_CONTROLS_BETA_HEADER =
   "thinking-binding-controls-2026-08-01";
-const PRESERVED_THINKING_MODELS: ReadonlySet<Model> = new Set([
-  CLAUDE_FABLE_5_1,
-  CLAUDE_OPUS_5_5,
-  CLAUDE_SONNET_5_5,
-]);
 
 // The request we build for the stream: the base non-beta params plus the beta
 // Messages API extras we attach (cache-diagnostics beta header + `diagnostics`
@@ -94,6 +83,11 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
 
   static readonly configSchema = anthropicConfigSchema;
 
+  // Betas sent on every request. Endpoints override this to opt out of, or add to, the defaults.
+  protected readonly betas: readonly string[] = [
+    THINKING_BINDING_CONTROLS_BETA_HEADER,
+  ];
+
   private readonly client: AnthropicClient;
 
   // Cache-diagnostics state, threaded across a stream: recorded in
@@ -127,9 +121,7 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     this.previousMessageId = config.previousMessageId;
     const betas = [
       ...(this.cacheDiagnosticsEnabled ? [CACHE_DIAGNOSTICS_BETA_HEADER] : []),
-      ...(PRESERVED_THINKING_MODELS.has(this.metadata().model)
-        ? [THINKING_BINDING_CONTROLS_BETA_HEADER]
-        : []),
+      ...this.betas,
     ];
     return {
       ...(await super.buildRequestPayload(payload, config)),
