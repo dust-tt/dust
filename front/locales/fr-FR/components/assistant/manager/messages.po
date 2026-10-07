@@ -117,8 +117,8 @@ msgid "Feedback"
 msgstr "Retours"
 
 #: front/components/assistant/manager/AgentSearchTable.tsx
-msgid "{total, plural, one {{up} positive and {down} negative feedback} other {{up} positive and {down} negative feedbacks}}"
-msgstr "{total, plural, one {Retours positifs : {up}, négatifs : {down}} other {Retours positifs : {up}, négatifs : {down}}}"
+msgid "{up} positive and {down} negative feedback"
+msgstr "Retours positifs : {up}, négatifs : {down}"
 
 #: front/components/assistant/manager/AgentSearchTable.tsx
 msgid "Editors"
@@ -167,3 +167,11 @@ msgstr "Tags disponibles"
 #: front/components/assistant/manager/TableTagSelector.tsx
 msgid "No tags available"
 msgstr "Aucun tag disponible"
+
+#: front/components/assistant/manager/agentFilter.ts
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/assistant/manager/agentFilter.ts
+msgid "Archived"
+msgstr "Archivés"
