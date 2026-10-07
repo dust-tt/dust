@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 export default function DatasetPicker({
   owner,
@@ -23,6 +24,7 @@ export default function DatasetPicker({
   readOnly: boolean;
   onDatasetUpdate: (dataset: string) => void;
 }) {
+  const { t } = useLingui();
   const { datasets, isDatasetsLoading, isDatasetsError } = useDatasets({
     owner,
     app,
@@ -49,7 +51,7 @@ export default function DatasetPicker({
       {datasets.length === 0 && !dataset && !readOnly ? (
         <Button
           href={createDatasetUrl}
-          label={isDatasetsLoading ? "Loading..." : "Create dataset"}
+          label={isDatasetsLoading ? t`Loading...` : t`Create dataset`}
           size="xs"
         />
       ) : (
@@ -59,7 +61,7 @@ export default function DatasetPicker({
               isSelect
               variant="outline"
               disabled={readOnly}
-              label={dataset ? dataset : "Select dataset"}
+              label={dataset ? dataset : t`Select dataset`}
               size="xs"
             />
           </DropdownMenuTrigger>
@@ -77,7 +79,7 @@ export default function DatasetPicker({
               {datasets.length > 0 && <DropdownMenuSeparator />}
 
               <DropdownMenuItem
-                label="Create new dataset"
+                label={t`Create new dataset`}
                 href={createDatasetUrl}
               />
             </DropdownMenuContent>

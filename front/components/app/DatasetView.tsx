@@ -28,6 +28,7 @@ import {
   Upload01,
   XCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
@@ -187,6 +188,7 @@ export default function DatasetView({
   nameDisabled: boolean;
   viewType: DatasetViewType;
 }) {
+  const { t } = useLingui();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sendNotification = useSendNotification();
 
@@ -229,7 +231,7 @@ export default function DatasetView({
       }
     });
     if (exists) {
-      setDatasetNameError("A dataset with the same name already exists");
+      setDatasetNameError(t`A dataset with the same name already exists`);
       valid = false;
     } else if (datasetName.length == 0) {
       setDatasetNameError("");
@@ -237,7 +239,7 @@ export default function DatasetView({
       // eslint-disable-next-line no-useless-escape
     } else if (!datasetName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDatasetNameError(
-        "Dataset name must only contain letters, numbers, and the characters `._-`"
+        t`Dataset name must only contain letters, numbers, and the characters \`._-\``
       );
       valid = false;
     } else {
@@ -332,8 +334,8 @@ export default function DatasetView({
     if (datasetKeys.includes(newKey)) {
       newKey = newKey + "_1";
       sendNotification({
-        title: "Key already exists",
-        description: "Please choose a different key",
+        title: t`Key already exists`,
+        description: t`Please choose a different key`,
         type: "error",
       });
     }
@@ -450,22 +452,23 @@ export default function DatasetView({
   const handleFileLoaded = (e: ProgressEvent<FileReader>) => {
     const content = e.target?.result;
     if (!isString(content)) {
-      window.alert("Error reading JSONL file.");
+      window.alert(t`Error reading JSONL file.`);
       return;
     }
 
     const data: DatasetEntry[] = [];
     const lines = content.split("\n").filter((line) => line.length > 0);
-    for (const [i, line] of lines.entries()) {
+    for (const [lineIndex, line] of lines.entries()) {
       try {
         data.push(JSON.parse(line));
       } catch (err) {
-        window.alert(`Error parsing JSONL line ${i}: ${normalizeError(err)}`);
+        const parseError = String(normalizeError(err));
+        window.alert(t`Error parsing JSONL line ${lineIndex}: ${parseError}`);
         return;
       }
     }
     if (data.length > 256) {
-      window.alert("Dataset size is currently limited to 256 entries");
+      window.alert(t`Dataset size is currently limited to 256 entries`);
       return;
     }
     let keys = [] as string[];
@@ -500,7 +503,7 @@ export default function DatasetView({
 
   const handleFileUpload = (file: File) => {
     if (file.size > 1024 * 512) {
-      window.alert("JSONL upload size is currently limited to 512KB");
+      window.alert(t`JSONL upload size is currently limited to 512KB`);
       return;
     }
     const fileData = new FileReader();
@@ -547,7 +550,9 @@ export default function DatasetView({
         {viewType == "full" && (
           <>
             <div className="sm:col-span-1">
-              <Label>Dataset Name</Label>
+              <Label>
+                <Trans>Dataset name</Trans>
+              </Label>
               <Input
                 disabled={readOnly || nameDisabled}
                 type="text"
@@ -561,7 +566,9 @@ export default function DatasetView({
             </div>
 
             <div className="sm:col-span-4">
-              <Label>Description</Label>
+              <Label>
+                <Trans>Description</Trans>
+              </Label>
               <Input
                 disabled={readOnly}
                 type="text"
@@ -571,22 +578,28 @@ export default function DatasetView({
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={datasetDescription || ""}
                 onChange={(e) => setDatasetDescription(e.target.value)}
-                message="Optional"
+                message={t`Optional`}
                 messageStatus="default"
               />
             </div>
 
             <div className="mt-4 sm:col-span-5">
-              <Label>Schema</Label>
+              <Label>
+                <Trans>Schema</Trans>
+              </Label>
               {!readOnly ? (
                 <p className="mt-2 text-sm text-foreground">
-                  Set the properties and types to ensure your dataset is valid
-                  when you update it. The properties descriptions are used to
-                  generate the inputs to your app when run from an Agent.
+                  <Trans>
+                    Set the properties and types to ensure your dataset is valid
+                    when you update it. The properties descriptions are used to
+                    generate the inputs to your app when run from an agent.
+                  </Trans>
                   <span className="font-medium text-warning-500">
                     {" "}
-                    (JSON inputs are only supported when using Dust Apps through
-                    the API and not through agent actions)
+                    <Trans>
+                      (JSON inputs are only supported when using Dust Apps
+                      through the API and not through agent actions)
+                    </Trans>
                   </span>
                 </p>
               ) : null}
@@ -617,7 +630,7 @@ export default function DatasetView({
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={XCircle}
-                                  tooltip="Delete property"
+                                  tooltip={t`Delete property`}
                                   onClick={() => {
                                     handleDeleteKey(j);
                                   }}
@@ -631,7 +644,7 @@ export default function DatasetView({
                                   onClick={() => {
                                     handleNewKey(j);
                                   }}
-                                  tooltip="Add property after"
+                                  tooltip={t`Add property after`}
                                 />
                               </>
                             ) : null}
@@ -677,7 +690,7 @@ export default function DatasetView({
                             : "text-muted-foreground"
                         )}
                         readOnly={readOnly}
-                        placeholder="Property description"
+                        placeholder={t`Property description`}
                         value={datasetKeyDescriptions[j] || ""}
                         onChange={(e) => {
                           handleKeyDescriptionChange(j, e.target.value);
@@ -695,19 +708,27 @@ export default function DatasetView({
           {viewType == "block" ? (
             <p className="muted-foreground text-sm">
               <strong>
-                Input data for test-running your app using the 'RUN' button.
+                <Trans>
+                  Input data for test-running your app using the 'RUN' button.
+                </Trans>
               </strong>
               <br />
-              Running this app from the API or an agent will use the input data
-              provided at runtime.
+              <Trans>
+                Running this app from the API or an agent will use the input
+                data provided at runtime.
+              </Trans>
             </p>
           ) : (
             <>
-              <Label>Data</Label>
+              <Label>
+                <Trans>Data</Trans>
+              </Label>
               {!readOnly ? (
                 <p className="mt-2 text-sm text-foreground">
-                  Add and edit your dataset entries below. You can insert or
-                  remove entries using buttons on the right.
+                  <Trans>
+                    Add and edit your dataset entries below. You can insert or
+                    remove entries using buttons on the right.
+                  </Trans>
                 </p>
               ) : null}
             </>
@@ -823,7 +844,7 @@ export default function DatasetView({
                       handleNewEntry(datasetData.length - 1);
                     }}
                     icon={Plus}
-                    label="New Entry"
+                    label={t`New entry`}
                   />
                 ) : null}
                 <div className="flex-1"></div>
@@ -847,7 +868,7 @@ export default function DatasetView({
                       downloadAnchorNode.remove();
                     }}
                     icon={Download01}
-                    label="Download"
+                    label={t({ message: "Download", context: "action" })}
                   />
                 </div>
                 <div className="ml-2 flex-initial">
