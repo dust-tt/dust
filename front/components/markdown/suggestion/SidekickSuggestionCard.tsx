@@ -352,6 +352,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
             description: skill.userFacingDescription,
             icon: skill.icon,
             availability: skill.availability,
+            requestedSpaceIds: skill.requestedSpaceIds,
             canWrite: skill.canWrite,
           };
           setValue("skills", [...currentSkills, newSkill], {
