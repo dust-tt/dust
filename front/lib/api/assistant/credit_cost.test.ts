@@ -3,7 +3,7 @@ import {
   computeAndStoreAgentMessageCredits,
 } from "@app/lib/api/assistant/credit_cost";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import { recordSharedUsageLimitWithUsage } from "@app/lib/api/groups/group_shared_usage_limit";
+import { recordGroupSharedUsage } from "@app/lib/api/groups/group_shared_usage_limit";
 import {
   recordFreeSeatLifetimeUsage,
   recordUserSpendLimitUsage,
@@ -44,7 +44,7 @@ vi.mock(
 );
 
 vi.mock("@app/lib/api/groups/group_shared_usage_limit", () => ({
-  recordSharedUsageLimitWithUsage: vi.fn(),
+  recordGroupSharedUsage: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/credits/auto_seat_upgrade", () => ({
@@ -512,14 +512,11 @@ describe("computeAndStoreAgentMessageCredits shared usage limit recording", () =
       await finalizeMessageOfMember("workspace");
 
     expect(costCredits).toBeGreaterThan(0);
-    expect(recordSharedUsageLimitWithUsage).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        user: expect.objectContaining({ sId: member.sId }),
-        agentMessageId,
-        incrementBy: costCredits,
-      }
-    );
+    expect(recordGroupSharedUsage).toHaveBeenCalledWith(expect.anything(), {
+      user: expect.objectContaining({ sId: member.sId }),
+      agentMessageId,
+      incrementBy: costCredits,
+    });
   });
 
   it("does not record a free seat's usage to any group", async () => {
@@ -527,6 +524,6 @@ describe("computeAndStoreAgentMessageCredits shared usage limit recording", () =
 
     expect(costCredits).toBeGreaterThan(0);
     expect(recordFreeSeatLifetimeUsage).toHaveBeenCalled();
-    expect(recordSharedUsageLimitWithUsage).not.toHaveBeenCalled();
+    expect(recordGroupSharedUsage).not.toHaveBeenCalled();
   });
 });

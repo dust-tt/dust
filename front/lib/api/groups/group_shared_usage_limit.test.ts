@@ -13,7 +13,7 @@ import {
   areGroupSharedUsageLimitsEnabled,
   isGroupSharedUsageLimitReached,
   MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
-  recordSharedUsageLimitWithUsage,
+  recordGroupSharedUsage,
   resolveSharedUsageLimitGroupForUser,
   resolveSharedUsageLimitGroupsForUsers,
   resyncGroupSharedUsageCountersFromEsUsage,
@@ -789,7 +789,7 @@ describe("read filter", () => {
   });
 });
 
-describe("recordSharedUsageLimitWithUsage", () => {
+describe("recordGroupSharedUsage", () => {
   it("records the credits to the member's shared usage limit group and stores it on the message", async () => {
     const { auth, workspace, user, agentMessageId } =
       await setupWithAgentMessage();
@@ -801,7 +801,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       10_000
     );
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -823,7 +823,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       [user],
       10_000
     );
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -837,7 +837,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       6_000
     );
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 2,
@@ -857,7 +857,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       [user],
       10_000
     );
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -867,7 +867,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       throw deleted.error;
     }
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 2,
@@ -880,7 +880,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     const { auth, workspace, user, agentMessageId } =
       await setupWithAgentMessage();
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -896,7 +896,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       [user],
       10_000
     );
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 2,
@@ -917,7 +917,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
       sharedUsageLimitPriority: 1,
     });
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -941,7 +941,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     );
     vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -965,7 +965,7 @@ describe("recordSharedUsageLimitWithUsage", () => {
     );
 
     for (const incrementBy of [0, -1, Number.NaN]) {
-      await recordSharedUsageLimitWithUsage(auth, {
+      await recordGroupSharedUsage(auth, {
         user,
         agentMessageId,
         incrementBy,
@@ -994,7 +994,7 @@ describe("shared usage limit counter rebuild", () => {
       { group: engineering, microCredits: 7_000_000 },
     ]);
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -1013,7 +1013,7 @@ describe("shared usage limit counter rebuild", () => {
       [user],
       10_000
     );
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,
@@ -1022,7 +1022,7 @@ describe("shared usage limit counter rebuild", () => {
       { group: engineering, microCredits: 100_000_000 },
     ]);
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 2,
@@ -1043,7 +1043,7 @@ describe("shared usage limit counter rebuild", () => {
     );
     mockConsumptionReadFailure();
 
-    await recordSharedUsageLimitWithUsage(auth, {
+    await recordGroupSharedUsage(auth, {
       user,
       agentMessageId,
       incrementBy: 3,

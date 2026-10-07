@@ -278,7 +278,7 @@ export async function isGroupSharedUsageLimitReached(
   );
 }
 
-export async function recordSharedUsageLimitWithUsage(
+export async function recordGroupSharedUsage(
   auth: Authenticator,
   {
     user,
