@@ -188,6 +188,16 @@ app.post(
       if (retryBlockedActionsRes.isErr()) {
         const { error } = retryBlockedActionsRes;
 
+        // Answering a question or validating an action already resumes the run server-side, so the
+        // client's follow-up retry routinely finds nothing left to resume. That is not a failure.
+        if (
+          error instanceof DustError &&
+          (error.code === "no_blocked_actions" ||
+            error.code === "agent_message_not_resumable")
+        ) {
+          return ctx.json({ message });
+        }
+
         if (
           error instanceof DustError &&
           error.code === "agent_loop_already_running"
@@ -201,13 +211,17 @@ app.post(
           });
         }
 
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Failed to retry blocked actions.",
+        return apiError(
+          ctx,
+          {
+            status_code: 500,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Failed to retry blocked actions.",
+            },
           },
-        });
+          error
+        );
       }
 
       return ctx.json({ message });

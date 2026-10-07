@@ -166,3 +166,29 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry in a
     expect(retryAgentMessage).toHaveBeenCalledOnce();
   });
 });
+
+describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry?blocked_only=true", () => {
+  it("succeeds when the message has nothing left to resume", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "POST",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const agentMessage = conversation.content.flat().find(isAgentMessageType);
+    assert(agentMessage, "Expected the conversation to have an agent message.");
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/retry?blocked_only=true`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }
+    );
+
+    expect(response.status).toBe(200);
+  });
+});
