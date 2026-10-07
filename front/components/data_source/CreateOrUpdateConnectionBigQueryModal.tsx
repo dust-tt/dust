@@ -344,7 +344,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                   title={t`Limitations`}
                   className="border-none"
                 >
-                  {connectorUIConfiguration.limitations}
+                  {t(connectorUIConfiguration.limitations)}
                 </ContentMessage>
               )}
             </div>

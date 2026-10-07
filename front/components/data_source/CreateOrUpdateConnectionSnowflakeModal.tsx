@@ -344,7 +344,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     <Trans>Limitations</Trans>
                   </div>
                   <div className="text-sm font-normal text-muted-foreground">
-                    {connectorUIConfiguration.limitations}
+                    {t(connectorUIConfiguration.limitations)}
                   </div>
                 </div>
               )}

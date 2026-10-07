@@ -4,6 +4,7 @@ import type {
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
+import { CATEGORY_LABELS } from "@app/components/spaces/spaceCategoryLabels";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -16,6 +17,9 @@ import type {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import { Folder } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 export function pathToString(path: string[]): string {
   return path.join("/");
@@ -233,7 +237,8 @@ export function computeNavigationPath(
 }
 
 export function navigationHistoryEntryTitle(
-  entry: NavigationHistoryEntryType
+  entry: NavigationHistoryEntryType,
+  t: Translate
 ): string {
   switch (entry.type) {
     case "root":
@@ -241,7 +246,7 @@ export function navigationHistoryEntryTitle(
     case "space":
       return entry.space.name;
     case "category":
-      return CATEGORY_DETAILS[entry.category].label;
+      return t(CATEGORY_LABELS[entry.category]);
     case "data_source":
       return getDataSourceNameFromView(entry.dataSourceView);
     case "node":

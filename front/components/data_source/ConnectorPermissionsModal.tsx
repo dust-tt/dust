@@ -218,7 +218,7 @@ export async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error: CONNECTOR_UI_CONFIGURATIONS[provider].mismatchError,
+      error: t(CONNECTOR_UI_CONFIGURATIONS[provider].mismatchError),
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {
@@ -589,7 +589,9 @@ function UpdateConnectionOAuthModal({
                   icon={InfoCircle}
                 >
                   <ReactMarkdown>
-                    {permissionsConfigurable.placeholder ?? ""}
+                    {permissionsConfigurable.placeholder
+                      ? t(permissionsConfigurable.placeholder)
+                      : ""}
                   </ReactMarkdown>
                 </ContentMessage>
               )}
@@ -1146,7 +1148,9 @@ export function ConnectorPermissionsModal({
                       icon={InfoCircle}
                     >
                       <ReactMarkdown>
-                        {permissionsConfigurable.placeholder ?? ""}
+                        {permissionsConfigurable.placeholder
+                          ? t(permissionsConfigurable.placeholder)
+                          : ""}
                       </ReactMarkdown>
                     </ContentMessage>
                   )}
@@ -1168,7 +1172,8 @@ export function ConnectorPermissionsModal({
                     <>
                       <div className="flex items-center justify-between p-1">
                         <div className="heading-xl">
-                          {connectorUIConfiguration.selectLabel}
+                          {connectorUIConfiguration.selectLabel &&
+                            t(connectorUIConfiguration.selectLabel)}
                         </div>
                       </div>
                       <ContentNodeTree
@@ -1189,7 +1194,11 @@ export function ConnectorPermissionsModal({
                             : undefined
                         }
                         showExpand={connectorUIConfiguration?.isNested}
-                        emptyComponent={connectorUIConfiguration.emptyNodeLabel}
+                        emptyComponent={
+                          connectorUIConfiguration.emptyNodeLabel
+                            ? t(connectorUIConfiguration.emptyNodeLabel)
+                            : undefined
+                        }
                       />
                     </>
                   )}

@@ -48,6 +48,7 @@ import {
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import type { TagsFilter, TagsFilterMode } from "@app/types/data_source_view";
+import { useLingui } from "@lingui/react/macro";
 import { createContext, useCallback, useContext, useMemo } from "react";
 
 type DataSourceBuilderState = NavigationHistoryState & {
@@ -113,6 +114,7 @@ export function DataSourceBuilderProvider({
   const { field } = useSourcesFormController();
   const navigation = useNavigationHistory();
   const { navigationHistory } = navigation;
+  const { t } = useLingui();
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
     (entry) => {
@@ -122,12 +124,12 @@ export function DataSourceBuilderProvider({
       field.onChange(
         addNodeToTree(field.value, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(entry),
+          name: navigationHistoryEntryTitle(entry, t),
           ...entry,
         })
       );
     },
-    [field, navigationHistory]
+    [field, navigationHistory, t]
   );
 
   const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
@@ -138,11 +140,11 @@ export function DataSourceBuilderProvider({
       field.onChange(
         addNodeToTree(field.value, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(lastEntry),
+          name: navigationHistoryEntryTitle(lastEntry, t),
           ...lastEntry,
         })
       );
-    }, [field, navigationHistory]);
+    }, [field, navigationHistory, t]);
 
   const removeNode: DataSourceBuilderState["removeNode"] = useCallback(
     (entry) => {
@@ -152,12 +154,12 @@ export function DataSourceBuilderProvider({
       field.onChange(
         removeNodeFromTree(field.value, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(entry),
+          name: navigationHistoryEntryTitle(entry, t),
           ...entry,
         })
       );
     },
-    [field, navigationHistory]
+    [field, navigationHistory, t]
   );
 
   const removeNodeWithPath: DataSourceBuilderState["removeNodeWithPath"] =
@@ -176,11 +178,11 @@ export function DataSourceBuilderProvider({
       field.onChange(
         removeNodeFromTree(field.value, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(lastEntry),
+          name: navigationHistoryEntryTitle(lastEntry, t),
           ...lastEntry,
         })
       );
-    }, [field, navigationHistory]);
+    }, [field, navigationHistory, t]);
 
   const isRowSelected: DataSourceBuilderState["isRowSelected"] = useCallback(
     (rowId) => {

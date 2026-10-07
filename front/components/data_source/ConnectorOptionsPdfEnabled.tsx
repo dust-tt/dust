@@ -8,9 +8,12 @@ import {
   GooglePdfLogo as GenericPdfLogo,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { useLingui } from "@lingui/react/macro";
 
-export const createConnectorOptionsPdfEnabled = (description: string) => {
+export const createConnectorOptionsPdfEnabled = (
+  description: MessageDescriptor
+) => {
   const ConnectorOptionsPdfEnabled = ({
     owner,
     readOnly,
@@ -52,7 +55,7 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
           }
         >
           <ContextItem.Description>
-            <div className="text-muted-foreground">{description}</div>
+            <div className="text-muted-foreground">{t(description)}</div>
           </ContextItem.Description>
         </ContextItem>
       </ContextItem.List>

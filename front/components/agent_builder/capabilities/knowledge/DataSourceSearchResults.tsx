@@ -111,12 +111,12 @@ export function DataSourceSearchResults({
       field.onChange(
         addNodeToTree(field.value, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(entry),
+          name: navigationHistoryEntryTitle(entry, t),
           ...entry,
         })
       );
     },
-    [field, buildNodePath]
+    [field, buildNodePath, t]
   );
 
   // Custom removeNode for search results that uses the correct path
@@ -134,12 +134,12 @@ export function DataSourceSearchResults({
       field.onChange(
         removeNodeFromTree(field.value, {
           path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(entry),
+          name: navigationHistoryEntryTitle(entry, t),
           ...entry,
         })
       );
     },
-    [field, buildNodePath]
+    [field, buildNodePath, t]
   );
 
   // Process search results for the table
