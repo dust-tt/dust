@@ -164,8 +164,8 @@ interface UsersGrantSpec {
   transaction?: Transaction;
 }
 
-interface KeysGrantSpec {
-  keys: KeyResource[];
+interface KeyGrantSpec {
+  key: KeyResource;
   grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
@@ -631,20 +631,15 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }, transaction);
   }
 
-  // Grant keys access to a resource by adding the regular_auto group that holds the grant to their
+  // Grant a key access to a resource by adding the regular_auto group that holds the grant to its
   // `groupIds`. Shares the backing group (and the grant-tuple lock) with grantToUsers, creating it
-  // on first use. Idempotent for repeat grants to the same key.
-  static async grantToKeys(
+  // on first use. Idempotent for a repeat grant.
+  static async grantToKey(
     auth: Authenticator,
-    { keys, grantType, resourceType, resourceId, transaction }: KeysGrantSpec
+    { key, grantType, resourceType, resourceId, transaction }: KeyGrantSpec
   ): Promise<void> {
-    const sortedKeys = this.sortedGrantableKeys(auth, keys);
-    for (const key of sortedKeys) {
-      assert(key.status === "active", "Cannot grant a disabled API key.");
-    }
-    if (sortedKeys.length === 0) {
-      return;
-    }
+    this.assertGrantableKey(auth, key);
+    assert(key.status === "active", "Cannot grant a disabled API key.");
 
     await withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
@@ -655,23 +650,17 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         resourceId,
         transaction: t,
       });
-
-      for (const key of sortedKeys) {
-        await key.setGroupMembership({ group, isMember: true, transaction: t });
-      }
+      await key.setGroupMembership({ group, isMember: true, transaction: t });
     }, transaction);
   }
 
-  // Revoke keys' access by removing the backing regular_auto group from their `groupIds`. The grant
+  // Revoke a key's access by removing the backing regular_auto group from its `groupIds`. The grant
   // and its group are deleted once no user nor key holds them. No-op when no group backs the tuple.
-  static async revokeFromKeys(
+  static async revokeFromKey(
     auth: Authenticator,
-    { keys, grantType, resourceType, resourceId, transaction }: KeysGrantSpec
+    { key, grantType, resourceType, resourceId, transaction }: KeyGrantSpec
   ): Promise<Result<undefined, Error>> {
-    const sortedKeys = this.sortedGrantableKeys(auth, keys);
-    if (sortedKeys.length === 0) {
-      return new Ok(undefined);
-    }
+    this.assertGrantableKey(auth, key);
 
     return withTransaction(async (t) => {
       await this.getGrantLock(auth, { grantType, resourceType, resourceId }, t);
@@ -686,13 +675,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return new Ok(undefined);
       }
 
-      for (const key of sortedKeys) {
-        await key.setGroupMembership({
-          group,
-          isMember: false,
-          transaction: t,
-        });
-      }
+      await key.setGroupMembership({ group, isMember: false, transaction: t });
 
       return this.deleteRegularAutoGroupIfUnheld(auth, {
         group,
@@ -704,23 +687,15 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }, transaction);
   }
 
-  // Deduped and sorted by id: `setGroupMembership` row-locks each key, and a consistent order keeps
-  // concurrent grants on different tuples from deadlocking on the same keys.
-  private static sortedGrantableKeys(
+  private static assertGrantableKey(
     auth: Authenticator,
-    keys: KeyResource[]
-  ): KeyResource[] {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    for (const key of keys) {
-      assert(
-        key.workspaceId === workspaceId,
-        "Key does not belong to the authenticated workspace."
-      );
-      assert(!key.isSystem, "System keys cannot be granted permissions.");
-    }
-    return [...new Map(keys.map((key) => [key.id, key])).values()].sort(
-      (a, b) => a.id - b.id
+    key: KeyResource
+  ): void {
+    assert(
+      key.workspaceId === auth.getNonNullableWorkspace().id,
+      "Key does not belong to the authenticated workspace."
     );
+    assert(!key.isSystem, "System keys cannot be granted permissions.");
   }
 
   // Must run under the grant-tuple lock (see getGrantLock).
@@ -1531,7 +1506,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   //   - capability transitions (resourceId = -1): without it, two transactions can each clear the
   //     -1 rows and then insert, leaving both the everybody row and specific-group rows
   //     (overgranting);
-  //   - user- and key-level grants: serializes the find-or-create of grantToUsers / grantToKeys
+  //   - user- and key-level grants: serializes the find-or-create of grantToUsers / grantToKey
   //     against itself and against the delete-when-unheld of the revoke methods, guaranteeing at
   //     most one regular_auto group per tuple.
   private static async getGrantLock(

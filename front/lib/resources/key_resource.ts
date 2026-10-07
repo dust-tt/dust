@@ -532,8 +532,7 @@ export class KeyResource extends BaseResource<KeyModel> {
    * @cc [owner:fabiencelier,label:security;concurrency] key-group-membership-locked
    * Adding or removing a group MUST start from the persisted `groupIds`, read under a row lock held
    * until the transaction ends, so a concurrent change to the same key's groups is never lost.
-   * Idempotent. Callers changing several keys in one transaction MUST call it in ascending key id
-   * order.
+   * Idempotent.
    */
   async setGroupMembership({
     group,

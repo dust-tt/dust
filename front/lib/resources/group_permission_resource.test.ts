@@ -937,7 +937,7 @@ describe("GroupPermissionResource", () => {
     });
   });
 
-  describe("grantToKeys / revokeFromKeys", () => {
+  describe("grantToKey / revokeFromKey", () => {
     let target: GroupResource;
     let globalGroup: GroupResource;
     let grant: {
@@ -976,8 +976,8 @@ describe("GroupPermissionResource", () => {
       const key = await KeyFactory.regular(globalGroup);
       const otherTarget = await GroupFactory.regularManual(workspace, "Other");
 
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
 
@@ -1001,12 +1001,12 @@ describe("GroupPermissionResource", () => {
         user: user.toJSON(),
         ...grant,
       });
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
 
@@ -1030,8 +1030,8 @@ describe("GroupPermissionResource", () => {
         user: user.toJSON(),
         ...grant,
       });
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
 
@@ -1044,8 +1044,8 @@ describe("GroupPermissionResource", () => {
       assert(group);
       expect(await group.isMember(user)).toBe(false);
 
-      const revokeKey = await GroupPermissionResource.revokeFromKeys(auth, {
-        keys: [key],
+      const revokeKey = await GroupPermissionResource.revokeFromKey(auth, {
+        key,
         ...grant,
       });
       expect(revokeKey.isOk()).toBe(true);
@@ -1058,17 +1058,16 @@ describe("GroupPermissionResource", () => {
       const key2 = await KeyFactory.regular(globalGroup);
       const user = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user, { role: "user" });
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key2, key1],
-        ...grant,
-      });
+      for (const key of [key1, key2]) {
+        await GroupPermissionResource.grantToKey(auth, { key, ...grant });
+      }
       await GroupPermissionResource.grantToUser(auth, {
         user: user.toJSON(),
         ...grant,
       });
 
-      await GroupPermissionResource.revokeFromKeys(auth, {
-        keys: [key1],
+      await GroupPermissionResource.revokeFromKey(auth, {
+        key: key1,
         ...grant,
       });
       const group = await findGrantGroup();
@@ -1082,8 +1081,8 @@ describe("GroupPermissionResource", () => {
       });
       expect(await findGrantGroup()).not.toBeNull();
 
-      await GroupPermissionResource.revokeFromKeys(auth, {
-        keys: [key2],
+      await GroupPermissionResource.revokeFromKey(auth, {
+        key: key2,
         ...grant,
       });
       expect(await findGrantGroup()).toBeNull();
@@ -1093,8 +1092,8 @@ describe("GroupPermissionResource", () => {
       const key = await KeyFactory.regular(globalGroup);
       const user = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user, { role: "user" });
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
       await GroupPermissionResource.grantToUser(auth, {
@@ -1118,8 +1117,8 @@ describe("GroupPermissionResource", () => {
         user: user.toJSON(),
         ...grant,
       });
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
 
@@ -1135,8 +1134,8 @@ describe("GroupPermissionResource", () => {
 
     it("strips the backing group from keys when the target group is deleted", async () => {
       const key = await KeyFactory.regular(globalGroup);
-      await GroupPermissionResource.grantToKeys(auth, {
-        keys: [key],
+      await GroupPermissionResource.grantToKey(auth, {
+        key,
         ...grant,
       });
 
@@ -1151,14 +1150,14 @@ describe("GroupPermissionResource", () => {
       const disabledKey = await KeyFactory.disabled(globalGroup);
 
       await expect(
-        GroupPermissionResource.grantToKeys(auth, {
-          keys: [systemKey],
+        GroupPermissionResource.grantToKey(auth, {
+          key: systemKey,
           ...grant,
         })
       ).rejects.toThrow(/System keys/);
       await expect(
-        GroupPermissionResource.grantToKeys(auth, {
-          keys: [disabledKey],
+        GroupPermissionResource.grantToKey(auth, {
+          key: disabledKey,
           ...grant,
         })
       ).rejects.toThrow(/disabled/);
