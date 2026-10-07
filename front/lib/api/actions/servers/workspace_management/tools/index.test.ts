@@ -1218,7 +1218,7 @@ describe("workspace_management tools", () => {
     it("returns the ids of the similar skills", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       mockGetSimilarSkills.mockResolvedValue(
-        new Ok({ similar_skills: ["skill1", "skill2"] })
+        new Ok({ similar_skills: ["skill1", "skill2"], skills: [] })
       );
 
       const lines = await callToolLines(
@@ -1236,7 +1236,9 @@ describe("workspace_management tools", () => {
 
     it("says so when no skill is similar", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
-      mockGetSimilarSkills.mockResolvedValue(new Ok({ similar_skills: [] }));
+      mockGetSimilarSkills.mockResolvedValue(
+        new Ok({ similar_skills: [], skills: [] })
+      );
 
       const text = await callTool(
         "list_similar_skills",
