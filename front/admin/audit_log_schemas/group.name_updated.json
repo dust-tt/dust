@@ -1,0 +1,16 @@
+{
+  "action": "group.name_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "previous_name": "string",
+    "new_name": "string",
+    "actor_type": "string"
+  }
+}

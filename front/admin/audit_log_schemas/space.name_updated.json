@@ -1,0 +1,17 @@
+{
+  "action": "space.name_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "previous_name": "string",
+    "new_name": "string",
+    "space_kind": "string",
+    "actor_type": "string"
+  }
+}

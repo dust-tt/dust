@@ -1,0 +1,17 @@
+{
+  "action": "group.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "group_name": "string",
+    "member_count": "string",
+    "manager_count": "string",
+    "actor_type": "string"
+  }
+}
