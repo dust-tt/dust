@@ -19,7 +19,7 @@ const starterKitOptions: Partial<StarterKitOptions> = {
   heading: {
     HTMLAttributes: {
       class: cn(
-        "text-pretty font-semibold tracking-tight",
+        "text-pretty font-document-heading font-semibold tracking-tight",
         "[&:is(h1)]:heading-3xl [&:is(h1)]:mt-9 [&:is(h1)]:mb-3",
         "[&:is(h2)]:heading-2xl [&:is(h2)]:mt-8 [&:is(h2)]:mb-3",
         "[&:is(h3)]:heading-xl [&:is(h3)]:mt-7 [&:is(h3)]:mb-2"
